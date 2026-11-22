@@ -30,7 +30,7 @@
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-dimension-rollups-for-day! bucket-date))
 
-(mu/defn delete-dimension-rollups-before!
+(mu/defn delete-dimension-rollups-for-cleanup!
   "Delete the SourceDimensionDaily rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-dimension-rollups-before! bucket-date))

@@ -39,7 +39,7 @@
   (try
     ;; Delete first: an expired row of a host goes away here, so another server's delete cannot remove it between
     ;; the SELECT and the UPDATE of the upsert.
-    (sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (last-seen-cutoff))
+    (sdk-react-18-host/delete-sdk-react-18-hosts-for-cleanup! (last-seen-cutoff))
     (catch Throwable e
       (log/warn e "Failed to delete the expired hosts that use the React embedding SDK with React 18")))
   (doseq [[host seen] (group-by :host submitted)]

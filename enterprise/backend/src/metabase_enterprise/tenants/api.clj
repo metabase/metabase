@@ -88,10 +88,10 @@
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (t2/with-transaction [_conn]
     (let [collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
-      (tenant/update-tenants! [(assoc tenant :id tenant-id)])
+      (tenant/update-tenants! [tenant-id] tenant)
       (when (and collection-id (some? is_active))
         (collection/with-allow-modifying-tenant-root-collections
-          (collection/update-collections! [{:id collection-id :archived (not is_active)}])))
+          (collection/update-collections! [collection-id] {:archived (not is_active)} nil)))
       (tenants.db/tenant tenant-id))))
 
 (api.macros/defendpoint :put "/:id" :- Tenant

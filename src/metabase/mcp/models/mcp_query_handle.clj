@@ -23,12 +23,12 @@
    row       :- ::mcp.schema/mcp-query-handle.create]
   (mcp.db/insert-query-handle! handle-id row))
 
-(mu/defn delete-mcp-query-handles-created-before!
+(mu/defn delete-mcp-query-handles-for-cleanup!
   "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (mcp.db/delete-query-handles-created-before! cutoff))
 
-(mu/defn delete-mcp-query-handles-of-session!
+(mu/defn delete-mcp-query-handles-for-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id` through the core
   session with `key-hashed`, plus those that carry no core session."
   [mcp-session-id :- :string

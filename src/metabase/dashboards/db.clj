@@ -115,6 +115,32 @@
    changes       :- (mut/dissoc ::dashboards.schema/dashboard.update :id)]
   (t2/update! :model/Dashboard :id [:in dashboard-ids] changes))
 
+(defn archived-directly-clause
+  "The HoneySQL expression that sets `archived_directly` of a Dashboard when an update that makes `changes` sets
+  `archived`: false when it restores, else false when the Collection the Dashboard is in after the update, the one
+  `changes` give or else the stored one, is archived, and true otherwise. The subquery reads the Collection table, not
+  the one being updated, so MySQL accepts it as it is."
+  [changes]
+  (if-not (:archived changes)
+    [:inline false]
+    [:case
+     [:= ^:allow-subquery {:select [:c.archived]
+                           :from   [[(t2/table-name :model/Collection) :c]]
+                           :where  [:= :c.id (if (contains? changes :collection_id)
+                                               (when-some [id (:collection_id changes)] [:auto/param id])
+                                               (keyword (str (name (t2/table-name :model/Dashboard)) ".collection_id")))]}
+      [:inline true]]
+     [:inline false]
+     :else [:inline true]]))
+
+(mu/defn update-dashboards-by-changes!
+  "Write each of `rows`, an `:id` of a stored Dashboard and the columns to set, with one statement for each distinct set of
+  columns that differ from the stored row, `stored` being a map from id to the instance read before."
+  [stored :- [:map-of ::lib.schema.id/dashboard :map]
+   rows   :- [:sequential ::dashboards.schema/dashboard.update]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+    (update-dashboards! ids changes)))
+
 (mu/defn delete-dashboards!
   "Delete the Dashboards with `dashboard-ids`, returning the number deleted."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]

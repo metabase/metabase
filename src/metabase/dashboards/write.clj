@@ -310,9 +310,9 @@
                                                 (assoc :card_id (:id card)))]
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
-      (dashboard/update-dashboards! [{:id        (:id dashboard)
-                                      :tabs      (vec tabs)
-                                      :dashcards (vec dashcards-to-add)}])
+      (dashboard/update-dashboard! (:id dashboard)
+                                   {:tabs      (vec tabs)
+                                    :dashcards (vec dashcards-to-add)})
       (update-on-demand-field-values-of-new-dashboard! (:id dashboard))
       dashboard)))
 
@@ -469,16 +469,18 @@
                          (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                 (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                                 {:status-code 400})))
+              (dashboard-card/check-unarchive-internal-dashboard-questions! (:id current-dash) dashcards)
               (dashboard-card/unarchive-internal-dashboard-questions! (:id current-dash) dashcards)
               (let [dashcards (check-dashcards! hydrated-current-dash dashcards)]
                 (vreset! parts {:tabs (vec new-tabs) :dashcards dashcards})
                 (vreset! tracked [current-dashcards current-tabs dashcards new-tabs]))))
           (let [old-param-field-ids (when @parts (dashboard-id->param-field-ids id))]
             (when (or (seq updates) @parts)
-              (dashboard/update-dashboards! [(merge updates @parts {:id id})]))
+              (dashboard/update-dashboard! id (merge updates @parts)))
             (when @parts
               (update-field-values-for-on-demand-dbs! old-param-field-ids (dashboard-id->param-field-ids id))))
           (when update-dashcards-and-tabs?
+            (dashboard-card/check-archive-internal-dashboard-questions! id (:dashcards @parts))
             (dashboard-card/archive-internal-dashboard-questions! id (:dashcards @parts)))
           (when (seq updates)
             (when (some? (:collection_id updates))
@@ -723,7 +725,7 @@
                                parts         (cond-> {} (seq tabs) (assoc :tabs tabs) (seq dashcards) (assoc :dashcards dashcards))
                                dash          (if questions?
                                                (do (when (seq parts)
-                                                     (dashboard/update-dashboards! [(assoc parts :id (:id created))]))
+                                                     (dashboard/update-dashboard! (:id created) parts))
                                                    created)
                                                (first (dashboard/create-dashboards! [(merge dashboard-data parts)])))]
                            (when (seq dashcards)

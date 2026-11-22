@@ -39,10 +39,10 @@
       (analytics/inc! :metabase-search/semantic-token-tracking-failures {:model model})
       (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))
 
-(mu/defn delete-token-tracking-created-before!
+(mu/defn delete-token-tracking-for-cleanup!
   "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (semantic-search.db/delete-token-tracking-created-before! cutoff))
+  (semantic-search.db/delete-token-tracking-for-cleanup! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

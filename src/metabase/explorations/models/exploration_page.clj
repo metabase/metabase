@@ -35,13 +35,13 @@
   [rows :- [:sequential ::explorations.schema/exploration-page.create]]
   (explorations.db/insert-pages! rows))
 
-(mu/defn update-pages! :- [:sequential ::explorations.schema/exploration-page.update]
-  "Apply the columns of each of `rows` to the ExplorationPage with its `:id`, with one statement for each set of
-  changes, and return `rows`."
-  [rows :- [:sequential ::explorations.schema/exploration-page.update]]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (explorations.db/update-pages! (mapv :id group) changes))
-  rows)
+(mu/defn update-pages! :- :nil
+  "Apply `changes` to the ExplorationPages with `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::explorations.schema/exploration-page.update]
+  (when (seq ids)
+    (explorations.db/update-pages! ids changes))
+  nil)
 
 (mu/defn delete-pages!
   "Delete the ExplorationPages with `page-ids`."

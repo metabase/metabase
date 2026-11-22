@@ -63,8 +63,8 @@
       (testing "updating queries, some already holding the new value"
         (counted (fn [n]
                    (let [ids (fresh! n)]
-                     (exploration-query/update-queries! (mapv (fn [id] {:id id :status "canceled"}) (take-nth 2 ids)))
+                     (exploration-query/update-queries! (take-nth 2 ids) {:status "canceled"})
                      (events.tu/statement-count!
-                      #(exploration-query/update-queries! (mapv (fn [id] {:id id :status "canceled"}) ids)))))))
+                      #(exploration-query/update-queries! ids {:status "canceled"}))))))
       (testing "canceling queries"
         (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration-query/cancel-queries! ids)))))))))

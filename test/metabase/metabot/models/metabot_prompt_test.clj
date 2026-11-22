@@ -16,11 +16,11 @@
                               [{:metabot_id metabot-id :card_id metric-id :prompt "How many?"}])))]
           (is (= :metric (t2/select-one-fn :model :model/MetabotPrompt :id id)))
           (testing "update of the Card recomputes the model"
-            (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}])
+            (metabot-prompt/update-metabot-prompts-for-import! [{:id id :card_id model-id}])
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id))))
           (testing "update of the model alone is a 400"
             (is (=? {:status-code 400}
-                    (try (metabot-prompt/update-metabot-prompts! [{:id id :model :metric}])
+                    (try (metabot-prompt/update-metabot-prompts-for-import! [{:id id :model :metric}])
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id)))))))))
 
@@ -35,32 +35,31 @@
         (testing "creating prompts"
           (create! 1)
           (is (= (create! 2) (create! 6))))
-        (testing "updating and deleting prompts"
+        (testing "deleting prompts"
           (let [[warm small large] (map vec [(take 1 @created) (take 2 (drop 1 @created)) (drop 3 @created)])
-                update!            (fn [ids]
-                                     (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) ids)))))
                 delete!            (fn [ids]
                                      (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! ids))))]
-            (update! warm)
-            (is (= (update! small) (update! large)))
             (delete! warm)
             (is (= (delete! small) (delete! large)))))
+        (testing "deleting the prompts of Metabots"
+          (let [delete! (fn [n]
+                          (swap! created into (map :id (metabot-prompt/create-metabot-prompts! (rows n))))
+                          (events.tu/statement-count! #(metabot-prompt/delete-metabot-prompts-for-metabots! [metabot-id])))]
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))
+            (is (zero? (t2/count :model/MetabotPrompt :metabot_id metabot-id)))))
         (finally
           (t2/delete! :model/MetabotPrompt :metabot_id metabot-id))))))
 
-(deftest update-metabot-prompts-in-mixed-states-statement-counts-do-not-grow-with-rows-test
+(deftest update-metabot-prompts-for-import-test
   (mt/with-temp [:model/Card    {metric-id :id}   {:type :metric}
                  :model/Card    {model-id :id}    {:type :model}
                  :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
     (mt/with-model-cleanup [:model/MetabotPrompt]
-      (let [row     (fn [card-id prompt] {:metabot_id metabot-id :card_id card-id :prompt prompt})
-            kinds   (fn [n]
-                      (mapv :id (metabot-prompt/create-metabot-prompts!
-                                 (vec (mapcat (fn [_] [(row metric-id "same") (row metric-id "other") (row model-id "other")])
-                                              (range n))))))
-            counted (fn [n]
-                      (let [ids (kinds n)]
-                        (events.tu/statement-count!
-                         #(metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :card_id model-id :prompt "same"}) ids)))))]
-        (counted 1)
-        (is (= (counted 1) (counted 2)))))))
+      (let [[a b] (mapv :id (metabot-prompt/create-metabot-prompts!
+                             [{:metabot_id metabot-id :card_id metric-id :prompt "one"}
+                              {:metabot_id metabot-id :card_id metric-id :prompt "two"}]))]
+        (metabot-prompt/update-metabot-prompts-for-import! [{:id a :card_id model-id :prompt "same"}
+                                                            {:id b :prompt "other"}])
+        (is (= [[:model "same"] [:metric "other"]]
+               (mapv (comp (juxt :model :prompt) #(t2/select-one :model/MetabotPrompt :id %)) [a b])))))))

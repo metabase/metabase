@@ -202,7 +202,7 @@
       (testing "updating configs, half of them due at that time already"
         (let [next-run (t/offset-date-time 2030 1 1)
               now      (t/offset-date-time 2029 1 1)
-              update!  #(cache-config/update-cache-configs! (mapv (fn [id] {:id id :next_run_at next-run :invalidated_at now}) %))
+              update!  #(cache-config/update-cache-configs! % {:next_run_at next-run :invalidated_at now})
               counted  (fn [n]
                          (let [ids (create! n)]
                            (update! (take-nth 2 ids))
@@ -213,12 +213,12 @@
         (let [counted (fn [n]
                         (let [model-ids (mapv :model_id (configs (create! n)))]
                           (events.tu/statement-count!
-                           #(cache-config/delete-cache-configs! "question" (into model-ids (map (partial * 10)) model-ids)))))]
+                           #(cache-config/delete-cache-configs-for-targets! "question" (into model-ids (map (partial * 10)) model-ids)))))]
           (counted 1)
           (is (= (counted 2) (counted 6)))))
       (testing "deleting the configs of deleted questions"
         (let [counted (fn [n]
                         (let [model-ids (mapv :model_id (configs (create! n)))]
-                          (events.tu/statement-count! #(cache-config/delete-target-configs! "question" model-ids))))]
+                          (events.tu/statement-count! #(cache-config/delete-cache-configs-for-deleted-targets! "question" model-ids))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))

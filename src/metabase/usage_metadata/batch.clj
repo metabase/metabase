@@ -25,11 +25,11 @@
   (t/zone-offset "Z"))
 
 (def ^:private delete-rollups-before-fns
-  [source-segment-daily/delete-segment-rollups-before!
-   source-segment-composite-daily/delete-segment-composite-rollups-before!
-   source-metric-daily/delete-metric-rollups-before!
-   source-dimension-daily/delete-dimension-rollups-before!
-   source-dimension-profile-daily/delete-dimension-profile-rollups-before!])
+  [source-segment-daily/delete-segment-rollups-for-cleanup!
+   source-segment-composite-daily/delete-segment-composite-rollups-for-cleanup!
+   source-metric-daily/delete-metric-rollups-for-cleanup!
+   source-dimension-daily/delete-dimension-rollups-for-cleanup!
+   source-dimension-profile-daily/delete-dimension-profile-rollups-for-cleanup!])
 
 (def ^:private low-cardinality-threshold
   30)

@@ -97,9 +97,8 @@
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::collection-permission-graph-revision.update
-  "What an update of a CollectionPermissionGraphRevision takes: its `:id` and the columns to set."
+  "The changes an update applies to each of its CollectionPermissionGraphRevisions: the columns to set."
   [:map {:closed true}
-   [:id         ms/PositiveInt]
    [:before     {:optional true} [:maybe ::collection-permission-graph-revision.before]]
    [:after      {:optional true} [:maybe ::collection-permission-graph-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
@@ -192,9 +191,8 @@
    [:common_name      {:optional true} [:maybe :string]]])
 
 (mr/def ::permissions-group.update
-  "What an update of a PermissionsGroup takes: its `:id` and the columns to set."
+  "The changes an update applies to each of its PermissionsGroups: the columns to set."
   [:map {:closed true}
-   [:id                ms/PositiveInt]
    [:name              {:optional true} [:maybe :string]]
    [:entity_id         {:optional true} [:maybe :string]]
    [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
@@ -215,9 +213,8 @@
    [:is_group_manager {:optional true} [:maybe :boolean]]])
 
 (mr/def ::permissions-group-membership.update
-  "What an update of a PermissionsGroupMembership takes: its `:id` and the columns to set."
+  "The changes an update applies to each of its PermissionsGroupMemberships: the columns to set."
   [:map {:closed true}
-   [:id               ms/PositiveInt]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:group_id         {:optional true} [:maybe ms/PositiveInt]]
    [:is_group_manager {:optional true} [:maybe :boolean]]])

@@ -76,12 +76,13 @@
    _query-params
    body :- UpdateTestSuiteRequest]
   (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
-  (test-suite/update-test-suites!
-   [(cond-> (assoc body :id id)
-      (contains? body :members)
-      (assoc :members (data-testing.suite/member-rows
-                       (:members body)
-                       (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id])))))])
+  (test-suite/update-test-suite!
+   id
+   (cond-> body
+     (contains? body :members)
+     (assoc :members (data-testing.suite/member-rows
+                      (:members body)
+                      (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id]))))))
   (suite-response id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

@@ -14,12 +14,12 @@
         (testing "a question gets no PersistedInfo"
           (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card)))))
         (testing "turning it into a model with no user creates none"
-          (card/update-cards! [{:id (u/the-id card) :type :model}])
+          (card/update-cards! [(u/the-id card)] {:type :model})
           (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card)))))
         (testing "a user turning it into a model creates one"
-          (card/update-cards! [{:id (u/the-id card) :type :question}])
+          (card/update-cards! [(u/the-id card)] {:type :question})
           (mt/with-current-user (mt/user->id :crowberto)
-            (card/update-cards! [{:id (u/the-id card) :type :model}]))
+            (card/update-cards! [(u/the-id card)] {:type :model}))
           (is (= "creating" (:state (t2/select-one :model/PersistedInfo :card_id (u/the-id card))))))))))
 
 (deftest model-card-insert-is-persisted-test
@@ -39,5 +39,5 @@
       (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
                      :model/Card     card {:database_id (u/the-id db) :type :model}]
         (mt/with-current-user (mt/user->id :crowberto)
-          (card/update-cards! [{:id (u/the-id card) :name "Renamed model" :description "Edited"}]))
+          (card/update-cards! [(u/the-id card)] {:name "Renamed model" :description "Edited"}))
         (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card))))))))

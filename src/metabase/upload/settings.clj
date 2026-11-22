@@ -41,9 +41,9 @@
                   (database/disable-uploads!)
                   (do
                     (check-required-perms! db_id)
-                    (database/update-databases! [{:id db_id :uploads_enabled      true
-                                                  :uploads_schema_name  schema_name
-                                                  :uploads_table_prefix table_prefix}])))))
+                    (database/update-databases! [db_id] {:uploads_enabled      true
+                                                         :uploads_schema_name  schema_name
+                                                         :uploads_table_prefix table_prefix})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

@@ -134,7 +134,7 @@
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (database/update-databases! [{:id (:id db) :settings (not-empty (dissoc (:settings db) :persist-models-enabled))}] {:databases [db]}))
+      (database/update-databases! [(:id db)] {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))} {:databases [db]}))
     (task.persist-refresh/disable-persisting!)))
 
 (api.macros/defendpoint :post "/disable" :- ::api/generic-204-no-content
@@ -206,7 +206,7 @@
     (api/write-check card)
     (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
       (api/write-check (model-persistence.db/database (:database_id persisted-info)))
-      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
+      (persisted-info/mark-persisted-infos-for-pruning! [(:id persisted-info)] "off"))
     api/generic-204-no-content))
 
 ;;;
@@ -235,7 +235,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (database/update-databases! [{:id (:id database) :settings (assoc (:settings database) :persist-models-enabled true)}] {:databases [database]})
+            (do (database/update-databases! [(:id database)] {:settings (assoc (:settings database) :persist-models-enabled true)} {:databases [database]})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -251,8 +251,8 @@
   (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (database/update-databases! [{:id (:id database) :settings (dissoc (:settings database) :persist-models-enabled)}] {:databases [database]})
-          (persisted-info/mark-for-pruning! {:database_id id})
+      (do (database/update-databases! [(:id database)] {:settings (dissoc (:settings database) :persist-models-enabled)} {:databases [database]})
+          (persisted-info/mark-persisted-infos-for-pruning-for-databases! [id])
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist

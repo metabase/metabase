@@ -4,7 +4,6 @@
   methods."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
@@ -171,10 +170,14 @@
   (mdb/insert-returning-instances! :model/Card rows))
 
 (mu/defn update-cards!
-  "Apply `changes` to the Cards with `card-ids` in one statement, returning the number updated."
-  [card-ids :- [:sequential ::lib.schema.id/card]
-   changes  :- (mut/dissoc ::queries.schema/card.update :id)]
-  (t2/update! :model/Card :id [:in card-ids] changes))
+  "Apply the columns of each of `rows`, each with the `:id` of its Card, with one statement for each distinct set of
+  columns, in the order the sets first appear, returning the number updated."
+  [rows :- [:sequential [:merge ::queries.schema/card.update [:map [:id ::lib.schema.id/card]]]]]
+  (let [by-columns (group-by #(dissoc % :id) rows)]
+    (transduce (comp (distinct) (filter seq) (map #(t2/update! :model/Card :id [:in (mapv :id (get by-columns %))] %)))
+               +
+               0
+               (map #(dissoc % :id) rows))))
 
 (mu/defn delete-cards!
   "Delete the Cards with `card-ids`, returning the number deleted."
@@ -854,7 +857,7 @@
 
 ;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
 ;; another database in between.
-(mu/defn delete-cards-of-databases! :- :int
+(mu/defn delete-cards-for-databases! :- :int
   "Delete the Cards with `card-ids` that still belong to one of the Databases with `database-ids`, returning the number
   deleted."
   [database-ids :- [:sequential ::lib.schema.id/database]

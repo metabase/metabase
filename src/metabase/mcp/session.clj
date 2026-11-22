@@ -483,5 +483,5 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (mcp-query-handle/delete-mcp-query-handles-of-session! session-id key-hashed user-id)
+    (mcp-query-handle/delete-mcp-query-handles-for-session! session-id key-hashed user-id)
     (models.session/delete-mcp-session! key-hashed user-id)))

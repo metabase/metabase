@@ -2,6 +2,7 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.db]
    [metabase.collections.models.collection]
    [metabase.collections.update]
    [metabase.collections.util]
@@ -9,6 +10,7 @@
 
 (comment
   metabase.collections.create/keep-me
+  metabase.collections.db/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.update/keep-me
   metabase.collections.util/keep-me)
@@ -16,6 +18,12 @@
 (p/import-vars
  [metabase.collections.create
   create-collection!]
+ [metabase.collections.db
+  namespace-ok-clause
+  not-archived-ok-clause
+  not-trash-ok-clause
+  type-not-in-ok-clause
+  type-ok-clause]
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection

@@ -4,6 +4,7 @@
   (:require
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
@@ -34,12 +35,13 @@
              :status [:not= :delete-pending]
              {:order-by [[:index_name :asc]]}))
 
-(mu/defn applicable-table-index-ids-for-transforms :- [:sequential ms/PositiveInt]
-  "The ids of the TableIndexes of the Transforms with `transform-ids` that are not pending deletion."
+(mu/defn applicable-table-index-statuses-for-transforms
+  "The id, status and error message of each of the TableIndexes of the Transforms with `transform-ids` that are not
+  pending deletion."
   [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
-  (vec (t2/select-pks-vec :model/TableIndex
-                          :transform_id [:in [:auto/param transform-ids]]
-                          :status [:not= :delete-pending])))
+  (t2/select [:model/TableIndex :id :status :error_message]
+             :transform_id [:in [:auto/param transform-ids]]
+             :status [:not= :delete-pending]))
 
 (mu/defn running-table-indexes
   "The running TableIndexes among `ids` of the Transform with `transform-id`, in id order."
@@ -82,24 +84,33 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
 
+(defn- update-by-changes!
+  "Apply `changes` to the TableIndexes of `rows`, as stored, with one statement for the rows that get the same effective
+  changes, which keeps the rows that already hold some of the values from making Toucan run one statement per row.
+  `where` narrows each statement."
+  [rows changes where]
+  (doseq [[changes ids] (mi/group-ids-by-changes (into {} (map (juxt :id identity)) rows)
+                                                 (mapv #(assoc changes :id (:id %)) rows))]
+    (t2/update! :model/TableIndex (into {:id [:in ids]} where) changes)))
+
 (mu/defn mark-table-indexes-running!
-  "Apply `changes` to the TableIndexes among `ids` whose status is in `from-statuses`."
-  [ids           :- [:sequential {:min 1} ms/PositiveInt]
+  "Apply `changes` to the TableIndexes of `rows`, as stored, whose status is in `from-statuses`."
+  [rows          :- [:sequential :map]
    from-statuses :- [:set Status]
    changes       :- StatusChanges]
-  (t2/update! :model/TableIndex {:id [:in ids] :status [:in from-statuses]} changes))
+  (update-by-changes! rows changes {:status [:in from-statuses]}))
 
 (mu/defn mark-running-table-indexes-failed!
-  "Apply `changes` to the running TableIndexes among `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+  "Apply `changes` to the running TableIndexes of `rows`, as stored."
+  [rows    :- [:sequential :map]
    changes :- StatusChanges]
-  (t2/update! :model/TableIndex {:id [:in ids] :status :running} changes))
+  (update-by-changes! rows changes {:status :running}))
 
 (mu/defn update-table-index-statuses!
-  "Apply `changes` to the TableIndexes with `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+  "Apply `changes` to the TableIndexes of `rows`, as stored."
+  [rows    :- [:sequential :map]
    changes :- StatusChanges]
-  (t2/update! :model/TableIndex {:id [:in ids]} changes))
+  (update-by-changes! rows changes nil))
 
 (mu/defn table-index-exists-for-transform?
   "Whether the Transform with `transform-id` has a TableIndex named `index-name`."
@@ -107,16 +118,16 @@
    index-name   :- :string]
   (t2/exists? :model/TableIndex :transform_id transform-id :index_name index-name))
 
-(mu/defn insert-table-index!
-  "Insert the TableIndex `row` and return the inserted instance."
-  [row :- ::indexes.schema/table-index.update]
-  (t2/insert-returning-instance! :model/TableIndex row))
+(mu/defn insert-table-indexes!
+  "Insert the TableIndex `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ::indexes.schema/table-index.update]]
+  (t2/insert-returning-instances! :model/TableIndex rows))
 
-(mu/defn update-table-index!
-  "Apply `changes` to the TableIndex with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-table-indexes!
+  "Apply `changes` to the TableIndexes of `rows`, as stored."
+  [rows    :- [:sequential {:min 1} :map]
    changes :- ::indexes.schema/table-index.update]
-  (t2/update! :model/TableIndex :id id changes))
+  (update-by-changes! rows changes nil))
 
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."

@@ -305,13 +305,13 @@
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
-(defenterprise delete-gtaps-if-needed-after-permissions-change!
+(defenterprise delete-sandboxes-for-permissions-change!
   "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
   OSS impl is a no-op, since sandboxes are an EE-only feature."
   metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   [_])
 
-(defenterprise delete-impersonations-if-needed-after-permissions-change!
+(defenterprise delete-connection-impersonations-for-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
   metabase-enterprise.impersonation.models
@@ -652,8 +652,8 @@
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
          (update-data-perms-graph!* group-updates)
-         (delete-impersonations-if-needed-after-permissions-change! group-updates)
-         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
+         (delete-connection-impersonations-for-permissions-change! group-updates)
+         (delete-sandboxes-for-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]

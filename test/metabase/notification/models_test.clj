@@ -271,7 +271,7 @@
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (let [existing (models.notification/hydrate-notification noti)]
                               (models.notification/update-notification!
-                               existing
+                               (:id existing)
                                (assoc existing :handlers [(-> (first (:handlers existing))
                                                               (dissoc :channel)
                                                               (assoc :id (:id handler)
@@ -346,7 +346,7 @@
   "Replace the subscriptions of the notification `noti-id` with `subscriptions` through its update."
   [noti-id subscriptions]
   (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))]
-    (models.notification/update-notification! existing (assoc existing :subscriptions subscriptions))))
+    (models.notification/update-notification! noti-id (assoc existing :subscriptions subscriptions) {:notifications [existing]})))
 
 (defn- create-cron-subscription!
   "Add a cron subscription to the notification `noti-id` through its update and return its id."
@@ -553,7 +553,7 @@
                                               :subscriptions (vec (repeat n (cron "0 0 8 * * ? *")))
                                               :handlers      (mapv handler (range n))}])
                                  existing  (models.notification/hydrate-notification created)]
-                             (events.tu/statement-count! #(models.notification/update-notification! existing (change existing n)))))]
+                             (events.tu/statement-count! #(models.notification/update-notification! (:id existing) (change existing n) {:notifications [existing]}))))]
        (doseq [[part-kind handler change]
                [["removing subscriptions" slack-handler
                  (fn [existing _n] (assoc existing :subscriptions []))]

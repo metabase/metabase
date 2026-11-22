@@ -12,6 +12,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.models.dimension :as dimension]
@@ -169,12 +170,13 @@
 (defn- mirror-onto-fields!
   "Write the columns each of the settings `rows` says a user set onto its Field."
   [rows]
-  (field/update-fields! (into []
-                              (keep (fn [{:keys [field_id] :as settings}]
-                                      (when-let [changes (not-empty
-                                                          (select-keys settings (user-settings/user-set-field-columns settings)))]
-                                        (assoc changes :id field_id))))
-                              rows)))
+  (doseq [[changes field-ids] (u/group-by first second
+                                          (keep (fn [{:keys [field_id] :as settings}]
+                                                  (when-let [changes (not-empty
+                                                                      (select-keys settings (user-settings/user-set-field-columns settings)))]
+                                                    [changes field_id]))
+                                                rows))]
+    (field/update-fields! field-ids changes)))
 
 (mu/defn create-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "Insert the FieldUserSettings `rows`, write the columns they say a user set onto their Fields, and return the
@@ -189,7 +191,7 @@
         (publish-writes! writes)
         inserted))))
 
-(mu/defn update-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings.update]
+(mu/defn update-field-user-settings-for-import! :- [:sequential ::warehouse-schema.schema/field-user-settings.update]
   "Apply each of `rows`, the id of a FieldUserSettings and the columns to change, write the columns the updated
   settings say a user set onto their Fields, and return the rows of the settings that exist: one read and one
   statement per distinct set of changes."
@@ -245,7 +247,7 @@
                         (with-updated writes [stored] (constantly changes))
                         (with-created writes [inserted]))
               writes   (delete-empty! writes [id])]
-          (u/prog1 (count (field/update-fields! [(assoc settings :id id)]))
+          (u/prog1 (count (field/update-fields! [id] settings))
             (publish-writes! writes)))))))
 
 (mu/defn set-custom-positions!
@@ -284,7 +286,7 @@
   "The changes that unset the user-set FK semantic type and target of a Field in its settings."
   {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false})
 
-(mu/defn clear-fk-targets-to-fields!
+(mu/defn update-field-user-settings-for-deactivated-fields!
   "Unset the user-set foreign keys to the Fields with `field-ids` in the settings of the Fields that target them,
   deleting the settings left without a user value."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -299,9 +301,9 @@
 
 (defmethod field/clear-for-deactivated-fields! :model/FieldUserSettings
   [_model field-ids]
-  (clear-fk-targets-to-fields! field-ids))
+  (update-field-user-settings-for-deactivated-fields! field-ids))
 
-(mu/defn delete-field-user-settings!
+(mu/defn delete-field-user-settings-for-fields!
   "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (when (seq field-ids)
@@ -315,21 +317,15 @@
                {}
                (partition-all 1000 field-ids))))))
 
-(defn- delete-field-user-settings-rows!
+(mu/defn delete-field-user-settings!
   "Delete the FieldUserSettings with `ids`, as remote sync and an import delete them."
-  [ids]
+  [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
       (publish-writes! (let [rows (warehouse-schema.db/field-user-settings-by-ids (vec ids))]
                          (u/prog1 (publish-deletes! {} rows)
                            (when (seq rows)
                              (warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids)))))))))
-
-(mu/defn delete-field-user-settings-for-tables!
-  "[[delete-field-user-settings!]] for every Field of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (when (seq table-ids)
-    (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-tables table-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -357,8 +353,8 @@
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
    :insert!       create-field-user-settings!
-   :update!       update-field-user-settings!
-   :delete!       delete-field-user-settings-rows!
+   :update!       update-field-user-settings-for-import!
+   :delete!       delete-field-user-settings!
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 
 (defmethod remote-sync/spec :model/FieldUserSettings

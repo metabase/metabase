@@ -57,10 +57,12 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn delete-connection-impersonation!
-  "Delete the ConnectionImpersonation with `impersonation-id`."
-  [impersonation-id :- ms/PositiveInt]
-  (impersonation.db/delete-impersonation! impersonation-id))
+(mu/defn delete-connection-impersonations! :- :nil
+  "Delete the ConnectionImpersonations with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (impersonation.db/delete-impersonations! ids))
+  nil)
 
 (def ^:private impersonation-pair
   "The group and Database of an impersonation."
@@ -77,7 +79,7 @@
                   [{} []]
                   (map-indexed vector impersonations))))
 
-(defenterprise insert-impersonations!
+(defenterprise upsert-connection-impersonations-for-graph!
   "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
   group and database before creating new ones."
   :feature :advanced-permissions
@@ -90,7 +92,10 @@
        (sort-by first)
        (mapv second)))
 
-(defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
+(defn- unneeded-impersonation-pair
+  "The `[group-id database-id]` of the impersonations of the group with `group-id` on the Database with `database-id`
+  that the view-data change `changes` leaves unneeded, or nil when they are still needed."
+  [group-id database-id changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
   (when (not= :impersonated changes)
@@ -101,25 +106,28 @@
                   :blocked      "is now BLOCKED from all non-data-perms access"
                   "now has granular (sandboxed) data access")
                 database-id)
-    (impersonation.db/delete-impersonations-for-group-and-database! group-id database-id)))
+    [group-id database-id]))
 
-(defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
-  (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))
-  (doseq [database-id (set (keys changes))]
-    (when-let [data-perm-changes (get-in changes [database-id :view-data])]
-      (delete-impersonations-for-group-database!
-       {:group-id group-id, :database-id database-id}
-       data-perm-changes))))
-
-(defenterprise delete-impersonations-if-needed-after-permissions-change!
+(defenterprise delete-connection-impersonations-for-permissions-change!
   "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete Connection Impersonations that
-  are no longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed,
-  i.e. the `things-only-in-new` returned by `clojure.data/diff`."
+  are no longer needed after the permissions graph is updated, in one statement. `changes` are the parts of the graph
+  that have changed, i.e. the `things-only-in-new` returned by `clojure.data/diff`."
   :feature :advanced-permissions
   [changes]
   (log/debug "Permissions updated, deleting unneeded Connection Impersonations...")
-  (doseq [group-id (set (keys changes))]
-    (delete-impersonations-for-group! {:group-id group-id} (get changes group-id)))
+  (when-let [pairs (not-empty
+                    (into []
+                          (for [group-id    (set (keys changes))
+                                :let        [group-changes (get changes group-id)]
+                                :let        [_ (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s"
+                                                           group-id (pr-str group-changes))]
+                                database-id (set (keys group-changes))
+                                :let        [data-perm-changes (get-in group-changes [database-id :view-data])]
+                                :when       data-perm-changes
+                                :let        [pair (unneeded-impersonation-pair group-id database-id data-perm-changes)]
+                                :when       pair]
+                            pair)))]
+    (impersonation.db/delete-impersonations-for-groups-and-databases! pairs))
   (log/debug "Done deleting unneeded Connection Impersonations."))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

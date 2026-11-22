@@ -161,7 +161,7 @@
                  :where  [:and stale [:in :id ids]]}))
     ids))
 
-(mu/defn delete-tasks-started-before!
+(mu/defn delete-remote-sync-tasks-for-cleanup!
   "Delete the RemoteSyncTasks started before `cutoff` but the one with `kept-id`, returning the number deleted."
   [cutoff  :- ms/TemporalInstant
    kept-id :- [:maybe ms/PositiveInt]]

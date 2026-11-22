@@ -46,8 +46,8 @@
    {:keys [name settings]} :- [:map {:closed true}
                                [:name     ms/NonBlankString]
                                [:settings ::embedding.schema/embedding-theme.settings]]]
-  (embedding-theme/create-embedding-theme! {:name name
-                                            :settings settings}))
+  (first (embedding-theme/create-embedding-themes! [{:name name
+                                                     :settings settings}])))
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
@@ -57,17 +57,17 @@
                                [:name {:optional true} [:maybe ms/NonBlankString]]
                                [:settings {:optional true} [:maybe ::embedding.schema/embedding-theme.settings]]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (embedding-theme/update-embedding-theme! id
-                                           (cond-> {}
-                                             name (assoc :name name)
-                                             settings (assoc :settings settings)))
+  (embedding-theme/update-embedding-themes! [id]
+                                            (cond-> {}
+                                              name (assoc :name name)
+                                              settings (assoc :settings settings)))
   (embedding-rest.db/embedding-theme id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (embedding-theme/delete-embedding-theme! id)
+  (embedding-theme/delete-embedding-themes! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
@@ -75,8 +75,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (let [source-theme (embedding-rest.db/embedding-theme id)]
-    (embedding-theme/create-embedding-theme! {:name (tru "Copy of {0}" (:name source-theme))
-                                              :settings (:settings source-theme)})))
+    (first (embedding-theme/create-embedding-themes! [{:name (tru "Copy of {0}" (:name source-theme))
+                                                       :settings (:settings source-theme)}]))))
 
 (api.macros/defendpoint :post "/seed-defaults" :- :nil
   "Seed default embedding themes on first call, using the payloads built by the frontend from the

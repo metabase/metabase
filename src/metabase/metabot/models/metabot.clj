@@ -6,7 +6,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -47,21 +46,16 @@
 
 (mr/def ::metabot-change
   [:map {:closed true}
-   [:id                   ms/PositiveInt]
    [:use_verified_content {:optional true} [:maybe :boolean]]
    [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
 
-(mu/defn update-metabots! :- [:sequential ::metabot-change]
-  "Apply the `rows`, each the `:id` of a Metabot and the columns to set, and return the rows that exist."
-  [rows :- [:sequential ::metabot-change]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (metabot.db/metabots-by-ids (mapv :id rows)))
-            rows   (filterv (comp stored :id) rows)]
-        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-          (metabot.db/update-metabots! ids changes))
-        rows))))
+(mu/defn update-metabots! :- :nil
+  "Apply the one `changes` map to every Metabot of `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::metabot-change]
+  (when (seq ids)
+    (metabot.db/update-metabots! ids changes))
+  nil)
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

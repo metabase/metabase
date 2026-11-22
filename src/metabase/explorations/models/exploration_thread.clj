@@ -25,6 +25,12 @@
    :data_access_token     perms/data-access-token-transform
    :resolved_source_ids   query-perms/resolved-source-ids-transform})
 
+(t2/define-before-insert :model/ExplorationThread
+  [thread]
+  (cond-> thread
+    (and (:exploration_id thread) (not (contains? thread :position)))
+    (assoc :position (explorations.db/next-thread-position-clause (:exploration_id thread)))))
+
 (methodical/defmethod t2/simple-hydrate [:model/ExplorationThread :can_read]
   [_model k instance]
   (vary-meta instance assoc k (boolean (some-> (explorations.db/exploration (:exploration_id instance)) (t2/hydrate :can_read) mi/can-read?))))
@@ -59,13 +65,13 @@
   [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
   (explorations.db/insert-threads! rows))
 
-(mu/defn update-threads! :- [:sequential ::explorations.schema/exploration-thread.update]
-  "Apply the columns of each of `rows` to the ExplorationThread with its `:id`, with one statement for each set of
-  changes, and return `rows`."
-  [rows :- [:sequential ::explorations.schema/exploration-thread.update]]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (explorations.db/update-threads! (mapv :id group) changes))
-  rows)
+(mu/defn update-threads! :- :nil
+  "Apply `changes` to the ExplorationThreads with `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::explorations.schema/exploration-thread.update]
+  (when (seq ids)
+    (explorations.db/update-threads! ids changes))
+  nil)
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of

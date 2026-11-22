@@ -36,28 +36,27 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-embedding-theme! :- :map
-  "Insert the EmbeddingTheme `row` and return it."
-  [row :- ::embedding.schema/embedding-theme.create]
-  (embedding.db/insert-embedding-theme! row))
-
-(mu/defn create-embedding-themes!
-  "Insert the EmbeddingTheme `rows`."
+(mu/defn create-embedding-themes! :- [:sequential :map]
+  "Insert the EmbeddingTheme `rows` and return the inserted instances, in the order of `rows`."
   [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
-  (embedding.db/insert-embedding-themes! rows))
+  (if (seq rows) (embedding.db/insert-embedding-themes! rows) []))
 
-(mu/defn update-embedding-theme!
-  "Apply `changes` to the EmbeddingTheme with `id`."
-  [id      :- ms/PositiveInt
+(mu/defn update-embedding-themes! :- :nil
+  "Apply `changes` to the EmbeddingThemes with `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
    changes :- [:map {:closed true}
                [:name     {:optional true} :string]
                [:settings {:optional true} ::embedding.schema/embedding-theme.settings]]]
-  (embedding.db/update-embedding-theme! id changes))
+  (when (seq ids)
+    (embedding.db/update-embedding-themes! ids changes))
+  nil)
 
-(mu/defn delete-embedding-theme!
-  "Delete the EmbeddingTheme with `id`."
-  [id :- ms/PositiveInt]
-  (embedding.db/delete-embedding-theme! id))
+(mu/defn delete-embedding-themes! :- :nil
+  "Delete the EmbeddingThemes with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (embedding.db/delete-embedding-themes! ids))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -5,7 +5,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,17 +34,14 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- card-types-of
-  "The map from the ID of each Card of `rows` to its type, throwing a 400 when a row has no existing Card."
+  "The map from the ID of each Card of `rows` to its type; the foreign key on `card_id` refuses a row without a Card."
   [rows]
-  (let [card-ids   (into [] (comp (map :card_id) (distinct)) rows)
-        card-types (if (seq card-ids) (metabot.db/card-types card-ids) {})]
-    (when (some #(nil? (card-types (:card_id %))) rows)
-      (throw (ex-info (tru "A suggested prompt needs an existing Card.") {:status-code 400})))
-    card-types))
+  (let [card-ids (into [] (comp (map :card_id) (distinct)) rows)]
+    (if (seq card-ids) (metabot.db/card-types card-ids) {})))
 
 (mu/defn create-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
-  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, and return the inserted prompts. Throws a
-  400 when the Card of a row does not exist."
+  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, and return the inserted prompts. A row
+  without an existing Card fails on the foreign key."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
   (if (seq rows)
     (let [card-types (card-types-of rows)]
@@ -53,22 +49,17 @@
         (metabot.db/insert-prompts! (mapv #(assoc % :model (card-types (:card_id %))) rows))))
     []))
 
-(mu/defn update-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt.update]
-  "Apply the changes in `rows`, each the `:id` of a MetabotPrompt and the columns to set, setting the model of a prompt
-  whose Card changes to the type of the new Card, and return `rows`. Throws a 400 when that Card does not exist."
+(mu/defn update-metabot-prompts-for-import! :- :nil
+  "Apply the changes in `rows`, each the `:id` of a MetabotPrompt and the columns to set, one row after the other,
+  setting the model of a prompt whose Card changes to the type of the new Card. A missing Card fails on the foreign key.
+  SerDes import writes a few rows with their own values each, so this is not one statement for all of them."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (if (empty? rows)
-    rows
-    (let [with-card  (filter #(contains? % :card_id) rows)
-          card-types (when (seq with-card) (card-types-of with-card))
-          modeled         (mapv (fn [{:keys [card_id] :as row}]
-                                  (cond-> row (contains? row :card_id) (assoc :model (card-types card_id))))
-                                rows)]
-      (t2/with-transaction [_conn]
-        (let [stored (u/index-by :id (metabot.db/prompts-by-ids (mapv :id rows)))]
-          (doseq [[changes ids] (mi/group-ids-by-changes stored (filterv (comp stored :id) modeled))]
-            (metabot.db/update-prompts! ids changes))))
-      rows)))
+  (t2/with-transaction [_conn]
+    (doseq [{:keys [id card_id] :as row} rows
+            :let [changes (cond-> (dissoc row :id)
+                            (contains? row :card_id) (assoc :model ((card-types-of [row]) card_id)))]]
+      (metabot.db/update-prompts! [id] changes)))
+  nil)
 
 (mu/defn delete-metabot-prompts! :- :nil
   "Delete the MetabotPrompts with `prompt-ids`."
@@ -76,6 +67,14 @@
   (when (seq prompt-ids)
     (t2/with-transaction [_conn]
       (metabot.db/delete-prompts! (vec prompt-ids))))
+  nil)
+
+(mu/defn delete-metabot-prompts-for-metabots! :- :nil
+  "Delete every MetabotPrompt of the Metabots with `metabot-ids` in one statement, which the regeneration of a
+  Metabot's suggested prompts needs."
+  [metabot-ids :- [:sequential ms/PositiveInt]]
+  (when (seq metabot-ids)
+    (metabot.db/delete-prompts-for-metabots! (vec metabot-ids)))
   nil)
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
@@ -99,6 +98,6 @@
    :transform           {:metabot_id serialization/import-only-transform
                          :card_id (serialization/fk-transform :model/Card)}
    :insert!             create-metabot-prompts!
-   :update!             update-metabot-prompts!
+   :update!             update-metabot-prompts-for-import!
    :delete!             delete-metabot-prompts!
    :import-dependencies import-dependencies})

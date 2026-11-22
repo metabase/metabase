@@ -208,11 +208,11 @@
       (log/warnf "Superseded stale remote sync tasks %s: their owners were last alive before %s" ids cutoff))
     ids))
 
-(mu/defn delete-tasks-started-before! :- :int
+(mu/defn delete-remote-sync-tasks-for-cleanup! :- :int
   "Delete the RemoteSyncTasks started before `cutoff` but the one with `kept-id`, returning the number deleted."
   [cutoff  :- ms/TemporalInstant
    kept-id :- [:maybe ms/PositiveInt]]
-  (remote-sync.db/delete-tasks-started-before! cutoff kept-id))
+  (remote-sync.db/delete-remote-sync-tasks-for-cleanup! cutoff kept-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -58,7 +58,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing 99999)}])))))
+           (measure/update-measures! [measure-id] {:definition (measure-definition-referencing 99999)})))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :creator_id (mt/user->id :rasta)
@@ -66,7 +66,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing measure-id)}])))))
+           (measure/update-measures! [measure-id] {:definition (measure-definition-referencing measure-id)})))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :creator_id (mt/user->id :rasta)
@@ -77,7 +77,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (measure/update-measures! [{:id measure-1-id :definition (measure-definition-referencing measure-2-id)}]))))))
+           (measure/update-measures! [measure-1-id] {:definition (measure-definition-referencing measure-2-id)}))))))
 
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
@@ -348,18 +348,33 @@
                   ids      (mapv :id measures)]
               (try
                 (t2/with-call-count [call-count]
-                  (measure/update-measures! (mapv (fn [id] {:id id :archived true}) ids))
+                  (measure/update-measures! ids {:archived true})
                   (call-count))
                 (finally
                   (measure/delete-measures! ids)))))]
     (archiving 1)
     (is (= (archiving 2) (archiving 6)))))
 
+(deftest update-measures-mixed-stored-state-test
+  (mt/with-temp [:model/Measure {a :id} {:name "A" :archived true :creator_id (mt/user->id :rasta)
+                                         :definition (measure-definition (lib/count))}
+                 :model/Measure {b :id} {:name "B" :archived false :creator_id (mt/user->id :rasta)
+                                         :definition (measure-definition (lib/count))}]
+    (measure/update-measures! [a b] {:archived true :name "Same"})
+    (is (= [[true "Same"] [true "Same"]]
+           (mapv (juxt :archived :name) (t2/select :model/Measure :id [:in [a b]] {:order-by [:id]}))))))
+
+(deftest update-measures-for-import-test
+  (mt/with-temp [:model/Measure {a :id} {:name "A" :creator_id (mt/user->id :rasta) :definition (measure-definition (lib/count))}
+                 :model/Measure {b :id} {:name "B" :creator_id (mt/user->id :rasta) :definition (measure-definition (lib/count))}]
+    (measure/update-measures-for-import! [{:id a :name "A2"} {:id b :name "B2"}])
+    (is (= ["A2" "B2"] (mapv :name (t2/select :model/Measure :id [:in [a b]] {:order-by [:id]}))))))
+
 (deftest revert-goes-through-update-test
   (mt/with-temp [:model/Measure {id :id} {:name "Reverted" :creator_id (mt/user->id :rasta)
                                           :definition (measure-definition (lib/count))}]
     (let [snapshot (select-keys (t2/select-one :model/Measure :id id) [:name :description :definition :archived :table_id])]
-      (measure/update-measures! [{:id id :name "Changed"}])
+      (measure/update-measures! [id] {:name "Changed"})
       (is (= "Changed" (t2/select-one-fn :name :model/Measure :id id)))
       (#'measure/revert-measure! id (mt/user->id :rasta) snapshot)
       (is (= "Reverted" (t2/select-one-fn :name :model/Measure :id id))))))

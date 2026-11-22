@@ -28,7 +28,7 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (table/update-tables! [{:id (u/the-id table) :initial_sync_status "complete"}]
+    (table/update-tables! [(u/the-id table)] {:initial_sync_status "complete"}
                           (stored-option :model/Table :tables table))))
 
 (defn set-initial-table-sync-complete-for-db!
@@ -37,7 +37,7 @@
   [database]
   (let [ids (sync.db/sync-table-ids (u/the-id database))]
     (reduce (fn [acc ids']
-              (+ acc (count (table/update-tables! (mapv (fn [id] {:id id :initial_sync_status "complete"}) (distinct ids'))))))
+              (+ acc (count (table/update-tables! (vec (distinct ids')) {:initial_sync_status "complete"}))))
             0
             (partition-all sync-util/*batch-size* ids))))
 
@@ -48,7 +48,7 @@
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
                                        (sync.db/field-user-settings (u/the-id field))))]
     (if (seq changes)
-      (count (field/update-fields! [(assoc changes :id (u/the-id field))] (stored-option :model/Field :fields field)))
+      (count (field/update-fields! [(u/the-id field)] changes (stored-option :model/Field :fields field)))
       0)))
 
 (mu/defn update-fields-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
@@ -63,7 +63,7 @@
                                  (when (seq changes)
                                    (assoc changes :id (:id field))))))
                        pairs)]
-    (count (field/update-fields! rows {:fields (mapv first pairs)}))))
+    (count (field/update-fields-for-sync! rows {:fields (mapv first pairs)}))))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
@@ -72,5 +72,5 @@
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
                                        (sync.db/table-user-settings (u/the-id table))))]
     (if (seq changes)
-      (count (table/update-tables! [(assoc changes :id (u/the-id table))] (stored-option :model/Table :tables table)))
+      (count (table/update-tables! [(u/the-id table)] changes (stored-option :model/Table :tables table)))
       0)))

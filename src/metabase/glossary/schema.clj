@@ -16,7 +16,8 @@
   "A Glossary as selected from the app DB: every column of `:glossary`."
   [:merge
    ::glossary.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::glossary.create
   "What creating a Glossary takes: its term, its definition and its creator."
@@ -26,11 +27,10 @@
    [:creator_id ::lib.schema.id/user]])
 
 (mr/def ::glossary.update
-  "A Glossary by its `id` with the columns to change: those of `::glossary.create`, and the columns the product sets."
+  "The columns to change of Glossary entries: those of `::glossary.create`, and the columns the product sets."
   [:merge
    ::glossary.create
    [:map {:closed true}
-    [:id         ms/PositiveInt]
     [:term       {:optional true} ::glossary.term]
     [:definition {:optional true} ::glossary.definition]
     [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]

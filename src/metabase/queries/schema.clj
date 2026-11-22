@@ -178,9 +178,8 @@
   ms/NonBlankString)
 
 (mr/def ::card.update
-  "What an update of a Card takes: its `:id` and every other column of `:report_card`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
+  "The changes of an update of Cards: every column of `:report_card`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
-   [:id                                        ::lib.schema.id/card]
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe ::card.name]]

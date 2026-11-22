@@ -132,25 +132,35 @@
   [rows :- [:sequential ::data-testing.schema/card-test.create]]
   (data-testing.models/create-saved-tests! :model/CardTest rows))
 
-(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update]
-  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms
-  of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
-   (update-card-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/card-test.update]
-    opts :- ::data-testing.schema/write-opts]
-   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
+(mu/defn update-card-tests! :- :nil
+  "Apply the `changes` to the CardTests with `ids`, which the column transforms of the model normalize and validate,
+  publishing their update event."
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/card-test.update]
+   (update-card-tests! ids changes nil))
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/card-test.update
+    opts    :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/CardTest ids changes opts)))
 
-(mu/defn delete-card-tests-by-id! :- :nil
+(mu/defn update-card-tests-for-import! :- :nil
+  "Apply each of `rows`, the id of a CardTest and the columns to change, as an import writes it, one row at a time. An
+  import runs rows with different values, which one change for all cannot express."
+  [rows :- [:sequential ::data-testing.schema/card-test.import-row]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-card-tests! [id] (dissoc row :id) {:writer :import}))
+  nil)
+
+(mu/defn delete-card-tests! :- :nil
   "Delete the CardTests with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
 
-(defenterprise delete-card-tests!
+(defenterprise delete-card-tests-for-cards!
   "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
   [card-ids]
-  (data-testing.models/delete-saved-tests-of-subjects! :card :model/CardTest :card_id (vec card-ids)))
+  (data-testing.models/delete-saved-tests-for-subjects! :card :model/CardTest :card_id (vec card-ids)))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -159,7 +169,7 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (update-card-tests! [(assoc snapshot :id id)] {:writer :revert}))
+  (update-card-tests! [id] snapshot {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -178,8 +188,8 @@
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
    :insert!             create-card-tests!
-   :update!             update-card-tests!
-   :delete!             delete-card-tests-by-id!
+   :update!             update-card-tests-for-import!
+   :delete!             delete-card-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)
                          :creator_id serialization/user-transform

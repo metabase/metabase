@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
@@ -580,25 +581,14 @@
   [rows :- [:sequential ::permissions.schema/permissions-group.create]]
   (mdb/insert-returning-instances! :model/PermissionsGroup rows))
 
-(mu/defn update-permissions-group!
-  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:name             {:optional true} [:maybe :string]]
-               [:entity_id        {:optional true} [:maybe :string]]
-               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
-               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
-
 (mu/defn update-permissions-groups!
-  "Apply `changes` to the PermissionsGroups with `ids`, returning the number updated."
+  "Apply `changes` to the PermissionsGroups with `ids`, one statement for each set of the changes that differ from the
+  stored rows, so that rows already holding one of the values do not make Toucan update row by row."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:name             {:optional true} [:maybe :string]]
-               [:entity_id        {:optional true} [:maybe :string]]
-               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
-               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroup :id [:in [:auto/param (vec ids)]] changes))
+   changes :- ::permissions.schema/permissions-group.update]
+  (let [stored (u/index-by :id (t2/select :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
+      (t2/update! :model/PermissionsGroup :id [:in [:auto/param ids]] changes))))
 
 (mu/defn delete-permissions-groups!
   "Delete the PermissionsGroups with `ids`, returning the number deleted."
@@ -716,6 +706,33 @@
                                 [:is_group_manager :boolean]]]]
   (mdb/insert-returning-instances! :model/PermissionsGroupMembership memberships))
 
+(defn- group-manager-violation-clause
+  "The HoneySQL condition under which a PermissionsGroupMembership joined to its User as `:u` makes a tenant user or an
+  admin a group manager."
+  []
+  [:and
+   [:= :permissions_group_membership.is_group_manager true]
+   [:or [:not= :u.tenant_id nil] [:= :u.is_superuser true]]])
+
+(defn- tenancy-violation-clause
+  "The HoneySQL condition under which a PermissionsGroupMembership joined to its User as `:u` and its group as `:g` puts
+  a tenant user in a group that is not a tenant group, or a user outside every tenant in a tenant group."
+  []
+  [:or
+   [:and [:= :u.tenant_id nil] [:= :g.is_tenant_group true]]
+   [:and [:not= :u.tenant_id nil] [:or [:= :g.is_tenant_group nil] [:= :g.is_tenant_group false]]]])
+
+(mu/defn group-memberships-in-violation? :- :boolean
+  "Whether one of the PermissionsGroupMemberships with `ids` makes a tenant user or an admin a group manager, or puts a
+  User in a group of the other tenancy, as stored, in one statement."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/PermissionsGroupMembership
+              {:join  [[:core_user :u]         [:= :u.id :permissions_group_membership.user_id]
+                       [:permissions_group :g] [:= :g.id :permissions_group_membership.group_id]]
+               :where [:and
+                       [:in :permissions_group_membership.id [:auto/param (vec (distinct ids))]]
+                       [:or (group-manager-violation-clause) (tenancy-violation-clause)]]}))
+
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
@@ -794,18 +811,14 @@
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
   (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
-(mu/defn collection-permission-graph-revisions-by-ids
-  "The CollectionPermissionGraphRevisions with `ids`, in any order."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
-
 (mu/defn update-collection-permission-graph-revisions!
-  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`."
+  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`, one statement for each set of the changes that
+  differ from the stored rows, so that rows already holding one of the values do not make Toucan update row by row."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
-               [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
-  (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec ids)]] changes))
+   changes :- ::permissions.schema/collection-permission-graph-revision.update]
+  (let [stored (u/index-by :id (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
+      (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param ids]] changes))))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

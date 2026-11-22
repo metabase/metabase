@@ -21,7 +21,7 @@
   "Generates a new SCIM API key and deletes any that already exist."
   [user-id]
   (t2/with-transaction [_conn]
-    (api-key/delete-api-keys-with-scope! :scim)
+    (api-key/delete-api-keys-for-scope! :scim)
     (let [unhashed-key (api-key/generate-key)]
       (->
        (api-key/create-api-keys! [{:user_id               nil

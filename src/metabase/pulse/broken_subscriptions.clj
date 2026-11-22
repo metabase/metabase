@@ -166,7 +166,7 @@
     (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
             ;; Described before archiving, which disables the pulse's channels.
             (let [archived (archived-subscription original-dashboard-params readable-ids broken-subscription)]
-              (pulse/update-pulses! [{:id pulse-id :archived true}])
+              (pulse/update-pulses! [pulse-id] {:archived true})
               (messages/send-broken-subscription-notification! broken-subscription)
               archived))
           broken)))

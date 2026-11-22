@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.serialization.core :as serialization]
@@ -69,22 +70,21 @@
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
                      (pr-str collection-namespace))
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace collection-namespace}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (native-query-snippet/create-snippets!
-              [{:name          (mt/random-name)
-                :content       "1 = 1"
-                :creator_id    (mt/user->id :rasta)
-                :collection_id collection-id}])))))
+        (let [snippet-name (mt/random-name)]
+          (is (= 400 (:status-code (ex-data (try (native-query-snippet/create-snippets!
+                                                  [{:name          snippet-name
+                                                    :content       "1 = 1"
+                                                    :creator_id    (mt/user->id :rasta)
+                                                    :collection_id collection-id}])
+                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (is (not (t2/exists? :model/NativeQuerySnippet :name snippet-name))))))
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
                      :model/Collection         {dest-collection-id :id}   {:namespace collection-namespace}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (native-query-snippet/update-snippets! [{:id snippet-id :collection_id dest-collection-id}])))))))
+        (is (= 400 (:status-code (ex-data (try (native-query-snippet/update-snippets! [snippet-id] {:collection_id dest-collection-id} nil)
+                                               (catch clojure.lang.ExceptionInfo e e))))))
+        (is (= source-collection-id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
@@ -102,7 +102,7 @@
       (let [[{snippet-id :id}] (native-query-snippet/create-snippets!
                                 [{:name "my snippet" :content "id" :creator_id (mt/user->id :crowberto)}])]
         (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
-        (native-query-snippet/update-snippets! [{:id snippet-id :content "{{id}}"}])
+        (native-query-snippet/update-snippets! [snippet-id] {:content "{{id}}"} nil)
         (is (=? {"id" {:type :text,
                        :name "id",
                        :display-name "ID"}}
@@ -222,7 +222,7 @@
                   ids      (mapv :id snippets)]
               (try
                 (t2/with-call-count [call-count]
-                  (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids))
+                  (native-query-snippet/update-snippets! ids {:archived true} nil)
                   (call-count))
                 (finally
                   (native-query-snippet/delete-snippets! ids)))))]
@@ -262,10 +262,10 @@
                                      :collection_id live})
                             (range n)))
             fresh!  (fn [n] (mapv :id (native-query-snippet/create-snippets! (rows n))))
-            update! (fn [prepare rows-fn opts n]
+            update! (fn [prepare changes opts n]
                       (let [ids (fresh! n)]
                         (prepare (take-nth 2 ids))
-                        (events.tu/statement-count! #(native-query-snippet/update-snippets! (rows-fn ids) opts))))
+                        (events.tu/statement-count! #(native-query-snippet/update-snippets! ids changes opts))))
             counted (fn [f]
                       (f 1)
                       (is (= (f 2) (f 6))))]
@@ -277,33 +277,85 @@
                        (events.tu/statement-count! #(native-query-snippet/create-snippets! rows {:writer :import}))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids))
+                            (fn [ids] (native-query-snippet/update-snippets! ids {:description "Same"} nil))
+                            {:description "Same"}
                             nil)))
-        (testing "changing the content"
-          (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :content "2 = 2"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :content "2 = 2"}) ids))
-                            nil)))
+        (testing "changing the content of more than one snippet is refused"
+          (let [ids (fresh! 2)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"more than one snippet"
+                                  (native-query-snippet/update-snippets! ids {:content "2 = 2"} nil)))))
         (testing "archiving snippets, some already archived"
           (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids))
+                            (fn [ids] (native-query-snippet/update-snippets! ids {:archived true} nil))
+                            {:archived true}
                             nil)))
         (testing "restoring snippets, some already live"
           (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids))
+                            (fn [ids] (native-query-snippet/update-snippets! ids {:archived true} nil))
+                            {:archived false}
                             nil)))
         (testing "moving snippets, some already in the Collection"
           (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids))
+                            (fn [ids] (native-query-snippet/update-snippets! ids {:collection_id other} nil))
+                            {:collection_id other}
                             nil)))
-        (testing "importing updates"
-          (counted (partial update!
-                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids))
-                            {:writer :import})))
         (testing "deleting snippets"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(native-query-snippet/delete-snippets! ids))))))))))
+
+(deftest archived-directly-follows-collection-in-the-statement-test
+  (mt/with-temp [:model/Collection {live :id}     {:namespace "snippets"}
+                 :model/Collection {archived :id} {:namespace "snippets" :archived true}]
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [user-id (mt/user->id :rasta)
+            make!   (fn [collection-id n]
+                      (mapv :id (native-query-snippet/create-snippets!
+                                 (mapv (fn [_] {:name (mt/random-name) :content "1 = 1" :creator_id user-id
+                                                :collection_id collection-id})
+                                       (range n)))))
+            flags   (fn [ids] (mapv #(t2/select-one-fn :archived_directly :model/NativeQuerySnippet :id %) ids))]
+        (testing "through the write function"
+          (let [ids (make! live 2)]
+            (native-query-snippet/update-snippets! ids {:archived true} nil)
+            (is (= [true true] (flags ids)))
+            (native-query-snippet/update-snippets! ids {:archived false} nil)
+            (is (= [false false] (flags ids)))))
+        (testing "through a plain update, a snippet follows the Collection it is in"
+          (let [in-live (make! live 1)
+                in-arch (mapv :id (native-query-snippet/create-snippets!
+                                   [{:name (mt/random-name) :content "1 = 1" :creator_id user-id :collection_id archived
+                                     :archived true :archived_directly true}]))
+                ids     (concat in-live in-arch)]
+            (t2/update! :model/NativeQuerySnippet :id [:in ids] {:archived false})
+            (is (= [false false] (flags ids)))
+            (t2/update! :model/NativeQuerySnippet :id [:in ids] {:archived true})
+            (is (= [true false] (flags ids)))))
+        (testing "the event carries the stored value"
+          (let [ids       (make! live 1)
+                published (atom [])]
+            (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+              (native-query-snippet/update-snippets! ids {:archived true} nil))
+            (is (= [true] (for [[topic event] @published
+                                :when         (= :event/snippet-update topic)
+                                change        (:changes event)]
+                            (:archived_directly (:object change)))))))
+        (testing "restoring rows of mixed stored state costs the same statements at two and six rows"
+          (let [restore! (fn [n]
+                           (let [ids (make! live n)]
+                             (native-query-snippet/update-snippets! ids {:archived true} nil)
+                             (t2/update! :model/NativeQuerySnippet :id (first ids) {:archived_directly false})
+                             (events.tu/statement-count!
+                              #(native-query-snippet/update-snippets! ids {:archived false} nil))))]
+            (restore! 2)
+            (is (= (restore! 2) (restore! 6)))))))))
+
+(deftest refused-write-rolls-back-to-its-savepoint-test
+  (mt/with-temp [:model/Collection {default-id :id} {}]
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [user-id (mt/user->id :rasta)]
+        (t2/with-transaction [_conn]
+          (is (= 400 (:status-code (ex-data (try (native-query-snippet/create-snippets!
+                                                  [{:name "Refused" :content "1 = 1" :creator_id user-id :collection_id default-id}])
+                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (native-query-snippet/create-snippets! [{:name "Kept" :content "1 = 1" :creator_id user-id}]))
+        (is (not (t2/exists? :model/NativeQuerySnippet :name "Refused")))
+        (is (t2/exists? :model/NativeQuerySnippet :name "Kept"))))))

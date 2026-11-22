@@ -152,8 +152,8 @@
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
       (when-let [auth-identity-id (sso.db/auth-identity-id user-id provider-name)]
-        (models.auth-identity/update-auth-identity!
-         auth-identity-id
+        (models.auth-identity/update-auth-identities!
+         [auth-identity-id]
          {:metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}}))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)

@@ -93,7 +93,7 @@
       (field-user-settings/upsert-field-user-settings! {:id field-id} {:display_name display-name})
       (thunk)
       (finally
-        (field-user-settings/delete-field-user-settings! [field-id])))))
+        (field-user-settings/delete-field-user-settings-for-fields! [field-id])))))
 
 (defmacro ^:private with-field-display-name!
   "Run `body` with `display-name` set by a user as the display name of the Field with `field-id`."
@@ -113,7 +113,7 @@
                      :model/Card {after-native-id :id} {:dataset_query (card-query native-id)}]
         (run-jobs!)
         (is (nil? (column question-id "Grand total")))
-        (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id model-id)])
+        (queries.card/update-cards! [model-id] {:dataset_query (add-grand-total (table-query :orders))})
         (is (pending? question-id))
         (run-jobs!)
         (is (some? (column question-id "Grand total")))
@@ -122,7 +122,7 @@
           (is (nil? (column after-native-id "Grand total"))))
         (is (not-any? pending? [model-id question-id nested-id]))
         (testing "a column no longer inferred is removed"
-          (queries.card/update-cards! [(assoc {:dataset_query (table-query :orders)} :id model-id)])
+          (queries.card/update-cards! [model-id] {:dataset_query (table-query :orders)})
           (run-jobs!)
           (is (nil? (column question-id "Grand total")))
           (is (nil? (column nested-id "Grand total"))))))))
@@ -154,7 +154,7 @@
               stored (->> (t2/select-one-fn :result_metadata :model/Card :id card-id)
                           (remove #(= "PRICE" (:name %)))
                           (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint marker))))]
-          (queries.card/update-cards! [(assoc {:result_metadata stored} :id card-id)])
+          (queries.card/update-cards! [card-id] {:result_metadata stored})
           (run-jobs!)
           (reprocess! card-id)
           (run-jobs!)
@@ -177,7 +177,7 @@
                                                                        (lib/ref (lib.metadata/field mp (mt/id :orders :id))))]))]
           (mt/with-temp [:model/Card {joined-id :id} {:dataset_query joined}]
             (run-jobs!)
-            (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id model-id)])
+            (queries.card/update-cards! [model-id] {:dataset_query (add-grand-total (table-query :orders))})
             (run-jobs!)
             (is (some? (column joined-id "Grand total")))))))))
 
@@ -189,7 +189,7 @@
                      :model/Card {internal-id :id} {:dataset_query (card-query model-id)
                                                     :creator_id    config/internal-mb-user-id}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id model-id)])
+        (queries.card/update-cards! [model-id] {:dataset_query (add-grand-total (table-query :orders))})
         (run-jobs!)
         (is (some? (column card-id "Grand total")))
         (is (nil? (column internal-id "Grand total")))))))
@@ -200,9 +200,9 @@
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}
                      :model/Card {card-id :id}  {:dataset_query (card-query model-id)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
-                                                                                               :id model-id)
-                                                                             "TOTAL" "Grand total")} :id model-id)])
+        (queries.card/update-cards! [model-id] {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                                  :id model-id)
+                                                                                "TOTAL" "Grand total")})
         (is (pending? card-id))
         (run-jobs!)
         (is (= "Grand total" (:display_name (column card-id "TOTAL"))))))))
@@ -212,9 +212,9 @@
     (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
-                                                                                               :id model-id)
-                                                                             "TOTAL" "Grand total")} :id model-id)])
+        (queries.card/update-cards! [model-id] {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                                  :id model-id)
+                                                                                "TOTAL" "Grand total")})
         (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pending? model-id))
           (run-jobs!)
@@ -242,9 +242,9 @@
         (run-jobs!)
         (let [column-name #(:name (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
           (is (= "count" (column-name)))
-          (measure/update-measures! [{:id measure-id :definition (-> (table-query :orders)
-                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                                                 (mt/id :orders :total)))))}])
+          (measure/update-measures! [measure-id] {:definition (-> (table-query :orders)
+                                                                  (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                              (mt/id :orders :total)))))})
           (run-jobs!)
           (is (= "avg" (column-name))))))))
 
@@ -261,9 +261,9 @@
           (run-jobs!)
           (let [base-type #(:base_type (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
             (is (isa? (base-type) :type/Integer))
-            (measure/update-measures! [{:id inner-id :definition (-> (table-query :orders)
-                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                                                 (mt/id :orders :total)))))}])
+            (measure/update-measures! [inner-id] {:definition (-> (table-query :orders)
+                                                                  (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                              (mt/id :orders :total)))))})
             (run-jobs!)
             (is (isa? (base-type) :type/Float))))))))
 
@@ -280,7 +280,7 @@
 (defn- store-run-metadata!
   "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
   [card-id metadata]
-  (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}]))
+  (queries.card/update-cards! [card-id] {:result_metadata metadata :updated_at :updated_at}))
 
 (defn- once!
   "A function running `f` the first time it is called and doing nothing after."
@@ -296,7 +296,7 @@
         (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pos? (rederive-during-inference!
                      card-id
-                     (once! #(queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id card-id)])))))
+                     (once! #(queries.card/update-cards! [card-id] {:dataset_query (add-grand-total (table-query :orders))})))))
           (is (some? (column card-id "Grand total")))
           (is (pending? card-id))
           (run-jobs!)
@@ -328,7 +328,7 @@
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (by-unit :month)}
                        :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
           (run-jobs!)
-          (queries.card/update-cards! [(assoc {:dataset_query (by-unit :year)} :id source-id)])
+          (queries.card/update-cards! [source-id] {:dataset_query (by-unit :year)})
           (run-jobs!)
           (is (=? {:display_name "Created At: Year" :unit :year}
                   (column card-id "CREATED_AT"))))))))
@@ -342,16 +342,16 @@
                        :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
           (run-jobs!)
           (is (isa? (:base_type (column card-id "X")) :type/Number))
-          (queries.card/update-cards! [(assoc {:dataset_query (with (lib/concat total "!"))} :id source-id)])
+          (queries.card/update-cards! [source-id] {:dataset_query (with (lib/concat total "!"))})
           (run-jobs!)
           (is (= :type/Text (:base_type (column card-id "X"))))
           (testing "within one root type too, since no run measured the card's types"
-            (queries.card/update-cards! [(assoc {:dataset_query (with (lib/+ (lib.metadata/field (mt/metadata-provider)
-                                                                                                 (mt/id :orders :quantity))
-                                                                             1))} :id source-id)])
+            (queries.card/update-cards! [source-id] {:dataset_query (with (lib/+ (lib.metadata/field (mt/metadata-provider)
+                                                                                                     (mt/id :orders :quantity))
+                                                                                 1))})
             (run-jobs!)
             (is (= :type/Integer (:base_type (column card-id "X"))))
-            (queries.card/update-cards! [(assoc {:dataset_query (with (lib/* total 1.5))} :id source-id)])
+            (queries.card/update-cards! [source-id] {:dataset_query (with (lib/* total 1.5))})
             (run-jobs!)
             (is (= :type/Float (:base_type (column card-id "X"))))))))))
 
@@ -382,7 +382,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+        (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
         (do-with-inference (fn [_infer _query _card] (throw (ex-info "Inference failed" {})))
                            run-jobs!)
         (is (nil? (column card-id "Grand total")))
@@ -405,7 +405,7 @@
                                                                   :creator_id             (mt/user->id :rasta)
                                                                   :database_id            (mt/id)
                                                                   :dataset_query          (card-query source-id)}])))]
-            (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+            (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
             (mt/with-premium-features #{:dependencies}
               (deps.result-metadata/update-result-metadata! 1000))
             (run-jobs!)
@@ -442,9 +442,9 @@
                                                                   :creator_id             (mt/user->id :rasta)
                                                                   :database_id            (mt/id)
                                                                   :dataset_query          (card-query source-id)}])))]
-            (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+            (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
             (deps.result-metadata/update-result-metadata! 1000)
-            (queries.card/update-cards! [(assoc {:name "Renamed"} :id card-id)])
+            (queries.card/update-cards! [card-id] {:name "Renamed"})
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
 
@@ -467,7 +467,7 @@
         (deps.test/synchronously-run-dependency-job!)
         (let [submitted (atom [])
               before    (t2/select-one-fn :updated_at :model/Card :id card-id)]
-          (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+          (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
           (deps.test/synchronously-run-dependency-job!)
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (rederive!)
@@ -534,8 +534,8 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:dataset_query (card-query source-id)} :id card-id)])
-        (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+        (queries.card/update-cards! [card-id] {:dataset_query (card-query source-id)})
+        (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
         (run-jobs!)
         (is (some? (column card-id "Grand total")))))))
 
@@ -548,10 +548,10 @@
         (reprocess! failing-id other-id)
         (let [store (mt/original-fn #'queries.card/update-cards!)]
           (mt/with-dynamic-fn-redefs [queries.card/update-cards!
-                                      (fn [updates & args]
-                                        (if (some #(= failing-id (:id %)) updates)
+                                      (fn [ids & args]
+                                        (if (some #{failing-id} ids)
                                           (throw (ex-info "Store failed" {}))
-                                          (apply store updates args)))]
+                                          (apply store ids args)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column other-id "NAME"))))))))
@@ -562,7 +562,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+        (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
         (let [inferred (atom #{})]
           (do-with-inference (fn [infer query card]
                                (swap! inferred conj (:id card))
@@ -631,10 +631,10 @@
                                         (if (= card-id (:id entity))
                                           (throw (ex-info "Computation failed" {}))
                                           (calculate entity-type entity)))]
-            (queries.card/update-cards! [(assoc {:dataset_query (card-query source-id)
-                                                 :description   "edited"} :id card-id)])
+            (queries.card/update-cards! [card-id] {:dataset_query (card-query source-id)
+                                                   :description   "edited"})
             (dependencies.db/mark-dependency-statuses-stale! {:card #{card-id}})
-            (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
+            (queries.card/update-cards! [source-id] {:dataset_query (add-grand-total (table-query :orders))})
             (run-jobs!)))
         (is (nil? (column card-id "Grand total")))
         (is (pending? card-id))))))
@@ -728,7 +728,7 @@
         (let [locked (promise)
               save   (future
                        (t2/with-transaction [_]
-                         (queries.card/update-cards! [(assoc {:name "Saved"} :id card-id)])
+                         (queries.card/update-cards! [card-id] {:name "Saved"})
                          (deliver locked true)
                          (Thread/sleep 1000)))]
           @locked

@@ -274,7 +274,7 @@
     (api/update-check existing-notification body)
     (check-handler-templates! (:handlers body) (:handlers existing-notification))
     (let [body (body-with-authoritative-ids body existing-notification)]
-      (models.notification/update-notification! existing-notification body)
+      (models.notification/update-notification! id body {:notifications [existing-notification]})
       (u/prog1 (get-notification id)
         (publish-notification-update! <> existing-notification)))))
 

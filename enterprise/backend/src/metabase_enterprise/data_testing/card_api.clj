@@ -98,7 +98,7 @@
     (api/update-check card-test body)
     (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
+      (data-testing.models.card-test/update-card-tests! [id] body)))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -106,7 +106,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-tests-by-id! [id])
+  (data-testing.models.card-test/delete-card-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

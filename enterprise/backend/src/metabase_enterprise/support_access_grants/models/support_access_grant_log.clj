@@ -66,8 +66,8 @@
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (models.auth-identity/expire-auth-identities! auth-identity-ids ended-at))
-    (models.session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
+      (models.auth-identity/update-auth-identities! auth-identity-ids {:expires_at ended-at}))
+    (models.session/end-sessions-for-users! [support-user-id] "support-grant-revoked" ended-by)))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

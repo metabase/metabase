@@ -111,7 +111,7 @@
   [row :- (mut/select-keys ::semantic-search.schema/semantic-search-token-tracking.update [:model_name :request_type :total_tokens])]
   (t2/insert! :model/SemanticSearchTokenTracking row))
 
-(mu/defn delete-token-tracking-created-before!
+(mu/defn delete-token-tracking-for-cleanup!
   "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at cutoff]}))

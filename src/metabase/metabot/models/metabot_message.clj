@@ -9,9 +9,9 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -83,17 +83,13 @@
   [rows :- [:sequential ::metabot.schema/metabot-message.create]]
   (metabot.db/insert-messages! rows))
 
-(mu/defn update-metabot-messages! :- [:sequential ::metabot.schema/metabot-message.update]
-  "Apply the `rows`, each the `:id` of a MetabotMessage and the columns to set, and return the rows that exist."
-  [rows :- [:sequential ::metabot.schema/metabot-message.update]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (metabot.db/messages-by-ids (mapv :id rows)))
-            rows   (filterv (comp stored :id) rows)]
-        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-          (metabot.db/update-messages! ids changes))
-        rows))))
+(mu/defn update-metabot-messages! :- :nil
+  "Apply the one `changes` map to every MetabotMessage of `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
+  (when (seq ids)
+    (metabot.db/update-messages! ids changes))
+  nil)
 
 (mu/defn soft-delete-metabot-messages! :- :int
   "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the

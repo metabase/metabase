@@ -1158,14 +1158,26 @@
     (update-handlers! (:handlers existing)
                       (map #(assoc % :notification_id notification-id) (:handlers new)))))
 
+(mr/def ::update-opts
+  [:maybe [:map {:closed true}
+           [:notifications {:optional true} [:maybe [:sequential ::FullyHydratedNotification]]]]])
+
 (mu/defn update-notification! :- :nil
-  "Update an existing notification with `new-notification`, publishing its update event last, or its touch when only its
-  parts changed."
-  [existing-notification :- ::FullyHydratedNotification
-   new-notification      :- [:map {:closed false} [:id ms/PositiveInt]]]
-  (validate-email-handlers! (:handlers new-notification))
-  (let [notification-id (:id existing-notification)]
-    (t2/with-transaction [_conn]
+  "Make the Notification with `notification-id` the one `changes` describes, columns and all its parts, as a whole rather
+  than a patch: the subscriptions and handlers it omits are deleted. Publishes its update event last, or its touch when
+  only its parts changed. `:notifications` in `opts` holds the Notification as the caller already read and hydrated it."
+  ([notification-id :- ms/PositiveInt
+    changes         :- [:map {:closed false}]]
+   (update-notification! notification-id changes nil))
+  ([notification-id :- ms/PositiveInt
+    changes         :- [:map {:closed false}]
+    opts            :- ::update-opts]
+   (let [existing-notification (or (first (filter #(= notification-id (:id %)) (:notifications opts)))
+                                   (some-> (notification.db/notification notification-id) hydrate-notification))
+         new-notification      changes]
+     (validate-email-handlers! (:handlers new-notification))
+     (when existing-notification
+       (t2/with-transaction [_conn]
       (let [notification-before (notification.db/notification notification-id)
             active-before?      (:active notification-before)
             parts-before        (parts notification-before)
@@ -1194,8 +1206,8 @@
             (cond
               (seq (:changes event))              (events/publish-event! :event/notification-row-update event)
               (not= parts-before parts-after)     (events/publish-event! :event/notification-row-update
-                                                                         (events/touch-event [notification-after]))))))))
-  nil)
+                                                                         (events/touch-event [notification-after])))))))))
+  nil))
 
 (mu/defn update-notifications! :- :int
   "Apply `changes` to the Notifications with `notification-ids`, publishing the events of the writes, and return the
@@ -1227,14 +1239,10 @@
         (doseq [subscription (notification.db/subscriptions-for-notifications notification-ids)
                 :when        (= :notification-subscription/cron (:type subscription))]
           (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
-        (let [payload-ids (not-empty (into #{} (keep #(when (= :notification/card (:payload_type %)) (:payload_id %)))
-                                           notifications))
-              cards       (when payload-ids (notification.db/notification-cards payload-ids))]
-          (when (seq cards)
-            (notification.db/delete-notification-cards! (mapv :id cards)))
-          (events/publish-event! :event/notification-row-delete (events/delete-event notifications))
-          (notification.db/delete-notifications! notification-ids)
-          (count notifications))))
+        (notification.db/delete-notification-cards-for-notifications! notification-ids)
+        (events/publish-event! :event/notification-row-delete (events/delete-event notifications))
+        (notification.db/delete-notifications! notification-ids)
+        (count notifications)))
     0))
 
 (mu/defn delete-notification-recipients! :- :nil

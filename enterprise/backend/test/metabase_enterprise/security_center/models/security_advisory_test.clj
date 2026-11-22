@@ -26,20 +26,20 @@
                              advisory-ids))
     advisory-ids))
 
-(deftest acknowledge-many-statement-count-does-not-grow-with-rows-test
+(deftest acknowledge-security-advisories-statement-count-does-not-grow-with-rows-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
     (let [user-id (mt/user->id :crowberto)
           counted (fn [n]
                     (let [advisory-ids (insert-advisories! n user-id)]
-                      (events.tu/statement-count! #(security-advisory/acknowledge-many! advisory-ids user-id))))]
+                      (events.tu/statement-count! #(security-advisory/acknowledge-security-advisories! advisory-ids user-id))))]
       (counted 1)
       (is (= (counted 2) (counted 6))))))
 
-(deftest acknowledge-many-stamps-changed-acknowledgers-test
+(deftest acknowledge-security-advisories-stamps-changed-acknowledgers-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
     (let [user-id      (mt/user->id :crowberto)
           advisory-ids (insert-advisories! 3 user-id)
-          acknowledged (security-advisory/acknowledge-many! advisory-ids user-id)]
+          acknowledged (security-advisory/acknowledge-security-advisories! advisory-ids user-id)]
       (testing "a change of the acknowledger stamps the acknowledgement time, one that keeps it does not"
         (is (= (zipmap advisory-ids [false true false])
                (into {} (map (juxt :advisory_id (comp some? :acknowledged_at))) acknowledged))))
@@ -47,4 +47,4 @@
         (is (= #{user-id} (into #{} (map (comp :id :acknowledged_by_user)) acknowledged))))
       (testing "acknowledged advisories are skipped"
         (is (= (into #{} (comp (remove :acknowledged_at) (map :id)) acknowledged)
-               (into #{} (map :id) (security-advisory/acknowledge-many! advisory-ids user-id))))))))
+               (into #{} (map :id) (security-advisory/acknowledge-security-advisories! advisory-ids user-id))))))))

@@ -188,7 +188,7 @@
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
    called after the revision number is updated."
   [revision-id before changes]
-  (future (c-perm-revision/update-collection-permission-graph-revisions! [{:id revision-id :before before :after changes}])))
+  (future (c-perm-revision/update-collection-permission-graph-revisions! [revision-id] {:before before :after changes})))
 
 (defn- personal-collection-ids
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.

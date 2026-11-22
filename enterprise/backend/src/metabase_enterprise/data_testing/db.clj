@@ -8,6 +8,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
@@ -80,10 +81,14 @@
   (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
 (mu/defn update-test-suites!
-  "Apply `updates` to the TestSuites with `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- (mut/dissoc ::data-testing.schema/test-suite.update :id)]
-  (t2/update! :model/TestSuite :id [:in [:auto/param ids]] updates))
+  "Apply `changes` to the TestSuites of `stored`, a map from id to the suite as read, with one statement for the rows that
+  get the same effective changes, which keeps the rows that already hold some of the values from making Toucan run one
+  statement per row."
+  [stored  :- [:map-of ms/PositiveInt :map]
+   changes :- ::data-testing.schema/test-suite.update]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+    (t2/update! :model/TestSuite :id [:in [:auto/param ids]] changes))
+  nil)
 
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
@@ -202,14 +207,14 @@
   (t2/select model :id [:in [:auto/param ids]]))
 
 (mu/defn update-saved-tests! :- :nil
-  "Apply `updates` to the tests of `model` with `ids`."
+  "Apply `changes` to the tests of `model` of `stored`, a map from id to the test as read, with one statement for the
+  rows that get the same effective changes, which keeps the rows that already hold some of the values from making
+  Toucan run one statement per row."
   [model   :- saved-test-model
-   ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- (into [:or] (map #(mut/dissoc % :id))
-                    [::data-testing.schema/transform-test.update
-                     ::data-testing.schema/card-test.update
-                     ::data-testing.schema/segment-test.update])]
-  (t2/update! model :id [:in [:auto/param ids]] updates)
+   stored  :- [:map-of ms/PositiveInt :map]
+   changes :- ::data-testing.schema/saved-test.update]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+    (t2/update! model :id [:in [:auto/param ids]] changes))
   nil)
 
 (mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]

@@ -25,7 +25,7 @@
   [session-id :- :string]
   (mcp.db/end-session-log! session-id))
 
-(mu/defn delete-mcp-session-logs-created-before!
+(mu/defn delete-mcp-session-logs-for-cleanup!
   "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (mcp.db/delete-session-logs-created-before! cutoff))

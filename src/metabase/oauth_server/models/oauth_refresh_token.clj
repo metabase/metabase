@@ -31,17 +31,17 @@
   [token :- :string]
   (oauth-server.db/revoke-refresh-token! token))
 
-(mu/defn revoke-user-oauth-refresh-tokens!
+(mu/defn revoke-oauth-refresh-tokens-for-users!
   "Revoke the unrevoked OAuthRefreshTokens of the Users with `user-ids`, returning the number revoked."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
   (oauth-server.db/revoke-refresh-tokens-for-users! user-ids))
 
-(mu/defn delete-expired-oauth-refresh-tokens!
+(mu/defn delete-oauth-refresh-tokens-for-expiry-cleanup!
   "Delete the OAuthRefreshTokens that expired before `now`, in epoch milliseconds, returning the number deleted."
   [now :- ms/PositiveInt]
   (oauth-server.db/delete-refresh-tokens-expired-before! now))
 
-(mu/defn delete-revoked-oauth-refresh-tokens!
+(mu/defn delete-oauth-refresh-tokens-for-revocation-cleanup!
   "Delete the revoked OAuthRefreshTokens, returning the number deleted."
   []
   (oauth-server.db/delete-revoked-refresh-tokens!))

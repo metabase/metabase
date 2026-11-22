@@ -6,6 +6,7 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.segments.schema :as segments.schema]
@@ -46,12 +47,13 @@
   (t2/select-pk->fn identity :model/Segment :id [:in ids]))
 
 (mu/defn update-segments!
-  "Apply `changes` to the Segments with `ids`, returning the number updated."
+  "Apply `changes` to the Segments with `ids`, `stored` as they are by id, with one statement per distinct set of changes
+  that their stored values leave."
   [ids     :- [:sequential ::lib.schema.id/segment]
-   changes :- [:select-keys ::segments.schema/segment.update
-               [:table_id :creator_id :name :description :archived :definition :created_at :updated_at
-                :points_of_interest :caveats :show_in_getting_started :entity_id]]]
-  (t2/update! :model/Segment :id [:in ids] changes))
+   changes :- ::segments.schema/segment.update
+   stored  :- [:map-of ::lib.schema.id/segment ::segments.schema/segment]]
+  (doseq [[effective grouped] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
+    (t2/update! :model/Segment :id [:in grouped] effective)))
 
 (mu/defn delete-segments!
   "Delete the Segments with `ids`, returning the number deleted."

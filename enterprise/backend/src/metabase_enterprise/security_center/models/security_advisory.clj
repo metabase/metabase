@@ -90,7 +90,7 @@
   (-> (security-center.db/advisory (:id advisory))
       (t2/hydrate :acknowledged_by_user)))
 
-(mu/defn acknowledge-many!
+(mu/defn acknowledge-security-advisories!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
    advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids :- [:or [:sequential :string] [:set :string]]
@@ -100,9 +100,8 @@
     (if (empty? advisories)
       []
       (do
-        (doseq [[changes ids] (mi/group-ids-by-changes (u/index-by :id advisories)
-                                                       (mapv #(hash-map :id % :acknowledged_by user-id) ids))]
-          (security-center.db/update-advisories! ids changes))
+        (when-let [changed-ids (not-empty (into [] (comp (remove #(= user-id (:acknowledged_by %))) (map :id)) advisories))]
+          (security-center.db/update-advisories! changed-ids {:acknowledged_by user-id}))
         (doseq [advisory advisories]
           (events/publish-event! :event/security-advisory-acknowledge
                                  {:object  advisory

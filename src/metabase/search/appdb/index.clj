@@ -241,7 +241,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search-index-metadata/delete-search-index-metadata-named! safe-conn (name table-name)))
+                        (search-index-metadata/delete-search-index-metadata-for-index! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -519,7 +519,7 @@
                         (thunk)
                         (finally
                           (drop-table! table-name)
-                          (search-index-metadata/delete-search-index-metadata-of-version! version)))))))))
+                          (search-index-metadata/delete-search-index-metadata-for-version! version)))))))))
 
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."

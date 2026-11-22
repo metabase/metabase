@@ -108,7 +108,7 @@
           (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
         reviews))))
 
-(mu/defn delete-reviews-of-deleted-cards! :- :int
+(mu/defn delete-moderation-reviews-for-cards! :- :int
   "Delete the ModerationReviews of the Cards with `card-ids`, which are being deleted, in one statement that bypasses
   delete capture, so their search documents are not re-derived; returns the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]

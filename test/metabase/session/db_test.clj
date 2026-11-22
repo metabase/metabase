@@ -35,14 +35,14 @@
       (testing "a request presenting the session works before it is ended"
         (is (= user-id (:id (mt/client session-key :get 200 "user/current")))))
       (testing "ending by hashed key records the reason and destroys the key"
-        (is (= 1 (models.session/end-sessions! {:key_hashed (session/hash-session-key session-key)} "logout" :self)))
+        (is (= 1 (models.session/end-session-for-key! (session/hash-session-key session-key) "logout" :self)))
         (is (= {:end_reason "logout", :ended_by_user_id user-id, :key_hashed nil} (row by-key))
             "`:self` attributes the ending to the session's own user")
         (is (some? (:ended_at (t2/select-one :model/Session :id by-key)))))
       (testing "and the old cookie is unauthenticated from then on"
         (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))
       (testing "ending by user records the actor, and only touches that user's live sessions"
-        (is (= 1 (models.session/end-sessions! {:user_id user-id} "admin" (mt/user->id :crowberto))))
+        (is (= 1 (models.session/end-sessions-for-users! [user-id] "admin" (mt/user->id :crowberto))))
         (is (= {:end_reason "admin", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil} (row by-user)))
         (is (= {:end_reason "logout", :ended_by_user_id user-id, :key_hashed nil} (row by-key))
             "an already-ended session keeps its first ending")
@@ -50,19 +50,21 @@
       (testing "the rows are kept"
         (is (= 3 (t2/count :model/Session :id [:in [by-key by-user others]]))))
       (testing "ending an already-ended session is a no-op"
-        (is (zero? (models.session/end-sessions! {:id [by-key by-user]} "admin" nil))))
-      (testing "an explicitly empty id list ends nothing"
-        (is (zero? (models.session/end-sessions! {:id []} "admin" nil)))))))
+        (is (zero? (models.session/end-sessions! [by-key by-user] "admin" nil))))
+      (testing "an empty id list or user list ends nothing"
+        (is (zero? (models.session/end-sessions! [] "admin" nil)))
+        (is (zero? (models.session/end-sessions-for-users! [] "admin" nil)))
+        (is (= {:end_reason nil, :ended_by_user_id nil} (dissoc (row others) :key_hashed)))))))
 
-(deftest end-sessions-by-ids-batches-test
+(deftest end-sessions-batches-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [ids (vec (repeatedly 5 #(first (insert-session! user-id))))]
       ;; a real revoke batches at `default-end-batch-size`; two and a half batches of two exercises the same code,
       ;; including the short final batch, without inserting thousands of rows
-      (is (= 5 (models.session/end-sessions-by-ids! ids "admin" nil 2))
+      (is (= 5 (models.session/end-sessions! ids "admin" nil 2))
           "every batch is counted, including the short final one")
       (is (every? #(nil? (:key_hashed %)) (t2/select :model/Session :id [:in ids])))
-      (is (zero? (models.session/end-sessions-by-ids! [] "admin" nil))))))
+      (is (zero? (models.session/end-sessions! [] "admin" nil))))))
 
 (deftest insert-session-binds-written-values-test
   (testing "GHY-4590: with schema enforcement off, as in prod, an operator form passed as a SAML value or an

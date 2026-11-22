@@ -43,7 +43,7 @@
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-create transform-test-id))))
         (testing "update"
-          (data-testing.models/update-transform-tests! [{:id transform-test-id :name "Renamed"}])
+          (data-testing.models/update-transform-tests! [transform-test-id] {:name "Renamed"})
           (is (= {:model_id transform-test-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:previous {:name "Original"}
@@ -52,7 +52,7 @@
                   :model    "TransformTest"}
                  (mt/latest-audit-log-entry :transform-test-update transform-test-id))))
         (testing "delete"
-          (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
+          (data-testing.models/delete-transform-tests! [transform-test-id])
           (is (= {:model_id transform-test-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:transform_id transform-id
@@ -73,8 +73,8 @@
                                                                                               :name         "Original"
                                                                                               :inputs       []
                                                                                               :expectations []}]))]
-            (data-testing.models/update-transform-tests! [{:id transform-test-id :name "Renamed"}])
-            (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
+            (data-testing.models/update-transform-tests! [transform-test-id] {:name "Renamed"})
+            (data-testing.models/delete-transform-tests! [transform-test-id])
             (is (= 3 (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))))
 
 (deftest transform-test-run-audit-events-test
@@ -159,7 +159,7 @@
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-create card-test-id))))
         (testing "update"
-          (data-testing.models.card-test/update-card-tests! [{:id card-test-id :name "Renamed"}])
+          (data-testing.models.card-test/update-card-tests! [card-test-id] {:name "Renamed"})
           (is (= {:model_id card-test-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:previous {:name "Original"}
@@ -168,7 +168,7 @@
                   :model    "CardTest"}
                  (mt/latest-audit-log-entry :card-test-update card-test-id))))
         (testing "delete"
-          (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
+          (data-testing.models.card-test/delete-card-tests! [card-test-id])
           (is (= {:model_id card-test-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:card_id     card-id
@@ -189,8 +189,8 @@
                                                                                               :name         "Original"
                                                                                               :inputs       []
                                                                                               :expectations []}]))]
-            (data-testing.models.card-test/update-card-tests! [{:id card-test-id :name "Renamed"}])
-            (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
+            (data-testing.models.card-test/update-card-tests! [card-test-id] {:name "Renamed"})
+            (data-testing.models.card-test/delete-card-tests! [card-test-id])
             (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))))
 
 (deftest card-test-audit-events-name-the-acting-user-test
@@ -206,11 +206,11 @@
             (is (=? {:user_id (mt/user->id :rasta)}
                     (mt/latest-audit-log-entry :card-test-create card-test-id))))
           (testing "update"
-            (data-testing.models.card-test/update-card-tests! [{:id card-test-id :name "Renamed"}])
+            (data-testing.models.card-test/update-card-tests! [card-test-id] {:name "Renamed"})
             (is (=? {:user_id (mt/user->id :rasta)}
                     (mt/latest-audit-log-entry :card-test-update card-test-id))))
           (testing "delete"
-            (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
+            (data-testing.models.card-test/delete-card-tests! [card-test-id])
             (is (=? {:user_id (mt/user->id :rasta)}
                     (mt/latest-audit-log-entry :card-test-delete card-test-id)))))))))
 
@@ -236,11 +236,11 @@
             (is (= (entry :segment-test-create (full "Original"))
                    (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
           (testing "update"
-            (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
+            (data-testing.models.segment-test/update-segment-tests! [segment-test-id] {:name "Renamed"})
             (is (= (entry :segment-test-update {:previous {:name "Original"} :new {:name "Renamed"}})
                    (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
           (testing "delete"
-            (data-testing.models.segment-test/delete-segment-tests-by-id! [segment-test-id])
+            (data-testing.models.segment-test/delete-segment-tests! [segment-test-id])
             (is (= (entry :segment-test-delete (full "Renamed"))
                    (mt/latest-audit-log-entry :segment-test-delete segment-test-id)))))))))
 

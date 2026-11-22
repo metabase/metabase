@@ -44,12 +44,12 @@
   [row :- ::search.schema/search-index-metadata.create]
   (search.db/insert-index-metadata! row))
 
-(mu/defn delete-search-index-metadata-of-version!
+(mu/defn delete-search-index-metadata-for-version!
   "Delete the SearchIndexMetadata rows of `version`."
   [version :- :string]
   (search.db/delete-index-metadata-by-version! version))
 
-(mu/defn delete-search-index-metadata-named!
+(mu/defn delete-search-index-metadata-for-index!
   "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]

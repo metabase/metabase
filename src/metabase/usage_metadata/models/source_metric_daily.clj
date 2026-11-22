@@ -31,7 +31,7 @@
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-metric-rollups-for-day! bucket-date))
 
-(mu/defn delete-metric-rollups-before!
+(mu/defn delete-metric-rollups-for-cleanup!
   "Delete the SourceMetricDaily rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-metric-rollups-before! bucket-date))

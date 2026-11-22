@@ -172,7 +172,7 @@
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
 
-(deftest expire-auth-identities-statement-count-does-not-grow-with-rows-test
+(deftest update-auth-identities-statement-count-does-not-grow-with-rows-test
   (mt/with-temp [:model/User {user-1 :id} {}
                  :model/User {user-2 :id} {}
                  :model/User {user-3 :id} {}
@@ -183,6 +183,6 @@
       (doseq [user-id [user-1 user-2 user-3 user-4 user-5 user-6]]
         (auth-identity.model/create-auth-identity! {:user_id user-id :provider "emailed-secret-password-reset"}))
       (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
-            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/expire-auth-identities! (vec (take n ids)) (t/instant))))]
+            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (vec (take n ids)) {:expires_at (t/instant)})))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))

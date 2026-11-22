@@ -53,7 +53,7 @@
                  :model/Metabot    {m9 :id} {:name "Metabot 9"}]
     (let [counted (fn [ids]
                     (events.tu/statement-count!
-                     #(metabot/update-metabots! (mapv (fn [id] {:id id :use_verified_content true :collection_id collection-id}) ids))))]
+                     #(metabot/update-metabots! ids {:use_verified_content true :collection_id collection-id})))]
       (counted [m9])
       (is (= (counted [m1 m2]) (counted [m3 m4 m5 m6 m7 m8])))
       (testing "every Metabot ends with the changes"

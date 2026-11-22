@@ -181,6 +181,13 @@
     [:id ::lib.schema.id/collection]
     [:name {:optional true} [:maybe ::collection.name]]]])
 
+(mr/def ::collection.changes
+  "The columns to change, the same for every Collection updated."
+  [:merge
+   ::collection.create
+   [:map {:closed true}
+    [:name {:optional true} [:maybe ::collection.name]]]])
+
 (mr/def ::external-collection
   "A Collection as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

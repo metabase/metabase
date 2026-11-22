@@ -2,7 +2,6 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -47,6 +46,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/DatabaseRouter :database_id database-id))
 
+(mu/defn router-ids-for-databases
+  "The ids of the DatabaseRouters of the Databases with `database-ids`."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/select-pks-vec :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
+
 (mu/defn router-user-attribute
   "The user attribute the router of the Database with `database-id` routes on."
   [database-id :- ::lib.schema.id/database]
@@ -75,7 +79,7 @@
 (mu/defn update-routers!
   "Apply `changes` to the DatabaseRouters with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- (mut/dissoc ::database-routing.schema/database-router.update :id)]
+   changes :- ::database-routing.schema/database-router.update]
   (t2/update! :model/DatabaseRouter :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn delete-routers!

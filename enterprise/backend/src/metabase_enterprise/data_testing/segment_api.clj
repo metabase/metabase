@@ -97,7 +97,7 @@
     (api/update-check segment-test body)
     (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
+      (data-testing.models.segment-test/update-segment-tests! [id] body)))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -105,7 +105,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/SegmentTest id)
-  (data-testing.models.segment-test/delete-segment-tests-by-id! [id])
+  (data-testing.models.segment-test/delete-segment-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

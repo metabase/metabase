@@ -184,7 +184,7 @@
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
-            (collection/update-collections! [{:id collection-id :archived true}])))
+            (collection/update-collections! [collection-id] {:archived true} nil)))
         (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))
         (is (empty? (access-group-ids app)))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)

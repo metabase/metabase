@@ -108,8 +108,9 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (measure/update-measures! [(cond-> (assoc changes :id id)
-                                   (:definition changes) (update :definition checked-definition))]
+      (measure/update-measures! [id]
+                                (cond-> changes
+                                  (:definition changes) (update :definition checked-definition))
                                 {:context {:revision-message revision_message}}))
     (hydrated-measure id false)))
 

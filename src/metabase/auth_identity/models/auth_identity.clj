@@ -131,11 +131,13 @@
    provider :- :string]
   (auth-identity.db/select-or-insert-auth-identity! user-id provider))
 
-(mu/defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-auth-identities! :- ms/IntGreaterThanOrEqualToZero
+  "Apply `changes` to the AuthIdentities with `ids`, returning the number updated; an empty `ids` updates nothing."
+  [ids     :- [:sequential ms/PositiveInt]
    changes :- ::auth-identity.schema/auth-identity.update]
-  (auth-identity.db/update-auth-identity! id changes))
+  (if (seq ids)
+    (auth-identity.db/update-auth-identities! ids changes)
+    0))
 
 (mu/defn touch-auth-identity!
   "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no
@@ -143,15 +145,7 @@
   [id :- [:maybe ms/PositiveInt]]
   (auth-identity.db/touch-auth-identity! id))
 
-(mu/defn expire-auth-identities!
-  "Make the AuthIdentities with `ids` expire at `expires-at`, returning the number updated."
-  [ids        :- [:sequential ms/PositiveInt]
-   expires-at :- ms/TemporalInstant]
-  (if (seq ids)
-    (auth-identity.db/expire-auth-identities! ids expires-at)
-    0))
-
-(mu/defn delete-auth-identities!
+(mu/defn delete-auth-identities-for-user!
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
@@ -190,10 +184,10 @@
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
        (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
-         (update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (update-auth-identities! [(u/the-id pw-auth-identity)] attrs)
          (create-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
-     (delete-auth-identities! user-id "emailed-secret-password-reset")
-     (models.session/end-sessions! {:user_id user-id} "password-change" (:ended-by opts)))))
+     (delete-auth-identities-for-user! user-id "emailed-secret-password-reset")
+     (models.session/end-sessions-for-users! [user-id] "password-change" (:ended-by opts)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -448,7 +448,7 @@
   "The ids of the Permissions rows under a Database, see [[permissions.db/database-permission-ids]]."
   permissions.db/database-permission-ids)
 
-(mu/defn delete-permissions-of-objects! :- [:maybe :int]
+(mu/defn delete-permissions-for-objects! :- [:maybe :int]
   "Delete every Permissions row for `objects`, in one raw statement, returning the number deleted. Unlike
   [[delete-permissions!]] it deletes the Admin group's rows too: a Collection that moves into the tenant-specific
   namespace keeps no Permissions rows at all."

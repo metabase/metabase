@@ -1,11 +1,13 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -75,18 +77,19 @@
         (events/publish-event! :event/metabot-conversation-create (events/create-event <>))))))
 
 (mu/defn upsert-metabot-conversation!
-  "Insert or update the MetabotConversation with `conversation-id`; `update-fn` receives the existing row, or nil, and
-  returns the columns to write."
+  "Insert the MetabotConversation with `conversation-id` for the User `user-id` with the `columns`, or when it exists
+  set those of `columns` it has no value for; its `:user_id` is never overwritten."
   [conversation-id :- :string
-   update-fn       :- fn?]
+   user-id         :- [:maybe ::lib.schema.id/user]
+   columns         :- (mut/dissoc ::metabot.schema/metabot-conversation.update :user_id)]
   (mdb/with-conflict-retry
     (t2/with-transaction [_conn]
       (if-let [existing (metabot.db/conversation conversation-id)]
-        (when-let [changes (update-fn existing)]
+        (let [changes (into {} (filter (fn [[k _]] (nil? (get existing k)))) columns)]
           (metabot.db/update-conversation! conversation-id changes)
           (events/publish-event! :event/metabot-conversation-update
                                  (events/update-event {(:id existing) existing} [(assoc changes :id (:id existing))])))
-        (let [created (metabot.db/insert-upserted-conversation! conversation-id (update-fn nil))]
+        (let [created (metabot.db/insert-upserted-conversation! conversation-id (assoc columns :user_id user-id))]
           (events/publish-event! :event/metabot-conversation-create (events/create-event [created]))))
       conversation-id)))
 
@@ -112,7 +115,7 @@
     (metabot.db/delete-conversations! (mapv :id rows)))
   (count rows))
 
-(mu/defn delete-metabot-conversations-created-before!
+(mu/defn delete-metabot-conversations-for-cleanup!
   "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/with-transaction [_conn]

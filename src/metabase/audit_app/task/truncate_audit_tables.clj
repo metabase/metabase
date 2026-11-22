@@ -21,17 +21,20 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private model->delete-older-than!
-  "The write function of each model the retention policy trims."
-  {:model/QueryExecution query-execution/delete-older-than!
-   :model/AuditLog       audit-log/delete-older-than!
-   :model/ViewLog        view-log/delete-older-than!})
+(defn- delete-for-cleanup!
+  "Delete the rows of `model`, one the retention policy trims, whose `time-column` is before `cutoff`, `batch-size` at
+  a time, through the model's write function."
+  [model time-column cutoff batch-size]
+  (case model
+    :model/QueryExecution (query-execution/delete-older-than! time-column cutoff batch-size)
+    :model/AuditLog       (audit-log/delete-audit-logs-for-cleanup! time-column cutoff batch-size)
+    :model/ViewLog        (view-log/delete-view-logs-for-cleanup! time-column cutoff batch-size)))
 
 (defn- truncate-table-batched!
   [model time-column]
   (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
-    ((model->delete-older-than! model) time-column cutoff batch-size)))
+    (delete-for-cleanup! model time-column cutoff batch-size)))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"

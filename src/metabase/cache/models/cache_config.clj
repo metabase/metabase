@@ -265,7 +265,7 @@
                         (:id row))))))]
     (mdb/with-conflict-retry (save!))))
 
-(defn delete-cache-configs!
+(defn delete-cache-configs-for-targets!
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
   [model model-ids]
   (t2/with-transaction [_conn]
@@ -276,7 +276,7 @@
                                                     {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}})))
       (cache.db/delete-cache-configs! model (mapv :model_id items)))))
 
-(defn delete-target-configs!
+(defn delete-cache-configs-for-deleted-targets!
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
   [model model-ids]
   (when (seq model-ids)
@@ -287,18 +287,17 @@
 
 (defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]
-  (delete-target-configs! "database" (mapv :id databases)))
+  (delete-cache-configs-for-deleted-targets! "database" (mapv :id databases)))
 
-(mu/defn update-cache-configs!
-  "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id             ms/PositiveInt]
-                         [:next_run_at    {:optional true} ::cache.schema/temporal]
-                         [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
-  (when (seq rows)
-    (let [stored (u/index-by :id (cache.db/cache-configs-by-ids (mapv :id rows)))]
-      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-        (cache.db/update-cache-configs! ids changes)))))
+(mu/defn update-cache-configs! :- :nil
+  "Apply `changes`, a `:next_run_at` and an `:invalidated_at`, to the CacheConfigs with `ids`."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:next_run_at    {:optional true} ::cache.schema/temporal]
+               [:invalidated_at {:optional true} ::cache.schema/temporal]]]
+  (when (and (seq ids) (seq changes))
+    (cache.db/update-cache-configs! ids changes))
+  nil)
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

@@ -49,6 +49,13 @@
                  :set    {:invalidated_at (mi/now)}
                  :where  where}))
 
+(mu/defn invalidate-findings-by-ids!
+  "Stamp `invalidated_at` on the still-active findings among `ids`; returns the row count."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/ContentDiagnosticsFinding
+              {:id [:in ids] :invalidated_at nil}
+              {:invalidated_at (mi/now)}))
+
 (mu/defn active-finding-ids
   "The ids among `ids` of the still-active findings that also match `where`."
   [ids   :- [:sequential ms/PositiveInt]

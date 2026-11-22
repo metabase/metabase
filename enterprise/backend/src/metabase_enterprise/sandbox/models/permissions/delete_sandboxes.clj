@@ -47,7 +47,7 @@
 (defenterprise check-native-access-without-sandboxes!
   "Throw a 400 if a group in `native-group-db-ids`, a set of `[group-id db-id]` pairs being granted native query
   access, would also have a sandbox on that database once `changes` are applied: either one it newly sandboxes, or
-  an existing one that [[delete-gtaps-if-needed-after-permissions-change!]] won't delete. Native queries bypass
+  an existing one that [[delete-sandboxes-for-permissions-change!]] won't delete. Native queries bypass
   sandboxing."
   :feature :sandboxes
   [changes native-group-db-ids]
@@ -65,7 +65,7 @@
         (throw (ex-info (tru "A group with row and column security on a database cannot also have native query access to it.")
                         {:status-code 400}))))))
 
-(defenterprise delete-gtaps-if-needed-after-permissions-change!
+(defenterprise delete-sandboxes-for-permissions-change!
   "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
   longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
   the `things-only-in-new` returned by `clojure.data/diff`."

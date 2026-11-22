@@ -21,7 +21,7 @@
   (when (seq rows)
     (metabot.db/insert-usage-logs! rows)))
 
-(mu/defn delete-ai-usage-logs-created-before!
+(mu/defn delete-ai-usage-logs-for-cleanup!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (metabot.db/delete-usage-logs-created-before! cutoff))

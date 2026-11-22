@@ -21,14 +21,13 @@
 (defn- archive!
   "Archives or restores the `model` row with `id` through the write function of the model."
   [model id archived?]
-  (let [rows [{:id id :archived archived?}]]
-    (case model
-      :model/Card               (card/update-cards! rows)
-      :model/Collection         (collection/update-collections! rows)
-      :model/Dashboard          (dashboard/update-dashboards! rows)
-      :model/Document           (document/update-documents! rows)
-      :model/Exploration        (exploration/update-explorations! rows)
-      :model/NativeQuerySnippet (native-query-snippet/update-snippets! rows))))
+  (case model
+    :model/Card               (card/update-cards! [id] {:archived archived?})
+    :model/Collection         (collection/update-collections! [id] {:archived archived?} nil)
+    :model/Dashboard          (dashboard/update-dashboards! [id] {:archived archived?})
+    :model/Document           (document/update-documents! [id] {:archived archived?} nil)
+    :model/Exploration        (exploration/update-explorations! [id] {:archived archived?} nil)
+    :model/NativeQuerySnippet (native-query-snippet/update-snippets! [id] {:archived archived?} nil)))
 
 (defn- row [model id]
   (t2/select-one model :id id))
@@ -149,9 +148,9 @@
   (testing "a timeline archives and restores its events"
     (mt/with-temp [:model/Timeline      timeline {}
                    :model/TimelineEvent event    {:timeline_id (u/the-id timeline)}]
-      (timeline/update-timelines! [{:id (u/the-id timeline) :archived true}])
+      (timeline/update-timelines! [(u/the-id timeline)] {:archived true} nil)
       (is (true? (:archived (row :model/TimelineEvent (u/the-id event)))))
-      (timeline/update-timelines! [{:id (u/the-id timeline) :archived false}])
+      (timeline/update-timelines! [(u/the-id timeline)] {:archived false} nil)
       (is (false? (:archived (row :model/TimelineEvent (u/the-id event)))))))
   (testing "an exploration archives and restores its summary document"
     (mt/with-temp [:model/Exploration exploration {}
@@ -170,7 +169,7 @@
       (is (false? (:archived_directly (row :model/Card (u/the-id card)))))))
   (testing "a write that gives a cause keeps it"
     (mt/with-temp [:model/Card card {}]
-      (card/update-cards! [{:id (u/the-id card) :archived true :archived_directly false}])
+      (card/update-cards! [(u/the-id card)] {:archived true :archived_directly false})
       (is (=? {:archived true :archived_directly true} (row :model/Card (u/the-id card)))))))
 
 (deftest rows-do-not-go-into-archived-parents-test
@@ -190,13 +189,12 @@
                                                         :archived_directly false :collection_id (u/the-id archived)}])))))
     (testing "a row that is not archived cannot be moved into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (card/update-cards! [{:id (u/the-id card) :collection_id (u/the-id archived)}])))
+                            (card/update-cards! [(u/the-id card)] {:collection_id (u/the-id archived)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (collection/update-collections! [{:id       (u/the-id live)
-                                                              :location (collection/children-location archived)}]))))
+                            (collection/update-collections! [(u/the-id live)] {:location (collection/children-location archived)} nil))))
     (testing "a row that is archived can be moved into an archived collection"
       (archive! :model/Card (u/the-id card) true)
-      (is (= 1 (count (card/update-cards! [{:id (u/the-id card) :collection_id (u/the-id archived)}])))))
+      (is (nil? (card/update-cards! [(u/the-id card)] {:collection_id (u/the-id archived)}))))
     (testing "a card that is not archived cannot be put in an archived dashboard"
       (archive! :model/Dashboard (u/the-id dashboard) true)
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Dashboard"
@@ -224,9 +222,9 @@
         (fill-collection! (u/the-id child))))
     (let [id      (u/the-id root)
           counted events.tu/statement-count!]
-      {:archive (counted #(collection/update-collections! [{:id id :archived true}]))
-       :restore (counted #(collection/update-collections! [{:id id :archived false}]))
-       :move    (counted #(collection/update-collections! [{:id id :location (collection/children-location target)}]))
+      {:archive (counted #(collection/update-collections! [id] {:archived true} nil))
+       :restore (counted #(collection/update-collections! [id] {:archived false} nil))
+       :move    (counted #(collection/update-collections! [id] {:location (collection/children-location target)} nil))
        :delete  (counted #(collection/delete-collections! [id]))})))
 
 (deftest collection-statements-do-not-grow-with-subtree-test
@@ -249,10 +247,10 @@
                          (doseq [id ids]
                            (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id id :creator_id user-id)))
                          ids))
-            update!  (fn [prepare rows-fn n]
+            update!  (fn [prepare changes n]
                        (let [ids (fresh! n)]
                          (prepare (take-nth 2 ids))
-                         (events.tu/statement-count! #(collection/update-collections! (rows-fn ids)))))
+                         (events.tu/statement-count! #(collection/update-collections! ids changes nil))))
             counted  (fn [f]
                        (f 1)
                        (is (= (f 2) (f 6))))]
@@ -265,21 +263,21 @@
                          (events.tu/statement-count! #(collection/create-collections! rows)))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+                            (fn [ids] (collection/update-collections! ids {:description "Same"} nil))
+                            {:description "Same"})))
         (testing "archiving collections, some already archived"
           (counted (partial update!
-                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+                            (fn [ids] (collection/update-collections! ids {:archived true} nil))
+                            {:archived true})))
         (testing "restoring collections, some already live"
           (counted (partial update!
-                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+                            (fn [ids] (collection/update-collections! ids {:archived true} nil))
+                            {:archived false})))
         (testing "moving collections, some already under the parent"
           (let [location (collection/children-location (t2/select-one :model/Collection :id target))]
             (counted (partial update!
-                              (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :location location}) ids)))
-                              (fn [ids] (mapv (fn [id] {:id id :location location}) ids))))))
+                              (fn [ids] (collection/update-collections! ids {:location location} nil))
+                              {:location location}))))
         (testing "deleting collections"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(collection/delete-collections! ids))))))))))
 
@@ -314,10 +312,10 @@
         ids))
 
 (defn- archive-all! [ids]
-  (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
+  (collection/update-collections! ids {:archived true} nil))
 
 (defn- restore! [id]
-  (collection/update-collections! [{:id id :archived false}]))
+  (collection/update-collections! [id] {:archived false} nil))
 
 (defn- same-as-before!
   "Runs `scenario`, a function of no arguments returning a snapshot, with the archive operations shared as now and with

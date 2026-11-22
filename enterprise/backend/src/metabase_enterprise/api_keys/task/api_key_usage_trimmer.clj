@@ -26,7 +26,7 @@
       (log/info "Skipping API key usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))]
         (log/infof "Trimming API key usage log rows older than %d days." (long retention-days))
-        (let [rows (api-key-usage-log/delete-api-key-usage-logs-occurred-before! cutoff)]
+        (let [rows (api-key-usage-log/delete-api-key-usage-logs-for-cleanup! cutoff)]
           (log/infof "API key usage log cleanup complete. Deleted %d rows." (or rows 0)))))))
 
 (task/defjob ApiKeyUsageTrimmer

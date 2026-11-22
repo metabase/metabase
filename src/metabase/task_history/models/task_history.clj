@@ -102,7 +102,7 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn cleanup-task-history!
+(mu/defn delete-task-history-for-cleanup!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
   This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
   [num-rows-to-keep :- ms/IntGreaterThanOrEqualToZero]
@@ -130,15 +130,10 @@
                                                ::task-history.schema/task-history.update]]]
    [:task_details    {:optional true} [:maybe ::task-history.schema/task-history.task-details]]]) ; additional map of details to include in the recorded row
 
-(defn- ns->ms [nanoseconds]
-  (long (/ nanoseconds 1e6)))
-
 (defn- update-task-history!
-  [th-id startime-ns info]
-  (let [updated-info (merge {:ended_at (t/instant)
-                             :duration (ns->ms (- (System/nanoTime) startime-ns))}
-                            info)]
-    (task-history.db/update-task-history! th-id updated-info)))
+  "Record the end of the TaskHistory row with `th-id` with `info`, its end time and duration measured by the database."
+  [th-id info]
+  (task-history.db/end-task-history! th-id info))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Clock *log-capture-clock*
@@ -215,24 +210,21 @@
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)
-        start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
         th-id           (task-history.db/insert-task-history!
-                         (cond-> (assoc info
-                                        :status     :started
-                                        :started_at (t/instant))
+                         (cond-> (assoc info :status :started)
                            run-id (assoc :run_id run-id)))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
         (u/prog1 (f)
-          (update-task-history! th-id start-time-ns (on-success-info {:status       :success
-                                                                      :task_details (:task_details info)
-                                                                      :logs         (log-capture-entries @logs-atom)}
-                                                                     <>)))
+          (update-task-history! th-id (on-success-info {:status       :success
+                                                        :task_details (:task_details info)
+                                                        :logs         (log-capture-entries @logs-atom)}
+                                                       <>)))
         (catch Throwable e
-          (update-task-history! th-id start-time-ns
+          (update-task-history! th-id
                                 (on-fail-info {:task_details {:status        :failed
                                                               :exception     (class e)
                                                               :message       (.getMessage e)
@@ -264,7 +256,7 @@
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))
 
-(mu/defn mark-started-tasks-unknown! :- :int
+(mu/defn mark-task-history-unknown-for-task-runs! :- :int
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
   [run-ids :- [:set ms/PositiveInt]]
   (task-history.db/mark-started-tasks-unknown! run-ids))

@@ -227,10 +227,10 @@
                                            (for [i (range n)]
                                              {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))]
                             (t2/with-call-count [call-count]
-                              (dashboard/update-dashboards! [{:id        dashboard-id
-                                                              :dashcards (mapv #(merge (select-keys % [:id :card_id :row :col :size_x :size_y])
-                                                                                       dashcard-changes)
-                                                                               dashcards)}])
+                              (dashboard/update-dashboard! dashboard-id
+                                                           {:dashcards (mapv #(merge (select-keys % [:id :card_id :row :col :size_x :size_y])
+                                                                                     dashcard-changes)
+                                                                             dashcards)})
                               (call-count)))))
             unchanged #(counted % {})
             changed   #(counted % {:row 1 :col 2 :size_x 3 :size_y 4 :series [series-id]})]
@@ -591,3 +591,23 @@
                        (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
         (testing "deleting dashcards"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-card/delete-dashboard-cards! ids))))))))))
+
+(deftest internal-dashboard-question-checks-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}
+                 :model/Card       {live-id :id}       {:dashboard_id dashboard-id :collection_id collection-id}
+                 :model/Card       {archived-id :id}   {:dashboard_id dashboard-id :collection_id collection-id
+                                                        :archived true :archived_directly false}]
+    (testing "a user who cannot write the Collection is refused the archive of an unused dashboard question"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                              (dashboard-card/check-archive-internal-dashboard-questions! dashboard-id [])))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                              (dashboard-card/check-unarchive-internal-dashboard-questions!
+                               dashboard-id [{:card_id archived-id}])))))
+    (testing "a user who can write the Collection passes, and the checks write nothing"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (do (dashboard-card/check-archive-internal-dashboard-questions! dashboard-id []) true))
+        (is (do (dashboard-card/check-unarchive-internal-dashboard-questions! dashboard-id [{:card_id archived-id}]) true))
+        (is (false? (t2/select-one-fn :archived :model/Card :id live-id)))
+        (is (true? (t2/select-one-fn :archived :model/Card :id archived-id)))))))

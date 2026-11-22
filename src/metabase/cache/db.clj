@@ -6,6 +6,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -209,10 +211,13 @@
   (t2/select :model/CacheConfig :id [:in [:auto/param (vec (distinct cache-config-ids))]]))
 
 (mu/defn update-cache-configs!
-  "Apply `changes` to the CacheConfigs with `cache-config-ids`."
+  "Apply `changes` to the CacheConfigs with `cache-config-ids`, one statement for each set of the changes that differ
+  from the stored rows, so that rows already holding one of the values do not make Toucan update row by row."
   [cache-config-ids :- [:sequential {:min 1} ms/PositiveInt]
    changes          :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
-  (t2/update! :model/CacheConfig :id [:in [:auto/param (vec cache-config-ids)]] changes))
+  (let [stored (u/index-by :id (cache-configs-by-ids cache-config-ids))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) cache-config-ids))]
+      (t2/update! :model/CacheConfig :id [:in [:auto/param ids]] changes))))
 
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."

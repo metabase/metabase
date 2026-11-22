@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -135,11 +136,30 @@
   [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
   (app-db/insert-returning-instances! :model/Action rows))
 
+(mu/defn archived-directly-clause
+  "The SQL expression for the `archived_directly` of a Action that `changes` archives or restores: true when it is
+  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
+  every row."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:= ^:allow-subquery {:select [:parent.archived]
+                                 :from   [[:collection :parent]]
+                                 :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                          [:auto/param (:collection_id changes)]
+                                                          :action.collection_id)]}
+            true]
+     false
+     :else true]
+    [:inline false]))
+
 (mu/defn update-actions!
-  "Apply `changes` to the Actions with `action-ids`, returning the number updated."
-  [action-ids :- [:sequential ::lib.schema.id/action]
-   changes    :- (mut/select-keys ::actions.schema/action.update action-columns)]
-  (t2/update! :model/Action :id [:in action-ids] changes))
+  "Apply the columns of each of `rows`, an `:id` with its own values, to its Action, with one statement for each distinct
+  set of columns that change in them, returning nil."
+  [rows :- [:sequential (mut/select-keys ::actions.schema/action.update (conj action-columns :id))]]
+  (let [stored (t2/select-pk->fn identity :model/Action :id [:in (mapv :id rows)])]
+    (doseq [[effective ids] (mi/group-ids-by-changes stored rows)]
+      (t2/update! :model/Action :id [:in ids] effective)))
+  nil)
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."

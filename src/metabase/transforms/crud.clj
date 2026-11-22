@@ -191,13 +191,11 @@
                                             (or (:owner_user_id body) creator-id))
                             transform     (first
                                            (transform.model/create-transforms!
-                                            [(assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                       :collection_id :owner_email])
-                                                    :creator_id creator-id
-                                                    :owner_user_id owner-user-id)]))]
-                        ;; Add tag associations if provided
-                        (when (seq tag-ids)
-                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                                            [(cond-> (assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                               :collection_id :owner_email])
+                                                            :creator_id creator-id
+                                                            :owner_user_id owner-user-id)
+                                               (seq tag-ids) (assoc :tag_ids tag-ids))]))]
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      transform)))
@@ -223,14 +221,12 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (transform.model/update-transforms! [(assoc (dissoc body :tag_ids) :id id)])
+                      (transform.model/update-transform! id (cond-> (dissoc body :tag_ids)
+                                                              (contains? body :tag_ids) (assoc :tag_ids (:tag_ids body))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    ;; Update tag associations if provided
-                    (when (contains? body :tag_ids)
-                      (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (-> transform
         transforms.u/add-source-readable)))

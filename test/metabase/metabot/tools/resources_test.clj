@@ -705,8 +705,8 @@
                                                         :archived          true
                                                         :archived_directly true}
                    :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
-      (collection/update-collections! [{:id (:id emea) :archived true}])
-      (collection/update-collections! [{:id (:id ops) :archived true}])
+      (collection/update-collections! [(:id emea)] {:archived true} nil)
+      (collection/update-collections! [(:id ops)] {:archived true} nil)
       (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
         (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
           (let [output (read-dashboard trashed-id)]

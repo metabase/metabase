@@ -13,8 +13,8 @@
   "Apply `rows`, each the `:id` of a Card or Dashboard of `model` and its changes, through the model's write function."
   [model rows]
   (case model
-    :model/Card      (card/update-cards! rows)
-    :model/Dashboard (dashboard/update-dashboards! rows)))
+    :model/Card      (card/update-cards! (mapv :id rows) (dissoc (first rows) :id))
+    :model/Dashboard (dashboard/update-dashboards! (mapv :id rows) (dissoc (first rows) :id))))
 
 (deftest maybe-populate-initially-published-at-test
   (let [now #t "2022-09-01T12:34:56Z"]
@@ -45,6 +45,19 @@
           (update-rows! model [{:id (u/the-id card) :enable_embedding false}])
           (is (nil? (t2/select-one-fn :initially_published_at model :id (u/the-id card)))))))))
 
+(deftest update-of-other-column-fills-legacy-embedded-row-test
+  (doseq [model [:model/Card :model/Dashboard]]
+    (testing (str model " embedded and never published")
+      (mt/with-temp [model {id :id} {:enable_embedding true}]
+        (t2/update! model :id id {:initially_published_at nil})
+        (testing "a plain update of another column fills it"
+          (t2/update! model :id id {:description "Changed"})
+          (is (some? (t2/select-one-fn :initially_published_at model :id id))))
+        (t2/update! model :id id {:initially_published_at nil})
+        (testing "an update through the write function fills it"
+          (update-rows! model [{:id id :description "Changed again"}])
+          (is (some? (t2/select-one-fn :initially_published_at model :id id))))))))
+
 (deftest first-embedding-statement-counts-do-not-grow-with-rows-test
   (let [published #t "2022-09-01T12:34:56Z"]
     (doseq [model [:model/Card :model/Dashboard]]
@@ -58,10 +71,12 @@
                        model {g :id} {}]
           (let [counted (fn [ids]
                           (let [rows (mapv (fn [id] {:id id :name (str "Renamed " (count ids)) :enable_embedding true}) ids)]
-                            (t2/update! model :id [:in ids] {:enable_embedding false})
-                            (t2/update! model :id [:in ids] {:initially_published_at nil})
-                            (t2/update! model :id [:in (take-nth 2 ids)] {:enable_embedding true})
-                            (t2/update! model :id [:in (take-nth 2 ids)] {:initially_published_at published})
+                            (doseq [id ids]
+                              (t2/update! model :id id {:enable_embedding false})
+                              (t2/update! model :id id {:initially_published_at nil}))
+                            (doseq [id (take-nth 2 ids)]
+                              (t2/update! model :id id {:enable_embedding true})
+                              (t2/update! model :id id {:initially_published_at published}))
                             (events.tu/statement-count! #(update-rows! model rows))))]
             (counted [g])
             (is (= (counted [a b]) (counted [a b c d e f])))

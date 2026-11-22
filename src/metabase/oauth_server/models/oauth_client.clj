@@ -29,11 +29,14 @@
   [row :- ::oauth-server.schema/oauth-client.create]
   (oauth-server.db/insert-oauth-client! row))
 
-(mu/defn update-oauth-client!
-  "Apply `changes` to the OAuthClient with primary key `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-oauth-clients!
+  "Apply `changes` to the OAuthClients with primary keys `ids`, returning the number updated; an empty `ids` updates
+  nothing."
+  [ids     :- [:sequential ms/PositiveInt]
    changes :- ::oauth-server.schema/oauth-client.update]
-  (oauth-server.db/update-oauth-client! id changes))
+  (if (seq ids)
+    (oauth-server.db/update-oauth-clients! ids changes)
+    0))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

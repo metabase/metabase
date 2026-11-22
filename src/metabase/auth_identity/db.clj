@@ -54,18 +54,11 @@
    provider :- :string]
   (mdb/select-or-insert! :model/AuthIdentity {:user_id user-id :provider provider} (constantly {})))
 
-(mu/defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-auth-identities!
+  "Apply `changes` to the AuthIdentities with `ids`, which must not be empty, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- ::auth-identity.schema/auth-identity.update]
-  (t2/update! :model/AuthIdentity :id [:auto/param id] changes))
-
-(mu/defn expire-auth-identities!
-  "Set the expiry of the AuthIdentities with `ids`, which must not be empty, to `expires-at`, returning the number
-  updated."
-  [ids        :- [:sequential ms/PositiveInt]
-   expires-at :- ms/TemporalInstant]
-  (t2/update! :model/AuthIdentity :id [:in [:auto/param ids]] {:expires_at expires-at}))
+  (t2/update! :model/AuthIdentity :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no

@@ -306,6 +306,6 @@
             (counted delete! 1)
             (is (= (counted delete! 2) (counted delete! 6)))))
         (testing "deleting the Permissions of objects"
-          (let [delete! (fn [created] (perms/create-permissions! created) (perms/delete-permissions-of-objects! (mapv :object created)))]
+          (let [delete! (fn [created] (perms/create-permissions! created) (perms/delete-permissions-for-objects! (mapv :object created)))]
             (counted delete! 1)
             (is (= (counted delete! 2) (counted delete! 6)))))))))

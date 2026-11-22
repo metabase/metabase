@@ -6,10 +6,12 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.revisions.sql :as revisions.sql]
@@ -20,6 +22,41 @@
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Exploration -----------------------------------------------
+
+(mu/defn archived-directly-clause :- :any
+  "The expression for the `archived_directly` of an Exploration that `changes` archives or restores: true when it is
+  archived and its Collection is not, false when it is restored."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:= ^:allow-subquery {:select [:parent.archived]
+                                 :from   [[:collection :parent]]
+                                 :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                          [:auto/param (:collection_id changes)]
+                                                          :exploration.collection_id)]}
+            true]
+     false
+     :else true]
+    [:inline false]))
+
+(mu/defn explorations-in-violation? :- :boolean
+  "Whether one of the Explorations with `ids` is not archived and is in an archived Collection."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/exists? :model/Exploration
+              {:where [:and
+                       [:in :id ids]
+                       [:not [:or
+                              [:= :exploration.archived true]
+                              (collections/not-archived-ok-clause :exploration :collection_id)]]]}))
+
+(mu/defn next-thread-position-clause :- :any
+  "The expression for the position after the last ExplorationThread of the Exploration with `exploration-id`, read
+  through a derived table because MySQL refuses a subquery on the table it inserts into."
+  [exploration-id :- ms/PositiveInt]
+  ^:allow-subquery {:select [[[:+ [:coalesce [:max :last.position] 0] 1]]]
+                    :from   [[^:allow-subquery {:select [:position]
+                                                :from   [:exploration_thread]
+                                                :where  [:= :exploration_id [:auto/param exploration-id]]}
+                              :last]]})
 
 (mu/defn exploration
   "The Exploration with `exploration-id`, or nil."
@@ -100,10 +137,14 @@
   (mdb/insert-returning-instances! :model/Exploration rows))
 
 (mu/defn update-explorations!
-  "Apply `changes` to the Explorations with `exploration-ids`, returning the number updated."
-  [exploration-ids :- [:sequential ms/PositiveInt]
-   changes         :- (mut/select-keys ::explorations.schema/exploration [:name :description :archived :archived_directly :collection_id :collection_position])]
-  (t2/update! :model/Exploration :id [:in exploration-ids] changes))
+  "Apply `changes` to the Explorations with `ids`, with one statement for each distinct set of columns that change in
+  them, returning nil."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::explorations.schema/exploration.update]
+  (let [stored (u/index-by :id (t2/select :model/Exploration :id [:in ids]))]
+    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
+      (t2/update! :model/Exploration :id [:in group] effective)))
+  nil)
 
 (mu/defn delete-explorations!
   "Delete the Explorations with `exploration-ids`, returning the number deleted."
@@ -184,13 +225,6 @@
   (t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
-
-(mu/defn last-thread-position
-  "The highest position among the ExplorationThreads of the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt]
-  (t2/select-one-fn :position :model/ExplorationThread
-                    :exploration_id exploration-id
-                    {:order-by [[:position :desc] [:id :desc]]}))
 
 (mu/defn lock-thread
   "The `:id` row of the ExplorationThread with `thread-id`, locked for update."

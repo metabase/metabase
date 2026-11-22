@@ -12,5 +12,5 @@
   (let [driver         (driver.u/database->driver database)
         default-schema (driver.sql/default-schema driver database)]
     (when-not (= default-schema (:default-schema database))
-      (database/update-databases! [{:id (:id database) :default_schema default-schema}]))
+      (database/update-databases! [(:id database)] {:default_schema default-schema}))
     {:default-schema default-schema}))

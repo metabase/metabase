@@ -3,7 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
@@ -12,6 +12,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -23,6 +24,32 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- parent-archived-clause
+  "The subquery for whether the row of `table` that the column `k` of the updated Document names is archived, the value of
+  `k` in `changes` when it gives one."
+  [changes table k]
+  ^:allow-subquery {:select [:parent.archived]
+                    :from   [[table :parent]]
+                    :where  [:= :parent.id (if (contains? changes k)
+                                             [:auto/param (get changes k)]
+                                             (keyword (str "document." (name k))))]})
+
+(mu/defn archived-directly-clause :- :any
+  "The expression for the `archived_directly` of a Document that `changes` archives or restores: true when it is
+  archived and neither its Collection nor its Exploration is, false when it is restored."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:or [:= (parent-archived-clause changes :collection :collection_id) true]
+            [:= (parent-archived-clause changes :exploration :exploration_id) true]]
+     false
+     :else true]
+    [:inline false]))
+
+(mu/defn collections-for-content-checks
+  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
 
 (mu/defn synced-documents-clause :- [:fn vector?]
   "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
@@ -77,10 +104,15 @@
   (mdb/insert-returning-instances! :model/Document rows))
 
 (mu/defn update-documents!
-  "Apply `changes` to the Documents with `ids`, returning the number updated."
+  "Apply `changes` to the Documents with `ids`, with one statement for each distinct set of columns that change in them,
+  returning nil."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::documents.schema/document.update :id)]
-  (t2/update! :model/Document :id [:in ids] changes))
+   changes :- ::documents.schema/document.update]
+  (let [stored (m/index-by :id (t2/select :model/Document :id [:in ids]))
+        rows   (mapv #(assoc changes :id %) ids)]
+    (doseq [[effective group] (mi/group-ids-by-changes stored rows)]
+      (t2/update! :model/Document :id [:in group] effective)))
+  nil)
 
 (mu/defn delete-documents!
   "Delete the Documents with `ids`, returning the number deleted."

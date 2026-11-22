@@ -105,4 +105,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (metabot-prompt/delete-metabot-prompts! (mapv :id (metabot.db/prompts-for-metabots [metabot-id]))))
+  (metabot-prompt/delete-metabot-prompts-for-metabots! [metabot-id]))

@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.field
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -58,20 +59,25 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
-(defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
+(defn- hierarchy-keyword-in
+  "The transform that validates a value of the Field column `column-name` against `ancestor-types`; a HoneySQL
+  expression, a vector, is passed through untouched, since a before-update hook writes the derived types as one."
+  [column-name & {:keys [ancestor-types]}]
   (fn [k]
-    (when-let [k (some-> k keyword)]
-      (when-not (some
-                 (partial isa? k)
-                 ancestor-types)
-        (let [message (tru "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
-                           (pr-str column-name) (pr-str k) (pr-str ancestor-types))]
-          (throw (ex-info message
-                          {:status-code       400
-                           :errors            {column-name message}
-                           :value             k
-                           :allowed-ancestors ancestor-types}))))
-      (u/qualified-name k))))
+    (if (vector? k)
+      k
+      (when-let [k (some-> k keyword)]
+        (when-not (some
+                   (partial isa? k)
+                   ancestor-types)
+          (let [message (tru "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
+                             (pr-str column-name) (pr-str k) (pr-str ancestor-types))]
+            (throw (ex-info message
+                            {:status-code       400
+                             :errors            {column-name message}
+                             :value             k
+                             :allowed-ancestors ancestor-types}))))
+        (u/qualified-name k)))))
 
 (defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
   (fn [s]
@@ -206,11 +212,31 @@
                      (coercion-changes field field))]
     (enforce-effective-type-invariant field)))
 
+;;; The before-update hook writes the types a Field takes from the columns an update changes as expressions the database
+;;; evaluates against the stored row, built by [[warehouse-schema.db/derived-types-clause]], so that every writer gets
+;;; them with no statement of the hook's own. [[enforce-effective-type-invariant]] and [[coercion-changes]] are what the
+;;; expressions must equal, row by row.
+
+(defn- with-derived-type-clauses
+  "`field`, an update, with the types its changes derive. MySQL and MariaDB evaluate the assignments of a statement left to
+  right, the later ones reading the columns the earlier ones set, so there the changes go back as a map in an order in
+  which the effective type, which reads the stored strategy, comes before the strategy that is cleared."
+  [field changes]
+  (let [derived (warehouse-schema.db/derived-types-clause changes)]
+    (if (and (= :mysql (mdb/db-type)) (contains? derived :coercion_strategy))
+      (let [all (merge changes derived)]
+        (apply array-map (concat [:effective_type (:effective_type all)]
+                                 (mapcat identity (dissoc all :effective_type :coercion_strategy))
+                                 [:coercion_strategy (:coercion_strategy all)])))
+      (merge field derived))))
+
 (t2/define-before-update :model/Field
   [field]
-  (when (contains? (t2/changes field) :table_id)
-    (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
-  field)
+  (let [changes (t2/changes field)]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+    (cond-> field
+      (seq changes) (with-derived-type-clauses changes))))
 
 (defn- check-permission-keys
   "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
@@ -435,17 +461,12 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-fk-targets
-  "Throws a 400 unless the `:fk_target_field_id` of each of `fields` is a Field of the Database of its Table, the
-  Databases of all of them read in two queries."
-  [fields]
-  (when (seq fields)
-    (let [target-database-ids (warehouse-schema.db/field-database-ids (into #{} (map :fk_target_field_id) fields))
-          table-database-ids  (warehouse-schema.db/table-database-ids (into #{} (map :table_id) fields))]
-      (doseq [{:keys [table_id fk_target_field_id]} fields]
-        (let [target-database-id (target-database-ids fk_target_field_id)]
-          (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
-          (api/checkp (= target-database-id (table-database-ids table_id))
-                      :fk_target_field_id (tru "Target field must belong to the same database")))))))
+  "Throw a 400 unless every Field with `ids` satisfies these rules:
+
+  - its foreign key target, if it has one, is a Field of the Database of its Table"
+  [ids]
+  (when (warehouse-schema.db/fk-target-in-violation? ids)
+    (throw (ex-info (tru "Target field must belong to the same database") {:status-code 400}))))
 
 (mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
   "Insert the Field `rows` and return the inserted instances, refusing a foreign key target outside the Database of a
@@ -454,8 +475,9 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (check-fk-targets (filter :fk_target_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-fields! rows))
+        (when (some :fk_target_field_id rows)
+          (check-fk-targets (mapv :id <>)))
         (events/publish-event! :event/field-create (events/create-event <>))))))
 
 (defmulti clear-for-deactivated-fields!
@@ -489,10 +511,12 @@
   "Publish the `:event/field-update` event of `changes`, `{id {:previous-object :object}}`, leaving out those that
   change nothing."
   [changes]
-  (events/publish-event! :event/field-update
-                         (events/update-event (update-vals changes :previous-object)
-                                              (mapv #(hash-map :id %) (keys changes))
-                                              {:objects (update-vals changes :object)})))
+  (when (seq changes)
+    (let [stored (u/index-by :id (warehouse-schema.db/fields (set (keys changes))))]
+      (events/publish-event! :event/field-update
+                             (events/update-event (update-vals changes :previous-object)
+                                                  (mapv #(hash-map :id %) (keys changes))
+                                                  {:objects (merge (update-vals changes :object) stored)})))))
 
 (defn- clear-fk-targets!
   "Clear the foreign keys to the Fields with `field-ids` in the Fields that target them, and their FK semantic type,
@@ -568,13 +592,10 @@
 
 (defn- update-fields-by-change!
   "Apply each of `rows`, the id of one of the `stored` Fields, `{id row}`, and the columns to change, with the types
-  [[with-derived-types]] adds, with one statement per distinct set of changes, returning the number updated."
-  [stored rows]
-  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) (mapv #(with-derived-types (get stored (:id %)) %) rows))
-                    :when (seq changes)]
-                (if (= 1 (count rows))
-                  (warehouse-schema.db/update-field! (:id (first rows)) changes)
-                  (warehouse-schema.db/update-fields! (mapv :id rows) changes)))))
+  [[with-derived-types]] adds; `fresh?` when the function read `stored` itself."
+  [stored rows fresh?]
+  (run! #(with-derived-types (get stored (:id %)) %) rows)
+  (warehouse-schema.db/update-fields! stored rows fresh?))
 
 (def ^:private write-batch-size
   "The most rows one statement of a bulk write of Fields carries, so that a write of the Fields of a large Database stays
@@ -592,7 +613,7 @@
 (defn- apply-field-updates!
   "Apply each of `rows`, the id of a Field and the columns to change, to the `stored` Fields, `{id row}`, and the changes
   that follow them, and publish their events, returning the number of Fields updated."
-  [stored rows]
+  [stored rows fresh?]
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
@@ -601,14 +622,13 @@
                             (contains? stored id)
                             (not= (get row k) (get-in stored [id k]))))
             merged   (fn [row] (merge (get stored (:id row)) row))]
-        (check-fk-targets (for [row rows
-                                :when (and (:fk_target_field_id row) (changes? row :fk_target_field_id))]
-                            (merged row)))
         (let [changes (deactivated! {} (into [] (comp (filter #(false? (:active %))) (map :id)) rows))]
           (dimension/rename-dimensions-for-fields!
            (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
           (let [changes (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
-            (u/prog1 (update-fields-by-change! stored rows)
+            (u/prog1 (update-fields-by-change! stored rows fresh?)
+              (when-let [ids (not-empty (into [] (comp (filter :fk_target_field_id) (map :id)) rows))]
+                (check-fk-targets ids))
               (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
                                                 (if-let [previous (stored id)]
                                                   (with-change changes previous (dissoc row :id))
@@ -622,19 +642,48 @@
   [:maybe [:map {:closed true}
            [:fields {:optional true} [:sequential ::warehouse-schema.schema/field]]]])
 
-(mu/defn update-fields! :- [:sequential ::warehouse-schema.schema/field.update]
-  "Apply each of `rows`, the id of a Field and the columns to change, and return them. Deactivating a Field clears
-  the foreign keys to it and the remappings that read it, a new display name renames its Dimension, and a change of
-  `json_unfolding` sets its nested Fields active or inactive. The stored rows are read once, unless the caller gives
-  them as `:fields`."
+(defn- update-field-rows!
+  "Apply each of `rows`, the id of a Field and the columns to change, in batches of [[write-batch-size]]: the stored
+  rows are read once, unless the caller gives them as `:fields`."
+  [rows {:keys [fields]}]
+  (let [stored (u/index-by :id fields)]
+    (doseq [batch (partition-all write-batch-size rows)]
+      (apply-field-updates! (stored-fields batch stored) batch (empty? fields)))))
+
+(mu/defn update-fields! :- [:sequential ::lib.schema.id/field]
+  "Apply `changes` to the Fields with `ids` and return `ids`. Deactivating a Field clears the foreign keys to it and the
+  remappings that read it, a new display name renames its Dimension, and a change of `json_unfolding` sets its nested
+  Fields active or inactive. The stored rows are read once, unless the caller gives them as `:fields`."
+  ([ids     :- [:sequential ::lib.schema.id/field]
+    changes :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
+   (update-fields! ids changes nil))
+  ([ids     :- [:sequential ::lib.schema.id/field]
+    changes :- (mut/dissoc ::warehouse-schema.schema/field.update :id)
+    opts    :- ::write-opts]
+   (update-field-rows! (mapv #(assoc changes :id %) ids) opts)
+   (vec ids)))
+
+(mu/defn update-fields-for-sync! :- [:sequential ::warehouse-schema.schema/field.update]
+  "Apply each of `rows`, the id of a Field and the columns to change, which differ for each Field of a sync, and return
+  them, with the same follow-up writes as [[update-fields!]]: one read and one statement per distinct set of changes."
   ([rows :- [:sequential ::warehouse-schema.schema/field.update]]
-   (update-fields! rows nil))
-  ([rows             :- [:sequential ::warehouse-schema.schema/field.update]
-    {:keys [fields]} :- ::write-opts]
-   (let [stored (u/index-by :id fields)]
-     (doseq [batch (partition-all write-batch-size rows)]
-       (apply-field-updates! (stored-fields batch stored) batch)))
+   (update-fields-for-sync! rows nil))
+  ([rows :- [:sequential ::warehouse-schema.schema/field.update]
+    opts :- ::write-opts]
+   (update-field-rows! rows opts)
    (vec rows)))
+
+(mu/defn update-fields-for-humanization!
+  "Apply each of `rows`, the id of a Field and its new display name, which differs for each Field of a setting that
+  rewrites them all: one read and one statement per distinct display name."
+  [rows :- [:sequential [:map [:id ::lib.schema.id/field] [:display_name :string]]]]
+  (update-field-rows! rows nil))
+
+(mu/defn update-fields-for-import!
+  "Apply each of `rows`, the id of a Field and the columns to change, one Field at a time."
+  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  (doseq [row rows]
+    (update-fields! [(:id row)] (dissoc row :id))))
 
 (mu/defn change-case!
   "Set each of `columns`, such as `:name`, of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper`
@@ -718,7 +767,7 @@
                                    (sort-by key)
                                    (mapv (comp set val))))))))
 
-(mu/defn delete-fields-of-databases! :- :nil
+(mu/defn delete-fields-for-databases! :- :nil
   "Delete the Fields of the Tables of the Databases with `database-ids`, as those Databases are deleted: the childless
   ones first, one statement per level of nesting, so that no Field is deleted before its children."
   [database-ids :- [:sequential ::lib.schema.id/database]]
@@ -734,7 +783,7 @@
 
 (defmethod database/delete-for-databases! :model/Field
   [_model databases]
-  (delete-fields-of-databases! (mapv :id databases)))
+  (delete-fields-for-databases! (mapv :id databases)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -775,7 +824,7 @@
    :entity-ref    warehouse-schema.serialization/field-entity-ref
    :storage-paths warehouse-schema.serialization/field-storage-paths
    :insert!       create-fields!
-   :update!       update-fields!
+   :update!       update-fields-for-import!
    :delete!       delete-fields!
    :rows-by-refs  serialization/field-rows-by-refs})
 

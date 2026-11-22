@@ -109,11 +109,11 @@
   [row :- ::oauth-server.schema/oauth-client.update]
   (t2/insert! :model/OAuthClient row))
 
-(mu/defn update-oauth-client!
-  "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
-  [id  :- ms/PositiveInt
-   row :- ::oauth-server.schema/oauth-client.update]
-  (t2/update! :model/OAuthClient :id id row))
+(mu/defn update-oauth-clients!
+  "Apply `changes` to the OAuthClients with primary keys `ids`, which must not be empty, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- ::oauth-server.schema/oauth-client.update]
+  (t2/update! :model/OAuthClient :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."

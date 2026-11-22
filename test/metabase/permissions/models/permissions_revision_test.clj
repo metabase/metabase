@@ -86,7 +86,7 @@
                                ids))
                         (events.tu/statement-count!
                          #(collection-permission-graph-revision/update-collection-permission-graph-revisions!
-                           (mapv (fn [id] {:id id :before {:groups {}} :after {1 {2 :read}}}) ids)))))]
+                           ids {:before {:groups {}} :after {1 {2 :read}}}))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))
 
@@ -98,8 +98,8 @@
         {:id (inc first-id) :before {:groups {1 {2 :read}}} :after "" :user_id (mt/user->id :crowberto)}])
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"once they are filled in"
                             (collection-permission-graph-revision/update-collection-permission-graph-revisions!
-                             [{:id first-id :before {:revision 1}} {:id (inc first-id) :before {:revision 2}}])))
+                             [first-id (inc first-id)] {:before {:revision 1}})))
       (is (empty? (t2/select-one-fn :before :model/CollectionPermissionGraphRevision :id first-id)))
       (collection-permission-graph-revision/update-collection-permission-graph-revisions!
-       [{:id first-id :before {:revision 1} :after {1 {2 :write}}}])
+       [first-id] {:before {:revision 1} :after {1 {2 :write}}})
       (is (= {:revision 1} (t2/select-one-fn :before :model/CollectionPermissionGraphRevision :id first-id))))))

@@ -36,14 +36,14 @@
           (let [keys     (repeatedly 2 #(api-key/create-api-key-with-new-user! {:key-name (mt/random-name)
                                                                                 :scope    :workspace-manager}))
                 accesses (mapv (comp access.tu/give-access! :user_id) keys)]
-            (is (= 2 (api-key/delete-api-keys-with-scope! :workspace-manager)))
+            (is (= 2 (api-key/delete-api-keys-for-scope! :workspace-manager)))
             (is (= [access.tu/revoked access.tu/revoked] (mapv access.tu/access-state accesses)))))))))
 
 (deftest failing-revocation-fails-deactivation-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-model-cleanup [:model/OAuthAccessToken]
       (let [access (access.tu/give-access! user-id)]
-        (mt/with-dynamic-fn-redefs [session.models/end-sessions! (fn [& _] (throw (ex-info "revocation failed" {})))]
+        (mt/with-dynamic-fn-redefs [session.models/end-sessions-for-users! (fn [& _] (throw (ex-info "revocation failed" {})))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"revocation failed"
                                 (user/update-users! [user-id] {:is_active false}))))
         (is (true? (t2/select-one-fn :is_active :model/User :id user-id))

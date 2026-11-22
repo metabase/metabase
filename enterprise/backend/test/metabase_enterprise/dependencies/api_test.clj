@@ -123,7 +123,7 @@
   [model-card]
   (let [mp (mt/metadata-provider)
         products (lib.metadata/table mp (mt/id :products))]
-    (card/update-cards! [{:id (:id model-card) :dataset_query (lib/query mp products)}])))
+    (card/update-cards! [(:id model-card)] {:dataset_query (lib/query mp products)})))
 
 (defn- run-analysis-for-card!
   "Run analysis for a specific card to detect broken references.
@@ -372,7 +372,7 @@
         (mt/with-temp [:model/User user {:email "test@test.com"}]
           (let [base-card (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (basic-card "Archived Base Card") :creator_id (:id user))])))
                 dependent-card (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (wrap-card base-card) :creator_id (:id user))])))]
-            (card/update-cards! [{:id (:id base-card) :archived true}])
+            (card/update-cards! [(:id base-card)] {:archived true})
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                                  :id (:id dependent-card)
@@ -393,7 +393,7 @@
         (mt/with-temp [:model/User user {:email "test@test.com"}]
           (let [base-card      (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (basic-card "Archived Base Card") :creator_id (:id user))])))
                 dependent-card (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (wrap-card base-card) :creator_id (:id user))])))]
-            (card/update-cards! [{:id (:id base-card) :archived true}])
+            (card/update-cards! [(:id base-card)] {:archived true})
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                                  :id (:id dependent-card)
@@ -415,7 +415,7 @@
         (mt/with-temp [:model/User user {:email "test@test.com"}]
           (let [base-card (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (basic-card "Base Card") :creator_id (:id user))])))
                 dependent-card (mt/with-current-user (:id user) (first (card/create-cards! [(assoc (wrap-card base-card) :creator_id (:id user))])))]
-            (card/update-cards! [{:id (:id dependent-card) :archived true}])
+            (card/update-cards! [(:id dependent-card)] {:archived true})
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                  :id (:id base-card)
@@ -968,7 +968,7 @@
                                   set))]
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :venues) action-id))
-            (action/update-actions! [{:id action-id :table_id (mt/id :categories)}])
+            (action/update-action! action-id {:table_id (mt/id :categories)} nil)
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :categories) action-id))
             (is (not (contains? (dependents :venues) action-id)))))))))
@@ -1841,7 +1841,7 @@
                         dependent-card-2 (create-dependent-card-on-model! user archived-model "Dependent of Archived - archivedbrokentestcard")]
                     [active-model archived-model dependent-card-1 dependent-card-2]))]
             ;; Archive the second model
-            (card/update-cards! [{:id (:id archived-model) :archived true}])
+            (card/update-cards! [(:id archived-model)] {:archived true})
             ;; Break both models
             (lib-be/with-metadata-provider-cache
               (break-model-card! active-model)
@@ -2705,7 +2705,7 @@
                         ;; Create model-2 as a model that depends on model-1
                         model-card-2-question (create-dependent-card-on-model! user model-card-1
                                                                                "Model 2 - transitivetest")
-                        model-card-2 (do (card/update-cards! [{:id (:id model-card-2-question) :type :model}])
+                        model-card-2 (do (card/update-cards! [(:id model-card-2-question)] {:type :model})
                                          (t2/select-one :model/Card :id (:id model-card-2-question)))
                         ;; Create card that depends on model-2
                         dependent-card (create-dependent-card-on-model! user model-card-2 "Card - transitivetest")]

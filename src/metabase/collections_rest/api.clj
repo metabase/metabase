@@ -336,7 +336,7 @@
               (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (let [updates {:dashboard_id (-> in_dashboards first :id)}]
                 (queries.card/place-updated-dashboard-question! card updates false)
-                (queries.card/update-cards! [(queries.card/update-card-row (:id card) updates)]))
+                (queries.card/update-cards! [(:id card)] (queries.card/card-changes updates)))
               (:id card))
             cards))))
 
@@ -630,8 +630,9 @@
                    "Personal collections cannot be deleted.")
     (t2/with-transaction [_conn]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (collection/update-collections! (mapv (fn [child] {:id (:id child) :location new-children-location})
-                                            (collections-rest.db/directly-archived-descendant-collections old-children-location)))
+      (collection/update-collections! (mapv :id (collections-rest.db/directly-archived-descendant-collections old-children-location))
+                                      {:location new-children-location}
+                                      nil)
       ;; Now we can safely delete this collection and anything left under it.
       (collection/delete-collections! [id])
       1)))

@@ -411,10 +411,12 @@
     (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
       (document/check-creating-document-cards! {:document ast :collection_id collection-id})
-      (let [created (document/create-document-with-cards! {:name                name
-                                                           :document            ast
-                                                           :collection_id       collection-id
-                                                           :collection_position collection_position})]
+      (let [created (t2/with-transaction [_conn]
+                      (documents/get-document
+                       (document/create-document-with-cards! {:name                name
+                                                              :document            ast
+                                                              :collection_id       collection-id
+                                                              :collection_position collection_position})))]
         (document-response created [] [])))))
 
 ;;; ------------------------------------------------------ Update --------------------------------------------------

@@ -8,11 +8,11 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.schema :as sso.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -38,6 +38,12 @@
   at their IdP; the SAML assertion's own validity window is the real freshness gate."
   (* 30 60))
 
+(t2/define-before-insert :model/SsoRelayState
+  [relay-state]
+  (cond-> relay-state
+    (not (contains? relay-state :expires_at))
+    (assoc :expires_at (sso.db/expires-at-clause ttl-seconds))))
+
 (defn relay-state-key?
   "Is `relay-state` one of our generated keys (vs. a legacy Base64-encoded continue URL)?"
   [relay-state]
@@ -62,7 +68,7 @@
   retried callback doesn't burn the key."
   [key]
   (when (relay-state-key? key)
-    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
+    (sso.db/unexpired-relay-state (hash-key key))))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
@@ -78,8 +84,7 @@
   (sso.db/insert-relay-state! {:id           (hash-key id)
                                :continue_url continue-url
                                :origin       origin
-                               :embedding    (boolean embedding?)
-                               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
+                               :embedding    (boolean embedding?)})
   id)
 
 (mu/defn delete-sso-relay-state! :- [:maybe :int]
@@ -90,10 +95,11 @@
   (when (relay-state-key? key)
     (sso.db/delete-relay-state! (hash-key key))))
 
-(mu/defn delete-expired-sso-relay-states! :- :int
-  "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
-  []
-  (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))
+(mu/defn delete-sso-relay-states-for-cleanup! :- :int
+  "Delete the RelayState entries expired at `cutoff` (abandoned logins that never came back). Returns the number
+  deleted."
+  [cutoff :- ms/TemporalInstant]
+  (sso.db/delete-relay-states-expired-at! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -217,38 +217,41 @@
   [:map {:closed true}
    [:context {:optional true} :metabase.events.schema/context]])
 
-(defn- update-api-key!
-  "Apply `row`, an `:id` and its changes, to its ApiKey, as [[update-api-keys!]] does, returning whether it exists."
-  [{id :id :as row} opts]
-  (let [changes                       (dissoc row :id)
-        {user-id :user_id :as stored} (api-keys.db/api-key id)
-        new-name                      (:name changes)
-        new-group-id                  (::api-keys/group-id changes)]
-    (when (and stored new-name (not= new-name (:name stored)))
-      (user/update-users! (user/user-ids-of-type [user-id] :api-key) {:first_name new-name :last_name ""} opts))
-    (when (and stored new-group-id)
-      (assert (= (api-keys.db/user-type user-id) :api-key)
-              "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
-      (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
-    (let [column-changes (cond-> (dissoc changes ::api-keys/group-id)
-                           new-group-id (assoc :updated_at (t/offset-date-time)))]
-      (when (seq column-changes)
-        (api-keys.db/update-api-key! id column-changes))
-      (when stored
-        (events/publish-event! :event/api-key-update
-                               (events/update-event {id stored} [(assoc column-changes :id id)] opts))
-        true))))
-
-(mu/defn update-api-keys! :- [:sequential ::api-keys.schema/api-key.update]
-  "Apply the `rows`, each an `:id` and its changes, to their ApiKeys and return the rows that exist, publishing the
-  events of the writes with `opts`; a new `:name` renames the User created for the key, and `::api-keys/group-id` moves
-  that User to the group with that id (besides All Users)."
-  ([rows :- [:sequential ::api-keys.schema/api-key.update]]
-   (update-api-keys! rows nil))
-  ([rows :- [:sequential ::api-keys.schema/api-key.update]
-    opts :- [:maybe ::write-opts]]
+(mu/defn update-api-keys! :- :nil
+  "Apply `changes` to the ApiKeys with `ids`, publishing the event of the write with `opts`; a new `:name` renames the
+  User created for each key, and `::api-keys/group-id` moves that User to the group with that id (besides All
+  Users)."
+  ([ids     :- [:sequential ::api-keys.schema/id]
+    changes :- ::api-keys.schema/api-key.update]
+   (update-api-keys! ids changes nil))
+  ([ids     :- [:sequential ::api-keys.schema/id]
+    changes :- ::api-keys.schema/api-key.update
+    opts    :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
-     (filterv #(update-api-key! % opts) rows))))
+     (let [stored       (if (seq ids) (u/index-by :id (api-keys.db/api-keys-by-ids (vec ids))) {})
+           ids          (into [] (comp (distinct) (filter stored)) ids)
+           new-name     (:name changes)
+           new-group-id (::api-keys/group-id changes)]
+       (when (seq ids)
+         (when new-name
+           (when-let [user-ids (not-empty (into [] (comp (map stored)
+                                                         (remove #(= new-name (:name %)))
+                                                         (keep :user_id))
+                                                ids))]
+             (user/update-users! (user/user-ids-of-type user-ids :api-key) {:first_name new-name :last_name ""} opts)))
+         (when new-group-id
+           (doseq [id ids
+                   :let [user-id (:user_id (stored id))]]
+             (assert (= (api-keys.db/user-type user-id) :api-key)
+                     "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
+             (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}])))
+         (let [column-changes (cond-> (dissoc changes ::api-keys/group-id)
+                                new-group-id (assoc :updated_at (t/offset-date-time)))]
+           (when (seq column-changes)
+             (api-keys.db/update-api-keys! ids column-changes))
+           (events/publish-event! :event/api-key-update
+                                  (events/update-event stored (mapv #(assoc column-changes :id %) ids) opts))))))
+   nil))
 
 (defn- deactivate-key-users!
   "Deactivate the api-key Users with `user-ids`, publishing the events of the writes with `opts`; keys without a user,
@@ -280,7 +283,7 @@
        (delete-stored-api-keys! (api-keys.db/api-keys-by-ids ids) opts)))
    nil))
 
-(mu/defn delete-api-keys-with-scope! :- :int
+(mu/defn delete-api-keys-for-scope! :- :int
   "Delete every ApiKey with `scope`, deactivating the Users created for them and publishing the events of the writes,
   and return the number deleted."
   [scope :- ::api-keys.schema/scope]
@@ -324,10 +327,9 @@
   (let [api-key-before (api-keys.db/api-key id)
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
-    (update-api-keys! [{:id            id
-                        :key           (hash-bcrypt new-key (:scope api-key-before))
-                        :key_prefix    new-prefix
-                        :updated_by_id api/*current-user-id*}])
+    (update-api-keys! [id] {:key           (hash-bcrypt new-key (:scope api-key-before))
+                            :key_prefix    new-prefix
+                            :updated_by_id api/*current-user-id*})
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))

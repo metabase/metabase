@@ -176,6 +176,34 @@
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
+(defn- questions-to-unarchive
+  "The ids of the dashboard questions of the Dashboard `dashboard-id` that `new-cards` name."
+  [dashboard-id new-cards]
+  (set/intersection (dashboards.db/internal-dashboard-question-ids dashboard-id) (into #{} (map :card_id) new-cards)))
+
+(defn- questions-to-archive
+  "The ids of the dashboard questions of the Dashboard `dashboard-id` that `new-cards` do not name."
+  [dashboard-id new-cards]
+  (set/difference (dashboards.db/internal-dashboard-question-ids dashboard-id) (into #{} (map :card_id) new-cards)))
+
+(defn- check-questions-updatable!
+  "Throws a 403 unless the current user may set `archived` of each of the Cards among `card-ids` that it changes."
+  [card-ids archived?]
+  (when (seq card-ids)
+    (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived (vec card-ids) archived?) {:archived archived?}))))
+
+(defn check-unarchive-internal-dashboard-questions!
+  "Throws a 403 unless the current user may unarchive the dashboard questions that [[unarchive-internal-dashboard-questions!]]
+  unarchives for `dashboard-id` and `new-cards`."
+  [dashboard-id new-cards]
+  (check-questions-updatable! (questions-to-unarchive dashboard-id new-cards) false))
+
+(defn check-archive-internal-dashboard-questions!
+  "Throws a 403 unless the current user may archive the dashboard questions that [[archive-internal-dashboard-questions!]]
+  archives for `dashboard-id` and `new-cards`."
+  [dashboard-id new-cards]
+  (check-questions-updatable! (questions-to-archive dashboard-id new-cards) true))
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mi/define-batched-hydration-method series
@@ -410,28 +438,19 @@
     (dashboards.db/delete-dashcards! (vec dashboard-card-ids)))
   nil)
 
-(defn- set-questions-archived!
-  "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
-  [card-ids archived?]
-  (let [cards (dashboards.db/cards-to-set-archived card-ids archived?)]
-    (api/check-403 (mi/can-update-each? :model/Card cards {:archived archived?}))
-    (card/update-cards! (mapv (fn [{:keys [id]}] {:id id :archived archived?}) cards))))
-
 (defn unarchive-internal-dashboard-questions!
   "Unarchives the dashboard questions of the Dashboard `dashboard-id` that appear in `new-cards`, the dashcards about to be
   saved, which come before the dashcards that name them."
   [dashboard-id new-cards]
-  (let [used-card-ids (into #{} (map :card_id) new-cards)]
-    (when-let [ids (seq (set/intersection (dashboards.db/internal-dashboard-question-ids dashboard-id) used-card-ids))]
-      (set-questions-archived! (vec ids) false))))
+  (when-let [ids (seq (questions-to-unarchive dashboard-id new-cards))]
+    (card/update-cards! (mapv :id (dashboards.db/cards-to-set-archived (vec ids) false)) {:archived false})))
 
 (defn archive-internal-dashboard-questions!
   "Archives the dashboard questions of the Dashboard `dashboard-id`, which are internal to it and not displayed as part of a
   collection, that no card of `new-cards`, the dashcards saved, names, which come after the dashcards that named them."
   [dashboard-id new-cards]
-  (let [used-card-ids (into #{} (map :card_id) new-cards)]
-    (when-let [ids (seq (set/difference (dashboards.db/internal-dashboard-question-ids dashboard-id) used-card-ids))]
-      (set-questions-archived! (vec ids) true))))
+  (when-let [ids (seq (questions-to-archive dashboard-id new-cards))]
+    (card/update-cards! (mapv :id (dashboards.db/cards-to-set-archived (vec ids) true)) {:archived true})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

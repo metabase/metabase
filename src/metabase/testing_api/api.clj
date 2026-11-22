@@ -261,7 +261,7 @@
       "dashboard" (dashboard/set-last-viewed-at! id date)
       "document"  (document/set-last-viewed-at! id date)
       "transform" (do
-                    (transform/update-transforms! [{:id id :created_at date}])
+                    (transform/update-transforms! [id] {:created_at date})
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
                     (transform-run/set-run-times! id date))

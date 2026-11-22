@@ -17,9 +17,8 @@
    [:user_attribute {:optional true} ::database-router.user-attribute]])
 
 (mr/def ::database-router.update
-  "What an update of a DatabaseRouter takes: its `:id` and the columns to set."
+  "The changes an update applies to each of its DatabaseRouters: the columns to set."
   [:map {:closed true}
-   [:id             ms/PositiveInt]
    [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
    [:user_attribute {:optional true} ::database-router.user-attribute]])
 

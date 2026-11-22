@@ -2,10 +2,10 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -54,10 +54,13 @@
   (app-db/insert-returning-instances! :model/PythonLibrary rows))
 
 (mu/defn update-python-libraries!
-  "Apply `changes` to the PythonLibraries with `library-ids`."
-  [library-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- (mut/dissoc ::transforms-python.schema/python-library.update :id)]
-  (t2/update! :model/PythonLibrary :id [:in [:auto/param library-ids]] changes)
+  "Apply `changes` to the PythonLibraries of `stored`, a map from id to the library as read, with one statement for the
+  rows that get the same effective changes, which keeps the rows that already hold some of the values from making
+  Toucan run one statement per row."
+  [stored  :- [:map-of ms/PositiveInt :map]
+   changes :- ::transforms-python.schema/python-library.update]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+    (t2/update! :model/PythonLibrary :id [:in [:auto/param ids]] changes))
   nil)
 
 (mu/defn python-libraries-by-ids

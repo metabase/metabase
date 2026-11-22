@@ -28,7 +28,7 @@
   (transforms.db/insert-job-tag-links! rows)
   nil)
 
-(mu/defn update-transform-job-transform-tags! :- :nil
+(mu/defn update-transform-job-transform-tags-for-job! :- :nil
   "Give the TransformJobTransformTags linking the TransformJob with `job-id` to the tags in `positions`, a map from tag
   id to position, their positions."
   [job-id    :- ms/PositiveInt
@@ -37,7 +37,7 @@
     (transforms.db/update-job-tag-link-positions! job-id positions))
   nil)
 
-(mu/defn delete-transform-job-transform-tags! :- :nil
+(mu/defn delete-transform-job-transform-tags-for-job! :- :nil
   "Delete the TransformJobTransformTags linking the TransformJob with `job-id` to the tags with `tag-ids`."
   [job-id  :- ms/PositiveInt
    tag-ids :- [:set ::lib.schema.id/transform-tag]]

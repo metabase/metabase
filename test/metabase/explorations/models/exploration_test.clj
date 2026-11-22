@@ -221,10 +221,10 @@
                         (doseq [id ids]
                           (t2/insert! :model/Document (assoc (mt/with-temp-defaults :model/Document) :exploration_id id :collection_id live)))
                         ids))
-            update! (fn [prepare rows-fn n]
+            update! (fn [prepare changes n]
                       (let [ids (fresh! n)]
                         (prepare (take-nth 2 ids))
-                        (events.tu/statement-count! #(exploration/update-explorations! (rows-fn ids)))))
+                        (events.tu/statement-count! #(exploration/update-explorations! ids changes))))
             counted (fn [f]
                       (f 1)
                       (is (= (f 2) (f 6))))]
@@ -232,19 +232,66 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+                            (fn [ids] (exploration/update-explorations! ids {:description "Same"}))
+                            {:description "Same"})))
         (testing "archiving explorations and their summary documents, some already archived"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+                            (fn [ids] (exploration/update-explorations! ids {:archived true}))
+                            {:archived true})))
         (testing "restoring explorations and their summary documents, some already live"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+                            (fn [ids] (exploration/update-explorations! ids {:archived true}))
+                            {:archived false})))
         (testing "moving explorations, some already in the Collection"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids)))))
+                            (fn [ids] (exploration/update-explorations! ids {:collection_id other}))
+                            {:collection_id other})))
         (testing "deleting explorations"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))
+
+(deftest archived-directly-follows-collection-through-plain-update-test
+  (testing "a plain t2/update! of archived derives archived_directly in the statement from the Collection"
+    (mt/with-temp [:model/Collection {live :id}     {}
+                   :model/Collection {archived :id} {:archived true}
+                   :model/Exploration {a :id} {:collection_id live}
+                   :model/Exploration {b :id} {:collection_id archived}]
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived true})
+      (is (= [true false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b])))
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived false})
+      (is (= [false false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b]))))))
+
+(deftest unarchived-exploration-in-archived-collection-is-refused-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Collection {live-id :id}     {}
+                 :model/Exploration {id :id}         {:collection_id live-id}]
+    (let [creator-id (mt/user->id :rasta)
+          stored     #(t2/select-one-fn :collection_id :model/Exploration :id id)]
+      (testing "creating one unarchived in an archived Collection throws a 400 and writes nothing"
+        (let [before (t2/count :model/Exploration)]
+          (is (= 400 (try (exploration/create-explorations! [{:name "Refused" :creator_id creator-id :collection_id archived-id}])
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (is (= before (t2/count :model/Exploration)))))
+      (testing "moving one into an archived Collection throws a 400 and leaves it where it is"
+        (is (= 400 (try (exploration/update-explorations! [id] {:collection_id archived-id})
+                        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+        (is (= live-id (stored))))
+      (testing "an archived Exploration may go into an archived Collection"
+        (exploration/update-explorations! [id] {:archived true :collection_id archived-id})
+        (is (= archived-id (stored)))))))
+
+(deftest refused-exploration-write-rolls-back-to-its-savepoint-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Collection {live-id :id}     {}]
+    (let [creator-id (mt/user->id :rasta)
+          kept-name  (mt/random-name)
+          refused    (mt/random-name)]
+      (try
+        (t2/with-transaction [_]
+          (is (= 400 (try (exploration/create-explorations! [{:name refused :creator_id creator-id :collection_id archived-id}])
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (exploration/create-explorations! [{:name kept-name :creator_id creator-id :collection_id live-id}]))
+        (testing "the refused row is gone and the later write of the caller is kept"
+          (is (zero? (t2/count :model/Exploration :name refused)))
+          (is (= 1 (t2/count :model/Exploration :name kept-name))))
+        (finally
+          (t2/delete! :model/Exploration :name [:in [refused kept-name]]))))))

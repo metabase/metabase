@@ -11,6 +11,7 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -32,6 +33,14 @@
           :where  [:and
                    [:= :wr.id :transform_run_cancelation.run_id]
                    :wr.is_active]}]])
+
+(defn- update-grouped!
+  "Apply to each row of `stored`, a map from id to the `model` row as read, the changes in `id->changes`, with one
+  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
+  from making Toucan run one statement per row."
+  [model stored id->changes]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! model :id [:in [:auto/param ids]] changes)))
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
@@ -102,10 +111,10 @@
   (mdb/insert-returning-instances! :model/Transform rows))
 
 (mu/defn update-transforms! :- :nil
-  "Apply `changes` to the Transforms with `transform-ids`."
-  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]
-   changes       :- (mut/dissoc ::transforms.schema/transform.update :id)]
-  (t2/update! :model/Transform :id [:in [:auto/param transform-ids]] changes)
+  "Apply to each Transform of `stored`, a map from id to the Transform as read, its changes in `id->changes`."
+  [stored      :- [:map-of ::lib.schema.id/transform :map]
+   id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.update]]
+  (update-grouped! :model/Transform stored id->changes)
   nil)
 
 (mu/defn delete-transforms! :- :nil
@@ -160,11 +169,21 @@
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-tag.create]]
   (mdb/insert-returning-instances! :model/TransformTag rows))
 
+(mu/defn built-in-value-clause :- [:fn vector?]
+  "The expression that keeps `column`, a column of a TransformTag or TransformJob, of a custom row and gives a built-in
+  row the value in `built-in-values`, a map from `built_in_type` to its translated value, the same expression for every
+  row."
+  [column          :- :keyword
+   built-in-values :- [:map-of :string :string]]
+  (into [:case]
+        (concat (mapcat (fn [[built-in-type value]] [[:= :built_in_type built-in-type] value]) built-in-values)
+                [:else column])))
+
 (mu/defn update-tags! :- :nil
-  "Apply `changes` to the TransformTags with `tag-ids`."
-  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- (mut/dissoc ::transforms.schema/transform-tag.update :id)]
-  (t2/update! :model/TransformTag :id [:in [:auto/param tag-ids]] changes)
+  "Apply `changes` to the TransformTags of `stored`, a map from id to the tag as read."
+  [stored  :- [:map-of ms/PositiveInt :map]
+   changes :- ::transforms.schema/transform-tag.update]
+  (update-grouped! :model/TransformTag stored (update-vals stored (constantly changes)))
   nil)
 
 (mu/defn delete-tags! :- :nil
@@ -267,10 +286,10 @@
   (mdb/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil
-  "Apply `changes` to the TransformJobs with `job-ids`."
-  [job-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
-  (t2/update! :model/TransformJob :id [:in [:auto/param job-ids]] changes)
+  "Apply `changes` to the TransformJobs of `stored`, a map from id to the job as read."
+  [stored  :- [:map-of ms/PositiveInt :map]
+   changes :- ::transforms.schema/transform-job.update]
+  (update-grouped! :model/TransformJob stored (update-vals stored (constantly changes)))
   nil)
 
 (mu/defn delete-jobs! :- :nil
@@ -289,19 +308,11 @@
   [job-ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
 
-(mu/defn activate-job!
-  "Mark the inactive TransformJob with `job-id` active, with the other columns of `changes`, returning the number of rows
-  updated."
+(mu/defn flip-job-active! :- :int
+  "Mark the TransformJob with `job-id`, which is not `active?` yet, `active?`, returning the number of rows updated."
   [job-id  :- ms/PositiveInt
-   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
-  (t2/update! :model/TransformJob {:id job-id, :active false} (assoc changes :active true)))
-
-(mu/defn deactivate-job!
-  "Mark the active TransformJob with `job-id` inactive, with the other columns of `changes`, returning the number of rows
-  updated."
-  [job-id  :- ms/PositiveInt
-   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
-  (t2/update! :model/TransformJob {:id job-id, :active true} (assoc changes :active false)))
+   active? :- :boolean]
+  (t2/update! :model/TransformJob {:id job-id, :active (not active?)} {:active active?}))
 
 (mu/defn job-tag-ids
   "The IDs of the tags of the TransformJob with `job-id`."
@@ -1002,6 +1013,33 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
+
+(mu/defn transforms-in-violation? :- :boolean
+  "Whether one of the Transforms with `transform-ids` is in a Collection outside the transforms namespace, or writes to
+  a Database that is the sample or an audit Database or a destination of database routing, in one statement."
+  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
+  (boolean
+   (seq (t2/query {:select [[1 :violation]]
+                   :from   [[:transform :t]]
+                   :where  [:and
+                            [:in :t.id [:auto/param transform-ids]]
+                            [:or
+                             [:exists ^:allow-subquery {:select [1]
+                                                        :from   [[:collection :c]]
+                                                        :where  [:and
+                                                                 [:= :c.id :t.collection_id]
+                                                                 [:or
+                                                                  [:= :c.namespace nil]
+                                                                  [:not= :c.namespace "transforms"]]]}]
+                             [:exists ^:allow-subquery {:select [1]
+                                                        :from   [[:metabase_database :d]]
+                                                        :where  [:and
+                                                                 [:= :d.id :t.target_db_id]
+                                                                 [:or
+                                                                  [:= :d.is_sample true]
+                                                                  [:= :d.is_audit true]
+                                                                  [:not= :d.router_database_id nil]]]}]]]
+                   :limit  1}))))
 
 (mu/defn collections-for-content-checks :- [:sequential :map]
   "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."

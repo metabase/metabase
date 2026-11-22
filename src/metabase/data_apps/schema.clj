@@ -126,10 +126,9 @@
    [:preview ::data-app-preview]])
 
 (mr/def ::data-app.update
-  "What an update of a DataApp takes, as a caller gives it, before the hooks of the model normalize it: its `:id` and the
-  columns to change. The boundary of a write validates the values."
+  "What an update of a DataApp takes, as a caller gives it, before the hooks of the model normalize it: the columns to
+  change. The boundary of a write validates the values."
   [:map {:closed true}
-   [:id                     ms/PositiveInt]
    [:entity_id              {:optional true} [:maybe :string]]
    [:slug                   {:optional true} :string]
    [:name                   {:optional true} :string]
@@ -143,11 +142,18 @@
    [:version                {:optional true} [:maybe :int]]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
+(mr/def ::data-app.update-row
+  "What an update of a DataApp takes per row: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::data-app.update])
+
 (mr/def ::data-app.create
   "What creating a DataApp takes, as a caller gives it, before the hooks of the model normalize it: the columns of an
   update without the `:id`, and the slug, name and bundle path."
   [:merge
-   (mut/dissoc ::data-app.update :id)
+   ::data-app.update
    [:map
     [:slug        :string]
     [:name        :string]

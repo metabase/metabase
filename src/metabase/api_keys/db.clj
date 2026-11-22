@@ -6,6 +6,8 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -107,11 +109,14 @@
    [:updated_by_id {:optional true} pos-int?]
    [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
 
-(mu/defn update-api-key!
-  "Apply `changes` to the ApiKey with `id`."
-  [id      :- ms/PositiveInt
+(mu/defn update-api-keys!
+  "Apply `changes` to the ApiKeys with `ids`, one statement for each set of the changes that differ from the stored
+  rows, so that rows already holding one of the values do not make Toucan update row by row."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- ::api-key-columns.update]
-  (t2/update! :model/ApiKey :id id changes))
+  (let [stored (u/index-by :id (t2/select :model/ApiKey :id [:in [:auto/param (vec (distinct ids))]]))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
+      (t2/update! :model/ApiKey :id [:in [:auto/param ids]] changes))))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

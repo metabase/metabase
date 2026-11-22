@@ -305,27 +305,24 @@
         (soft-delete-messages! {:id delete-message-ids} originator-id))
       (metabot-conversation/upsert-metabot-conversation!
        conversation-id
-       (fn [existing]
-         ;; `:user_id` is the originator — set on insert, never overwritten.
-         (cond-> {}
-           (nil? existing)
-           (assoc :user_id originator-id)
-           (and hostname (nil? (:embedding_hostname existing)))
-           (assoc :embedding_hostname hostname)
-           (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
-           (assoc :embedding_path (:embedding_path pii-info))
-           (and (:user_agent pii-info) (nil? (:user_agent existing)))
-           (assoc :user_agent (:user_agent pii-info))
-           (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
-           (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
-           (and (:ip_address pii-info) (nil? (:ip_address existing)))
-           (assoc :ip_address (:ip_address pii-info))
-           (and slack-team-id (nil? (:slack_team_id existing)))
-           (assoc :slack_team_id slack-team-id)
-           (and channel-id (nil? (:slack_channel_id existing)))
-           (assoc :slack_channel_id channel-id)
-           (and slack-thread-ts (nil? (:slack_thread_ts existing)))
-           (assoc :slack_thread_ts slack-thread-ts))))
+       originator-id
+       (cond-> {}
+         hostname
+         (assoc :embedding_hostname hostname)
+         (:embedding_path pii-info)
+         (assoc :embedding_path (:embedding_path pii-info))
+         (:user_agent pii-info)
+         (assoc :user_agent (:user_agent pii-info))
+         (:sanitized_user_agent pii-info)
+         (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
+         (:ip_address pii-info)
+         (assoc :ip_address (:ip_address pii-info))
+         slack-team-id
+         (assoc :slack_team_id slack-team-id)
+         channel-id
+         (assoc :slack_channel_id channel-id)
+         slack-thread-ts
+         (assoc :slack_thread_ts slack-thread-ts)))
       (metabot-message/create-metabot-messages!
        [(cond-> {:conversation_id conversation-id
                  :data            [{:type "text" :text (:content user-message)}]
@@ -441,8 +438,8 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
-                                                        :data           content
+    (metabot-message/update-metabot-messages! [assistant-msg-id]
+                                                     (cond-> {:data           content
                                                         :data_version   schema.v2/current-data-version
                                                         :usage          usage
                                                         :total_tokens   (->> (vals usage)
@@ -462,7 +459,7 @@
                                                  channel-id   (assoc :channel_id channel-id)
                                                  ;; Set only on a full turn, so every other row keeps NULL.
                                                  (filled-context-window? finish-reason context-tokens context-window-tokens)
-                                                 (assoc :context_window_full true))])
+                                                 (assoc :context_window_full true)))
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -601,7 +598,7 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (metabot-message/update-metabot-messages! [{:id msg-id :slack_msg_id slack-msg-id}])))
+    (metabot-message/update-metabot-messages! [msg-id] {:slack_msg_id slack-msg-id})))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."

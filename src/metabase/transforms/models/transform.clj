@@ -156,48 +156,6 @@
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
-;;; -------------------------------------------------- Operations --------------------------------------------------
-
-(mu/defn update-transform-tags! :- :nil
-  "Update the tags associated with a transform using smart diff logic. Only modifies what has changed: deletes removed
-  tags, updates positions for moved tags, and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-  [transform-id :- [:maybe ::lib.schema.id/transform]
-   tag-ids      :- [:sequential ms/PositiveInt]]
-  (when transform-id
-    (t2/with-transaction [_conn]
-      (let [;; Deduplicate while preserving order of first occurrence
-            deduped-tag-ids      (vec (distinct tag-ids))
-            ;; Get current associations
-            current-associations (transforms.db/transform-tag-links [transform-id])
-            current-tag-ids      (mapv :tag_id current-associations)
-            ;; Validate that new tag IDs exist
-            valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
-            ;; Filter to only valid tags, preserving order
-            new-tag-ids          (if valid-tag-ids
-                                   (filterv valid-tag-ids deduped-tag-ids)
-                                   [])
-            ;; Calculate what needs to change
-            current-set          (set current-tag-ids)
-            new-set              (set new-tag-ids)
-            to-delete            (set/difference current-set new-set)
-            to-insert            (set/difference new-set current-set)
-            ;; Build position map for new ordering
-            new-positions        (zipmap new-tag-ids (range))]
-        ;; Delete removed associations
-        (when (seq to-delete)
-          (transform-transform-tag/delete-transform-transform-tags! transform-id to-delete))
-        ;; Update positions for existing tags that moved
-        (transform-transform-tag/update-transform-transform-tags! transform-id (select-keys new-positions current-set))
-        ;; Insert new associations with correct positions
-        (when (seq to-insert)
-          (transform-transform-tag/create-transform-transform-tags!
-           (for [tag-id to-insert]
-             {:transform_id transform-id
-              :tag_id       tag-id
-              :position     (get new-positions tag-id)})))))
-    nil))
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (mr/def ::instance
@@ -431,38 +389,29 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defenterprise delete-transform-tests!
+(defenterprise delete-transform-tests-for-transforms!
   "Deletes the tests of the transforms with `transform-ids` through their model, which publishes a delete event for each
   and sets the test id of their runs to nil, as a database cascade would not; a no-op in OSS."
   metabase-enterprise.data-testing.models
   [_transform-ids]
   nil)
 
-(defn- check-collections!
-  "Throws unless each Collection with `collection-ids` can hold Transforms."
+(defn- check-allowed-content!
+  "Throws unless each Collection with `collection-ids` can hold the content of Transforms."
   [collection-ids]
-  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks collection-ids))]
-      (doseq [collection-id collection-ids
-              :let [collection (or (collections collection-id) (collection/content-parent collection-id))]]
-        (collection/check-collection-namespace :model/Transform collection)
-        (collection/check-allowed-content :model/Transform collection)))))
+  (doseq [collection-id (into [] (comp (remove nil?) (distinct)) collection-ids)]
+    (collection/check-allowed-content :model/Transform (collection/content-parent collection-id))))
 
-(defn- check-target-databases!
-  "Throws a 400 unless each Database with `database-ids` can hold the tables of a transform."
-  [database-ids]
-  (let [database-ids (into [] (comp (remove nil?) (distinct)) database-ids)
-        id->database (u/index-by :id (when (seq database-ids) (transforms.db/databases-by-ids database-ids)))]
-    (doseq [database-id database-ids
-            :let        [database (id->database database-id)]]
-      (when-not database
-        (throw (ex-info (tru "The target database cannot be found.") {:status-code 400})))
-      (when (:is_sample database)
-        (throw (ex-info (tru "Cannot run transforms on the sample database.") {:status-code 400})))
-      (when (:is_audit database)
-        (throw (ex-info (tru "Cannot run transforms on audit databases.") {:status-code 400})))
-      (when (:router_database_id database)
-        (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
+(defn- check-transforms
+  "Throw a 400 unless every Transform with `ids` satisfies these rules:
+
+  - its Collection, when it has one, is in the transforms namespace
+  - its target Database, when it has one, is not the sample Database, an audit Database or a destination of database
+    routing"
+  [ids]
+  (when (transforms.db/transforms-in-violation? ids)
+    (throw (ex-info (tru "A transform must be in a collection of the transforms namespace and write to a database that is not the sample database, an audit database or a destination of database routing.")
+                    {:status-code 400}))))
 
 (defn- check-cycles!
   "Throws a 400 for the first of the query transforms among `transforms` that has become part of a cycle of transforms
@@ -513,31 +462,64 @@
                          changes)])))
           changes-by-id)))
 
+(mu/defn- replace-tags! :- :boolean
+  "Make the TransformTags linked to the Transform with `transform-id` those of `tag-ids`, in that order, with smart diff
+  logic: deletes removed tags, updates positions for moved tags, and inserts new tags. Duplicate and unknown tag ids
+  are left out. Returns whether the tags changed."
+  [transform-id :- ::lib.schema.id/transform
+   tag-ids      :- [:sequential ms/PositiveInt]]
+  (let [deduped-tag-ids      (vec (distinct tag-ids))
+        current-associations (transforms.db/transform-tag-links [transform-id])
+        current-tag-ids      (mapv :tag_id current-associations)
+        valid-tag-ids        (when (seq deduped-tag-ids)
+                               (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
+        new-tag-ids          (if valid-tag-ids
+                               (filterv valid-tag-ids deduped-tag-ids)
+                               [])
+        current-set          (set current-tag-ids)
+        new-set              (set new-tag-ids)
+        to-delete            (set/difference current-set new-set)
+        to-insert            (set/difference new-set current-set)
+        new-positions        (zipmap new-tag-ids (range))]
+    (when (seq to-delete)
+      (transform-transform-tag/delete-transform-transform-tags-for-transform! transform-id to-delete))
+    (transform-transform-tag/update-transform-transform-tags-for-transform! transform-id (select-keys new-positions current-set))
+    (when (seq to-insert)
+      (transform-transform-tag/create-transform-transform-tags!
+       (for [tag-id to-insert]
+         {:transform_id transform-id
+          :tag_id       tag-id
+          :position     (get new-positions tag-id)})))
+    (not= current-tag-ids new-tag-ids)))
+
 (mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
-  "Insert the Transform `rows` in one transaction, publishing their create event, and return the inserted transforms.
+  "Insert the Transform `rows` in one transaction, linking the `:tag_ids` of each, publishing their create event, and
+  return the inserted transforms.
   Throws unless the Collection of each can hold Transforms and its target Database can hold the tables of a transform."
   [rows :- [:sequential ::transforms.schema/transform.create]]
   (if (seq rows)
-    (do (check-collections! (map :collection_id rows))
-        (check-target-databases! (map (comp :target_db_id derived-columns) rows))
+    (do (check-allowed-content! (map :collection_id rows))
         (t2/with-transaction [_conn]
-          (let [transforms (transforms.db/insert-transforms! rows)]
+          (let [transforms (transforms.db/insert-transforms! (mapv #(dissoc % :tag_ids) rows))]
+            (check-transforms (mapv :id transforms))
+            (doseq [[transform {:keys [tag_ids]}] (map vector transforms rows)
+                    :when                         (seq tag_ids)]
+              (replace-tags! (:id transform) tag_ids))
             (events/publish-event! :event/transform-create (events/create-event transforms))
             transforms)))
     []))
 
-(defn- check-update-group!
-  "Run the checks of an update that gives the Transforms with `ids`, whose stored rows are in `stored` and whose
-  requested changes are in `requested`, the changes `changes`, before it is written: the new Collection and the target
-  Database can hold Transforms, the new definition of a query transform causes no cycle, and the index requests of a
-  changed definition are marked for revalidation."
-  [ids stored requested changes]
+(defn- check-update!
+  "Run the checks of an update that gives the Transforms with `ids`, whose stored rows are in `stored`, the `changes`,
+  `resolved` being the changes of each id with the Field ids of its merge unique key, before it is written: the new
+  Collection can hold the content of Transforms, the new definition of a query transform causes no cycle, and the index
+  requests of a changed definition are marked for revalidation."
+  [ids stored changes resolved]
   (when (and (contains? changes :collection_id)
              (some #(not= (:collection_id (stored %)) (:collection_id changes)) ids))
-    (check-collections! [(:collection_id changes)]))
-  (when-let [changed (not-empty (filterv #(definition-columns-changed? (stored %) (requested %)) ids))]
-    (let [definitions (mapv #(let [merged (merge (stored %) changes)] (merge merged (derived-columns merged))) changed)]
-      (check-target-databases! (map :target_db_id definitions))
+    (check-allowed-content! [(:collection_id changes)]))
+  (when-let [changed (not-empty (filterv #(definition-columns-changed? (stored %) changes) ids))]
+    (let [definitions (mapv #(let [merged (merge (stored %) (resolved %))] (merge merged (derived-columns merged))) changed)]
       (check-cycles! definitions)
       (table-index/mark-for-revalidation! changed))))
 
@@ -560,32 +542,80 @@
         (and (definition-columns-changed? stored changes) old-field-id (not= old-field-id new-field-id)))
       (assoc :last_checkpoint_value nil))))
 
-(mu/defn update-transforms! :- [:sequential ::transforms.schema/transform.update]
-  "Apply the changes in each of `rows`, the id of a Transform and the columns to change, in one transaction, with one
-  statement per distinct change set, publishing their update event. Before each statement, throws unless the new
-  Collection and target Database can hold Transforms and the new definition of a query transform causes no cycle,
-  marks the index requests of a changed definition for revalidation, and fills the Field ids of a merge unique key once
-  its target table exists. Returns `rows`."
-  ([rows :- [:sequential ::transforms.schema/transform.update]]
-   (update-transforms! rows nil))
-  ([rows :- [:sequential ::transforms.schema/transform.update]
-    opts :- ::transforms.schema/write-opts]
-   (when (seq rows)
+(defn- write-columns!
+  "Apply the `changes`, columns of a Transform, to the Transforms with `ids`, whose stored rows are in `stored`, after
+  the checks of an update, and return the changes of each id with the Field ids of its merge unique key filled."
+  [ids stored changes]
+  (let [resolved (with-resolved-merge-keys (zipmap ids (repeat changes)) stored)]
+    (check-update! ids stored changes resolved)
+    (transforms.db/update-transforms! stored resolved)
+    (when (or (contains? changes :collection_id)
+              (some #(definition-columns-changed? (stored %) changes) ids))
+      (check-transforms ids))
+    resolved))
+
+(defn- column-update-event
+  "The update event of the Transforms of `stored` that `resolved`, a map from id to its changes, changes."
+  [stored resolved opts]
+  (events/update-event stored
+                       (mapv (fn [[id changes]] (assoc changes :id id)) resolved)
+                       (assoc opts :objects (into {} (map (fn [[id changes]] [id (updated-transform (stored id) changes)])) resolved))))
+
+(mu/defn update-transforms! :- :nil
+  "Apply the `changes`, columns of a Transform, to each of the Transforms with `ids` in one transaction, publishing
+  their update event. Before the statement, throws unless the new Collection and target Database can hold Transforms
+  and the new definition of a query transform causes no cycle, marks the index requests of a changed definition for
+  revalidation, and fills the Field ids of a merge unique key once its target table exists."
+  ([ids     :- [:sequential ::lib.schema.id/transform]
+    changes :- ::transforms.schema/transform.update]
+   (update-transforms! ids changes nil))
+  ([ids     :- [:sequential ::lib.schema.id/transform]
+    changes :- ::transforms.schema/transform.update
+    opts    :- ::transforms.schema/write-opts]
+   (when (seq ids)
      (t2/with-transaction [_conn]
-       (let [stored    (u/index-by :id (transforms.db/transforms (mapv :id rows)))
-             requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)
-             resolved  (with-resolved-merge-keys requested stored)]
-         (doseq [[changes ids] (update-vals (group-by resolved (keys requested)) vec)
-                 :when         (seq changes)]
-           (check-update-group! ids stored requested changes)
-           (transforms.db/update-transforms! ids changes))
-         (events/publish-event! :event/transform-update
-                                (events/update-event stored
-                                                     (mapv (fn [id] (assoc (resolved id) :id id)) (keys requested))
-                                                     (assoc opts :objects (into {}
-                                                                                (map (fn [id] [id (updated-transform (stored id) (resolved id))]))
-                                                                                (keys requested))))))))
-   (vec rows)))
+       (let [stored (u/index-by :id (transforms.db/transforms (vec ids)))
+             ids    (filterv stored ids)]
+         (when (seq ids)
+           (events/publish-event! :event/transform-update
+                                  (column-update-event stored (write-columns! ids stored changes) opts))))))
+   nil))
+
+(mu/defn update-transform! :- :nil
+  "Apply the `changes`, columns of the Transform with `id` and the `:tag_ids` it has afterwards, in one transaction,
+  with the checks of [[update-transforms!]], publishing one update event: of its columns, or a touch when only its
+  tags changed."
+  ([id      :- ::lib.schema.id/transform
+    changes :- ::transforms.schema/transform.update-with-tags]
+   (update-transform! id changes nil))
+  ([id      :- ::lib.schema.id/transform
+    changes :- ::transforms.schema/transform.update-with-tags
+    opts    :- ::transforms.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (when-let [stored (first (transforms.db/transforms [id]))]
+       (let [columns       (dissoc changes :tag_ids)
+             resolved      (when (seq columns) (write-columns! [id] {id stored} columns))
+             tags-changed? (and (contains? changes :tag_ids) (replace-tags! id (vec (:tag_ids changes))))]
+         (cond
+           (seq columns) (events/publish-event! :event/transform-update (column-update-event {id stored} resolved opts))
+           tags-changed? (events/publish-event! :event/transform-update (events/touch-event [stored] opts))))))
+   nil))
+
+(mu/defn update-transforms-for-import! :- :nil
+  "Apply each of `rows`, the id of a Transform and the columns to change, as an import writes it, one row at a time. An
+  import runs rows with different values, which one change for all cannot express."
+  [rows :- [:sequential ::transforms.schema/transform.import-row]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-transforms! [id] (dissoc row :id) {:writer :import}))
+  nil)
+
+(mu/defn update-transforms-for-replacement! :- :nil
+  "Apply each of `rows`, the id of a Transform and the columns to change, as a replacement of a source writes it, one
+  row at a time. A replacement writes a new source to each Transform, which one change for all cannot express."
+  [rows :- [:sequential ::transforms.schema/transform.import-row]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-transforms! [id] (dissoc row :id)))
+  nil)
 
 (mu/defn delete-transforms! :- :nil
   "Delete the Transforms with `transform-ids`, and their tests, in one transaction, publishing their delete event."
@@ -593,14 +623,14 @@
   (when (seq transform-ids)
     (t2/with-transaction [_conn]
       (let [transforms (vec (transforms.db/transforms (vec transform-ids)))]
-        (delete-transform-tests! (vec transform-ids))
+        (delete-transform-tests-for-transforms! (vec transform-ids))
         (events/publish-event! :event/transform-delete (events/delete-event transforms))
         (transforms.db/delete-transforms! (vec transform-ids)))))
   nil)
 
 (defmethod transforms-base.u/record-run-changes! :model/Transform
   [_model transform-id changes]
-  (update-transforms! [(assoc changes :id transform-id)])
+  (update-transforms! [transform-id] changes)
   nil)
 
 (mu/defn set-table-dependencies! :- :int
@@ -617,7 +647,7 @@
 (defn- revert-transform!
   "Return the Transform with `id` to the `snapshot` of a Transform that a Revision recorded."
   [id _user-id snapshot]
-  (update-transforms! [(assoc snapshot :id id)] {:writer :revert}))
+  (update-transforms! [id] snapshot {:writer :revert}))
 
 (def ^:private revision-columns
   "The columns a revision of a Transform records and a revert restores."
@@ -640,7 +670,7 @@
                          :source             transforms.serialization/source-transform
                          :target             transforms.serialization/target-transform}
    :insert!             create-transforms!
-   :update!             #(update-transforms! % {:writer :import})
+   :update!             update-transforms-for-import!
    :delete!             delete-transforms!
    :children            {:tags    :model/TransformTransformTag
                          :indexes :model/TableIndex}
@@ -702,7 +732,7 @@
 (defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
    :swap-source        transforms.replacement/swap-source
-   :update!            update-transforms!})
+   :update!            update-transforms-for-replacement!})
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})

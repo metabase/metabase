@@ -124,10 +124,9 @@
    [:metabase.api-keys.core/unhashed-key {:optional true} ::key.unhashed-or-secret]])
 
 (mr/def ::api-key.update
-  "What an update of an ApiKey takes: its `:id` and a new name, the group of the User created for the key under
+  "The changes an update applies to each of its ApiKeys: a new name, the group of the User created for the key under
   `:metabase.api-keys.core/group-id`, or a regenerated key."
   [:map {:closed true}
-   [:id                              ::id]
    [:name                            {:optional true} ::name]
    [:metabase.api-keys.core/group-id {:optional true} pos-int?]
    [:key                             {:optional true} [:ref ::key.hashed]]

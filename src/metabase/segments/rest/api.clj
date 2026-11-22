@@ -82,8 +82,9 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (segment/update-segments! [(cond-> (assoc changes :id id)
-                                   (:definition changes) (update :definition checked-definition))]
+      (segment/update-segments! [id]
+                                (cond-> changes
+                                  (:definition changes) (update :definition checked-definition))
                                 {:context {:revision-message revision_message}}))
     (hydrated-segment id)))
 

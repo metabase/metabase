@@ -2,10 +2,11 @@
   "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -87,11 +88,19 @@
   [rows :- [:sequential ::tenant.insert]]
   (app-db/insert-returning-instances! :model/Tenant rows))
 
-(mu/defn update-tenant!
-  "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
-  [tenant-id :- ms/PositiveInt
-   changes   :- (mut/dissoc ::tenants.schema/tenant.update :id)]
-  (t2/update! :model/Tenant {:id tenant-id} changes))
+(mu/defn tenants-by-ids
+  "The Tenants with `tenant-ids`."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
+
+(mu/defn update-tenants!
+  "Apply `changes` to the Tenants with `tenant-ids`, one statement for each set of the changes that differ from the
+  stored rows, so that rows already holding one of the values do not make Toucan update row by row."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes    :- ::tenants.schema/tenant.update]
+  (let [stored (u/index-by :id (tenants-by-ids tenant-ids))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) tenant-ids))]
+      (t2/update! :model/Tenant :id [:in [:auto/param ids]] changes))))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."

@@ -516,7 +516,7 @@
   [dependency-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Dependency :id [:in dependency-ids]))
 
-(mu/defn delete-dependencies-from!
+(mu/defn delete-dependencies-for-entities!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
@@ -531,7 +531,7 @@
                          :to_entity_type entity-type
                          :to_entity_id   entity-id)))
 
-(mu/defn delete-dependencies-on!
+(mu/defn delete-dependencies-for-dependents!
   "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
   number deleted."
   [from-type :- ::dependencies.schema/entity-type
@@ -850,14 +850,43 @@
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
+(defn- upsert-finding-sql
+  "The statement, as `[sql & params]`, that inserts the AnalysisFinding of `entity-type` `entity-id` or sets its `result`
+  when its unique key exists, stamping `analyzed_at` with the database clock only when the `result` differs, on the app
+  DB `db-type`."
+  [db-type entity-type entity-id result]
+  (case db-type
+    :postgres
+    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now()) "
+          "ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
+          "analyzed_at = CASE WHEN analysis_finding.result <> EXCLUDED.result THEN now() "
+          "ELSE analysis_finding.analyzed_at END, result = EXCLUDED.result")
+     entity-type entity-id result]
+
+    :mysql
+    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now(6)) "
+          "ON DUPLICATE KEY UPDATE "
+          "analyzed_at = IF(result <> VALUES(result), now(6), analyzed_at), result = VALUES(result)")
+     entity-type entity-id result]
+
+    :h2
+    [(str "MERGE INTO analysis_finding t USING (VALUES (CAST(? AS VARCHAR(254)), CAST(? AS INTEGER), "
+          "CAST(? AS BOOLEAN))) AS s(entity_type, entity_id, result) "
+          "ON t.entity_type = s.entity_type AND t.entity_id = s.entity_id "
+          "WHEN MATCHED THEN UPDATE SET "
+          "analyzed_at = CASE WHEN t.result <> s.result THEN now() ELSE t.analyzed_at END, result = s.result "
+          "WHEN NOT MATCHED THEN INSERT (entity_type, entity_id, result, analyzed_at) "
+          "VALUES (s.entity_type, s.entity_id, s.result, now())")
+     entity-type entity-id result]))
+
 (mu/defn upsert-finding!
-  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, updating the row a
-  concurrent analysis inserted meanwhile."
+  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, in one statement, stamping
+  `analyzed_at` when it inserts or the `result` changes."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt
    result      :- :boolean]
-  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:result result})))
+  (t2/query (upsert-finding-sql (mdb/db-type) (name entity-type) entity-id result))
+  nil)
 
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a

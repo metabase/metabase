@@ -76,7 +76,7 @@
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (if (some #(contains? body %) [:card_id :attribute_remappings])
-    (first (sandbox/update-sandboxes! [(assoc (u/select-keys-when body :present #{:card_id :attribute_remappings}) :id id)]))
+    (first (sandbox/update-sandboxes! [id] (u/select-keys-when body :present #{:card_id :attribute_remappings})))
     (sandbox.db/sandbox id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

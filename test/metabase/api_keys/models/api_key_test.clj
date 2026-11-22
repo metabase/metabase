@@ -31,7 +31,7 @@
   (mt/with-model-cleanup [:model/ApiKey :model/User]
     (let [{key-id :id user-id :user_id} (mt/with-current-user (mt/user->id :crowberto)
                                           (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)}))]
-      (api-key/update-api-keys! [{:id key-id :name "Renamed key"}])
+      (api-key/update-api-keys! [key-id] {:name "Renamed key"})
       (is (= "Renamed key" (t2/select-one-fn :name :model/ApiKey :id key-id)))
       (is (= "Renamed key" (t2/select-one-fn :first_name :model/User :id user-id))))))
 

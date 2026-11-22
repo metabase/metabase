@@ -30,11 +30,6 @@
    version :- ms/PositiveInt]
   (t2/select-one :model/Secret :id id :version version))
 
-(mu/defn delete-secret!
-  "Delete every version of the Secret with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Secret :id id))
-
 (mu/defn delete-secrets!
   "Delete every version of the Secrets with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]

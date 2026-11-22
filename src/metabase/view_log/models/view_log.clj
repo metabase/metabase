@@ -40,7 +40,7 @@
   [views :- [:sequential ::view-log.schema/view-log.create]]
   (view-log.db/insert-view-logs! views))
 
-(mu/defn delete-older-than! :- [:maybe :int]
+(mu/defn delete-view-logs-for-cleanup! :- [:maybe :int]
   "Delete up to `batch-size` of the ViewLogs whose `time-column` is at or before `cutoff`, in one statement, as the
   retention policy trims them; returns the number deleted."
   [time-column :- :keyword

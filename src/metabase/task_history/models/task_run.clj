@@ -1,7 +1,6 @@
 (ns metabase.task-history.models.task-run
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
@@ -116,7 +115,7 @@
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (task-history.db/finish-started-task-run! run-id status (t/instant))))
+    (task-history.db/finish-started-task-run! run-id status)))
 
 (mu/defn- task-run-work-done!
   "Call when one piece of work of the `:auto-complete false` run `run-id` ends: [[with-task-run]] after its body, and
@@ -199,12 +198,12 @@
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
 
-(mu/defn heartbeat-task-runs! :- :int
+(mu/defn heartbeat-task-runs-for-process! :- :int
   "Touch `updated_at` of the started TaskRuns of `process-uuid`, returning the number updated."
   [process-uuid :- :string]
   (task-history.db/heartbeat-started-task-runs! process-uuid))
 
-(mu/defn abandon-stale-task-runs! :- [:maybe [:sequential :map]]
+(mu/defn abandon-task-runs-for-cleanup! :- [:maybe [:sequential :map]]
   "Mark the started TaskRuns abandoned whose last heartbeat is older than `heartbeat-hours` or that started more than
   `max-duration-hours` ago, returning the abandoned rows."
   [heartbeat-hours    :- ms/PositiveInt

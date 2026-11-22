@@ -39,8 +39,8 @@
           (log/infof "Marking Field %d as indexed" field-id))
         (if (or (seq adding) (seq removing))
           (let [indexed (set indexed-field-ids)]
-            (field/update-fields! (mapv (fn [id] {:id id :database_indexed (contains? indexed id)})
-                                        (sync.db/field-ids-of-table (:id table))))
+            (field/update-fields-for-sync! (mapv (fn [id] {:id id :database_indexed (contains? indexed id)})
+                                                 (sync.db/field-ids-of-table (:id table))))
             {:total-indexes   (count indexed-field-ids)
              :added-indexes   (count adding)
              :removed-indexes (count removing)})
@@ -89,14 +89,14 @@
         (log/tracef "Unmarking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* removing)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (field/update-fields! (mapv (fn [id] {:id id :database_indexed false}) field-ids)))
+        (field/update-fields! (vec field-ids) {:database_indexed false}))
       ;; Set database_indexed of fields having index.
       (log/infof "Marking %d fields as indexed" adding-count)
       (doseq [field-ids (partition-all 100 adding)]
         (log/tracef "Marking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* adding)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (field/update-fields! (mapv (fn [id] {:id id :database_indexed true}) field-ids)))
+        (field/update-fields! (vec field-ids) {:database_indexed true}))
       (if (or (seq adding) (seq removing))
         {:total-indexes   (count indexed-field-ids)
          :added-indexes   adding-count

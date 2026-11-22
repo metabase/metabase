@@ -4,9 +4,11 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -49,11 +51,31 @@
   [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
   (t2/select-pk->fn identity :model/NativeQuerySnippet :id [:in ids]))
 
+(mu/defn archived-directly-clause
+  "The SQL expression for the `archived_directly` of a snippet that `changes` archives or restores: true when it is
+  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
+  every row."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:= ^:allow-subquery {:select [:parent.archived]
+                                 :from   [[:collection :parent]]
+                                 :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                          [:auto/param (:collection_id changes)]
+                                                          :native_query_snippet.collection_id)]}
+            true]
+     false
+     :else true]
+    [:inline false]))
+
 (mu/defn update-snippets!
-  "Apply `changes` to the NativeQuerySnippets with `ids`, returning the number updated."
+  "Apply `changes` to the NativeQuerySnippets with `ids`, with one statement for each distinct set of columns that change
+  in them, returning nil."
   [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
    changes :- (mut/dissoc ::native-query-snippets.schema/native-query-snippet.update :id)]
-  (t2/update! :model/NativeQuerySnippet :id [:in ids] changes))
+  (let [stored (t2/select-pk->fn identity :model/NativeQuerySnippet :id [:in ids])]
+    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
+      (t2/update! :model/NativeQuerySnippet :id [:in group] effective)))
+  nil)
 
 (mu/defn delete-snippets!
   "Delete the NativeQuerySnippets with `ids`, returning the number deleted."
@@ -80,10 +102,18 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
 
-(mu/defn collections-for-content-checks
-  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+(mu/defn snippets-in-violation?
+  "Whether one of the NativeQuerySnippets with `ids` is in a Collection outside `allowed-namespaces`, or in an archived
+  Collection while it is not archived itself."
+  [ids                :- [:sequential ::lib.schema.id/native-query-snippet]
+   allowed-namespaces :- [:set [:maybe :keyword]]]
+  (t2/exists? :model/NativeQuerySnippet
+              {:where [:and
+                       [:in :native_query_snippet.id ids]
+                       [:not [:and
+                              (collections/namespace-ok-clause :native_query_snippet :collection_id allowed-namespaces)
+                              [:or [:= :native_query_snippet.archived true]
+                               (collections/not-archived-ok-clause :native_query_snippet :collection_id)]]]]}))
 
 (mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
   "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."

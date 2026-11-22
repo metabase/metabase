@@ -90,24 +90,33 @@
         plugins))
     []))
 
-(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  "Apply the changes in each of `rows`, the id of a CustomVizPlugin and the columns to change, with one statement per
-  distinct change set, publishing their update event. Returns `rows`."
-  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [stored (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (mapv :id rows)))]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)
-                :when           (seq changes)]
-          (custom-viz-plugin.db/update-plugins! (mapv :id group) changes))
-        (events/publish-event! :event/custom-viz-plugin-update
-                               (events/update-event stored
-                                                    rows
-                                                    {:objects (into {}
-                                                                    (keep (fn [{:keys [id] :as row}]
-                                                                            (when-let [previous (stored id)]
-                                                                              [id (merge previous (with-bundle-hash (dissoc row :id)))])))
-                                                                    rows)})))))
+(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]
+  "Apply `changes`, one change to the columns, to each of the CustomVizPlugins with `ids` in one statement, publishing
+  their update event. Returns the updated rows."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
+  (let [rows (mapv #(assoc changes :id %) ids)]
+    (when (seq ids)
+      (t2/with-transaction [_conn]
+        (let [stored (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (vec ids)))]
+          (when (seq changes)
+            (custom-viz-plugin.db/update-plugins! ids changes))
+          (events/publish-event! :event/custom-viz-plugin-update
+                                 (events/update-event stored
+                                                      rows
+                                                      {:objects (into {}
+                                                                      (keep (fn [id]
+                                                                              (when-let [previous (stored id)]
+                                                                                [id (merge previous (with-bundle-hash changes))])))
+                                                                      ids)})))))
+    rows))
+
+(mu/defn update-custom-viz-plugins-for-import!
+  "Apply each of `rows`, the id of a CustomVizPlugin and the columns to change, one row after the other, as an import
+  does because every row holds its own values. Returns `rows`."
+  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]]
+  (doseq [row rows]
+    (update-custom-viz-plugins! [(:id row)] (dissoc row :id)))
   (vec rows))
 
 (mu/defn delete-custom-viz-plugins!
@@ -134,7 +143,7 @@
   refreshed plugin without its bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    validated    :- :map]
-  (update-custom-viz-plugins! [(assoc (cache/derived-columns validated) :id id)])
+  (update-custom-viz-plugins! [id] (cache/derived-columns validated))
   (cache/purge-plugin-cache! {:id id})
   (custom-viz-plugin.db/non-blob-plugin id))
 
@@ -144,7 +153,7 @@
    dev-bundle-url :- [:maybe :string]]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (cache/validate-url! "Dev bundle URL"))
-    (update-custom-viz-plugins! [{:id id :dev_bundle_url url}])))
+    (update-custom-viz-plugins! [id] {:dev_bundle_url url})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -159,7 +168,7 @@
    :defaults      {:enabled true}
    :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
    :insert!       create-custom-viz-plugins!
-   :update!       update-custom-viz-plugins!
+   :update!       update-custom-viz-plugins-for-import!
    :delete!       delete-custom-viz-plugins!
    :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
    :storage-paths custom-viz-plugin.serialization/storage-paths

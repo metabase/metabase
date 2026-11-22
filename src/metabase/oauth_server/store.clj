@@ -141,7 +141,7 @@
               merged          (-> (merge existing-config updated-config)
                                   (assoc :client-id client-id))
               row             (client-config->db-row merged)]
-          (oauth-client/update-oauth-client! (:id existing) row)
+          (oauth-client/update-oauth-clients! [(:id existing)] row)
           merged)))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------

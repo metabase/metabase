@@ -26,12 +26,15 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn upsert-metabot-feedback!
-  "Insert or update the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`;
-  `update-fn` receives the existing row, or nil, and returns the columns to write."
+  "Insert or update the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`
+  with the `columns`, stamping `:updated_at`, and return its ID."
   [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   update-fn         :- fn?]
-  (metabot.db/upsert-feedback! message-id submitter-user-id update-fn))
+   columns           :- [:map {:closed true}
+                         [:positive          {:optional true} [:maybe :boolean]]
+                         [:issue_type        {:optional true} [:maybe [:or :keyword :string]]]
+                         [:freeform_feedback {:optional true} [:maybe :string]]]]
+  (metabot.db/upsert-feedback! message-id submitter-user-id (assoc columns :updated_at (java.time.OffsetDateTime/now))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

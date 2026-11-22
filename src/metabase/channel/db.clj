@@ -2,9 +2,11 @@
   "Application database queries for the channel module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -48,23 +50,41 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Channel :id [:auto/param id]))
 
+(defn- uniform-groups
+  "The Channels with `ids` that `changes` would change, as `[changes ids]` pairs in which every Channel in a pair changes
+  the same columns, since Toucan splits an update into one statement per Channel otherwise."
+  [ids changes]
+  (mi/group-ids-by-changes (m/index-by :id (t2/select :model/Channel :id [:in [:auto/param ids]]))
+                           (map #(assoc changes :id %) ids)))
+
 (mu/defn update-channels!
-  "Apply `changes` to the Channels with `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+  "Apply `changes` to the Channels with `ids`, one statement for each distinct set of columns they change."
+  [ids     :- [:sequential ms/PositiveInt]
    changes :- ChannelRow]
-  (t2/update! :model/Channel :id [:in [:auto/param ids]] changes)
+  (when (seq ids)
+    (doseq [[effective group] (uniform-groups ids changes)]
+      (t2/update! :model/Channel :id [:in [:auto/param group]] effective)))
   nil)
 
-(mu/defn update-channels-with-names!
-  "Apply `changes` and the new name of each Channel in `names`, a map from id to name, to those Channels in one statement."
-  [names   :- [:map-of {:min 1} ms/PositiveInt :string]
-   changes :- ChannelRow]
-  (t2/update! :model/Channel :id [:in [:auto/param (vec (keys names))]]
-              (assoc changes :name (into [:case]
-                                         (mapcat (fn [[id channel-name]]
-                                                   [[:= :id [:auto/param id]] [:auto/param channel-name]]))
-                                         names)))
-  nil)
+(defn- text-type
+  "The SQL type to cast a text parameter to, for the app DB."
+  []
+  (case (app-db/db-type)
+    :postgres :text
+    :h2       :varchar
+    :char))
+
+(mu/defn deactivated-name-clause
+  "The HoneySQL expression for the name of a Channel once it is deactivated, which frees its unique name for a new
+  Channel: `DEACTIVATED_<id> <name>` cut to 254 characters, where the name is `new-name`, the one the update gives, or
+  the stored one when it is nil. It is the same for every row, and reads the stored `name` only when the update does
+  not assign it."
+  [new-name :- [:maybe :string]]
+  [:substring
+   [:concat "DEACTIVATED_" :id " " (if new-name
+                                    [:cast [:auto/param new-name] (text-type)]
+                                    :name)]
+   1 254])
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."

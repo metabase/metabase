@@ -2,10 +2,10 @@
   "Application database queries for the sandbox module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -91,11 +91,14 @@
   [rows :- [:sequential ::sandbox.schema/sandbox.create]]
   (mdb/insert-returning-instances! :model/Sandbox rows))
 
-(mu/defn update-sandbox!
-  "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
-  [sandbox-id :- ::lib.schema.id/sandbox
-   changes    :- (mut/dissoc ::sandbox.schema/sandbox.update :id)]
-  (t2/update! :model/Sandbox :id sandbox-id changes))
+(mu/defn update-sandboxes!
+  "Apply `changes` to the Sandboxes with `sandbox-ids`, one statement for each set of the changes that differ from the
+  stored rows, so that rows already holding one of the values do not make Toucan update row by row."
+  [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]
+   changes     :- ::sandbox.schema/sandbox.update]
+  (let [stored (u/index-by :id (t2/select :model/Sandbox :id [:in [:auto/param (vec (distinct sandbox-ids))]]))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) sandbox-ids))]
+      (t2/update! :model/Sandbox :id [:in [:auto/param ids]] changes))))
 
 (mu/defn sandboxes-by-ids
   "The Sandboxes with `sandbox-ids`."

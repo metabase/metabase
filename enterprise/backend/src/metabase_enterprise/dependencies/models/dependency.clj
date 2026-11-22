@@ -284,20 +284,20 @@
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
 
-(mu/defn delete-dependencies-from!
+(mu/defn delete-dependencies-for-entities!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (dependencies.db/delete-dependencies-from! entity-type entity-ids))
+  (dependencies.db/delete-dependencies-for-entities! entity-type entity-ids))
 
-(mu/defn delete-dependencies-on!
+(mu/defn delete-dependencies-for-dependents!
   "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
   number deleted."
   [from-type :- ::dependencies.schema/entity-type
    from-ids  :- [:sequential ms/PositiveInt]
    to-type   :- ::dependencies.schema/entity-type
    to-id     :- ms/PositiveInt]
-  (dependencies.db/delete-dependencies-on! from-type from-ids to-type to-id))
+  (dependencies.db/delete-dependencies-for-dependents! from-type from-ids to-type to-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -94,6 +94,21 @@
       (testing "updating threads, some already holding the new value"
         (counted (fn [n]
                    (let [ids (fresh! n)]
-                     (exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) (take-nth 2 ids)))
+                     (exploration-thread/update-threads! (take-nth 2 ids) {:started_at started-at})
                      (events.tu/statement-count!
-                      #(exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) ids))))))))))
+                      #(exploration-thread/update-threads! ids {:started_at started-at})))))))))
+
+(deftest thread-without-position-goes-after-the-last-one-test
+  (mt/with-temp [:model/Exploration {exploration-id :id} {}
+                 :model/Exploration {other-id :id}       {}]
+    (let [position (fn [id] (t2/select-one-fn :position :model/ExplorationThread :id id))]
+      (testing "the first thread without a position goes after position 0, the next one after it"
+        (let [[a b] (repeatedly 2 #(t2/insert-returning-pk! :model/ExplorationThread {:exploration_id exploration-id}))]
+          (is (= [1 2] [(position a) (position b)]))))
+      (testing "a position that is given is kept, and the next thread goes after the highest one"
+        (let [given (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id exploration-id :position 7})
+              next  (first (exploration-thread/create-threads! [{:exploration_id exploration-id}]))]
+          (is (= 7 (position given)))
+          (is (= 8 (:position next)))))
+      (testing "the Explorations are counted apart"
+        (is (= 1 (position (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id other-id}))))))))

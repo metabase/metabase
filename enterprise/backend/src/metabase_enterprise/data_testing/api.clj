@@ -77,7 +77,7 @@
                                                       (data-testing.db/transform transform_id)
                                                       (data-testing.runner/test-definition merged)))))
     (when (seq body)
-      (data-testing.models/update-transform-tests! [(assoc body :id id)])))
+      (data-testing.models/update-transform-tests! [id] body)))
   (data-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -85,7 +85,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TransformTest id)
-  (data-testing.models/delete-transform-tests-by-id! [id])
+  (data-testing.models/delete-transform-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

@@ -233,7 +233,7 @@
       (let [[warm-up & ids] @created
             update!         (fn [ids]
                               (events.tu/statement-count!
-                               #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) ids))))
+                               #(custom-viz-plugin/update-custom-viz-plugins! (vec ids) {:enabled false})))
             delete!         (fn [ids]
                               (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! ids)))]
         (testing "updating plugins with one change set"

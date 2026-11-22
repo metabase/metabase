@@ -111,7 +111,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (let [write (fn [ids]
                     (let [new-name (str (random-uuid))]
-                      (queries.card/update-cards! (mapv (fn [id] {:id id :name new-name}) ids))))]
+                      (queries.card/update-cards! ids {:name new-name})))]
         (search-statement-count! 1 write)
         (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
 
@@ -267,15 +267,15 @@
         ;; type, location and authority level.
         (is (= #{"collection"}
                (enqueued-search-models
-                (capture-enqueues! #(collection/update-collections! [{:id coll-id :description "described"}])))))))))
+                (capture-enqueues! #(collection/update-collections! [coll-id] {:description "described"} nil)))))))))
 
 (deftest self-assigned-updated-at-enqueues-nothing-test
   (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
-        (is (= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :result_metadata [] :updated_at :updated_at}]))))
-        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :name "renamed"}]))))))))
+        (is (= [] (capture-enqueues! #(queries.card/update-cards! [card-id] {:result_metadata [] :updated_at :updated_at}))))
+        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [card-id] {:name "renamed"}))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"

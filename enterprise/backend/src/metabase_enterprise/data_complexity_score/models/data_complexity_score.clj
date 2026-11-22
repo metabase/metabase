@@ -68,10 +68,10 @@
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
 
-(mu/defn delete-scores-older-than! :- :int
-  "Delete the Data Complexity Score snapshots created more than `months` months ago, returning the number deleted."
-  [months :- ms/PositiveInt]
-  (data-complexity-score.db/delete-scores-older-than! months))
+(mu/defn delete-data-complexity-scores-for-cleanup! :- :int
+  "Delete the Data Complexity Score snapshots created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (data-complexity-score.db/delete-scores-created-before! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

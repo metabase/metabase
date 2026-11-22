@@ -19,6 +19,6 @@
                                                            (u.events/changed? % :is_active)))
                                              (map (comp :id :object)))
                                        changes))]
-    (oauth-access-token/revoke-user-oauth-access-tokens! user-ids)
-    (oauth-refresh-token/revoke-user-oauth-refresh-tokens! user-ids)
-    (oauth-authorization-code/delete-user-oauth-authorization-codes! user-ids)))
+    (oauth-access-token/revoke-oauth-access-tokens-for-users! user-ids)
+    (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! user-ids)
+    (oauth-authorization-code/delete-oauth-authorization-codes-for-users! user-ids)))

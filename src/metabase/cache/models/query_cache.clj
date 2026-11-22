@@ -31,7 +31,7 @@
    started-at          :- ::cache.schema/temporal]
   (cache.db/claim-query-cache-refresh-lease! query-hash lease-free-sentinel lease-cutoff started-at))
 
-(mu/defn delete-query-caches-updated-before!
+(mu/defn delete-query-caches-for-cleanup!
   "Delete the QueryCache entries last updated at or before `updated-before`."
   [updated-before :- ::cache.schema/temporal]
   (cache.db/delete-query-caches-updated-before! updated-before))

@@ -20,7 +20,7 @@
   [row :- ::mcp.schema/mcp-tool-call-log.create]
   (mcp.db/insert-tool-call-log! row))
 
-(mu/defn delete-mcp-tool-call-logs-created-before!
+(mu/defn delete-mcp-tool-call-logs-for-cleanup!
   "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (mcp.db/delete-tool-call-logs-created-before! cutoff))

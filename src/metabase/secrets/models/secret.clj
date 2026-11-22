@@ -353,12 +353,14 @@
       (insert-new (u/the-id latest-version) (inc (:version latest-version)))
       (insert-new nil 1))))
 
-(mu/defn delete-secret!
-  "Delete every version of the Secret with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (secrets.db/delete-secret! id))
+(mu/defn delete-secrets! :- ms/IntGreaterThanOrEqualToZero
+  "Delete every version of the Secrets with `ids`, returning the number deleted; an empty `ids` deletes nothing."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (secrets.db/delete-secrets! ids)
+    0))
 
-(defn delete-orphaned-secrets!
+(defn delete-secrets-for-databases!
   "Delete the Secrets that `databases` own, in one statement, as they are deleted: every Secret whose id appears in
   their `:details`, `:write_data_details` or `:admin_details`, since each Secret belongs to a single Database."
   [databases]
@@ -401,7 +403,7 @@
                                       (assoc cleared-details id-kw id))
                                     (do
                                       (when secret-id
-                                        (delete-secret! secret-id))
+                                        (delete-secrets! [secret-id]))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]

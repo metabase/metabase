@@ -9,10 +9,12 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -20,6 +22,110 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
+
+(defn- update-stored!
+  "Apply `rows`, each the id of a row of `model` and the columns to change. With `fresh?`, `stored`, a map from id to the
+  row as the function read it, tells which columns differ from the stored values: one statement for each distinct set
+  of them, since Toucan runs one UPDATE per row when they differ. Rows the caller read may be stale, so without
+  `fresh?` every column of a row is kept and the rows are grouped by them. Returns nil."
+  [model stored rows fresh?]
+  (doseq [[changes ids] (if fresh?
+                          (mi/group-ids-by-changes stored rows)
+                          (for [[changes rows] (group-by #(dissoc % :id) rows)
+                                :when (seq changes)]
+                            [changes (mapv :id rows)]))]
+    (t2/update! model :id (if (= 1 (count ids)) (first ids) [:in ids]) changes)))
+
+;;; ------------------------------------------------- Field types -------------------------------------------------
+
+(defn- type-term
+  "What `changes` write for the type column `k`: its value as a string, or nil, when they write it, else `k`, the
+  column, whose stored value the statement reads."
+  [changes k]
+  (if (contains? changes k)
+    (some-> (get changes k) keyword u/qualified-name)
+    k))
+
+(defn- type-valid
+  "Whether the type `term`, a string, nil or a column, is a descendant of `:type/*`: a boolean, or an expression."
+  [term]
+  (cond
+    (nil? term)    false
+    (string? term) (isa? (keyword term) :type/*)
+    :else          (app-db/isa term :type/*)))
+
+(defn- all-of
+  "The conjunction of `conditions`, each a boolean or an expression: false, true or an expression."
+  [conditions]
+  (cond
+    (some false? conditions) false
+    :else (let [exprs (remove true? conditions)]
+            (case (count exprs)
+              0 true
+              1 (first exprs)
+              (into [:and] exprs)))))
+
+(defn- types-repairable
+  "The condition for the GHY-3388 repair of a Field with no coercion strategy whose effective type `e` and base type
+  `b`, terms, are both types and differ."
+  [e b]
+  (all-of [(type-valid e) (type-valid b) (if (and (string? e) (string? b)) (not= e b) [:<> e b])]))
+
+(defn- as-value
+  "`term` as the value a column takes: a column read becomes an expression, which the column's transform leaves as it is."
+  [term]
+  (if (keyword? term) [:coalesce term term] term))
+
+(defn- case-or-nothing
+  "The value for the effective type that is `then` when `condition`, else `else-term`, or nil when that is no change:
+  `condition` false with `else-term` the column itself."
+  [condition then else-term]
+  (cond
+    (false? condition) (when-not (keyword? else-term) else-term)
+    (true? condition)  (as-value then)
+    :else              [:case condition then :else else-term]))
+
+(defn- uncoercible-strategies
+  "The names of the coercion strategies the column takes that cannot coerce a Field of `base-type`."
+  [base-type]
+  (into [] (comp (remove #(types/is-coercible-from? % base-type)) (map u/qualified-name))
+        (cons :Coercion/* (descendants :Coercion/*))))
+
+(defn derived-types-clause
+  "The `:coercion_strategy` and `:effective_type` values, expressions the database evaluates against the stored row, that
+  an update of `changes`, a map of Field columns, derives: a map from column to value, which may be empty."
+  [changes]
+  (let [strategy? (contains? changes :coercion_strategy)
+        base?     (contains? changes :base_type)
+        strategy  (some-> (:coercion_strategy changes) keyword)
+        e         (type-term changes :effective_type)
+        b         (type-term changes :base_type)]
+    (cond
+      strategy?
+      (cond
+        (some? strategy)
+        (when (and (isa? strategy :Coercion/*) (not (contains? changes :effective_type)))
+          {:effective_type (u/qualified-name (types/effective-type-for-coercion strategy))})
+
+        :else
+        (when-some [expr (case-or-nothing (types-repairable e b) b e)]
+          {:effective_type expr}))
+
+      base?
+      (let [uncoercible (uncoercible-strategies (keyword (:base_type changes)))
+            cleared     (when (seq uncoercible) [:in :coercion_strategy uncoercible])
+            repair      (all-of [[:= :coercion_strategy nil] (types-repairable e b)])
+            branches    (cond-> []
+                          cleared               (conj [cleared b])
+                          (not (false? repair)) (conj [repair b]))]
+        (cond-> {}
+          cleared        (assoc :coercion_strategy [:case cleared nil :else :coercion_strategy])
+          (seq branches) (assoc :effective_type (into [:case] (concat (mapcat identity branches) [:else e])))))
+
+      :else
+      (let [repair (all-of [[:= :coercion_strategy nil] (types-repairable e b)])]
+        (when-some [expr (case-or-nothing repair b e)]
+          {:effective_type expr})))))
 
 (def field-order-rule
   "How should we order fields."
@@ -170,17 +276,13 @@
    columns   :- [:sequential :keyword]]
   (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
-(mu/defn update-field!
-  "Apply `changes` to the Field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
-  (t2/update! :model/Field :id field-id changes))
-
 (mu/defn update-fields!
-  "Apply `changes` to the Fields with `field-ids`, returning the number updated."
-  [field-ids :- [:sequential ::lib.schema.id/field]
-   changes   :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
-  (t2/update! :model/Field :id [:in field-ids] changes))
+  "Apply `rows`, each the id of a Field in `stored`, a map from id to the Field as read, and the columns to change;
+  `fresh?` says that the function read `stored` itself rather than got it from its caller."
+  [stored :- [:map-of ::lib.schema.id/field :map]
+   rows   :- [:sequential ::warehouse-schema.schema/field.update]
+   fresh? :- :boolean]
+  (update-stored! :model/Field stored rows fresh?))
 
 (mu/defn delete-fields!
   "Delete the Fields with `field-ids`, returning the number deleted."
@@ -235,6 +337,33 @@
                      :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
                      :where  [:in :f.id (vec field-ids)]}))
     {}))
+
+(mu/defn fk-target-in-violation?
+  "Whether, among the Fields with `field-ids`, one has a foreign key target that is not a Field of the Database of its
+  Table: one statement."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (boolean
+   (seq (t2/query {:select [[1 :violation]]
+                   :from   [[(t2/table-name :model/Field) :f]]
+                   :join   [[(t2/table-name :model/Table) :ft] [:= :ft.id :f.table_id]
+                            [(t2/table-name :model/Field) :tf] [:= :tf.id :f.fk_target_field_id]
+                            [(t2/table-name :model/Table) :tt] [:= :tt.id :tf.table_id]]
+                   :where  [:and [:in :f.id (vec field-ids)] [:<> :tt.db_id :ft.db_id]]
+                   :limit  1}))))
+
+(mu/defn human-readable-field-in-violation?
+  "Whether, among the Dimensions with `dimension-ids`, one has a human-readable Field that is not a Field of the Database
+  of its own Field: one statement."
+  [dimension-ids :- [:sequential ::lib.schema.id/dimension]]
+  (boolean
+   (seq (t2/query {:select [[1 :violation]]
+                   :from   [[(t2/table-name :model/Dimension) :d]]
+                   :join   [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]
+                            [(t2/table-name :model/Table) :ft] [:= :ft.id :f.table_id]
+                            [(t2/table-name :model/Field) :hf] [:= :hf.id :d.human_readable_field_id]
+                            [(t2/table-name :model/Table) :ht] [:= :ht.id :hf.table_id]]
+                   :where  [:and [:in :d.id (vec dimension-ids)] [:<> :ht.db_id :ft.db_id]]
+                   :limit  1}))))
 
 (mu/defn set-fields-active!
   "Set the active flag of the Fields with `field-ids`, returning the number updated."
@@ -566,10 +695,10 @@
   (app-db/insert-returning-instances! :model/Dimension rows))
 
 (mu/defn update-dimensions!
-  "Apply `changes` to the Dimensions with `ids`, returning the number updated."
-  [ids     :- [:sequential ::lib.schema.id/dimension]
+  "Apply `changes` to the Dimensions in `stored`, a map from id to the Dimension as read."
+  [stored  :- [:map-of ::lib.schema.id/dimension :map]
    changes :- (mut/dissoc ::warehouse-schema.schema/dimension.update :id)]
-  (t2/update! :model/Dimension :id [:in ids] changes))
+  (update-stored! :model/Dimension stored (mapv #(assoc changes :id %) (keys stored)) true))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, returning the number deleted."
@@ -600,10 +729,10 @@
   (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
-  "Apply `changes` to the FieldValues with `ids`, returning the number updated."
-  [ids     :- [:sequential ms/PositiveInt]
+  "Apply `changes` to the FieldValues in `stored`, a map from id to the FieldValues as read."
+  [stored  :- [:map-of ms/PositiveInt :map]
    changes :- (mut/dissoc ::warehouse-schema.schema/field-values.update :id)]
-  (t2/update! :model/FieldValues :id [:in ids] changes))
+  (update-stored! :model/FieldValues stored (mapv #(assoc changes :id %) (keys stored)) true))
 
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -712,7 +841,7 @@
    max-age-days :- :int]
   (apply t2/select :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
 
-(mu/defn delete-field-values-of-types-before!
+(mu/defn delete-field-values-for-cleanup!
   "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago,
   returning the number deleted."
   [field-id     :- ::lib.schema.id/field
@@ -766,10 +895,12 @@
   (t2/delete! :model/Table :id [:in table-ids]))
 
 (mu/defn update-tables!
-  "Apply `changes` to the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
-  (t2/update! :model/Table :id [:in table-ids] changes))
+  "Apply `rows`, each the id of a Table in `stored`, a map from id to the Table as read, and the columns to change;
+  `fresh?` says that the function read `stored` itself rather than got it from its caller."
+  [stored :- [:map-of ::lib.schema.id/table :map]
+   rows   :- [:sequential ::warehouse-schema.schema/table.update]
+   fresh? :- :boolean]
+  (update-stored! :model/Table stored rows fresh?))
 
 (mu/defn tables
   "The Tables with `table-ids`."

@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
@@ -562,26 +563,18 @@
                                                             [id (updated-table previous (dissoc row :id))])))
                                                   rows))))
 
-(defn- update-tables-by-change!
-  "Apply each of `rows`, the id of a Table and the columns to change, with one statement per distinct set of changes,
-  returning the number updated."
-  [rows]
-  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) rows)
-                    :when (seq changes)]
-                (warehouse-schema.db/update-tables! (into #{} (map :id) rows) changes))))
-
 (defn- apply-table-updates!
   "Apply each of `rows`, the id of a Table and the columns to change, to the `stored` Tables, `{id row}`, and the
   changes that follow them, and publish their events with the `:context` of `opts`, returning the number of Tables
   updated: a new field order sets the positions of the Table's Fields."
-  [stored rows opts]
+  [stored rows opts fresh?]
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
       (check-allowed-contents (for [{:keys [id collection_id]} rows
                                     :when (and collection_id (not= collection_id (:collection_id (stored id))))]
                                 collection_id))
-      (u/prog1 (update-tables-by-change! rows)
+      (u/prog1 (warehouse-schema.db/update-tables! stored rows fresh?)
         (update-field-positions!
          (for [{:keys [id field_order] :as row} rows
                :when (and (contains? row :field_order)
@@ -611,19 +604,39 @@
            [:writer  {:optional true} [:enum :import]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mu/defn update-tables! :- [:sequential ::warehouse-schema.schema/table.update]
-  "Apply each of `rows`, the id of a Table and the columns to change, and return them; a Collection that cannot hold
-  Tables throws, and a new field order sets the positions of its Fields. The stored rows are read once, unless the
-  caller gives them as `:tables`; `:context` goes into the events."
-  ([rows :- [:sequential ::warehouse-schema.schema/table.update]]
-   (update-tables! rows nil))
-  ([rows                      :- [:sequential ::warehouse-schema.schema/table.update]
-    {:keys [tables] :as opts} :- ::write-opts]
-   (let [stored (u/index-by :id tables)
-         opts   (dissoc opts :tables)]
-     (doseq [batch (partition-all write-batch-size rows)]
-       (apply-table-updates! (stored-tables batch stored) batch opts)))
-   (vec rows)))
+(defn- update-table-rows!
+  "Apply each of `rows`, the id of a Table and the columns to change, in batches of [[write-batch-size]]: the stored
+  rows are read once, unless the caller gives them as `:tables`, and `:context` goes into the events."
+  [rows {:keys [tables] :as opts}]
+  (let [stored (u/index-by :id tables)
+        opts   (dissoc opts :tables)]
+    (doseq [batch (partition-all write-batch-size rows)]
+      (apply-table-updates! (stored-tables batch stored) batch opts (empty? tables)))))
+
+(mu/defn update-tables! :- [:sequential ::lib.schema.id/table]
+  "Apply `changes` to the Tables with `ids` and return `ids`; a Collection that cannot hold Tables throws, and a new
+  field order sets the positions of their Fields. The stored rows are read once, unless the caller gives them as
+  `:tables`; `:context` goes into the events."
+  ([ids     :- [:sequential ::lib.schema.id/table]
+    changes :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
+   (update-tables! ids changes nil))
+  ([ids     :- [:sequential ::lib.schema.id/table]
+    changes :- (mut/dissoc ::warehouse-schema.schema/table.update :id)
+    opts    :- ::write-opts]
+   (update-table-rows! (mapv #(assoc changes :id %) ids) opts)
+   (vec ids)))
+
+(mu/defn update-tables-for-import!
+  "Apply each of `rows`, the id of a Table and the columns to change, one Table at a time."
+  [rows :- [:sequential ::warehouse-schema.schema/table.update]]
+  (doseq [row rows]
+    (update-tables! [(:id row)] (dissoc row :id))))
+
+(mu/defn update-tables-for-humanization!
+  "Apply each of `rows`, the id of a Table and its new display name, which differs for each Table of a setting that
+  rewrites them all: one read and one statement per distinct display name."
+  [rows :- [:sequential [:map [:id ::lib.schema.id/table] [:display_name :string]]]]
+  (update-table-rows! rows nil))
 
 (mu/defn change-case!
   "Set each of `columns`, such as `:name` and `:schema`, of the Tables with `table-ids` to its value in `kase`, `:lower`
@@ -652,7 +665,7 @@
     (t2/with-transaction [_conn]
       (let [tables (warehouse-schema.db/tables (vec ids))]
         (field/delete-fields-for-tables! (vec ids))
-        (actions.models/delete-implicit-actions-of-tables! (vec ids))
+        (actions.models/delete-actions-for-tables! (vec ids))
         (events/publish-event! :event/table-delete (events/delete-event tables))
         (warehouse-schema.db/delete-tables! (vec ids))))))
 
@@ -665,8 +678,7 @@
 (defmethod collection/archive-in-collections! :model/Table
   [_model collection-ids opts]
   (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
-    (update-tables! (mapv (fn [id] {:id id :collection_id nil :is_published false}) (distinct table-ids))
-                    opts)))
+    (update-tables! (vec (distinct table-ids)) {:collection_id nil :is_published false} opts)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
@@ -729,7 +741,7 @@
    :storage-paths       storage-paths
    :import-dependencies import-dependencies
    :insert!             create-tables!
-   :update!             update-tables!
+   :update!             update-tables-for-import!
    :delete!             delete-tables!
    :rows-by-refs        serialization/table-rows-by-refs})
 

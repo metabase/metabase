@@ -63,7 +63,8 @@
   "A Comment as selected from the app DB: every column of `:comment`."
   [:merge
    ::comment.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::comment.create
   "What a caller gives to create a Comment."
@@ -77,11 +78,10 @@
    [:context           {:optional true} [:maybe ::comment.context]]])
 
 (mr/def ::comment.update
-  "A Comment by its `id` with the columns to change: those of `::comment.create`, and the columns the product sets."
+  "The columns to change of Comments: those of `::comment.create`, and the columns the product sets."
   [:merge
    ::comment.create
    [:map {:closed true}
-    [:id           ms/PositiveInt]
     [:target_type  {:optional true} [:maybe [:or :keyword :string]]]
     [:target_id    {:optional true} [:maybe ms/PositiveInt]]
     [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]

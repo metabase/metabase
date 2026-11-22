@@ -56,15 +56,48 @@
                                          :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (models.channel/update-channels! [{:id id :name "New name"}])
-      (models.channel/update-channels! [{:id id :active true}])
+      (models.channel/update-channels! [id] {:name "New name"})
+      (models.channel/update-channels! [id] {:active true})
       (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (models.channel/update-channels! [{:id id :active false}])
+      (models.channel/update-channels! [id] {:active false})
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
         (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel :id id)))))))
+
+(deftest deactivation-renames-through-plain-update-test
+  (mt/with-model-cleanup [:model/Channel]
+    (let [create! (fn [channel-name]
+                    (first (models.channel/create-channels!
+                            [(assoc notification.tu/default-can-connect-channel :name channel-name)])))
+          long-name (apply str (repeat 250 "x"))]
+      (testing "a plain update that deactivates stores the renamed name"
+        (let [{:keys [id name]} (create! (mt/random-name))]
+          (t2/update! :model/Channel :id id {:active false})
+          (is (= (format "DEACTIVATED_%d %s" id name) (t2/select-one-fn :name :model/Channel :id id)))))
+      (testing "the name the update gives is the one renamed, with quotes kept as they are"
+        (let [{:keys [id]} (create! (mt/random-name))]
+          (t2/update! :model/Channel :id id {:active false :name "O'Brien \"channel\""})
+          (is (= (format "DEACTIVATED_%d O'Brien \"channel\"" id) (t2/select-one-fn :name :model/Channel :id id)))))
+      (testing "the renamed name is cut to 254 characters"
+        (let [{:keys [id]} (create! long-name)]
+          (t2/update! :model/Channel :id id {:active false})
+          (is (= (subs (format "DEACTIVATED_%d %s" id long-name) 0 254) (t2/select-one-fn :name :model/Channel :id id)))))
+      (testing "an update that leaves the Channel active keeps its name"
+        (let [{:keys [id name]} (create! (mt/random-name))]
+          (t2/update! :model/Channel :id id {:description "changed"})
+          (is (= name (t2/select-one-fn :name :model/Channel :id id)))))
+      (testing "the update event carries the stored name"
+        (let [{:keys [id name]} (create! (mt/random-name))
+              published         (atom [])]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
+            (models.channel/update-channels! [id] {:active false}))
+          (is (= [(format "DEACTIVATED_%d %s" id name)]
+                 (into [] (comp (filter (comp #{:event/channel-update} first))
+                                (mapcat (comp :changes second))
+                                (map (comp :name :object)))
+                       @published))))))))
 
 (deftest deactivated-channels-get-their-own-names-test
   (mt/with-model-cleanup [:model/Channel]
@@ -82,10 +115,8 @@
                      (:id inactive) (:name inactive)
                      (:id renamed)  (format "DEACTIVATED_%d New name" (:id renamed))}]
       (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
-        (models.channel/update-channels! [{:id (:id short-ch) :active false}
-                                          {:id (:id long-ch) :active false}
-                                          {:id (:id inactive) :active false}
-                                          {:id (:id renamed) :active false :name "New name"}]))
+        (models.channel/update-channels! (mapv :id [short-ch long-ch inactive]) {:active false})
+        (models.channel/update-channels! [(:id renamed)] {:active false :name "New name"}))
       (testing "each deactivated channel stores its own name, cut to 254 characters"
         (is (= expected (t2/select-pk->fn :name :model/Channel :id [:in (keys expected)]))))
       (testing "the update event shows the stored names of the channels it changes"
@@ -284,7 +315,7 @@
                                                                :name (mt/random-name) :active false)))))
               _          (swap! created into inactive)
               statements (fn [ids]
-                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (mapv (fn [id] {:id id :active false}) ids)))))]
+                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (vec ids) {:active false}))))]
           (statements [(first active)])
           (is (= (statements [(nth active 1) (first inactive)])
                  (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))))))

@@ -5,9 +5,11 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -64,11 +66,31 @@
    archived      :- :boolean]
   (t2/select :model/Timeline :collection_id collection-id :archived archived))
 
+(mu/defn archived-directly-clause
+  "The SQL expression for the `archived_directly` of a Timeline that `changes` archives or restores: true when it is
+  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
+  every row."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:= ^:allow-subquery {:select [:parent.archived]
+                                 :from   [[:collection :parent]]
+                                 :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                          [:auto/param (:collection_id changes)]
+                                                          :timeline.collection_id)]}
+            true]
+     false
+     :else true]
+    [:inline false]))
+
 (mu/defn update-timelines!
-  "Apply `changes` to the Timelines with `ids`, returning the number updated."
+  "Apply `changes` to the Timelines with `ids`, with one statement for each distinct set of columns that change in them,
+  returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- (mut/dissoc ::timeline.schema/timeline.update :id)]
-  (t2/update! :model/Timeline :id [:in ids] changes))
+  (let [stored (t2/select-pk->fn identity :model/Timeline :id [:in ids])]
+    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
+      (t2/update! :model/Timeline :id [:in group] effective)))
+  nil)
 
 (mu/defn unarchived-timelines-in-collections
   "The unarchived Timelines in the Collections with `collection-ids`."
@@ -106,10 +128,22 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn collections-for-content-checks
-  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+(mu/defn timelines-in-violation?
+  "Whether one of the Timelines with `ids` is in a Collection outside `allowed-namespaces`, in the library, its Data or
+  its Metrics collection, or in an archived Collection while it is not archived itself."
+  [ids                :- [:sequential ms/PositiveInt]
+   allowed-namespaces :- [:set [:maybe :keyword]]]
+  (t2/exists? :model/Timeline
+              {:where [:and
+                       [:in :timeline.id ids]
+                       [:not [:and
+                              (collections/namespace-ok-clause :timeline :collection_id allowed-namespaces)
+                              (collections/type-not-in-ok-clause :timeline :collection_id
+                                                                 [collections/library-collection-type
+                                                                  collections/library-data-collection-type
+                                                                  collections/library-metrics-collection-type])
+                              [:or [:= :timeline.archived true]
+                               (collections/not-archived-ok-clause :timeline :collection_id)]]]]}))
 
 (mu/defn insert-timeline-events!
   "Insert the TimelineEvent `rows` and return the inserted instances."
@@ -153,11 +187,25 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids]))
 
+(mu/defn icon-clause
+  "The SQL expression for the icon of a new event of the Timeline with `timeline-id`: the icon of the Timeline, or
+  `default-icon` when it has none."
+  [timeline-id  :- ms/PositiveInt
+   default-icon :- :string]
+  [:coalesce ^:allow-subquery {:select [:timeline.icon]
+                               :from   [:timeline]
+                               :where  [:= :timeline.id [:auto/param timeline-id]]}
+   default-icon])
+
 (mu/defn update-timeline-events!
-  "Apply `changes` to the TimelineEvents with `ids`, returning the number updated."
+  "Apply `changes` to the TimelineEvents with `ids`, with one statement for each distinct set of columns that change in
+  them, returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- (mut/dissoc ::timeline.schema/timeline-event.update :id)]
-  (t2/update! :model/TimelineEvent :id [:in ids] changes))
+  (let [stored (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids])]
+    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
+      (t2/update! :model/TimelineEvent :id [:in group] effective)))
+  nil)
 
 (mu/defn delete-timeline-events!
   "Delete the TimelineEvents with `ids`, returning the number deleted."

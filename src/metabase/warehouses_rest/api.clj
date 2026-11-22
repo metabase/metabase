@@ -958,8 +958,8 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (database/update-databases! [(assoc (cond-> updates
-                                              (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) :id (:id existing-database))] {:databases [existing-database]})
+        (database/update-databases! [(:id existing-database)] (cond-> updates
+                                                                (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) {:databases [existing-database]})
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -981,7 +981,7 @@
     (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
       (database/delete-databases! (warehouses-rest.db/destination-database-ids id))
-      (database-routing/delete-associated-database-router! id)
+      (database-routing/delete-database-routers-for-databases! [id])
       (database/delete-databases! [id])
       nil))
   api/generic-204-no-content)
@@ -1028,7 +1028,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (table/update-tables! (mapv (fn [id] {:id id :initial_sync_status "complete"}) (distinct table-ids)))))
+      (table/update-tables! (vec (distinct table-ids)) {:initial_sync_status "complete"})))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------

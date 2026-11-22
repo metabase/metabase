@@ -301,7 +301,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
-      (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
+      (data-testing.models/delete-transform-tests! [transform-test-id])
       (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
@@ -317,7 +317,7 @@
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}
                  :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
-    (data-testing.models/delete-transform-tests-by-id! [test-id])
+    (data-testing.models/delete-transform-tests! [test-id])
     (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
@@ -345,13 +345,13 @@
           (let [[warm-up & ids] @created
                 update!         (fn [ids]
                                   (events.tu/statement-count!
-                                   (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) ids)))))]
+                                   (fn [] (data-testing.models/update-transform-tests! ids {:description "same"}))))]
             (update! [warm-up])
             (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
         (testing "deleting a transform deletes its tests in a fixed number of statements"
           (let [delete! (fn [n]
                           (data-testing.models/create-transform-tests! (vec (repeat n (valid-row transform-id []))))
-                          (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id]))))]
+                          (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests-for-transforms! [transform-id]))))]
             (delete! 1)
             (is (= (delete! 2) (delete! 6)))))
         (finally
@@ -377,9 +377,9 @@
                                       #(data-testing.models/create-transform-tests! (mapv (fn [s] (valid-row s [])) (take n subjects))))
                               ids    (make! n)
                               update (events.tu/statement-count!
-                                      #(data-testing.models/update-transform-tests! (mapv (fn [id] {:id id :description "same"}) ids)))
+                                      #(data-testing.models/update-transform-tests! ids {:description "same"}))
                               delete (events.tu/statement-count!
-                                      #(data-testing.models/delete-transform-tests! (vec (take n subjects))))]
+                                      #(data-testing.models/delete-transform-tests-for-transforms! (vec (take n subjects))))]
                           [create update delete]))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
@@ -405,7 +405,7 @@
                       (let [rows   #(vec (map-indexed (fn [i id] (row-of subject-key id i)) (take n subjects)))
                             create (events.tu/statement-count! #(create! (rows)))
                             ids    (mapv :id (create! (rows)))
-                            update (events.tu/statement-count! #(update! (mapv (fn [id] {:id id :description "same"}) ids)))
+                            update (events.tu/statement-count! #(update! ids {:description "same"}))
                             delete (events.tu/statement-count! #(delete! ids))
                             _      (create! (rows))
                             by-subject (events.tu/statement-count! #(delete-subjects! (vec (take n subjects))))]
@@ -413,13 +413,13 @@
           cards    (measure :card_id [c1 c2 c3 c4 c5 c6]
                             data-testing.models.card-test/create-card-tests!
                             data-testing.models.card-test/update-card-tests!
-                            data-testing.models.card-test/delete-card-tests-by-id!
-                            data-testing.models.card-test/delete-card-tests!)
+                            data-testing.models.card-test/delete-card-tests!
+                            data-testing.models.card-test/delete-card-tests-for-cards!)
           segments (measure :segment_id [s1 s2 s3 s4 s5 s6]
                             data-testing.models.segment-test/create-segment-tests!
                             data-testing.models.segment-test/update-segment-tests!
-                            data-testing.models.segment-test/delete-segment-tests-by-id!
-                            data-testing.models.segment-test/delete-segment-tests!)]
+                            data-testing.models.segment-test/delete-segment-tests!
+                            data-testing.models.segment-test/delete-segment-tests-for-segments!)]
       (testing "card tests"
         (cards 1)
         (is (= (cards 2) (cards 6))))

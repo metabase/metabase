@@ -115,7 +115,7 @@
   {:pre [(number? max-age-seconds)]}
   (log/trace "Purging old cache entries.")
   (try
-    (query-cache/delete-query-caches-updated-before! (seconds-ago max-age-seconds))
+    (query-cache/delete-query-caches-for-cleanup! (seconds-ago max-age-seconds))
     (catch Throwable e
       (log/errorf "Error purging old cache entries: %s" (ex-message e))))
   nil)

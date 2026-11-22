@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -253,11 +254,35 @@
    changes  :- ::pulse.schema/pulse.update]
   (t2/update! :model/Pulse :id pulse-id changes))
 
+(mu/defn archived-directly-clause
+  "The HoneySQL expression for the `archived_directly` of a Pulse that an update archives or restores, `archived?` being
+  the `archived` it gives: true when it is archived while its Collection is not, which is the Collection `collection-id`
+  the update gives, or the stored one when `assigns-collection?` is false. It is the same for every row, and reads the
+  stored `collection_id` only when the update does not assign it."
+  [archived?          :- :boolean
+   assigns-collection? :- :boolean
+   collection-id      :- [:maybe ::lib.schema.id/collection]]
+  (if archived?
+    [:not [:exists ^:allow-subquery {:select [1]
+                                     :from   [[:collection :c]]
+                                     :where  [:and
+                                              [:= :c.id (cond
+                                                          (not assigns-collection?) :pulse.collection_id
+                                                          collection-id             [:auto/param collection-id]
+                                                          :else                     nil)]
+                                              [:= :c.archived true]]}]]
+    false))
+
 (mu/defn update-pulses!
-  "Apply `changes` to the Pulses with `pulse-ids`."
+  "Apply `changes` to the Pulses with `pulse-ids`, with one statement for each distinct set of columns the Pulses change."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]
    changes   :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse :id [:in pulse-ids] changes))
+  (when (seq pulse-ids)
+    (doseq [[group-changes ids] (mi/group-ids-by-changes
+                                 (u/index-by :id (t2/select :model/Pulse :id [:in pulse-ids]))
+                                 (map #(assoc changes :id %) pulse-ids))]
+      (t2/update! :model/Pulse :id [:in ids] group-changes)))
+  nil)
 
 (mu/defn delete-pulses!
   "Delete the Pulses with `pulse-ids`."

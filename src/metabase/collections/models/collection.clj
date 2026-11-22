@@ -174,7 +174,7 @@
   [collections remote-synced?]
   (t2/with-transaction [_conn]
     (doseq [[_depth level] (sort-by key (group-by #(count (filter #{\/} (:location %))) collections))]
-      (update-collections! (mapv (fn [{:keys [id]}] {:id id :is_remote_synced remote-synced?}) level)))))
+      (update-collections! (mapv :id level) {:is_remote_synced remote-synced?} nil))))
 
 (defn clear-remote-synced-collection!
   "Marks any remote-synced-collection as non-remote-synced"
@@ -2751,7 +2751,7 @@
        [source target]))
     (when-let [objects (not-empty (vec (mapcat (comp permission-objects subtree-ids)
                                                (remove #(personal-or-descendant? personal-ids (:before %)) crossing))))]
-      (permissions/delete-permissions-of-objects! objects))
+      (permissions/delete-permissions-for-objects! objects))
     (doseq [{:keys [before changes]} entries]
       (update-perms-for-tenant-specific-namespace-change! before changes))))
 
@@ -2826,62 +2826,77 @@
                                                     entries columns)
                                               opts)))
 
-(mu/defn update-collections! :- [:sequential ::collections.schema/collection.update]
+(declare update-collection-rows!)
+
+(mu/defn update-collections! :- :nil
+  "Applies `changes` to each Collection of `ids` after checking that each change can be made, as `update-collection-rows!`
+  does."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::collections.schema/collection.changes
+   opts    :- ::write-opts]
+  (update-collection-rows! (mapv #(assoc changes :id %) ids) opts)
+  nil)
+
+(mu/defn update-collections-for-import! :- :nil
+  "Applies the columns of each of `rows`, an `:id` with its own values, to its Collection as an import does, in one
+  batch of statements, which writing row by row would not be."
+  [rows :- [:sequential ::collections.schema/collection.update]]
+  (update-collection-rows! rows {:writer :import})
+  nil)
+
+(mu/defn- update-collection-rows! :- [:sequential ::collections.schema/collection.update]
   "Applies the columns of each of `updates` to the Collection with its `:id` and returns those of Collections that
   exist, after checking that each change can be made. A Collection moved takes the Collections under it along, one
   archived on its own takes them and what is in them, and one restored brings back what its archive took down; the
   statements do not grow with the number of Collections or what is in them. An import, `:writer :import` in `opts`,
   keeps the names of the system Collections and does not bring back an archived transforms folder."
-  ([updates :- [:sequential ::collections.schema/collection.update]]
-   (update-collections! updates nil))
-  ([updates :- [:sequential ::collections.schema/collection.update]
-    opts    :- ::write-opts]
-   (if (empty? updates)
-     []
-     (t2/with-transaction [_conn]
-       (let [stored  (collections.db/collections-by-id (mapv :id updates))
-             _       (when (= :import (:writer opts))
-                       (run! #(check-transforms-folder-not-archived % (get stored (:id %))) updates))
-             updates (cond->> (filterv #(contains? stored (:id %)) updates)
-                       (= :import (:writer opts))
-                       (mapv #(cond-> % (system-collection-name (get stored (:id %))) (dissoc :name))))
-             entries (into [] (comp (map #(update-entry (get stored (:id %)) %))
-                                    (filter (comp seq :changes)))
-                           updates)
-             moved   (filterv #(contains? (:changes %) :location) entries)]
-         (run! #(check-valid-location (merged %)) moved)
-         (let [parent-ids (parent-ids-to-read entries)
-               ancestors  (if (seq parent-ids)
-                            (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived]
-                                                                     (vec parent-ids))
-                            {})
-               _          (run! #(check-ancestors-exist (merged %) ancestors) moved)
-               _          (check-single-library-update entries)
-               operations (operation-ids entries)
-               columns    (mapv #(update-columns % ancestors (get operations (:id (:before %)))) entries)
-               by-id      (zipmap (map (comp :id :before) entries) columns)]
-           (when (seq moved)
-             (update-permissions-of-moves! moved ancestors))
-           (doseq [[cols group] (group-by second (map vector entries columns))]
-             (collections.db/update-collections! (mapv (comp :id :before first) group) cols))
-           (let [archiving (filterv #(and (:archived (:changes %)) (:archived_directly (get by-id (:id (:before %))))) entries)
-                 restoring (filterv #(and (contains? (:changes %) :archived)
-                                          (not (:archived (:changes %)))
-                                          (or (:archived_directly (:before %))
-                                              (not (contains? (:row %) :archive_operation_id))))
-                                    entries)]
-             (when-let [roots (seq (concat archiving restoring))]
-               (let [root-id (:id (:before (first roots)))]
-                 (when (seq archiving)
-                   (archive-subtrees! archiving by-id root-id))
-                 (when (seq restoring)
-                   (restore-subtrees! restoring root-id)))))
-           (when (seq moved)
-             (move-descendants! moved by-id)
-             (doseq [{:keys [before]} moved]
-               (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
-           (publish-update! entries columns opts))
-         updates)))))
+  [updates :- [:sequential ::collections.schema/collection.update]
+   opts    :- ::write-opts]
+  (if (empty? updates)
+    []
+    (t2/with-transaction [_conn]
+      (let [stored  (collections.db/collections-by-id (mapv :id updates))
+            _       (when (= :import (:writer opts))
+                      (run! #(check-transforms-folder-not-archived % (get stored (:id %))) updates))
+            updates (cond->> (filterv #(contains? stored (:id %)) updates)
+                      (= :import (:writer opts))
+                      (mapv #(cond-> % (system-collection-name (get stored (:id %))) (dissoc :name))))
+            entries (into [] (comp (map #(update-entry (get stored (:id %)) %))
+                                   (filter (comp seq :changes)))
+                          updates)
+            moved   (filterv #(contains? (:changes %) :location) entries)]
+        (run! #(check-valid-location (merged %)) moved)
+        (let [parent-ids (parent-ids-to-read entries)
+              ancestors  (if (seq parent-ids)
+                           (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived]
+                                                                    (vec parent-ids))
+                           {})
+              _          (run! #(check-ancestors-exist (merged %) ancestors) moved)
+              _          (check-single-library-update entries)
+              operations (operation-ids entries)
+              columns    (mapv #(update-columns % ancestors (get operations (:id (:before %)))) entries)
+              by-id      (zipmap (map (comp :id :before) entries) columns)]
+          (when (seq moved)
+            (update-permissions-of-moves! moved ancestors))
+          (collections.db/update-collections-by-columns! (mapv (fn [entry cols] [(:id (:before entry)) cols]) entries columns))
+          (let [archiving (filterv #(and (:archived (:changes %)) (:archived_directly (get by-id (:id (:before %))))) entries)
+                restoring (filterv #(and (contains? (:changes %) :archived)
+                                         (not (:archived (:changes %)))
+                                         (or (:archived_directly (:before %))
+                                             (not (contains? (:row %) :archive_operation_id))))
+                                   entries)]
+            (when-let [roots (seq (concat archiving restoring))]
+              (let [root-id (:id (:before (first roots)))]
+                (when (seq archiving)
+                  (archive-subtrees! archiving by-id root-id))
+                (when (seq restoring)
+                  (restore-subtrees! restoring root-id)))))
+          (when (seq moved)
+            (move-descendants! moved by-id)
+            (doseq [{:keys [before]} moved]
+              (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
+          (publish-update! entries columns opts))
+        updates))))
 
 (defn- check-deletable
   "Throws unless the stored Collection `collection` may be deleted."
@@ -2906,7 +2921,7 @@
                           (map :id)
                           (collections.db/collections-below (mapv children-location (vals stored))))]
             (delete-followers! ids)
-            (permissions/delete-permissions-of-objects! (permission-objects ids))
+            (permissions/delete-permissions-for-objects! (permission-objects ids))
             (events/publish-event! :event/collection-delete
                                    (events/delete-event (vec (vals (collections.db/collections-by-id (vec ids))))))
             (collections.db/delete-collections! (vec ids)))))))
@@ -2934,7 +2949,7 @@
    :import-dependencies import-dependencies
    :export-dependencies export-dependencies
    :insert!             #(create-collections! % {:writer :import})
-   :update!             #(update-collections! % {:writer :import})
+   :update!             update-collections-for-import!
    :delete!             delete-collections!})
 
 (defmethod remote-sync/spec :model/Collection

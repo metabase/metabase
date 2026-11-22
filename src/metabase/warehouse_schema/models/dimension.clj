@@ -3,6 +3,7 @@
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-remaps`."
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.eid-translation.spec :as eid-translation]
@@ -61,18 +62,12 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-human-readable-fields
-  "Throws a 400 unless the `:human_readable_field_id` of each of `dimensions` is a Field of the Database of its Field,
-  the Databases of all of them read in one query."
-  [dimensions]
-  (when (seq dimensions)
-    (let [field-id->database-id (warehouse-schema.db/field-database-ids
-                                 (into #{} (comp (mapcat (juxt :field_id :human_readable_field_id)) (remove nil?))
-                                       dimensions))]
-      (doseq [{:keys [field_id human_readable_field_id]} dimensions]
-        (let [target-database-id (field-id->database-id human_readable_field_id)]
-          (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
-          (api/checkp (= target-database-id (field-id->database-id field_id))
-                      :human_readable_field_id (tru "Target field must belong to the same database")))))))
+  "Throw a 400 unless every Dimension with `ids` satisfies these rules:
+
+  - its human-readable Field, if it has one, is a Field of the Database of its own Field"
+  [ids]
+  (when (warehouse-schema.db/human-readable-field-in-violation? ids)
+    (throw (ex-info (tru "Target field must belong to the same database") {:status-code 400}))))
 
 (mu/defn create-dimensions! :- [:sequential ::warehouse-schema.schema/dimension]
   "Insert the Dimension `rows` and return the inserted instances, refusing a human-readable Field outside the Database
@@ -81,30 +76,32 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (check-human-readable-fields (filter :human_readable_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-dimensions! rows))
+        (check-human-readable-fields (mapv :id <>))
         (events/publish-event! :event/dimension-create (events/create-event <>))))))
 
-(mu/defn update-dimensions! :- [:sequential ::warehouse-schema.schema/dimension.update]
-  "Apply each of `rows`, the id of a Dimension and the columns to change, and return the rows of the Dimensions that
-  exist, refusing a new human-readable Field outside the Database of the Dimension's Field: one read and one statement
-  per distinct set of changes."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
-  (if (empty? rows)
-    []
+(mu/defn update-dimensions!
+  "Apply `changes` to the Dimensions with `ids` and publish one update event, refusing a new human-readable Field
+  outside the Database of the Dimension's Field: one read and one statement per distinct stored state, then one
+  statement for the check."
+  [ids     :- [:sequential ::lib.schema.id/dimension]
+   changes :- (mut/dissoc ::warehouse-schema.schema/dimension.update :id)]
+  (when (seq ids)
     (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (warehouse-schema.db/dimensions-by-ids (mapv :id rows)))
-            rows   (filterv #(contains? stored (:id %)) rows)]
-        (check-human-readable-fields
-         (for [{:keys [id human_readable_field_id]} rows
-               :when (and human_readable_field_id
-                          (not= human_readable_field_id (:human_readable_field_id (stored id))))]
-           (assoc (stored id) :human_readable_field_id human_readable_field_id)))
-        (doseq [[changes rows] (group-by #(dissoc % :id) rows)
-                :when (seq changes)]
-          (warehouse-schema.db/update-dimensions! (mapv :id rows) changes))
-        (events/publish-event! :event/dimension-update (events/update-event stored rows))
-        rows))))
+      (let [stored       (u/index-by :id (warehouse-schema.db/dimensions-by-ids ids))
+            existing-ids (filterv stored ids)]
+        (when (seq existing-ids)
+          (warehouse-schema.db/update-dimensions! stored changes)
+          (when (:human_readable_field_id changes)
+            (check-human-readable-fields existing-ids))
+          (events/publish-event! :event/dimension-update
+                                 (events/update-event stored (mapv #(assoc changes :id %) existing-ids))))))))
+
+(mu/defn update-dimensions-for-import!
+  "Apply each of `rows`, the id of a Dimension and the columns to change, one Dimension at a time."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
+  (doseq [row rows]
+    (update-dimensions! [(:id row)] (dissoc row :id))))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, read once for the delete event published right before the statement."
@@ -141,7 +138,7 @@
                    :field_id                warehouse-schema.serialization/dimension-field-id-transform}
    :storage-paths warehouse-schema.serialization/dimension-storage-paths
    :insert!       create-dimensions!
-   :update!       update-dimensions!
+   :update!       update-dimensions-for-import!
    :delete!       delete-dimensions!
    :rows-by-refs  serialization/dimension-rows-by-refs})
 

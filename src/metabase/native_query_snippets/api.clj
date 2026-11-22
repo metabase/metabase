@@ -93,7 +93,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (native-query-snippet/update-snippets! [(assoc changes :id id)]))
+      (native-query-snippet/update-snippets! [id] changes nil))
     (get-native-query-snippet id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

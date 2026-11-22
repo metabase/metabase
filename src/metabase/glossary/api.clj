@@ -47,7 +47,7 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
-  (glossary/update-glossaries! [(assoc body :id id)])
+  (glossary/update-glossaries! [id] body)
   (t2/hydrate (glossary.db/glossary-entry id) :creator))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content

@@ -32,11 +32,8 @@
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::exploration.update
-  "An exploration by its `id` with the columns to change."
-  [:merge
-   ::exploration.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+  "The columns to change of Explorations."
+  ::exploration.create)
 
 (mr/def ::exploration.revision
   "An Exploration as a Revision stores it: its tracked columns."
@@ -120,11 +117,8 @@
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::exploration-page.update
-  "An exploration-page by its `id` with the columns to change."
-  [:merge
-   ::exploration-page.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+  "The columns to change of ExplorationPages."
+  ::exploration-page.create)
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -183,11 +177,8 @@
    [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
 
 (mr/def ::exploration-query.update
-  "An exploration-query by its `id` with the columns to change."
-  [:merge
-   ::exploration-query.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+  "The columns to change of ExplorationQueries."
+  ::exploration-query.create)
 
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
@@ -316,11 +307,8 @@
    [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
 (mr/def ::exploration-thread.update
-  "An exploration-thread by its `id` with the columns to change."
-  [:merge
-   ::exploration-thread.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+  "The columns to change of ExplorationThreads."
+  ::exploration-thread.create)
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."

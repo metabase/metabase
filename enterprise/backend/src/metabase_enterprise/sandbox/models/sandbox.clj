@@ -33,7 +33,8 @@
    [metabase.util.malli :as mu]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (set! *warn-on-reflection* true)
 
@@ -311,25 +312,28 @@
       (u/prog1 (sandbox.db/insert-sandboxes! rows)
         (events/publish-event! :event/sandbox-create (events/create-event <>))))))
 
-(defn- update-sandbox!
-  "Apply `row`, an `:id` and its changes, to its Sandbox as [[update-sandboxes!]] does, returning the Sandbox after the
-  update, or nil when it does not exist."
-  [{sandbox-id :id :as row}]
-  (let [changes (dissoc row :id)]
-    (when-let [stored (sandbox.db/sandbox sandbox-id)]
-      (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id stored)))
-        (check-columns-match-table (merge stored changes)))
-      (sandbox.db/update-sandbox! sandbox-id changes)
-      (u/prog1 (sandbox.db/sandbox sandbox-id)
-        (events/publish-event! :event/sandbox-update
-                               (events/update-event {sandbox-id stored} [row] {:objects {sandbox-id <>}}))))))
-
 (mu/defn update-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
-  "Apply the `rows`, each an `:id` and its changes, to their Sandboxes and return those that exist as stored after the
-  update, publishing the events of the writes; a new Card whose columns do not match the Table is a 400."
-  [rows :- [:sequential ::sandbox.schema/sandbox.update]]
+  "Apply `changes` to the Sandboxes with `ids` and return those that exist as stored after the update, in the order of
+  `ids`, publishing the event of the write; a new Card whose columns do not match the Table is a 400. The refusal of
+  the first refused Sandbox in the order of `ids` is the one thrown."
+  [ids     :- [:sequential ::lib.schema.id/sandbox]
+   changes :- ::sandbox.schema/sandbox.update]
   (t2/with-transaction [_conn]
-    (into [] (keep update-sandbox!) rows)))
+    (let [stored (if (seq ids) (u/index-by :id (sandbox.db/sandboxes-by-ids (set ids))) {})
+          ids    (into [] (comp (distinct) (filter stored)) ids)]
+      (if (empty? ids)
+        []
+        (do
+          (doseq [id ids
+                  :let [before (stored id)]]
+            (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id before)))
+              (check-columns-match-table (merge before changes)))
+            (t2.before-update/before-update :model/Sandbox (merge before changes)))
+          (sandbox.db/update-sandboxes! ids changes)
+          (let [after (u/index-by :id (sandbox.db/sandboxes-by-ids (set ids)))]
+            (events/publish-event! :event/sandbox-update
+                                   (events/update-event stored (mapv #(assoc changes :id %) ids) {:objects after}))
+            (mapv after ids)))))))
 
 (mu/defn delete-sandboxes! :- :nil
   "Delete the Sandboxes with `sandbox-ids`, publishing the event of the write."
@@ -341,7 +345,7 @@
         (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes)))))
   nil)
 
-(defenterprise upsert-sandboxes!
+(defenterprise upsert-sandboxes-for-graph!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
   created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
   if this does not exist, the sandbox will not be created."
@@ -353,7 +357,7 @@
        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
        ;; This allows existing values to be "cleared" by being set to nil
        (if (some #(contains? sandbox %) [:card_id :attribute_remappings])
-         (first (update-sandboxes! [(assoc (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}) :id id)]))
+         (first (update-sandboxes! [id] (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (sandbox.db/sandbox id))
        (first (create-sandboxes! [sandbox]))))))
 

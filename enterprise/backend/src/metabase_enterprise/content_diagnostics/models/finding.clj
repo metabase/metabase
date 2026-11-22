@@ -37,7 +37,7 @@
   [rows :- [:sequential ::cd.schema/finding.create]]
   (cd.db/insert-findings! rows))
 
-(mu/defn delete-invalidated-before! :- :int
+(mu/defn delete-findings-for-cleanup! :- :int
   "Hard-delete every finding invalidated before `cutoff`, a batch at a time; returns the row count.
   Active findings need no guard - their `invalidated_at` is NULL, and NULL < cutoff is never true."
   [cutoff :- ms/TemporalInstant]
@@ -76,19 +76,13 @@
     (when (seq clauses)
       (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 
-(mu/defn invalidate-by-ids! :- [:set ms/PositiveInt]
-  "Soft-invalidate the still-active findings among `ids` that match `where`, in one transaction; returns
-  the set of ids found active. Two racing calls can both report an id; the `invalidated_at` NULL guard
-  still stamps it once."
-  [ids   :- [:sequential ms/PositiveInt]
-   where :- vector?]
-  (t2/with-transaction [_conn]
-    (let [eligible (set (cd.db/active-finding-ids ids where))]
-      (when (seq eligible)
-        (cd.db/invalidate-findings-where! [:and
-                                           [:in :id (vec eligible)]
-                                           [:= :invalidated_at nil]]))
-      eligible)))
+(mu/defn invalidate-findings!
+  "Soft-invalidate the still-active findings among `ids`; returns the set of `ids`. A finding invalidated meanwhile
+  keeps its first stamp."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (cd.db/invalidate-findings-by-ids! (vec ids)))
+  (set ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

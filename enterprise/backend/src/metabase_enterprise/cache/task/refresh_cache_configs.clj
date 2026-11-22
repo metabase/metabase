@@ -243,9 +243,8 @@
         schedule-refresh-count
         (reduce
          (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
-           (cache-config/update-cache-configs! [{:id             id
-                                                 :next_run_at    (calc-next-run (:schedule config) now)
-                                                 :invalidated_at now}])
+           (cache-config/update-cache-configs! [id] {:next_run_at    (calc-next-run (:schedule config) now)
+                                                     :invalidated_at now})
            (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)
              (do
                (refresh-schedule-cache! cache-config)

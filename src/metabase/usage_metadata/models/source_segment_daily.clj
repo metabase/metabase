@@ -29,7 +29,7 @@
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-segment-rollups-for-day! bucket-date))
 
-(mu/defn delete-segment-rollups-before!
+(mu/defn delete-segment-rollups-for-cleanup!
   "Delete the SourceSegmentDaily rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (usage-metadata.db/delete-segment-rollups-before! bucket-date))

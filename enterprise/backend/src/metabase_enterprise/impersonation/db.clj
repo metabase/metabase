@@ -62,16 +62,10 @@
                                                    [:db_id :group_id :attribute])]]
   (app-db/insert-returning-instances! :model/ConnectionImpersonation impersonations))
 
-(mu/defn delete-impersonation!
-  "Delete the ConnectionImpersonation with `impersonation-id`."
-  [impersonation-id :- ms/PositiveInt]
-  (t2/delete! :model/ConnectionImpersonation :id impersonation-id))
-
-(mu/defn delete-impersonations-for-group-and-database!
-  "Delete the ConnectionImpersonations of the group with `group-id` on the Database with `database-id`."
-  [group-id    :- ms/PositiveInt
-   database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+(mu/defn delete-impersonations!
+  "Delete the ConnectionImpersonations with `ids`, which must not be empty."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/ConnectionImpersonation :id [:in [:auto/param (vec ids)]]))
 
 (mu/defn delete-impersonations-for-groups-and-databases!
   "Delete the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`."

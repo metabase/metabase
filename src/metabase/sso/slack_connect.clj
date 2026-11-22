@@ -25,4 +25,4 @@
 (defn disconnect-slack-account!
   "Remove the Slack link of the user with `user-id`."
   [user-id]
-  (models.auth-identity/delete-auth-identities! user-id "slack-connect"))
+  (models.auth-identity/delete-auth-identities-for-user! user-id "slack-connect"))

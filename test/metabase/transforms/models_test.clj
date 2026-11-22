@@ -98,22 +98,22 @@
           (testing "Transform created without creator_id defaults to internal user"
             (is (= config/internal-mb-user-id (:creator_id transform))))
           (testing "Initial tag order is preserved"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag1) (:id tag3)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag1) (:id tag3)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering tags preserves new order"
-            (transform.model/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered correctly")))
           (testing "Adding and removing tags preserves order"
-            (transform.model/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag1) (:id tag4)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag1) (:id tag4)] (:tag_ids hydrated))
                   "Should have only the specified tags in order")))
           (testing "Duplicate tags are deduplicated while preserving order"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag3) (:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids hydrated))
                   "Duplicates removed, order preserved"))))))))
@@ -127,12 +127,12 @@
                      :model/TransformTag tag3 {:name "tag3"}]
         (let [job-id (:id job)]
           (testing "Initial tag order is preserved"
-            (transform-job/update-job-tags! job-id [(:id tag2) (:id tag1)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag2) (:id tag1)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering and adding tags preserves order"
-            (transform-job/update-job-tags! job-id [(:id tag1) (:id tag3) (:id tag2)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag1) (:id tag3) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))

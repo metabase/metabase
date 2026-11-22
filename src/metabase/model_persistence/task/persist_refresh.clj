@@ -426,7 +426,7 @@
    - Prune scheduled job trigger is removed.
    - The prune job is triggered to run immediately. "
   []
-  (persisted-info/mark-for-pruning! {})
+  (persisted-info/mark-persisted-infos-for-pruning-for-disabling!)
   (unschedule-all-refresh-triggers! refresh-job-key)
   (task/delete-trigger! prune-scheduled-trigger-key)
   ;; ensure we clean up marked for deletion

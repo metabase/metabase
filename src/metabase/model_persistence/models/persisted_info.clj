@@ -152,27 +152,29 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn- update-in-groups!
-  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, `:state` and `:active` as stored, with one statement
-  per distinct set of effective changes, so that no update is split per row."
-  [rows changes]
-  (doseq [[changes ids] (mi/group-ids-by-changes (u/index-by :id rows) (mapv #(assoc changes :id (:id %)) rows))]
-    (model-persistence.db/update-persisted-infos! ids changes)))
-
-(defn mark-for-pruning!
-  "Marks PersistedInfo as `deletable` or `off`, these will at some point be cleaned up by the PersistPrune task.
+(defn mark-persisted-infos-for-pruning!
+  "Marks the PersistedInfos with `ids` as `state`, `deletable` or `off`, inactive; the PersistPrune task cleans them up
+  at some point.
 
    `deletable` will wipe out all trace of persisted-info and allow them to be turned back on by automatic processes
      use when you are disabling persistence at a high level.
    `off` will ensure automatic processes do not pick up these up and re-enable."
-  ([conditions-map]
-   (mark-for-pruning! conditions-map "deletable"))
-  ([conditions-map state]
-   (update-in-groups! (cond
-                        (contains? conditions-map :id)          (model-persistence.db/persisted-info-states-by-ids [(:id conditions-map)])
-                        (contains? conditions-map :database_id) (model-persistence.db/persisted-info-states-of-database (:database_id conditions-map))
-                        :else                                   (model-persistence.db/all-persisted-info-states))
-                      {:active false, :state state, :state_change_at :%now})))
+  [ids state]
+  (when (seq ids)
+    (model-persistence.db/update-persisted-infos! ids {:active false, :state state, :state_change_at :%now})))
+
+(defn mark-persisted-infos-for-pruning-for-databases!
+  "Marks every PersistedInfo of the Databases with `database-ids` as `deletable`, inactive, for the PersistPrune task;
+  one owner-scoped statement instead of a read of the ids of a Database's models."
+  [database-ids]
+  (when (seq database-ids)
+    (model-persistence.db/update-persisted-infos-for-databases!
+     database-ids {:active false, :state "deletable", :state_change_at :%now})))
+
+(defn mark-persisted-infos-for-pruning-for-disabling!
+  "Marks every PersistedInfo as `deletable`, inactive, which disabling model persistence for the instance does."
+  []
+  (model-persistence.db/update-all-persisted-infos! {:active false, :state "deletable", :state_change_at :%now}))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
@@ -181,8 +183,8 @@
   ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
   ;; TODO perhaps we should immediately kick off a recalculation of these caches
   (when (seq card-ids)
-    (update-in-groups! (model-persistence.db/active-persisted-info-states-of-cards card-ids)
-                       {:active false, :state "creating", :state_change_at :%now})))
+    (model-persistence.db/update-active-persisted-infos-for-cards!
+     card-ids {:active false, :state "creating", :state_change_at :%now})))
 
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."

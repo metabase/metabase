@@ -45,8 +45,8 @@
         (let [rows    (fn [db-ids attribute] (mapv #(hash-map :group_id group-id :db_id % :attribute attribute) db-ids))
               counted (fn [n]
                         (let [db-ids (take n [db-1 db-2 db-3 db-4 db-5 db-6])]
-                          (impersonation.models/insert-impersonations! (rows (take-nth 2 db-ids) "old_role"))
-                          (events.tu/statement-count! #(impersonation.models/insert-impersonations! (rows db-ids "new_role")))))]
+                          (impersonation.models/upsert-connection-impersonations-for-graph! (rows (take-nth 2 db-ids) "old_role"))
+                          (events.tu/statement-count! #(impersonation.models/upsert-connection-impersonations-for-graph! (rows db-ids "new_role")))))]
           (testing "replacing the impersonations of half of the Databases and adding the others"
             (counted 1)
             (is (= (counted 2) (counted 6)))))))))
@@ -57,7 +57,7 @@
                    :model/Database                {db-id :id}    {}
                    :model/Database                {other-id :id} {}
                    :model/ConnectionImpersonation _              {:group_id group-id :db_id db-id :attribute "stored_role"}]
-      (let [inserted (impersonation.models/insert-impersonations!
+      (let [inserted (impersonation.models/upsert-connection-impersonations-for-graph!
                       [{:group_id group-id :db_id db-id :attribute "first_role"}
                        {:group_id group-id :db_id other-id :attribute "other_role"}
                        {:group_id group-id :db_id db-id :attribute "last_role"}])]

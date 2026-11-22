@@ -312,10 +312,9 @@
                                         :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
                                         :details details})]))]
           (sync/sync-database! (:id database) {:scan :schema})
-          (database/update-databases! [{:id      (u/the-id database)
-                                        :details (cond-> (impersonation-details driver source-db)
-                                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
-                                                   (assoc :role (impersonation-default-role driver)))}])
+          (database/update-databases! [(u/the-id database)] {:details (cond-> (impersonation-details driver source-db)
+                                                                        (driver/database-supports? driver :connection-impersonation-requires-role nil)
+                                                                        (assoc :role (impersonation-default-role driver)))})
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
           (driver/notify-database-updated driver (driver.u/lib-database (:id database)))
           (let [database (t2/select-one :model/Database :id (u/the-id database))]

@@ -536,9 +536,10 @@
    {:keys [ids]} :- [:map {:closed true}
                      [:ids [:sequential {:min 1, :max 500} ms/PositiveInt]]]]
   (let [unique-ids  (distinct ids)
-        invalidated (finding/invalidate-by-ids! unique-ids [:and
-                                                            (api.common/latest-findings-clause)
-                                                            (api.common/visible-findings-clause)])]
+        invalidated (finding/invalidate-findings!
+                     (vec (cd.db/active-finding-ids unique-ids [:and
+                                                                (api.common/latest-findings-clause)
+                                                                (api.common/visible-findings-clause)])))]
     {:invalidated (filterv invalidated unique-ids)
      :skipped     (filterv (complement invalidated) unique-ids)}))
 

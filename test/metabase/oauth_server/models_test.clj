@@ -15,9 +15,9 @@
                  :model/User {user-5 :id} {}
                  :model/User {user-6 :id} {}]
     (let [user-ids [user-1 user-2 user-3 user-4 user-5 user-6]]
-      (doseq [write! [oauth-access-token/revoke-user-oauth-access-tokens!
-                      oauth-refresh-token/revoke-user-oauth-refresh-tokens!
-                      oauth-authorization-code/delete-user-oauth-authorization-codes!]]
+      (doseq [write! [oauth-access-token/revoke-oauth-access-tokens-for-users!
+                      oauth-refresh-token/revoke-oauth-refresh-tokens-for-users!
+                      oauth-authorization-code/delete-oauth-authorization-codes-for-users!]]
         (testing (str write!)
           (let [counted (fn [n] (events.tu/statement-count! #(write! (vec (take n user-ids)))))]
             (counted 1)

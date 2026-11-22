@@ -240,7 +240,7 @@
                 ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
                 ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
                 (request/as-admin
-                  (queries.card/update-cards! [{:id card-id :result_metadata cols}] {:writer :sync})))
+                  (queries.card/update-cards! [card-id] {:result_metadata cols} {:writer :sync})))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

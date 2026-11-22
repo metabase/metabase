@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -227,30 +226,33 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defn- check-resource-collections!
-  "Throws unless each Collection of `collection-id->app-id`, a map from a Collection id to the id of the data app that
-  gets it as its resource collection, nil for a new app, can be that: a top-level collection of data apps, not archived,
-  official, typed or the sample, that no other app has; remote sync may sync it."
+(defn- check-collections-unowned!
+  "Throw a 400 unless no other data app has a Collection of `collection-id->app-id`, a map from a Collection id to the id
+  of the data app that gets it as its resource collection, nil for a new app."
   [collection-id->app-id]
   (when (seq collection-id->app-id)
-    (let [collection-ids (vec (keys collection-id->app-id))
-          collections    (u/index-by :id (data-apps.db/resource-collections collection-ids))
-          owners         (reduce (fn [acc {:keys [id resource_collection_id]}]
-                                   (update acc resource_collection_id (fnil conj #{}) id))
-                                 {}
-                                 (data-apps.db/data-apps-with-collections collection-ids))]
-      (doseq [[collection-id app-id] collection-id->app-id
-              :let                   [collection (collections collection-id)]]
-        (when-not (and collection
-                       (= "data-apps" (some-> (:namespace collection) name))
-                       (= "/" (:location collection))
-                       (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
-                       (not-any? collection [:archived :is_sample]))
-          (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
-                          {:status-code 400, :collection-id collection-id})))
+    (let [owners (reduce (fn [acc {:keys [id resource_collection_id]}]
+                           (update acc resource_collection_id (fnil conj #{}) id))
+                         {}
+                         (data-apps.db/data-apps-with-collections (vec (keys collection-id->app-id))))]
+      (doseq [[collection-id app-id] collection-id->app-id]
         (when (seq (disj (get owners collection-id #{}) app-id))
           (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                           {:status-code 400, :collection-id collection-id})))))))
+
+(defn- check-resource-collections
+  "Throw a 400 unless every data app with `ids` satisfies these rules:
+
+  - its resource collection is in the data-apps namespace
+  - its resource collection is a top-level collection
+  - its resource collection is not archived
+  - its resource collection is not personal, official, typed, archived by an operation or the sample collection
+
+  A resource collection that does not exist is left to the foreign key of `resource_collection_id`."
+  [ids]
+  (when (and (seq ids) (data-apps.db/resource-collection-in-violation? (vec ids)))
+    (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                    {:status-code 400}))))
 
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows`, which the hooks of the model normalize, and return the inserted apps. A row
@@ -262,7 +264,7 @@
       (when-not (apply distinct? (or (seq given) [nil]))
         (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                         {:status-code 400})))
-      (check-resource-collections! (zipmap given (repeat nil)))
+      (check-collections-unowned! (zipmap given (repeat nil)))
       (t2/with-transaction [_conn]
         (let [missing        (filterv (comp nil? :resource_collection_id) rows)
               new-collection (zipmap (map :slug missing)
@@ -275,6 +277,7 @@
               apps           (data-apps.db/insert-data-apps!
                               (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
                                     rows))]
+          (check-resource-collections (mapv :id apps))
           (events/publish-event! :event/data-app-create (events/create-event apps))
           apps)))
     []))
@@ -292,46 +295,46 @@
             (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle)))
         rows))
 
-(mr/def ::write-opts
-  "The options of the update of DataApps: `:writer`, who writes when it matters."
-  [:maybe
-   [:map {:closed true}
-    [:writer {:optional true} [:enum :import]]]])
+(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
+  "Apply `changes`, one change to the columns, which the hooks of the model normalize, to each of the DataApps with
+  `ids` in one transaction, publishing their update event. Throws unless a new resource collection can be one, which
+  it cannot for several apps. Returns the updated rows."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::data-apps.schema/data-app.update]
+  (let [rows (mapv #(assoc changes :id %) ids)]
+    (when (seq ids)
+      (t2/with-transaction [_conn]
+        (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (vec ids)))
+              given  (when-let [collection-id (:resource_collection_id changes)]
+                       {:collection-id collection-id
+                        :apps          (filterv #(nil? (:resource_collection_id (stored %))) ids)})]
+          (when-let [{:keys [collection-id apps]} given]
+            (when (< 1 (count apps))
+              (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                              {:status-code 400, :collection-id collection-id})))
+            (check-collections-unowned! (into {} (map (fn [id] [collection-id id])) apps)))
+          (when (seq changes)
+            (data-apps.db/update-data-apps! ids changes))
+          (when given
+            (check-resource-collections (:apps given)))
+          (events/publish-event! :event/data-app-update
+                                 (events/update-event stored
+                                                      rows
+                                                      {:objects (into {}
+                                                                      (keep (fn [id]
+                                                                              (when-let [previous (stored id)]
+                                                                                [id (updated-data-app previous changes)])))
+                                                                      ids)})))))
+    rows))
 
-(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update]
-  "Apply the changes in each of `rows`, the id of a DataApp and the columns to change, which the hooks of the model
-  normalize, in one transaction, with one statement per distinct change set, publishing their update
-  event. Throws unless a new resource collection can be one. An import does not write a bundle that the stored app
-  already holds. Returns `rows`."
-  ([rows :- [:sequential ::data-apps.schema/data-app.update]]
-   (update-data-apps! rows nil))
-  ([rows :- [:sequential ::data-apps.schema/data-app.update]
-    opts :- ::write-opts]
-   (when (seq rows)
-     (t2/with-transaction [_conn]
-       (let [stored  (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))
-             changed (cond-> rows
-                       (= :import (:writer opts)) (without-held-bundles stored))]
-         (check-resource-collections!
-          (into {}
-                (keep (fn [{:keys [id resource_collection_id]}]
-                        (when resource_collection_id
-                          (let [app (stored id)]
-                            (when (and app (nil? (:resource_collection_id app)))
-                              [resource_collection_id id])))))
-                changed))
-         (doseq [[changes group] (group-by #(dissoc % :id) changed)
-                 :when           (seq changes)]
-           (data-apps.db/update-data-apps! (mapv :id group) changes))
-         (events/publish-event! :event/data-app-update
-                                (events/update-event stored
-                                                     changed
-                                                     (assoc opts :objects (into {}
-                                                                                (keep (fn [{:keys [id] :as row}]
-                                                                                        (when-let [previous (stored id)]
-                                                                                          [id (updated-data-app previous (dissoc row :id))])))
-                                                                                changed)))))))
-   (vec rows)))
+(mu/defn update-data-apps-for-import!
+  "Apply each of `rows`, the id of a DataApp and the columns to change, one row after the other, as an import does
+  because every row holds its own values, without a bundle that the stored app already holds. Returns `rows`."
+  [rows :- [:sequential ::data-apps.schema/data-app.update-row]]
+  (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))]
+    (doseq [row (without-held-bundles rows stored)]
+      (update-data-apps! [(:id row)] (dissoc row :id))))
+  (vec rows))
 
 (mu/defn delete-data-apps! :- :nil
   "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, publishing their
@@ -364,7 +367,7 @@
                                                   :export export-bundles
                                                   :import import-bundles}}
    :insert!             create-data-apps!
-   :update!             #(update-data-apps! % {:writer :import})
+   :update!             update-data-apps-for-import!
    :delete!             delete-data-apps!
    :storage-paths       storage-paths
    :resource-paths      resource-paths

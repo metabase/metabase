@@ -74,7 +74,7 @@
 (deftest sweep-leaves-recorded-endings-alone-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [session-id (insert-session! user-id :created_at (t/minus (t/local-date-time) (t/days 400)))]
-      (models.session/end-sessions! {:id [session-id]} "logout" :self)
+      (models.session/end-sessions! [session-id] "logout" :self)
       (let [before (t2/select-one :model/Session :id session-id)]
         (sweep!)
         (testing "a session whose ending is already recorded keeps its reason and instant, however stale it is now"

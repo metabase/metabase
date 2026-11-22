@@ -108,7 +108,7 @@
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must end the session here:
     (when-not (sso-settings/saml-slo-enabled)
-      (models.session/end-sessions! {:key_hashed metabase-session-key-hashed} "sso-logout" :self))
+      (models.session/end-session-for-key! metabase-session-key-hashed "sso-logout" :self))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))

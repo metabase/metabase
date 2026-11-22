@@ -165,7 +165,7 @@
       (testing "changing the connection details records one database-update row for the admin"
         (let [before (max-id)]
           (mt/with-current-user (mt/user->id :crowberto)
-            (database/update-databases! [{:id db-id :details (assoc (:details (mt/db)) :let-user-control-scheduling true)}]))
+            (database/update-databases! [db-id] {:details (assoc (:details (mt/db)) :let-user-control-scheduling true)}))
           (is (= [[:database-update "Database" db-id]] (topics-since before))))))))
 
 (deftest database-update-keeps-secrets-out-of-details-test
@@ -173,7 +173,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Audited"}]
       (let [before (max-id)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (database/update-databases! [{:id db-id :details (assoc (:details (mt/db)) :password "zz-secret-password")}]))
+          (database/update-databases! [db-id] {:details (assoc (:details (mt/db)) :password "zz-secret-password")}))
         (is (= 1 (count (rows-since before))))
         (is (not (re-find #"zz-secret-password" (pr-str (rows-since before)))))))))
 
@@ -182,7 +182,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db))}]
       (let [before (max-id)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (database/update-databases! [{:id db-id :initial_sync_status "complete" :dbms_version {:flavor "H2"}}]))
+          (database/update-databases! [db-id] {:initial_sync_status "complete" :dbms_version {:flavor "H2"}}))
         (is (= [] (rows-since before)))))))
 
 (deftest user-update-records-row-test

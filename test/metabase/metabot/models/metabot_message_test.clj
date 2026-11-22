@@ -142,7 +142,7 @@
         (testing "updating messages that are in different states"
           (let [counted (fn [ids]
                           (events.tu/statement-count!
-                           #(metabot-message/update-metabot-messages! (mapv (fn [id] {:id id :finished true :total_tokens 7}) ids))))]
+                           #(metabot-message/update-metabot-messages! ids {:finished true :total_tokens 7})))]
             (counted (mixed 1))
             (is (= (counted (mixed 1)) (counted (mixed 3))))))
         (testing "soft-deleting messages, some of them already soft-deleted by the same user"

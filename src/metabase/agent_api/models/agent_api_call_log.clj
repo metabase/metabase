@@ -20,7 +20,7 @@
   [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
   (agent-api.db/insert-call-logs! rows))
 
-(mu/defn delete-agent-api-call-logs-created-before!
+(mu/defn delete-agent-api-call-logs-for-cleanup!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (agent-api.db/delete-call-logs-created-before! cutoff))

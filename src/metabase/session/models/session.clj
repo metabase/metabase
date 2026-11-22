@@ -142,19 +142,25 @@
 
 (mu/defn get-or-create-mcp-session!
   "The `core_session` row with `key-hashed` of the User with `user-id`, inserting one attributed to the AuthIdentity
-  with `auth-identity-id` when there is none. The row backs an MCP client rather than a login, so no login event is
-  published."
+  with `auth-identity-id` when there is none, and reading the row of a concurrent insert when the insert fails. The row
+  backs an MCP client rather than a login, so no login event is published."
   [key-hashed       :- :string
    user-id          :- ::lib.schema.id/user
    auth-identity-id :- ms/PositiveInt]
-  (session.db/select-or-insert-mcp-session!
-   key-hashed user-id
-   (fn []
-     (check-password-login-allowed auth-identity-id)
-     {:id               (generate-session-id)
-      :anti_csrf_token  nil
-      :auth_identity_id auth-identity-id
-      :created_at       :%now})))
+  (or (session.db/mcp-session key-hashed user-id)
+      (do
+        (check-password-login-allowed auth-identity-id)
+        (try
+          (t2/with-transaction [_conn]
+            (session.db/insert-mcp-session! {:id               (generate-session-id)
+                                             :key_hashed       key-hashed
+                                             :user_id          user-id
+                                             :anti_csrf_token  nil
+                                             :auth_identity_id auth-identity-id
+                                             :created_at       :%now}))
+          (catch Exception e
+            (or (session.db/mcp-session key-hashed user-id)
+                (throw e)))))))
 
 (mu/defn delete-mcp-session!
   "Delete the MCP-backed `core_session` with `key-hashed` if it belongs to the User with `user-id`."
@@ -162,32 +168,25 @@
    user-id    :- ::lib.schema.id/user]
   (session.db/delete-session-of-user! key-hashed user-id))
 
-(mu/defn end-sessions! :- ms/IntGreaterThanOrEqualToZero
-  "Record that every Session matching `conditions` (see `::session.schema/end-conditions`) has ended: `ended_at`
-  becomes now, `end_reason` becomes `reason`, `ended_by_user_id` becomes `ended-by`, and `key_hashed` is cleared so
-  the row can never authenticate a request again. A session that has already ended is left as it was. Returns the
-  number of sessions ended. See `::session.schema/ended-by` for `ended-by`."
-  [conditions :- ::session.schema/end-conditions
-   reason     :- ::session.schema/end-reason
-   ended-by   :- ::session.schema/ended-by]
-  (if (and (contains? conditions :id) (empty? (:id conditions)))
-    0
-    (session.db/end-sessions! (cond-> conditions
-                                (:id conditions)                   (update :id (fn [ids] [:in ids]))
-                                (sequential? (:user_id conditions)) (update :user_id (fn [ids] [:in ids])))
-                              reason
-                              (if (= ended-by :self) :user_id ended-by))))
+(defn- db-ended-by
+  "The `ended-by` of a session ending as the db layer takes it, `:user_id` for the session's own user."
+  [ended-by]
+  (if (= ended-by :self) :user_id ended-by))
 
 (defn- end-sessions-in-batches!
+  "End the Sessions with `ids` with `reason` by `ended-by`, `batch-size` ids per statement, returning the number ended."
   [ids reason ended-by batch-size]
-  (transduce (map (fn [batch] (end-sessions! {:id batch} reason ended-by)))
+  (transduce (map #(session.db/end-sessions! (vec %) reason (db-ended-by ended-by)))
              +
              0
              (partition-all batch-size ids)))
 
-(mu/defn end-sessions-by-ids! :- ms/IntGreaterThanOrEqualToZero
-  "[[end-sessions!]] for the Sessions with `ids`, in batches of `batch-size` ids ([[default-end-batch-size]] by
-  default), returning the total number ended. An empty `ids` ends nothing."
+(mu/defn end-sessions! :- ms/IntGreaterThanOrEqualToZero
+  "Record that every Session with `ids` has ended: `ended_at` becomes now, `end_reason` becomes `reason`,
+  `ended_by_user_id` becomes `ended-by`, and `key_hashed` is cleared so the row can never authenticate a request
+  again. A session that has already ended is left as it was. Writes in batches of `batch-size` ids
+  ([[default-end-batch-size]] by default) and returns the number ended; an empty `ids` ends nothing. See
+  `::session.schema/ended-by` for `ended-by`."
   ([ids      :- [:sequential :string]
     reason   :- ::session.schema/end-reason
     ended-by :- ::session.schema/ended-by]
@@ -199,23 +198,40 @@
     batch-size :- ms/PositiveInt]
    (end-sessions-in-batches! ids reason ended-by batch-size)))
 
+(mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
+  "[[end-sessions!]] for every Session of the Users with `user-ids`, returning the number ended; an empty `user-ids`
+  ends nothing."
+  [user-ids :- [:sequential ::lib.schema.id/user]
+   reason   :- ::session.schema/end-reason
+   ended-by :- ::session.schema/ended-by]
+  (if (empty? user-ids)
+    0
+    (session.db/end-sessions-for-users! (vec user-ids) reason (db-ended-by ended-by))))
+
+(mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
+  "[[end-sessions!]] for the Session with `key-hashed`, returning the number ended."
+  [key-hashed :- :string
+   reason     :- ::session.schema/end-reason
+   ended-by   :- ::session.schema/ended-by]
+  (session.db/end-session-for-key! key-hashed reason (db-ended-by ended-by)))
+
 (mu/defn touch-session!
   "Record that the Session with `key-hashed` was just used."
   [key-hashed :- :string]
   (session.db/touch-session! key-hashed))
 
-(mu/defn delete-sessions-ended-long-ago! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Sessions whose recorded ending is more than `session.db/ended-session-retention-days` old, returning the
-  number deleted. A live session is never deleted, whatever its age."
-  []
-  (session.db/delete-sessions-ended-long-ago!))
+(mu/defn delete-sessions-for-cleanup! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the Sessions whose recorded ending is before `cutoff`, returning the number deleted. A live session is never
+  deleted, whatever its age."
+  [cutoff :- ms/TemporalInstant]
+  (session.db/delete-sessions-for-cleanup! cutoff))
 
-(mu/defn delete-expired-mcp-sessions! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn delete-sessions-for-mcp-cleanup! :- ms/IntGreaterThanOrEqualToZero
   "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or idle longer
   than `idle-timeout-seconds` when it is given, returning the number deleted."
   [max-age-minutes      :- ms/PositiveInt
    idle-timeout-seconds :- [:maybe ms/PositiveInt]]
-  (session.db/delete-expired-mcp-sessions! max-age-minutes idle-timeout-seconds))
+  (session.db/delete-sessions-for-mcp-cleanup! max-age-minutes idle-timeout-seconds))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

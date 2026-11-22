@@ -40,6 +40,7 @@
   [:merge
    ::document.update
    [:map {:closed true}
+    [:id                  {:optional true} ms/PositiveInt]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_write           {:optional true} :boolean]
@@ -71,17 +72,23 @@
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
 (mr/def ::document.update
-  "A Document by its `id` with the columns to change: those of `::document.create`, and the columns the product sets."
+  "The columns to change of Documents: those of `::document.create`, and the columns the product sets."
   [:merge
    ::document.create
    [:map {:closed true}
-    [:id                 ms/PositiveInt]
     [:name               {:optional true} ::document.name]
     [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
     [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
     [:last_viewed_at     {:optional true} [:maybe ms/TemporalInstant]]
     [:view_count         {:optional true} [:maybe :int]]
     [:public_uuid_prefix {:optional true} [:maybe :string]]]])
+
+(mr/def ::document.import-row
+  "A Document by its `id` with the columns an import writes to it."
+  [:merge
+   ::document.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."

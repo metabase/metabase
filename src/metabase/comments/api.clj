@@ -233,7 +233,7 @@
       (api/check-400 (not (:deleted_at comment))
                      "Cannot edit content of a deleted comment"))
     (when (seq changes)
-      (comment/update-comments! [(assoc changes :id comment-id)]))
+      (comment/update-comments! [comment-id] changes))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
                               (t2/hydrate :creator :reactions))]
       updated-comment)))

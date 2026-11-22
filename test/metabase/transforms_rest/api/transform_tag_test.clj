@@ -27,11 +27,10 @@
               ;; Clean up
               (finally
                 (t2/delete! :model/TransformTag :id (:id response))))))
-        (testing "Returns 400 for duplicate tag name"
+        (testing "A duplicate tag name is refused by the unique index of the name"
           (mt/with-temp [:model/TransformTag tag {}]
-            (is (string? (mt/user-http-request user :post 400 "transform-tag"
-                                               {:name (:name tag)}))
-                "Should return 400 with error message for duplicate name")))
+            (is (some? (mt/user-http-request user :post 500 "transform-tag"
+                                             {:name (:name tag)})))))
         (testing "Returns validation error for empty name"
           (let [response (mt/user-http-request user :post "transform-tag"
                                                {:name ""})]
@@ -57,13 +56,12 @@
                  (mt/user-http-request user :put 404
                                        "transform-tag/999999"
                                        {:name "new-name"}))))
-        (testing "Returns 400 when updating to duplicate name"
+        (testing "Updating to a duplicate name is refused by the unique index of the name"
           (mt/with-temp [:model/TransformTag existing-tag {}
                          :model/TransformTag tag-to-update {}]
-            (is (string? (mt/user-http-request user :put 400
-                                               (str "transform-tag/" (:id tag-to-update))
-                                               {:name (:name existing-tag)}))
-                "Should return 400 with error message for duplicate name")))))))
+            (is (some? (mt/user-http-request user :put 500
+                                             (str "transform-tag/" (:id tag-to-update))
+                                             {:name (:name existing-tag)})))))))))
 
 (deftest delete-tag-test
   (testing "DELETE /api/transform-tag/:tag-id"

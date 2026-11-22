@@ -174,9 +174,8 @@
   (ms/enum-decode-keyword [:none :global-schedule]))
 
 (mr/def ::transform.update
-  "What an update of a Transform takes: its `:id` and the columns to change, every column of `:transform` and `:run_trigger`, which the model's hooks consume."
+  "What an update of a Transform takes: the columns to change, every column of `:transform` and `:run_trigger`, which the model's hooks consume."
   [:map {:closed true}
-   [:id                    ::lib.schema.id/transform]
    [:name                  {:optional true} [:maybe :string]]
    [:description           {:optional true} [:maybe :string]]
    [:source                {:optional true} [:maybe ::transform.source]]
@@ -195,6 +194,20 @@
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe ::run-trigger]]])
+
+(mr/def ::transform.update-with-tags
+  "What the update of one Transform takes: the columns to change and the `:tag_ids` it has afterwards."
+  [:merge
+   ::transform.update
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]]])
+
+(mr/def ::transform.import-row
+  "What an import writes to update a Transform: its `:id` and the columns to change."
+  [:merge
+   ::transform.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/transform]]])
 
 (mr/def ::transform.revision
   "A Transform as a Revision stores it: its tracked columns."
@@ -255,9 +268,8 @@
   u.cron/CronScheduleString)
 
 (mr/def ::transform-job.update
-  "What an update of a TransformJob takes: its `:id` and the columns to change, every column of `:transform_job`."
+  "What an update of a TransformJob takes: the columns to change, every column of `:transform_job`."
   [:map {:closed true}
-   [:id              ms/PositiveInt]
    [:name            {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:schedule        {:optional true} [:maybe ::transform-job.schedule]]
@@ -268,6 +280,20 @@
    [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active          {:optional true} [:maybe :boolean]]])
 
+(mr/def ::transform-job.import-row
+  "What an import writes to update a TransformJob: its `:id` and the columns to change."
+  [:merge
+   ::transform-job.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::transform-job.update-with-tags
+  "What the update of one TransformJob takes: the columns to change and the `:tag_ids` the job has afterwards."
+  [:merge
+   ::transform-job.update
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]])
+
 (mr/def ::transform-job.create
   "What creating a TransformJob takes: its name and schedule, and optionally its description and display type, and for
   an import its entity id and built-in type."
@@ -277,7 +303,8 @@
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id       {:optional true} [:maybe :string]]
-   [:built_in_type   {:optional true} [:maybe :string]]])
+   [:built_in_type   {:optional true} [:maybe :string]]
+   [:tag_ids         {:optional true} [:sequential ms/PositiveInt]]])
 
 (mr/def ::transform-job-run
   "A TransformJobRun as selected from the app DB: every column of `:transform_job_run`."
@@ -372,14 +399,20 @@
     [:id            ms/PositiveInt]]])
 
 (mr/def ::transform-tag.update
-  "What an update of a TransformTag takes: its `:id` and the columns to change, every column of `:transform_tag`."
+  "What an update of a TransformTag takes: the columns to change, every column of `:transform_tag`."
   [:map {:closed true}
-   [:id            ms/PositiveInt]
    [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+
+(mr/def ::transform-tag.import-row
+  "What an import writes to update a TransformTag: its `:id` and the columns to change."
+  [:merge
+   ::transform-tag.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::transform-tag.create
   "What creating a TransformTag takes: its name, and for an import its entity id and built-in type."
@@ -431,6 +464,7 @@
    [:name               :string]
    [:source             ::transform.source]
    [:target             ::transform.target]
+   [:tag_ids            {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]
    [:description        {:optional true} [:maybe :string]]
    [:entity_id          {:optional true} [:maybe :string]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]

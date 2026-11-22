@@ -515,11 +515,11 @@
   users.db/user-ids-of-type)
 
 (def deactivated-with-tenant-user-ids
-  "The ids of the Users of a Tenant that were deactivated with it, see [[users.db/deactivated-with-tenant-user-ids]]."
+  "The ids of the Users of Tenants that were deactivated with them, see [[users.db/deactivated-with-tenant-user-ids]]."
   users.db/deactivated-with-tenant-user-ids)
 
 (def active-user-ids-of-tenant
-  "The ids of the active Users of a Tenant, see [[users.db/active-user-ids-of-tenant]]."
+  "The ids of the active Users of Tenants, see [[users.db/active-user-ids-of-tenant]]."
   users.db/active-user-ids-of-tenant)
 
 (def active-tenant-user-ids

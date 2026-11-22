@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -12,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ended-session-retention-days
+  "How long an ended session stays on record before the cleanup deletes its row, a constant rather than a setting, and
+  not `audit-max-retention-days`, which defaults to two years for the audit tables."
+  30)
+
 (defn- record-unrecorded-endings!
   "Record the ending of every session that is no longer live but still has no `ended_at`: `expired` for a row past
   its own `expires_at` or `max-session-age`, `timed-out` for one idle past the session timeout, `user-deactivated`
@@ -20,17 +26,17 @@
   []
   (let [unrecorded (session.db/sessions-with-unrecorded-ending (session/liveness-params))]
     (doseq [[reason rows] (group-by :reason unrecorded)]
-      (models.session/end-sessions-by-ids! (mapv :id rows) reason nil))))
+      (models.session/end-sessions! (mapv :id rows) reason nil))))
 
 (defn- cleanup-sessions!
   "Two passes over `core_session`: record the ending of every session that has stopped being live, then delete the
   rows whose recorded ending is older than the retention period. MCP-backed rows are not sessions and are simply
   deleted once they expire, as they always were."
   []
-  (models.session/delete-expired-mcp-sessions! (config/config-int :max-session-age)
-                                               (request/enabled-session-timeout-seconds))
+  (models.session/delete-sessions-for-mcp-cleanup! (config/config-int :max-session-age)
+                                                   (request/enabled-session-timeout-seconds))
   (record-unrecorded-endings!)
-  (models.session/delete-sessions-ended-long-ago!))
+  (models.session/delete-sessions-for-cleanup! (t/minus (t/offset-date-time) (t/days ended-session-retention-days))))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))

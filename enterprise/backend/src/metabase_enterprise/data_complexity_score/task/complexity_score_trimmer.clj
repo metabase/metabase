@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -21,7 +22,8 @@
 (defn- trim-old-complexity-score-data!
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
-  (let [deleted (data-complexity-score/delete-scores-older-than! retention-months)]
+  (let [deleted (data-complexity-score/delete-data-complexity-scores-for-cleanup!
+                  (t/minus (t/offset-date-time) (t/months retention-months)))]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
 (task/defjob DataComplexityScoreTrimmer

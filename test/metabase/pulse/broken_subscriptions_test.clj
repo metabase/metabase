@@ -123,7 +123,7 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (models.pulse/update-pulses! [{:id bad-pulse-id :archived true}])
+              (models.pulse/update-pulses! [bad-pulse-id] {:archived true})
               (is (true? (:archived (models.pulse/retrieve-pulse bad-pulse-id)))))))))))
 
 (deftest handle-broken-subscriptions-returns-what-it-archived-test

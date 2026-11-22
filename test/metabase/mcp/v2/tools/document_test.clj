@@ -710,7 +710,7 @@
                          :collection_id nil})
               call!    (fn [scopes]
                          (-> (registry/call-tool scopes nil "document_write"
-                                                 {:method "update" :id (:id existing) :edits []})
+                                                 {:method "update" :id existing :edits []})
                              :result :content first :text))]
           (testing "without the read scope the body is withheld, leaving the minimal ack"
             (let [txt (call! #{"agent:content:write"})]
@@ -735,19 +735,19 @@
               call! (fn [args]
                       (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
                                           "document_write"
-                                          (merge {:method "update" :id (:id doc)} args)))]
-          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))
+                                          (merge {:method "update" :id doc} args)))]
+          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id doc))
               "precondition: the document is pinned")
           (testing "a null leaves it alone, as it does everywhere else"
             (call! {:edits [] :collection_position nil})
-            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id doc))))
           (testing "clear unsets it"
             (call! {:edits [] :clear ["collection_position"]})
-            (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+            (is (nil? (t2/select-one-fn :collection_position :model/Document :id doc))))
           (testing "a property outside the clearable set is refused at the boundary"
             (let [txt (error-text (call! {:edits [] :clear ["name"]}))]
               (is (re-find #"clear" txt))
-              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
+              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id doc)))))))))))
 
 ;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
 ;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See

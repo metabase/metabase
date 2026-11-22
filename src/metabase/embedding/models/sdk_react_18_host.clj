@@ -27,10 +27,10 @@
    seen-at :- ms/TemporalInstant]
   (embedding.db/save-sdk-react-18-host! host seen-at))
 
-(mu/defn delete-sdk-react-18-hosts-last-seen-before!
+(mu/defn delete-sdk-react-18-hosts-for-cleanup!
   "Delete the EmbeddingSdkReact18Hosts last seen before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (embedding.db/delete-sdk-react-18-hosts-last-seen-before! cutoff))
+  (embedding.db/delete-sdk-react-18-hosts-for-cleanup! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -121,7 +121,8 @@
   (let [changes (t2/changes channel)]
     (when (not= (contains? changes :type) (contains? changes :details))
       (check-type-and-details channel))
-    channel))
+    (cond-> channel
+      (false? (:active changes)) (assoc :name (channel.db/deactivated-name-clause (when (contains? changes :name) (:name channel)))))))
 
 (defn- check-valid-channel-template
   "Throws unless `channel-template` matches [[::ChannelTemplate]]."
@@ -235,59 +236,37 @@
   {:arglists '([model channel-ids opts])}
   (fn [model _channel-ids _opts] model))
 
-(mr/def ::write-opts
-  [:maybe [:map {:closed true}
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
-(defn- deactivated-name
-  "The name of the Channel with `id` and `channel-name` once deactivated, which frees its unique name for a new Channel,
-  cut to 254 characters."
-  [id channel-name]
-  (u/truncate (format "DEACTIVATED_%d %s" id channel-name) 254))
-
 (def ^:private ChannelUpdate
-  "What [[update-channels!]] takes for one Channel: its `:id` and the columns to set."
+  "What [[update-channels-for-import!]] takes for one Channel: its `:id` and the columns to set."
   [:merge ::channel.schema/channel.update [:map [:id ms/PositiveInt]]])
 
-(mu/defn update-channels! :- [:sequential ChannelUpdate]
-  "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, with one statement per distinct
-  change set, publishing the events of the writes, and return `rows`. Deactivating an active Channel first deletes its
-  PulseChannels and renames it with [[deactivated-name]]."
-  ([rows :- [:sequential ChannelUpdate]]
-   (update-channels! rows nil))
-  ([rows :- [:sequential ChannelUpdate]
-    opts :- ::write-opts]
-   (when (seq rows)
-     (t2/with-transaction [_conn]
-       (let [changes-by-id (into {} (map (fn [row] [(:id row) (dissoc row :id)])) rows)
-             previous      (m/index-by :id (channel.db/channels-by-ids (vec (keys changes-by-id))))
-             deactivated   (not-empty (into [] (comp (filter (comp false? :active val))
-                                                     (map key)
-                                                     (filter #(:active (get previous %))))
-                                            changes-by-id))
-             names         (into {} (map (fn [id]
-                                           [id (deactivated-name id (:name (merge (get previous id) (get changes-by-id id))))]))
-                                 deactivated)]
-         (when deactivated
-           (t2/resolve-model :model/PulseChannel)
-           (delete-for-channels! :model/PulseChannel deactivated opts))
-         (doseq [[changes ids] (mi/group-ids-by-changes previous
-                                                        (map (fn [[id changes]]
-                                                               (assoc (cond-> changes (contains? names id) (dissoc :name))
-                                                                      :id id))
-                                                             changes-by-id))]
-           (let [renamed (filterv #(contains? names %) ids)
-                 plain   (filterv #(not (contains? names %)) ids)]
-             (when (seq renamed)
-               (channel.db/update-channels-with-names! (select-keys names renamed) changes))
-             (when (seq plain)
-               (channel.db/update-channels! plain changes))))
-         (events/publish-event! :event/channel-update
-                                (events/update-event previous
-                                                     rows
-                                                     (assoc opts :objects (when deactivated
-                                                                            (m/index-by :id (channel.db/channels-by-ids deactivated)))))))))
-   rows))
+(mu/defn update-channels! :- :nil
+  "Apply `changes` to the Channels with `ids`, publishing one update event. Deactivating an active Channel first deletes
+  its PulseChannels, and its before-update hook renames it."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::channel.schema/channel.update]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (let [previous    (m/index-by :id (channel.db/channels-by-ids (vec ids)))
+            deactivated (when (false? (:active changes))
+                          (filterv #(:active (get previous %)) (filter previous ids)))]
+        (when (seq deactivated)
+          (t2/resolve-model :model/PulseChannel)
+          (delete-for-channels! :model/PulseChannel deactivated nil))
+        (channel.db/update-channels! ids changes)
+        (events/publish-event! :event/channel-update
+                               (events/update-event previous
+                                                    (mapv #(assoc changes :id %) ids)
+                                                    {:objects (when (seq deactivated)
+                                                                (m/index-by :id (channel.db/channels-by-ids deactivated)))})))))
+  nil)
+
+(mu/defn update-channels-for-import! :- :nil
+  "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, one Channel at a time. Per-row values
+  cost one write per row, which an import accepts."
+  [rows :- [:sequential ChannelUpdate]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-channels! [id] (dissoc row :id))))
 
 (mu/defn delete-channels! :- :nil
   "Delete the Channels with `ids`, publishing their delete event."
@@ -344,7 +323,7 @@
    :defaults      {:active true}
    :storage-paths storage-paths
    :insert!       create-channels!
-   :update!       update-channels!
+   :update!       update-channels-for-import!
    :delete!       delete-channels!
    :rows-by-refs  serialization/channel-rows-by-refs})
 

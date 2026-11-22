@@ -181,17 +181,17 @@
     []))
 
 (mu/defn deactivated-with-tenant-user-ids
-  "The ids of the inactive Users of the Tenant with `tenant-id` that were deactivated with it."
-  [tenant-id :- ms/PositiveInt]
+  "The ids of the inactive Users of the Tenants with `tenant-ids` that were deactivated with them."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (vec (t2/select-pks-vec :model/User
                           :is_active false
-                          :tenant_id [:auto/param tenant-id]
+                          :tenant_id [:in [:auto/param (vec tenant-ids)]]
                           :deactivated_with_tenant true)))
 
 (mu/defn active-user-ids-of-tenant
-  "The ids of the active Users of the Tenant with `tenant-id`."
-  [tenant-id :- ms/PositiveInt]
-  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:auto/param tenant-id])))
+  "The ids of the active Users of the Tenants with `tenant-ids`."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:in [:auto/param (vec tenant-ids)]])))
 
 (mu/defn active-tenant-user-ids
   "The ids of the active Users of every Tenant."

@@ -61,8 +61,8 @@
 (deftest attribute-remappings-shape-test
   (testing "schema"
     (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
-      (is (not (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings remappings}))))
-    (is (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings {"cat" "CATEGORY_ID"}})))
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
   (testing "update normalizes the stored remappings"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                    :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
@@ -85,11 +85,11 @@
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
                                                                           (fn [table-id] (swap! checks inc) (f table-id)))]
-            (sandboxes/update-sandboxes! [{:id sandbox-id :attribute_remappings {"cat" "CATEGORY_ID"}}])
+            (sandboxes/update-sandboxes! [sandbox-id] {:attribute_remappings {"cat" "CATEGORY_ID"}})
             (is (= 0 @checks))
-            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id card-id}])
+            (sandboxes/update-sandboxes! [sandbox-id] {:card_id card-id})
             (is (= 0 @checks))
-            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id other-id}])
+            (sandboxes/update-sandboxes! [sandbox-id] {:card_id other-id})
             (is (= 1 @checks))))))))
 
 (deftest insert-removes-native-access-of-each-group-test
@@ -130,7 +130,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
+                         (sandboxes/update-sandboxes! [(:id gtap)] {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -172,7 +172,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
+                           (sandboxes/update-sandboxes! [(:id gtap)] {:card_id (:id card)})
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -182,7 +182,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (queries.card/update-cards! [{:id (:id card) :result_metadata metadata}])
+                           (queries.card/update-cards! [(:id card)] {:result_metadata metadata})
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?
@@ -843,3 +843,34 @@
                           (events.tu/statement-count! #(sandboxes/delete-sandboxes! ids))))]
         (counted group-1 1)
         (is (= (counted group-2 2) (counted group-3 6)))))))
+
+(deftest update-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (mt/with-model-cleanup [:model/Sandbox]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
+            changes   {:card_id nil :attribute_remappings {"cat" "CATEGORY_ID"}}
+            counted   (fn [group-id n]
+                        (let [ids (t2/insert-returning-pks! :model/Sandbox
+                                                            (mapv #(hash-map :group_id group-id :table_id %)
+                                                                  (take n table-ids)))]
+                          (sandboxes/update-sandboxes! (take-nth 2 ids) (select-keys changes [:attribute_remappings]))
+                          (events.tu/statement-count! #(sandboxes/update-sandboxes! ids changes))))]
+        (counted group-1 1)
+        (is (= (counted group-2 2) (counted group-3 6)))))))
+
+(deftest update-sandboxes-refuses-in-input-order-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/Sandbox          {venues :id} {:group_id group-1 :table_id (mt/id :venues)}
+                 :model/Sandbox          {users :id}  {:group_id group-2 :table_id (mt/id :users)}]
+    (testing "a change of the group of a Sandbox is refused and writes nothing"
+      (let [before (t2/select-one-fn :attribute_remappings :model/Sandbox :id venues)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the group of a sandbox"
+                              (sandboxes/update-sandboxes! [venues users] {:group_id             group-1
+                                                                           :attribute_remappings {"cat" "CATEGORY_ID"}})))
+        (is (= before (t2/select-one-fn :attribute_remappings :model/Sandbox :id venues)))))
+    (testing "the stored rows are returned in the order of the ids"
+      (is (= [users venues]
+             (mapv :id (sandboxes/update-sandboxes! [users venues Integer/MAX_VALUE] {:card_id nil})))))))

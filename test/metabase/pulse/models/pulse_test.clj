@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -52,7 +53,7 @@
 
 (defn- update-pulse-then-select!
   [pulse]
-  (models.pulse/update-pulses! [pulse])
+  (models.pulse/update-pulse! (:id pulse) (dissoc pulse :id))
   (-> (models.pulse/retrieve-pulse (:id pulse))
       remove-uneeded-pulse-keys))
 
@@ -119,7 +120,7 @@
                               1 card-1
                               2 card-2
                               3 card-3))]
-                (models.pulse/update-pulses! [{:id (u/the-id pulse) :cards (mapv models.pulse/card->ref cards)}]))
+                (models.pulse/update-pulse! (u/the-id pulse) {:cards (mapv models.pulse/card->ref cards)}))
               (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, :pulse_id (u/the-id pulse)))]
                 (t2/select-fn-set :name :model/Card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil
@@ -403,11 +404,11 @@
           (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                  (pulse-channel-test/send-pulse-triggers pulse-id)))
           (testing "archived pulse will disable pulse channels and remove triggers"
-            (models.pulse/update-pulses! [{:id pulse-id :archived true}])
+            (models.pulse/update-pulses! [pulse-id] {:archived true})
             (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
           (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-            (models.pulse/update-pulses! [{:id pulse-id :archived false}])
+            (models.pulse/update-pulses! [pulse-id] {:archived false})
             (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                    (pulse-channel-test/send-pulse-triggers pulse-id))))
@@ -533,7 +534,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (models.pulse/update-pulses! [{:id card-id :collection_id collection-id}])))))))
+             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -742,54 +743,89 @@
               collection-ids [collection-1 collection-2]]
           (f (fn [n] (pulse-rows n card-ids collection-ids)) card-ids collection-ids))))))
 
+(deftest archived-directly-through-plain-update-test
+  (mt/with-temp [:model/Collection {collection-1 :id} {}
+                 :model/Collection {collection-2 :id} {}
+                 :model/Pulse      {pulse-id :id}     {:collection_id collection-1}]
+    (let [archived-directly (fn [] (t2/select-one-fn :archived_directly :model/Pulse :id pulse-id))]
+      (testing "a plain update that archives a Pulse in a live Collection stores archived_directly true"
+        (t2/update! :model/Pulse :id pulse-id {:archived true})
+        (is (true? (archived-directly))))
+      (testing "a plain update that restores it stores archived_directly false"
+        (t2/update! :model/Pulse :id pulse-id {:archived false})
+        (is (false? (archived-directly))))
+      (testing "an update that archives and moves it at once reads the Collection it moves to"
+        (t2/update! :model/Pulse :id pulse-id {:archived true :collection_id collection-2})
+        (is (true? (archived-directly))))
+      (testing "an update that archives it into the root Collection stores archived_directly true"
+        (t2/update! :model/Pulse :id pulse-id {:archived false})
+        (t2/update! :model/Pulse :id pulse-id {:archived true :collection_id nil})
+        (is (true? (archived-directly))))
+      (testing "an update that archives a Pulse whose Collection is archived stores archived_directly false"
+        (t2/update! :model/Pulse :id pulse-id {:archived false :collection_id collection-1})
+        (t2/update! :model/Collection :id collection-1 {:archived true})
+        (t2/update! :model/Pulse :id pulse-id {:archived true})
+        (is (false? (archived-directly)))))))
+
+(deftest archived-directly-in-update-event-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Pulse      {pulse-id :id}      {:collection_id collection-id}]
+    (testing "the update event of the write function carries the stored value, never an expression"
+      (let [published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
+          (models.pulse/update-pulses! [pulse-id] {:archived true}))
+        (is (= [[true]]
+               (into [] (comp (filter (comp #{:event/pulse-update} first))
+                              (map (comp #(mapv (comp :archived_directly :object) %) :changes second)))
+                     @published)))))))
+
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (do-with-pulse-rows!
    (fn [rows card-ids collection-ids]
      (let [create! (fn [n] (mapv :id (models.pulse/create-pulses! (rows n))))
            [_card-1 card-2] card-ids
-           [collection-1 collection-2] collection-ids]
+           [collection-1 _collection-2] collection-ids]
        (testing "creating Pulses"
          (let [counted (fn [n] (events.tu/statement-count! #(models.pulse/create-pulses! (rows n))))]
            (counted 2)
            (is (= (counted 2) (counted 6)))))
-       (testing "replacing the Cards and Channels of Pulses, and moving them, some already in the new Collection"
+       (testing "replacing the Cards and Channels of a Pulse, whatever number of recipients"
          (let [counted (fn [n]
-                         (let [ids (create! n)]
+                         (let [[id] (create! 1)]
                            (events.tu/statement-count!
-                            #(models.pulse/update-pulses!
-                              (mapv (fn [id] {:id            id
-                                              :name          "Renamed"
-                                              :collection_id collection-2
-                                              :cards         [{:id card-2 :include_csv true :include_xls false :dashboard_card_id nil}]
-                                              :channels      [{:channel_type  :email
-                                                               :schedule_type :daily
-                                                               :schedule_hour 9
-                                                               :enabled       true
-                                                               :recipients    [{:email "new@bar.com"}]}]})
-                                    ids)))))]
+                            #(models.pulse/update-pulse!
+                              id
+                              {:name     "Renamed"
+                               :cards    [{:id card-2 :include_csv true :include_xls false :dashboard_card_id nil}]
+                               :channels [{:channel_type  :email
+                                           :schedule_type :daily
+                                           :schedule_hour 9
+                                           :enabled       true
+                                           :recipients    (mapv (fn [i] {:email (str "new" i "@bar.com")}) (range n))}]}))))]
            (counted 2)
            (is (= (counted 2) (counted 6)))))
-       (testing "updating the PulseChannels a Pulse has, with and without a change of recipients"
-         (let [counted (fn [n]
-                         (let [ids      (create! n)
-                               channels (t2/select :model/PulseChannel :pulse_id [:in ids] :channel_type :email)
-                               rows     (mapv (fn [{:keys [id pulse_id]}]
-                                                {:id       pulse_id
-                                                 :channels [{:id            id
-                                                             :channel_type  :email
-                                                             :schedule_type :daily
-                                                             :schedule_hour (if (even? id) 18 7)
-                                                             :enabled       true
-                                                             :recipients    (if (even? id) [{:id (mt/user->id :lucky)} {:email "foo@bar.com"}] [{:id (mt/user->id :rasta)}])}]})
-                                              channels)]
-                           (events.tu/statement-count! #(models.pulse/update-pulses! rows))))]
-           (counted 2)
-           (is (= (counted 2) (counted 6)))))
+       (testing "updating the PulseChannels a Pulse has, whatever number of recipients it gains"
+         (let [recipients (fn [users] (mapv (fn [user] {:id (mt/user->id user)}) users))
+               counted    (fn [recipients]
+                         (let [[id]    (create! 1)
+                               channel (t2/select-one :model/PulseChannel :pulse_id id :channel_type :email)]
+                           (events.tu/statement-count!
+                            #(models.pulse/update-pulse!
+                              id
+                              {:channels [{:id            (:id channel)
+                                           :channel_type  :email
+                                           :schedule_type :daily
+                                           :schedule_hour 18
+                                           :enabled       true
+                                           :recipients    recipients}]}))))]
+           (counted (recipients [:rasta :lucky]))
+           (is (= (counted (recipients [:rasta :lucky]))
+                  (counted (recipients [:rasta :lucky :crowberto]))))))
        (testing "archiving and restoring Pulses, some already archived"
          (let [counted (fn [n archived?]
                          (let [ids (create! n)]
-                           (models.pulse/update-pulses! (mapv (fn [id] {:id id :archived archived?}) (take-nth 2 ids)))
-                           (events.tu/statement-count! #(models.pulse/update-pulses! (mapv (fn [id] {:id id :archived archived?}) ids)))))]
+                           (models.pulse/update-pulses! (vec (take-nth 2 ids)) {:archived archived?})
+                           (events.tu/statement-count! #(models.pulse/update-pulses! ids {:archived archived?}))))]
            (counted 2 true)
            (is (= (counted 2 true) (counted 6 true)))
            (is (= (counted 2 false) (counted 6 false)))))
@@ -797,7 +833,7 @@
          (let [counted (fn [n]
                          (let [ids (create! n)]
                            (events.tu/statement-count!
-                            #(models.pulse/update-pulses! (mapv (fn [id] {:id id :collection_id collection-1}) ids)))))]
+                            #(models.pulse/update-pulses! ids {:collection_id collection-1}))))]
            (counted 2)
            (is (= (counted 2) (counted 6)))))
        (testing "deleting Pulses"

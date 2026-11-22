@@ -270,29 +270,31 @@
   [stored changes]
   (t2.before-update/before-update :model/PermissionsGroup (merge stored changes)))
 
-(mu/defn update-permissions-groups! :- [:sequential ::permissions.schema/permissions-group.update]
-  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups and return the rows that exist,
-  publishing the event of the write; renaming a magic group, or to the name of an existing group, is a 400. A rename
-  is written at once, so that the name check of a later row sees it; the other rows are written together."
-  [rows :- [:sequential ::permissions.schema/permissions-group.update]]
+(mu/defn update-permissions-groups! :- :nil
+  "Apply `changes` to the PermissionsGroups with `ids`, publishing the event of the write; renaming a magic group, or
+  to the name of an existing group, is a 400, and so is renaming a second group to the same name. The refusal of the
+  first refused group in the order of `ids` is the one thrown."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::permissions.schema/permissions-group.update]
   (t2/with-transaction [_conn]
-    (let [stored   (if (seq rows) (u/index-by :id (permissions.db/permissions-groups-by-ids (mapv :id rows))) {})
-          rows     (filterv (comp stored :id) rows)
-          renames? (fn [{id :id :as row}] (contains? (mi/effective-changes (stored id) (dissoc row :id)) :name))]
-      (doseq [{id :id :as row} rows
-              :let [changes (dissoc row :id)
-                    before  (stored id)]]
-        (if (renames? row)
-          (do
-            (when-let [group-name (:name changes)]
-              (check-name-not-already-taken group-name))
-            (permissions.db/update-permissions-group! id changes))
-          (before-update-in-memory before changes)))
-      (doseq [[changes ids] (mi/group-ids-by-changes stored (remove renames? rows))]
-        (permissions.db/update-permissions-groups! ids changes))
-      (when (seq rows)
-        (events/publish-event! :event/group-update (events/update-event stored rows)))
-      rows)))
+    (let [stored (if (seq ids) (u/index-by :id (permissions.db/permissions-groups-by-ids ids)) {})
+          ids    (into [] (comp (distinct) (filter stored)) ids)]
+      (reduce (fn [renamed? id]
+                (let [before   (stored id)
+                      renames? (and (contains? (mi/effective-changes before changes) :name)
+                                    (some? (:name changes)))]
+                  (when renames?
+                    (if renamed?
+                      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))
+                      (check-name-not-already-taken (:name changes))))
+                  (before-update-in-memory before changes)
+                  (or renamed? renames?)))
+              false
+              ids)
+      (when (seq ids)
+        (permissions.db/update-permissions-groups! ids changes)
+        (events/publish-event! :event/group-update (events/update-event stored (mapv #(assoc changes :id %) ids))))))
+  nil)
 
 (mu/defn delete-permissions-groups! :- :nil
   "Delete the PermissionsGroups with `ids` and drop them from the LDAP group mappings, publishing the event of the

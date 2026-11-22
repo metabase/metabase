@@ -158,7 +158,7 @@
   (doseq [batch (partition-all permission-batch-size ids)]
     (permissions.db/delete-data-permissions! batch)))
 
-(mu/defn set-table-schema-name-of-database! :- :nil
+(mu/defn update-data-permissions-for-database! :- :nil
   "Set the `schema_name` of the table-level DataPermissions of the Database with `database-id`, which follows its
   Tables when the sample Database moves to another schema, in one raw statement, since the model's hooks refuse every
   update."

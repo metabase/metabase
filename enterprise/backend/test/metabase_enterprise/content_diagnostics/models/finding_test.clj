@@ -110,7 +110,7 @@
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (let [old    (insert-finding! 1 (t/minus long-ago (t/days 1)))
             recent (insert-finding! 2 (t/plus long-ago (t/days 1)))]
-        (finding/delete-invalidated-before! long-ago)
+        (finding/delete-findings-for-cleanup! long-ago)
         (is (= #{recent}
                (t2/select-pks-set :model/ContentDiagnosticsFinding
                                   {:where [:in :id [old recent]]})))))))
@@ -122,7 +122,7 @@
       ;; nothing at all would pass just as well
       (let [active  (insert-finding! 3 nil)
             expired (insert-finding! 4 (t/minus long-ago (t/days 1)))]
-        (finding/delete-invalidated-before! long-ago)
+        (finding/delete-findings-for-cleanup! long-ago)
         (is (= #{active}
                (t2/select-pks-set :model/ContentDiagnosticsFinding
                                   {:where [:in :id [active expired]]})))))))
@@ -133,7 +133,7 @@
       (let [ids (mapv #(insert-finding! % (t/minus long-ago (t/days 1))) (range 1000 1005))]
         ;; the count is what pins this - stopping after one batch would return 2, not 5
         (is (= 5 (with-redefs [finding/delete-batch-size 2]
-                   (finding/delete-invalidated-before! long-ago))))
+                   (finding/delete-findings-for-cleanup! long-ago))))
         (is (empty? (t2/select-pks-set :model/ContentDiagnosticsFinding
                                        {:where [:in :id ids]})))))))
 
@@ -164,11 +164,11 @@
                            (events.tu/statement-count! #(finding/invalidate-for! {:card entities} #{}))))))
       (testing "invalidating findings by id"
         (counted (fn [n] (let [{:keys [ids]} (fresh! n)]
-                           (events.tu/statement-count! #(finding/invalidate-by-ids! ids [:= :finding_type "stale"]))))))
+                           (events.tu/statement-count! #(finding/invalidate-findings! ids))))))
       (testing "invalidating the findings that a scan supersedes"
         (counted (fn [n] (let [_ (fresh! n)]
                            (events.tu/statement-count! #(finding/invalidate-superseded! (str (random-uuid)) #{:stale}))))))
       (testing "deleting invalidated findings"
         (counted (fn [n] (let [_ (fresh! n)]
                            (finding/invalidate-superseded! (str (random-uuid)) #{:stale})
-                           (events.tu/statement-count! #(finding/delete-invalidated-before! (java.time.OffsetDateTime/now))))))))))
+                           (events.tu/statement-count! #(finding/delete-findings-for-cleanup! (java.time.OffsetDateTime/now))))))))))

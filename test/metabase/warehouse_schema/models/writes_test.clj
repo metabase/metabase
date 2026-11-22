@@ -26,10 +26,10 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
       (let [[target-id source-id remapped-id] (mapv :id (field/create-fields! (field-rows table-id 3)))]
-        (field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id target-id}])
+        (field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id target-id})
         (dimension/create-dimensions! [{:field_id remapped-id :type :external :name "D"
                                         :human_readable_field_id target-id}])
-        (field/update-fields! [{:id target-id :active false}])
+        (field/update-fields! [target-id] {:active false})
         (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))
         (is (nil? (t2/select-one :model/Dimension :field_id remapped-id)))))))
 
@@ -58,18 +58,18 @@
                    :model/Table    {table-id :id} {:db_id db-id}]
       (let [ids (mapv :id (field/create-fields! (field-rows table-id 3)))]
         (reset! published [])
-        (field/update-fields! (mapv (fn [id] {:id id :description "D"}) ids))
+        (field/update-fields! ids {:description "D"})
         (is (=? [[:event/field-update {:changes [{:object {:description "D"} :previous-object {:description nil}}
                                                  {:object {:description "D"}}
                                                  {:object {:description "D"}}]}]]
                 @published))
         (testing "an update that changes nothing publishes no change"
           (reset! published [])
-          (field/update-fields! (mapv (fn [id] {:id id :description "D"}) ids))
+          (field/update-fields! ids {:description "D"})
           (is (empty? @published)))
         (testing "the deactivation of a Table publishes one event"
           (reset! published [])
-          (table/update-tables! [{:id table-id :active false}])
+          (table/update-tables! [table-id] {:active false})
           (is (=? [[:event/table-update {:changes [{:object {:active false :deactivated_at some?}
                                                     :previous-object {:active true}}]}]]
                   @published)))
@@ -126,3 +126,44 @@
       (is (= "Can only add metrics to the 'Metrics' collection" (create metrics-id dashboards-id)))
       (is (= "Cannot add tables or regular collections to the 'Dashboards' collection" (create dashboards-id metrics-id)))
       (is (zero? (t2/count :model/Table :db_id db-id))))))
+
+(deftest reference-checks-refuse-and-write-nothing-test
+  (testing "a foreign key target or a human-readable Field of another Database is refused with a 400 and nothing is kept"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Database {other-db-id :id} {}
+                   :model/Table    {other-table-id :id} {:db_id other-db-id}]
+      (let [[source-id same-id]  (mapv :id (field/create-fields! (field-rows table-id 2)))
+            [other-id]           (mapv :id (field/create-fields! (field-rows other-table-id 1)))
+            refused?             (fn [thunk] (= 400 (:status-code (ex-data (try (thunk) nil (catch Exception e e))))))]
+        (testing "Field creation"
+          (is (refused? #(field/create-fields! [(assoc (first (field-rows table-id 1)) :name "X" :fk_target_field_id other-id)])))
+          (is (not (t2/exists? :model/Field :table_id table-id :name "X"))))
+        (testing "Field update"
+          (is (refused? #(field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id other-id})))
+          (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id source-id)))
+          (field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id same-id})
+          (is (= same-id (t2/select-one-fn :fk_target_field_id :model/Field :id source-id))))
+        (testing "Dimension creation and update"
+          (is (refused? #(dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id other-id}])))
+          (is (not (t2/exists? :model/Dimension :field_id source-id)))
+          (let [[dimension] (dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id same-id}])]
+            (is (refused? #(dimension/update-dimensions! [(:id dimension)] {:human_readable_field_id other-id})))
+            (is (= same-id (t2/select-one-fn :human_readable_field_id :model/Dimension :id (:id dimension))))))))))
+
+(deftest refused-write-leaves-the-outer-transaction-usable-test
+  (testing "a caller that catches the 400 of a reference check keeps its transaction, without the refused row"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Database {other-db-id :id} {}
+                   :model/Table    {other-table-id :id} {:db_id other-db-id}]
+      (let [[source-id other-source-id] (mapv :id (field/create-fields! (field-rows table-id 2)))
+            [other-id]                  (mapv :id (field/create-fields! (field-rows other-table-id 1)))]
+        (t2/with-transaction [_conn]
+          (is (= 400 (:status-code (ex-data (try (field/update-fields! [source-id] {:fk_target_field_id other-id}) nil (catch Exception e e))))))
+          (is (= 400 (:status-code (ex-data (try (dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id other-id}])
+                                                 nil (catch Exception e e))))))
+          (field/update-fields! [other-source-id] {:description "kept"}))
+        (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id source-id)))
+        (is (not (t2/exists? :model/Dimension :field_id source-id)))
+        (is (= "kept" (t2/select-one-fn :description :model/Field :id other-source-id)))))))

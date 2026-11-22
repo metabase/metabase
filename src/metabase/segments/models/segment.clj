@@ -106,7 +106,7 @@
            (definition-writable? (:definition changes)))
        (sandboxes-allow-segment-update? segment changes)))
 
-(defenterprise delete-segment-tests!
+(defenterprise delete-segment-tests-for-segments!
   "Delete the tests of the segments with `segment-ids`. No-op in OSS."
   metabase-enterprise.data-testing.models.segment-test
   [_segment-ids]
@@ -148,15 +148,15 @@
         (events/publish-event! :event/segment-create (events/create-event segments))
         segments))))
 
-(defn- check-changed-definitions
-  "Throws when the new definition of one of `rows`, updates of the Segments `stored`, differs from the stored one and
-  refers to the Segment itself or to a Segment that makes a cycle."
-  [rows stored]
-  (doseq [{:keys [id definition] :as row} rows
-          :when                           (and (contains? row :definition)
-                                               (not= (lib-be/normalize-query definition)
-                                                     (some-> (get stored id) :definition lib-be/normalize-query)))]
-    (lib/check-segment-overwrite id (lib-be/normalize-query definition))))
+(defn- check-changed-definition
+  "Throws when the new definition in `changes` of one of the Segments with `ids`, `stored` as they are, differs from the
+  stored one and refers to the Segment itself or to a Segment that makes a cycle."
+  [ids changes stored]
+  (when (contains? changes :definition)
+    (let [definition (lib-be/normalize-query (:definition changes))]
+      (doseq [id    ids
+              :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
+        (lib/check-segment-overwrite id definition)))))
 
 (defn- updated-segment
   "The Segment `stored` as the update `changes` leaves it, with the table that the hook derives from a new definition."
@@ -165,14 +165,6 @@
     (contains? changes :definition) (assoc :definition (lib-be/normalize-query (:definition changes))
                                            :table_id   (definition-table-id (:definition changes)))))
 
-(defn- with-definition-table-id
-  "`row`, an update of the Segment `stored`, with the `table_id` that the hook derives when the update changes the
-  definition, so that rows already on that table are grouped with the others by what they change."
-  [stored row]
-  (cond-> row
-    (contains? (mi/effective-changes stored (select-keys row [:definition])) :definition)
-    (assoc :table_id (definition-table-id (:definition row)))))
-
 (mr/def ::write-opts
   "The options of the update of Segments: `:writer`, who writes when it matters, and the context of the events."
   [:maybe
@@ -180,30 +172,48 @@
     [:writer  {:optional true} [:enum :revert]]
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mu/defn update-segments! :- [:sequential ::segments.schema/segment.update]
-  "Apply the changes in each of `rows`, the id of a Segment and the columns to change, with one statement per distinct
-  set of changes, in one transaction, publishing their update events. A new definition that makes a
-  cycle of Segments throws. Returns `rows`."
-  ([rows :- [:sequential ::segments.schema/segment.update]]
-   (update-segments! rows nil))
-  ([rows :- [:sequential ::segments.schema/segment.update]
-    opts :- ::write-opts]
-   (if (empty? rows)
+(mu/defn update-segments! :- [:sequential ::segments.schema/segment.update-row]
+  "Apply `changes`, one change to the columns, to each of the Segments with `ids` in one transaction, publishing their
+  update events. A new definition that makes a cycle of Segments throws. Returns the updated rows."
+  ([ids     :- [:sequential ::lib.schema.id/segment]
+    changes :- ::segments.schema/segment.update]
+   (update-segments! ids changes nil))
+  ([ids     :- [:sequential ::lib.schema.id/segment]
+    changes :- ::segments.schema/segment.update
+    opts    :- ::write-opts]
+   (if (empty? ids)
      []
      (t2/with-transaction [_conn]
-       (let [stored (segments.db/segments-by-id (mapv :id rows))
-             rows*  (filterv #(contains? stored (:id %)) rows)]
-         (check-changed-definitions rows* stored)
-         (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(with-definition-table-id (stored (:id %)) %) rows*))]
-           (segments.db/update-segments! ids changes))
+       (let [stored   (segments.db/segments-by-id (vec ids))
+             ids*     (filterv stored ids)
+             rows*    (mapv #(assoc changes :id %) ids*)
+             changes* (cond-> changes
+                        (contains? changes :definition) (assoc :table_id (definition-table-id (:definition changes))))]
+         (check-changed-definition ids changes stored)
+         (segments.db/update-segments! ids* changes* stored)
          (events/publish-event! :event/segment-update
                                 (events/update-event stored
                                                      rows*
                                                      (assoc opts :objects (into {}
-                                                                                (map (fn [{:keys [id] :as row}]
-                                                                                       [id (updated-segment (stored id) (dissoc row :id))]))
-                                                                                rows*))))
-         (vec rows))))))
+                                                                                (map (fn [id] [id (updated-segment (stored id) changes)]))
+                                                                                ids*))))
+         (mapv #(assoc changes :id %) ids))))))
+
+(mu/defn update-segments-for-import!
+  "Apply each of `rows`, the id of a Segment and the columns to change, one row after the other, as an import does; the
+  rows are written one by one because every row holds its own values. Returns `rows`."
+  [rows :- [:sequential ::segments.schema/segment.update-row]]
+  (doseq [row rows]
+    (update-segments! [(:id row)] (dissoc row :id)))
+  (vec rows))
+
+(mu/defn update-segments-for-replacement!
+  "Apply each of `rows`, the id of a Segment and the columns to change, one row after the other, as a replacement does;
+  the rows are written one by one because every row holds its own definition. Returns `rows`."
+  [rows :- [:sequential ::segments.schema/segment.update-row]]
+  (doseq [row rows]
+    (update-segments! [(:id row)] (dissoc row :id)))
+  (vec rows))
 
 (mu/defn delete-segments!
   "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction, publishing their
@@ -212,7 +222,7 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (let [segments (vec (vals (segments.db/segments-by-id (vec ids))))]
-        (delete-segment-tests! ids)
+        (delete-segment-tests-for-segments! ids)
         (events/publish-event! :event/segment-delete (events/delete-event segments))
         (segments.db/delete-segments! ids))
       nil)))
@@ -224,7 +234,7 @@
 (defn- revert-segment!
   "Return the Segment with `id` to the `snapshot` of a Segment that a Revision recorded."
   [id _user-id snapshot]
-  (update-segments! [(assoc snapshot :id id)] {:writer :revert}))
+  (update-segments! [id] snapshot {:writer :revert}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -241,7 +251,7 @@
    :import-dependencies segments.serialization/import-dependencies
    :storage-paths       segments.serialization/storage-paths
    :insert!             create-segments!
-   :update!             update-segments!
+   :update!             update-segments-for-import!
    :delete!             delete-segments!})
 
 (defmethod remote-sync/spec :model/Segment
@@ -309,7 +319,7 @@
 (defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
    :swap-source        segments.replacement/swap-source
-   :update!            update-segments!})
+   :update!            update-segments-for-replacement!})
 
 (defmethod eid-translation/spec :model/Segment [_model]
   {:names [:segment]})

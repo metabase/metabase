@@ -192,6 +192,6 @@
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
      (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
-       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
+       (persisted-info/mark-persisted-infos-for-pruning! [(:id persisted-info)] "off"))
      ;; phase 4: convert the model to a saved question
-     (queries.card/update-cards! [{:id card-id :type :question}]))))
+     (queries.card/update-cards! [card-id] {:type :question}))))

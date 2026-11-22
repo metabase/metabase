@@ -510,7 +510,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (permissions-group/update-permissions-groups! [{:id (u/the-id group) :name group-name}])
+          (permissions-group/update-permissions-groups! [(u/the-id group)] {:name group-name})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)

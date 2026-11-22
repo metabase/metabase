@@ -20,7 +20,7 @@
   [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
   (api-keys.db/insert-api-key-usage-logs! rows))
 
-(mu/defn delete-api-key-usage-logs-occurred-before!
+(mu/defn delete-api-key-usage-logs-for-cleanup!
   "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (api-keys.db/delete-api-key-usage-logs-occurred-before! cutoff))

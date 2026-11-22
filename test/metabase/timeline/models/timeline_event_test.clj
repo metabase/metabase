@@ -155,7 +155,7 @@
                               (range n)))
           fresh!      (fn [n]
                         (let [ids (mapv :id (timeline-event/create-timeline-events! (rows n)))]
-                          (timeline-event/update-timeline-events! (mapv (fn [id] {:id id :description "Same"}) (take-nth 2 ids)))
+                          (timeline-event/update-timeline-events! (take-nth 2 ids) {:description "Same"} nil)
                           ids))]
       (testing "creating events, some with an icon of their own"
         (events.tu/statement-count! #(timeline-event/create-timeline-events! (rows 1)))
@@ -165,7 +165,7 @@
         (let [update! (fn [n]
                         (let [ids (fresh! n)]
                           (events.tu/statement-count!
-                           #(timeline-event/update-timeline-events! (mapv (fn [id] {:id id :description "Same"}) ids)))))]
+                           #(timeline-event/update-timeline-events! ids {:description "Same"} nil))))]
           (update! 1)
           (is (= (update! 2) (update! 6)))))
       (testing "deleting events"

@@ -14,12 +14,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ended-session-retention-days
-  "How long an ended session stays on record before [[delete-sessions-ended-long-ago!]] removes its row."
-  ;; a constant rather than a setting, and deliberately not `audit-max-retention-days`: that defaults to two years,
-  ;; and the audit tables are a different concern
-  30)
-
 (mu/defn insert-session! :- ::session.schema/session
   "Insert the Session `row` and return the inserted instance."
   [{:keys [id user_id auth_identity_id session_key expires_at mfa_auth_identity_id
@@ -38,34 +32,55 @@
                                  :saml_name_id [:auto/param saml_name_id]
                                  :saml_name_id_format [:auto/param saml_name_id_format]))
 
-(mu/defn select-or-insert-mcp-session!
-  "The `core_session` row with `key-hashed` of the User with `user-id`, inserting the row `new-row` returns when there
-  is none. Writes the table rather than `:model/Session`, so the row gets no model defaults."
+(mu/defn mcp-session
+  "The `core_session` row with `key-hashed` of the User with `user-id`, or nil."
   [key-hashed :- :string
-   user-id    :- ::lib.schema.id/user
-   new-row    :- [:=> [:cat] [:map {:closed true}
-                              [:id               :string]
-                              [:anti_csrf_token  :nil]
-                              [:auth_identity_id ms/PositiveInt]
-                              [:created_at       :keyword]]]]
-  (mdb/select-or-insert! :core_session {:key_hashed key-hashed :user_id user-id} new-row))
+   user-id    :- ::lib.schema.id/user]
+  (t2/select-one :core_session :key_hashed [:auto/param key-hashed] :user_id [:auto/param user-id]))
+
+(mu/defn insert-mcp-session!
+  "Insert the MCP-backed `core_session` `row` and return it as stored. Writes the table rather than `:model/Session`,
+  so the row gets no model defaults."
+  [row :- [:map {:closed true}
+           [:id               :string]
+           [:key_hashed       :string]
+           [:user_id          ::lib.schema.id/user]
+           [:anti_csrf_token  :nil]
+           [:auth_identity_id ms/PositiveInt]
+           [:created_at       :keyword]]]
+  (t2/insert-returning-instance! :core_session row))
+
+(defn- session-ending
+  "The columns that record the ending of a Session with `reason` by `ended-by`, clearing its key."
+  [reason ended-by]
+  {:ended_at         :%now
+   :end_reason       reason
+   :ended_by_user_id ended-by
+   :key_hashed       nil})
 
 (mu/defn end-sessions! :- ms/IntGreaterThanOrEqualToZero
-  "Record that every live Session matching the Toucan `conditions` has ended with `reason`, ended by `ended-by` (a
-  User id, or `:user_id` for the session's own user), clearing its key. Returns the number ended."
-  [conditions :- [:map {:closed true}
-                  [:id         {:optional true} [:tuple [:= :in] [:sequential :string]]]
-                  [:user_id    {:optional true} [:or ::lib.schema.id/user
-                                                 [:tuple [:= :in] [:sequential ::lib.schema.id/user]]]]
-                  [:key_hashed {:optional true} :string]]
+  "Record that every live Session with `ids` has ended with `reason`, ended by `ended-by` (a User id, or `:user_id` for
+  the session's own user), clearing its key. Returns the number ended."
+  [ids      :- [:sequential {:min 1} :string]
+   reason   :- ::session.schema/end-reason
+   ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
+  (t2/update! :model/Session :id [:in [:auto/param (vec ids)]] :ended_at nil (session-ending reason ended-by)))
+
+(mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
+  "Record that every live Session of the Users with `user-ids` has ended with `reason`, ended by `ended-by`, clearing
+  its key. Returns the number ended."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
+   reason   :- ::session.schema/end-reason
+   ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
+  (t2/update! :model/Session :user_id [:in [:auto/param (vec user-ids)]] :ended_at nil (session-ending reason ended-by)))
+
+(mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
+  "Record that the live Session with `key-hashed` has ended with `reason`, ended by `ended-by`, clearing its key.
+  Returns the number ended."
+  [key-hashed :- :string
    reason     :- ::session.schema/end-reason
    ended-by   :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (t2/update! :model/Session
-              (assoc conditions :ended_at nil)
-              {:ended_at         :%now
-               :end_reason       reason
-               :ended_by_user_id ended-by
-               :key_hashed       nil}))
+  (t2/update! :model/Session :key_hashed [:auto/param key-hashed] :ended_at nil (session-ending reason ended-by)))
 
 (mu/defn delete-session-of-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
@@ -111,16 +126,13 @@
                                [:not (into [:and] (keep predicates)
                                            [:user-active :tenant-active :not-expired :not-timed-out])]]}))))
 
-(mu/defn delete-sessions-ended-long-ago! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Sessions whose recorded ending is more than [[ended-session-retention-days]] old, returning the number
-  deleted. A live session is never deleted, whatever its age."
-  []
-  (let [db-type (mdb/db-type)
-        cutoff  (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type)
-                                                (- ended-session-retention-days) :day)]
-    (t2/delete! :model/Session :ended_at [:< cutoff])))
+(mu/defn delete-sessions-for-cleanup! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the Sessions whose recorded ending is before `cutoff`, returning the number deleted. A live session is never
+  deleted, whatever its age."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/Session :ended_at [:< [:auto/param cutoff]]))
 
-(mu/defn delete-expired-mcp-sessions! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn delete-sessions-for-mcp-cleanup! :- ms/IntGreaterThanOrEqualToZero
   "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or (when
   `idle-timeout-seconds` is given) idle longer than `idle-timeout-seconds`. Returns the number of rows deleted.
 

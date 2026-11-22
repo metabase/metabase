@@ -4,12 +4,11 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.before-update :as t2.before-update]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
 
@@ -52,17 +51,12 @@
     (permissions.db/insert-collection-permission-graph-revisions! rows)))
 
 (mu/defn update-collection-permission-graph-revisions! :- :nil
-  "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions."
-  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
-  (when (seq rows)
+  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`; changing details that are filled in is a 400."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::permissions.schema/collection-permission-graph-revision.update]
+  (when (and (seq ids) (seq changes))
     (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id rows)))]
-        (doseq [{id :id :as row} rows
-                :let [before (stored id)]
-                :when before]
-          (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge before (dissoc row :id))))
-        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-          (permissions.db/update-collection-permission-graph-revisions! ids changes)))))
+      (permissions.db/update-collection-permission-graph-revisions! ids changes)))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

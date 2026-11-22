@@ -1078,13 +1078,13 @@
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
             (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))
+              (field-user-settings/delete-field-user-settings-for-fields! [field-id]))))
         (testing "a user-set sensitive visibility_type hides the Field"
           (try
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
             (is (nil? (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))))))
+              (field-user-settings/delete-field-user-settings-for-fields! [field-id]))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"

@@ -56,7 +56,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (collection/update-collections! [{:id (:id collection) :name new-collection-name}]))))))
+          (collection/update-collections! [(:id collection)] {:name new-collection-name} nil))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 

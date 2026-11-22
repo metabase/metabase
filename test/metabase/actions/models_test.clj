@@ -182,7 +182,7 @@
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-            (action/update-actions! [{:id action-id, :archived true}])
+            (action/update-action! action-id, {:archived true} nil)
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
 (deftest dashcard-deletion-test-2
@@ -208,7 +208,7 @@
                 cloned-action (action/select-action :id new-id)]
             (is (partial= {:kind :row/create} cloned-action))))
         (testing "Update action"
-          (action/update-actions! [{:id action-id :name "New name" :kind :row/update}])
+          (action/update-action! action-id {:name "New name" :kind :row/update} nil)
           (is (partial= {:name "New name"
                          :kind :row/update}
                         (action/select-action :id action-id))))))))
@@ -231,7 +231,7 @@
                                                                              :model_id      model-id
                                                                              :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})])))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
-                                (action/update-actions! [{:id action-id, :database_id Integer/MAX_VALUE}])))
+                                (action/update-action! action-id, {:database_id Integer/MAX_VALUE} nil)))
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
 (deftest query-action-query-must-be-native-test
@@ -323,7 +323,7 @@
                 action-id (insert! coll-id)]
             (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
                     (action/select-action :id action-id)))
-            (action/update-actions! [{:id action-id :name "Renamed"}])
+            (action/update-action! action-id {:name "Renamed"} nil)
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
                     (action/select-action :id action-id)))))))))
 
@@ -388,7 +388,7 @@
               (testing "moved in from elsewhere, where it is fine"
                 (let [action-id (insert-data-app-action! other-id action-type (str label " elsewhere") columns)]
                   (is (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                        (action/update-actions! [{:id action-id :collection_id app-id}])))
+                                        (action/update-action! action-id {:collection_id app-id} nil)))
                   (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
 
 (deftest action-in-a-data-apps-collection-writes-to-any-table-test
@@ -398,11 +398,11 @@
                      :model/Collection {other-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [action-id (insert-data-app-action! app-id :implicit "Add venue")]
-            (action/update-actions! [{:id action-id :table_id (mt/id :categories)}])
+            (action/update-action! action-id {:table_id (mt/id :categories)} nil)
             (is (= (mt/id :categories) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))
           (testing "and one moves in"
             (let [action-id (insert-data-app-action! other-id :implicit "Moved in")]
-              (action/update-actions! [{:id action-id :collection_id app-id}])
+              (action/update-action! action-id {:collection_id app-id} nil)
               (is (= app-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
 
 (deftest implicit-action-requires-table-test
@@ -423,7 +423,7 @@
       (mt/with-actions-enabled
         (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/create"}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action's model can't be changed"
-                                (action/update-actions! [{:id action-id :model_id nil}])))
+                                (action/update-action! action-id {:model_id nil} nil)))
           (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
 
 (deftest actions-of-two-models-on-one-table-test
@@ -504,9 +504,9 @@
           (is (= coll-id (t2/select-one-fn :collection_id :model/Action :id action-id))))
         (testing "and can't be moved out of it"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (action/update-actions! [{:id action-id :collection_id other-id}])))
+                                (action/update-action! action-id {:collection_id other-id} nil)))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (action/update-actions! [{:id action-id :collection_id nil}]))))
+                                (action/update-action! action-id {:collection_id nil} nil))))
         (testing "nor be inserted in another collection"
           (mt/with-model-cleanup [:model/Action]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
@@ -517,7 +517,7 @@
                                                                         :database_id   (mt/id)
                                                                         :dataset_query (lib/native-query (mt/metadata-provider) "select 1")}])))))))
         (testing "moving the model moves its actions"
-          (queries.card/update-cards! [{:id model-id :collection_id other-id}])
+          (queries.card/update-cards! [model-id] {:collection_id other-id})
           (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest model-action-has-no-table-test
@@ -526,7 +526,7 @@
                       {:keys [action-id]} {:type :implicit :kind "row/create"}]
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action of a model writes to the model's table"
-                            (action/update-actions! [{:id action-id :table_id (mt/id :categories)}])))
+                            (action/update-action! action-id {:table_id (mt/id :categories)} nil)))
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))
 
 (deftest model-update-moves-action-to-another-model-test
@@ -536,7 +536,7 @@
                                                        :collection_id other-coll}]
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
-        (action/update-actions! [{:id action-id :model_id other-id :collection_id other-coll}] {:writer :import})
+        (action/update-actions-for-import! [{:id action-id :model_id other-id :collection_id other-coll}])
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 
@@ -546,7 +546,7 @@
       (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model can't be changed"
-                              (action/update-actions! [{:id action-id :model_id other-id}])))
+                              (action/update-action! action-id {:model_id other-id} nil)))
         (is (= model-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))
 
 (deftest switching-to-implicit-checks-the-model-test
@@ -561,12 +561,12 @@
                                                                                  :model_id      question-id
                                                                                  :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})])))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
-                                    (action/update-actions! [{:id action-id :type :implicit :kind :row/update}])))))))
+                                    (action/update-action! action-id {:type :implicit :kind :row/update} nil)))))))
       (testing "a query action cannot become implicit when its model has clauses"
         (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
                           {:keys [action-id]} {:type :query}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                (action/update-actions! [{:id action-id :type :implicit :kind :row/update}]))))))))
+                                (action/update-action! action-id {:type :implicit :kind :row/update} nil))))))))
 
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -576,13 +576,13 @@
           (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
             (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-            (queries.card/update-cards! [{:id model-id :type :question}])
+            (queries.card/update-cards! [model-id] {:type :question})
             (is (not (t2/exists? :model/Action :id action-id)))
             (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-          (queries.card/update-cards! [{:id model-id :type :question}])
+          (queries.card/update-cards! [model-id] {:type :question})
           (is (false? (t2/exists? :model/Action :id action-id))))))))
 
 (deftest model-to-saved-question-test-2
@@ -688,7 +688,7 @@
               select-action       #(action/select-action :id action-id)
               action-after-insert (select-action)]
           (is (= [:boolean] (map :type (:parameters action-after-insert))))
-          (action/update-actions! [{:id action-id :name "create foo2"}])
+          (action/update-action! action-id {:name "create foo2"} nil)
           (is (= (:parameters action-after-insert) (:parameters (select-action)))))))))
 
 (deftest implicit-action-parameters-schema-change-test
@@ -712,7 +712,7 @@
             (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
             (is (= [["name" :number]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
             (testing "if the column type is varied after an update to the action, it is reflected in the parameters"
-              (action/update-actions! [{:id action-id :name "create foo2"}])
+              (action/update-action! action-id {:name "create foo2"} nil)
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
               (sync/sync-database! (mt/id))
               (is (= [["name" :text]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))))
@@ -723,7 +723,7 @@
             (let [action     (action/select-action action-id)
                   hide-state #(-> % :visualization_settings :fields (update-vals :hidden))]
               (is (= {"name" false} (hide-state action)))
-              (action/update-actions! [{:id action-id :visualization_settings (assoc-in (:visualization_settings action) [:fields "name" :hidden] true)}])
+              (action/update-action! action-id {:visualization_settings (assoc-in (:visualization_settings action) [:fields "name" :hidden] true)} nil)
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
@@ -795,7 +795,7 @@
                                                          :collection_id coll-id :creator_id (mt/user->id :crowberto)}))]
                   (search.tu/with-index-disabled
                     (t2/with-call-count [call-count]
-                      (action/update-actions! (mapv (fn [{id :id}] {:id id :description "described"}) actions))
+                      (action/update-actions! (mapv :id actions) {:description "described"} nil)
                       (call-count)))))))]
     (testing "creating actions runs one statement count whatever their number"
       (creating 1)
@@ -820,16 +820,16 @@
             (is (= :row/create (t2/select-one-fn :kind :model/ImplicitAction :action_id action-id)))
             (is (= [:event/action-create] @published)))
           (testing "a change of the details alone is one update of the action, which sets its update time"
-            (action/update-actions! [{:id action-id :kind :row/update :table_id (mt/id :categories)}])
+            (action/update-action! action-id {:kind :row/update :table_id (mt/id :categories)} nil)
             (is (=? {:kind :row/update :table_id (mt/id :categories)}
                     (t2/select-one :model/ImplicitAction :action_id action-id)))
             (is (not= before (updated)))
             (is (= [:event/action-create :event/action-update] @published)))
           (testing "a change of nothing publishes nothing"
-            (action/update-actions! [{:id action-id :kind :row/update}])
+            (action/update-action! action-id {:kind :row/update} nil)
             (is (= [:event/action-create :event/action-update] @published)))
           (testing "an import that wrote the details on their own touches the action"
-            (action/update-actions! [{:id action-id}] {:writer :import})
+            (action/update-actions-for-import! [{:id action-id}])
             (is (= [:event/action-create :event/action-update :event/action-update] @published))))))))
 
 (deftest create-actions-with-different-columns-test
@@ -858,10 +858,10 @@
                                    :creator_id (mt/user->id :rasta)}))
                               (range n)))
             fresh!    (fn [n] (mapv :id (action/create-actions! (rows n))))
-            update!   (fn [prepare rows-fn n]
+            update!   (fn [prepare changes n]
                         (let [ids (fresh! n)]
                           (prepare (take-nth 2 ids))
-                          (events.tu/statement-count! #(action/update-actions! (rows-fn ids)))))
+                          (events.tu/statement-count! #(action/update-actions! ids changes nil))))
             counted   (fn [f]
                         (f 1)
                         (is (= (f 2) (f 6))))]
@@ -869,29 +869,25 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
-        (testing "updating details, some already holding the new value"
-          (counted (partial update!
-                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :kind :row/delete}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :kind :row/delete}) ids)))))
+                            (fn [ids] (action/update-actions! ids {:description "Same"} nil))
+                            {:description "Same"})))
         (testing "archiving actions, some already archived"
           (counted (partial update!
-                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids)))
-                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+                            (fn [ids] (action/update-actions! ids {:archived true} nil))
+                            {:archived true})))
         (testing "deleting actions"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(action/delete-actions! ids))))))
         (testing "deleting the actions of models"
           (counted (fn [n]
                      (let [ids       (fresh! n)
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
-                       (events.tu/statement-count! #(action/delete-actions-of-models! model-ids))))))
+                       (events.tu/statement-count! #(action/delete-actions-for-models! model-ids))))))
         (testing "moving the actions of models"
           (counted (fn [n]
                      (let [ids       (fresh! n)
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
                        (t2/update! :model/Card :id [:in model-ids] {:collection_id other})
-                       (events.tu/statement-count! #(action/move-actions-of-models! (zipmap model-ids (repeat other))))))))
+                       (events.tu/statement-count! #(action/update-actions-for-models! (zipmap model-ids (repeat other))))))))
         (testing "deleting the actions on tables"
           (counted (fn [n]
                      (let [tables (mapv (fn [_] (table-id (mt/id))) (range n))]
@@ -899,7 +895,7 @@
                         (mapv (fn [table] {:name (mt/random-name) :type :implicit :kind :row/create :table_id table
                                            :creator_id (mt/user->id :rasta)})
                               tables))
-                       (events.tu/statement-count! #(action/delete-implicit-actions-of-tables! tables))))))
+                       (events.tu/statement-count! #(action/delete-actions-for-tables! tables))))))
         (testing "deleting the actions on databases"
           (counted (fn [n]
                      (let [databases (mapv (fn [_] (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))) (range n))]
@@ -907,4 +903,45 @@
                         (mapv (fn [database] {:name (mt/random-name) :type :implicit :kind :row/create :table_id (table-id database)
                                               :creator_id (mt/user->id :rasta)})
                               databases))
-                       (events.tu/statement-count! #(action/delete-actions-of-databases! databases))))))))))
+                       (events.tu/statement-count! #(action/delete-actions-for-databases! databases))))))))))
+
+(deftest archived-directly-follows-collection-in-the-statement-test
+  (mt/with-temp [:model/Collection {live :id}     {}
+                 :model/Collection {archived :id} {:archived true}]
+    (mt/with-model-cleanup [:model/Action]
+      (let [make!   (fn [collection-id n]
+                      (vec (repeatedly n #(t2/insert-returning-pk! :model/Action {:name (mt/random-name) :type :implicit
+                                                                                  :creator_id (mt/user->id :rasta)
+                                                                                  :collection_id collection-id}))))
+            flags   (fn [ids] (mapv #(t2/select-one-fn :archived_directly :model/Action :id %) ids))
+            cascade {:writer :cascade}]
+        (testing "through the write function"
+          (let [ids (make! live 2)]
+            (action/update-actions! ids {:archived true} cascade)
+            (is (= [true true] (flags ids)))
+            (action/update-actions! ids {:archived false} cascade)
+            (is (= [false false] (flags ids)))))
+        (testing "through a plain update, an Action follows the Collection it is in"
+          (let [ids (into (make! live 1) (make! archived 1))]
+            (t2/update! :model/Action :id [:in ids] {:archived true})
+            (is (= [true false] (flags ids)))
+            (t2/update! :model/Action :id [:in ids] {:archived false})
+            (is (= [false false] (flags ids)))))
+        (testing "the event carries the stored value"
+          (let [ids       (make! live 1)
+                published (atom [])]
+            (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+              (action/update-actions! ids {:archived true} cascade))
+            (is (= [true] (for [[topic event] @published
+                                :when         (= :event/action-update topic)
+                                change        (:changes event)]
+                            (:archived_directly (:object change)))))))
+        (testing "restoring rows of mixed stored state costs the same statements at two and six rows"
+          (let [restore! (fn [n]
+                           (let [ids (make! live n)]
+                             (action/update-actions! ids {:archived true} cascade)
+                             (t2/update! :model/Action :id (first ids) {:archived_directly false})
+                             (events.tu/statement-count!
+                              #(action/update-actions! ids {:archived false} cascade))))]
+            (restore! 2)
+            (is (= (restore! 2) (restore! 6)))))))))

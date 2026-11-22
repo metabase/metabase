@@ -70,8 +70,8 @@
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (document/update-documents! (mapv (fn [id] {:id id :collection_id new-coll-id})
-                                    (explorations.db/summary-document-ids exploration-id))))
+  (when-let [ids (not-empty (explorations.db/summary-document-ids exploration-id))]
+    (document/update-documents! ids {:collection_id new-coll-id})))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
@@ -721,15 +721,13 @@
           ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.
           metrics'      (mapv #(update % :explore_filters (fnil into []) enriched-filters)
                               (:metrics block))
-          timeline-ids  (explorations.db/thread-timeline-ids src-thread-id)
-          next-position (inc (or (explorations.db/last-thread-position id) 0))]
+          timeline-ids  (explorations.db/thread-timeline-ids src-thread-id)]
       (t2/with-transaction [_]
         (let [thread (first (exploration-thread/create-threads!
                              [(merge {:exploration_id id
                                       :name           (explore-further-thread-name card-name
                                                                                    enriched-filters
                                                                                    top-level-follow-up?)
-                                      :position       next-position
                                       ;; drill lineage — lets the sidebar nest this thread
                                       ;; under the one owning the drilled page
                                       :source_page_id page_id}
@@ -741,7 +739,7 @@
                                   :position              0}])
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
-          (exploration-thread/update-threads! [{:id tid :started_at (t/offset-date-time)}])
+          (exploration-thread/update-threads! [tid] {:started_at (t/offset-date-time)})
           (explorations.queues/start-thread! tid)
           (let [persisted (explorations.db/exploration id)]
             (hydrate-exploration persisted)))))))
@@ -804,7 +802,7 @@
       (when (seq updates')
         (when (contains? updates' :collection_id)
           (cascade-collection-id-to-documents! id (:collection_id updates')))
-        (expl.model/update-explorations! [(assoc updates' :id id)])))
+        (expl.model/update-explorations! [id] updates')))
     (let [updated (explorations.db/exploration id)]
       (hydrate-exploration updated))))
 
@@ -944,7 +942,7 @@
    {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
-    (exploration-page/update-pages! [{:id id :starred starred}]))
+    (exploration-page/update-pages! [id] {:starred starred}))
   nil)
 
 (api.macros/defendpoint :put "/pages/hidden" :- :nil
@@ -959,7 +957,7 @@
     (doseq [id page_ids]
       (api/write-check (api/check-404 (get id->page id)))))
   (when (seq page_ids)
-    (exploration-page/update-pages! (mapv (fn [id] {:id id :hidden hidden}) page_ids)))
+    (exploration-page/update-pages! page_ids {:hidden hidden}))
   nil)
 
 (defn- summary-document-or-404

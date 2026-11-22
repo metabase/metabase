@@ -26,7 +26,7 @@
   "Update updated_at for all :started runs belonging to this process."
   []
   (tracing/with-span :tasks "task.heartbeat.update" {}
-    (let [updated (task-run/heartbeat-task-runs! config/local-process-uuid)]
+    (let [updated (task-run/heartbeat-task-runs-for-process! config/local-process-uuid)]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))
@@ -38,7 +38,7 @@
    Returns the set of run IDs that were marked as orphaned."
   []
   (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
-                   (task-run/abandon-stale-task-runs! orphan-threshold-hours max-run-duration-hours))]
+                   (task-run/abandon-task-runs-for-cleanup! orphan-threshold-hours max-run-duration-hours))]
     (into #{} (map :id) orphaned)))
 
 (defn mark-orphaned-tasks!
@@ -46,7 +46,7 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (task-history/mark-started-tasks-unknown! orphaned-run-ids)]
+      (let [orphaned (task-history/mark-task-history-unknown-for-task-runs! orphaned-run-ids)]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

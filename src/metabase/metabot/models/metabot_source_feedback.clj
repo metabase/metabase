@@ -27,14 +27,14 @@
 
 (mu/defn upsert-metabot-source-feedback!
   "Insert or update the MetabotSourceFeedback of the User with `submitter-user-id` on the source with `source-id` and
-  `source-type` of the MetabotMessage with `message-id`; `update-fn` receives the existing row, or nil, and returns
-  the columns to write."
+  `source-type` of the MetabotMessage with `message-id`, setting its `positive` and stamping `:updated_at`, and return its ID."
   [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
    source-id         :- ms/PositiveInt
    source-type       :- [:enum "table" "card" "model" "dashboard"]
-   update-fn         :- fn?]
-  (metabot.db/upsert-source-feedback! message-id submitter-user-id source-id source-type update-fn))
+   positive          :- [:maybe :boolean]]
+  (metabot.db/upsert-source-feedback! message-id submitter-user-id source-id source-type
+                                      {:positive positive :updated_at (java.time.OffsetDateTime/now)}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

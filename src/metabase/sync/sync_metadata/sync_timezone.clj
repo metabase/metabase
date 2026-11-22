@@ -44,5 +44,5 @@
           zone-id (if (= zone-id "Z") "UTC" zone-id)]
       (log/infof "%s database %s default timezone is %s" driver (pr-str (:id database)) (pr-str zone-id))
       (when-not (= zone-id (:timezone database))
-        (database/update-databases! [{:id (:id database) :timezone zone-id}]))
+        (database/update-databases! [(:id database)] {:timezone zone-id}))
       {:timezone-id zone-id})))

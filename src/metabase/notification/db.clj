@@ -271,11 +271,17 @@
   (u/prog1 (mdb/insert-returning-instances! :model/NotificationCard rows)
     (change-log/log-changes! :model/NotificationCard :insert <>)))
 
-(mu/defn delete-notification-cards!
-  "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."
-  [notification-card-ids :- [:sequential ms/PositiveInt]]
-  (change-log/log-rows! :model/NotificationCard :delete :id [:in notification-card-ids])
-  (t2/delete! :model/NotificationCard :id [:in notification-card-ids]))
+(mu/defn delete-notification-cards-for-notifications!
+  "Delete the NotificationCards that are the payloads of the card Notifications with `notification-ids`, in one
+  statement, returning the number deleted."
+  [notification-ids :- [:sequential ms/PositiveInt]]
+  (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]
+                                           :from   [:notification]
+                                           :where  [:and
+                                                    [:in :id [:auto/param notification-ids]]
+                                                    [:= :payload_type "notification/card"]]}]]
+    (change-log/log-rows! :model/NotificationCard :delete :id payload-ids)
+    (t2/delete! :model/NotificationCard :id payload-ids)))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 

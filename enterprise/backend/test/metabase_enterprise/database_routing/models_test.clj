@@ -11,8 +11,8 @@
 (deftest router-needs-user-attribute-test
   (testing "a router routes on a non-blank user attribute"
     (doseq [user-attribute [nil "" " "]]
-      (is (not (mr/validate ::database-routing.schema/database-router.update {:id 1 :user_attribute user-attribute}))))
-    (is (mr/validate ::database-routing.schema/database-router.update {:id 1 :user_attribute "tenant"}))))
+      (is (not (mr/validate ::database-routing.schema/database-router.update {:user_attribute user-attribute}))))
+    (is (mr/validate ::database-routing.schema/database-router.update {:user_attribute "tenant"}))))
 
 (deftest router-database-is-frozen-test
   (testing "a router stays with the database it was made for"
@@ -48,7 +48,7 @@
                   :model    "Database"}
                  (mt/latest-audit-log-entry :database-update db-id))))
         (testing "changing the attribute of a router is recorded as an update of its database with the change"
-          (database-routing.models/update-database-routers! [{:id (t2/select-one-pk :model/DatabaseRouter :database_id db-id) :user_attribute "other"}])
+          (database-routing.models/update-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)] {:user_attribute "other"})
           (is (= {:model_id db-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:db_routing "enabled"
@@ -68,7 +68,7 @@
         (testing "a write without a change records nothing"
           (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute "tenant"}])
           (let [before (t2/count :model/AuditLog)]
-            (database-routing.models/update-database-routers! [{:id (t2/select-one-pk :model/DatabaseRouter :database_id db-id) :user_attribute "tenant"}])
+            (database-routing.models/update-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)] {:user_attribute "tenant"})
             (is (= before (t2/count :model/AuditLog))))
           (database-routing.models/delete-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)]))))))
 
@@ -85,8 +85,7 @@
                           create  (events.tu/statement-count!
                                    #(reset! routers (database-routing.models/create-database-routers!
                                                      (mapv (fn [db-id] {:database_id db-id :user_attribute "tenant"}) db-ids))))
-                          rename! #(database-routing.models/update-database-routers!
-                                    (mapv (fn [{:keys [id]}] {:id id :user_attribute "region"}) %))
+                          rename! #(database-routing.models/update-database-routers! (mapv :id %) {:user_attribute "region"})
                           _       (rename! (take-nth 2 @routers))
                           update  (events.tu/statement-count! #(rename! @routers))
                           delete  (events.tu/statement-count!
@@ -112,9 +111,8 @@
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "tenant"}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the database of a router"
                           (database-routing.models/update-database-routers!
-                           [{:id router-id :user_attribute "region"}
-                            {:id router-id :database_id other-id}])))
+                           [router-id] {:user_attribute "region" :database_id other-id})))
     (is (= "tenant" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))
-    (is (= [{:id router-id :user_attribute "region"}]
-           (database-routing.models/update-database-routers! [{:id router-id :user_attribute "region"}
-                                                              {:id Integer/MAX_VALUE :user_attribute "region"}])))))
+    (is (= [router-id]
+           (database-routing.models/update-database-routers! [router-id Integer/MAX_VALUE] {:user_attribute "region"})))
+    (is (= "region" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))))

@@ -625,7 +625,7 @@
         (is (= (mt/id :people :name)
                (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))
         (finally
-          (field-user-settings/delete-field-user-settings! [(mt/id :orders :user_id)]))))))
+          (field-user-settings/delete-field-user-settings-for-fields! [(mt/id :orders :user_id)]))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"

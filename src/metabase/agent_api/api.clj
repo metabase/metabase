@@ -920,7 +920,7 @@
        (select-keys card-before-update [:collection_id :collection_position])
        (select-keys card-updates [:collection_id :collection_position]))
       (queries.card/place-updated-dashboard-question! card-before-update card-updates false)
-      (queries.card/update-cards! [(queries.card/update-card-row id card-updates)]))
+      (queries.card/update-cards! [id] (queries.card/card-changes card-updates)))
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
@@ -1366,7 +1366,7 @@
 
 (defn- insert-new-dashcard!
   "Add a new dashcard at `position-fields` on `tab-id` to the mutation `state`, under a temporary negative id that
-  [[dashboard/update-dashboards!]] replaces when the batch is saved. It goes into :placed, so later mutations in the
+  [[dashboard/update-dashboard!]] replaces when the batch is saved. It goes into :placed, so later mutations in the
   batch, notably a `move` to \"top\", which shifts every other card, see it."
   [state tab-id position-fields columns]
   (swap! state (fn [{:keys [next-id] :as current}]
@@ -1591,8 +1591,8 @@
                                          (apply-dashcard-mutations! id mutations))
                              dashcards (:dashcards changes)]
                          (when (or (seq updates) dashcards)
-                           (dashboard/update-dashboards! [(cond-> (assoc updates :id id)
-                                                            dashcards (assoc :dashcards dashcards))]))
+                           (dashboard/update-dashboard! id (cond-> updates
+                                                          dashcards (assoc :dashcards dashcards))))
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1607,7 +1607,9 @@
                          ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
                          (when (or (seq (:added changes)) (seq (:removed changes)))
                            (let [saved (agent-api.db/dashcards id)]
+                             (dashboard-card/check-unarchive-internal-dashboard-questions! id saved)
                              (dashboard-card/unarchive-internal-dashboard-questions! id saved)
+                             (dashboard-card/check-archive-internal-dashboard-questions! id saved)
                              (dashboard-card/archive-internal-dashboard-questions! id saved)))))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)

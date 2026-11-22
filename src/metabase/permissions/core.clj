@@ -110,7 +110,6 @@
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
   fail-to-add-data-analyst-msg
-  throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
   application-perms-path

@@ -56,7 +56,7 @@
   [row :- ::impersonation.schema/impersonation-query-cache.update]
   (impersonation.db/update-or-insert-query-cache! (lookup row) row))
 
-(mu/defn delete-outdated-impersonation-query-caches! :- :int
+(mu/defn delete-impersonation-query-caches-for-cleanup! :- :int
   "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
   returning the number deleted."
   [version :- :string

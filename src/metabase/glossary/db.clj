@@ -40,7 +40,7 @@
 (mu/defn update-glossaries!
   "Apply `changes` to the Glossary entries with `ids`, returning the number updated."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::glossary.schema/glossary.update :id)]
+   changes :- ::glossary.schema/glossary.update]
   (t2/update! :model/Glossary :id [:in ids] changes))
 
 (mu/defn delete-glossaries!

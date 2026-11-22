@@ -89,7 +89,7 @@
         (with-redefs [t2/query-one (fn [& args]
                                      (swap! delete-queries into (filter :delete-from args))
                                      (apply original-query-one args))]
-          (field/delete-fields-of-databases! [db-id]))
+          (field/delete-fields-for-databases! [db-id]))
         (is (empty? @delete-queries))))))
 
 (deftest ^:parallel delete-database-fields-test
@@ -101,7 +101,7 @@
       ;; This only deletes the test-local Database Fields created above.
       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-      (field/delete-fields-of-databases! [db-id])
+      (field/delete-fields-for-databases! [db-id])
       (is (not (t2/exists? :model/Field :id parent-id)))
       (is (not (t2/exists? :model/Field :table_id table-id))))))
 
@@ -118,7 +118,7 @@
                                                    {:table_id table-id :parent_id parent-id :name "C"
                                                     :base_type :type/Text :database_type "TEXT"}))
                         (t2/with-call-count [call-count]
-                          (field/delete-fields-of-databases! [db-id])
+                          (field/delete-fields-for-databases! [db-id])
                           (call-count))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))
@@ -575,21 +575,21 @@
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
+      (database/update-databases! [db-id] {:details {:keystore-path "secret-path"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
+      (database/update-databases! [db-id] {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-options "local"
-                                                        :keystore-path "prefer-path"
-                                                        :keystore-value "ignore-value"}}])
+      (database/update-databases! [db-id] {:details {:keystore-options "local"
+                                                     :keystore-path "prefer-path"
+                                                     :keystore-value "ignore-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
+      (database/update-databases! [db-id] {:details {:keystore-value nil}})
       (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? nil
               (secret/latest-for-id secret-id))))))
@@ -733,7 +733,7 @@
                                          :version 1
                                          :value   "new-password"})
                   (testing " updating the value works as expected"
-                    (database/update-databases! [{:id id :details (assoc details :password-path "/path/to/my/password-file")}])
+                    (database/update-databases! [id] {:details (assoc details :password-path "/path/to/my/password-file")})
                     (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
                                                                          :source  :file-path
                                                                          :version 2
@@ -771,7 +771,7 @@
                                        :name    "Secret Test"
                                        :details {:host "localhost"}}]
       (let [db-id (:id db)]
-        (database/update-databases! [{:id db-id :write_data_details {:keystore-value "write-secret"}}])
+        (database/update-databases! [db-id] {:write_data_details {:keystore-value "write-secret"}})
         (let [raw-write-details (t2/select-one-fn
                                  (comp json/decode+kw :write_data_details)
                                  (t2/table-name :model/Database) :id db-id)]
@@ -1470,7 +1470,7 @@
                     (let [ids (create-test-databases! (str "Update Count " n) n)]
                       (try
                         (t2/with-call-count [call-count]
-                          (database/update-databases! (mapv #(hash-map :id % :details {:db "mem:update-count"}) ids))
+                          (database/update-databases! ids {:details {:db "mem:update-count"}})
                           (call-count))
                         (finally
                           (database/delete-databases! ids)))))]
@@ -1488,8 +1488,7 @@
                                       (call-count))
                             written (binding [search.ingestion/*disable-updates* true]
                                       (t2/with-call-count [call-count]
-                                        (database/update-databases!
-                                         (mapv #(hash-map :id % :dbms_version {:version "2"}) ids))
+                                        (database/update-databases! ids {:dbms_version {:version "2"}})
                                         (call-count)))]
                         (is (= #{{:version "2"}} (t2/select-fn-set :dbms_version :model/Database :id [:in ids])))
                         (- written plain))
@@ -1537,7 +1536,7 @@
                                                                  (for [i (range n)] {:name (str "Count " i) :engine :h2 :details {}})))]
                           (t2/update! :model/Database :id [:in (vec (take-nth 2 ids))] {:auto_run_queries false})
                           (events.tu/statement-count!
-                           #(database/update-databases! (mapv (fn [id] {:id id :auto_run_queries false :is_full_sync false}) ids))))))]
+                           #(database/update-databases! ids {:auto_run_queries false :is_full_sync false})))))]
         (update! 1)
         (is (= (update! 2) (update! 6)))))
     (testing "deleting Databases that have Tables and Fields"

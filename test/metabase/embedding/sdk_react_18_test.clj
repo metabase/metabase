@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.embedding.models.sdk-react-18-host :as sdk-react-18-host]
    [metabase.embedding.sdk-react-18 :as embedding.sdk-react-18]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
@@ -73,7 +74,7 @@
   (let [saved   (atom [])
         earlier (t/offset-date-time "2026-10-13T10:00:00Z")
         later   (t/offset-date-time "2026-10-13T10:00:30Z")]
-    (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+    (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-for-cleanup! (constantly nil)
                                 sdk-react-18-host/save-sdk-react-18-host!                     #(swap! saved conj [%1 %2])]
       (testing "saves each host once, with the newest time it was seen"
         (#'embedding.sdk-react-18/save-hosts! [{:host "a.example.com", :timestamp later}
@@ -85,7 +86,7 @@
   (let [now   (t/offset-date-time)
         saved (atom [])]
     (testing "a failed delete logs a warning, and the hosts are still saved"
-      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (fn [_] (throw (ex-info "boom" {})))
+      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-for-cleanup! (fn [_] (throw (ex-info "boom" {})))
                                   sdk-react-18-host/save-sdk-react-18-host!                     (fn [host _] (swap! saved conj host))]
         (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
           (#'embedding.sdk-react-18/save-hosts! [{:host "app.example.com", :timestamp now}])
@@ -94,7 +95,7 @@
                   (messages))))))
     (testing "a host that fails to save does not stop the other hosts"
       (reset! saved [])
-      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-for-cleanup! (constantly nil)
                                   sdk-react-18-host/save-sdk-react-18-host!                     (fn [host _]
                                                                                                   (when (= host "bad.example.com")
                                                                                                     (throw (ex-info "boom" {})))
@@ -179,3 +180,14 @@
             (mt/user-http-request :rasta :get 200 "user/current"
                                   {:request-options {:headers (headers "handler.example.com")}})
             (is (t2/exists? :model/EmbeddingSdkReact18Host :host "handler.example.com"))))))))
+
+(deftest save-sdk-react-18-host-statement-count-test
+  (mt/with-model-cleanup [:model/EmbeddingSdkReact18Host]
+    (t2/delete! :model/EmbeddingSdkReact18Host :host [:in ["one.example.com" "two.example.com"]])
+    (let [seen-at (t/offset-date-time "2026-10-13T10:00:00Z")]
+      (sdk-react-18-host/save-sdk-react-18-host! "warm.example.com" seen-at)
+      (testing "inserting a new host and moving an existing one forward take the same number of statements"
+        (is (= (events.tu/statement-count! #(sdk-react-18-host/save-sdk-react-18-host! "one.example.com" seen-at))
+               (events.tu/statement-count! #(sdk-react-18-host/save-sdk-react-18-host! "one.example.com" (t/plus seen-at (t/hours 1))))))
+        (is (= (t/instant (t/plus seen-at (t/hours 1)))
+               (t/instant (t2/select-one-fn :last_seen_at :model/EmbeddingSdkReact18Host :host "one.example.com"))))))))

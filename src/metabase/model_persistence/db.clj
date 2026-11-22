@@ -6,7 +6,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
+   [metabase.models.interface :as mi]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -169,34 +171,45 @@
                                            :state  state
                                            :error  error}))
 
-(mu/defn all-persisted-info-states
-  "The id, state and active flag of every PersistedInfo."
-  []
-  (t2/select [:model/PersistedInfo :id :state :active]))
+(def ^:private persisted-info-changes
+  [:map {:closed true}
+   [:active          {:optional true} :boolean]
+   [:state           {:optional true} :string]
+   [:state_change_at {:optional true} [:= :%now]]])
 
-(mu/defn persisted-info-states-by-ids
-  "The id, state and active flag of the PersistedInfos with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PersistedInfo :id :state :active] :id [:in ids]))
-
-(mu/defn persisted-info-states-of-database
-  "The id, state and active flag of the PersistedInfos of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/PersistedInfo :id :state :active] :database_id database-id))
-
-(mu/defn active-persisted-info-states-of-cards
-  "The id, state and active flag of the active PersistedInfos of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/PersistedInfo :id :state :active] :active true :card_id [:in card-ids]))
+(defn- update-persisted-info-rows!
+  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, `:state` and `:active` as stored, with one
+  statement for each distinct set of columns that differ from the stored ones, so that Toucan runs no statement for
+  each row."
+  [rows changes]
+  (doseq [[effective ids] (mi/group-ids-by-changes (u/index-by :id rows) (mapv #(assoc changes :id (:id %)) rows))]
+    (t2/update! :model/PersistedInfo :id [:in ids] effective))
+  nil)
 
 (mu/defn update-persisted-infos!
-  "Apply `changes` to the PersistedInfos with `ids`, returning the number updated."
+  "Apply `changes` to the PersistedInfos with `ids`."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:active          {:optional true} :boolean]
-               [:state           {:optional true} :string]
-               [:state_change_at {:optional true} [:= :%now]]]]
-  (t2/update! :model/PersistedInfo :id [:in ids] changes))
+   changes :- persisted-info-changes]
+  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :id [:in ids]) changes))
+
+(mu/defn update-persisted-infos-for-databases!
+  "Apply `changes` to the PersistedInfos of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]
+   changes      :- persisted-info-changes]
+  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :database_id [:in database-ids])
+                               changes))
+
+(mu/defn update-all-persisted-infos!
+  "Apply `changes` to every PersistedInfo."
+  [changes :- persisted-info-changes]
+  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active]) changes))
+
+(mu/defn update-active-persisted-infos-for-cards!
+  "Apply `changes` to the active PersistedInfos of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]
+   changes  :- persisted-info-changes]
+  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :active true :card_id [:in card-ids])
+                               changes))
 
 (mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."

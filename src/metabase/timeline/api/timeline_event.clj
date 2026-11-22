@@ -96,7 +96,7 @@
       (throw (ex-info (tru "Invalid Timeline event timezone.") {:status-code 400})))
     (api/update-check existing changes)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (timeline-event/update-timeline-events! [(assoc changes :id id)])
+    (timeline-event/update-timeline-events! [id] changes nil)
     (u/prog1 (timeline.db/timeline-event id))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content

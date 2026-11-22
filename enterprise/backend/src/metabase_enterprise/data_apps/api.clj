@@ -215,7 +215,7 @@
   (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
     (api/update-check app changes)
     (when (seq changes)
-      (data-app/update-data-apps! [(assoc changes :id id)]))
+      (data-app/update-data-apps! [id] changes))
     (let [app (data-apps.db/data-app id)]
       (data-app-response app))))
 

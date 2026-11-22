@@ -35,6 +35,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
@@ -76,6 +77,11 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- duplicate-key?
+  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
+  [e]
+  (= :duplicate-key (sql-errors/error-kind e)))
+
 (mu/defn put-user-key-value!
   "Store the value of `kvp` for the User with `user-id`, replacing any stored under its key, and return the value."
   [user-id :- :int
@@ -90,10 +96,12 @@
       (if (user-key-value.db/user-key-value user-id namespace key)
         (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
         (try
-          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
-          ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
-          (catch Exception _
-            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
+          (t2/with-transaction [_]
+            (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at))
+          (catch Exception e
+            (if (duplicate-key? e)
+              (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
+              (throw e))))))
     value))
 
 (mu/defn delete-user-key-value!

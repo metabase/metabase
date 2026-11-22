@@ -135,25 +135,35 @@
   [rows :- [:sequential ::data-testing.schema/segment-test.create]]
   (data-testing.models/create-saved-tests! :model/SegmentTest rows))
 
-(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update]
-  "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms
-  of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
-   (update-segment-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update]
-    opts :- ::data-testing.schema/write-opts]
-   (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
+(mu/defn update-segment-tests! :- :nil
+  "Apply the `changes` to the SegmentTests with `ids`, which the column transforms of the model normalize and validate,
+  publishing their update event."
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/segment-test.update]
+   (update-segment-tests! ids changes nil))
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/segment-test.update
+    opts    :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/SegmentTest ids changes opts)))
 
-(mu/defn delete-segment-tests-by-id! :- :nil
+(mu/defn update-segment-tests-for-import! :- :nil
+  "Apply each of `rows`, the id of a SegmentTest and the columns to change, as an import writes it, one row at a time. An
+  import runs rows with different values, which one change for all cannot express."
+  [rows :- [:sequential ::data-testing.schema/segment-test.import-row]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-segment-tests! [id] (dissoc row :id) {:writer :import}))
+  nil)
+
+(mu/defn delete-segment-tests! :- :nil
   "Delete the SegmentTests with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
 
-(defenterprise delete-segment-tests!
+(defenterprise delete-segment-tests-for-segments!
   "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
   [segment-ids]
-  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
+  (data-testing.models/delete-saved-tests-for-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -162,7 +172,7 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (update-segment-tests! [(assoc snapshot :id id)] {:writer :revert}))
+  (update-segment-tests! [id] snapshot {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -181,8 +191,8 @@
 (defmethod serialization/spec :model/SegmentTest [_]
   {:schema              ::data-testing.schema/external-segment-test
    :insert!             create-segment-tests!
-   :update!             update-segment-tests!
-   :delete!             delete-segment-tests-by-id!
+   :update!             update-segment-tests-for-import!
+   :delete!             delete-segment-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:segment_id (serialization/fk-transform :model/Segment)
                          :creator_id serialization/user-transform}

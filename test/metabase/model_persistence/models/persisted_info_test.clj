@@ -27,8 +27,8 @@
                                          {:card_id card-id :database_id db-id :question_slug "slug"
                                           :table_name (str "model_" card-id "_slug") :active active :state state})))]
                          (events.tu/statement-count! #(write! (take n card-ids) ids)))))]
-      (doseq [[label write!] {"marking a Database for pruning" (fn [_ _] (persisted-info/mark-for-pruning! {:database_id db-id}))
-                              "marking by id"                  (fn [_ ids] (doseq [id (take 1 ids)] (persisted-info/mark-for-pruning! {:id id} "off")))
+      (doseq [[label write!] {"marking a Database for pruning" (fn [_ _] (persisted-info/mark-persisted-infos-for-pruning-for-databases! [db-id]))
+                              "marking by id"                  (fn [_ ids] (persisted-info/mark-persisted-infos-for-pruning! ids "off"))
                               "invalidating"                   (fn [cards _] (persisted-info/invalidate! cards))
                               "deleting"                       (fn [_ ids] (persisted-info/delete-persisted-infos! ids))
                               "readying a Database"            (fn [_ _] (persisted-info/ready-database! db-id))}]

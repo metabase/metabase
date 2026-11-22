@@ -109,7 +109,7 @@
           counted (fn [write! n]
                     (let [ids (mapv :id (create! n))]
                       (events.tu/statement-count! #(write! ids))))
-          update! (fn [ids] (python-library/update-python-libraries! (mapv (fn [id] {:id id :source "a = 2"}) ids)))]
+          update! (fn [ids] (python-library/update-python-libraries! ids {:source "a = 2"}))]
       (testing "creating libraries"
         (let [creating #(events.tu/statement-count! (fn [] (create! %)))]
           (creating 1)
@@ -135,6 +135,6 @@
                     (let [libraries (python-library/create-python-libraries!
                                      (mapv (fn [i] {:path (mt/random-name) :source (if (even? i) "a = 9" "a = 1") :is_default (odd? i)}) (range n)))]
                       (events.tu/statement-count!
-                       #(python-library/update-python-libraries! (mapv (fn [{:keys [id]}] {:id id :source "a = 9"}) libraries)))))]
+                       #(python-library/update-python-libraries! (mapv :id libraries) {:source "a = 9"}))))]
       (counted 1)
       (is (= (counted 2) (counted 6))))))

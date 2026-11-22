@@ -128,38 +128,63 @@
     (when (seq (:changes event))
       (events/publish-event! :event/test-suite-update event))))
 
-(mu/defn update-test-suites! :- [:sequential UpdateTestSuite]
-  "Apply the changes in each of `rows`, the id of a TestSuite and the columns to change, replacing its members when the
-  row has `:members`, in one transaction with one statement per distinct change set, publishing, last, the update event
-  of the suites whose columns or members change, and for an import, which sends a suite whose members it wrote, a touch
-  of each suite it leaves unchanged. A change of members alone also sets the suite's update time. The suite rows are
-  locked first, so a concurrent update of the same suite waits until this one commits and then replaces the members this
-  one wrote. Returns `rows`."
-  ([rows :- [:sequential UpdateTestSuite]]
-   (update-test-suites! rows nil))
-  ([rows :- [:sequential UpdateTestSuite]
-    opts :- ::data-testing.schema/write-opts]
-   (when (seq rows)
+(mu/defn update-test-suites! :- :nil
+  "Apply the `changes`, columns of a TestSuite, to each of the suites with `ids` in one transaction, publishing their
+  update event. The suite rows are locked first, so a concurrent update of the same suite waits until this one commits."
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/test-suite.update]
+   (update-test-suites! ids changes nil))
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- ::data-testing.schema/test-suite.update
+    opts    :- ::data-testing.schema/write-opts]
+   (when (seq ids)
      (t2/with-transaction [_conn]
-       (let [stored       (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))
-             rows*        (filterv (comp stored :id) rows)
-             columns      (fn [row] (dissoc row :id :members))
-             with-members (filterv #(contains? % :members) rows*)]
-         (doseq [[updates group] (group-by columns rows*)
-                 :when           (seq updates)]
-           (data-testing.db/update-test-suites! (mapv :id group) updates))
-         (when (seq with-members)
-           (data-testing.db/touch-test-suites! (mapv :id with-members))
-           (replace-suite-members! with-members))
-         (let [fresh (u/index-by :id (data-testing.db/test-suites-by-ids (mapv :id rows*)))]
+       (let [stored (u/index-by :id (data-testing.db/test-suites-for-update (vec ids)))]
+         (when (seq stored)
+           (data-testing.db/update-test-suites! stored changes)
            (publish-update! stored
-                            fresh
-                            (mapv #(select-keys % [:id]) (filter (comp seq columns) rows*))
-                            (into (if (= :import (:writer opts)) (mapv :id rows*) [])
-                                  (map :id)
-                                  with-members)
+                            (u/index-by :id (data-testing.db/test-suites-by-ids (vec (keys stored))))
+                            (mapv #(hash-map :id %) (filter stored ids))
+                            []
                             opts)))))
-   (vec rows)))
+   nil))
+
+(mu/defn update-test-suite! :- :nil
+  "Apply the `changes`, columns of the TestSuite with `id`, and the `:members` it has afterwards, replacing its members
+  when `changes` has `:members`, in one transaction, publishing, last, one update event: of its columns or members,
+  and for an import, which sends a suite whose members it wrote, a touch when nothing changes. A change of members
+  alone also sets the suite's update time. The suite row is locked first, so a concurrent update of the same suite
+  waits until this one commits and then replaces the members this one wrote."
+  ([id      :- ms/PositiveInt
+    changes :- UpdateTestSuite]
+   (update-test-suite! id changes nil))
+  ([id      :- ms/PositiveInt
+    changes :- UpdateTestSuite
+    opts    :- ::data-testing.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (let [stored  (u/index-by :id (data-testing.db/test-suites-for-update [id]))
+           columns (dissoc changes :members)
+           members? (contains? changes :members)]
+       (when (seq stored)
+         (when (seq columns)
+           (data-testing.db/update-test-suites! stored columns))
+         (when members?
+           (data-testing.db/touch-test-suites! [id])
+           (replace-suite-members! [{:id id :members (:members changes)}]))
+         (publish-update! stored
+                          (u/index-by :id (data-testing.db/test-suites-by-ids [id]))
+                          (if (seq columns) [{:id id}] [])
+                          (if (or members? (= :import (:writer opts))) [id] [])
+                          opts))))
+   nil))
+
+(mu/defn update-test-suites-for-import! :- :nil
+  "Apply each of `rows`, the id of a TestSuite and the columns to change, as an import writes it, one row at a time. An
+  import runs rows with different values, which one change for all cannot express."
+  [rows :- [:sequential [:merge UpdateTestSuite [:map [:id ms/PositiveInt]]]]]
+  (doseq [{:keys [id] :as row} rows]
+    (update-test-suite! id (dissoc row :id) {:writer :import}))
+  nil)
 
 (mu/defn delete-test-suites!
   "Delete the TestSuites with `ids`, and their members, publishing their delete event right before the statement."
@@ -194,7 +219,7 @@
     (data-testing.db/delete-suite-members! (vec ids)))
   nil)
 
-(mu/defn delete-members-of-tests! :- :nil
+(mu/defn delete-test-suite-members-for-tests! :- :nil
   "Delete the members of every TestSuite that name the `test-type` tests with `entity-ids`, publishing the update event
   of their suites as a touch."
   [test-type  :- ::data-testing.schema/test-type
@@ -232,7 +257,7 @@
    :transform     {:creator_id serialization/user-transform}
    :children      {:members :model/TestSuiteMember}
    :insert!       #(create-test-suites! % {:writer :import})
-   :update!       #(update-test-suites! % {:writer :import})
+   :update!       update-test-suites-for-import!
    :delete!       delete-test-suites!
    :storage-paths data-testing.serialization/test-suite-storage-paths})
 

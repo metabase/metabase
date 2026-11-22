@@ -40,7 +40,7 @@
                                             entity
                                             (dependencies.db/direct-dependent-ids entity-type (:id entity)))
             :when (seq dependent-ids)]
-      (models.dependency/delete-dependencies-on! dependent-type (vec dependent-ids) entity-type (:id entity)))))
+      (models.dependency/delete-dependencies-for-dependents! dependent-type (vec dependent-ids) entity-type (:id entity)))))
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
@@ -79,7 +79,7 @@
   (let [entity-ids (dependencies.db/dependency-deleted-entity-ids entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
-        (models.dependency/delete-dependencies-from! entity-type entity-ids)
+        (models.dependency/delete-dependencies-for-entities! entity-type entity-ids)
         (models.dependency-status/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 

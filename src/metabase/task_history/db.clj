@@ -2,6 +2,8 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
    [metabase.run-tracking.core :as rt]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -190,16 +192,33 @@
   (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
                                                       :order-by [:task]}))
 
-(mu/defn update-task-history!
-  "Apply `changes` to the TaskHistory row with `id`."
+(defn- duration-clause
+  "A HoneySQL form for the whole milliseconds, never negative, from the stored `started_at` of a TaskHistory row to the
+  database's now, which within one statement is the same instant as the `ended_at` it sets."
+  []
+  (let [db-type (mdb/db-type)
+        now     (h2x/current-datetime-honeysql-form db-type)]
+    [:greatest
+     [:inline 0]
+     (case db-type
+       :postgres [:cast [:floor [:* [:inline 1000] [::h2x/extract :epoch [:- now :started_at]]]] :integer]
+       :mysql    [:floor [:/ [::h2x/timestampdiff :microsecond :started_at now] [:inline 1000]]]
+       :h2       [:datediff (h2x/literal "millisecond") :started_at now])]))
+
+(mu/defn end-task-history!
+  "Record the end of the TaskHistory row with `id` with `changes`: `ended_at` is the database's now and `duration` the
+  milliseconds since its `started_at`, unless `changes` gives them."
   [id      :- ms/PositiveInt
-   changes :- ::task-history.schema/task-history.update]
-  (t2/update! :model/TaskHistory :id id changes))
+   changes :- (mut/dissoc ::task-history.schema/task-history.update :started_at)]
+  (t2/update! :model/TaskHistory :id id (merge {:ended_at (h2x/current-datetime-honeysql-form (mdb/db-type))
+                                                :duration (duration-clause)}
+                                               changes)))
 
 (mu/defn insert-task-history!
-  "Insert the TaskHistory `row` and return its id."
+  "Insert the TaskHistory `row`, started at the database's now unless it gives `started_at`, and return its id."
   [row :- ::task-history.schema/task-history.update]
-  (t2/insert-returning-pk! :model/TaskHistory row))
+  (t2/insert-returning-pk! :model/TaskHistory
+                           (merge {:started_at (h2x/current-datetime-honeysql-form (mdb/db-type))} row)))
 
 (mu/defn insert-task-run!
   "Insert the TaskRun `row` and return its id."
@@ -212,11 +231,12 @@
   (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
 
 (mu/defn finish-started-task-run!
-  "Set the status and end time of the started TaskRun with `run-id`."
-  [run-id   :- ms/PositiveInt
-   status   :- :keyword
-   ended-at :- ms/TemporalInstant]
-  (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
+  "Set the status of the started TaskRun with `run-id` and its end time to the database's now, the clock that set its
+  start."
+  [run-id :- ms/PositiveInt
+   status :- :keyword]
+  (t2/update! :model/TaskRun {:id run-id :status :started} {:status   status
+                                                            :ended_at (h2x/current-datetime-honeysql-form (mdb/db-type))}))
 
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."

@@ -48,9 +48,8 @@
    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::sandbox.update
-  "What an update of a Sandbox takes: its `:id` and the columns to set."
+  "The changes an update applies to each of its Sandboxes: the columns to set."
   [:map {:closed true}
-   [:id                   ms/PositiveInt]
    [:group_id             {:optional true} [:maybe ms/PositiveInt]]
    [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]

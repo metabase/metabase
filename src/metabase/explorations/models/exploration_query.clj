@@ -76,15 +76,14 @@
   (explorations.db/insert-queries! rows))
 
 (mu/defn update-queries! :- :int
-  "Apply the columns of each of `rows` to the ExplorationQuery with its `:id`, with one statement for each set of
-  changes, and return the number updated."
-  [rows :- [:sequential [:and
-                         ::explorations.schema/exploration-query.update
-                         ::explorations.schema/exploration-query.update.stamped-together]]]
-  (transduce (map (fn [[changes group]] (explorations.db/update-queries! (mapv :id group) changes)))
-             +
-             0
-             (group-by #(dissoc % :id) rows)))
+  "Apply `changes` to the ExplorationQueries with `ids` and return the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- [:and
+               ::explorations.schema/exploration-query.update
+               ::explorations.schema/exploration-query.update.stamped-together]]
+  (if (seq ids)
+    (explorations.db/update-queries! ids changes)
+    0))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number

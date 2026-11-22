@@ -57,10 +57,13 @@
   (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
 
 (mu/defn update-metabots!
-  "Apply `changes` to the Metabots with `metabot-ids`."
+  "Apply `changes` to the Metabots with `metabot-ids`, in one statement for each distinct set of columns that differ
+  from the stored ones, so that Toucan runs no statement for each row."
   [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]
    changes     :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot :id [:in [:auto/param metabot-ids]] changes)
+  (let [stored (u/index-by :id (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))]
+    (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) metabot-ids))]
+      (t2/update! :model/Metabot :id [:in [:auto/param ids]] effective)))
   nil)
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
@@ -145,6 +148,12 @@
   [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]
    changes    :- (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]
   (t2/update! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]] changes)
+  nil)
+
+(mu/defn delete-prompts-for-metabots! :- :nil
+  "Delete the MetabotPrompts of the Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])
   nil)
 
 (mu/defn delete-prompts! :- :nil
@@ -376,10 +385,13 @@
   (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
 
 (mu/defn update-messages! :- :nil
-  "Apply `changes` to the MetabotMessages with `message-ids`."
+  "Apply `changes` to the MetabotMessages with `message-ids`, in one statement for each distinct set of columns that
+  differ from the stored ones, so that Toucan runs no statement for each row."
   [message-ids :- [:sequential {:min 1} ms/PositiveInt]
    changes     :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
-  (t2/update! :model/MetabotMessage :id [:in [:auto/param message-ids]] changes)
+  (let [stored (u/index-by :id (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))]
+    (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) message-ids))]
+      (t2/update! :model/MetabotMessage :id [:in [:auto/param ids]] effective)))
   nil)
 
 (mu/defn messages-matching
@@ -419,32 +431,52 @@
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
+(defn- upsert-row!
+  "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
+  columns to those of `row`, in one statement: `ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
+  MariaDB, `MERGE ... KEY` on H2. All identifiers are constants of this namespace; the values are bound."
+  [table key-columns row]
+  (let [columns     (vec (keys row))
+        names       (mapv name columns)
+        updated     (mapv name (remove (set key-columns) columns))
+        placeholder (str/join ", " (repeat (count columns) "?"))
+        column-list (str/join ", " names)
+        key-list    (str/join ", " (map name key-columns))
+        sql         (case (mdb/db-type)
+                      :postgres (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON CONFLICT (" key-list ") DO UPDATE SET "
+                                     (str/join ", " (map #(str % " = EXCLUDED." %) updated)))
+                      :mysql    (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON DUPLICATE KEY UPDATE "
+                                     (str/join ", " (map #(str % " = VALUES(" % ")") updated)))
+                      :h2       (str "MERGE INTO " (name table) " (" column-list ") KEY (" key-list ") VALUES ("
+                                     placeholder ")"))]
+    (t2/query (into [sql] (map #(if (keyword? %) (name %) %)) (map row columns)))
+    nil))
+
 (mu/defn upsert-feedback!
-  "Insert or update the MetabotFeedback row for the MetabotMessage with `message-id` and the User with
-  `submitter-user-id`. `update-fn` receives the existing row (or nil on insert) and must return the fields to
-  write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`, or update
+  its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotFeedback
-                         {:message_id message-id :user_id submitter-user-id}
-                         update-fn))
+   columns           :- (mut/dissoc ::metabot.schema/metabot-feedback.update :message_id :user_id)]
+  (upsert-row! :metabot_feedback [:message_id :user_id]
+               (assoc columns :message_id message-id :user_id submitter-user-id))
+  (t2/select-one-pk :model/MetabotFeedback :message_id message-id :user_id submitter-user-id))
 
 (mu/defn upsert-source-feedback!
-  "Insert or update the MetabotSourceFeedback row for the MetabotMessage with `message-id`, the User with
-  `submitter-user-id`, and the source with `source-id`/`source-type`. `update-fn` receives the existing row (or nil
-  on insert) and must return the fields to write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotSourceFeedback of the User with `submitter-user-id` on the source with `source-id` and
+  `source-type` of the MetabotMessage with `message-id`, or update its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   source-id :- ms/PositiveInt
-   source-type :- [:enum "table" "card" "model" "dashboard"]
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotSourceFeedback
-                         {:message_id  message-id
-                          :user_id     submitter-user-id
-                          :source_id   source-id
-                          :source_type source-type}
-                         update-fn))
+   source-id         :- ms/PositiveInt
+   source-type       :- [:enum "table" "card" "model" "dashboard"]
+   columns           :- (mut/select-keys ::metabot.schema/metabot-source-feedback.update [:positive :updated_at])]
+  (upsert-row! :metabot_source_feedback [:message_id :user_id :source_id :source_type]
+               (assoc columns :message_id message-id :user_id submitter-user-id
+                      :source_id source-id :source_type source-type))
+  (t2/select-one-pk :model/MetabotSourceFeedback
+                    :message_id message-id :user_id submitter-user-id :source_id source-id :source_type source-type))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
 

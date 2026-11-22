@@ -2,7 +2,6 @@
   "Application database queries for the custom-viz-plugin module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
@@ -66,7 +65,7 @@
 (mu/defn update-plugins!
   "Apply `changes` to the CustomVizPlugins with `plugin-ids`, returning the number updated."
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- (mut/dissoc ::custom-viz-plugin.schema/custom-viz-plugin.update :id)]
+   changes    :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
   (t2/update! :model/CustomVizPlugin :id [:in [:auto/param plugin-ids]] changes))
 
 (mu/defn non-blob-plugins-by-ids

@@ -17,4 +17,4 @@
                                                            (u.events/changed? % :is_active)))
                                              (map (comp :id :object)))
                                        changes))]
-    (session/end-sessions! {:user_id user-ids} "user-deactivated" user-id)))
+    (session/end-sessions-for-users! user-ids "user-deactivated" user-id)))

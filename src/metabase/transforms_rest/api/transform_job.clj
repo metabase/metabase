@@ -11,7 +11,6 @@
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.models.transform-job :as transform-job]
-   [metabase.transforms.models.transform-job-transform-tag :as transform-job-transform-tag]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -128,14 +127,7 @@
                   :schedule        schedule
                   :ui_display_type ui_display_type}
         _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
-        job      (first (transform-job/create-transform-jobs! [job-data]))]
-    (when (seq tag_ids)
-      (transform-job-transform-tag/create-transform-job-transform-tags!
-       (map-indexed (fn [idx tag-id]
-                      {:job_id (:id job)
-                       :tag_id tag-id
-                       :position idx})
-                    tag_ids)))
+        job      (first (transform-job/create-transform-jobs! [(cond-> job-data (seq tag_ids) (assoc :tag_ids tag_ids))]))]
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -188,15 +180,13 @@
       (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
-    (t2/with-transaction [_conn]
-      (when (some? tag-ids)
-        (transform-job/update-job-tags! job-id tag-ids))
-      (when-let [updates (m/assoc-some nil
-                                       :name name
-                                       :description description
-                                       :schedule schedule
-                                       :ui_display_type ui_display_type)]
-        (transform-job/update-transform-jobs! [(assoc updates :id job-id)])))
+    (when-let [updates (m/assoc-some nil
+                                     :name name
+                                     :description description
+                                     :schedule schedule
+                                     :ui_display_type ui_display_type
+                                     :tag_ids tag-ids)]
+      (transform-job/update-transform-job! job-id updates))
     (when (some? active)
       (if active
         (transform-job/activate-job! job-id)

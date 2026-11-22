@@ -103,14 +103,14 @@
       (testing "Rejects regular collections moved in"
         (mt/with-temp [:model/Collection regular {:name "Regular Collection"}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                                (collection/update-collections! [{:id (:id regular) :location (str "/" (:id library) "/" (:id dashboards) "/")}])))))
+                                (collection/update-collections! [(:id regular)] {:location (str "/" (:id library) "/" (:id dashboards) "/")} nil)))))
       (testing "Rejects published tables"
         (mt/with-temp [:model/Table table {}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                                (table/update-tables! [{:id (:id table) :collection_id (:id dashboards) :is_published true}])))))
+                                (table/update-tables! [(:id table)] {:collection_id (:id dashboards) :is_published true})))))
       (testing "Stays a locked Library section"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                              (collection/update-collections! [{:id (:id dashboards) :name "Old dashboards"}])))))))
+                              (collection/update-collections! [(:id dashboards)] {:name "Old dashboards"} nil)))))))
 
 (deftest tables-cannot-be-moved-to-non-library-data-collections
   (mt/with-premium-features #{:library}
@@ -125,9 +125,9 @@
                                                                     :is_published  true})])))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (table/update-tables! [{:id (:id table) :collection_id (:id regular)}]))))
+                              (table/update-tables! [(:id table)] {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (table/update-tables! [{:id (:id table) :collection_id nil}])))))))
+        (is (some? (table/update-tables! [(:id table)] {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
@@ -139,7 +139,7 @@
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Cannot update properties on a semantic layer collection"
-                                  (collection/update-collections! [{:id (:id col) :name "New Name"}])))))))))
+                                  (collection/update-collections! [(:id col)] {:name "New Name"} nil)))))))))
 
 (deftest unpublish-tables-in-archived-collection-test
   (mt/with-premium-features #{:library}
@@ -148,7 +148,7 @@
                                                    :type   collection/library-data-collection-type}
                      :model/Table      table      {:collection_id (:id archive-me)
                                                    :is_published  true}]
-        (collection/update-collections! [{:id (:id archive-me) :archived true}])
+        (collection/update-collections! [(:id archive-me)] {:archived true} nil)
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains"
           (is (=? {:is_published  false
                    :collection_id nil
@@ -176,7 +176,7 @@
                      :model/Table      table3     {:collection_id (:id child)
                                                    :is_published  true
                                                    :name          "Child_Table"}]
-        (collection/update-collections! [{:id (:id archive-me) :archived true}])
+        (collection/update-collections! [(:id archive-me)] {:archived true} nil)
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
           (doseq [table [table1 table2 table3]]
@@ -192,7 +192,7 @@
                                                    :type collection/library-metrics-collection-type}
                      :model/Card       metric     {:collection_id (:id archive-me)
                                                    :type          :metric}]
-        (collection/update-collections! [{:id (:id archive-me) :archived true}])
+        (collection/update-collections! [(:id archive-me)] {:archived true} nil)
         (testing "the collection is archived"
           (is (true? (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))))
         (testing "the metric inside is archived"
@@ -211,10 +211,10 @@
                                                      :location (str "/" (:id metrics-parent) "/")}]
       (testing "Cannot move a library-data collection into a library-metrics parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
-                              (collection/update-collections! [{:id (:id data-child) :location (str "/" (:id metrics-parent) "/")}]))))
+                              (collection/update-collections! [(:id data-child)] {:location (str "/" (:id metrics-parent) "/")} nil))))
       (testing "Cannot move a library-metrics collection into a library-data parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables"
-                              (collection/update-collections! [{:id (:id metrics-child) :location (str "/" (:id data-parent) "/")}]))))
+                              (collection/update-collections! [(:id metrics-child)] {:location (str "/" (:id data-parent) "/")} nil))))
       (testing "Cannot move a library-data collection via API to a library-metrics parent"
         (is (= "Can only add metrics to the 'Metrics' collection"
                (mt/user-http-request :crowberto :put 400 (str "collection/" (:id data-child))
@@ -242,16 +242,16 @@
                                                                                      (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (collection/update-collections! [{:id (:id library-root) :location vanilla-location}]))))
+                                  (collection/update-collections! [(:id library-root)] {:location vanilla-location} nil))))
           (testing "Cannot move a top-level Data collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (collection/update-collections! [{:id (:id data-root) :location vanilla-location}]))))
+                                  (collection/update-collections! [(:id data-root)] {:location vanilla-location} nil))))
           (testing "Cannot move a top-level Metrics collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (collection/update-collections! [{:id (:id metrics-root) :location vanilla-location}])))))
+                                  (collection/update-collections! [(:id metrics-root)] {:location vanilla-location} nil)))))
         (testing "Cannot move a Data subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
-                                (collection/update-collections! [{:id (:id data-sub) :location vanilla-location}]))))
+                                (collection/update-collections! [(:id data-sub)] {:location vanilla-location} nil))))
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
-                                (collection/update-collections! [{:id (:id metrics-sub) :location vanilla-location}]))))))))
+                                (collection/update-collections! [(:id metrics-sub)] {:location vanilla-location} nil))))))))

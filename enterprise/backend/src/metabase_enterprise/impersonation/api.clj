@@ -32,5 +32,5 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (impersonation.db/impersonation id))
-  (impersonation.models/delete-connection-impersonation! id)
+  (impersonation.models/delete-connection-impersonations! [id])
   api/generic-204-no-content)

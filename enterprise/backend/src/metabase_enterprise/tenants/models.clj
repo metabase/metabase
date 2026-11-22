@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -124,33 +125,42 @@
         (u/prog1 (tenants.db/insert-tenants! (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections))
           (events/publish-event! :event/tenant-create (events/create-event <>)))))))
 
-(defn- update-tenant!
-  "Apply `row`, an `:id` and its changes, to its Tenant as [[update-tenants!]] does, returning whether it exists."
-  [{tenant-id :id :as row}]
-  (let [changes       (dissoc row :id)
-        stored        (tenants.db/tenant tenant-id)
-        changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))
-        active        (:is_active changes)]
-    (when (and changes-name? (tenants.db/other-tenant-named? (:name changes) tenant-id))
-      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
-    (tenants.db/update-tenant! tenant-id changes)
-    (when stored
-      (events/publish-event! :event/tenant-update (events/update-event {tenant-id stored} [row]))
-      (when (and (some? active) (not= active (:is_active stored)))
-        (if active
-          (user/update-users! (user/deactivated-with-tenant-user-ids tenant-id)
-                              {:is_active true :deactivated_with_tenant nil})
-          (user/update-users! (user/active-user-ids-of-tenant tenant-id)
-                              {:is_active false :deactivated_with_tenant true})))
-      true)))
+(defn- check-names-free
+  "Throws a 400 when `changes` renames one of the Tenants with `ids` to the name of another Tenant, or renames a second
+  of them, in the order of `ids`; `stored` holds the Tenants that exist by id."
+  [ids stored changes]
+  (when (contains? changes :name)
+    (reduce (fn [renamed? id]
+              (let [renames? (not= (:name changes) (:name (stored id)))]
+                (when (and renames? (or renamed? (tenants.db/other-tenant-named? (:name changes) id)))
+                  (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+                (or renamed? (and renames? (contains? stored id)))))
+            false
+            ids)))
 
-(mu/defn update-tenants! :- [:sequential ::tenants.schema/tenant.update]
-  "Apply the `rows`, each an `:id` and its changes, to their Tenants and return the rows that exist, publishing the
-  events of the writes; the name of another Tenant is a 400, deactivating a Tenant deactivates its active Users, and
-  activating it reactivates the Users deactivated with it."
-  [rows :- [:sequential ::tenants.schema/tenant.update]]
+(mu/defn update-tenants! :- :nil
+  "Apply `changes` to the Tenants with `ids`, publishing the event of the write; the name of another Tenant is a 400,
+  deactivating a Tenant deactivates its active Users, and activating it reactivates the Users deactivated with it."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::tenants.schema/tenant.update]
   (t2/with-transaction [_conn]
-    (filterv update-tenant! rows)))
+    (let [ids      (into [] (distinct) ids)
+          stored   (if (seq ids) (u/index-by :id (tenants.db/tenants-by-ids ids)) {})
+          _        (check-names-free ids stored changes)
+          existing (filterv stored ids)
+          active   (:is_active changes)]
+      (when (seq existing)
+        (tenants.db/update-tenants! existing changes)
+        (events/publish-event! :event/tenant-update
+                               (events/update-event stored (mapv #(assoc changes :id %) existing)))
+        (when-let [flipped (when (some? active)
+                             (not-empty (filterv #(not= active (:is_active (stored %))) existing)))]
+          (if active
+            (user/update-users! (user/deactivated-with-tenant-user-ids flipped)
+                                {:is_active true :deactivated_with_tenant nil})
+            (user/update-users! (user/active-user-ids-of-tenant flipped)
+                                {:is_active false :deactivated_with_tenant true}))))))
+  nil)
 
 (defenterprise deactivate-tenants!
   "Deactivate every active Tenant and every active tenant User, marking those Users as deactivated with their Tenant,

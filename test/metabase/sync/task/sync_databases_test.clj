@@ -140,8 +140,8 @@
     (with-scheduler-setup!
       (do-with-created-database! {:details {:let-user-control-scheduling true}}
                                  (fn [database]
-                                   (database/update-databases! [{:id (u/the-id database) :metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
-                                                                 :cache_field_values_schedule "0 11 11 11 11 ?"}])      ; Every November 11th at 11:11 AM
+                                   (database/update-databases! [(u/the-id database)] {:metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
+                                                                                      :cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
                                    (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
                                            (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
                                           (current-tasks-for-db database))))))))
@@ -151,7 +151,7 @@
     (with-scheduler-setup!
       (do-with-created-database! {:details {:let-user-control-scheduling true}}
                                  (fn [database]
-                                   (database/update-databases! [{:id (u/the-id database) :cache_field_values_schedule "0 15 10 ? * MON-FRI"}])
+                                   (database/update-databases! [(u/the-id database)] {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
                                    (is (= [sync-job
                                            (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
                                           (current-tasks-for-db database))))))))
@@ -160,7 +160,7 @@
   (with-scheduler-setup!
     (do-with-created-database! {:details {:let-user-control-scheduling true}}
                                (fn [database]
-                                 (database/update-databases! [{:id (u/the-id database) :metadata_sync_schedule "0 15 10 ? * MON-FRI"}])
+                                 (database/update-databases! [(u/the-id database)] {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
                                  (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
                                          fv-job]
                                         (current-tasks-for-db database)))))))

@@ -93,6 +93,19 @@
         (t2/update! :model/SsoRelayState :id (stored-id expired) {:expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
         ;; delete-expired! operates globally, so don't assert an exact count (other tests may leave rows) —
         ;; just confirm our expired entry is purged and the live one survives.
-        (is (pos? (relay-state/delete-expired-sso-relay-states!)))
+        (is (pos? (relay-state/delete-sso-relay-states-for-cleanup! (t/offset-date-time))))
         (is (true? (t2/exists? :model/SsoRelayState :id (stored-id live))))
         (is (false? (t2/exists? :model/SsoRelayState :id (stored-id expired))))))))
+
+(deftest relay-state-expires-thirty-minutes-after-its-insert-test
+  (mt/with-model-cleanup [:model/SsoRelayState]
+    (testing "the database sets the expiry to its now plus thirty minutes, through the write function and a plain insert"
+      (let [key        (store! {:continue-url "http://localhost:3000/dashboard/1"})
+            plain-id   (str "plain-" (random-uuid))
+            _          (t2/insert! :model/SsoRelayState {:id plain-id :continue_url "http://localhost:3000/" :origin nil :embedding false})
+            expires-at (fn [id] (t/instant (t2/select-one-fn :expires_at :model/SsoRelayState :id id)))
+            in-thirty  (t/plus (t/instant) (t/minutes 30))]
+        (doseq [id [(stored-id key) plain-id]]
+          (is (<= (Math/abs (.toSeconds (t/duration (expires-at id) in-thirty))) 60)))
+        (testing "a relay state is found until it expires"
+          (is (some? (relay-state/find-unexpired key))))))))

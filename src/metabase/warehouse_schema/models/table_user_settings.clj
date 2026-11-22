@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
@@ -199,14 +200,14 @@
 (defn- mirror-onto-tables!
   "Write the columns each of the settings `rows` says a user set onto its Table, with `opts` for the events."
   [rows opts]
-  (table/update-tables! (into []
-                              (keep (fn [{:keys [table_id] :as settings}]
-                                      (when-let [changes (not-empty
-                                                          (without-derived-half
-                                                           (select-keys settings (user-settings/user-set-table-columns settings))))]
-                                        (assoc changes :id table_id))))
-                              rows)
-                        opts))
+  (doseq [[changes table-ids] (u/group-by first second
+                                          (keep (fn [{:keys [table_id] :as settings}]
+                                                  (when-let [changes (not-empty
+                                                                      (without-derived-half
+                                                                       (select-keys settings (user-settings/user-set-table-columns settings))))]
+                                                    [changes table_id]))
+                                                rows))]
+    (table/update-tables! table-ids changes opts)))
 
 (defn- update-settings!
   "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
@@ -243,26 +244,40 @@
            [:writer  {:optional true} [:enum :import]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mu/defn update-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings.update]
+(defn- update-table-user-settings-rows!
   "Apply each of `rows`, the id of a TableUserSettings and the columns to change, their two-column pairs completed from
-  their Tables, write the columns the updated settings say a user set onto their Tables, and return the rows of the
-  settings that exist: one read per kind and one statement per distinct set of changes. `opts` go into the events."
-  ([rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
-   (update-table-user-settings! rows nil))
-  ([rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]
-    opts :- ::write-opts]
-   (if (empty? rows)
-     []
-     (t2/with-transaction [_conn]
-       (let [stored (u/index-by :id (warehouse-schema.db/table-user-settings-by-ids (mapv :id rows)))
-             rows   (filterv #(contains? stored (:id %)) rows)
-             tables (tables-for (map #(merge (dissoc % :table_id) (select-keys (stored (:id %)) [:table_id])) rows))
-             writes (-> {}
-                        (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows) tables)
-                        (delete-empty! (map (comp :table_id stored :id) rows) opts))]
-         (mirror-onto-tables! (map #(merge (stored (:id %)) %) rows) opts)
-         (publish-writes! writes opts)
-         rows)))))
+  their Tables, write the columns the updated settings say a user set onto their Tables: one read per kind and one
+  statement per distinct set of changes. `opts` go into the events."
+  [rows opts]
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (warehouse-schema.db/table-user-settings-by-ids (mapv :id rows)))
+            rows   (filterv #(contains? stored (:id %)) rows)
+            tables (tables-for (map #(merge (dissoc % :table_id) (select-keys (stored (:id %)) [:table_id])) rows))
+            writes (-> {}
+                       (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows) tables)
+                       (delete-empty! (map (comp :table_id stored :id) rows) opts))]
+        (mirror-onto-tables! (map #(merge (stored (:id %)) %) rows) opts)
+        (publish-writes! writes opts)))))
+
+(mu/defn update-table-user-settings! :- [:sequential ms/PositiveInt]
+  "Apply `changes` to the TableUserSettings with `ids` and return `ids`, completing their two-column pairs from their
+  Tables and writing the columns the updated settings say a user set onto their Tables. `opts` go into the events."
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)]
+   (update-table-user-settings! ids changes nil))
+  ([ids     :- [:sequential ms/PositiveInt]
+    changes :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)
+    opts    :- ::write-opts]
+   (update-table-user-settings-rows! (mapv #(assoc changes :id %) ids) opts)
+   (vec ids)))
+
+(mu/defn update-table-user-settings-for-import!
+  "Apply each of `rows`, the id of a TableUserSettings and the columns to change, which differ for each of the settings
+  of an import: one read per kind and one statement per distinct set of changes."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  (update-table-user-settings-rows! rows nil)
+  (vec rows))
 
 (defn- duplicate-key?
   "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
@@ -302,7 +317,7 @@
                                  (with-updated {} [stored] (constantly changes))
                                  (with-created {} [inserted]))
                                (delete-empty! [id]))]
-          (u/prog1 (count (table/update-tables! [(assoc settings :id id)]))
+          (u/prog1 (count (table/update-tables! [id] settings))
             (publish-writes! writes)))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
@@ -328,7 +343,7 @@
                                                [stored (with-set-flags settings settings settings)])
                                              tables)
                            (delete-empty! table-ids))]
-          (u/prog1 (count (table/update-tables! (mapv #(assoc settings :id %) table-ids)))
+          (u/prog1 (count (table/update-tables! (vec table-ids) settings))
             (publish-writes! writes)))))))
 
 (defn- valid-field-order?
@@ -361,7 +376,7 @@
                              (update-settings! [[stored row]] (tables-for [(assoc row :table_id id)]))
                              (delete-empty! [id])))))))
 
-(mu/defn delete-table-user-settings!
+(mu/defn delete-table-user-settings-for-tables!
   "Delete the settings of the Tables with `table-ids`, leaving their rows as they are for sync to take over."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (when (seq table-ids)
@@ -375,9 +390,9 @@
                {}
                (partition-all 1000 table-ids))))))
 
-(defn- delete-table-user-settings-rows!
+(mu/defn delete-table-user-settings!
   "Delete the TableUserSettings with `ids`, as remote sync deletes them."
-  [ids]
+  [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
       (publish-writes! (let [rows (warehouse-schema.db/table-user-settings-by-ids (vec ids))]
@@ -393,7 +408,7 @@
     (let [kept (into #{} (map :field_id)
                      (serialization/load :model/FieldUserSettings
                                          (into [] (mapcat #(map serialization/restore-identity (:fields (:entity %)))) legacy)))]
-      (field-user-settings/delete-field-user-settings!
+      (field-user-settings/delete-field-user-settings-for-fields!
        (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-tables
                           (into #{} (map #(:table_id (:instance %))) legacy))))))))
 
@@ -408,8 +423,7 @@
 (defmethod collection/archive-in-collections! :model/TableUserSettings
   [_model collection-ids opts]
   (when-let [ids (not-empty (warehouse-schema.db/table-user-settings-ids-of-published-tables-in-collections (vec collection-ids)))]
-    (update-table-user-settings! (mapv (fn [id] {:id id :collection_id nil :is_published false}) ids)
-                                 opts)))
+    (update-table-user-settings! (vec ids) {:collection_id nil :is_published false} opts)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -434,8 +448,8 @@
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :insert!             create-table-user-settings!
-   :update!             update-table-user-settings!
-   :delete!             delete-table-user-settings-rows!
+   :update!             update-table-user-settings-for-import!
+   :delete!             delete-table-user-settings!
    :after-load          after-load
    :rows-by-refs        serialization/table-user-settings-rows-by-refs})
 

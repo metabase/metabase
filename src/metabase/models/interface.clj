@@ -506,6 +506,35 @@
     (cond-> obj
       should-set-updated-at? (assoc :updated_at (now)))))
 
+(defn initially-published-at-clause
+  "The HoneySQL expression that sets `initially_published_at` to the database clock when the row left by an update that
+  makes `changes` is embedded and was never published, or nil when `changes` give the column themselves or turn
+  embedding off. It reads only stored columns: the first form when `changes` turn embedding on, which assigns
+  `enable_embedding`, the second when they leave it alone."
+  [changes]
+  (cond
+    (contains? changes :initially_published_at)
+    nil
+
+    (true? (:enable_embedding changes))
+    [:coalesce :initially_published_at :%now]
+
+    (contains? changes :enable_embedding)
+    nil
+
+    :else
+    [:case
+     [:and [:= :enable_embedding true] [:= :initially_published_at nil]]
+     :%now
+     :else :initially_published_at]))
+
+(defn add-initially-published-at
+  "`row`, an update of a Card or Dashboard, with the [[initially-published-at-clause]] of its changes."
+  [row]
+  (if-let [clause (initially-published-at-clause (t2/changes row))]
+    (assoc row :initially_published_at clause)
+    row))
+
 (t2/define-before-insert :hook/timestamped?
   [instance]
   (-> instance

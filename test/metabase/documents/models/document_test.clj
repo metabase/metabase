@@ -25,6 +25,7 @@
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -56,7 +57,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
+      (document/update-documents! [document-id] {:collection_id new-collection-id})
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -71,7 +72,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (document/update-documents! [{:id document-id :collection_id nil}])
+      (document/update-documents! [document-id] {:collection_id nil})
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -95,7 +96,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
+      (document/update-documents! [document-id] {:collection_id new-collection-id})
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -118,14 +119,14 @@
               (testing "moving document to personal collection moves associated cards"
                 (mt/with-current-user user-id
                   ;; As the personal collection owner, update should succeed
-                  (document/update-documents! [{:id document-id :collection_id personal-coll-id}])
+                  (document/update-documents! [document-id] {:collection_id personal-coll-id})
                   ;; Verify both document and card moved to personal collection
                   (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
                   (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
               (testing "moving document from personal collection works"
                 (mt/with-current-user user-id
                   ;; Move back to regular collection
-                  (document/update-documents! [{:id document-id :collection_id regular-collection-id}])
+                  (document/update-documents! [document-id] {:collection_id regular-collection-id})
                   ;; Verify both document and card moved back
                   (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
                   (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))))
@@ -207,20 +208,19 @@
                  :model/Document   document          {}]
     (testing "moving a Document that is not archived into an archived Collection is a 400"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (document/update-documents! [{:id (:id document) :collection_id archived-id}]))))
+                            (document/update-documents! [(:id document)] {:collection_id archived-id}))))
     (testing "a Document that stays where it is, or goes to the root, passes"
       (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
-      (is (= [{:id (:id document) :collection_id nil}]
-             (document/update-documents! [{:id (:id document) :collection_id nil}]))))))
+      (is (nil? (document/update-documents! [(:id document)] {:collection_id nil}))))))
 
 (deftest document-schema-test
   (testing "the Document schema takes a non-blank name of at most 254 characters"
     (doseq [bad-name ["" "   " (apply str (repeat 255 "a"))]]
-      (is (not (mr/validate ::documents.schema/document.update {:id 1 :name bad-name}))))
-    (is (mr/validate ::documents.schema/document.update {:id 1 :name (apply str (repeat 254 "a"))})))
+      (is (not (mr/validate ::documents.schema/document.update {:name bad-name}))))
+    (is (mr/validate ::documents.schema/document.update {:name (apply str (repeat 254 "a"))})))
   (testing "the Document schema takes a body only when it is a ProseMirror node"
-    (is (not (mr/validate ::documents.schema/document.update {:id 1 :document {:content []}})))
-    (is (mr/validate ::documents.schema/document.update {:id 1 :document {:type "doc" :content []}}))))
+    (is (not (mr/validate ::documents.schema/document.update {:document {:content []}})))
+    (is (mr/validate ::documents.schema/document.update {:document {:type "doc" :content []}}))))
 
 (deftest collection-namespace-test
   (testing "a Document goes only in Collections of an allowed namespace"
@@ -229,7 +229,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
                             (document/create-documents! [{:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (document/update-documents! [{:id doc-id :collection_id snippets-id}]))))))
+                            (document/update-documents! [doc-id] {:collection_id snippets-id}))))))
 
 (deftest public-uuid-prefix-is-derived-test
   (testing "the public UUID prefix follows the public UUID and is not written alone"
@@ -250,7 +250,7 @@
       (t2/update! :model/Card :id card-id {:collection_id card-coll-id})
       (t2/update! :model/Document :id doc-id {:name "Renamed"})
       (is (= card-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
-      (document/update-documents! [{:id doc-id :collection_id new-coll-id}])
+      (document/update-documents! [doc-id] {:collection_id new-coll-id})
       (is (= new-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
 (deftest hydrate-document-creator-test
@@ -741,7 +741,7 @@
       (let [events-published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
-          (document/update-documents! [{:id doc-id :name "Updated Name"}]))
+          (document/update-documents! [doc-id] {:name "Updated Name"}))
         (is (=? [[:event/document-update {:changes [{:object          {:id doc-id :name "Updated Name"}
                                                      :previous-object {:id doc-id :name "Test Document"}}]}]]
                 (filterv (comp #{:event/document-update} first) @events-published)))))))
@@ -837,7 +837,7 @@
                              (t2/with-call-count [call-count]
                                (f documents)
                                (call-count))))
-              updater    (fn [changes] (fn [documents] (document/update-documents! (for [{:keys [id]} documents] (assoc changes :id id)))))]
+              updater    (fn [changes] (fn [documents] (document/update-documents! (mapv :id documents) changes)))]
           (testing "creating"
             (create 1)
             (is (= (t2/with-call-count [call-count] (create 2) (call-count))
@@ -875,10 +875,10 @@
                           (doseq [id ids]
                             (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :document_id id :collection_id live)))
                           ids))
-              update! (fn [prepare rows-fn n]
+              update! (fn [prepare changes n]
                         (let [ids (fresh! n)]
                           (prepare (take-nth 2 ids))
-                          (events.tu/statement-count! #(document/update-documents! (rows-fn ids)))))
+                          (events.tu/statement-count! #(document/update-documents! ids changes))))
               counted (fn [f]
                         (f 1)
                         (is (= (f 2) (f 6))))]
@@ -886,20 +886,20 @@
             (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(document/create-documents! rows))))))
           (testing "updating columns, some already holding the new value"
             (counted (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
-                              (fn [ids] (mapv (fn [id] {:id id :name "Same"}) ids)))))
+                              (fn [ids] (document/update-documents! ids {:name "Same"}))
+                              {:name "Same"})))
           (testing "archiving documents and their cards, some already archived"
             (counted (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
-                              (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+                              (fn [ids] (document/update-documents! ids {:archived true}))
+                              {:archived true})))
           (testing "restoring documents and their cards, some already live"
             (counted (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
-                              (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+                              (fn [ids] (document/update-documents! ids {:archived true}))
+                              {:archived false})))
           (testing "moving documents and their cards, some already in the Collection"
             (counted (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                              (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids)))))
+                              (fn [ids] (document/update-documents! ids {:collection_id other}))
+                              {:collection_id other})))
           (testing "deleting documents"
             (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/delete-documents! ids))))))
           (testing "counting views"
@@ -924,7 +924,7 @@
           (counted (fn [n] (let [body (body n)] (events.tu/statement-count! #(document/create-document-with-cards! body))))))
         (testing "updating a document with the new cards it embeds"
           (counted (fn [n]
-                     (let [existing (document/create-document-with-cards! {:name (mt/random-name) :document (documents.tu/text->prose-mirror-ast "text")})
+                     (let [existing (t2/select-one :model/Document :id (document/create-document-with-cards! {:name (mt/random-name) :document (documents.tu/text->prose-mirror-ast "text")}))
                            body     (select-keys (body n) [:document :cards])]
                        (events.tu/statement-count! #(document/update-document-with-cards! existing body))))))
         (testing "creating a document that embeds cards copied from another card"
@@ -1017,3 +1017,39 @@
               (refused {:status 403 :message field-403} (three (field-card) (orders-card)))
               (refused {:status 403 :message generic-403} (three (assoc (good) :source_card_id secret-id) (orders-card)))
               (refused {:status 403 :message query-403} (three (orders-card) (assoc (good) :source_card_id secret-id))))))))))
+
+(deftest update-documents-for-import-test
+  (testing "an import writes different columns to each Document and returns its rows"
+    (mt/with-temp [:model/Document {a :id} {}
+                   :model/Document {b :id} {}]
+      (let [rows [{:id a :name "Imported A"} {:id b :name "Imported B" :collection_position 3}]]
+        (is (= rows (document/update-documents-for-import! rows)))
+        (is (= ["Imported A" "Imported B"] (mapv #(t2/select-one-fn :name :model/Document :id %) [a b])))
+        (is (= 3 (t2/select-one-fn :collection_position :model/Document :id b)))))))
+
+(def ^:private ^:dynamic *update-events* nil)
+
+(events/derive! ::document-update-capture :metabase/event)
+(events/derive! :event/document-update ::document-update-capture)
+
+(methodical/defmethod events/publish-event! ::document-update-capture
+  [_topic event]
+  (when *update-events*
+    (swap! *update-events* conj event)))
+
+(deftest archived-directly-follows-parents-through-plain-update-test
+  (testing "a plain t2/update! of archived derives archived_directly in the statement from the Collection and the restore"
+    (mt/with-temp [:model/Collection {live :id}     {}
+                   :model/Collection {archived :id} {:archived true}
+                   :model/Document   {a :id}        {:collection_id live}
+                   :model/Document   {b :id}        {:collection_id archived}
+                   :model/Document   {c :id}        {}]
+      (t2/update! :model/Document :id [:in [a b c]] {:archived true})
+      (is (= [true false true] (mapv #(t2/select-one-fn :archived_directly :model/Document :id %) [a b c])))
+      (t2/update! :model/Document :id [:in [a b c]] {:archived false})
+      (is (= [false false false] (mapv #(t2/select-one-fn :archived_directly :model/Document :id %) [a b c])))))
+  (testing "the update event carries the stored value"
+    (mt/with-temp [:model/Document {a :id} {}]
+      (binding [*update-events* (atom [])]
+        (document/update-documents! [a] {:archived true})
+        (is (= [true] (mapv #(-> % :object :archived_directly) (mapcat :changes @*update-events*))))))))

@@ -639,7 +639,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (field-values/update-field-values! [{:id (:id fv) :values [1 2 3]}])
+    (field-values/update-field-values! [(:id fv)] {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -648,7 +648,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (field-values/update-field-values! [{:id (:id fv) :has_more_values true}])
+    (field-values/update-field-values! [(:id fv)] {:has_more_values true})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (defn- field-values-write-call-counts!
@@ -666,7 +666,7 @@
                                                   field-ids))
          (call-count))
        (t2/with-call-count [call-count]
-         (field-values/update-field-values! (mapv #(hash-map :id % :values ["b"]) ids))
+         (field-values/update-field-values! ids {:values ["b"]})
          (call-count))])))
 
 (deftest bulk-field-values-writes-call-count-test

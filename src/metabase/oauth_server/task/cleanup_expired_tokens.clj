@@ -21,11 +21,11 @@
     ;; Issue expiry- and revocation-based deletes as separate statements so each can use the appropriate
     ;; index (expiry / revoked_at). A combined `OR` predicate would prevent the planner from using either
     ;; index and degrade into a table scan as these tables grow.
-    {:authorization-codes-expired (oauth-authorization-code/delete-expired-oauth-authorization-codes! now)
-     :access-tokens-expired       (oauth-access-token/delete-expired-oauth-access-tokens! now)
-     :access-tokens-revoked       (oauth-access-token/delete-revoked-oauth-access-tokens!)
-     :refresh-tokens-expired      (oauth-refresh-token/delete-expired-oauth-refresh-tokens! now)
-     :refresh-tokens-revoked      (oauth-refresh-token/delete-revoked-oauth-refresh-tokens!)}))
+    {:authorization-codes-expired (oauth-authorization-code/delete-oauth-authorization-codes-for-cleanup! now)
+     :access-tokens-expired       (oauth-access-token/delete-oauth-access-tokens-for-expiry-cleanup! now)
+     :access-tokens-revoked       (oauth-access-token/delete-oauth-access-tokens-for-revocation-cleanup!)
+     :refresh-tokens-expired      (oauth-refresh-token/delete-oauth-refresh-tokens-for-expiry-cleanup! now)
+     :refresh-tokens-revoked      (oauth-refresh-token/delete-oauth-refresh-tokens-for-revocation-cleanup!)}))
 
 (task/defjob CleanupExpiredOAuthTokens
   "Delete expired and revoked OAuth tokens and authorization codes."

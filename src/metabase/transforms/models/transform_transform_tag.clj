@@ -28,7 +28,7 @@
   (transforms.db/insert-transform-tag-links! rows)
   nil)
 
-(mu/defn update-transform-transform-tags! :- :nil
+(mu/defn update-transform-transform-tags-for-transform! :- :nil
   "Give the TransformTransformTags linking the Transform with `transform-id` to the tags in `positions`, a map from tag
   id to position, their positions."
   [transform-id :- ::lib.schema.id/transform
@@ -37,7 +37,7 @@
     (transforms.db/update-transform-tag-link-positions! transform-id positions))
   nil)
 
-(mu/defn delete-transform-transform-tags! :- :nil
+(mu/defn delete-transform-transform-tags-for-transform! :- :nil
   "Delete the TransformTransformTags linking the Transform with `transform-id` to the tags with `tag-ids`."
   [transform-id :- ::lib.schema.id/transform
    tag-ids      :- [:set ::lib.schema.id/transform-tag]]

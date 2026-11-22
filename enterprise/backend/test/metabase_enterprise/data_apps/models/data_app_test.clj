@@ -70,8 +70,8 @@
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                            (data-app/update-data-apps! [{:id id :resource_collection_id taken-id}]))))
-    (data-app/update-data-apps! [{:id id :resource_collection_id other-id}])
+                            (data-app/update-data-apps! [id] {:resource_collection_id taken-id}))))
+    (data-app/update-data-apps! [id] {:resource_collection_id other-id})
     (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
@@ -179,8 +179,8 @@
                                            ["an archived collection" archived-id]
                                            ["an official collection" official-id]]]
               (testing label
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a top-level collection of data apps"
-                                      (app! "refused" collection-id)))))
+                (is (= 400 (:status-code (ex-data (try (app! "refused" collection-id) (catch clojure.lang.ExceptionInfo e e))))))
+                (is (not (t2/exists? :model/DataApp :slug "refused")))))
             (testing "a remote-synced one is fine, as remote sync marks an app's collection"
               (is (pos-int? (app! "synced" synced-id))))
             (testing "a top-level collection of data apps is fine"
@@ -188,6 +188,21 @@
               (testing "but not for a second app"
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
                                       (app! "second" root-id)))))))))))
+
+(deftest refused-resource-collection-leaves-no-row-in-outer-transaction-test
+  (testing "a refusal inside a caller's transaction rolls back to the function's own savepoint, so the caller can go on"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (mt/with-temp [:model/Collection {archived-id :id} {:name "Archived" :namespace :data-apps :archived true}
+                       :model/Collection {root-id :id}     {:name "Root" :namespace :data-apps}]
+          (let [app-rows (fn [slug collection-id]
+                           [{:slug slug :name slug :bundle_path "index.js" :resource_collection_id collection-id}])]
+            (t2/with-transaction [_conn]
+              (is (= 400 (:status-code (ex-data (try (data-app/create-data-apps! (app-rows "refused-in-outer" archived-id))
+                                                     (catch clojure.lang.ExceptionInfo e e))))))
+              (data-app/create-data-apps! (app-rows "accepted-in-outer" root-id)))
+            (is (not (t2/exists? :model/DataApp :slug "refused-in-outer")))
+            (is (t2/exists? :model/DataApp :slug "accepted-in-outer"))))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (let [created     (atom [])
@@ -207,7 +222,7 @@
         (let [[warm-up & ids] @created
               update!         (fn [ids]
                                 (events.tu/statement-count!
-                                 (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) ids)))))]
+                                 (fn [] (data-app/update-data-apps! (vec ids) {:description "same"}))))]
           (update! [warm-up])
           (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
       (testing "deleting data apps that have no collection"
