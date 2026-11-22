@@ -24,11 +24,15 @@
                         (thunk))))
 
 (defmacro mock-external-calls!
-  "Mock external calls around migration creation."
+  "Mock external calls around a `body` that starts one migration, and wait until the API's future has called the
+  mocked `migrate!`, so that the real one never runs after the redefinitions end."
   [& body]
-  `(with-redefs [cloud-migration/get-store-migration (constantly {:external_id 1 :upload_url "https://up.loady"})
-                 cloud-migration/migrate! identity]
-     ~@body))
+  `(let [migrate-called# (promise)]
+     (with-redefs [cloud-migration/get-store-migration (constantly {:external_id 1 :upload_url "https://up.loady"})
+                   cloud-migration/migrate!            (fn [migration#] (deliver migrate-called# migration#))]
+       (u/prog1 (do ~@body)
+         (is (not= ::timeout (deref migrate-called# 10000 ::timeout))
+             "the API's future calls the mocked migrate! before the redefinitions end")))))
 
 (defn- start-migration!
   "Starts a cloud migration through the API, with external calls mocked, after ending the ones other tests left
