@@ -4,13 +4,13 @@
    on the `-rest` module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -23,6 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -175,9 +176,9 @@
 (mu/defn create-transform! :- ::transforms.schema/transform
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
-  ([body :- ::transforms.schema/transform.request]
+  ([body :- ::transforms.u/create-body]
    (create-transform! body nil))
-  ([body       :- ::transforms.schema/transform.request
+  ([body       :- ::transforms.u/create-body
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
      (check-references definition (written-parts body))
@@ -201,11 +202,18 @@
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      transform)))
 
+(mr/def ::update-body
+  "What updates a Transform: the columns to change and the `:tag_ids` to link."
+  [:merge
+   (mut/dissoc ::transforms.schema/transform.update :id)
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
+
 (mu/defn update-transform! :- ::transforms.schema/transform
   "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
   associations hydrated."
   [id   :- ::lib.schema.id/transform
-   body :- ::transforms.schema/transform.request]
+   body :- ::update-body]
   (let [transform (t2/with-transaction [_conn]
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)

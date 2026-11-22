@@ -362,3 +362,15 @@
       (is (= "Changed" (t2/select-one-fn :name :model/Measure :id id)))
       (#'measure/revert-measure! id (mt/user->id :rasta) snapshot)
       (is (= "Reverted" (t2/select-one-fn :name :model/Measure :id id))))))
+
+(deftest create-measures-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/Measure]
+    (let [creator-id       (mt/user->id :rasta)
+          [plain archived] (measure/create-measures! [{:name "Plain" :creator_id creator-id :definition (measure-definition (lib/count))}
+                                                      {:name "Archived" :creator_id creator-id :definition (measure-definition (lib/count))
+                                                       :archived true :description "Described"}])]
+      (is (= ["Plain" "Archived"] (map :name [plain archived])))
+      (is (=? {:archived false :description nil}
+              (t2/select-one :model/Measure :id (:id plain))))
+      (is (=? {:archived true :description "Described"}
+              (t2/select-one :model/Measure :id (:id archived)))))))

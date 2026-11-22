@@ -174,8 +174,9 @@
   (ms/enum-decode-keyword [:none :global-schedule]))
 
 (mr/def ::transform.update
-  "What an update of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
+  "What an update of a Transform takes: its `:id` and the columns to change, every column of `:transform` and `:run_trigger`, which the model's hooks consume."
   [:map {:closed true}
+   [:id                    ::lib.schema.id/transform]
    [:name                  {:optional true} [:maybe :string]]
    [:description           {:optional true} [:maybe :string]]
    [:source                {:optional true} [:maybe ::transform.source]]
@@ -208,13 +209,6 @@
    [:map {:closed true}
     [:writer  {:optional true} [:enum :import :revert]]
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
-(mr/def ::transform.update-row
-  "One row of an update of Transforms: the `:id` of a Transform and the columns to change."
-  [:merge
-   ::transform.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/transform]]])
 
 (mr/def ::transform.definition
   "What a Transform computes and where it writes, as a client writes it."
@@ -261,8 +255,9 @@
   u.cron/CronScheduleString)
 
 (mr/def ::transform-job.update
-  "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
+  "What an update of a TransformJob takes: its `:id` and the columns to change, every column of `:transform_job`."
   [:map {:closed true}
+   [:id              ms/PositiveInt]
    [:name            {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:schedule        {:optional true} [:maybe ::transform-job.schedule]]
@@ -272,13 +267,6 @@
    [:built_in_type   {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active          {:optional true} [:maybe :boolean]]])
-
-(mr/def ::transform-job.update-row
-  "One row of an update of TransformJobs: the `:id` of a TransformJob and the columns to change."
-  [:merge
-   ::transform-job.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
 
 (mr/def ::transform-job.create
   "What creating a TransformJob takes: its name and schedule, and optionally its description and display type, and for
@@ -384,20 +372,14 @@
     [:id            ms/PositiveInt]]])
 
 (mr/def ::transform-tag.update
-  "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
+  "What an update of a TransformTag takes: its `:id` and the columns to change, every column of `:transform_tag`."
   [:map {:closed true}
+   [:id            ms/PositiveInt]
    [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
-
-(mr/def ::transform-tag.update-row
-  "One row of an update of TransformTags: the `:id` of a TransformTag and the columns to change."
-  [:merge
-   ::transform-tag.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
 
 (mr/def ::transform-tag.create
   "What creating a TransformTag takes: its name, and for an import its entity id and built-in type."
@@ -459,13 +441,6 @@
    [:owner_user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:owner_email        {:optional true} [:maybe :string]]
    [:run_trigger        {:optional true} [:maybe ::run-trigger]]])
-
-(mr/def ::transform.request
-  "What a client posts to create or update a Transform: the columns an update accepts, plus the `:tag_ids` to link."
-  [:merge
-   ::transform.update
-   [:map {:closed true}
-    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mr/def ::transform-run.presented
   "A TransformRun prepared for an API response: its timestamps are ISO strings in UTC."

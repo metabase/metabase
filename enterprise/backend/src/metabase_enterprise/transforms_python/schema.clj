@@ -22,8 +22,9 @@
     [:id         ms/PositiveInt]]])
 
 (mr/def ::python-library.update
-  "What an update (or insert) of a PythonLibrary accepts: every column of `:python_library` except `id`, all optional."
+  "What an update of a PythonLibrary takes: its `:id` and the columns to change, every column of `:python_library`."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:path       {:optional true} [:maybe :string]]
    [:source     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
@@ -38,13 +39,6 @@
    [:source     [:string {:decode/normalize lib.schema.common/normalize-string-key}]]
    [:entity_id  {:optional true} [:maybe :string]]
    [:is_default {:optional true} [:maybe :boolean]]])
-
-(mr/def ::python-library.update-row
-  "One row of an update of PythonLibraries: the `:id` of a library and the columns to change."
-  [:merge
-   ::python-library.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
 
 (mr/def ::external-python-library
   "A PythonLibrary as serialization writes it, with portable references in place of ids."

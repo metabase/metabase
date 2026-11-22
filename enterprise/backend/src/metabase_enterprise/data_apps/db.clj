@@ -3,11 +3,13 @@
   model definitions and hydration methods."
   (:require
    [clojure.set :as set]
+   [malli.util :as mut]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -83,13 +85,13 @@
 
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::data-apps.schema/data-app.row.create]]
-  (t2/insert-returning-instances! :model/DataApp rows))
+  [rows :- [:sequential {:min 1} ::data-apps.schema/data-app.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/DataApp %) rows))
 
 (mu/defn update-data-apps! :- :nil
   "Apply `changes` to the DataApps with `data-app-ids`."
   [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes      :- ::data-apps.schema/data-app.row.update]
+   changes      :- (mut/dissoc ::data-apps.schema/data-app.update :id)]
   (t2/update! :model/DataApp :id [:in [:auto/param data-app-ids]] changes)
   nil)
 

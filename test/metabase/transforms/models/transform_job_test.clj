@@ -164,3 +164,11 @@
                    (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 6 (drop 2 ids)))))))))
         (finally
           (t2/delete! :model/TransformJob :id [:in @created]))))))
+
+(deftest create-transform-jobs-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/TransformJob]
+    (let [[plain described] (transform-job/create-transform-jobs! [{:name "Plain" :schedule "0 0 0 * * ?"}
+                                                                   {:name "Described" :schedule "0 0 0 * * ?" :description "About"}])]
+      (is (= ["Plain" nil] [(:name plain) (:description plain)]))
+      (is (true? (t2/select-one-fn :active :model/TransformJob :id (:id plain))))
+      (is (= "About" (t2/select-one-fn :description :model/TransformJob :id (:id described)))))))

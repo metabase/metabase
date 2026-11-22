@@ -2,6 +2,7 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -49,12 +50,12 @@
 (mu/defn insert-python-libraries!
   "Insert the PythonLibrary `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms-python.schema/python-library.create]]
-  (t2/insert-returning-instances! :model/PythonLibrary rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/PythonLibrary %) rows))
 
 (mu/defn update-python-libraries!
   "Apply `changes` to the PythonLibraries with `library-ids`."
   [library-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- ::transforms-python.schema/python-library.update]
+   changes     :- (mut/dissoc ::transforms-python.schema/python-library.update :id)]
   (t2/update! :model/PythonLibrary :id [:in [:auto/param library-ids]] changes)
   nil)
 

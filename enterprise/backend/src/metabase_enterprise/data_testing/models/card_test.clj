@@ -92,15 +92,15 @@
 (mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
   "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
   validate each row."
-  [rows :- [:sequential ::data-testing.schema/card-test.create-row]]
+  [rows :- [:sequential ::data-testing.schema/card-test.create]]
   (data-testing.models/create-saved-tests! :model/CardTest rows))
 
-(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update-row]
+(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update]
   "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms
   of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/card-test.update-row]]
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
    (update-card-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/card-test.update-row]
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]
     opts :- ::data-testing.schema/write-opts]
    (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
 

@@ -35,22 +35,13 @@
   "One entry of the `:dimension_mappings` column of a Measure, decoded."
   ::lib-metric.schema/dimension-mapping)
 
-(mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
-  hydrate onto it."
-  [:merge
-   ::measure.update
-   [:map {:closed true}
-    [:id                 ms/PositiveInt]
-    [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
-    [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
-
 (mr/def ::measure.name
   ms/NonBlankString)
 
 (mr/def ::measure.update
-  "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
+  "What an update of a Measure takes: the `:id` of the Measure and the columns to change, every column of `:measure`."
   [:map {:closed true}
+   [:id                 ::lib.schema.id/measure]
    [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:name               {:optional true} [:maybe ::measure.name]]
@@ -62,6 +53,16 @@
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
+
+(mr/def ::measure
+  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
+  hydrate onto it."
+  [:merge
+   ::measure.update
+   [:map {:closed true}
+    [:id                 ms/PositiveInt]
+    [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
 (mr/def ::measure.revision
   "A Measure as a Revision stores it: its tracked columns."
@@ -76,20 +77,6 @@
    [:description {:optional true} [:maybe :string]]
    [:archived    {:optional true} [:maybe :boolean]]
    [:entity_id   {:optional true} [:maybe :string]]])
-
-(mr/def ::write-opts
-  "The options of the update of Measures: who writes when it matters, and the context of the events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :revert]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
-(mr/def ::measure.row
-  "A Measure id and the columns to change, as an update of several Measures takes it."
-  [:merge
-   ::measure.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/measure]]])
 
 (mr/def ::external-measure
   "A Measure as serialization writes it, with portable references in place of ids."

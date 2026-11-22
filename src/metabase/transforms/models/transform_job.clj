@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-job
   (:require
    [clojure.set :as set]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -39,7 +40,7 @@
 (mu/defn- translated-name-and-description :- [:map {:closed true}
                                               [:name        [:maybe mu/localized-string-schema]]
                                               [:description [:maybe mu/localized-string-schema]]]
-  [job :- [:or ::transforms.schema/transform-job ::transforms.schema/transform-job.update]]
+  [job :- (mut/optional-keys ::transforms.schema/transform-job [:id])]
   (let [values {"hourly"
                 [(i18n/deferred-trs "Hourly job")
                  (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
@@ -111,12 +112,6 @@
           (update :name str)
           (update :description str)))))
 
-(defn- event-context
-  "The context of the events of a write with `opts`."
-  [{:keys [writer context]}]
-  (cond-> context
-    (= :revert writer) (assoc :reverting? true)))
-
 (defn- without-built-in-names
   "`rows`, the update rows of an import, without the name and description of those of a built-in job in `stored`."
   [rows stored]
@@ -126,13 +121,13 @@
             (dissoc :name :description)))
         rows))
 
-(mu/defn update-transform-jobs! :- [:sequential ::transforms.schema/transform-job.update-row]
+(mu/defn update-transform-jobs! :- [:sequential ::transforms.schema/transform-job.update]
   "Apply the changes in each of `rows`, the id of a TransformJob and the columns to change, with one statement per
   distinct change set, then make the Quartz trigger of each job match its row, publishing their update event. An import
   leaves the name and description of a built-in job as they are. Returns `rows`."
-  ([rows :- [:sequential ::transforms.schema/transform-job.update-row]]
+  ([rows :- [:sequential ::transforms.schema/transform-job.update]]
    (update-transform-jobs! rows nil))
-  ([rows :- [:sequential ::transforms.schema/transform-job.update-row]
+  ([rows :- [:sequential ::transforms.schema/transform-job.update]
     opts :- ::transforms.schema/write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
@@ -147,12 +142,11 @@
          (events/publish-event! :event/transform-job-update
                                 (events/update-event stored
                                                      changed
-                                                     {:objects (into {}
-                                                                     (keep (fn [{:keys [id] :as row}]
-                                                                             (when-let [previous (stored id)]
-                                                                               [id (updated-job previous (dissoc row :id))])))
-                                                                     changed)
-                                                      :context (event-context opts)})))))
+                                                     (assoc opts :objects (into {}
+                                                                                (keep (fn [{:keys [id] :as row}]
+                                                                                        (when-let [previous (stored id)]
+                                                                                          [id (updated-job previous (dissoc row :id))])))
+                                                                                changed)))))))
    (vec rows)))
 
 (mu/defn delete-transform-jobs! :- :nil

@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.events.test-util :as events.tu]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -107,3 +108,10 @@
     (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 1")))))
   (testing "an update"
     (is (= 5 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 2"))))))
+
+(deftest create-python-libraries-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [[plain flagged] (python-library/create-python-libraries! [{:path "plain_lib" :source "x = 1"}
+                                                                    {:path "flagged_lib" :source "y = 2" :is_default true}])]
+      (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id plain))))
+      (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id flagged)))))))

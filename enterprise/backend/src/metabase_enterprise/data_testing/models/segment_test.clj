@@ -94,15 +94,15 @@
 (mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
   "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
   validate each row."
-  [rows :- [:sequential ::data-testing.schema/segment-test.create-row]]
+  [rows :- [:sequential ::data-testing.schema/segment-test.create]]
   (data-testing.models/create-saved-tests! :model/SegmentTest rows))
 
-(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update-row]
+(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update]
   "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms
   of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update-row]]
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
    (update-segment-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update-row]
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]
     opts :- ::data-testing.schema/write-opts]
    (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
 

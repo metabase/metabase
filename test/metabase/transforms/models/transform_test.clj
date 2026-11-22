@@ -598,3 +598,10 @@
                  (events.tu/statement-count! (fn [] (transform/delete-transforms! (take 6 (drop 2 ids)))))))))
       (finally
         (t2/delete! :model/Transform :id [:in @created])))))
+
+(deftest create-transforms-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/Transform]
+    (let [[plain described] (transform/create-transforms! [(first (transform-rows 1))
+                                                           (assoc (first (transform-rows 1)) :description "About")])]
+      (is (nil? (t2/select-one-fn :description :model/Transform :id (:id plain))))
+      (is (= "About" (t2/select-one-fn :description :model/Transform :id (:id described)))))))

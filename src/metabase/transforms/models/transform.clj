@@ -207,7 +207,7 @@
   a create request."
   [:or
    ::transforms.schema/transform
-   ::transforms.schema/transform.request])
+   ::transforms.u/create-body])
 
 (mu/defn- transform-readable? :- :boolean
   "Whether the current user can read `instance`, with its source looked up in `models-cache` when given."
@@ -557,21 +557,15 @@
         (and (definition-columns-changed? stored changes) old-field-id (not= old-field-id new-field-id)))
       (assoc :last_checkpoint_value nil))))
 
-(defn- event-context
-  "The context of the events of a write with `opts`."
-  [{:keys [writer context]}]
-  (cond-> context
-    (= :revert writer) (assoc :reverting? true)))
-
-(mu/defn update-transforms! :- [:sequential ::transforms.schema/transform.update-row]
+(mu/defn update-transforms! :- [:sequential ::transforms.schema/transform.update]
   "Apply the changes in each of `rows`, the id of a Transform and the columns to change, in one transaction, with one
   statement per distinct change set, publishing their update event. Before each statement, throws unless the new
   Collection and target Database can hold Transforms and the new definition of a query transform causes no cycle,
   marks the index requests of a changed definition for revalidation, and fills the Field ids of a merge unique key once
   its target table exists. Returns `rows`."
-  ([rows :- [:sequential ::transforms.schema/transform.update-row]]
+  ([rows :- [:sequential ::transforms.schema/transform.update]]
    (update-transforms! rows nil))
-  ([rows :- [:sequential ::transforms.schema/transform.update-row]
+  ([rows :- [:sequential ::transforms.schema/transform.update]
     opts :- ::transforms.schema/write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
@@ -585,8 +579,9 @@
          (events/publish-event! :event/transform-update
                                 (events/update-event stored
                                                      (mapv (fn [id] (assoc (resolved id) :id id)) (keys requested))
-                                                     {:objects (into {} (map (fn [id] [id (updated-transform (stored id) (resolved id))])) (keys requested))
-                                                      :context (event-context opts)})))))
+                                                     (assoc opts :objects (into {}
+                                                                                (map (fn [id] [id (updated-transform (stored id) (resolved id))]))
+                                                                                (keys requested))))))))
    (vec rows)))
 
 (mu/defn delete-transforms! :- :nil

@@ -263,3 +263,15 @@
       (is (= "Changed" (t2/select-one-fn :name :model/Segment :id id)))
       (#'segment/revert-segment! id (mt/user->id :rasta) snapshot)
       (is (= "Reverted" (t2/select-one-fn :name :model/Segment :id id))))))
+
+(deftest create-segments-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/Segment]
+    (let [creator-id           (mt/user->id :rasta)
+          [plain archived]     (segment/create-segments! [{:name "Plain" :creator_id creator-id :definition (price-definition)}
+                                                          {:name "Archived" :creator_id creator-id :definition (price-definition)
+                                                           :archived true :caveats "Careful"}])]
+      (is (= ["Plain" "Archived"] (map :name [plain archived])))
+      (is (=? {:archived false :show_in_getting_started false :caveats nil}
+              (t2/select-one :model/Segment :id (:id plain))))
+      (is (=? {:archived true :show_in_getting_started false :caveats "Careful"}
+              (t2/select-one :model/Segment :id (:id archived)))))))

@@ -99,12 +99,12 @@
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` and return the new instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform.create]]
-  (t2/insert-returning-instances! :model/Transform rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Transform %) rows))
 
 (mu/defn update-transforms! :- :nil
   "Apply `changes` to the Transforms with `transform-ids`."
   [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]
-   changes       :- ::transforms.schema/transform.update]
+   changes       :- (mut/dissoc ::transforms.schema/transform.update :id)]
   (t2/update! :model/Transform :id [:in [:auto/param transform-ids]] changes)
   nil)
 
@@ -158,12 +158,12 @@
 (mu/defn insert-tags! :- [:sequential ::transforms.schema/transform-tag]
   "Insert the TransformTag `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-tag.create]]
-  (t2/insert-returning-instances! :model/TransformTag rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/TransformTag %) rows))
 
 (mu/defn update-tags! :- :nil
   "Apply `changes` to the TransformTags with `tag-ids`."
   [tag-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::transforms.schema/transform-tag.update]
+   changes :- (mut/dissoc ::transforms.schema/transform-tag.update :id)]
   (t2/update! :model/TransformTag :id [:in [:auto/param tag-ids]] changes)
   nil)
 
@@ -257,12 +257,12 @@
 (mu/defn insert-jobs! :- [:sequential ::transforms.schema/transform-job]
   "Insert the TransformJob `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.create]]
-  (t2/insert-returning-instances! :model/TransformJob rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/TransformJob %) rows))
 
 (mu/defn update-jobs! :- :nil
   "Apply `changes` to the TransformJobs with `job-ids`."
   [job-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::transforms.schema/transform-job.update]
+   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
   (t2/update! :model/TransformJob :id [:in [:auto/param job-ids]] changes)
   nil)
 

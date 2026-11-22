@@ -118,3 +118,10 @@
                  (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! (take 6 (drop 2 ids)))))))))
       (finally
         (t2/delete! :model/TransformTag :id [:in @created])))))
+
+(deftest create-transform-tags-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/TransformTag]
+    (let [[plain built-in] (transform-tag/create-transform-tags! [{:name "Plain"}
+                                                                  {:name "Built in" :built_in_type "daily"}])]
+      (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id plain))))
+      (is (= "daily" (t2/select-one-fn :built_in_type :model/TransformTag :id (:id built-in)))))))

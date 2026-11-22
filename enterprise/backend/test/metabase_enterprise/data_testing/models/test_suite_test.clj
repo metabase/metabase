@@ -275,3 +275,11 @@
         (testing "a change of nothing publishes nothing"
           (test-suite/update-test-suites! [{:id suite-id}])
           (is (= 3 (count @published))))))))
+
+(deftest create-test-suites-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/TestSuite]
+    (let [creator-id         (mt/user->id :crowberto)
+          [plain described]  (test-suite/create-test-suites! [{:name "Plain" :creator_id creator-id}
+                                                              {:name "Described" :creator_id creator-id :description "About"}])]
+      (is (nil? (t2/select-one-fn :description :model/TestSuite :id (:id plain))))
+      (is (= "About" (t2/select-one-fn :description :model/TestSuite :id (:id described)))))))

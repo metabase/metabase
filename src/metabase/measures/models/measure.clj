@@ -28,6 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -158,14 +159,21 @@
     (contains? changes :definition) (assoc :definition (lib-be/normalize-query (:definition changes))
                                            :table_id   (definition-table-id (:definition changes)))))
 
-(mu/defn update-measures! :- [:sequential ::measures.schema/measure.row]
+(mr/def ::write-opts
+  "The options of the update of Measures: `:writer`, who writes when it matters, and the context of the events."
+  [:maybe
+   [:map {:closed true}
+    [:writer  {:optional true} [:enum :revert]]
+    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(mu/defn update-measures! :- [:sequential ::measures.schema/measure.update]
   "Apply the changes in each of `rows`, the id of a Measure and the columns to change, with one statement per distinct
   set of changes, in one transaction, publishing their update events. A new definition that makes a
   cycle of Measures throws. Returns `rows`."
-  ([rows :- [:sequential ::measures.schema/measure.row]]
+  ([rows :- [:sequential ::measures.schema/measure.update]]
    (update-measures! rows nil))
-  ([rows :- [:sequential ::measures.schema/measure.row]
-    opts :- ::measures.schema/write-opts]
+  ([rows :- [:sequential ::measures.schema/measure.update]
+    opts :- ::write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -176,13 +184,12 @@
            (when (seq changes)
              (measures.db/update-measures! (mapv :id group) changes)))
          (events/publish-event! :event/measure-update
-                                (events/update-event stored rows* {:objects (into {}
-                                                                                  (keep (fn [{:keys [id]}]
-                                                                                          (when-let [previous (stored id)]
-                                                                                            [id (updated-measure previous (dissoc (first (filter #(= id (:id %)) rows*)) :id))])))
-                                                                                  rows*)
-                                                                   :context (cond-> (:context opts)
-                                                                              (= :revert (:writer opts)) (assoc :reverting? true))}))
+                                (events/update-event stored
+                                                     rows*
+                                                     (assoc opts :objects (into {}
+                                                                                (map (fn [{:keys [id] :as row}]
+                                                                                       [id (updated-measure (stored id) (dissoc row :id))]))
+                                                                                rows*))))
          (vec rows))))))
 
 (mu/defn set-measure-dimensions!

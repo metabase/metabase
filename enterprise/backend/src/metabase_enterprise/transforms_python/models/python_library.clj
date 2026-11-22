@@ -10,7 +10,6 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -98,10 +97,10 @@
       (seq (dissoc differing :updated_at :is_default)) (assoc :is_default false)
       (:path changes)                                 (update :path normalize-path))))
 
-(mu/defn update-python-libraries! :- [:sequential ::transforms-python.schema/python-library.update-row]
+(mu/defn update-python-libraries! :- [:sequential ::transforms-python.schema/python-library.update]
   "Apply the changes in each of `rows`, the id of a PythonLibrary and the columns to change, with one statement per
   distinct change set, publishing their update event. Returns `rows`."
-  [rows :- [:sequential ::transforms-python.schema/python-library.update-row]]
+  [rows :- [:sequential ::transforms-python.schema/python-library.update]]
   (when (seq rows)
     (t2/with-transaction [_conn]
       (let [stored (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (mapv :id rows)))]

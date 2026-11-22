@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.transform-tag
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
@@ -29,7 +30,7 @@
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
-  [tag :- [:or ::transforms.schema/transform-tag ::transforms.schema/transform-tag.update]]
+  [tag :- (mut/optional-keys ::transforms.schema/transform-tag [:id])]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")
                 "daily"   (i18n/deferred-trs "daily")
                 "weekly"  (i18n/deferred-trs "weekly")
@@ -151,18 +152,18 @@
      (if (seq rows)
        (t2/with-transaction [_conn]
          (let [tags (transforms.db/insert-tags! rows)]
-           (events/publish-event! :event/transform-tag-create (events/create-event tags))
+           (events/publish-event! :event/transform-tag-create (events/create-event tags opts))
            tags))
        []))))
 
-(mu/defn update-transform-tags! :- [:sequential ::transforms.schema/transform-tag.update-row]
+(mu/defn update-transform-tags! :- [:sequential ::transforms.schema/transform-tag.update]
   "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction, with
   one statement per distinct change set, publishing their update event. Throws a 400 when a new name is already taken;
   an import keeps the name of a built-in tag and makes each other name another tag holds unique instead. Returns
   `rows`."
-  ([rows :- [:sequential ::transforms.schema/transform-tag.update-row]]
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update]]
    (update-transform-tags! rows nil))
-  ([rows :- [:sequential ::transforms.schema/transform-tag.update-row]
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update]
     opts :- ::transforms.schema/write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
@@ -177,12 +178,11 @@
          (events/publish-event! :event/transform-tag-update
                                 (events/update-event stored
                                                      changed
-                                                     {:objects (into {}
-                                                                     (keep (fn [{:keys [id] :as row}]
-                                                                             (when-let [previous (stored id)]
-                                                                               [id (updated-tag previous (dissoc row :id))])))
-                                                                     changed)
-                                                      :context (:context opts)})))))
+                                                     (assoc opts :objects (into {}
+                                                                                (keep (fn [{:keys [id] :as row}]
+                                                                                        (when-let [previous (stored id)]
+                                                                                          [id (updated-tag previous (dissoc row :id))])))
+                                                                                changed)))))))
    (vec rows)))
 
 (mu/defn delete-transform-tags! :- :nil

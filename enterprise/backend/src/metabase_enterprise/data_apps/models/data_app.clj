@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -77,7 +78,7 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (prepare ::data-apps.schema/data-app.create data-app))
+  (prepare ::data-apps.schema/data-app data-app))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -89,7 +90,7 @@
     (when (contains? changes :bundle_hash)
       (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
+    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
@@ -240,10 +241,10 @@
                           {:status-code 400, :collection-id collection-id})))))))
 
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
-  "Insert the DataApp `rows`, which the hooks of the model normalize and validate, and return the inserted apps. A row
+  "Insert the DataApp `rows`, which the hooks of the model normalize, and return the inserted apps. A row
   with a resource collection needs one that can be it; one without gets a collection of its own, named after its slug.
   Throws a 400 when two rows share a collection."
-  [rows :- [:sequential ::data-apps.schema/data-app.row.create]]
+  [rows :- [:sequential ::data-apps.schema/data-app.create]]
   (if (seq rows)
     (let [given (keep :resource_collection_id rows)]
       (when-not (apply distinct? (or (seq given) [nil]))
@@ -269,7 +270,7 @@
 (defn- updated-data-app
   "The DataApp `stored` as the update `changes` leaves it, normalized as the update hook does."
   [stored changes]
-  (merge stored (prepare ::data-apps.schema/data-app.update changes)))
+  (merge stored (prepare ::data-apps.schema/data-app changes)))
 
 (defn- without-held-bundles
   "`rows`, the update rows of an import, without the bundle that the stored app of the row already holds."
@@ -279,15 +280,21 @@
             (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle)))
         rows))
 
-(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
+(mr/def ::write-opts
+  "The options of the update of DataApps: `:writer`, who writes when it matters."
+  [:maybe
+   [:map {:closed true}
+    [:writer {:optional true} [:enum :import]]]])
+
+(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update]
   "Apply the changes in each of `rows`, the id of a DataApp and the columns to change, which the hooks of the model
-  normalize and validate, in one transaction, with one statement per distinct change set, publishing their update
+  normalize, in one transaction, with one statement per distinct change set, publishing their update
   event. Throws unless a new resource collection can be one. An import does not write a bundle that the stored app
   already holds. Returns `rows`."
-  ([rows :- [:sequential ::data-apps.schema/data-app.update-row]]
+  ([rows :- [:sequential ::data-apps.schema/data-app.update]]
    (update-data-apps! rows nil))
-  ([rows :- [:sequential ::data-apps.schema/data-app.update-row]
-    opts :- ::data-apps.schema/write-opts]
+  ([rows :- [:sequential ::data-apps.schema/data-app.update]
+    opts :- ::write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
        (let [stored  (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))
@@ -307,11 +314,11 @@
          (events/publish-event! :event/data-app-update
                                 (events/update-event stored
                                                      changed
-                                                     {:objects (into {}
-                                                                     (keep (fn [{:keys [id] :as row}]
-                                                                             (when-let [previous (stored id)]
-                                                                               [id (updated-data-app previous (dissoc row :id))])))
-                                                                     changed)})))))
+                                                     (assoc opts :objects (into {}
+                                                                                (keep (fn [{:keys [id] :as row}]
+                                                                                        (when-let [previous (stored id)]
+                                                                                          [id (updated-data-app previous (dissoc row :id))])))
+                                                                                changed)))))))
    (vec rows)))
 
 (mu/defn delete-data-apps! :- :nil

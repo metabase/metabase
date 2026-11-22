@@ -2,6 +2,7 @@
   "Application database queries for the data-testing module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.collections.models.collection.root :as collection.root]
@@ -9,6 +10,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -65,7 +67,7 @@
 (mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
   "Insert the TestSuite `suites` and return the inserted instances."
   [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.create]]
-  (t2/insert-returning-instances! :model/TestSuite suites))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/TestSuite %) suites))
 
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`."
@@ -80,7 +82,7 @@
 (mu/defn update-test-suites!
   "Apply `updates` to the TestSuites with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- ::data-testing.schema/test-suite.update]
+   updates :- (mut/dissoc ::data-testing.schema/test-suite.update :id)]
   (t2/update! :model/TestSuite :id [:in [:auto/param ids]] updates))
 
 (mu/defn touch-test-suites!
@@ -95,7 +97,7 @@
 
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.row.create]]
+  [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.create]]
   (t2/insert-returning-instances! :model/TestSuiteMember rows))
 
 (mu/defn suite-members-by-ids :- [:sequential ::data-testing.schema/test-suite.member]
@@ -106,7 +108,7 @@
 (mu/defn update-suite-members!
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::data-testing.schema/test-suite-member.update]
+   changes :- (mut/dissoc ::data-testing.schema/test-suite-member.update :id)]
   (t2/update! :model/TestSuiteMember :id [:in [:auto/param ids]] changes))
 
 (mu/defn delete-suite-members!
@@ -190,8 +192,8 @@
 (mu/defn insert-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
   "Insert the `rows` of `model` and return the inserted instances."
   [model :- saved-test-model
-   rows  :- [:sequential {:min 1} ::data-testing.schema/saved-test.create-row]]
-  (t2/insert-returning-instances! model rows))
+   rows  :- [:sequential {:min 1} ::data-testing.schema/saved-test.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! model %) rows))
 
 (mu/defn saved-tests-by-ids :- [:sequential ::data-testing.schema/saved-test]
   "The tests of `model` with `ids`."
@@ -203,7 +205,10 @@
   "Apply `updates` to the tests of `model` with `ids`."
   [model   :- saved-test-model
    ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- ::data-testing.schema/saved-test.changes]
+   updates :- (into [:or] (map #(mut/dissoc % :id))
+                    [::data-testing.schema/transform-test.update
+                     ::data-testing.schema/card-test.update
+                     ::data-testing.schema/segment-test.update])]
   (t2/update! model :id [:in [:auto/param ids]] updates)
   nil)
 

@@ -13,13 +13,13 @@
 (defn- valid? [schema x]
   (mr/validate schema (normalize schema x)))
 
-(deftest data-app-update-normalizes-each-column-it-is-given-test
+(deftest data-app-normalizes-each-column-it-is-given-test
   (is (= {:slug "sales" :name "Sales dashboard" :description nil :version 1
           :bundle_path "dist/index.js" :allowed_hosts []}
-         (normalize ::data-apps.schema/data-app.update
+         (normalize ::data-apps.schema/data-app
                     {:slug "sales" :name " Sales dashboard " :description "  " :version nil
                      :bundle_path "./dist/index.js" :allowed_hosts nil})))
-  (is (= {:enabled false} (normalize ::data-apps.schema/data-app.update {:enabled false}))))
+  (is (= {:enabled false} (normalize ::data-apps.schema/data-app {:enabled false}))))
 
 (deftest data-app-create-requires-manifest-columns-test
   (is (valid? ::data-apps.schema/data-app.create {:slug "a" :name "A" :bundle_path "i.js"}))

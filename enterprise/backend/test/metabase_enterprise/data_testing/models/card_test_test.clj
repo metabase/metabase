@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -199,3 +200,14 @@
         (is (= {:run false :write false}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
                 :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))))
+
+(deftest create-card-tests-with-different-key-sets-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (mt/with-model-cleanup [:model/CardTest]
+      (let [row                (fn [test-name] {:card_id card-id :name test-name :creator_id (mt/user->id :crowberto)
+                                                :inputs (lib/normalize ::data-testing.schema/inputs inputs)
+                                                :expectations (lib/normalize ::data-testing.schema/expectations expectations)})
+            [plain described]  (data-testing.models.card-test/create-card-tests! [(row "Plain")
+                                                                                  (assoc (row "Described") :description "About")])]
+        (is (nil? (t2/select-one-fn :description :model/CardTest :id (:id plain))))
+        (is (= "About" (t2/select-one-fn :description :model/CardTest :id (:id described))))))))

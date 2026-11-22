@@ -27,7 +27,7 @@
 (mu/defn insert-measures!
   "Insert the Measure `rows` and return the inserted instances."
   [rows :- [:sequential ::measures.schema/measure.create]]
-  (t2/insert-returning-instances! :model/Measure rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Measure %) rows))
 
 (mu/defn measure
   "The Measure with `id`, or nil."
@@ -47,7 +47,9 @@
 (mu/defn update-measures!
   "Apply `changes` to the Measures with `ids`, returning the number updated."
   [ids     :- [:sequential ::lib.schema.id/measure]
-   changes :- ::measures.schema/measure.update]
+   changes :- [:select-keys ::measures.schema/measure.update
+               [:table_id :creator_id :name :description :archived :definition :created_at :updated_at :entity_id
+                :dimensions :dimension_mappings]]]
   (t2/update! :model/Measure :id [:in ids] changes))
 
 (mu/defn delete-measures!

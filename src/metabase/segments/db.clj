@@ -27,7 +27,7 @@
 (mu/defn insert-segments!
   "Insert the Segment `rows` and return the inserted instances."
   [rows :- [:sequential ::segments.schema/segment.create]]
-  (t2/insert-returning-instances! :model/Segment rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Segment %) rows))
 
 (mu/defn segment
   "The Segment with `id`, or nil."
@@ -47,7 +47,9 @@
 (mu/defn update-segments!
   "Apply `changes` to the Segments with `ids`, returning the number updated."
   [ids     :- [:sequential ::lib.schema.id/segment]
-   changes :- ::segments.schema/segment.update]
+   changes :- [:select-keys ::segments.schema/segment.update
+               [:table_id :creator_id :name :description :archived :definition :created_at :updated_at
+                :points_of_interest :caveats :show_in_getting_started :entity_id]]]
   (t2/update! :model/Segment :id [:in ids] changes))
 
 (mu/defn delete-segments!

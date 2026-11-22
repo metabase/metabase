@@ -96,12 +96,23 @@
   [:string {:max max-bundle-bytes}])
 
 (mr/def ::data-app
-  "A DataApp as selected from the app DB: every column of `:data_app`."
-  [:merge
-   ::data-app.update
-   [:map {:closed true}
-    [:id              ms/PositiveInt]
-    [:bundle_hash     {:optional true} [:maybe :string]]]])
+  "A DataApp as selected from the app DB: every column of `:data_app`, normalized. The hooks of the model normalize a
+  write with it."
+  [:map {:closed true}
+   [:id              ms/PositiveInt]
+   [:entity_id       {:optional true} [:maybe :string]]
+   [:slug            {:optional true} ::slug]
+   [:name            {:optional true} ::name]
+   [:allowed_hosts   {:optional true} ::allowed-hosts]
+   [:bundle_path     {:optional true} ::bundle-path]
+   [:bundle          {:optional true} [:maybe ::bundle]]
+   [:bundle_hash     {:optional true} [:maybe :string]]
+   [:enabled         {:optional true} [:maybe :boolean]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:description     {:optional true} ::description]
+   [:version         {:optional true} ::version]
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app-preview
   "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
@@ -115,35 +126,10 @@
    [:preview ::data-app-preview]])
 
 (mr/def ::data-app.update
-  "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
-  model computes, all optional."
+  "What an update of a DataApp takes, as a caller gives it, before the hooks of the model normalize it: its `:id` and the
+  columns to change. The boundary of a write validates the values."
   [:map {:closed true}
-   [:entity_id       {:optional true} [:maybe :string]]
-   [:slug            {:optional true} ::slug]
-   [:name            {:optional true} ::name]
-   [:allowed_hosts   {:optional true} ::allowed-hosts]
-   [:bundle_path     {:optional true} ::bundle-path]
-   [:bundle          {:optional true} [:maybe ::bundle]]
-   [:enabled         {:optional true} [:maybe :boolean]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:description     {:optional true} ::description]
-   [:version         {:optional true} ::version]
-   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
-
-(mr/def ::data-app.create
-  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."
-  [:merge
-   ::data-app.update
-   [:map
-    [:slug        ::slug]
-    [:name        ::name]
-    [:bundle_path ::bundle-path]]])
-
-(mr/def ::data-app.row.update
-  "The columns a write changes in a DataApp, as a caller gives them, before the hooks of the model normalize and
-  validate them."
-  [:map {:closed true}
+   [:id                     ms/PositiveInt]
    [:entity_id              {:optional true} [:maybe :string]]
    [:slug                   {:optional true} :string]
    [:name                   {:optional true} :string]
@@ -157,27 +143,15 @@
    [:version                {:optional true} [:maybe :int]]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
-(mr/def ::data-app.row.create
-  "What a write creates a DataApp with, as a caller gives it, before the hooks of the model normalize and validate it."
+(mr/def ::data-app.create
+  "What creating a DataApp takes, as a caller gives it, before the hooks of the model normalize it: the columns of an
+  update without the `:id`, and the slug, name and bundle path."
   [:merge
-   ::data-app.row.update
+   (mut/dissoc ::data-app.update :id)
    [:map
     [:slug        :string]
     [:name        :string]
     [:bundle_path :string]]])
-
-(mr/def ::data-app.update-row
-  "One row of an update of DataApps: the `:id` of a DataApp and the columns to change."
-  [:merge
-   ::data-app.row.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
-
-(mr/def ::write-opts
-  "The options of the update of DataApps: who writes when it matters."
-  [:maybe
-   [:map {:closed true}
-    [:writer {:optional true} [:enum :import]]]])
 
 (mr/def ::query-stage-spec
   "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table

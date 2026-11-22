@@ -207,7 +207,7 @@
   "Insert the `rows` of the saved tests of `model` in one transaction, publishing their create event, and return the
   inserted tests."
   [model :- :keyword
-   rows  :- [:sequential ::data-testing.schema/saved-test.create-row]]
+   rows  :- [:sequential ::data-testing.schema/saved-test.create]]
   (if (seq rows)
     (t2/with-transaction [_conn]
       (let [tests (data-testing.db/insert-saved-tests! model rows)]
@@ -223,11 +223,11 @@
     (contains? changes :expectations) (update :expectations #(lib/normalize ::data-testing.schema/expectations %))
     (contains? changes :now)          (update :now #(some->> % (lib/normalize ::data-testing.schema/now)))))
 
-(mu/defn update-saved-tests! :- [:sequential ::data-testing.schema/saved-test.update-row]
+(mu/defn update-saved-tests! :- [:sequential ::data-testing.schema/saved-test.update]
   "Apply the changes in each of `rows`, the id of a saved test of `model` and the columns to change, in one transaction
   with one statement per distinct change set, publishing their update event. Returns `rows`."
   [model :- :keyword
-   rows  :- [:sequential ::data-testing.schema/saved-test.update-row]
+   rows  :- [:sequential ::data-testing.schema/saved-test.update]
    opts  :- ::data-testing.schema/write-opts]
   (when (seq rows)
     (t2/with-transaction [_conn]
@@ -238,13 +238,11 @@
         (events/publish-event! (get-in saved-test-topics [model :update])
                                (events/update-event stored
                                                     rows
-                                                    {:objects (into {}
-                                                                    (keep (fn [{:keys [id] :as row}]
-                                                                            (when-let [previous (stored id)]
-                                                                              [id (merge previous (normalized-changes (dissoc row :id)))])))
-                                                                    rows)
-                                                     :context (cond-> (:context opts)
-                                                                (= :revert (:writer opts)) (assoc :reverting? true))})))))
+                                                    (assoc opts :objects (into {}
+                                                                               (keep (fn [{:keys [id] :as row}]
+                                                                                       (when-let [previous (stored id)]
+                                                                                         [id (merge previous (normalized-changes (dissoc row :id)))])))
+                                                                               rows)))))))
   (vec rows))
 
 (mu/defn- delete-saved-test-rows! :- :nil
@@ -284,15 +282,15 @@
 (mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
   "Insert the TransformTests `rows`, returning the inserted tests. The column transforms of the model normalize and
   validate each row."
-  [rows :- [:sequential ::data-testing.schema/transform-test.create-row]]
+  [rows :- [:sequential ::data-testing.schema/transform-test.create]]
   (create-saved-tests! :model/TransformTest rows))
 
-(mu/defn update-transform-tests! :- [:sequential ::data-testing.schema/transform-test.update-row]
+(mu/defn update-transform-tests! :- [:sequential ::data-testing.schema/transform-test.update]
   "Apply the changes in each of `rows`, the id of a TransformTest and the columns to change, which the column
   transforms of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/transform-test.update-row]]
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]]
    (update-transform-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/transform-test.update-row]
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]
     opts :- ::data-testing.schema/write-opts]
    (update-saved-tests! :model/TransformTest rows opts)))
 

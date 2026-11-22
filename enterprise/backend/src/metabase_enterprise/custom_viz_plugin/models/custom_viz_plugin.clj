@@ -90,10 +90,10 @@
         plugins))
     []))
 
-(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]
+(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]
   "Apply the changes in each of `rows`, the id of a CustomVizPlugin and the columns to change, with one statement per
   distinct change set, publishing their update event. Returns `rows`."
-  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]]
+  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]]
   (when (seq rows)
     (t2/with-transaction [_conn]
       (let [stored (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (mapv :id rows)))]

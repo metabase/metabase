@@ -8,8 +8,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -36,6 +38,14 @@
   (-> (api/read-check :model/TransformTest id)
       (t2/hydrate :last_run)))
 
+(mr/def ::create-request
+  "What a client sends to create a test."
+  (data-testing.schema/test-create :transform_id ::lib.schema.id/transform))
+
+(mr/def ::update-request
+  "What a client sends to update a test. Omitted fields are left unchanged."
+  (data-testing.schema/test-update :transform_id ::lib.schema.id/transform))
+
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/transform-test
   "Create a transform test.
 
@@ -46,7 +56,7 @@
   declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
-   {:keys [transform_id] :as body} :- ::data-testing.schema/transform-test.create]
+   {:keys [transform_id] :as body} :- ::create-request]
   (api/create-check :model/TransformTest body)
   (refusing #(data-testing.runner/validate-test :transform
                                                 (data-testing.db/transform transform_id)
@@ -58,7 +68,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/transform-test.update]
+   body :- ::update-request]
   (let [transform-test (api/read-check :model/TransformTest id)]
     (api/update-check transform-test body)
     (when (some #(contains? body %) (cons :transform_id data-testing.runner/definition-keys))

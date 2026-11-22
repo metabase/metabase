@@ -79,22 +79,16 @@
     (data-app/delete-data-apps! [id])
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
-(deftest writes-are-normalized-and-validated-against-the-schema-test
+(deftest writes-are-normalized-test
   (mt/with-temp [:model/DataApp {id :id} {:name          "  M  "
                                           :bundle_path   "./dist/index.js"
                                           :allowed_hosts ["https://API.example.com/"]}]
     (is (=? {:name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
             (t2/select-one :model/DataApp :id id)))
-    (testing "an update with an invalid column is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                            (t2/update! :model/DataApp :id id {:bundle_path "../escape.js"})))
-      (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp :id id)))))
-  (testing "an insert without a required manifest column is refused"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                          (t2/insert! :model/DataApp {:slug "x" :bundle_path "i.js"}))))
-  (testing "an insert with an invalid slug is refused"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                          (mt/with-temp [:model/DataApp _ {:slug "Not A Slug"}])))))
+    (testing "an update is normalized"
+      (t2/update! :model/DataApp :id id {:bundle_path "./other.js" :description "  one\n line  "})
+      (is (=? {:bundle_path "other.js" :description "one line"}
+              (t2/select-one :model/DataApp :id id))))))
 
 (deftest to-json-never-includes-the-bundle-bytes-test
   (mt/with-temp [:model/DataApp {id :id} {:name "M" :bundle bundle-bytes}]
@@ -219,3 +213,13 @@
           (is (= (delete! (insert! 2)) (delete! (insert! 6))))))
       (finally
         (data-app/delete-data-apps! @created)))))
+
+(deftest create-data-apps-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection]
+    (let [[plain described] (data-app/create-data-apps! [{:slug "plain-app" :name "Plain" :bundle_path "index.js"}
+                                                         {:slug "described-app" :name "Described" :bundle_path "index.js"
+                                                          :description "About" :enabled true}])
+          [alone]           (data-app/create-data-apps! [{:slug "alone-app" :name "Alone" :bundle_path "index.js"}])]
+      (is (= (:enabled alone) (t2/select-one-fn :enabled :model/DataApp :id (:id plain))))
+      (is (= 1 (t2/select-one-fn :version :model/DataApp :id (:id plain))))
+      (is (=? {:description "About" :enabled true} (t2/select-one :model/DataApp :id (:id described)))))))

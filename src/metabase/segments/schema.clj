@@ -33,22 +33,13 @@
   "The `:definition` column of a Segment, decoded."
   ::lib-be.schema/maybe-legacy-query)
 
-(mr/def ::segment
-  "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
-  hydrate onto it."
-  [:merge
-   ::segment.update
-   [:map {:closed true}
-    [:id                      ms/PositiveInt]
-    [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
-    [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
-
 (mr/def ::segment.name
   ms/NonBlankString)
 
 (mr/def ::segment.update
-  "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."
+  "What an update of a Segment takes: the `:id` of the Segment and the columns to change, every column of `:segment`."
   [:map {:closed true}
+   [:id                      ::lib.schema.id/segment]
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
    [:name                    {:optional true} [:maybe ::segment.name]]
@@ -61,6 +52,16 @@
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
+
+(mr/def ::segment
+  "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
+  hydrate onto it."
+  [:merge
+   ::segment.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]
+    [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
 (mr/def ::segment.revision
   "A Segment as a Revision stores it: its tracked columns."
@@ -79,20 +80,6 @@
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
-
-(mr/def ::write-opts
-  "The options of the update of Segments: who writes when it matters, and the context of the events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :revert]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
-(mr/def ::segment.row
-  "A Segment id and the columns to change, as an update of several Segments takes it."
-  [:merge
-   ::segment.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/segment]]])
 
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."
