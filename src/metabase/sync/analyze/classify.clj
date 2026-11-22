@@ -19,7 +19,6 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
-   [metabase.events.core :as events]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
@@ -32,8 +31,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,8 +51,9 @@
    i/FieldInstance
    i/TableInstance])
 
-(mu/defn- save-model-updates!
-  "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
+(mu/defn- model-updates :- [:maybe :map]
+  "The values `updated-model` (a `Field` or a `Table`) sets on `original-model`, throwing for a column classifiers may
+  not set."
   [original-model :- FieldOrTableInstance
    updated-model  :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
@@ -67,12 +66,15 @@
     (doseq [k (keys values-to-set)]
       (when-not (contains? (updateable-columns (mi/model original-model)) k)
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
-    ;; cool, now we should be ok to update the model
-    (when values-to-set
-      (case (mi/model original-model)
-        :model/Field (sync.updates/update-field-unless-user-set! original-model values-to-set)
-        :model/Table (sync.updates/update-table-unless-user-set! original-model values-to-set))
-      true)))
+    values-to-set))
+
+(mu/defn- save-table-updates!
+  "Save the updates in `updated-table` to the Table `table`."
+  [table         :- i/TableInstance
+   updated-table :- i/TableInstance]
+  (when-let [values-to-set (model-updates table updated-table)]
+    (sync.updates/update-table-unless-user-set! table values-to-set)
+    true))
 
 (def ^:private ClassifyOpts
   [:map {:closed true}
@@ -80,8 +82,8 @@
    [:exists-name :boolean]])
 
 (mu/defn- classify!
-  "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
-   Returns updated `field`"
+  "Run various classifiers on `field` and its `fingerprint`, returning the updated `field`, with the values to save as
+  `::updates` in its metadata."
   ([field :- i/FieldInstance
     opts  :- ClassifyOpts]
    (classify! field opts
@@ -100,9 +102,8 @@
            updated-field (if (and would-be-name? exists-name)
                            (assoc classified :semantic_type (:semantic_type field))
                            classified)]
-       (when-not (= field updated-field)
-         (save-model-updates! field updated-field))
-       updated-field))))
+       (cond-> updated-field
+         (not= field updated-field) (vary-meta assoc ::updates (model-updates field updated-field)))))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
@@ -122,18 +123,23 @@
     (let [table-id (:id table)]
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
-              {:keys [fields-failed]}
-              (t2/with-transaction [_conn]
-                (reduce (fn [state field]
-                          (let [result (classify! field state)]
-                            (cond-> state
-                              (instance? Exception result)
-                              (update :fields-failed inc)
+              {:keys [fields-failed updates]}
+              (reduce (fn [state field]
+                        (let [result (classify! field (select-keys state [:fields-failed :exists-name]))]
+                          (cond-> state
+                            (instance? Exception result)
+                            (update :fields-failed inc)
 
-                              (= :type/Name (:semantic_type result))
-                              (assoc :exists-name true))))
-                        {:fields-failed 0 :exists-name (pos? existing-name-field)}
-                        fields))]
+                            (seq (::updates (meta result)))
+                            (update :updates conj [field (::updates (meta result))])
+
+                            (= :type/Name (:semantic_type result))
+                            (assoc :exists-name true))))
+                      {:fields-failed 0 :exists-name (pos? existing-name-field) :updates []}
+                      fields)]
+          (sync-util/with-error-handling (format "Error saving the classification of the Fields of %s"
+                                                 (sync-util/name-for-logging table))
+            (sync.updates/update-fields-unless-user-set! updates))
           {:fields-classified (count fields)
            :fields-failed fields-failed})))))
 
@@ -145,7 +151,7 @@
                         (analyze/infer-entity-type-by-name table))]
     (if (instance? Exception updated-table)
       table
-      (save-model-updates! table updated-table))))
+      (save-table-updates! table updated-table))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :nil])

@@ -2180,7 +2180,7 @@
               (is (some #(= (:id %) card-id) (:data search-results))
                   "Card should be found in search results before database deletion")))
           (testing "Card should be hidden from search after database deletion"
-            (database/delete-database! db-id)
+            (database/delete-databases! [db-id])
             (is (not (t2/exists? :model/Card :id card-id)))
             (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
               (is (not (some #{card-id}

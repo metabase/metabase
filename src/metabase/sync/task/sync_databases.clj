@@ -203,13 +203,12 @@
                 counter)
                ([counter db]
                 (try
-                  (database/update-database! (u/the-id db)
-                                             (sync.schedules/schedule-map->cron-strings
-                                              ;; TODO (edpaget): this can go away after this patch is deployed to cloud
-                                              (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
-                                                     (:metadata_sync_schedule db))
-                                                (sync.schedules/default-randomized-schedule {:excluded-minute 43})
-                                                (sync.schedules/default-randomized-schedule))))
+                  (database/update-databases! [(assoc (sync.schedules/schedule-map->cron-strings
+                                                       ;; TODO (edpaget): this can go away after this patch is deployed to cloud
+                                                       (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
+                                                              (:metadata_sync_schedule db))
+                                                         (sync.schedules/default-randomized-schedule {:excluded-minute 43})
+                                                         (sync.schedules/default-randomized-schedule))) :id (u/the-id db))])
                   (inc counter)
                   (catch Exception e
                     (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))

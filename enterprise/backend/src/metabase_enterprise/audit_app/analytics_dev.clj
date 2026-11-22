@@ -77,16 +77,15 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (database/create-database!
-                {:name canonical-db-name
-                 :description "Development database for analytics views and content"
-                 :engine (keyword db-type)
-                 :details {:is-audit-dev true}
-                 :is_audit false ; Important: not an audit DB
-                 :is_full_sync true
-                 :is_on_demand false
-                 :creator_id user-id
-                 :auto_run_queries true})]
+      (let [db (first (database/create-databases! [{:name canonical-db-name
+                                                    :description "Development database for analytics views and content"
+                                                    :engine (keyword db-type)
+                                                    :details {:is-audit-dev true}
+                                                    :is_audit false ; Important: not an audit DB
+                                                    :is_full_sync true
+                                                    :is_on_demand false
+                                                    :creator_id user-id
+                                                    :auto_run_queries true}]))]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! (u/the-id db) {:scan :schema})
         db))))
@@ -95,7 +94,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (database/delete-database! db-id)
+  (database/delete-databases! [db-id])
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================

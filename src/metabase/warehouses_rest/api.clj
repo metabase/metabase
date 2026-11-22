@@ -657,19 +657,18 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (database/create-database!
-                               (merge
-                                {:name         name
-                                 :engine       engine
-                                 :details      details-or-error
-                                 :is_full_sync is_full_sync
-                                 :is_on_demand is_on_demand
-                                 :cache_ttl    cache_ttl
-                                 :creator_id   api/*current-user-id*}
-                                (when schedules
-                                  (sync.schedules/schedule-map->cron-strings schedules))
-                                (when (some? auto_run_queries)
-                                  {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (database/create-databases! [(merge
+                                                                   {:name         name
+                                                                    :engine       engine
+                                                                    :details      details-or-error
+                                                                    :is_full_sync is_full_sync
+                                                                    :is_on_demand is_on_demand
+                                                                    :cache_ttl    cache_ttl
+                                                                    :creator_id   api/*current-user-id*}
+                                                                   (when schedules
+                                                                     (sync.schedules/schedule-map->cron-strings schedules))
+                                                                   (when (some? auto_run_queries)
+                                                                     {:auto_run_queries auto_run_queries}))])))
         (sync/start-initial-sync! <> nil)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
@@ -959,9 +958,8 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (database/update-database! existing-database
-                                   (cond-> updates
-                                     (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)))
+        (database/update-databases! [(assoc (cond-> updates
+                                              (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) :id (:id existing-database))] {:stored {(:id existing-database) existing-database}})
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -984,7 +982,7 @@
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
       (database/delete-databases! (warehouses-rest.db/destination-database-ids id))
       (database-routing/delete-associated-database-router! id)
-      (database/delete-database! id)
+      (database/delete-databases! [id])
       nil))
   api/generic-204-no-content)
 
@@ -1030,7 +1028,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (table/update-tables-where! {:id [:in table-ids]} {:initial_sync_status "complete"})))
+      (table/update-tables! (mapv (fn [id] {:id id :initial_sync_status "complete"}) (distinct table-ids)))))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------

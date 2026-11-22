@@ -22,7 +22,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries.models.card :as card]
-   [metabase.sync.db :as sync.db]
+   [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -52,11 +52,11 @@
                      :model/Table    t  {:db_id (:id db)}]
         (testing "an insert, an update and a delete each log the row's table, id and action"
           (let [id   (atom nil)
-                rows (logged-by #(do (reset! id (field/create-field! {:table_id      (:id t)
-                                                                      :name          "f"
-                                                                      :base_type     :type/Text
-                                                                      :database_type "TEXT"}))
-                                     (field/update-field! @id {:name "g"})
+                rows (logged-by #(do (reset! id (first (field/create-fields! [{:table_id      (:id t)
+                                                                               :name          "f"
+                                                                               :base_type     :type/Text
+                                                                               :database_type "TEXT"}])))
+                                     (field/update-fields! [{:id @id :name "g"}])
                                      (field/delete-fields! [@id])))]
             (is (= [["metabase_field" @id "insert"]
                     ["metabase_field" @id "update"]
@@ -66,15 +66,15 @@
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [["metabase_field" (:id f) "update"]
                     ["metabase_field" (:id f) "delete"]]
-                   (logged-by #(do (field/update-field! (:id f) {:name "h"})
+                   (logged-by #(do (field/update-fields! [{:id (:id f) :name "h"}])
                                    (field/delete-fields! [(:id f)])))))))
         (testing "an update that changes nothing logs nothing"
-          (is (= [] (logged-by #(table/update-table! (:id t) {:name (:name t)}))))
-          (is (= [] (logged-by #(table/update-tables-where! {:db_id (:id db)} {:active true})))))
+          (is (= [] (logged-by #(table/update-tables! [{:id (:id t) :name (:name t)}]))))
+          (is (= [] (logged-by #(table/update-tables! (mapv (fn [id] {:id id :active true}) (table/ids-of-database (:id db))))))))
         (testing "an update that changes one row of two logs the one it changes"
           (mt/with-temp [:model/Table other {:db_id (:id db), :active false}]
             (is (= #{["metabase_table" (:id other) "update"]}
-                   (set (logged-by #(table/update-tables-where! {:db_id (:id db)} {:active true})))))))
+                   (set (logged-by #(table/update-tables! (mapv (fn [id] {:id id :active true}) (table/ids-of-database (:id db))))))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse pulse {:name "Before"}]
             (is (= [] (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "Before"}))))
@@ -82,13 +82,13 @@
                    (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "After"}))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
-            (is (= [] (logged-by #(field/update-field! (:id f) {:fingerprint_version 99}))))
+            (is (= [] (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 99}]))))
             (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))
             (testing "and one that also sets another column logs the row"
               (is (= [["metabase_field" (:id f) "update"]]
-                     (logged-by #(field/update-field! (:id f) {:fingerprint_version 100, :description "d"})))))))
+                     (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 100, :description "d"}])))))))
         (testing "an update that matches no row logs nothing"
-          (is (= [] (logged-by #(table/update-table! Integer/MAX_VALUE {:name "none"})))))
+          (is (= [] (logged-by #(table/update-tables! [{:id Integer/MAX_VALUE :name "none"}])))))
         (testing "a bulk insert logs the rows it inserts"
           (let [names #{"f1" "f2"}
                 n     (atom nil)
@@ -158,7 +158,7 @@
           (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]
-                 (sort (logged-by #(field/update-fields-where! {:table_id (:id t)} {:description "x"}))))))))))
+                 (sort (logged-by #(field/update-fields! [{:id (:id f1) :description "x"} {:id (:id f2) :description "x"}]))))))))))
 
 (deftest transaction-test
   (when config/ee-available?
@@ -203,9 +203,9 @@
                          :model/Field    field-a {:table_id (:id table-a), :data_sensitivity :PII}
                          :model/Field    field-b {:table_id (:id table-b), :data_sensitivity :PII}]
             (is (= [["metabase_field" (:id field-a) "update"]]
-                   (logged-by #(field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-table-clause (:id table-a))))))
+                   (logged-by #(sync.data-sensitivity/reset-table-data-sensitivity! table-a))))
             (is (= [["metabase_field" (:id field-b) "update"]]
-                   (logged-by #(field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-database-clause (:id db))))))))
+                   (logged-by #(sync.data-sensitivity/reset-data-sensitivity! (:id db)))))))
         (testing "every tenant deactivated"
           (mt/with-temp [:model/Tenant tenant {}]
             (t2/with-transaction [_conn nil {:rollback-only true}]

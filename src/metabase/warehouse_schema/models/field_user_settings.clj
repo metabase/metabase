@@ -9,7 +9,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
@@ -85,45 +84,20 @@
           writes
           rows))
 
-(defn- with-deleted
-  "`writes` with the delete of the settings `rows`, as they were read, whose delete `changes` carry the captures."
-  [writes rows changes]
-  (reduce (fn [writes [row change]]
-            (let [write (get writes (:id row))]
-              (assoc writes (:id row) {:before   (if write (:before write) row)
-                                       :after    ::deleted
-                                       :captures (:captures change)})))
-          writes
-          (map vector rows changes)))
-
-(defn- written-events
-  "The events of `writes`: a create, an update that changes something or a delete for each row, none for a row the
-  call both created and deleted."
-  [writes]
-  (let [writes (vals writes)]
-    [[:event/field-user-settings-create
-      (into [] (keep (fn [{:keys [before after]}] (when (and (nil? before) (not= ::deleted after)) {:object after}))) writes)]
-     [:event/field-user-settings-update
-      (into [] (keep (fn [{:keys [before after]}]
-                       (when (and before (not= ::deleted after))
-                         (let [change {:previous-object before :object after}]
-                           (when (seq (u.events/changed-keys change)) change)))))
-            writes)]
-     [:event/field-user-settings-delete
-      (into [] (keep (fn [{:keys [before after captures]}]
-                       (when (and before (= ::deleted after))
-                         (cond-> {:previous-object before} (seq captures) (assoc :captures captures)))))
-            writes)]]))
-
-(defn- delete-read!
-  "Delete the settings `rows`, as they were read, with `delete!`, a function of no arguments, returning `writes` with
-  their deletes."
-  [writes rows delete!]
+(defn- publish-deletes!
+  "Publish, right before the statement that deletes the settings `rows`, as they were read, the delete of those that
+  existed before the call, as they were then, and return `writes` with their deletes."
+  [writes rows]
   (if (empty? rows)
     writes
-    (let [changes (events/delete-changes :model/FieldUserSettings (vec rows))]
-      (delete!)
-      (with-deleted writes rows changes))))
+    (let [writes (reduce (fn [writes row]
+                           (let [write (get writes (:id row))]
+                             (assoc writes (:id row) {:before (if write (:before write) row) :after ::deleted})))
+                         writes
+                         rows)]
+      (events/publish-event! :event/field-user-settings-delete
+                             (events/delete-event (into [] (keep #(:before (get writes (:id %)))) rows)))
+      writes)))
 
 (defn- delete-empty!
   "Delete the settings, among those of the Fields with `field-ids`, that hold no user value and no true flag,
@@ -131,15 +105,24 @@
   [writes field-ids]
   (if (empty? field-ids)
     writes
-    (let [field-ids (into [] (distinct) field-ids)]
-      (delete-read! writes
-                    (warehouse-schema.db/empty-field-user-settings field-ids)
-                    #(warehouse-schema.db/delete-empty-field-user-settings! field-ids)))))
+    (let [field-ids (into [] (distinct) field-ids)
+          rows      (warehouse-schema.db/empty-field-user-settings field-ids)]
+      (u/prog1 (publish-deletes! writes rows)
+        (when (seq rows)
+          (warehouse-schema.db/delete-empty-field-user-settings! field-ids))))))
 
 (defn- publish-writes!
-  "Publish the events of `writes`."
+  "Publish the creates and the updates that change something of `writes`, whose deletes were published as they were
+  made."
   [writes]
-  (events/publish-lifecycle! (written-events writes)))
+  (let [live    (into {} (remove #(= ::deleted (:after (val %)))) writes)
+        updated (into {} (filter (comp :before val)) live)]
+    (events/publish-event! :event/field-user-settings-create
+                           (events/create-event (into [] (keep (fn [{:keys [before after]}] (when-not before after))) (vals live))))
+    (events/publish-event! :event/field-user-settings-update
+                           (events/update-event (update-vals updated :before)
+                                                (mapv #(hash-map :id %) (keys updated))
+                                                {:objects (update-vals updated :after)}))))
 
 (defn- fk-semantic-type?
   "Whether `semantic-type` marks a foreign key."
@@ -243,7 +226,7 @@
                          (with-updated writes [stored] (constantly (with-set-flags settings settings)))
                          (with-created writes (warehouse-schema.db/field-user-settings-by-ids [pk])))
               writes   (delete-empty! writes [id])]
-          (u/prog1 (field/update-field! id settings)
+          (u/prog1 (count (field/update-fields! [(assoc settings :id id)]))
             (publish-writes! writes)))))))
 
 (mu/defn set-custom-positions!
@@ -306,9 +289,10 @@
     (t2/with-transaction [_conn]
       (publish-writes!
        (reduce (fn [writes batch]
-                 (delete-read! writes
-                               (warehouse-schema.db/field-user-settings-for-fields (vec batch))
-                               #(warehouse-schema.db/delete-field-user-settings! batch)))
+                 (let [rows (warehouse-schema.db/field-user-settings-for-fields (vec batch))]
+                   (u/prog1 (publish-deletes! writes rows)
+                     (when (seq rows)
+                       (warehouse-schema.db/delete-field-user-settings! batch)))))
                {}
                (partition-all 1000 field-ids))))))
 
@@ -317,9 +301,10 @@
   [ids]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (publish-writes! (delete-read! {}
-                                     (warehouse-schema.db/field-user-settings-by-ids (vec ids))
-                                     #(warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids)))))))
+      (publish-writes! (let [rows (warehouse-schema.db/field-user-settings-by-ids (vec ids))]
+                         (u/prog1 (publish-deletes! {} rows)
+                           (when (seq rows)
+                             (warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids)))))))))
 
 (mu/defn delete-field-user-settings-for-table!
   "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."

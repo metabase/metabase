@@ -551,17 +551,17 @@
                                                        :schema       (not-empty schema)
                                                        :display_name display-name
                                                        :data_source  :upload})
-          _set_is_upload          (table/update-table! (:id table) {:is_upload      true
-                                                                    :data_authority :authoritative
-                                                                    :data_source    :upload
-                                                                    :is_writable    true})
+          _set_is_upload          (table/update-tables! [{:id (:id table) :is_upload      true
+                                                          :data_authority :authoritative
+                                                          :data_source    :upload
+                                                          :is_writable    true}])
           _sync                   (scan-and-sync-table! table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                                      (field/update-field! (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
+                                      (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))]
       {:table table
        :stats stats})))
 
@@ -830,7 +830,7 @@
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                (field/update-field! (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+                (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))
             (invalidate-cached-models! table)
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
@@ -897,7 +897,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (table/update-table! (:id table) {:active false})
+    (table/update-tables! [{:id (:id table) :active false}])
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.

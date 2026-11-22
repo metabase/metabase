@@ -769,25 +769,25 @@
           ;; EE behavior is tested in `metabase-enterprise.advanced-permissions.common-test`
           (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :unrestricted)
           ;; We don't use `with-temp` to create the new Database because it always grants permissions automatically
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :unrestricted (t2/select-one-fn :perm_value
                                                    :model/DataPermissions
                                                    :db_id     new-db-id
                                                    :group_id  group-id
                                                    :perm_type :perms/view-data)))
-            (database/delete-database! new-db-id))
+            (database/delete-databases! [new-db-id]))
           (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :legacy-no-self-service)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :unrestricted (t2/select-one-fn :perm_value
                                                    :model/DataPermissions
                                                    :db_id     new-db-id
                                                    :group_id  group-id
                                                    :perm_type :perms/view-data)))
-            (database/delete-database! new-db-id))
+            (database/delete-databases! [new-db-id]))
           (testing "A new database gets `unrestricted` data perms on OSS even if a group has `blocked` perms for a DB"
             (mt/with-premium-features #{}
               (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
-              (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+              (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
                 ;; When EE code is on the classpath the new database fails CLOSED to :blocked for the
                 ;; blocked group regardless of token features (UXW-4927); only a true OSS jar (no EE
                 ;; code at all) falls back to :unrestricted.
@@ -801,51 +801,51 @@
       (testing "Query permissions... "
         (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
           (data-perms/set-database-permission! group-id db-id-1 :perms/create-queries :query-builder-and-native)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :query-builder-and-native (t2/select-one-fn :perm_value
                                                                :model/DataPermissions
                                                                :db_id     new-db-id
                                                                :group_id  group-id
                                                                :perm_type :perms/create-queries)))
-            (database/delete-database! new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `query-builder` query permissions if a group has `query-builder` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :query-builder)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :query-builder (t2/select-one-fn :perm_value
                                                     :model/DataPermissions
                                                     :db_id     new-db-id
                                                     :group_id  group-id
                                                     :perm_type :perms/create-queries)))
-            (database/delete-database! new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `no` query permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :no)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :no (t2/select-one-fn :perm_value
                                          :model/DataPermissions
                                          :db_id     new-db-id
                                          :group_id  group-id
                                          :perm_type :perms/create-queries)))
-            (database/delete-database! new-db-id))))
+            (database/delete-databases! [new-db-id]))))
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "Download permissions... "
         (testing "A new database gets `one-million-rows` download permissions if a group only has `one-million-rows` for other databases"
           (data-perms/set-database-permission! group-id db-id-1 :perms/download-results :one-million-rows)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :one-million-rows (t2/select-one-fn :perm_value
                                                        :model/DataPermissions
                                                        :db_id     new-db-id
                                                        :group_id  group-id
                                                        :perm_type :perms/download-results)))
-            (database/delete-database! new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `no` download permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
-          (let [new-db-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :no (t2/select-one-fn :perm_value
                                          :model/DataPermissions
                                          :db_id     new-db-id
                                          :group_id  group-id
                                          :perm_type :perms/download-results)))
-            (database/delete-database! new-db-id)))))))
+            (database/delete-databases! [new-db-id])))))))
 
 (deftest set-new-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}

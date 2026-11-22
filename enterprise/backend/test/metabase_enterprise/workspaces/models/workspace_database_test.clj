@@ -61,7 +61,7 @@
                                                  :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
-            (let [thrown (try (database/delete-database! db-id) nil
+            (let [thrown (try (database/delete-databases! [db-id]) nil
                               (catch Throwable t t))]
               (is (some? thrown)
                   "deletion of a Database with initialized workspace_database children must throw")
@@ -96,7 +96,7 @@
                                                  :input_schemas    []
                                                  :status :unprovisioned})]
             (track-wsd! wsd-id)
-            (database/delete-database! db-id)
+            (database/delete-databases! [db-id])
             (is (false? (t2/exists? :model/Database :id db-id))
                 "Database row is gone after successful delete")
             (is (false? (t2/exists? :model/WorkspaceDatabase :id wsd-id))

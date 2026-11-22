@@ -141,10 +141,31 @@
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
   (t2/insert-returning-instances! :model/Field rows))
 
-(mu/defn fields-where
-  "The Fields matching `conditions`."
-  [conditions :- ::warehouse-schema.schema/conditions]
-  (apply t2/select :model/Field (mapcat identity conditions)))
+(mu/defn fields-targeting
+  "The Fields whose foreign key targets one of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select :model/Field :fk_target_field_id [:in field-ids]))
+
+(mu/defn nested-fields-matching
+  "The Fields of the Table with `table-id` whose `nfc_path` is `LIKE` `pattern`."
+  [table-id :- ::lib.schema.id/table
+   pattern  :- :string]
+  (t2/select :model/Field :table_id [:auto/param table-id] :nfc_path [:like [:auto/param pattern]]))
+
+(mu/defn field-ids-of-database :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (set (t2/select-pks-set :model/Field :table_id [:in ^:allow-subquery {:select [:id]
+                                                                        :from   [(t2/table-name :model/Table)]
+                                                                        :where  [:= :db_id [:auto/param database-id]]}])))
+
+(mu/defn change-fields-case!
+  "Set each of `columns` of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper` case, returning the
+  number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   kase      :- [:enum :lower :upper]
+   columns   :- [:sequential :keyword]]
+  (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -156,12 +177,6 @@
   "Apply `changes` to the Fields with `field-ids`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
    changes   :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field :id [:in field-ids] changes))
-
-(mu/defn update-fields-to-sql-changes!
-  "Apply `changes`, values or HoneySQL expressions, to the Fields with `field-ids`, returning the number updated."
-  [field-ids :- [:sequential ::lib.schema.id/field]
-   changes   :- ::warehouse-schema.schema/sql-changes]
   (t2/update! :model/Field :id [:in field-ids] changes))
 
 (mu/defn delete-fields!
@@ -534,10 +549,18 @@
   [ids :- [:sequential ::lib.schema.id/dimension]]
   (t2/select :model/Dimension :id [:in ids]))
 
-(mu/defn dimensions-where
-  "The Dimensions matching `conditions`."
-  [conditions :- ::warehouse-schema.schema/conditions]
-  (apply t2/select :model/Dimension (mapcat identity conditions)))
+(mu/defn dimensions-of-field
+  "The Dimensions of the Field with `field-id`, of `dimension-type` when it is given."
+  ([field-id :- ::lib.schema.id/field]
+   (t2/select :model/Dimension :field_id [:auto/param field-id]))
+  ([field-id       :- ::lib.schema.id/field
+    dimension-type :- ::warehouse-schema.schema/dimension.type]
+   (t2/select :model/Dimension :field_id [:auto/param field-id] :type dimension-type)))
+
+(mu/defn dimensions-reading-fields
+  "The Dimensions whose human-readable values come from the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select :model/Dimension :human_readable_field_id [:in field-ids]))
 
 (mu/defn insert-dimensions!
   "Insert the Dimension `rows` and return the inserted instances."
@@ -729,16 +752,18 @@
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (t2/insert-returning-instances! :model/Table rows))
 
-(mu/defn update-tables-to-sql-changes!
-  "Apply `changes`, values or HoneySQL expressions, to the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- ::warehouse-schema.schema/sql-changes]
-  (t2/update! :model/Table :id [:in table-ids] changes))
+(mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
+  "The ids of the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (set (t2/select-pks-set :model/Table :db_id [:auto/param database-id])))
 
-(mu/defn tables-where
-  "The Tables matching `conditions`."
-  [conditions :- ::warehouse-schema.schema/conditions]
-  (apply t2/select :model/Table (mapcat identity conditions)))
+(mu/defn change-tables-case!
+  "Set each of `columns` of the Tables with `table-ids` to its value in `kase`, `:lower` or `:upper` case, returning the
+  number updated."
+  [table-ids :- [:sequential ::lib.schema.id/table]
+   kase      :- [:enum :lower :upper]
+   columns   :- [:sequential :keyword]]
+  (t2/update! :model/Table :id [:in table-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
 (mu/defn delete-tables!
   "Delete the Tables with `table-ids`, returning the number deleted."
@@ -1012,12 +1037,3 @@
   statement that publishes no event, returning the number updated."
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
   (app-db/increment-counts! :model/Table :view_count count->ids))
-
-(mu/defn clear-fields-data-sensitivity-where!
-  "Clear the `data_sensitivity` of the Fields matching the Honey SQL `where` clause with a raw statement, which runs
-  no Field hook and publishes no event, returning the number cleared."
-  [where :- vector?]
-  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the caller logs the rows first
-  (t2/query-one {:update (t2/table-name :model/Field)
-                 :set    {:data_sensitivity nil}
-                 :where  where}))

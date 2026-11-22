@@ -390,23 +390,23 @@
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK :fk_target_field_id target-id})
-      (field/update-field! target-id {:active false})
+      (field/update-fields! [{:id target-id :active false}])
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field also drops a user-set FK semantic type whose target sync set"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK})
-      (field/update-field! source-id {:fk_target_field_id target-id})
-      (field/update-field! target-id {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (not (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field keeps a user-set semantic type other than FK on a Field sync pointed at it"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/Category})
-      (field/update-field! source-id {:fk_target_field_id target-id})
-      (field/update-field! target-id {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))

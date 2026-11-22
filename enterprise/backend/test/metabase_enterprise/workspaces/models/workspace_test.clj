@@ -224,7 +224,7 @@
                            {:name      "Linked"
                             :databases [(ws-db-attrs {:database_id db-id})]})]
           (is (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))
-          (database/delete-database! db-id)
+          (database/delete-databases! [db-id])
           (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))))))))
 
 ;;; ========================================= Permission predicates =========================================

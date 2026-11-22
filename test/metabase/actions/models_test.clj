@@ -475,7 +475,7 @@
           (table/delete-tables! [table-id])
           (is (not (t2/exists? :model/Action :id of-table)))
           (is (t2/exists? :model/Action :id of-database))
-          (database/delete-database! db-id)
+          (database/delete-databases! [db-id])
           (is (not (t2/exists? :model/Action :id of-database))))))))
 
 (deftest model-less-implicit-action-fields-test

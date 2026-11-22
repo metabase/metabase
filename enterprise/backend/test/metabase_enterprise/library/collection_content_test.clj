@@ -107,7 +107,7 @@
       (testing "Rejects published tables"
         (mt/with-temp [:model/Table table {}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                                (table/update-table! (:id table) {:collection_id (:id dashboards) :is_published true})))))
+                                (table/update-tables! [{:id (:id table) :collection_id (:id dashboards) :is_published true}])))))
       (testing "Stays a locked Library section"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                               (collection/update-collections! [{:id (:id dashboards) :name "Old dashboards"}])))))))
@@ -120,14 +120,14 @@
                                                    :is_published  true}]
       (testing "Cannot insert a published table into a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (table/create-table! (merge (mt/with-temp-defaults :model/Table)
-                                                          {:collection_id (:id regular)
-                                                           :is_published  true})))))
+                              (first (table/create-tables! [(merge (mt/with-temp-defaults :model/Table)
+                                                                   {:collection_id (:id regular)
+                                                                    :is_published  true})])))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (table/update-table! (:id table) {:collection_id (:id regular)}))))
+                              (table/update-tables! [{:id (:id table) :collection_id (:id regular)}]))))
       (testing "Can move a table out to no collection"
-        (is (some? (table/update-table! (:id table) {:collection_id nil})))))))
+        (is (some? (table/update-tables! [{:id (:id table) :collection_id nil}])))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}

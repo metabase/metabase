@@ -72,15 +72,15 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (database/create-database! {:id               id
-                                :is_audit         true
-                                :name             default-db-name
-                                :description      "Internal Audit DB used to power metabase analytics."
-                                :engine           engine
-                                :is_full_sync     true
-                                :is_on_demand     false
-                                :creator_id       nil
-                                :auto_run_queries true})
+    (database/create-databases! [{:id               id
+                                  :is_audit         true
+                                  :name             default-db-name
+                                  :description      "Internal Audit DB used to power metabase analytics."
+                                  :engine           engine
+                                  :is_full_sync     true
+                                  :is_on_demand     false
+                                  :creator_id       nil
+                                  :auto_run_queries true}])
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
     (permissions/delete-permissions! [:like :object (str "%/db/" id "/%")])))
 
@@ -91,7 +91,7 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (database/update-database! audit-db-id {:engine :postgres})
+  (database/update-databases! [{:id audit-db-id :engine :postgres}])
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -99,10 +99,11 @@
   ;; has different syntax on different appdbs
   (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (table/update-tables-where! {:id [:in table-ids-to-update]} {:schema "public" :name [:lower :name]})))
+      (table/update-tables! (mapv (fn [id] {:id id :schema "public"}) table-ids-to-update))
+      (table/change-case! (vec table-ids-to-update) :lower [:name])))
   (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
-      (field/update-fields-where! {:id [:in field-ids-to-update]} {:name [:lower :name]})))
+      (field/change-case! (vec field-ids-to-update) :lower [:name])))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
@@ -125,15 +126,15 @@
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (database/update-database! audit-db-id {:engine (mdb/db-type)})
+    (database/update-databases! [{:id audit-db-id :engine (mdb/db-type)}])
     (case (mdb/db-type)
       :mysql
-      (table/update-tables-where! {:db_id audit-db-id} {:schema nil})
+      (table/update-tables! (mapv (fn [id] {:id id :schema nil}) (table/ids-of-database audit-db-id)))
 
       :h2
       (do
-        (table/update-tables-where! {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-        (field/update-fields-where! {:table_id [:in (audit-app.db/table-ids-of-database-query audit-db-id)]} {:name [:upper :name]})
+        (table/change-case! (vec (table/ids-of-database audit-db-id)) :upper [:schema :name])
+        (field/change-case! (vec (field/ids-of-database audit-db-id)) :upper [:name])
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres
@@ -429,11 +430,10 @@
           ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
           (doseq [{orphan-id :id} orphans]
             (repoint-cards-to-survivor! orphan-id (:id survivor))
-            (table/delete-table! orphan-id))
+            (table/delete-tables! [orphan-id]))
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
-          (table/update-table! (:id survivor)
-                               {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (table/update-tables! [{:id (:id survivor) :active true :name c-name :schema c-schema :is_defective_duplicate false}])
           (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                      (count orphans) (:id survivor)))))))
 

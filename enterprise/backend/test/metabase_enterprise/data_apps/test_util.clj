@@ -241,14 +241,17 @@
                  pairs  (filterv first pairs)
                  empty  (when (seq to-publish)
                           (warehouse-schema.db/empty-table-user-settings (vec to-publish)))
-                 delete (events/deleted :event/table-user-settings-delete :model/TableUserSettings (vec empty))]
+                 gone   (into #{} (map :id) empty)]
+             (events/publish-event! :event/table-user-settings-delete (events/delete-event (vec empty)))
              (when (seq to-publish)
                (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))
-             (events/publish-lifecycle!
-              [(events/updated :event/table-user-settings-update
-                               (mapv first pairs)
-                               (mapv (fn [[row changes]] (events/updated-row row changes)) pairs))
-               delete]))))))))
+             (events/publish-event! :event/table-user-settings-update
+                                    (events/update-event (into {} (map (fn [[row _changes]] [(:id row) row])) pairs)
+                                                         (into []
+                                                               (keep (fn [[row changes]]
+                                                                       (when-not (gone (:id row))
+                                                                         (assoc changes :id (:id row)))))
+                                                               pairs))))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

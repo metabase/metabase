@@ -41,7 +41,6 @@
   (:require
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -52,7 +51,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -95,12 +93,11 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (t2/with-transaction [_conn]
-      (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-         ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-         ;; Re-fetch our metadata because there might be some things that have changed after calling
-         ;; `sync-instances`
-         (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))))
+    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+       ;; Re-fetch our metadata because there might be some things that have changed after calling
+       ;; `sync-instances`
+       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

@@ -17,7 +17,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.types.core :as types]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -457,21 +456,12 @@
     (t2/with-transaction [_conn]
       (check-fk-targets (filter :fk_target_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-fields! rows))
-        (events/publish-lifecycle! [(events/created :event/field-create <>)])))))
+        (events/publish-event! :event/field-create (events/create-event <>))))))
 
 (mu/defn create-fields! :- [:sequential ::lib.schema.id/field]
   "Insert the Field `rows` and return their ids, refusing a foreign key target outside the Database of a Field's Table."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
   (mapv :id (create-field-instances! rows)))
-
-(mu/defn create-field! :- ::lib.schema.id/field
-  "Insert the Field `row` and return its id, as [[create-fields!]] does."
-  [row :- ::warehouse-schema.schema/field.create]
-  (first (create-fields! [row])))
-
-(def ^:private stored-columns
-  "The columns of an update whose effects depend on the stored row."
-  [:display_name :json_unfolding :fk_target_field_id])
 
 (defmulti clear-for-deactivated-fields!
   "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose
@@ -500,17 +490,20 @@
     (assoc changes (:id previous) {:previous-object (or before previous)
                                    :object          (updated-field (or current previous) row)})))
 
-(defn- field-updated
-  "The `:event/field-update` event of `changes`, `{id {:previous-object :object}}`, leaving out those that change
-  nothing."
+(defn- publish-field-updates!
+  "Publish the `:event/field-update` event of `changes`, `{id {:previous-object :object}}`, leaving out those that
+  change nothing."
   [changes]
-  [:event/field-update (into [] (comp (map val) (filter #(seq (u.events/changed-keys %)))) changes)])
+  (events/publish-event! :event/field-update
+                         (events/update-event (update-vals changes :previous-object)
+                                              (mapv #(hash-map :id %) (keys changes))
+                                              {:objects (update-vals changes :object)})))
 
 (defn- clear-fk-targets!
   "Clear the foreign keys to the Fields with `field-ids` in the Fields that target them, and their FK semantic type,
   returning `changes` with those updates added."
   [changes field-ids]
-  (let [targeting (warehouse-schema.db/fields-where {:fk_target_field_id [:in field-ids]})]
+  (let [targeting (warehouse-schema.db/fields-targeting (vec field-ids))]
     (if (empty? targeting)
       changes
       (do (warehouse-schema.db/clear-fk-targets-to-fields! field-ids)
@@ -538,7 +531,7 @@
   (reduce (fn [changes {:keys [table_id json_unfolding] field-name :name}]
             (let [pattern (nested-fields-pattern field-name)
                   active? (boolean json_unfolding)
-                  nested  (warehouse-schema.db/fields-where {:table_id table_id :nfc_path [:like pattern]})]
+                  nested  (warehouse-schema.db/nested-fields-matching table_id pattern)]
               (if (empty? nested)
                 changes
                 (do (warehouse-schema.db/set-nested-fields-active! table_id pattern active?)
@@ -556,12 +549,18 @@
                   (warehouse-schema.db/update-field! (:id (first rows)) changes)
                   (warehouse-schema.db/update-fields! (mapv :id rows) changes)))))
 
+(def ^:private write-batch-size
+  "The most rows one statement of a bulk write of Fields carries, so that a write of the Fields of a large Database stays
+  under the parameter limits of the app DB."
+  10000)
+
 (defn- stored-fields
-  "The stored Fields that `rows` update, `{id row}`, read once."
-  [rows]
-  (if-let [ids (not-empty (into #{} (map :id) rows))]
-    (u/index-by :id (warehouse-schema.db/fields ids))
-    {}))
+  "The stored Fields that `rows` update, `{id row}`: those of `stored`, the rows the caller read, and the others read
+  once."
+  [rows stored]
+  (let [missing (into #{} (comp (map :id) (remove #(contains? stored %))) rows)]
+    (cond-> (or stored {})
+      (seq missing) (merge (u/index-by :id (warehouse-schema.db/fields missing))))))
 
 (defn- apply-field-updates!
   "Apply each of `rows`, the id of a Field and the columns to change, to the `stored` Fields, `{id row}`, and the changes
@@ -583,95 +582,88 @@
            (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
           (let [changes (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
             (u/prog1 (update-fields-by-change! rows)
-              (events/publish-lifecycle!
-               [(field-updated (reduce (fn [changes {:keys [id] :as row}]
-                                         (if-let [previous (stored id)]
-                                           (with-change changes previous (dissoc row :id))
-                                           changes))
-                                       changes
-                                       rows))]))))))))
+              (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
+                                                (if-let [previous (stored id)]
+                                                  (with-change changes previous (dissoc row :id))
+                                                  changes))
+                                              changes
+                                              rows)))))))))
 
 (mu/defn update-fields! :- [:sequential [:map [:id ::lib.schema.id/field]]]
   "Apply each of `rows`, the id of a Field and the columns to change, and return them. Deactivating a Field clears
   the foreign keys to it and the remappings that read it, a new display name renames its Dimension, and a change of
-  `json_unfolding` sets its nested Fields active or inactive."
-  [rows :- [:sequential ::warehouse-schema.schema/field.update-row]]
-  (apply-field-updates! (stored-fields rows) rows)
-  (vec rows))
+  `json_unfolding` sets its nested Fields active or inactive. The stored rows are read once, unless the caller gives
+  them as `:stored`."
+  ([rows :- [:sequential ::warehouse-schema.schema/field.update-row]]
+   (update-fields! rows nil))
+  ([rows             :- [:sequential ::warehouse-schema.schema/field.update-row]
+    {:keys [stored]} :- ::warehouse-schema.schema/field.write-opts]
+   (doseq [batch (partition-all write-batch-size rows)]
+     (apply-field-updates! (stored-fields batch stored) batch))
+   (vec rows)))
 
-(mu/defn update-field! :- :int
-  "Apply `changes` to `field`, the Field or its id, and return the number updated, as [[update-fields!]] does. A Field
-  the caller gives is the stored row the events publish as the row before the update."
-  [field   :- [:or ::lib.schema.id/field [:fn {:error/message "a Field"} #(t2/instance-of? :model/Field %)]]
-   changes :- ::warehouse-schema.schema/field.update]
-  (let [row (assoc changes :id (u/the-id field))]
-    (apply-field-updates! (if (t2/instance? field) {(:id field) field} (stored-fields [row])) [row])))
+(mu/defn change-case!
+  "Set each of `columns`, such as `:name`, of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper`
+  case, which the database computes: one read before, one statement and one read after, for the event."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   kase      :- [:enum :lower :upper]
+   columns   :- [:sequential [:enum :name :display_name]]]
+  (when (seq field-ids)
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (warehouse-schema.db/fields (set field-ids)))]
+        (warehouse-schema.db/change-fields-case! (vec field-ids) kase columns)
+        (events/publish-event! :event/field-update
+                               (events/update-event stored
+                                                    (mapv #(hash-map :id %) (keys stored))
+                                                    {:objects (u/index-by :id (warehouse-schema.db/fields (set (keys stored))))}))))))
 
-(mu/defn update-fields-where! :- :int
-  "Apply `changes`, values or HoneySQL expressions, to the Fields matching `conditions` and return the number updated:
-  one statement, unless `changes` set a column whose effects [[update-fields!]] carries, which updates the matching
-  Fields as it does. The matching Fields are read once; an expression the database evaluates is in the event as given."
-  [conditions :- ::warehouse-schema.schema/conditions
-   changes    :- ::warehouse-schema.schema/sql-changes]
-  (t2/with-transaction [_conn]
-    (let [stored (u/index-by :id (warehouse-schema.db/fields-where conditions))]
-      (cond
-        (empty? stored)
-        0
-
-        (or (false? (:active changes)) (some #(contains? changes %) stored-columns))
-        (apply-field-updates! stored (mapv #(assoc changes :id %) (keys stored)))
-
-        :else
-        (u/prog1 (warehouse-schema.db/update-fields-to-sql-changes! (vec (keys stored)) changes)
-          (events/publish-lifecycle!
-           [(field-updated (reduce (fn [acc previous] (with-change acc previous changes)) {} (vals stored)))]))))))
+(mu/defn ids-of-database :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/field-ids-of-database database-id))
 
 (defn- set-position-column!
-  "Set `column` of each Field in `field-id->position` with `update!`, one statement, and publish the updates."
-  [column update! field-id->position]
+  "Set `column`, `:position` or `:custom_position`, of each Field in `field-id->position`, one statement, and publish
+  the updates."
+  [column field-id->position]
   (when (seq field-id->position)
     (t2/with-transaction [_conn]
       (let [stored (warehouse-schema.db/fields (set (keys field-id->position)))]
-        (u/prog1 (update! field-id->position)
-          (events/publish-lifecycle!
-           [(field-updated (reduce (fn [acc {:keys [id] :as previous}]
-                                     (with-change acc previous {column (field-id->position id)}))
-                                   {}
-                                   stored))]))))))
+        (u/prog1 (case column
+                   :position        (warehouse-schema.db/update-field-positions! field-id->position)
+                   :custom_position (warehouse-schema.db/update-field-custom-positions! field-id->position))
+          (publish-field-updates! (reduce (fn [acc {:keys [id] :as previous}]
+                                            (with-change acc previous {column (field-id->position id)}))
+                                          {}
+                                          stored)))))))
 
 (mu/defn set-positions!
   "Set the `position` of each Field in `field-id->position`, in one statement."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (set-position-column! :position warehouse-schema.db/update-field-positions! field-id->position))
+  (set-position-column! :position field-id->position))
 
 (mu/defn set-custom-positions!
   "Set the `custom_position` of each Field in `field-id->position`, in one statement."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (set-position-column! :custom_position warehouse-schema.db/update-field-custom-positions! field-id->position))
+  (set-position-column! :custom_position field-id->position))
 
 (mu/defn set-display-name!
   "Set the display name of the Field with `field-id`, renaming its Dimension when it changes."
   [field-id     :- ::lib.schema.id/field
    display-name :- :string]
-  (update-field! field-id {:display_name display-name}))
+  (update-fields! [{:id field-id :display_name display-name}]))
 
 (defn- delete-field-levels!
   "Delete the Fields in `levels`, a sequence of sets of ids each holding the children of the one before, the deepest
-  level first, with one read and one statement per level, and publish the deletes."
+  level first, with one read, and one event and one statement per level, the event published right before the
+  statement."
   [levels]
   (t2/with-transaction [_conn]
     (let [fields (u/index-by :id (warehouse-schema.db/fields (into #{} cat levels)))]
-      (events/publish-lifecycle!
-       [[:event/field-delete
-         (into []
-               (mapcat (fn [ids]
-                         (when (seq ids)
-                           (let [[_topic changes] (events/deleted :event/field-delete :model/Field
-                                                                  (into [] (keep fields) ids))]
-                             (warehouse-schema.db/delete-fields! (vec ids))
-                             changes))))
-               (reverse levels))]]))))
+      (doseq [ids (reverse levels)
+              :when (seq ids)]
+        (events/publish-event! :event/field-delete (events/delete-event (into [] (keep fields) ids)))
+        (warehouse-schema.db/delete-fields! (vec ids))))))
 
 (mu/defn delete-fields!
   "Delete the Fields with `ids` and the Fields nested under them, which a foreign key cannot cascade to: one read per
@@ -711,14 +703,6 @@
         (when (pos? deleted)
           (recur)))))
   nil)
-
-(mu/defn clear-data-sensitivity-where! :- :int
-  "Clear the `data_sensitivity` of the Fields matching the Honey SQL `where` clause, so that the next scan of the
-  classifier computes it again: the rows logged in the change log and one statement, returning the number cleared."
-  [where :- vector?]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Field :update {:where where})
-    (warehouse-schema.db/clear-fields-data-sensitivity-where! where)))
 
 (defmethod database/delete-for-databases! :model/Field
   [_model databases]

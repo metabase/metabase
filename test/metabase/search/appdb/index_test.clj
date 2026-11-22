@@ -120,7 +120,7 @@
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (database/update-database! db-id {:name alternate-name})
+        (database/update-databases! [{:id db-id :name alternate-name}])
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test

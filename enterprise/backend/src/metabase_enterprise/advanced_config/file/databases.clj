@@ -120,7 +120,7 @@
                         {:database-name (:name database)})))
       (when-let [{existing-database-id :id} (advanced-config.db/database-by-name (:name database))]
         (log/info (u/format-color :blue "Deleting Database with ID %s" existing-database-id))
-        (database/delete-database! existing-database-id)))
+        (database/delete-databases! [existing-database-id])))
 
     (:is_sample database)
     (init-sample-database! database)
@@ -142,24 +142,23 @@
           (let [previous      (advanced-config.db/database (:id existing))
                 stored-schema (get-in previous [:settings :database-workspace-schema])]
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
-            (database/update-database! (:id existing)
-                                       (cond-> (normalize-settings database)
-                                         ;; The entry's `settings` replace the stored map. Keep the stored
-                                         ;; `database-workspace-schema` when the entry does not name the key:
-                                         ;; dropping it deletes the database's remap rows below.
-                                         (and (some? stored-schema)
-                                              (:settings database)
-                                              (not (contains? (:settings database) :database-workspace-schema)))
-                                         (assoc-in [:settings :database-workspace-schema] stored-schema)
-                                         (:is_attached_dwh database) strip-attached-dwh-update-ks
-                                         (:is_stub existing)         (assoc :is_stub             false
-                                                                            :initial_sync_status "incomplete")))
+            (database/update-databases! [(assoc (cond-> (normalize-settings database)
+                                                  ;; The entry's `settings` replace the stored map. Keep the stored
+                                                  ;; `database-workspace-schema` when the entry does not name the key:
+                                                  ;; dropping it deletes the database's remap rows below.
+                                                  (and (some? stored-schema)
+                                                       (:settings database)
+                                                       (not (contains? (:settings database) :database-workspace-schema)))
+                                                  (assoc-in [:settings :database-workspace-schema] stored-schema)
+                                                  (:is_attached_dwh database) strip-attached-dwh-update-ks
+                                                  (:is_stub existing)         (assoc :is_stub             false
+                                                                                     :initial_sync_status "incomplete")) :id (:id existing))])
             (when (:is_stub existing)
               (sync-if-configured! (advanced-config.db/database (:id existing)))))
 
           :else
-          (let [db (database/create-database! (cond-> (normalize-settings database)
-                                                (:is_stub database) (assoc :initial_sync_status "complete")))]
+          (let [db (first (database/create-databases! [(cond-> (normalize-settings database)
+                                                         (:is_stub database) (assoc :initial_sync_status "complete"))]))]
             (log/info (u/format-color :green "Created new %s Database" (:engine database)))
             (if (:is_stub database)
               (log/info "Created stub database; skipping sync.")

@@ -542,7 +542,7 @@
     (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
                    :model/Field {f-b :id} {:table_id table-id :name "b" :database_position 0 :position 0}
                    :model/Field {f-a :id} {:table_id table-id :name "a" :database_position 1 :position 1}]
-      (table/update-table! table-id {:field_order :alphabetical})
+      (table/update-tables! [{:id table-id :field_order :alphabetical}])
       (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
 (deftest is-published-and-collection-id-test

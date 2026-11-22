@@ -736,7 +736,7 @@
                  (try
                    (f temp-database)
                    (finally
-                     (database/delete-database! (:id temp-database)))))))
+                     (database/delete-databases! [(:id temp-database)]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
   "Creates a temporary Collection as `create-collections!` does, without checking its attributes against the schema of a

@@ -108,12 +108,12 @@
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
           db (if-let [db-id (sample-data.db/sample-database-id)]
-               (do (database/update-database! db-id {:details details})
+               (do (database/update-databases! [{:id db-id :details details}])
                    (sample-data.db/database db-id))
-               (database/create-database! {:name      sample-database-name
-                                           :details   details
-                                           :engine    engine
-                                           :is_sample true}))]
+               (first (database/create-databases! [{:name      sample-database-name
+                                                    :details   details
+                                                    :engine    engine
+                                                    :is_sample true}])))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! (u/the-id db)))
     (log/debug "Finished adding Sample Database.")
@@ -162,10 +162,10 @@
   (let [details  (try-to-extract-sample-database! engine)
         settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (database/update-database! (:id old-sample-db)
-                                 (cond-> {:engine engine, :details details}
-                                   settings (assoc :settings settings)))
-      (table/update-tables-where! {:db_id (:id old-sample-db)} {:schema (table-schema-for-engine engine)})
+      (database/update-databases! [(assoc (cond-> {:engine engine, :details details}
+                                            settings (assoc :settings settings)) :id (:id old-sample-db))])
+      (table/update-tables! (mapv (fn [id] {:id id :schema (table-schema-for-engine engine)})
+                                  (table/ids-of-database (:id old-sample-db))))
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
@@ -187,4 +187,4 @@
          (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
-             (database/update-database! (:id sample-db) {:details intended}))))))))
+             (database/update-databases! [{:id (:id sample-db) :details intended}]))))))))
