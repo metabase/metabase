@@ -6,6 +6,7 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useGenerateCustomExpressionMutation } from "metabase/metabot/api";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getMetabotEntityId } from "metabase/metabot/state";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
@@ -75,7 +76,10 @@ export function useSummaryFormulaGenerator({
     if (result.status === "error") {
       return result;
     }
-    const request = generateCustomExpression(result.request);
+    const request = generateCustomExpression({
+      ...result.request,
+      metabot_id: getMetabotEntityId(),
+    });
     pendingRequests.current.add(request);
     const { data, error } = await request;
     pendingRequests.current.delete(request);

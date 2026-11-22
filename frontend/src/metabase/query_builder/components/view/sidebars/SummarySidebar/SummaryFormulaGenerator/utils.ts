@@ -24,7 +24,10 @@ type FormulaColumnType = "boolean" | "number" | "datetime" | "string";
 type FormulaReferenceKind = "column" | "metric" | "measure";
 
 type FormulaRequestResult =
-  | { status: "ok"; request: GenerateCustomExpressionRequest }
+  | {
+      status: "ok";
+      request: Omit<GenerateCustomExpressionRequest, "metabot_id">;
+    }
   | { status: "error"; message: string };
 
 /**

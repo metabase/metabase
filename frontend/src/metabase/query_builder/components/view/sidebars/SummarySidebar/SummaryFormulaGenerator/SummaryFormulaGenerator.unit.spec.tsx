@@ -18,6 +18,7 @@ import {
   within,
 } from "__support__/ui";
 import { databaseApi } from "metabase/api";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -195,6 +196,7 @@ describe("summary formula generator", () => {
       mode: "expression",
       metrics: [],
       measures: [],
+      metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
     });
   });
 

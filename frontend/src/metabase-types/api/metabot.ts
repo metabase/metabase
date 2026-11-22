@@ -259,6 +259,7 @@ export type GenerateCustomExpressionRequest = {
   /** Measure references in escaped expression syntax. Only allowed in `aggregation` mode. */
   measures?: string[] | null;
   table_name?: string | null;
+  metabot_id: string;
   database_id: DatabaseId;
 };
 
