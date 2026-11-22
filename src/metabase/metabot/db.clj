@@ -1238,7 +1238,7 @@
 (mu/defn insert-conversation-row!
   "Insert the MetabotConversation `row`, which carries its own id and timestamps, returning the inserted row."
   [row :- ::metabot.schema/metabot-conversation]
-  (first (mdb/insert-returning-instances! :model/MetabotConversation row)))
+  (first (mdb/insert-returning-instances! :model/MetabotConversation [row])))
 
 (mu/defn insert-usage-log-row!
   "Insert the AiUsageLog `row`, timestamps and all."

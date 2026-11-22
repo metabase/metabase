@@ -59,7 +59,7 @@
 (mu/defn insert-impersonation!
   "Insert `impersonation` and return the new instance."
   [impersonation :- (mut/select-keys ::impersonation.schema/connection-impersonation.update [:db_id :group_id :attribute])]
-  (first (app-db/insert-returning-instances! :model/ConnectionImpersonation impersonation)))
+  (first (app-db/insert-returning-instances! :model/ConnectionImpersonation [impersonation])))
 
 (mu/defn delete-impersonation!
   "Delete the ConnectionImpersonation with `impersonation-id`."
