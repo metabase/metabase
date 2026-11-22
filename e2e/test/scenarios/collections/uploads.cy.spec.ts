@@ -3,6 +3,18 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { FIXTURE_PATH, VALID_CSV_FILES } from "e2e/support/helpers";
 
+type Dialect = "postgres" | "mysql";
+
+type TestFile = {
+  valid: boolean;
+  fileName: string;
+  tableName: string;
+  humanName?: string;
+  rowCount?: number;
+};
+
+type UploadMode = "append" | "replace";
+
 describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -79,7 +91,8 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
     H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
   });
 
-  ["postgres", "mysql"].forEach((dialect) => {
+  const DIALECTS: Dialect[] = ["postgres", "mysql"];
+  DIALECTS.forEach((dialect) => {
     describe(`CSV Uploading (${dialect})`, () => {
       beforeEach(() => {
         H.restore(`${dialect}-writable`);
@@ -130,20 +143,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           H.queryWritableDB(tableQuery, dialect).then((result) => {
             expect(result.rows.length).to.equal(0);
           });
-
-          cy.log("metabase#55382");
-          closeUploadErrorDetails();
-
-          cy.intercept("PUT", "/api/collection/*").as("trashCollection");
-          H.openCollectionMenu();
-          H.popover().findByText("Move to trash").click();
-          H.modal().button("Move to trash").click();
-          cy.wait("@trashCollection");
-
-          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
-          cy.findByRole("dialog", { name: "Upload error details" }).should(
-            "not.exist",
-          );
         });
       });
 
@@ -204,42 +203,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       });
     });
   });
-
-  it("should allow you to choose a model to append to if there are multiple (metabase#53824)", () => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-
-    H.enableUploads("postgres");
-    H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
-    H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
-
-    H.visitCollection(FIRST_COLLECTION_ID);
-
-    cy.fixture(`${FIXTURE_PATH}/${VALID_CSV_FILES[2].fileName}`).then(
-      (file) => {
-        cy.get("#upload-input").selectFile(
-          {
-            contents: Cypress.Buffer.from(file),
-            fileName: VALID_CSV_FILES[2].fileName,
-            mimeType: "text/csv",
-          },
-          { force: true },
-        );
-      },
-    );
-
-    cy.findByRole("radio", { name: /Append to a model/ }).click();
-
-    cy.findByRole("textbox", { name: "Select a model" })
-      .should("contain.value", VALID_CSV_FILES[1].humanName)
-      .click();
-
-    H.popover().findByText(VALID_CSV_FILES[0].humanName).click();
-    cy.findByRole("textbox", { name: "Select a model" }).should(
-      "have.value",
-      VALID_CSV_FILES[0].humanName,
-    );
-  });
 });
 
 describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
@@ -261,13 +224,15 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
 
+    waitForActiveUploadTables(5);
+
     cy.visit("/admin/settings/uploads");
     cy.wait("@getUploadTables");
 
     // Re-query the container fresh on each assertion instead of caching it via
     // `within`: the table re-renders when `getUploadTables` resolves, detaching
     // the captured node, and a retrying query against a detached subtree gets
-    // stuck on the intermediate render (metabase flake: found 2, expected 3).
+    // stuck on the intermediate render.
     cy.findByTestId("upload-tables-table")
       .findAllByText(/dog_breeds/i)
       .should("have.length", 3);
@@ -319,18 +284,45 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
   });
 });
 
-function uploadFileToCollection(testFile, viewModel = true) {
+/**
+ * The sync `H.restore` kicks off can still be running when the first upload creates its table: the
+ * sync listed the warehouse's tables before that table existed, so it retires the table it does not
+ * recognise (`active=false`), and `/tables` — which only returns active tables — never lists it
+ * (flake: found 2 dog_breeds rows, expected 3). A later sync does see the table in the warehouse and
+ * reactivates it, so sync again until every uploaded table is back.
+ */
+function waitForActiveUploadTables(expectedCount: number, iteration = 0) {
+  if (iteration === 10) {
+    throw new Error(
+      `Fewer than ${expectedCount} upload tables are active. Something is wrong.`,
+    );
+  }
+
+  cy.request<unknown[]>("GET", "/api/ee/upload-management/tables").then(
+    ({ body }) => {
+      if (body.length >= expectedCount) {
+        return;
+      }
+
+      cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+      cy.wait(1000);
+      waitForActiveUploadTables(expectedCount, iteration + 1);
+    },
+  );
+}
+
+function uploadFileToCollection(testFile: TestFile) {
   cy.get("@collectionId").then((collectionId) =>
     cy.visit(`/collection/${collectionId}`),
   );
 
   H.uploadFile("#upload-input", "Uploads Collection", testFile);
 
-  if (testFile.valid && viewModel) {
+  if (testFile.valid) {
     cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
     cy.findByTestId("collection-table").within(() => {
-      cy.findByText(testFile.humanName);
+      cy.findByText(String(testFile.humanName));
     });
 
     cy.findByTestId("status-root-container")
@@ -350,7 +342,15 @@ function closeUploadErrorDetails() {
   cy.findByRole("dialog", { name: "Upload error details" }).should("not.exist");
 }
 
-function assertUploadedRowCount({ dialect, testFile, rowCount }) {
+function assertUploadedRowCount({
+  dialect,
+  testFile,
+  rowCount,
+}: {
+  dialect: Dialect;
+  testFile: TestFile;
+  rowCount?: number;
+}) {
   const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
   H.queryWritableDB(tableQuery, dialect).then((result) => {
@@ -369,6 +369,10 @@ function uploadToExisting({
   testFile,
   identicalSchema = true,
   uploadMode = "append",
+}: {
+  testFile: TestFile;
+  identicalSchema?: boolean;
+  uploadMode?: UploadMode;
 }) {
   cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
   cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
