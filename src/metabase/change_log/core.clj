@@ -19,15 +19,10 @@
 
       {:id 830, :table_name \"report_card\", :row_id 5, :action \"update\", :created_at ...}
 
-  While the feature is on, each write of a tracked model adds one query to its batch of events, and a delete reads
-  what it cascades to. While it is off, the consumer runs no query.
+  While the feature is on, each event of a tracked model adds one query, and a delete reads what it cascades to. While
+  it is off, the consumer runs no query.
 
-  To track a model, give it a spec and derive `:hook/events` next to its other hooks:
-
-      (doto :model/PermissionsGroup
-        (derive :metabase/model)
-        (derive :hook/entity-id)
-        (derive :hook/events))
+  To track a model, give it a spec:
 
       (defmethod change-log/spec :model/PermissionsGroup [_model]
         {:track [:name :entity_id :magic_group_type :is_tenant_group]
@@ -37,10 +32,11 @@
   whose change is logged, and under `:skip` the ones whose change alone logs nothing. A new column fails
   `spec-columns-test` until it is in one of them.
 
-  `metabase.change-log.events` consumes the lifecycle events of the model: it logs each insert, update and delete, once
-  per row at the end of the batch of the write. A model whose delete cascades to a tracked table (`ON DELETE CASCADE`,
-  or `ON DELETE SET NULL`) also derives `:hook/events`, because the cascade is captured at the delete, before the
-  database runs it, and logged with it at any depth. A tracked model needs a primary key of one integer column and a
+  `metabase.change-log.events` consumes the lifecycle events that the write functions of the model publish: it logs
+  each insert, update and delete, once per row. A delete event is published right before its statement, so the consumer
+  reads what the database then removes or nulls in tracked tables (`ON DELETE CASCADE`, `ON DELETE SET NULL`) and logs
+  it with the delete, at any depth. The rows of a child that publishes no events of its own are logged by its plain
+  writes with [[log-changes!]]. A tracked model needs a primary key of one integer column and a
   namespace that loads at startup: `metabase.change-log.events-test` checks both. The consumer reads the key from the
   row the insert returns, so an insert that picks its returned columns must include the key: `[:model/User :id :email]`,
   not `[:model/User :email]`. Without the key, the insert throws in dev and test. In production it goes ahead, and

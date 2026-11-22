@@ -54,8 +54,7 @@
     :pulse-create :subscription-create})
 
 (def ^:private published-topics
-  "The topics that the write functions of the models without an `events/spec` publish by hand, which the audit log
-  stores under their names."
+  "The topics that the write functions of the models publish for a row the audit log stores under the same name."
   #{:dashboard-add-cards :dashboard-remove-cards
     :glossary-create :glossary-update :glossary-delete
     :group-create :group-update :group-delete
