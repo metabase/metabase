@@ -35,6 +35,10 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::exploration.revision
+  "An Exploration as a Revision stores it: its tracked columns."
+  [:select-keys ::exploration.update [:name :description :collection_id :archived]])
+
 (mr/def ::exploration.update-row
   "An Exploration by its id with the columns to change."
   [:merge

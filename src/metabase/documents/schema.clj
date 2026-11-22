@@ -70,6 +70,11 @@
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
+(mr/def ::document.revision
+  "A Document as a Revision stores it: its tracked columns."
+  [:select-keys ::document.update
+   [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]])
+
 (mr/def ::document.create
   "What creating a Document takes: its name, and the columns a caller gives; the public uuid prefix follows from the
   public uuid and is not accepted."

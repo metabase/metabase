@@ -614,9 +614,9 @@
   its dashcards. Its writes publish no event that a Revision comes of."
   [dashboard-id        :- ::lib.schema.id/dashboard
    _user-id            :- ms/PositiveInt
-   serialized-dashboard :- :map]
+   serialized-dashboard :- ::dashboards.schema/dashboard.revision]
   (let [cleaned-parameters   (dashboards.revisions/clean-invalid-parameter-card-references
-                              (or (:parameters serialized-dashboard) []))
+                              (:parameters serialized-dashboard))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)
         serialized-dashcards (:cards serialized-dashboard)
         kept-tab-ids         (into #{} (map :id) (:tabs serialized-dashboard))
@@ -624,16 +624,16 @@
     (parameter-card/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
     (dashboard-card/unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
     (let [dashcards     (dashboards.revisions/remove-invalid-dashcards dashboard-id serialized-dashcards)
-          current-cards (->> (t2/hydrate (dashboards.db/dashcards dashboard-id) :series)
+          current-cards (->> (dashboards.db/dashcards dashboard-id)
                              (remove #(and (contains? current-tab-ids (:dashboard_tab_id %))
                                            (not (contains? kept-tab-ids (:dashboard_tab_id %)))))
-                             (mapv #(revisions/snapshot :model/DashboardCard %)))]
+                             (dashboards.revisions/snapshot-dashcards))]
       (queries/check-newly-exposed-dashcards-timeline-permissions!
        (dashboards.db/dashboard dashboard-id) current-cards dashcards)
       (update-dashboards! [(assoc (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard)))
                                   :id        dashboard-id
                                   :tabs      (mapv #(select-keys % [:id :name :position]) (:tabs serialized-dashboard))
-                                  :dashcards (mapv #(update % :series vec) dashcards))]
+                                  :dashcards dashcards)]
                           {:writer :revert})
       (dashboard-card/archive-internal-dashboard-questions! dashboard-id serialized-dashcards))
     serialized-dashboard))
@@ -753,8 +753,8 @@
    :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
               :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
               :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
-   :children {:cards {:model :model/DashboardCard :as :dashcards}
-              :tabs  {:model :model/DashboardTab :as :tabs}}
+   :schema   ::dashboards.schema/dashboard.revision
+   :snapshot dashboards.revisions/snapshot-parts
    :revert!  revert-dashboard!
    :describe dashboards.revisions/describe-change})
 

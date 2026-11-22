@@ -302,8 +302,8 @@
          :model/Action               action    {:model_id (:id card)
                                                 :type     :implicit
                                                 :name     "An action"}]
-        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardCard))
-                               :dashboard_id :id)
+        (let [columns    (disj (set (revisions.spec/schema-keys :metabase.dashboards.schema/dashcard.revision))
+                               :dashboard_id :id :series)
               update-col (fn [col value]
                            (cond
                              (= col :action_id)              (:id action)
@@ -334,7 +334,7 @@
       (mt/with-temp
         [:model/Dashboard     dashboard {:name "A Dashboard"}
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
-        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardTab))
+        (let [columns    (disj (set (revisions.spec/schema-keys :metabase.dashboards.schema/dashboard-tab.revision))
                                :dashboard_id :id)
               update-col (fn [_col value]
                            (cond

@@ -62,6 +62,11 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::segment.revision
+  "A Segment as a Revision stores it: its tracked columns."
+  [:select-keys ::segment.update
+   [:name :description :definition :archived :table_id :caveats :points_of_interest :show_in_getting_started]])
+
 (mr/def ::segment.create
   "What a caller gives to create a Segment; its table follows its definition."
   [:map {:closed true}

@@ -244,6 +244,44 @@
    [:map {:closed true}
     [:id ms/PositiveInt]]])
 
+(mr/def ::dashcard.revision
+  "A DashboardCard as a Revision stores it among the cards of a Dashboard: its tracked columns, its `:id` and the ids of
+  the Cards of its series, which an older snapshot may lack."
+  [:schema
+   {:decode/normalize (fn [dashcard]
+                        (cond-> dashcard
+                          (map? dashcard) (update :series #(or % []))))}
+   [:merge
+    [:select-keys ::dashboard-card.update
+     [:card_id :action_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y :parameter_mappings
+      :inline_parameters :visualization_settings]]
+    [:map {:closed true}
+     [:id     {:optional true} ::lib.schema.id/dashcard]
+     [:series {:optional true} [:sequential ::lib.schema.id/card]]]]])
+
+(mr/def ::dashboard-tab.revision
+  "A DashboardTab as a Revision stores it among the tabs of a Dashboard: its tracked columns and its `:id`."
+  [:merge
+   [:select-keys ::dashboard-tab.update [:name :position :dashboard_id]]
+   [:map {:closed true}
+    [:id {:optional true} ::lib.schema.id/dashboard-tab]]])
+
+(mr/def ::dashboard.revision
+  "A Dashboard as a Revision stores it: its tracked columns, its cards and its tabs. A snapshot recorded before tabs
+  existed holds none, and one without parameters holds none."
+  [:schema
+   {:decode/normalize (fn [snapshot]
+                        (cond-> snapshot
+                          (map? snapshot) (-> (update :cards #(or % []))
+                                              (update :tabs #(or % []))
+                                              (update :parameters #(or % [])))))}
+   [:merge
+    [:select-keys ::dashboard.update
+     [:name :description :archived :archived_directly :auto_apply_filters :cache_ttl :collection_id :parameters :width]]
+    [:map {:closed true}
+     [:cards {:optional true} [:sequential [:ref ::dashcard.revision]]]
+     [:tabs  {:optional true} [:sequential [:ref ::dashboard-tab.revision]]]]]])
+
 (mr/def ::external-dashboard
   "A Dashboard as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}

@@ -616,6 +616,11 @@
   [_model databases]
   (delete-transforms! (transforms.db/transform-ids-for-source-databases (mapv :id databases))))
 
+(defn- revert-transform!
+  "Return the Transform with `id` to the `snapshot` of a Transform that a Revision recorded."
+  [id _user-id snapshot]
+  (update-transforms! [(assoc snapshot :id id)] {:writer :revert}))
+
 (def ^:private revision-columns
   "The columns a revision of a Transform records and a revert restores."
   [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
@@ -652,9 +657,9 @@
 (defmethod revisions/spec :model/Transform [_model]
   {:track     revision-columns
    :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :schema    ::transforms.schema/transform.revision
    :authorize :snapshot
-   :revert!   (fn [id _user-id snapshot]
-                (update-transforms! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))})
+   :revert!   revert-transform!})
 
 (defmethod audit/spec :model/Transform [_model]
   {:track          [:name :description :target]

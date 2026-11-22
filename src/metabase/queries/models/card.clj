@@ -2387,20 +2387,15 @@
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
 (defn- before-revert
-  "The `snapshot` of a Card revision to write to the card `card-id`, after the checks that a
-  revert needs, with the `:dataset` that revisions of fewer than 50 cards recorded made the `:type`."
+  "The `snapshot` of a Card revision to write to the card `card-id`, after the permission check that a revert needs."
   [card-id _user-id snapshot]
-  (let [snapshot (cond-> snapshot
-                   (contains? snapshot :dataset) (-> (dissoc :dataset)
-                                                     (assoc :type (if (:dataset snapshot) :model :question))))]
-    (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
-    snapshot))
+  (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
+  snapshot)
 
 (defn- revert-card!
-  "Returns the Card `card-id` to the tracked columns of `snapshot`, the Card a revision recorded, as an update, which
-  is not checked against the schema of what a caller gives, as a stored Card may not meet it."
+  "Returns the Card `card-id` to the `snapshot` of a Card that a revision recorded, as an update."
   [card-id _user-id snapshot]
-  (update-cards! [(assoc (select-keys snapshot (revisions/tracked-columns :model/Card)) :id card-id)] {:writer :revert}))
+  (update-cards! [(assoc snapshot :id card-id)] {:writer :revert}))
 
 (defmethod collection/archive-in-collections! :model/Card
   [model collection-ids context]
@@ -2473,6 +2468,7 @@
                    :parameter_mappings :cache_ttl :result_metadata :card_schema :collection_id :dashboard_id
                    :database_id :table_id :query_type :source_card_id :archived :archived_directly
                    :dataset_query_metrics_v2_migration_backup]
+   :schema        ::queries.schema/card.revision
    :skip          [:cache_invalidated_at :collection_position :creator_id :dimension_mappings :dimensions
                    :document_id :embedding_params :embedding_type :enable_embedding :entity_id
                    :initially_published_at :last_used_at :legacy_query :made_public_by_id :metabase_version

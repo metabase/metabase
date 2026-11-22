@@ -3,26 +3,24 @@
    [clojure.data :as data]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.explorations.schema]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.measures.schema]
    [metabase.models.interface :as mi]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :as revision.diff :refer [diff-strings*]]
    [metabase.revisions.schema :as revisions.schema]
    [metabase.revisions.spec :as revisions.spec]
-   [metabase.segments.schema]
-   [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -53,48 +51,69 @@
   will be deleted."
   15)
 
-(declare snapshots)
+(defn- invalid-snapshot
+  "Throws the 400 for the `snapshot` of `model` that its schema refuses, with what the `explanation` of malli says is
+  wrong with it."
+  [model snapshot explanation]
+  (let [error (mu.humanize/humanize explanation)]
+    (throw (ex-info (tru "This revision of a {0} can no longer be restored: {1}" (name model) (pr-str error))
+                    {:status-code 400
+                     :model       model
+                     :snapshot    snapshot
+                     :error       error}))))
 
-(defn- child-rows
-  "The child rows under `hydration-key` of each of `rows`, in order, those that the rows do not carry hydrated in one
-  call."
-  [rows hydration-key]
-  (let [missing  (into [] (keep-indexed (fn [i row] (when (nil? (get row hydration-key)) i))) rows)
-        hydrated (when (seq missing)
-                   (zipmap missing (t2/hydrate (mapv rows missing) hydration-key)))]
-    (vec (map-indexed (fn [i row] (get (get hydrated i row) hydration-key)) rows))))
+(defn- snapshot-coercer
+  "The function that decodes a snapshot of `model` with the schema of its spec and throws for one that is still invalid."
+  [model]
+  (let [schema (revisions.spec/schema model)]
+    (mr/cached ::snapshot-coercer
+               schema
+               (fn []
+                 (mc/coercer (mr/schema schema)
+                             (mtx/transformer {:name :normalize}
+                                              {:name :legacy-int-field-ids}
+                                              (mtx/strip-extra-keys-transformer)
+                                              (mtx/default-value-transformer))
+                             identity
+                             (fn [error] (invalid-snapshot model (:value error) (:explain error))))))))
 
-(defn- split-by-counts
-  "`xs` cut into consecutive vectors of the sizes `counts`."
-  [counts xs]
-  (first (reduce (fn [[acc xs] n] [(conj acc (vec (take n xs))) (drop n xs)])
-                 [[] xs]
-                 counts)))
+(defn normalize-snapshot
+  "The `snapshot` of `model` that a Revision stores, decoded with the schema of its spec: the current format of what an
+  older format recorded. Throws a 400 for a snapshot that is invalid after that."
+  [model snapshot]
+  ((snapshot-coercer model) snapshot))
 
-(defn- nest-children
-  "The `snapshots*` of the `rows` of `model` with the snapshots of their child rows nested under the keys of the
-  `:children`, those of all the rows of one kind of child taken together."
-  [model rows snapshots*]
-  (reduce-kv (fn [acc k {child-model :model, hydration-key :as}]
-               (let [children (child-rows rows hydration-key)]
-                 (mapv (fn [snapshot child-snapshots]
-                         (assoc snapshot k child-snapshots))
-                       acc
-                       (split-by-counts (map count children) (snapshots child-model (into [] cat children))))))
-             snapshots*
-             (revisions.spec/children model)))
+(defn- stripped
+  "The `snapshot` of `model` without the top-level keys that its schema does not list, which an older snapshot may
+  still hold, for the history of a row, which shows what a Revision recorded; as it is for a model without a spec."
+  [model snapshot]
+  (if (and snapshot (revisions.spec/schema model))
+    (select-keys snapshot (revisions.spec/snapshot-keys model))
+    snapshot))
+
+(defn- validate-snapshots!
+  "In dev and test, throws when one of the `snapshots` of `model` is not a value of the schema of its spec."
+  [model snapshots]
+  (when (or config/is-dev? config/is-test?)
+    (let [schema (revisions.spec/schema model)]
+      (doseq [snapshot snapshots
+              :let [error (mr/explain schema snapshot)]
+              :when error]
+        (throw (ex-info (format "A snapshot of %s is not a %s: %s" model schema
+                                (pr-str (mu.humanize/humanize error)))
+                        {:model model :snapshot snapshot :error (mu.humanize/humanize error)})))))
+  snapshots)
 
 (defn- snapshots
-  "The snapshots of the `rows` of `model`, in order: the tracked columns, with the snapshots of the child rows nested
-  under the keys of the `:children`, and the `:id` of a row that belongs to the Revision of a parent."
+  "The snapshots of the `rows` of `model`, in order, each a value of the schema of its spec: the tracked columns, and
+  whatever its `:snapshot` adds."
   [model rows]
-  (let [{:keys [track parent snapshot]} (revisions.spec/spec model)
-        rows      (vec rows)
-        columns   (cond-> (vec track) parent (conj :id))
-        snapshots* (nest-children model rows (mapv #(select-keys % columns) rows))]
-    (if snapshot
-      (snapshot rows snapshots*)
-      snapshots*)))
+  (let [{:keys [track snapshot]} (revisions.spec/spec model)
+        rows       (vec rows)
+        snapshots* (mapv #(select-keys % track) rows)]
+    (validate-snapshots! model (if snapshot
+                                 (snapshot rows snapshots*)
+                                 snapshots*))))
 
 (defn snapshot
   "The snapshot of the `instance` of `model` that a Revision stores."
@@ -107,37 +126,19 @@
   (boolean (some #(not (revisions.spec/same? model % before after))
                  (revisions.spec/snapshot-keys model))))
 
-(defn- recorded
-  "What the `snapshot` of `model` holds of what a Revision records now, without the keys that older snapshots carry."
-  [model snapshot]
-  (reduce-kv (fn [m k {child :model}]
-               (cond-> m
-                 (sequential? (get m k))
-                 (update k (fn [rows]
-                             (mapv #(apply dissoc % :created_at :updated_at (:skip (revisions.spec/spec child)))
-                                   rows)))))
-             (select-keys snapshot (revisions.spec/snapshot-keys model))
-             (revisions.spec/children model)))
-
-(defn columns-to-revert
-  "The tracked columns of `snapshot` that the table of `model` still has, which a revert of the row with `id` writes."
-  [model id snapshot]
-  (let [valid-columns (set (keys (revisions.db/raw-row model id)))]
-    (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))))
-
-(defn revert-to-revision!
-  "Return the row of `model` with `id` to the state that the `snapshot` of a Revision recorded."
+(defn- revert-snapshot!
+  "Return the row of `model` with `id` to the state that the decoded `snapshot` recorded."
   [model id user-id snapshot]
-  (let [{:keys [before-revert revert!]} (revisions.spec/spec model)
-        snapshot (if before-revert (before-revert id user-id snapshot) snapshot)]
+  (let [{:keys [before-revert revert!]} (revisions.spec/spec model)]
     (when-not revert!
       (throw (ex-info (format "%s has no :revert! in its revisions spec" model) {:model model})))
-    (revert! id user-id snapshot)))
+    (revert! id user-id (if before-revert (before-revert id user-id snapshot) snapshot))))
 
-(defn- without-skipped
-  "The `snapshot` of `model` without the columns that its spec skips, which an older snapshot may still hold."
-  [model snapshot]
-  (apply dissoc snapshot (:skip (revisions.spec/spec model))))
+(defn revert-to-revision!
+  "Return the row of `model` with `id` to the state that the `snapshot` of a Revision recorded, once decoded with the
+  schema of its spec."
+  [model id user-id snapshot]
+  (revert-snapshot! model id user-id (normalize-snapshot model snapshot)))
 
 (defn diff
   "A map describing the difference between the snapshots `before` and `after` of `model`, nil when there is no `before`."
@@ -156,7 +157,7 @@
             diff-columns)
 
       :else
-      (let [[before after] (data/diff (without-skipped model before) (without-skipped model after))]
+      (let [[before after] (data/diff (stripped model before) (stripped model after))]
         {:before before
          :after  after}))))
 
@@ -287,8 +288,8 @@
     ;; prev-revision can be nil when we generate description for oldest revision
     (nil? prev-revision)     [(deferred-tru "modified this")]
     :else                    (describe model
-                                       (without-skipped model (:object prev-revision))
-                                       (without-skipped model (:object revision))
+                                       (stripped model (:object prev-revision))
+                                       (stripped model (:object revision))
                                        names)))
 
 (defn- revision-description-info
@@ -346,22 +347,13 @@
                  (conj more r2)))))))
 
 (def ^:private PushRevisionInput
-  (into [:multi {:dispatch :entity}]
-        (conj (vec (for [[model schema] revisions.db/revisioned-model-select-schema]
-                     [model [:map {:closed true}
-                             [:id                            pos-int?]
-                             [:object                        schema]
-                             [:entity                        [:= model]]
-                             [:user-id                       pos-int?]
-                             [:is-creation? {:optional true} [:maybe :boolean]]
-                             [:message      {:optional true} [:maybe :string]]]]))
-              [::mc/default [:map {:closed true}
-                             [:id                            pos-int?]
-                             [:object                        ::revisions.db/unregistered-model-object]
-                             [:entity                        [:fn toucan-model?]]
-                             [:user-id                       pos-int?]
-                             [:is-creation? {:optional true} [:maybe :boolean]]
-                             [:message      {:optional true} [:maybe :string]]]])))
+  [:map {:closed true}
+   [:id                            pos-int?]
+   [:object                        ::revisions.db/unregistered-model-object]
+   [:entity                        [:fn toucan-model?]]
+   [:user-id                       pos-int?]
+   [:is-creation? {:optional true} [:maybe :boolean]]
+   [:message      {:optional true} [:maybe :string]]])
 
 (defn- row
   [{:keys [id entity user-id is-creation? message]} serialized-object]
@@ -385,8 +377,15 @@
    infos :- [:sequential PushRevisionInput]]
   (mapv row infos (snapshots model (mapv :object infos))))
 
+(defn- normalized-or-nil
+  "The `snapshot` of `model` decoded with the schema of its spec, nil when it is invalid."
+  [model snapshot]
+  (try
+    (normalize-snapshot model snapshot)
+    (catch clojure.lang.ExceptionInfo _ nil)))
+
 (mu/defn revert!
-  "Revert `entity` with `id` to a given Revision."
+  "Revert `entity` with `id` to a given Revision, refusing with a 400 a Revision whose snapshot cannot be decoded."
   [info :- [:map {:closed true}
             [:id          pos-int?]
             [:user-id     pos-int?]
@@ -394,21 +393,21 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (revisions.db/revision-object model-name id revision-id)]
+        snapshot   (normalize-snapshot entity (revisions.db/revision-object model-name id revision-id))]
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (not (changed? entity
-                                                    (recorded entity (revisions.db/latest-revision-object model-name id))
-                                                    (recorded entity serialized-instance)))
+                                                    (normalized-or-nil entity (revisions.db/latest-revision-object model-name id))
+                                                    snapshot))
             record-reversion!        #(when-not already-in-target-state?
                                         (u/prog1 (create-revision!
                                                   {:model        model-name
                                                    :model_id     id
                                                    :user_id      user-id
-                                                   :object       serialized-instance
+                                                   :object       snapshot
                                                    :is_creation  false
                                                    :is_reversion true})
                                           (publish-created! [<>])))
-            in-batch                 (do (revert-to-revision! entity id user-id serialized-instance)
+            in-batch                 (do (revert-snapshot! entity id user-id snapshot)
                                          [(revisions.db/latest-revision model-name id) (record-reversion!)])
             [last-revision new-revision] (or in-batch
                                              [(revisions.db/latest-revision model-name id) (record-reversion!)])]

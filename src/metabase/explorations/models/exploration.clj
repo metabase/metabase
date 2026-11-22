@@ -211,18 +211,17 @@
   nil)
 
 (mu/defn revert-exploration! :- :int
-  "Write to the Exploration with `id` the tracked columns of the revision `snapshot` that its table still has, in one
-  statement through the model, returning the number updated."
+  "Write to the Exploration with `id` the revision `snapshot` in one statement through the model, returning the number
+  updated."
   [id        :- ms/PositiveInt
    _user-id  :- [:maybe ::lib.schema.id/user]
-   snapshot  :- :map]
+   snapshot  :- ::explorations.schema/exploration.revision]
   (t2/with-transaction [_conn]
     (let [previous (first (explorations.db/rows :model/Exploration [id]))
-          changes  (revisions/columns-to-revert :model/Exploration id snapshot)
-          updated  (explorations.db/update-exploration-columns! id changes)]
+          updated  (explorations.db/update-exploration-columns! id snapshot)]
       (when previous
         (events/publish-event! :event/exploration-update
-                               (events/update-event {id previous} [(assoc changes :id id)]
+                               (events/update-event {id previous} [(assoc snapshot :id id)]
                                                     {:context (events/context {:writer :revert})})))
       updated)))
 
@@ -242,9 +241,10 @@
   {:skip? false})
 
 (defmethod revisions/spec :model/Exploration [_model]
-  {:revert! revert-exploration!
-   :track [:name :description :collection_id :archived]
-   :skip  [:archived_directly :collection_position :creator_id :entity_id]})
+  {:track   [:name :description :collection_id :archived]
+   :skip    [:archived_directly :collection_position :creator_id :entity_id]
+   :schema  ::explorations.schema/exploration.revision
+   :revert! revert-exploration!})
 
 (defmethod search/spec :model/Exploration
   [_model]

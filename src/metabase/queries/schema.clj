@@ -240,6 +240,20 @@
            [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
+(mr/def ::card.revision
+  "A Card as a Revision stores it: its tracked columns. A snapshot recorded before Metabase 50 holds `:dataset` in place of
+  the `:type`, and any Card may hold an empty or a legacy query."
+  [:select-keys
+   {:decode/normalize (fn [snapshot]
+                        (cond-> snapshot
+                          (and (map? snapshot) (contains? snapshot :dataset))
+                          (-> (dissoc :dataset)
+                              (assoc :type (if (:dataset snapshot) :model :question)))))}
+   ::card.update
+   [:name :description :display :type :dataset_query :visualization_settings :parameters :parameter_mappings :cache_ttl
+    :result_metadata :card_schema :collection_id :dashboard_id :database_id :table_id :query_type :source_card_id
+    :archived :archived_directly :dataset_query_metrics_v2_migration_backup]])
+
 (mr/def ::card.update-row
   "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, those of `::card.update`."
   [:merge

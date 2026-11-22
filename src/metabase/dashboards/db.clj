@@ -60,6 +60,17 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
+(mu/defn hydrate-snapshot-parts
+  "The `dashboards` with their `:tabs` and their `:dashcards`, each of which with its `:series`, as a Revision records a
+  Dashboard."
+  [dashboards :- [:sequential ::dashboards.schema/dashboard]]
+  (t2/hydrate dashboards :tabs [:dashcards :series]))
+
+(mu/defn hydrate-series
+  "The DashboardCards `dashcards` with their `:series`."
+  [dashcards :- [:sequential ::dashboards.schema/dashboard-card]]
+  (t2/hydrate dashcards :series))
+
 (mu/defn active-card-ids-for-dashboard
   "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
   [card-ids     :- [:sequential ::lib.schema.id/card]

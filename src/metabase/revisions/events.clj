@@ -1,8 +1,8 @@
 (ns metabase.revisions.events
   "Handler of the lifecycle events that record a Revision of what a user changes: the update or the create event of an
   entity that has Revisions, which the function that writes the entity and its parts publishes as its last step, so that
-  one operation on a Dashboard and its dashcards and tabs is one Revision. The events of the parts make none, and nothing
-  is recorded without a user."
+  one operation on a Dashboard and its dashcards and tabs is one Revision. The parts have no spec, so their events make
+  none, and nothing is recorded without a user."
   (:require
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
@@ -14,7 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- recorded?
-  "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions of its own,
+  "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions,
   by a user, that is not a revert or carried by the archive or restore of another entity, and that changes what its spec
   tracks or only touches it."
   [{:keys [operation context object previous-object user-id] :as event}]
@@ -23,7 +23,6 @@
     (boolean
      (and user-id
           spec
-          (not (:parent spec))
           (#{:create :update} operation)
           (not (:reverting? context))
           (nil? (:archived-with context))

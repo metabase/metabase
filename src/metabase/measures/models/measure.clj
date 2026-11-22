@@ -224,9 +224,9 @@
   [:name :description :definition :archived :table_id])
 
 (defn- revert-measure!
-  "Return the Measure with `id` to the tracked columns of `snapshot`."
+  "Return the Measure with `id` to the `snapshot` of a Measure that a Revision recorded."
   [id _user-id snapshot]
-  (update-measures! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
+  (update-measures! [(assoc snapshot :id id)] {:writer :revert}))
 
 ;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
@@ -261,6 +261,7 @@
 (defmethod revisions/spec :model/Measure [_model]
   {:track        revision-columns
    :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
+   :schema       ::measures.schema/measure.revision
    :same?        {:definition revisions/same-definition?}
    :revert!      revert-measure!
    :diff-columns [:name :description :definition]})

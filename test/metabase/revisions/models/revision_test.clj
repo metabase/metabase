@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -49,10 +50,16 @@
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
+(mr/def ::faked-card.revision
+  [:map {:closed true}
+   [:name       {:optional true} [:maybe :string]]
+   [:serialized {:optional true} [:maybe :boolean]]])
+
 (defmethod revisions.spec/spec ::FakedCard
   [_model]
   {:track    [:name :serialized]
    :skip     []
+   :schema   ::faked-card.revision
    :snapshot snapshot-serialized
    :revert!  revert-faked-card!
    :describe describe-faked-card})
@@ -139,7 +146,7 @@
                                                             :model/CardTest      "Card test"
                                                             :model/SegmentTest   "Segment test"))]
       ;; a model with a revision spec has Revisions.
-      (is (= (set (remove revisions.spec/parent (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models))))
+      (is (= (set (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models)))
              (set (keys model->display-name))))
       (doseq [[model display-name] model->display-name]
         (testing model

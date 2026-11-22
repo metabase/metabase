@@ -744,7 +744,7 @@
                                             :object      object
                                             :is_creation false}))
 
-(defn- revert-status
+(defn- revert-status!
   "The status of the revert of the saved test of `model` with `id` to the Revision `revision-id`, 200 when it is done."
   [model id revision-id]
   (try
@@ -765,7 +765,7 @@
             (let [revision-id (insert-revision! "TransformTest" transform-test-id (merge revertible {:transform_id transform-id
                                                                                                      :name         "Older"
                                                                                                      :creator_id   (mt/user->id :rasta)}))]
-              (is (= 200 (revert-status :model/TransformTest transform-test-id revision-id)))
+              (is (= 200 (revert-status! :model/TransformTest transform-test-id revision-id)))
               (testing "a snapshot recorded before tests had `now` reads the real clock, and the columns it no longer records are not written"
                 (is (=? {:name "Older" :now nil}
                         (t2/select-one :model/TransformTest :id transform-test-id)))))))))))
@@ -779,7 +779,7 @@
                          :model/TransformTest {transform-test-id :id} (merge revertible {:transform_id transform-id
                                                                                          :name         "Current"})]
             (let [revision-id (insert-revision! "TransformTest" transform-test-id {:name 42})]
-              (is (= 400 (revert-status :model/TransformTest transform-test-id revision-id)))
+              (is (= 400 (revert-status! :model/TransformTest transform-test-id revision-id)))
               (is (= "Current" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))))))))
 
 (deftest card-test-revert-to-older-snapshot-test
@@ -792,7 +792,7 @@
           (let [revision-id (insert-revision! "CardTest" card-test-id (merge revertible {:card_id    card-id
                                                                                          :name       "Older"
                                                                                          :creator_id (mt/user->id :rasta)}))]
-            (is (= 200 (revert-status :model/CardTest card-test-id revision-id)))
+            (is (= 200 (revert-status! :model/CardTest card-test-id revision-id)))
             (testing "a snapshot recorded before tests had `now` reads the real clock, and the columns it no longer records are not written"
               (is (=? {:name "Older" :now nil}
                       (t2/select-one :model/CardTest :id card-test-id))))))))))
@@ -805,7 +805,7 @@
                        :model/CardTest {card-test-id :id} (merge revertible {:card_id card-id
                                                                              :name    "Current"})]
           (let [revision-id (insert-revision! "CardTest" card-test-id {:name 42})]
-            (is (= 400 (revert-status :model/CardTest card-test-id revision-id)))
+            (is (= 400 (revert-status! :model/CardTest card-test-id revision-id)))
             (is (= "Current" (t2/select-one-fn :name :model/CardTest :id card-test-id)))))))))
 
 (deftest segment-test-revert-to-older-snapshot-test
@@ -817,7 +817,7 @@
           (let [revision-id (insert-revision! "SegmentTest" segment-test-id (merge revertible {:segment_id segment-id
                                                                                                :name       "Older"
                                                                                                :creator_id (mt/user->id :rasta)}))]
-            (is (= 200 (revert-status :model/SegmentTest segment-test-id revision-id)))
+            (is (= 200 (revert-status! :model/SegmentTest segment-test-id revision-id)))
             (is (= "Older" (t2/select-one-fn :name :model/SegmentTest :id segment-test-id)))))))))
 
 (deftest segment-test-revert-to-garbage-snapshot-test
@@ -828,5 +828,5 @@
                        :model/SegmentTest {segment-test-id :id} (merge revertible {:segment_id segment-id
                                                                                    :name       "Current"})]
           (let [revision-id (insert-revision! "SegmentTest" segment-test-id {:name 42})]
-            (is (= 400 (revert-status :model/SegmentTest segment-test-id revision-id)))
+            (is (= 400 (revert-status! :model/SegmentTest segment-test-id revision-id)))
             (is (= "Current" (t2/select-one-fn :name :model/SegmentTest :id segment-test-id)))))))))

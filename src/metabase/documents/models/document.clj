@@ -646,18 +646,17 @@
   (documents.db/shift-document-positions! collection-id positions direction))
 
 (mu/defn revert-document! :- :int
-  "Write to the Document with `id` the tracked columns of the revision `snapshot` that its table still has, in one
-  statement through the model, returning the number updated."
+  "Write to the Document with `id` the revision `snapshot` in one statement through the model, returning the number
+  updated."
   [id        :- ms/PositiveInt
    _user-id  :- [:maybe ::lib.schema.id/user]
-   snapshot  :- :map]
+   snapshot  :- ::documents.schema/document.revision]
   (t2/with-transaction [_conn]
     (let [previous (documents.db/document id)
-          changes  (revisions/columns-to-revert :model/Document id snapshot)
-          updated  (documents.db/update-document-columns! id changes)]
+          updated  (documents.db/update-document-columns! id snapshot)]
       (when previous
         (events/publish-event! :event/document-update
-                               (events/update-event {id previous} [(assoc changes :id id)]
+                               (events/update-event {id previous} [(assoc snapshot :id id)]
                                                     {:context (events/context {:writer :revert})})))
       updated)))
 
@@ -698,10 +697,11 @@
    :synced-filter-clause documents.db/synced-documents-clause})
 
 (defmethod revisions/spec :model/Document [_model]
-  {:revert! revert-document!
-   :track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
-   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
-           :public_uuid :public_uuid_prefix :view_count]})
+  {:track   [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip    [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+             :public_uuid :public_uuid_prefix :view_count]
+   :schema  ::documents.schema/document.revision
+   :revert! revert-document!})
 
 (defmethod audit/spec :model/Document [_model]
   {:track          [:name :collection_id]

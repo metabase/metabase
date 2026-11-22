@@ -195,6 +195,12 @@
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe ::run-trigger]]])
 
+(mr/def ::transform.revision
+  "A Transform as a Revision stores it: its tracked columns."
+  [:select-keys ::transform.update
+   [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type :target
+    :target_db_id]])
+
 (mr/def ::write-opts
   "The options of the write functions of Transforms, TransformJobs and TransformTags: who writes when it matters, and the
   context of the events."

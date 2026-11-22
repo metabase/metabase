@@ -12,7 +12,6 @@
 
 (p/import-vars
  [metabase.revisions.models.revision
-  columns-to-revert
   describe-columns
   revisions
   same-definition?
@@ -22,5 +21,6 @@
   fetch-last-edited-info
   with-last-edit-info]
  [metabase.revisions.spec
+  schema-keys
   spec
   tracked-columns])

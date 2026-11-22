@@ -1,14 +1,37 @@
 (ns metabase.dashboards.revisions
-  "What a Dashboard needs of the revisions beyond its columns: what its revert drops of a Revision that no longer holds,
-  and the description of what changed in it."
+  "What a Dashboard needs of the revisions beyond its columns: its snapshot, which nests its cards and its tabs, what its
+  revert drops of a Revision that no longer holds, and the description of what changed in it."
   (:require
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]))
+
+(defn- dashcard-snapshot
+  "The snapshot of the DashboardCard `dashcard` with its `:series`, which the Dashboard records among its cards."
+  [dashcard]
+  (-> (select-keys dashcard (revisions/schema-keys ::dashboards.schema/dashcard.revision))
+      (assoc :series (mapv :id (:series dashcard)))))
+
+(defn snapshot-dashcards
+  "The snapshots of the DashboardCards `dashcards`, as a Dashboard records its cards."
+  [dashcards]
+  (mapv dashcard-snapshot (dashboards.db/hydrate-series (vec dashcards))))
+
+(defn snapshot-parts
+  "The `snapshots` of the Dashboard `rows`, each with the snapshots of its cards and of its tabs."
+  [rows snapshots]
+  (mapv (fn [row snapshot]
+          (assoc snapshot
+                 :cards (mapv dashcard-snapshot (:dashcards row))
+                 :tabs  (mapv #(select-keys % (revisions/schema-keys ::dashboards.schema/dashboard-tab.revision))
+                              (:tabs row))))
+        (dashboards.db/hydrate-snapshot-parts (vec rows))
+        snapshots))
 
 (defn remove-invalid-dashcards
   "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong

@@ -1921,7 +1921,6 @@
            metabase.models.util.spec-update}
    :uses #{api
            app-db
-           events
            lib
            lib.legacy-mbql
            lib.schema
@@ -2279,9 +2278,7 @@
            metabase.pulse.broken-subscriptions
            metabase.pulse.core
            metabase.pulse.init
-           metabase.pulse.models.pulse
-           metabase.pulse.models.pulse-card
-           metabase.pulse.models.pulse-channel-recipient}
+           metabase.pulse.models.pulse}
    :uses #{api
            api.eid-translation
            app-db
@@ -2638,16 +2635,12 @@
            batch-processing
            dashboards
            events
-           explorations.schema
            lib.schema
-           measures.schema
            models
            parameters
            queries
            query-permissions
            revisions.schema
-           segments.schema
-           transforms.schema
            util
            util.config}
    :model-exports #{:model/Revision}
@@ -2658,7 +2651,6 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Document
-                    :model/Exploration
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment

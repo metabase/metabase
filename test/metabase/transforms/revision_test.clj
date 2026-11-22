@@ -17,7 +17,7 @@
                      :source {:type :query
                               :query (lib/query (mt/metadata-provider)
                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
-                     :target {:type :table
+                     :target {:type "table"
                               :name "transformed_table"
                               :schema "public"
                               :database 1}}

@@ -63,6 +63,10 @@
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
 
+(mr/def ::measure.revision
+  "A Measure as a Revision stores it: its tracked columns."
+  [:select-keys ::measure.update [:name :description :definition :archived :table_id]])
+
 (mr/def ::measure.create
   "What a caller gives to create a Measure; its table follows its definition."
   [:map {:closed true}

@@ -9,7 +9,6 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -168,11 +167,6 @@
 (defmethod remote-sync/spec :model/DashboardTab
   [_model]
   {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})
-
-(defmethod revisions/spec :model/DashboardTab [_model]
-  {:track  [:name :position :dashboard_id]
-   :skip   [:entity_id]
-   :parent {:model :model/Dashboard :key :dashboard_id}})
 
 (defmethod eid-translation/spec :model/DashboardTab [_model]
   {:names [:dashboard-tab]})

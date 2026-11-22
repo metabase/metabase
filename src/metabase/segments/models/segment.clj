@@ -219,9 +219,9 @@
   [:name :description :definition :archived :table_id :caveats :points_of_interest :show_in_getting_started])
 
 (defn- revert-segment!
-  "Return the Segment with `id` to the tracked columns of `snapshot`."
+  "Return the Segment with `id` to the `snapshot` of a Segment that a Revision recorded."
   [id _user-id snapshot]
-  (update-segments! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
+  (update-segments! [(assoc snapshot :id id)] {:writer :revert}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -249,6 +249,7 @@
 (defmethod revisions/spec :model/Segment [_model]
   {:track        revision-columns
    :skip         [:entity_id :creator_id]
+   :schema       ::segments.schema/segment.revision
    :same?        {:definition revisions/same-definition?}
    :revert!      revert-segment!
    :diff-columns [:name :description :definition]})

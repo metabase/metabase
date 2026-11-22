@@ -4,7 +4,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -67,8 +66,3 @@
    :delete!   delete-dashboard-card-series!
    :transform {:dashboardcard_id serialization/import-only-transform
                :card_id (serialization/fk-transform :model/Card)}})
-
-(defmethod revisions/spec :model/DashboardCardSeries [_model]
-  {:track  [:card_id :position]
-   :skip   [:dashboardcard_id]
-   :parent {:model :model/DashboardCard :key :dashboardcard_id}})
