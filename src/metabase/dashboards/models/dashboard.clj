@@ -526,36 +526,36 @@
   [rows :- [:sequential UpdateDashboard]
    opts :- ::dashboards.schema/write-opts]
   (let [parts  (into {} (keep (fn [row]
-                                 (when (or (contains? row :tabs) (contains? row :dashcards))
-                                   [(:id row) (select-keys row [:tabs :dashcards])])))
-                      rows)
-         rows   (mapv #(normalize-columns (dissoc % :tabs :dashcards)) rows)
-         stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
-         rows   (filterv #(contains? stored (:id %)) rows)]
-     (if (empty? rows)
-       rows
-       (t2/with-transaction [_conn]
-         (let [replaced (replace-parts! (select-keys parts (map :id rows)))
-               rows     (mapv (fn [row]
-                                (let [cleaned (parameters-without-orphans
-                                               (if (contains? row :parameters)
-                                                 (:parameters row)
-                                                 (:parameters (get stored (:id row))))
-                                               (:removed (get replaced (:id row))))]
-                                  (cond-> row cleaned (assoc :parameters cleaned))))
-                              rows)
-               rows     (write-columns! stored rows)
-               after    (merge stored (into {} (map (fn [row] [(:id row) (merge (get stored (:id row)) row)])) rows))]
-           (publish-cards! after
-                           (into [] (mapcat (comp :added val)) replaced)
-                           (into [] (mapcat (comp :removed val)) replaced))
-           (publish-update! stored
-                            rows
-                            (into (if (= :import (:writer opts)) (mapv :id rows) [])
-                                  (comp (filter (comp :changed? val)) (map key))
-                                  replaced)
-                            opts)
-           rows)))))
+                                (when (or (contains? row :tabs) (contains? row :dashcards))
+                                  [(:id row) (select-keys row [:tabs :dashcards])])))
+                     rows)
+        rows   (mapv #(normalize-columns (dissoc % :tabs :dashcards)) rows)
+        stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (if (empty? rows)
+      rows
+      (t2/with-transaction [_conn]
+        (let [replaced (replace-parts! (select-keys parts (map :id rows)))
+              rows     (mapv (fn [row]
+                               (let [cleaned (parameters-without-orphans
+                                              (if (contains? row :parameters)
+                                                (:parameters row)
+                                                (:parameters (get stored (:id row))))
+                                              (:removed (get replaced (:id row))))]
+                                 (cond-> row cleaned (assoc :parameters cleaned))))
+                             rows)
+              rows     (write-columns! stored rows)
+              after    (merge stored (into {} (map (fn [row] [(:id row) (merge (get stored (:id row)) row)])) rows))]
+          (publish-cards! after
+                          (into [] (mapcat (comp :added val)) replaced)
+                          (into [] (mapcat (comp :removed val)) replaced))
+          (publish-update! stored
+                           rows
+                           (into (if (= :import (:writer opts)) (mapv :id rows) [])
+                                 (comp (filter (comp :changed? val)) (map key))
+                                 replaced)
+                           opts)
+          rows)))))
 
 (def ^:private DashboardChanges
   (mut/dissoc ::dashboards.schema/dashboard.update :id))

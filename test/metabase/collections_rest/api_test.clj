@@ -830,7 +830,7 @@
 (deftest collection-items-metadata-query-count-test
   (testing "GET /api/collection/:id/items/metadata builds each type of item once per query it needs, for a non-admin too"
     (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [transforms-enabled true]
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
        (mt/with-premium-features #{:library :snippet-collections :transforms :transforms-python :content-verification
                                    :official-collections :data-studio :tenants :remote-sync}
          (let [namespaces  ["snippets" "transforms" "data-actions" "data-apps"]

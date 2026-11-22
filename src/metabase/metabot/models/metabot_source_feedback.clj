@@ -10,6 +10,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/MetabotSourceFeedback [_model] :metabot_source_feedback)
 
 (doto :model/MetabotSourceFeedback

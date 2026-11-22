@@ -1592,7 +1592,7 @@
                              dashcards (:dashcards changes)]
                          (when (or (seq updates) dashcards)
                            (dashboard/update-dashboard! id (cond-> updates
-                                                          dashcards (assoc :dashcards dashcards))))
+                                                             dashcards (assoc :dashcards dashcards))))
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which

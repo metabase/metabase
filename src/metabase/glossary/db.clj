@@ -2,7 +2,6 @@
   "Application database queries for the glossary module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]

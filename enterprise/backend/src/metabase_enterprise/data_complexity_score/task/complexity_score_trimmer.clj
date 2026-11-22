@@ -23,7 +23,7 @@
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
   (let [deleted (data-complexity-score/delete-data-complexity-scores-for-cleanup!
-                  (t/minus (t/offset-date-time) (t/months retention-months)))]
+                 (t/minus (t/offset-date-time) (t/months retention-months)))]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
 (task/defjob DataComplexityScoreTrimmer

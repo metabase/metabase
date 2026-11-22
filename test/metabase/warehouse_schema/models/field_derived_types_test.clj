@@ -129,13 +129,12 @@
 
 (deftest events-carry-stored-values-test
   (testing "the event of an update carries the Field as stored, not an expression"
-    (do
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {table-id :id} {:db_id db-id}]
-        (let [[id] [(insert-with-types! table-id 0 ["type/Text" "Coercion/UNIXSeconds->DateTime" "type/Instant"])]]
-          (reset! published [])
-          (field/update-fields! [id] {:base_type :type/Float})
-          (let [objects (->> @published (filter #(= :event/field-update (first %))) first second :changes (map :object))]
-            (is (seq objects))
-            (is (every? #(not-any? vector? (vals %)) objects))
-            (is (= (t2/select-one-fn :effective_type :model/Field :id id) (:effective_type (first objects))))))))))
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}]
+      (let [[id] [(insert-with-types! table-id 0 ["type/Text" "Coercion/UNIXSeconds->DateTime" "type/Instant"])]]
+        (reset! published [])
+        (field/update-fields! [id] {:base_type :type/Float})
+        (let [objects (->> @published (filter #(= :event/field-update (first %))) first second :changes (map :object))]
+          (is (seq objects))
+          (is (every? #(not-any? vector? (vals %)) objects))
+          (is (= (t2/select-one-fn :effective_type :model/Field :id id) (:effective_type (first objects)))))))))

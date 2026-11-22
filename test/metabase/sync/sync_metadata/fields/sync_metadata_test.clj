@@ -74,7 +74,7 @@
 (deftest database-position-changed-test
   (testing "test that if database-position changes and table.field_order=database we will update the position too"
     (is (= [["Field" 9999999 {:database_position 1
-                        :position          1}]]
+                              :position          1}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-position 1})
             (merge default-metadata {:database-position 0
@@ -266,7 +266,7 @@
   (testing "When a field becomes crufty (matches auto-cruft pattern), preview_display should be set to false"
     (testing "field with preview_display=true should have it set to false when crufty"
       (is (= [["Field" 9999999 {:visibility_type :details-only
-                          :preview_display false}]]
+                                :preview_display false}]]
              (updates-that-will-be-performed!
               ;; new metadata from sync - field name matches auto-cruft pattern
               (merge default-metadata {:name "updated_at"})

@@ -747,7 +747,7 @@
           (testing "a property outside the clearable set is refused at the boundary"
             (let [txt (error-text (call! {:edits [] :clear ["name"]}))]
               (is (re-find #"clear" txt))
-              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id doc)))))))))))
+              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id doc))))))))))
 
 ;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
 ;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See

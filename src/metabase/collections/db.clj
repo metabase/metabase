@@ -256,64 +256,7 @@
   [query]
   (t2/select :model/Collection (h2x/assert-map-or-nil! query)))
 
-;;; ------------------------------------------- Reference check clauses --------------------------------------------
-
-(mu/defn- collection-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose `column` is nil, the root Collection, or
-  names a Collection that satisfies `parent-condition`, a condition over the Collection aliased `parent`."
-  [alias            :- :keyword
-   column           :- :keyword
-   parent-condition :- [:fn vector?]]
-  (let [reference (u/qualified-key alias column)]
-    [:or
-     [:= reference nil]
-     [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                :from   [[(t2/table-name :model/Collection) :parent]]
-                                :where  [:and [:= :parent.id reference] parent-condition]}]]))
-
-(mu/defn namespace-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, is in one of
-  `namespaces`, keywords where nil is the default namespace."
-  [alias      :- :keyword
-   column     :- :keyword
-   namespaces :- [:set [:maybe :keyword]]]
-  (collection-ok-clause alias column
-                        (into [:or]
-                              (cond-> []
-                                (seq (remove nil? namespaces)) (conj [:in :parent.namespace (mapv name (remove nil? namespaces))])
-                                (contains? namespaces nil)     (conj [:= :parent.namespace nil])))))
-
-(mu/defn type-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, has no type
-  or one of `types`, strings."
-  [alias  :- :keyword
-   column :- :keyword
-   types  :- [:sequential :string]]
-  (collection-ok-clause alias column
-                        [:or [:= :parent.type nil] [:in :parent.type types]]))
-
-(mu/defn type-not-in-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, has none of
-  `types`, strings."
-  [alias  :- :keyword
-   column :- :keyword
-   types  :- [:sequential :string]]
-  (collection-ok-clause alias column
-                        [:or [:= :parent.type nil] [:not-in :parent.type types]]))
-
-(mu/defn not-archived-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, is not
-  archived."
-  [alias  :- :keyword
-   column :- :keyword]
-  (collection-ok-clause alias column [:= :parent.archived false]))
-
-(mu/defn not-trash-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, is not the
-  Trash."
-  [alias  :- :keyword
-   column :- :keyword]
-  (collection-ok-clause alias column [:or [:= :parent.type nil] [:not= :parent.type "trash"]]))
+;;; ------------------------------------------- Reference check reads ----------------------------------------------
 
 (mu/defn collections-outside-content-rules :- [:sequential :map]
   "The id, namespace, type and `archived` flag of the Collections among `collection-ids` that are archived, in a

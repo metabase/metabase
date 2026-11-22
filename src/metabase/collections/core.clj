@@ -18,12 +18,6 @@
 (p/import-vars
  [metabase.collections.create
   create-collection!]
- [metabase.collections.db
-  namespace-ok-clause
-  not-archived-ok-clause
-  not-trash-ok-clause
-  type-not-in-ok-clause
-  type-ok-clause]
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection

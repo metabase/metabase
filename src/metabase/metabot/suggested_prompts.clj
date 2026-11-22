@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.models.metabot-prompt :as metabot-prompt]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]

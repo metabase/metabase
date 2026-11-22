@@ -82,8 +82,8 @@
   [new-name :- [:maybe :string]]
   [:substring
    [:concat "DEACTIVATED_" :id " " (if new-name
-                                    [:cast [:auto/param new-name] (text-type)]
-                                    :name)]
+                                     [:cast [:auto/param new-name] (text-type)]
+                                     :name)]
    1 254])
 
 (mu/defn accepted-admin-emails

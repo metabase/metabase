@@ -378,10 +378,10 @@
                       rows)
         changed (filterv #(seq (dissoc % :id)) changes)]
     (check-dashcards (for [change changed
-                             :when  (contains? change :dashboard_tab_id)]
-                         {:dashboard_id     (:dashboard_id (get stored (:id change)))
-                          :dashboard_tab_id (:dashboard_tab_id change)})
-                       false)
+                           :when  (contains? change :dashboard_tab_id)]
+                       {:dashboard_id     (:dashboard_id (get stored (:id change)))
+                        :dashboard_tab_id (:dashboard_tab_id change)})
+                     false)
     (doseq [[updates group] (group-by #(dissoc % :id) changed)]
       (dashboards.db/update-dashcards! (mapv :id group) updates))
     (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)

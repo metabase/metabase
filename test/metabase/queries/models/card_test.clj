@@ -559,8 +559,8 @@
                     (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
             (testing "update values_source_config.card_id will update ParameterCard"
               (card/update-cards! [card-id] {:parameters [(merge default-params
-                                                                    {:values_source_type    :card
-                                                                     :values_source_config {:card_id source-card-id-2}})]})
+                                                                 {:values_source_type    :card
+                                                                  :values_source_config {:card_id source-card-id-2}})]})
               (is (=? [{:card_id                   source-card-id-2
                         :parameterized_object_type :card
                         :parameterized_object_id   card-id
@@ -1267,9 +1267,9 @@
                    :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query (venues-query)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't have parameters"
                             (card/update-cards! [card-id] {:parameters [{:id   "venue"
-                                                                            :slug "venue"
-                                                                            :name "Venue"
-                                                                            :type :string/=}]})))
+                                                                         :slug "venue"
+                                                                         :name "Venue"
+                                                                         :type :string/=}]})))
       (testing "an empty list is no parameters"
         (mt/with-temp [:model/Card {other-id :id} {:collection_id collection-id :dataset_query (venues-query) :parameters []}]
           (is (= [] (t2/select-one-fn :parameters :model/Card :id other-id))))))))
@@ -1890,9 +1890,9 @@
                                   (comp reverse (mt/original-fn #'queries.db/cards-queries-info))]
         (mt/with-test-user :crowberto
           (card/update-cards! [(:id model)] {:dataset_query {:lib/type :mbql/query
-                                                                :database db2-id
-                                                                :stages   [{:lib/type :mbql.stage/native
-                                                                            :native   "SELECT 1"}]}})))
+                                                             :database db2-id
+                                                             :stages   [{:lib/type :mbql.stage/native
+                                                                         :native   "SELECT 1"}]}})))
       (doseq [question [question1 question2 question3 question4 question5]]
         (is (=? {:database_id   db2-id
                  :dataset_query {:database db2-id}}
@@ -2520,8 +2520,8 @@
       (mt/with-temp [:model/Card source {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
                      :model/Card card   {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :users)))}]
         (card/update-cards! [(:id card)] {:dataset_query (lib-be/normalize-query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                                      :type     :query
-                                                                      :query    {:source-table (str "card__" (:id source))}})})
+                                                                                  :type     :query
+                                                                                  :query    {:source-table (str "card__" (:id source))}})})
         (is (=? {:database_id (mt/id) :table_id (mt/id :venues) :source_card_id (:id source)}
                 (t2/select-one :model/Card :id (:id card))))))))
 

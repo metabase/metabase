@@ -313,7 +313,7 @@
           (collection/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
           ;; ok, now update the Pulse
           (models.pulse/update-pulse! id (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id
-                                                                      :collection_position :archived :parameters]))))))
+                                                                     :collection_position :archived :parameters]))))))
   (models.pulse/retrieve-pulse id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

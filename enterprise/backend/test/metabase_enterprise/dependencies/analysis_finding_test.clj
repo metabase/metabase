@@ -555,7 +555,7 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (is (nil? (transform.model/update-transforms! [transform-id] {:source {:type :query
-                                                                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
+                                                                                  :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -584,7 +584,7 @@
                                                                     :name "sample"
                                                                     :type :table}}]
          (is (nil? (transform.model/update-transforms! [transform-id] {:source {:type :query
-                                                                                 :query (lib/native-query mp "select * from orders")}}))))))))
+                                                                                :query (lib/native-query mp "select * from orders")}}))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!

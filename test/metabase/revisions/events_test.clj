@@ -123,9 +123,9 @@
             (is (= before (revisions)))))))))
 
 (defn- revision-statement-count!
-  "The statements that the revisions consumer runs for the update of each of `n` new Dashboards after a user's write of a
-  dashcard of each, which records a Revision of each Dashboard."
-  [card-id n]
+  "The statements that the revisions consumer runs for the update of the description of each of `n` new Dashboards,
+  which records a Revision of each Dashboard."
+  [n]
   (let [dashboard-ids (atom nil)]
     (events.tu/consumer-statement-count! :model/Dashboard
                                          (repeatedly n #(mt/with-temp-defaults :model/Dashboard))
@@ -140,11 +140,10 @@
                                          #(mt/with-current-user nil (%)))))
 
 (deftest batch-of-part-writes-records-with-fixed-statements-test
-  (testing "the update of 2 or 6 Dashboards after dashcard writes records a Revision each with the same number of statements"
+  (testing "the update of 2 or 6 Dashboards records a Revision each with the same number of statements"
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Card {card-id :id} {}]
-        (revision-statement-count! card-id 1)
-        (is (= (revision-statement-count! card-id 2) (revision-statement-count! card-id 6)))))))
+      (revision-statement-count! 1)
+      (is (= (revision-statement-count! 2) (revision-statement-count! 6))))))
 
 (deftest dashboard-save-is-one-revision-test
   (mt/with-current-user (mt/user->id :crowberto)
