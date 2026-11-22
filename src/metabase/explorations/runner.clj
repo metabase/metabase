@@ -125,7 +125,7 @@
                                                                                    resolved-source-ids)
                                    :resolved_source_ids (query-perms/stamped-resolved-source-ids dq
                                                                                                  resolved-source-ids)}]
-          (exploration-query/update-query! (:id row) stamp)
+          (exploration-query/update-queries! [(assoc stamp :id (:id row))])
           (merge row stamp))))))
 
 (defn- safe-chart-config
@@ -339,20 +339,21 @@
                                                                  :row_count           row-count
                                                                  :data_access_token   token
                                                                  :resolved_source_ids resolved-source-ids}]))]
-        (exploration-query-result/create-query-result!
-         {:exploration_query_id             (:id row)
-          :stored_result_id                 sr-id
-          :chart_stats                      stats
-          :interestingness_score            score
-          :contextual_interestingness_score (:score ctx)
-          :metric_description               (:metric-description ctx)
-          :chart_description                (:chart-description ctx)})
+        (exploration-query-result/create-query-results!
+         [{:exploration_query_id             (:id row)
+           :stored_result_id                 sr-id
+           :chart_stats                      stats
+           :interestingness_score            score
+           :contextual_interestingness_score (:score ctx)
+           :metric_description               (:metric-description ctx)
+           :chart_description                (:chart-description ctx)}])
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
         (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id
                                                         :exploration_id   (exploration-id row)}])
-        (exploration-query/update-query! (:id row) {:status      "done"
-                                                    :started_at  started
-                                                    :finished_at (OffsetDateTime/now)})))
+        (exploration-query/update-queries! [{:id          (:id row)
+                                             :status      "done"
+                                             :started_at  started
+                                             :finished_at (OffsetDateTime/now)}])))
     true
     (catch Exception e
       (if (explorations.db/query-result-exists? (:id row))

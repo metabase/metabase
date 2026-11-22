@@ -53,7 +53,7 @@
   (api/read-check (item-model model) id)
   (api/check (not (bookmarks.db/bookmark-exists? model id api/*current-user-id*))
              [400 "Bookmark already exists"])
-  (bookmark/create-bookmark! model id api/*current-user-id*))
+  (first (bookmark/create-bookmarks! [{:type model :item_id id :user_id api/*current-user-id*}])))
 
 (api.macros/defendpoint :delete "/:model/:id" :- ::api/generic-204-no-content
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
@@ -61,7 +61,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (bookmark/delete-bookmark! model id api/*current-user-id*)
+  (bookmark/delete-bookmarks! [{:type model :item_id id :user_id api/*current-user-id*}])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/ordering" :- ::api/generic-204-no-content

@@ -14,6 +14,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -114,10 +115,10 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-query-result!
-  "Insert the ExplorationQueryResult `query-result`."
-  [query-result :- ::explorations.schema/exploration-query-result.create]
-  (explorations.db/insert-query-result! query-result))
+(mu/defn create-query-results! :- [:sequential (ms/InstanceOf :model/ExplorationQueryResult)]
+  "Insert the ExplorationQueryResult `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-query-result.create]]
+  (explorations.db/insert-query-results! rows))
 
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly

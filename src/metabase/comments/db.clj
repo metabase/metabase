@@ -98,21 +98,26 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(mu/defn insert-comment!
-  "Insert the Comment `row` and return the inserted instance."
-  [row :- ::comments.schema/comment.update]
-  (t2/insert-returning-instance! :model/Comment row))
+(mu/defn insert-comments!
+  "Insert the Comment `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::comments.schema/comment.create]]
+  (t2/insert-returning-instances! :model/Comment rows))
 
-(mu/defn update-comment!
-  "Apply `changes` to the Comment with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment :id id changes))
+(mu/defn comments-by-id
+  "A map of id to Comment for the Comments with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn identity :model/Comment :id [:in ids]))
 
-(mu/defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now, returning the number updated."
-  [id :- ms/PositiveInt]
-  (t2/update! :model/Comment :id id {:deleted_at [:now]}))
+(mu/defn update-comments!
+  "Apply `changes` to the Comments with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- (mut/select-keys ::comments.schema/comment [:content :is_resolved])]
+  (t2/update! :model/Comment :id [:in ids] changes))
+
+(mu/defn soft-delete-comments!
+  "Mark the Comments with `ids` deleted now, returning the number updated."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/Comment :id [:in ids] {:deleted_at [:now]}))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
@@ -156,27 +161,22 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn reaction-exists?
-  "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
+(mu/defn reaction-id
+  "The id of the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, or nil."
   [comment-id :- ms/PositiveInt
    user-id    :- ::lib.schema.id/user
    emoji      :- :string]
-  (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+  (t2/select-one-pk :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
 
-(mu/defn insert-reaction!
-  "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/insert! :model/CommentReaction {:comment_id comment-id, :user_id user-id, :emoji emoji}))
+(mu/defn insert-reactions!
+  "Insert the CommentReaction `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::comments.schema/comment-reaction.create]]
+  (t2/insert-returning-instances! :model/CommentReaction rows))
 
-(mu/defn delete-reaction!
-  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning
-  the number deleted."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+(mu/defn delete-reactions!
+  "Delete the CommentReactions with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/CommentReaction :id [:in ids]))
 
 (mu/defn reactions-for-comments
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."

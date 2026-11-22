@@ -7,6 +7,7 @@
    [metabase.timeline.core :as timeline]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -69,8 +70,8 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-thread-timelines!
-  "Insert the ExplorationThreadTimeline `rows`."
+(mu/defn create-thread-timelines! :- [:sequential (ms/InstanceOf :model/ExplorationThreadTimeline)]
+  "Insert the ExplorationThreadTimeline `rows` and return the new instances, in the order of `rows`."
   [rows :- [:sequential ::explorations.schema/exploration-thread-timeline.create]]
   (explorations.db/insert-thread-timelines! rows))
 

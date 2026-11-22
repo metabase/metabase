@@ -13,16 +13,12 @@
 (mr/def ::exploration
   "A Exploration as selected from the app DB: every column of `:exploration`."
   [:merge
-   ::exploration.update
+   ::exploration.create
    [:map {:closed true}
     [:id                  ms/PositiveInt]]])
 
 (mr/def ::exploration.create
-  "What a caller gives to create an Exploration."
-  ::exploration.update)
-
-(mr/def ::exploration.update
-  "What an update (or insert) of a Exploration accepts: every column of `:exploration` except `id`, all optional."
+  "What a caller gives to create a Exploration: every column of `:exploration` except `id`, all optional."
   [:map {:closed true}
    [:name                {:optional true} [:maybe :string]]
    [:description         {:optional true} [:maybe :string]]
@@ -35,16 +31,16 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::exploration.revision
-  "An Exploration as a Revision stores it: its tracked columns."
-  [:select-keys ::exploration.update [:name :description :collection_id :archived]])
-
-(mr/def ::exploration.update-row
-  "An Exploration by its id with the columns to change."
+(mr/def ::exploration.update
+  "An exploration by its `id` with the columns to change."
   [:merge
-   ::exploration.update
+   ::exploration.create
    [:map {:closed true}
     [:id ms/PositiveInt]]])
+
+(mr/def ::exploration.revision
+  "An Exploration as a Revision stores it: its tracked columns."
+  [:select-keys ::exploration [:name :description :collection_id :archived]])
 
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
@@ -81,16 +77,12 @@
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
   [:merge
-   ::exploration-block.update
+   ::exploration-block.create
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-block.create
-  "What a caller gives to create an ExplorationBlock."
-  ::exploration-block.update)
-
-(mr/def ::exploration-block.update
-  "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
+  "What a caller gives to create a ExplorationBlock: every column of `:exploration_block` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
@@ -99,19 +91,22 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::exploration-block.update
+  "An exploration-block by its `id` with the columns to change."
+  [:merge
+   ::exploration-block.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::exploration-page
   "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
   [:merge
-   ::exploration-page.update
+   ::exploration-page.create
    [:map {:closed true}
     [:id                   ms/PositiveInt]]])
 
 (mr/def ::exploration-page.create
-  "What a caller gives to create an ExplorationPage."
-  ::exploration-page.update)
-
-(mr/def ::exploration-page.update
-  "What an update (or insert) of a ExplorationPage accepts: every column of `:exploration_page` except `id`, all optional."
+  "What a caller gives to create a ExplorationPage: every column of `:exploration_page` except `id`, all optional."
   [:map {:closed true}
    [:entity_id            {:optional true} [:maybe :string]]
    [:exploration_block_id {:optional true} [:maybe ms/PositiveInt]]
@@ -123,6 +118,13 @@
    [:hidden               {:optional true} [:maybe :boolean]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::exploration-page.update
+  "An exploration-page by its `id` with the columns to change."
+  [:merge
+   ::exploration-page.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -150,16 +152,12 @@
 (mr/def ::exploration-query
   "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
   [:merge
-   ::exploration-query.update
+   ::exploration-query.create
    [:map {:closed true}
     [:id                     ms/PositiveInt]]])
 
 (mr/def ::exploration-query.create
-  "What a caller gives to create an ExplorationQuery."
-  ::exploration-query.update)
-
-(mr/def ::exploration-query.update
-  "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
+  "What a caller gives to create a ExplorationQuery: every column of `:exploration_query` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id  {:optional true} [:maybe ms/PositiveInt]]
    [:page_id                {:optional true} [:maybe ms/PositiveInt]]
@@ -184,6 +182,13 @@
    [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
    [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
 
+(mr/def ::exploration-query.update
+  "An exploration-query by its `id` with the columns to change."
+  [:merge
+   ::exploration-query.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
   [:fn {:error/message "dataset_query, data_access_token and resolved_source_ids go together or not at all"}
@@ -199,16 +204,12 @@
 (mr/def ::exploration-query-result
   "A ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
   [:merge
-   ::exploration-query-result.update
+   ::exploration-query-result.create
    [:map {:closed true}
     [:id                               ms/PositiveInt]]])
 
 (mr/def ::exploration-query-result.create
-  "What a caller gives to create an ExplorationQueryResult."
-  ::exploration-query-result.update)
-
-(mr/def ::exploration-query-result.update
-  "What an update (or insert) of a ExplorationQueryResult accepts: every column of `:exploration_query_result` except `id`, all optional."
+  "What a caller gives to create a ExplorationQueryResult: every column of `:exploration_query_result` except `id`, all optional."
   [:map {:closed true}
    [:exploration_query_id             {:optional true} [:maybe ms/PositiveInt]]
    [:stored_result_id                 {:optional true} [:maybe ms/PositiveInt]]
@@ -218,6 +219,13 @@
    [:chart_stats                      {:optional true} [:maybe ::exploration-query-result.chart-stats]]
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
+
+(mr/def ::exploration-query-result.update
+  "An exploration-query-result by its `id` with the columns to change."
+  [:merge
+   ::exploration-query-result.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::exploration-thread.query-plan-transcript.plan-item
   "One entry of the `:plan` a query planner emits."
@@ -283,16 +291,12 @@
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
   [:merge
-   ::exploration-thread.update
+   ::exploration-thread.create
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-thread.create
-  "What a caller gives to create an ExplorationThread."
-  ::exploration-thread.update)
-
-(mr/def ::exploration-thread.update
-  "What an update (or insert) of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, all optional."
+  "What a caller gives to create a ExplorationThread: every column of `:exploration_thread` except `id`, all optional."
   [:map {:closed true}
    [:exploration_id        {:optional true} [:maybe ms/PositiveInt]]
    [:name                  {:optional true} [:maybe :string]]
@@ -311,19 +315,22 @@
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]
    [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
+(mr/def ::exploration-thread.update
+  "An exploration-thread by its `id` with the columns to change."
+  [:merge
+   ::exploration-thread.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
   [:merge
-   ::exploration-thread-timeline.update
+   ::exploration-thread-timeline.create
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-thread-timeline.create
-  "What a caller gives to create an ExplorationThreadTimeline."
-  ::exploration-thread-timeline.update)
-
-(mr/def ::exploration-thread-timeline.update
-  "What an update (or insert) of a ExplorationThreadTimeline accepts: every column of `:exploration_thread_timeline` except `id`, all optional."
+  "What a caller gives to create a ExplorationThreadTimeline: every column of `:exploration_thread_timeline` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
@@ -331,7 +338,9 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::write-opts
-  "The options of a write function of Explorations: the context of its events."
-  [:maybe [:map {:closed true}
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+(mr/def ::exploration-thread-timeline.update
+  "An exploration-thread-timeline by its `id` with the columns to change."
+  [:merge
+   ::exploration-thread-timeline.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])

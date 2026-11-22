@@ -53,9 +53,9 @@
 
 (deftest glossary-schema-test
   (testing "the Glossary schema refuses a blank or missing term or definition"
-    (is (not (mr/validate ::glossary.schema/glossary.update {:term " "})))
-    (is (not (mr/validate ::glossary.schema/glossary.update {:definition nil})))
-    (is (mr/validate ::glossary.schema/glossary.update {:term "Kept" :definition "Kept definition"}))))
+    (is (not (mr/validate ::glossary.schema/glossary.update {:id 1 :term " "})))
+    (is (not (mr/validate ::glossary.schema/glossary.update {:id 1 :definition nil})))
+    (is (mr/validate ::glossary.schema/glossary.update {:id 1 :term "Kept" :definition "Kept definition"}))))
 
 (deftest write-permission-test
   (mt/with-temp [:model/Glossary entry {:term "Checked" :definition "Permission checked"}]
@@ -87,10 +87,10 @@
 (deftest write-functions-publish-events-test
   (reset! published [])
   (mt/with-current-user (mt/user->id :rasta)
-    (let [{:keys [id]} (glossary/create-glossary-entry! {:term "Published" :definition "Definition" :creator_id (mt/user->id :rasta)})]
+    (let [{:keys [id]} (first (glossary/create-glossaries! [{:term "Published" :definition "Definition" :creator_id (mt/user->id :rasta)}]))]
       (try
-        (glossary/update-glossary-entry! id {:definition "Changed"})
-        (glossary/delete-glossary-entry! id)
+        (glossary/update-glossaries! [{:id id :definition "Changed"}])
+        (glossary/delete-glossaries! [id])
         (is (=? [[:event/glossary-create {:changes [{:object {:id id :term "Published"}}]
                                           :user-id (mt/user->id :rasta)}]
                  [:event/glossary-update {:changes [{:object          {:definition "Changed"}

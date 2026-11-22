@@ -177,7 +177,7 @@
                  :model/Collection live      {}
                  :model/Card       card      {:collection_id (u/the-id live)}
                  :model/Dashboard  dashboard {:collection_id (u/the-id live)}
-                 :model/Card       in-dash   {:dashboard_id (u/the-id dashboard) :collection_id (u/the-id live)}]
+                 :model/Card       _in-dash  {:dashboard_id (u/the-id dashboard) :collection_id (u/the-id live)}]
     (testing "a row that is not archived cannot be inserted into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (first (dashboard/create-dashboards! [{:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)}]))))

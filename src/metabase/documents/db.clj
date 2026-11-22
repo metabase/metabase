@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
@@ -73,12 +74,12 @@
 (mu/defn insert-documents!
   "Insert the Document `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::documents.schema/document.create]]
-  (t2/insert-returning-instances! :model/Document rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Document %) rows))
 
 (mu/defn update-documents!
   "Apply `changes` to the Documents with `ids`, returning the number updated."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::documents.schema/document.update]
+   changes :- (mut/dissoc ::documents.schema/document.update :id)]
   (t2/update! :model/Document :id [:in ids] changes))
 
 (mu/defn delete-documents!

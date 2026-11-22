@@ -2,6 +2,7 @@
   "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
@@ -34,7 +35,7 @@
 (mu/defn insert-timelines!
   "Insert the Timeline `rows` and return the inserted instances."
   [rows :- [:sequential ::timeline.schema/timeline.create]]
-  (t2/insert-returning-instances! :model/Timeline rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Timeline %) rows))
 
 (mu/defn timelines-in-visible-collections
   "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
@@ -65,7 +66,7 @@
 (mu/defn update-timelines!
   "Apply `changes` to the Timelines with `ids`, returning the number updated."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::timeline.schema/timeline.update]
+   changes :- (mut/dissoc ::timeline.schema/timeline.update :id)]
   (t2/update! :model/Timeline :id [:in ids] changes))
 
 (mu/defn unarchived-timelines-in-collections
@@ -112,7 +113,7 @@
 (mu/defn insert-timeline-events!
   "Insert the TimelineEvent `rows` and return the inserted instances."
   [rows :- [:sequential ::timeline.schema/timeline-event.create]]
-  (t2/insert-returning-instances! :model/TimelineEvent rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/TimelineEvent %) rows))
 
 (mu/defn timeline-event
   "The TimelineEvent with `id`, or nil."
@@ -154,7 +155,7 @@
 (mu/defn update-timeline-events!
   "Apply `changes` to the TimelineEvents with `ids`, returning the number updated."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::timeline.schema/timeline-event.update]
+   changes :- (mut/dissoc ::timeline.schema/timeline-event.update :id)]
   (t2/update! :model/TimelineEvent :id [:in ids] changes))
 
 (mu/defn delete-timeline-events!

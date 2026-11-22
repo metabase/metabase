@@ -255,26 +255,31 @@
    [:created_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
+(def ^:private action-detail-entries
+  "The columns of the QueryAction or ImplicitAction of an Action that a caller gives with the Action."
+  [[:dataset_query {:optional true} ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]
+   [:kind          {:optional true} ::implicit-action.kind]
+   [:table_id      {:optional true} [:maybe ::lib.schema.id/table]]])
+
 (mr/def ::action.create
-  "What a caller gives to create the row of an Action, without its QueryAction or ImplicitAction."
-  (into [:map {:closed true}
-         [:name :string]
-         [:type ::type]]
-        action-write-entries))
+  "What a caller gives to create an Action: its columns and those of its QueryAction or ImplicitAction."
+  (-> [:map {:closed true}
+       [:name :string]
+       [:type ::type]]
+      (into action-write-entries)
+      (into action-detail-entries)))
 
-(mr/def ::action.changes
-  "The Action columns an update of the Action row alone changes."
-  (into [:map {:closed true}
-         [:name {:optional true} :string]
-         [:type {:optional true} ::type]]
-        action-write-entries))
-
-(mr/def ::action.row
-  "An Action id and the Action columns to change, as an update of several Actions takes it."
-  [:merge
-   ::action.changes
-   [:map {:closed true}
-    [:id ::id]]])
+(mr/def ::action.update
+  "An Action by its `id` with the columns to change: those of the Action and those of its QueryAction or
+  ImplicitAction."
+  (-> [:map {:closed true}
+       [:id   ::id]
+       [:name {:optional true} :string]
+       [:type {:optional true} ::type]]
+      (into action-write-entries)
+      (into action-detail-entries)))
 
 (mr/def ::query-action.create
   "What a caller gives to create a QueryAction."
@@ -284,19 +289,13 @@
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:legacy_query  {:optional true} [:maybe :string]]])
 
-(mr/def ::query-action.changes
-  "The columns an update of a QueryAction changes."
+(mr/def ::query-action.update
+  "A QueryAction by the id of its Action with the columns to change."
   [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
    [:dataset_query {:optional true} ::query-action.dataset-query]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:legacy_query  {:optional true} [:maybe :string]]])
-
-(mr/def ::query-action.row
-  "A QueryAction's Action id and the columns to change, as an update of several QueryActions takes it."
-  [:merge
-   ::query-action.changes
-   [:map {:closed true}
-    [:action_id ::lib.schema.id/action]]])
 
 (mr/def ::implicit-action.create
   "What a caller gives to create an ImplicitAction."
@@ -305,31 +304,17 @@
    [:kind      {:optional true} ::implicit-action.kind]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(mr/def ::implicit-action.changes
-  "The columns an update of an ImplicitAction changes."
-  [:map {:closed true}
-   [:kind      {:optional true} ::implicit-action.kind]
-   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
-
-(mr/def ::implicit-action.row
-  "An ImplicitAction's Action id and the columns to change, as an update of several ImplicitActions takes it."
+(mr/def ::implicit-action.update
+  "An ImplicitAction by the id of its Action with the columns to change."
   [:merge
-   ::implicit-action.changes
-   [:map {:closed true}
-    [:action_id ::lib.schema.id/action]]])
+   ::implicit-action.create
+   [:map {:closed true}]])
 
 (mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
    [:kind      ::implicit-action.kind]
-   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
-
-(mr/def ::implicit-action.update
-  "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} ::implicit-action.kind]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::query-action
@@ -339,14 +324,6 @@
    [:database_id   ::lib.schema.id/database]
    [:dataset_query ::query-action.dataset-query]
    [:legacy_query  [:maybe :string]]])
-
-(mr/def ::query-action.update
-  "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
-   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} ::query-action.native-dataset-query]
-   [:legacy_query  {:optional true} [:maybe :string]]])
 
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a
@@ -394,11 +371,3 @@
     [:select-keys ::implicit-action [:kind :table_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
-
-(mr/def ::write-opts
-  "The options of a write function of Actions: `:writer :cascade` for the write that the archive or restore of a
-  Collection carries, which skips the checks of a user's write, `:writer :import` for a SerDes import, and the context of
-  its events."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :cascade :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

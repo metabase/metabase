@@ -40,7 +40,6 @@
   [:merge
    ::document.update
    [:map {:closed true}
-    [:id                  ms/PositiveInt]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_write           {:optional true} :boolean]
@@ -48,31 +47,9 @@
     [:can_restore         {:optional true} :boolean]
     [:is_remote_synced    {:optional true} :boolean]]])
 
-(mr/def ::document.update
-  "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
-  [:map {:closed true}
-   [:name                {:optional true} ::document.name]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:document            {:optional true} [:maybe ::document.document]]
-   [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
-   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:archived            {:optional true} [:maybe :boolean]]
-   [:archived_directly   {:optional true} [:maybe :boolean]]
-   [:entity_id           {:optional true} [:maybe :string]]
-   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:view_count          {:optional true} [:maybe :int]]
-   [:collection_position {:optional true} [:maybe :int]]
-   [:public_uuid         {:optional true} [:maybe :string]]
-   [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:public_uuid_prefix  {:optional true} [:maybe :string]]
-   [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
-
 (mr/def ::document.revision
   "A Document as a Revision stores it: its tracked columns."
-  [:select-keys ::document.update
+  [:select-keys ::document
    [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]])
 
 (mr/def ::document.create
@@ -93,12 +70,18 @@
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
-(mr/def ::document.update-row
-  "A row of a bulk update of Documents: the id of the Document and the columns to change."
+(mr/def ::document.update
+  "A Document by its `id` with the columns to change: those of `::document.create`, and the columns the product sets."
   [:merge
-   ::document.update
+   ::document.create
    [:map {:closed true}
-    [:id ms/PositiveInt]]])
+    [:id                 ms/PositiveInt]
+    [:name               {:optional true} ::document.name]
+    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+    [:last_viewed_at     {:optional true} [:maybe ms/TemporalInstant]]
+    [:view_count         {:optional true} [:maybe :int]]
+    [:public_uuid_prefix {:optional true} [:maybe :string]]]])
 
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."
@@ -121,8 +104,3 @@
                               :document :collection_id :creator_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
-
-(mr/def ::write-opts
-  "The options of a write function of Documents: the context of its events."
-  [:maybe [:map {:closed true}
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

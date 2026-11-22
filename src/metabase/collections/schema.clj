@@ -154,10 +154,10 @@
 (mr/def ::collection.name
   ms/NonBlankString)
 
-(mr/def ::collection.update
-  "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
+(mr/def ::collection.create
+  "What a caller gives to create a Collection: every column of `:collection` except `id`, and a name."
   [:map {:closed true}
-   [:name                 {:optional true} [:maybe ::collection.name]]
+   [:name                 ::collection.name]
    [:description          {:optional true} [:maybe :string]]
    [:archived             {:optional true} [:maybe :boolean]]
    [:location             {:optional true} [:maybe :string]]
@@ -173,19 +173,13 @@
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
 
-(mr/def ::collection.create
-  "What an insert of a Collection accepts: what an update accepts, and a name."
+(mr/def ::collection.update
+  "A Collection by its `id` with the columns to change."
   [:merge
-   ::collection.update
+   ::collection.create
    [:map {:closed true}
-    [:name ::collection.name]]])
-
-(mr/def ::collection.update-row
-  "A Collection by its id with the columns to change."
-  [:merge
-   ::collection.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/collection]]])
+    [:id ::lib.schema.id/collection]
+    [:name {:optional true} [:maybe ::collection.name]]]])
 
 (mr/def ::external-collection
   "A Collection as serialization writes it, with portable references in place of ids."
@@ -197,12 +191,6 @@
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:parent_id {:optional true} [:maybe ::lib.schema.id/collection]]]]])
-
-(mr/def ::write-opts
-  "The options of a write function of Collections: who writes."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :import]]]])
-
 (mr/def ::positions
   "A range of `collection_position` values as plain data: from `:from` up to `:to`, either bound left out for none."
   [:map {:closed true}

@@ -2,6 +2,7 @@
   "Application database queries for the glossary module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
@@ -20,26 +21,31 @@
                                        [:like [:lower :term] pattern]
                                        [:like [:lower :definition] pattern]])))))
 
-(mu/defn insert-glossary-entry!
-  "Insert the Glossary `row` and return the inserted instance."
-  [row :- ::glossary.schema/glossary.update]
-  (t2/insert-returning-instance! :model/Glossary row))
+(mu/defn insert-glossaries!
+  "Insert the Glossary `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::glossary.schema/glossary.create]]
+  (t2/insert-returning-instances! :model/Glossary rows))
 
 (mu/defn glossary-entry
   "The Glossary entry with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Glossary :id id))
 
-(mu/defn update-glossary-entry!
-  "Apply `changes` to the Glossary entry with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::glossary.schema/glossary.update]
-  (t2/update! :model/Glossary :id id changes))
+(mu/defn glossaries-by-id
+  "A map of id to Glossary for the Glossary entries with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn identity :model/Glossary :id [:in ids]))
 
-(mu/defn delete-glossary-entry!
-  "Delete the Glossary entry with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Glossary :id id))
+(mu/defn update-glossaries!
+  "Apply `changes` to the Glossary entries with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- (mut/dissoc ::glossary.schema/glossary.update :id)]
+  (t2/update! :model/Glossary :id [:in ids] changes))
+
+(mu/defn delete-glossaries!
+  "Delete the Glossary entries with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Glossary :id [:in ids]))
 
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."

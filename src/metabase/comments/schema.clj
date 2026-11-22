@@ -63,24 +63,7 @@
   "A Comment as selected from the app DB: every column of `:comment`."
   [:merge
    ::comment.update
-   [:map {:closed true}
-    [:id                ms/PositiveInt]]])
-
-(mr/def ::comment.update
-  "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
-  [:map {:closed true}
-   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
-   [:target_type       {:optional true} [:maybe [:or :keyword :string]]]
-   [:target_id         {:optional true} [:maybe ms/PositiveInt]]
-   [:child_target_id   {:optional true} [:maybe :string]]
-   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
-   [:content           {:optional true} [:maybe ::comment.content]]
-   [:is_resolved       {:optional true} [:maybe :boolean]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:content_html      {:optional true} [:maybe :string]]
-   [:context           {:optional true} [:maybe ::comment.context]]])
+   [:map {:closed true}]])
 
 (mr/def ::comment.create
   "What a caller gives to create a Comment."
@@ -93,12 +76,27 @@
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
    [:context           {:optional true} [:maybe ::comment.context]]])
 
+(mr/def ::comment.update
+  "A Comment by its `id` with the columns to change: those of `::comment.create`, and the columns the product sets."
+  [:merge
+   ::comment.create
+   [:map {:closed true}
+    [:id           ms/PositiveInt]
+    [:target_type  {:optional true} [:maybe [:or :keyword :string]]]
+    [:target_id    {:optional true} [:maybe ms/PositiveInt]]
+    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
+    [:content      {:optional true} [:maybe ::comment.content]]
+    [:is_resolved  {:optional true} [:maybe :boolean]]
+    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+    [:deleted_at   {:optional true} [:maybe ms/TemporalInstant]]
+    [:content_html {:optional true} [:maybe :string]]]])
+
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge
    ::comment-reaction.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+   [:map {:closed true}]])
 
 ;; The `emoji` of a reaction: a string of 1 to 10 Unicode code points.
 ;;
@@ -119,17 +117,21 @@
      (fn [^String s] (<= 1 (.codePointCount s 0 (.length s)) 10))]]
    (deferred-tru "Emoji must be 1 to 10 Unicode code points.")))
 
-(mr/def ::comment-reaction.update
-  "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."
-  [:map {:closed true}
-   [:comment_id {:optional true} [:maybe ms/PositiveInt]]
-   [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:emoji      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
-
 (mr/def ::comment-reaction.create
   "What a caller gives to create a CommentReaction."
   [:map {:closed true}
    [:comment_id ms/PositiveInt]
    [:user_id    ::lib.schema.id/user]
    [:emoji      :string]])
+
+(mr/def ::comment-reaction.update
+  "A CommentReaction by its `id` with the columns to change: those of `::comment-reaction.create`, and the columns the
+  product sets."
+  [:merge
+   ::comment-reaction.create
+   [:map {:closed true}
+    [:id         ms/PositiveInt]
+    [:comment_id {:optional true} [:maybe ms/PositiveInt]]
+    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
+    [:emoji      {:optional true} [:maybe :string]]
+    [:created_at {:optional true} [:maybe ms/TemporalInstant]]]])

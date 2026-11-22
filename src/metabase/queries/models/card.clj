@@ -2334,19 +2334,19 @@
   (update-cards! [(assoc snapshot :id card-id)] {:writer :revert}))
 
 (defmethod collection/archive-in-collections! :model/Card
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-cards! (mapv (fn [id] {:id id :archived true}) ids) {:context context})))
+    (update-cards! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Card
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-cards! (mapv (fn [id] {:id id :archived false}) ids) {:context context})))
+    (update-cards! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 (defmethod collection/delete-in-collections! :model/Card
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
-    (delete-cards! ids {:context context})))
+    (delete-cards! ids opts)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

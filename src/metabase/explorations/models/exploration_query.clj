@@ -1,6 +1,5 @@
 (ns metabase.explorations.models.exploration-query
   (:require
-   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
@@ -71,20 +70,21 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-queries!
-  "Insert the ExplorationQuery `rows`."
+(mu/defn create-queries! :- [:sequential (ms/InstanceOf :model/ExplorationQuery)]
+  "Insert the ExplorationQuery `rows` and return the new instances, in the order of `rows`."
   [rows :- [:sequential ::explorations.schema/exploration-query.create]]
   (explorations.db/insert-queries! rows))
 
-(mu/defn update-query!
-  "Apply `changes` to the ExplorationQuery with `query-id`."
-  [query-id :- ms/PositiveInt
-   changes  :- [:and
-                (mut/select-keys ::explorations.schema/exploration-query.update
-                                 [:dataset_query :name :data_access_token :resolved_source_ids
-                                  :status :started_at :finished_at])
-                ::explorations.schema/exploration-query.update.stamped-together]]
-  (explorations.db/update-query! query-id changes))
+(mu/defn update-queries! :- :int
+  "Apply the columns of each of `rows` to the ExplorationQuery with its `:id`, with one statement for each set of
+  changes, and return the number updated."
+  [rows :- [:sequential [:and
+                         ::explorations.schema/exploration-query.update
+                         ::explorations.schema/exploration-query.update.stamped-together]]]
+  (transduce (map (fn [[changes group]] (explorations.db/update-queries! (mapv :id group) changes)))
+             +
+             0
+             (group-by #(dissoc % :id) rows)))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number

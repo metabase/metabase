@@ -2201,3 +2201,10 @@
           (grant! descendant)
           (is (true? (can-update? {:parent_id (:id target)})))
           (is (true? (can-update? {:location (collection/children-location target)}))))))))
+
+(deftest create-collections-with-different-columns-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [collections (collection/create-collections! [{:name "Plain"}
+                                                       {:name "Archived-not" :description "d"}])]
+      (is (= ["Plain" "Archived-not"] (map :name collections)))
+      (is (= [false false] (map #(t2/select-one-fn :archived :model/Collection :id (:id %)) collections))))))

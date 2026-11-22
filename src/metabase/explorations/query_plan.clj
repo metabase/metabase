@@ -99,11 +99,11 @@
   only because [[lock-thread-for-planning!]] keeps them out — see there."
   [[block-id card-id dim-id query-type] position]
   (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
-      (exploration-page/create-page! {:exploration_block_id block-id
-                                      :card_id              card-id
-                                      :dimension_id         dim-id
-                                      :query_type           query-type
-                                      :position             position})))
+      (:id (first (exploration-page/create-pages! [{:exploration_block_id block-id
+                                                    :card_id              card-id
+                                                    :dimension_id         dim-id
+                                                    :query_type           query-type
+                                                    :position             position}])))))
 
 (defn- reconcile-pages!
   "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
@@ -244,8 +244,9 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (exploration-thread/update-thread! thread-id {:analysis_started_at now
-                                                  :completed_at        now})))
+    (exploration-thread/update-threads! [{:id                  thread-id
+                                          :analysis_started_at now
+                                          :completed_at        now}])))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -261,7 +262,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (exploration-thread/update-thread! thread-id {:query_plan_transcript transcript})
+    (exploration-thread/update-threads! [{:id thread-id :query_plan_transcript transcript}])
     (catch Throwable e
       (when (schema-violation? e)
         (throw e))

@@ -2,7 +2,6 @@
   "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
   so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -43,70 +42,6 @@
    user-id        :- ::lib.schema.id/user]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
-(mu/defn insert-card-bookmark!
-  "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
-
-(mu/defn insert-dashboard-bookmark!
-  "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
-  inserted instance."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
-
-(mu/defn insert-collection-bookmark!
-  "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
-  inserted instance."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
-
-(mu/defn insert-document-bookmark!
-  "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
-  instance."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
-
-(mu/defn insert-exploration-bookmark!
-  "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
-  inserted instance."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/ExplorationBookmark {:exploration_id exploration-id :user_id user-id}))
-
-(mu/defn delete-card-bookmark!
-  "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/CardBookmark :card_id card-id :user_id user-id))
-
-(mu/defn delete-dashboard-bookmark!
-  "Delete the DashboardBookmark of the User with `user-id` for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/delete! :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
-
-(mu/defn delete-collection-bookmark!
-  "Delete the CollectionBookmark of the User with `user-id` for the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/delete! :model/CollectionBookmark :collection_id collection-id :user_id user-id))
-
-(mu/defn delete-document-bookmark!
-  "Delete the DocumentBookmark of the User with `user-id` for the Document with `document-id`."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/delete! :model/DocumentBookmark :document_id document-id :user_id user-id))
-
-(mu/defn delete-exploration-bookmark!
-  "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
-
 ;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
 ;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
 
@@ -134,25 +69,25 @@
    "document"    [:model/DocumentBookmark    :document_id]
    "exploration" [:model/ExplorationBookmark :exploration_id]})
 
-(defn insert-bookmark!
-  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one.
-  Does not read-check the item; callers do. Throws for an unrecognized `model`."
-  [model id user-id]
-  (let [[bookmark-model item-key] (or (model->bookmark-model+item-key model) (unknown-bookmark-model! model))]
-    ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
-    ;; one losing to the (user_id, item) unique constraint.
-    (mdb/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
+(defn insert-bookmarks!
+  "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks, the
+  existing one when there already is one. Does not read-check the item; callers do. Throws for an unrecognized
+  `:type`."
+  [rows]
+  (mapv (fn [{:keys [type item_id user_id]}]
+          (let [[bookmark-model item-key] (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type))]
+            ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
+            ;; one losing to the (user_id, item) unique constraint.
+            (mdb/select-or-insert! bookmark-model {item-key item_id :user_id user_id} (constantly {}))))
+        rows))
 
-(defn delete-bookmark!
-  "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none. Throws for an unrecognized `model`."
-  [model id user-id]
-  (case model
-    "card"        (delete-card-bookmark! id user-id)
-    "dashboard"   (delete-dashboard-bookmark! id user-id)
-    "collection"  (delete-collection-bookmark! id user-id)
-    "document"    (delete-document-bookmark! id user-id)
-    "exploration" (delete-exploration-bookmark! id user-id)
-    (unknown-bookmark-model! model)))
+(defn delete-bookmarks!
+  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`. No-op for one that
+  has none. Throws for an unrecognized `:type`."
+  [rows]
+  (doseq [{:keys [type item_id user_id]} rows
+          :let [[bookmark-model item-key] (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type))]]
+    (t2/delete! bookmark-model item-key item_id :user_id user_id)))
 
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."
@@ -161,7 +96,7 @@
 
 (mu/defn insert-bookmark-orderings!
   "Insert the BookmarkOrdering `rows`."
-  [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
+  [rows :- [:sequential ::bookmarks.schema/bookmark-ordering.create]]
   (t2/insert! :model/BookmarkOrdering rows))
 
 (defn- bookmarks-union-query

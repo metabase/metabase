@@ -64,9 +64,9 @@
         (is (= timeline-event/default-icon (t2/select-one-fn :icon :model/Timeline :id id)))
         (t2/delete! :model/Timeline :id id)))
     (testing "the Timeline schema refuses a blank name and an icon outside the allowed set"
-      (is (not (mr/validate ::timeline.schema/timeline.update {:name ""})))
-      (is (not (mr/validate ::timeline.schema/timeline.update {:icon "nope"})))
-      (is (mr/validate ::timeline.schema/timeline.update {:name "Icons" :icon "cake"})))
+      (is (not (mr/validate ::timeline.schema/timeline.update {:id 1 :name ""})))
+      (is (not (mr/validate ::timeline.schema/timeline.update {:id 1 :icon "nope"})))
+      (is (mr/validate ::timeline.schema/timeline.update {:id 1 :name "Icons" :icon "cake"})))
     (testing "an allowed icon is accepted on update"
       (t2/update! :model/Timeline :id timeline-id {:icon "cake"})
       (is (= "cake" (t2/select-one-fn :icon :model/Timeline :id timeline-id))))))
@@ -136,3 +136,11 @@
     (is (true? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))
     (timeline/update-timelines! [{:id timeline-id :archived false}])
     (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))))
+
+(deftest create-timelines-with-different-columns-test
+  (mt/with-model-cleanup [:model/Timeline]
+    (let [creator-id (mt/user->id :rasta)
+          timelines  (timeline/create-timelines! [{:name "Plain" :creator_id creator-id}
+                                                  {:name "Archived" :creator_id creator-id :archived true}])]
+      (is (= ["Plain" "Archived"] (map :name timelines)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/Timeline :id (:id %)) timelines))))))

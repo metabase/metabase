@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.bookmarks.db :as bookmarks.db]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -87,23 +88,21 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-bookmark!
-  "Give the User with `user-id` a bookmark on the item of bookmark type `model` with `id` and return it, the existing
-  one when there is one; a Collection that takes no bookmarks is a 400."
-  [model   :- :string
-   id      :- ms/PositiveInt
-   user-id :- ms/PositiveInt]
-  (when (= model "collection")
-    (collection/check-allowed-content :model/CollectionBookmark id))
-  (bookmarks.db/insert-bookmark! model id user-id))
+(mu/defn create-bookmarks! :- [:sequential :map]
+  "Give each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`, a bookmark on the item and
+  return the bookmarks, the existing one when there is one; a Collection that takes no bookmarks is a 400."
+  [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
+  (doseq [{:keys [type item_id]} rows
+          :when                  (= type "collection")]
+    (collection/check-allowed-content :model/CollectionBookmark item_id))
+  (bookmarks.db/insert-bookmarks! rows))
 
-(mu/defn delete-bookmark!
-  "Delete the bookmark of the User with `user-id` on the item of bookmark type `model` with `id`. Does nothing when
-  there is none."
-  [model   :- :string
-   id      :- ms/PositiveInt
-   user-id :- ms/PositiveInt]
-  (bookmarks.db/delete-bookmark! model id user-id))
+(mu/defn delete-bookmarks! :- :nil
+  "Delete the bookmark of each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`. Does
+  nothing for one that has none."
+  [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
+  (bookmarks.db/delete-bookmarks! rows)
+  nil)
 
 (defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`

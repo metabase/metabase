@@ -70,8 +70,8 @@
     (mt/with-temp [:model/Card card {}]
       (let [user-id (mt/user->id :rasta)
             card-id (u/the-id card)
-            first!  (bookmark/create-bookmark! "card" card-id user-id)]
-        (is (= (:id first!) (:id (bookmark/create-bookmark! "card" card-id user-id))))
+            first!  (first (bookmark/create-bookmarks! [{:type "card" :item_id card-id :user_id user-id}]))]
+        (is (= (:id first!) (:id (first (bookmark/create-bookmarks! [{:type "card" :item_id card-id :user_id user-id}])))))
         (is (= 1 (t2/count :model/CardBookmark :card_id card-id :user_id user-id)))))))
 
 (deftest unknown-bookmark-model-test
@@ -80,8 +80,8 @@
             directly by callers the REST/MCP schemas don't validate"
     (let [user-id (mt/user->id :rasta)]
       (doseq [[label thunk] [["bookmark-exists?" #(bookmarks.db/bookmark-exists? "bogus" 1 user-id)]
-                             ["insert-bookmark!" #(bookmark/create-bookmark! "bogus" 1 user-id)]
-                             ["delete-bookmark!" #(bookmark/delete-bookmark! "bogus" 1 user-id)]]]
+                             ["create-bookmarks!" #(bookmark/create-bookmarks! [{:type "bogus" :item_id 1 :user_id user-id}])]
+                             ["delete-bookmarks!" #(bookmark/delete-bookmarks! [{:type "bogus" :item_id 1 :user_id user-id}])]]]
         (testing label
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown bookmarkable model" (thunk))))))))
 

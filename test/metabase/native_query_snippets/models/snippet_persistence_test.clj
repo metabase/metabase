@@ -72,10 +72,10 @@
         (let [[{snippet-id :id}] (native-query-snippet/create-snippets! [{:name "Reference Missing"
                                                                           :content "SELECT * FROM products {{snippet: NonExistent}}"
                                                                           :collection_id coll-id
-                                                                          :creator_id (mt/user->id :crowberto)}])]
-          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)]
-            (is (contains? template-tags "snippet: NonExistent"))
-            (is (nil? (get-in template-tags ["snippet: NonExistent" :snippet-id])))))))))
+                                                                          :creator_id (mt/user->id :crowberto)}])
+              template-tags    (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)]
+          (is (contains? template-tags "snippet: NonExistent"))
+          (is (nil? (get-in template-tags ["snippet: NonExistent" :snippet-id]))))))))
 
 (deftest multiple-snippet-references-test
   (testing "A snippet can reference multiple other snippets and maintain all references"
@@ -90,16 +90,16 @@
         (let [[{combined-id :id}] (native-query-snippet/create-snippets! [{:name "Combined"
                                                                            :content "SELECT * FROM orders WHERE {{snippet: Filter One}} AND {{snippet: Filter Two}}"
                                                                            :collection_id coll-id
-                                                                           :creator_id (mt/user->id :crowberto)}])]
-          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
-            (is (= filter1-id (get-in template-tags ["snippet: Filter One" :snippet-id])))
-            (is (= filter2-id (get-in template-tags ["snippet: Filter Two" :snippet-id])))
-            (testing "After renaming referenced snippets, references should persist"
-              (native-query-snippet/update-snippets! [{:id filter1-id :name "Renamed Filter One"}])
-              (native-query-snippet/update-snippets! [{:id filter2-id :name "Renamed Filter Two"}])
-              (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
-                (is (= filter1-id (get-in updated-tags ["snippet: Filter One" :snippet-id])))
-                (is (= filter2-id (get-in updated-tags ["snippet: Filter Two" :snippet-id])))))))))))
+                                                                           :creator_id (mt/user->id :crowberto)}])
+              template-tags     (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
+          (is (= filter1-id (get-in template-tags ["snippet: Filter One" :snippet-id])))
+          (is (= filter2-id (get-in template-tags ["snippet: Filter Two" :snippet-id])))
+          (testing "After renaming referenced snippets, references should persist"
+            (native-query-snippet/update-snippets! [{:id filter1-id :name "Renamed Filter One"}])
+            (native-query-snippet/update-snippets! [{:id filter2-id :name "Renamed Filter Two"}])
+            (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
+              (is (= filter1-id (get-in updated-tags ["snippet: Filter One" :snippet-id])))
+              (is (= filter2-id (get-in updated-tags ["snippet: Filter Two" :snippet-id]))))))))))
 
 (deftest snippet-reference-prefers-exact-name-match-test
   (testing "When a new snippet is created matching an old reference name, the reference should switch to the new snippet"

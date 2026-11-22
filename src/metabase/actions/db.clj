@@ -2,6 +2,7 @@
   "Application database queries for the actions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
@@ -123,15 +124,20 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
 
+(def action-columns
+  "The columns that are common to all Action types."
+  [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
+   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
+
 (mu/defn insert-actions!
   "Insert the Action `rows` and return the inserted instances."
-  [rows :- [:sequential ::actions.schema/action.create]]
-  (t2/insert-returning-instances! :model/Action rows))
+  [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Action %) rows))
 
 (mu/defn update-actions!
   "Apply `changes` to the Actions with `action-ids`, returning the number updated."
   [action-ids :- [:sequential ::lib.schema.id/action]
-   changes    :- ::actions.schema/action.changes]
+   changes    :- (mut/select-keys ::actions.schema/action.update action-columns)]
   (t2/update! :model/Action :id [:in action-ids] changes))
 
 (mu/defn delete-actions!
@@ -154,13 +160,13 @@
 (mu/defn update-query-actions!
   "Apply `changes` to the QueryActions of the Actions with `action-ids`, returning the number updated."
   [action-ids :- [:sequential ::lib.schema.id/action]
-   changes    :- ::actions.schema/query-action.changes]
+   changes    :- (mut/dissoc ::actions.schema/query-action.update :action_id)]
   (t2/update! :model/QueryAction :action_id [:in action-ids] changes))
 
 (mu/defn update-implicit-actions!
   "Apply `changes` to the ImplicitActions of the Actions with `action-ids`, returning the number updated."
   [action-ids :- [:sequential ::lib.schema.id/action]
-   changes    :- ::actions.schema/implicit-action.changes]
+   changes    :- (mut/dissoc ::actions.schema/implicit-action.update :action_id)]
   (t2/update! :model/ImplicitAction :action_id [:in action-ids] changes))
 
 (mu/defn delete-query-actions!

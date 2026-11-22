@@ -1,6 +1,5 @@
 (ns metabase.timeline.models.timeline-event
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
@@ -173,17 +172,17 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (let [timeline-events (vec (timeline.db/insert-timeline-events! (with-timeline-icons rows)))]
+      (let [timeline-events (timeline.db/insert-timeline-events! (with-timeline-icons rows))]
         (events/publish-event! :event/timeline-event-create (events/create-event timeline-events))
         timeline-events))))
 
-(mu/defn update-timeline-events! :- [:sequential ::timeline.schema/timeline-event]
+(mu/defn update-timeline-events! :- [:sequential ::timeline.schema/timeline-event.update]
   "Apply the changes in each of `rows`, the id of a TimelineEvent and the columns to change, with one statement per
   distinct set of changes, in one transaction, publishing their update event with the `:context` of `opts`. Returns
   `rows`."
-  ([rows :- [:sequential ::timeline.schema/timeline-event]]
+  ([rows :- [:sequential ::timeline.schema/timeline-event.update]]
    (update-timeline-events! rows nil))
-  ([rows :- [:sequential ::timeline.schema/timeline-event]
+  ([rows :- [:sequential ::timeline.schema/timeline-event.update]
     opts :- ::timeline.schema/write-opts]
    (if (empty? rows)
      []
@@ -192,7 +191,7 @@
          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
            (when (seq changes)
              (timeline.db/update-timeline-events! (mapv :id group) changes)))
-         (events/publish-event! :event/timeline-event-update (events/update-event stored rows (select-keys opts [:context])))
+         (events/publish-event! :event/timeline-event-update (events/update-event stored rows opts))
          (vec rows))))))
 
 (mu/defn delete-timeline-events!
