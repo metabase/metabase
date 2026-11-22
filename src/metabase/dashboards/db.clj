@@ -15,8 +15,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
-   [metabase.queries.models.card :as queries.card]
-   [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.revisions.sql :as revisions.sql]
@@ -104,12 +102,12 @@
 (mu/defn insert-dashboards!
   "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::dashboards.schema/dashboard.create]]
-  (t2/insert-returning-instances! :model/Dashboard rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Dashboard %) rows))
 
 (mu/defn update-dashboards!
   "Apply `changes` to the Dashboards with `dashboard-ids`, returning the number updated."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
-   changes       :- ::dashboards.schema/dashboard.update]
+   changes       :- (mut/dissoc ::dashboards.schema/dashboard.update :id)]
   (t2/update! :model/Dashboard :id [:in dashboard-ids] changes))
 
 (mu/defn delete-dashboards!
@@ -237,11 +235,6 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
 
-(mu/defn insert-card!
-  "Create the Card `row` through the Card model and return the new instance."
-  [row :- ::queries.schema/card.update]
-  (first (queries.card/create-cards! [row])))
-
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
   [dashboard-id]
@@ -309,7 +302,7 @@
   "Insert the DashboardCard `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
             ::dashboards.schema/dashboard-card.update]]
-  (t2/insert-returning-instances! :model/DashboardCard rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardCard %) rows))
 
 (mu/defn update-dashcards!
   "Apply `changes` to the DashboardCards with `dashcard-ids`, returning the number updated."
@@ -345,14 +338,14 @@
 (mu/defn update-dashcard-series!
   "Apply `changes` to the DashboardCardSeries with `series-ids`, returning the number updated."
   [series-ids :- [:sequential ms/PositiveInt]
-   changes    :- ::dashboards.schema/dashboard-card-series.update]
+   changes    :- (mut/dissoc ::dashboards.schema/dashboard-card-series.update :id)]
   (t2/update! :model/DashboardCardSeries :id [:in series-ids] changes))
 
 (mu/defn insert-dashcard-series!
   "Insert the DashboardCardSeries `rows`, returning the inserted instances."
   [rows :- [:sequential
-            (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
-  (t2/insert-returning-instances! :model/DashboardCardSeries rows))
+            ::dashboards.schema/dashboard-card-series.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardCardSeries %) rows))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
@@ -534,19 +527,13 @@
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
-            (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position :entity_id])]]
-  (t2/insert-returning-instances! :model/DashboardTab rows))
-
-(mu/defn update-dashboard-tab!
-  "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
-  [tab-id  :- ms/PositiveInt
-   changes :- ::dashboards.schema/dashboard-tab.update]
-  (t2/update! :model/DashboardTab :id tab-id changes))
+            ::dashboards.schema/dashboard-tab.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardTab %) rows))
 
 (mu/defn update-dashboard-tabs!
   "Apply `changes` to the DashboardTabs with `tab-ids`, returning the number updated."
   [tab-ids :- [:sequential ms/PositiveInt]
-   changes :- ::dashboards.schema/dashboard-tab.update]
+   changes :- (mut/dissoc ::dashboards.schema/dashboard-tab.update :id)]
   (t2/update! :model/DashboardTab :id [:in tab-ids] changes))
 
 (mu/defn pulse-cards-in-tabs

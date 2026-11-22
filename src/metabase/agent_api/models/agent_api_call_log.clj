@@ -15,10 +15,10 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-agent-api-call-log!
-  "Record the Agent API call `row`."
-  [row :- ::agent-api.schema/agent-api-call-log.create]
-  (agent-api.db/insert-call-log! row))
+(mu/defn create-agent-api-call-logs! :- [:sequential :map]
+  "Record the Agent API calls `rows` and return the new instances, in order."
+  [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
+  (agent-api.db/insert-call-logs! rows))
 
 (mu/defn delete-agent-api-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."

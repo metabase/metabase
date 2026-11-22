@@ -240,16 +240,17 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
-          card (dashboards.db/insert-card!
-                (->> (-> card
-                         (update :result_metadata #(or % (-> card
-                                                             :dataset_query
-                                                             legacy-result-metadata-for-query)))
-                         (dissoc :id
-                                 :public_uuid :made_public_by_id
-                                 :enable_embedding :embedding_params)
-                         (assoc :creator_id api/*current-user-id*))
-                     (lib/normalize ::queries.schema/card.update)))]
+          card (first
+                (queries.card/create-cards!
+                 [(->> (-> card
+                           (update :result_metadata #(or % (-> card
+                                                               :dataset_query
+                                                               legacy-result-metadata-for-query)))
+                           (dissoc :id
+                                   :public_uuid :made_public_by_id
+                                   :enable_embedding :embedding_params)
+                           (assoc :creator_id api/*current-user-id*))
+                       (lib/normalize ::queries.schema/card.create))]))]
       card)))
 
 (defn- check-dashcard-parameter-mapping-permissions

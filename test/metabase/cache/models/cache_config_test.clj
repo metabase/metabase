@@ -177,13 +177,13 @@
       (let [reads  (atom 0)
             read   (mt/original-fn #'cache.db/lock-cache-config)
             config (fn [ttl] {:model "question" :model_id card-id :strategy {:type :ttl :multiplier ttl :min_duration_ms 1}})]
-        (cache-config/save-cache-config! nil (config 1))
+        (cache-config/save-cache-config! (config 1))
         (t2/delete! :model/CacheConfig :model "question" :model_id card-id)
         (mt/with-dynamic-fn-redefs [cache.db/lock-cache-config (fn [model model-id]
                                                                  (if (= 1 (swap! reads inc))
-                                                                   (do (cache-config/save-cache-config! nil (config 2))
+                                                                   (do (cache-config/save-cache-config! (config 2))
                                                                        nil)
                                                                    (read model model-id)))]
-          (is (pos-int? (cache-config/save-cache-config! nil (config 3)))))
+          (is (pos-int? (cache-config/save-cache-config! (config 3)))))
         (is (= 1 (t2/count :model/CacheConfig :model "question" :model_id card-id)))
         (is (= 3 (get-in (t2/select-one :model/CacheConfig :model "question" :model_id card-id) [:config :multiplier])))))))

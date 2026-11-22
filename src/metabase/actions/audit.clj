@@ -122,7 +122,7 @@
                         [{:query             (:json_query row)
                           :query-hash        (:hash row)
                           :execution-time-ms (:running_time row)}])
-                       (query-execution/create-query-execution! (dissoc row :json_query)))
+                       (query-execution/create-query-executions! [(dissoc row :json_query)]))
                      (catch Throwable e
                        (log/errorf e "Failed to record action execution for %s" (:action base)))))]
     (try

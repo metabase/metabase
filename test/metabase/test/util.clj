@@ -1175,11 +1175,10 @@
             model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
-        (moderation-review/create-moderation-review!
-         {:moderated_item_id   (u/the-id model-or-id)
-          :moderated_item_type (name item-type)
-          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status})))
+        (moderation-review/create-moderation-reviews! [{:moderated_item_id   (u/the-id model-or-id)
+                                                        :moderated_item_type (name item-type)
+                                                        :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+                                                        :status              status}])))
     (thunk)))
 
 (defmacro with-verified!

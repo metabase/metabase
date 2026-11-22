@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -154,3 +155,15 @@
                                          :dataset_query (venues-count-query)}]
     (is (= [:denied nil] (gate-verdict! (:id card) :rasta))
         "a card with no paired snapshots has no cached result to serve")))
+
+(deftest create-stored-result-uses!-rows-with-different-columns-test
+  (testing "uses of a Card and of an Exploration, which give different columns, are all stored, and their ids come back in order"
+    (mt/with-temp [:model/User        u    {}
+                   :model/Card        card {}
+                   :model/Exploration expl {:name "sru-test" :creator_id (:id u)}]
+      (let [sr-id (stored-result!)
+            ids   (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id :card_id (:id card)}
+                                                                 {:stored_result_id sr-id :exploration_id (:id expl)}])]
+        (is (=? [{:card_id (:id card) :exploration_id nil}
+                 {:card_id nil :exploration_id (:id expl)}]
+                (map #(t2/select-one :model/StoredResultUse :id %) ids)))))))

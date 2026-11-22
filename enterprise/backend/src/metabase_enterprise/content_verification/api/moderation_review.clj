@@ -31,4 +31,4 @@
     (api/check-404 (case (get moderation/moderated-item-type->model moderated_item_type)
                      :model/Card      (content-verification.db/card-exists? moderated_item_id)
                      :model/Dashboard (content-verification.db/dashboard-exists? moderated_item_id)))
-    (moderation-review/create-moderation-review! review-data)))
+    (first (moderation-review/create-moderation-reviews! [review-data]))))

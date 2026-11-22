@@ -59,7 +59,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-;;; ------------------------------------------------------ Setup -----------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
@@ -343,7 +343,7 @@
           (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) dashboards))
          (create-parts! dashboards rows)
          (events/publish-event! :event/dashboard-create
-                                (events/create-event dashboards (events/context opts)))
+                                (events/create-event dashboards opts))
          dashboards)))))
 
 (defn- changed?
@@ -429,7 +429,7 @@
   those of `touched-ids` that they leave unchanged, whose dashcards or tabs the write changed, so that their records, as
   their Revisions, are made once; `stored` holds the Dashboards as read before."
   [stored rows touched-ids opts]
-  (let [event   (events/update-event stored rows {:context (events/context opts)})
+  (let [event   (events/update-event stored rows opts)
         updated (into #{} (map (comp :id :object)) (:changes event))
         touched (into [] (comp (remove updated) (distinct) (keep stored)) touched-ids)]
     (events/publish-event! :event/dashboard-update
@@ -479,12 +479,12 @@
 
 (def ^:private UpdateDashboard
   [:merge
-   ::dashboards.schema/dashboard.update-row
+   ::dashboards.schema/dashboard.update
    [:map {:closed true}
     [:tabs      {:optional true} [:maybe [:sequential TabPart]]]
     [:dashcards {:optional true} [:maybe [:sequential DashcardPart]]]]])
 
-(mu/defn update-dashboards! :- [:sequential ::dashboards.schema/dashboard.update-row]
+(mu/defn update-dashboards! :- [:sequential ::dashboards.schema/dashboard.update]
   "Apply the columns of each of `rows` to the Dashboard with its `:id`, and return the rows of the Dashboards that exist
   without their parts. A row may hold `:tabs`, `:dashcards`, or both, the new lists of its parts, which replace the stored
   ones: those the lists lack are deleted, the others updated, and those with another id created, the `:dashboard_tab_id`
@@ -500,7 +500,7 @@
                                  (when (or (contains? row :tabs) (contains? row :dashcards))
                                    [(:id row) (select-keys row [:tabs :dashcards])])))
                       rows)
-         rows   (mapv #(lib/normalize ::dashboards.schema/dashboard.update-row (dissoc % :tabs :dashcards)) rows)
+         rows   (mapv #(lib/normalize ::dashboards.schema/dashboard.update (dissoc % :tabs :dashcards)) rows)
          stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
          rows   (filterv #(contains? stored (:id %)) rows)]
      (if (empty? rows)
@@ -599,11 +599,11 @@
    (when (seq dashboard-ids)
      (t2/with-transaction [_conn]
        (let [dashboards (dashboards.db/dashboards (vec dashboard-ids))]
-         (parameter-card/delete-all-for-parameterized-objects! "dashboard" dashboard-ids)
+         (parameter-card/delete-parameter-cards-for-objects! "dashboard" dashboard-ids [])
          (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
          (cache-config/delete-target-configs! "dashboard" dashboard-ids)
          (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards (events/context opts)))
+         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards opts))
          (dashboards.db/delete-dashboards! dashboard-ids))))
    nil))
 

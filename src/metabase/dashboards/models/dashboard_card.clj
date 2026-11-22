@@ -28,7 +28,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------------ Setup -----------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 
@@ -176,7 +176,7 @@
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
-;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mi/define-batched-hydration-method series
   :series
@@ -197,8 +197,6 @@
              (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
            dashcards))))
 
-;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
-
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- ms/PositiveInt]
@@ -217,8 +215,6 @@
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
   (dashboards.db/multi-cards-for-dashcard (:id dashcard)))
-
-;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
 (def ^:private link-card-models
   (set (keys serialization/link-card-model->toucan-model)))

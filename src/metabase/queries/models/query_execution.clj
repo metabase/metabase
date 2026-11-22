@@ -40,16 +40,13 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-query-execution! :- ms/PositiveInt
-  "Insert the QueryExecution `row` and return its id."
-  [row :- ::queries.schema/query-execution.create]
-  (queries.db/insert-query-execution! row))
-
-(mu/defn create-query-executions!
+(mu/defn create-query-executions! :- [:sequential ms/PositiveInt]
   "Insert the QueryExecution `rows` in a transaction of their own, so a row the app DB rejects does not abort the
-  transaction of the caller."
+  transaction of the caller, and return their ids in order."
   [rows :- [:sequential ::queries.schema/query-execution.create]]
-  (queries.db/insert-query-executions! rows))
+  (if (empty? rows)
+    []
+    (queries.db/insert-query-executions! rows)))
 
 (mu/defn delete-older-than! :- [:maybe :int]
   "Delete up to `batch-size` of the QueryExecutions whose `time-column` is at or before `cutoff`, in one statement, as the

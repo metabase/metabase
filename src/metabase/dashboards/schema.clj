@@ -61,7 +61,6 @@
   [:merge
    ::dashboard.update
    [:map {:closed true}
-    [:id                         ::lib.schema.id/dashboard]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
     [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
     [:dashcards                  {:optional true} [:maybe [:sequential [:ref ::dashboard-card]]]]
@@ -86,8 +85,9 @@
                                                     [:email      [:maybe :string]]]]]]])
 
 (mr/def ::dashboard.update
-  "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
+  "What an update of a Dashboard takes: its `:id` and every other column of `:report_dashboard`, all optional."
   [:map {:closed true}
+   [:id                      ::lib.schema.id/dashboard]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:name                    {:optional true} ::dashboard.name]
@@ -142,13 +142,6 @@
    [:width                   {:optional true} ::dashboard.width]
    [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
 
-(mr/def ::dashboard.update-row
-  "A row of a bulk update of Dashboards: the id of the Dashboard and the columns to change."
-  [:merge
-   ::dashboard.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/dashboard]]])
-
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
   ::parameters.schema/parameter-mapping)
@@ -194,24 +187,15 @@
 
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
-  [:merge
-   ::dashboard-card-series.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
+  ::dashboard-card-series.update)
 
 (mr/def ::dashboard-card-series.update
-  "What an update (or insert) of a DashboardCardSeries accepts: every column of `:dashboardcard_series` except `id`, all optional."
+  "What an update of a DashboardCardSeries takes: its `:id` and every other column of `:dashboardcard_series`, all optional."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
    [:position         {:optional true} ::dashboard-card-series.position]])
-
-(mr/def ::dashboard-card-series.update-row
-  "A row of a bulk update of DashboardCardSeries: the id of the series and the columns to change."
-  [:merge
-   ::dashboard-card-series.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
 
 (mr/def ::dashboard-card-series.create
   "What creating a DashboardCardSeries takes: its DashboardCard, its Card and its position."
@@ -222,27 +206,18 @@
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
-  [:merge
-   ::dashboard-tab.update
-   [:map {:closed true}
-    [:id           ms/PositiveInt]]])
+  ::dashboard-tab.update)
 
 (mr/def ::dashboard-tab.update
-  "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."
+  "What an update of a DashboardTab takes: its `:id` and every other column of `:dashboard_tab`, all optional."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:name         {:optional true} ::dashboard-tab.name]
    [:position     {:optional true} ::dashboard-tab.position]
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
-
-(mr/def ::dashboard-tab.update-row
-  "A row of a bulk update of DashboardTabs: the id of the tab and the columns to change."
-  [:merge
-   ::dashboard-tab.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
 
 (mr/def ::dashcard.revision
   "A DashboardCard as a Revision stores it among the cards of a Dashboard: its tracked columns, its `:id` and the ids of

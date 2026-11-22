@@ -586,8 +586,8 @@
                           [:auto_apply_filters "yes"]
                           [:auto_apply_filters nil]]]
       (testing (pr-str column bad)
-        (is (not (mr/validate ::dashboards.schema/dashboard.update {column bad})))))
-    (is (mr/validate ::dashboards.schema/dashboard.update {:name "Dash" :width "full" :auto_apply_filters false}))))
+        (is (not (mr/validate ::dashboards.schema/dashboard.update {:id 1 column bad})))))
+    (is (mr/validate ::dashboards.schema/dashboard.update {:id 1 :name "Dash" :width "full" :auto_apply_filters false}))))
 
 (def ^:private change-permission-table
   "The changes of a Dashboard the permission check refuses a user, by what the user may write."
@@ -739,3 +739,13 @@
           (dashboard/remove-dashcards! [dashcard-id])
           (is (= [] (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)))
           (is (= (inc before) (t2/count :model/Revision :model "Dashboard" :model_id dashboard-id))))))))
+
+(deftest create-dashboards!-rows-with-different-columns-test
+  (testing "Dashboards given different sets of columns keep the defaults of the columns they lack"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (let [[full bare] (dashboard/create-dashboards! [{:name "Full" :creator_id (mt/user->id :rasta) :description "Described" :auto_apply_filters false :width "full"}
+                                                       {:name "Bare" :creator_id (mt/user->id :rasta)}])]
+        (is (=? {:name "Full" :description "Described" :auto_apply_filters false :width "full"}
+                (t2/select-one :model/Dashboard :id (:id full))))
+        (is (=? {:name "Bare" :description nil :auto_apply_filters true :width "fixed"}
+                (t2/select-one :model/Dashboard :id (:id bare))))))))

@@ -342,10 +342,10 @@
   (mt/with-temp [:model/Card model {:type          :model
                                     :dataset_query query}]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [model-index (model-index/create-model-index! {:model-id   (:id model)
-                                                          :pk-ref     pk-ref
-                                                          :value-ref  value-ref
-                                                          :creator-id (mt/user->id :crowberto)})]
+      (let [model-index (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                    :pk-ref     pk-ref
+                                                                    :value-ref  value-ref
+                                                                    :creator-id (mt/user->id :crowberto)}]))]
         (model-index/add-values! model-index)
         (f {:model       model
             :model-index (t2/select-one :model/ModelIndex :id (:id model-index))
@@ -548,10 +548,10 @@
                                                                :table_id      (mt/id :products)
                                                                :dataset_query (mt/mbql-query products)})]
         (mt/with-model-cleanup [:model/ModelIndex]
-          (let [model-index  (model-index/create-model-index! {:model-id   (:id model)
-                                                               :pk-ref     (mt/$ids :products $id)
-                                                               :value-ref  (mt/$ids :products $title)
-                                                               :creator-id (mt/user->id :crowberto)})
+          (let [model-index  (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                         :pk-ref     (mt/$ids :products $id)
+                                                                         :value-ref  (mt/$ids :products $title)
+                                                                         :creator-id (mt/user->id :crowberto)}]))
                 ;; a value no warehouse row carries, so its presence anywhere in a response is unambiguous
                 sentinel     "SENTINEL-INDEXED-VALUE-7f3a"
                 url          (format "automagic-dashboards/model_index/%d/primary_key/1" (:id model-index))

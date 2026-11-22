@@ -11,7 +11,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------------ Setup -----------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
@@ -37,7 +37,7 @@
 (mu/defn update-dashboard-card-series! :- [:sequential :map]
   "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCardSeries, and return the rows of the
   series that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard-card-series.update-row]]
+  [rows :- [:sequential ::dashboards.schema/dashboard-card-series.update]]
   (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashcard-series-by-ids (mapv :id rows)) []))
         rows   (filterv #(contains? stored (:id %)) rows)]
     (doseq [[changes group] (group-by #(dissoc % :id) rows)]

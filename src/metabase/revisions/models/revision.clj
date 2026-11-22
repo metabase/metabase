@@ -208,7 +208,7 @@
     (mapv boolean (map mi/can-read? (t2/hydrate (mapv #(t2/instance model %) objects) :can_read)))
     (mapv (constantly true) objects)))
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
@@ -232,7 +232,7 @@
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 
-(declare settle-revisions! create-revision!)
+(declare settle-revisions! create-revisions!)
 
 (defn- settle-revisions!*
   "Settle the Revisions of the rows of `items`, `{:model :model_id}` maps, once per row."
@@ -281,8 +281,6 @@
       (update :object #(reduce-kv (fn [object k v] (cond-> object (nil? (get object k)) (assoc k v))) % defaults))
 
       model (update :object (partial mi/do-after-select model)))))
-
-;;; # Functions
 
 (defn- revision-changes
   [model prev-revision revision names]
@@ -404,14 +402,15 @@
                                                     (normalized-or-nil entity (revisions.db/latest-revision-object model-name id))
                                                     snapshot))
             record-reversion!        #(when-not already-in-target-state?
-                                        (u/prog1 (create-revision!
-                                                  {:model        model-name
+                                        (let [row {:model        model-name
                                                    :model_id     id
                                                    :user_id      user-id
                                                    :object       snapshot
                                                    :is_creation  false
-                                                   :is_reversion true})
-                                          (publish-created! [<>])))
+                                                   :is_reversion true}]
+                                          (create-revisions! [row])
+                                          (publish-created! [row])
+                                          (revisions.db/latest-revision model-name id)))
             in-batch                 (do (revert-snapshot! entity id user-id snapshot)
                                          [(revisions.db/latest-revision model-name id) (record-reversion!)])
             [last-revision new-revision] (or in-batch
@@ -423,22 +422,10 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-revisions!
-  "Insert the Revision `rows` in one statement."
+  "Insert the Revision `rows` in one statement and return the number inserted."
   [rows :- [:sequential ::revisions.schema/revision.create]]
   (u/prog1 (revisions.db/insert-revisions! rows)
     (settle-after-commit! rows)))
-
-(mu/defn create-revision! :- :map
-  "Insert the Revision `row` and return it."
-  [row :- ::revisions.schema/revision.create]
-  (u/prog1 (revisions.db/insert-revision-returning! row)
-    (settle-after-commit! [row])))
-
-(mu/defn delete-revisions-for-entity!
-  "Delete the Revisions of the row of the model named `model-name` (e.g. \"Card\") with `model-id`."
-  [model-name :- :string
-   model-id   :- pos-int?]
-  (revisions.db/delete-revisions-for-entity! model-name model-id))
 
 (mu/defn delete-revisions-for-entities!
   "Delete the Revisions of the rows of the model named `model-name` (e.g. \"Dashboard\") with `model-ids`."

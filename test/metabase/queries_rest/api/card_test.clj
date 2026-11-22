@@ -1192,7 +1192,7 @@
       (testing "a Card whose stored query is empty reads as a stored row and takes edits of its other columns"
         (t2/query-one {:update :report_card :set {:dataset_query "{}"} :where [:= :id card-id]})
         (is (mr/validate ::queries.schema/card (t2/select-one :model/Card :id card-id)))
-        (is (mr/validate ::queries.schema/card.update {:dataset_query {}}))
+        (is (mr/validate ::queries.schema/card.update {:id 1 :dataset_query {}}))
         (is (=? {:name "Renamed"}
                 (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Renamed"})))))))
 
@@ -3471,10 +3471,10 @@
         ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
-          (moderation-review/create-moderation-review! {:moderated_item_id   (u/the-id card)
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :rasta)
-                                                        :status              nil})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   (u/the-id card)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :rasta)
+                                                          :status              nil}])
           (is (not (verified? card)))
           (is (= 2 (count (reviews card))))
           (update-card card {:description "a new description"})

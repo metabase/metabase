@@ -4,6 +4,7 @@
   methods."
   (:require
    [java-time.api :as t]
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
@@ -163,20 +164,16 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
-(mu/defn insert-card!
-  "Insert `card` and return the new instance."
-  [card :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card card))
-
 (mu/defn insert-cards!
-  "Insert the Card `rows` in one statement and return the new instances, in the order of `rows`."
+  "Insert the Card `rows` with one statement for each set of columns they have and return the new instances, in the
+  order of `rows`."
   [rows :- [:sequential ::queries.schema/card.create]]
-  (t2/insert-returning-instances! :model/Card rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Card %) rows))
 
 (mu/defn update-cards!
   "Apply `changes` to the Cards with `card-ids` in one statement, returning the number updated."
   [card-ids :- [:sequential ::lib.schema.id/card]
-   changes  :- ::queries.schema/card.update]
+   changes  :- (mut/dissoc ::queries.schema/card.update :id)]
   (t2/update! :model/Card :id [:in card-ids] changes))
 
 (mu/defn delete-cards!
@@ -504,39 +501,6 @@
   [parameter-card-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/ParameterCard :id [:in parameter-card-ids]))
 
-(mu/defn parameter-card-exists?
-  "Whether the given parameter of the given parameterized object has a ParameterCard."
-  [object-type  :- [:or :keyword :string]
-   object-id    :- ms/PositiveInt
-   parameter-id :- :string]
-  (t2/exists? :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id object-id
-              :parameter_id parameter-id))
-
-(mu/defn set-parameter-card-card-id!
-  "Point the ParameterCard of the given parameter of the given parameterized object at `card-id`, returning the
-  number updated."
-  [object-type  :- [:or :keyword :string]
-   object-id    :- ms/PositiveInt
-   parameter-id :- :string
-   card-id      :- ::lib.schema.id/card]
-  (t2/update! :model/ParameterCard
-              {:parameterized_object_type object-type
-               :parameterized_object_id   object-id
-               :parameter_id              parameter-id}
-              {:card_id card-id}))
-
-(mu/defn insert-parameter-card!
-  "Insert `parameter-card`, returning the number inserted."
-  [parameter-card :- ::queries.schema/parameter-card.update]
-  (t2/insert! :model/ParameterCard parameter-card))
-
-(mu/defn delete-parameter-cards-for-card!
-  "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ParameterCard :card_id card-id))
-
 (mu/defn delete-parameter-cards-for-cards!
   "Delete the ParameterCards drawing values from the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -550,27 +514,6 @@
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
               :parameterized_object_id [:in object-ids]))
-
-(mu/defn delete-parameter-cards-for-object!
-  "Delete every ParameterCard of the given parameterized object, returning the number deleted."
-  [object-type :- [:or :keyword :string]
-   object-id   :- ms/PositiveInt]
-  (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id object-id))
-
-(mu/defn delete-parameter-cards-for-object-except!
-  "Delete the ParameterCards of the given parameterized object whose parameter is not one of `parameter-ids`,
-  returning the number deleted."
-  [object-type    :- [:or :keyword :string]
-   object-id      :- ms/PositiveInt
-   parameter-ids  :- [:sequential :string]]
-  (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id object-id
-              :parameter_id [:not-in parameter-ids]))
-
-;;; -------------------------------------------------- Query --------------------------------------------------
 
 (mu/defn average-execution-time
   "The recorded average execution time of the query with `query-hash`."
@@ -650,32 +593,27 @@
                     :card_id [:in card-ids]
                     :stored_result_id [:in stored-result-ids]))
 
-(mu/defn insert-stored-result-use!
-  "Insert the StoredResultUse `row`, returning the number inserted."
-  [row :- ::queries.schema/stored-result-use.create]
-  (t2/insert! :model/StoredResultUse row))
+(mu/defn insert-stored-result-uses!
+  "Insert the StoredResultUse `rows` and return their ids, in the order of `rows`."
+  [rows :- [:sequential ::queries.schema/stored-result-use.create]]
+  (u/map-by-key-set #(t2/insert-returning-pks! :model/StoredResultUse %) rows))
 
-(mu/defn insert-stored-result!
-  "Insert the StoredResult `row` and return its id."
-  [row :- ::queries.schema/stored-result.create]
-  (first (t2/insert-returning-pks! :model/StoredResult row)))
+(mu/defn insert-stored-results!
+  "Insert the StoredResult `rows` and return their ids, in the order of `rows`."
+  [rows :- [:sequential ::queries.schema/stored-result.create]]
+  (u/map-by-key-set #(t2/insert-returning-pks! :model/StoredResult %) rows))
 
 (mu/defn delete-stored-results!
   "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
   [stored-result-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
 
-(mu/defn insert-query-execution!
-  "Insert the QueryExecution `row` and return its id."
-  [row :- ::queries.schema/query-execution.create]
-  (t2/insert-returning-pk! :model/QueryExecution row))
-
 (mu/defn insert-query-executions!
-  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
-  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
+  "Insert the QueryExecution `rows` with one statement for each set of columns they have, in a transaction of their own
+  so that a row the app DB rejects rolls back to a savepoint, and return their ids in the order of `rows`."
   [rows :- [:sequential ::queries.schema/query-execution.create]]
   (t2/with-transaction [_conn]
-    (t2/insert! :model/QueryExecution rows)))
+    (u/map-by-key-set #(t2/insert-returning-pks! :model/QueryExecution %) rows)))
 
 (mu/defn stored-result-gate-inputs-for-card
   "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."

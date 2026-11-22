@@ -32,10 +32,10 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-stored-result! :- ms/PositiveInt
-  "Insert the StoredResult `row` and return its id."
-  [row :- ::queries.schema/stored-result.create]
-  (queries.db/insert-stored-result! row))
+(mu/defn create-stored-results! :- [:sequential ms/PositiveInt]
+  "Insert the StoredResult `rows` and return their ids, in order."
+  [rows :- [:sequential ::queries.schema/stored-result.create]]
+  (queries.db/insert-stored-results! rows))
 
 (mu/defn delete-stored-results!
   "Delete the StoredResults with `stored-result-ids`."

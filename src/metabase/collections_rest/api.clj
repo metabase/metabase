@@ -336,7 +336,7 @@
               (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
               (let [updates {:dashboard_id (-> in_dashboards first :id)}]
                 (queries.card/place-updated-dashboard-question! card updates false)
-                (queries.card/update-cards! [(queries.card/update-row (:id card) updates)]))
+                (queries.card/update-cards! [(queries.card/update-card-row (:id card) updates)]))
               (:id card))
             cards))))
 

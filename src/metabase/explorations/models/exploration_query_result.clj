@@ -170,19 +170,18 @@
       (t2/with-transaction [_conn]
         (let [stored-result-id (if single?
                                  (:id first-sr)
-                                 (stored-result/create-stored-result!
-                                  {:result_data   composite-bytes
-                                   :creator_id    creator-id
-                                   :database_id   (or (:database_id first-sr)
-                                                      (-> dataset-query :database))
-                                   :dataset_query dataset-query
-                                   ;; `composite/combine` refreshed :row_count to the
-                                   ;; combined row set's size.
-                                   :row_count     (:row_count composite-qp)
-                                   ;; Without this the read gate denies the composite to
-                                   ;; every non-superuser. See [[composite-data-access-token]].
-                                   :data_access_token (composite-data-access-token eq-results)
-                                   :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
+                                 (first (stored-result/create-stored-results! [{:result_data   composite-bytes
+                                                                                :creator_id    creator-id
+                                                                                :database_id   (or (:database_id first-sr)
+                                                                                                   (-> dataset-query :database))
+                                                                                :dataset_query dataset-query
+                                                                                ;; `composite/combine` refreshed :row_count to the
+                                                                                ;; combined row set's size.
+                                                                                :row_count     (:row_count composite-qp)
+                                                                                ;; Without this the read gate denies the composite to
+                                                                                ;; every non-superuser. See [[composite-data-access-token]].
+                                                                                :data_access_token (composite-data-access-token eq-results)
+                                                                                :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}])))
               card-id          (:id (first (queries.card/create-cards!
                                             [(queries.card/new-card-row
                                               {:name                   (or (not-empty (:name first-eq))
@@ -200,10 +199,11 @@
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (stored-result-use/create-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
-          (when-not single?
-            (doseq [{:keys [sr]} eq-results]
-              (stored-result-use/create-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
+          (stored-result-use/create-stored-result-uses!
+           (into [{:stored_result_id stored-result-id :card_id card-id}]
+                 (when-not single?
+                   (for [{:keys [sr]} eq-results]
+                     {:stored_result_id (:id sr) :card_id card-id}))))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

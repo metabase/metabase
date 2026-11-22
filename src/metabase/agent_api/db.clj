@@ -63,10 +63,11 @@
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
 
-(mu/defn insert-call-log!
-  "Insert the AgentApiCallLog `row`."
-  [row :- ::agent-api.schema/agent-api-call-log.update]
-  (t2/insert! :model/AgentApiCallLog row))
+(mu/defn insert-call-logs!
+  "Insert the AgentApiCallLog `rows` with one statement for each set of columns they have, and return the new instances
+  in the order of `rows`."
+  [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/AgentApiCallLog %) rows))
 
 (mu/defn delete-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."

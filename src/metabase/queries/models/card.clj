@@ -264,89 +264,11 @@
                                                                                                 :permission-level          :read
                                                                                                 :root-namespace            nil})])
 
-;;; -------------------------------------------------- Hydration --------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   (fn []
-     (->> (queries.db/dashcard-counts-by-card (map :id cards))
-          (map (juxt :card_id :count))
-          (into {})))
-   :id
-   {:default 0}))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :in_dashboards]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   (fn []
-     (let [card-ids       (map u/the-id cards)
-           all-dashboards (queries.db/dashboards-for-cards card-ids)]
-       (update-vals
-        (group-by :card_id all-dashboards)
-        (fn [dashes]
-          (->> dashes
-               (map #(dissoc % :card_id))
-               ;; TODO (Cam 7/30/25) -- we could probably do the 'distinct' in the query itself
-               distinct
-               (mapv #(t2/instance :model/Dashboard %)))))))
-   :id
-   {:default []}))
-
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
   (some-> query not-empty lib/primary-source-card-id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :can_manage_db]
-  "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
-  database powering this card."
-  [_model _k cards]
-  (map
-   (fn [card]
-     (assoc card
-            :can_manage_db
-            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
-   cards))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   #(->> (queries.db/parameter-card-counts-by-card (map :id cards))
-         (map (juxt :card_id :count))
-         (into {}))
-   :id
-   {:default 0}))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :average_query_time]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   #(->> (queries.db/average-running-times-by-card (map :id cards))
-         (map (juxt :card_id :running_time))
-         (into {}))
-   :id))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :last_query_start]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   #(->> (queries.db/last-query-starts-by-card (map :id cards))
-         (map (juxt :card_id :started_at))
-         (into {}))
-   :id))
-
-(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
-  [_model k cards]
-  (mi/instances-with-hydrated-data
-   cards k
-   #(group-by :source_card_id
-              (mi/readable (queries.db/metric-cards-for-source-cards (map :id cards))))
-   :id))
-
-;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn populate-query-fields
   "`card` with the `database_id`, `table_id`, `query_type` and `source_card_id` its query gives, read without the app
@@ -1365,6 +1287,84 @@
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   (fn []
+     (->> (queries.db/dashcard-counts-by-card (map :id cards))
+          (map (juxt :card_id :count))
+          (into {})))
+   :id
+   {:default 0}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :in_dashboards]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   (fn []
+     (let [card-ids       (map u/the-id cards)
+           all-dashboards (queries.db/dashboards-for-cards card-ids)]
+       (update-vals
+        (group-by :card_id all-dashboards)
+        (fn [dashes]
+          (->> dashes
+               (map #(dissoc % :card_id))
+               ;; TODO (Cam 7/30/25) -- we could probably do the 'distinct' in the query itself
+               distinct
+               (mapv #(t2/instance :model/Dashboard %)))))))
+   :id
+   {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_manage_db]
+  "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
+  database powering this card."
+  [_model _k cards]
+  (map
+   (fn [card]
+     (assoc card
+            :can_manage_db
+            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
+   cards))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (queries.db/parameter-card-counts-by-card (map :id cards))
+         (map (juxt :card_id :count))
+         (into {}))
+   :id
+   {:default 0}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :average_query_time]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (queries.db/average-running-times-by-card (map :id cards))
+         (map (juxt :card_id :running_time))
+         (into {}))
+   :id))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :last_query_start]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (queries.db/last-query-starts-by-card (map :id cards))
+         (map (juxt :card_id :started_at))
+         (into {}))
+   :id))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :source_card_id
+              (mi/readable (queries.db/metric-cards-for-source-cards (map :id cards))))
+   :id))
+
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (def ^:private metadata-async-timeout-ms
@@ -1470,17 +1470,6 @@
     (log/info "Card references Fields in params:" field-ids)
     (sync.field-values/update-field-values-for-on-demand-dbs! field-ids)))
 
-(defn- insert-in-order!
-  "Inserts `rows` with one statement for each set of columns they have, and returns the new Cards in the order of
-  `rows`."
-  [rows]
-  (let [indexed (map-indexed vector rows)]
-    (->> (vals (group-by (comp set keys second) indexed))
-         (mapcat (fn [group]
-                   (map vector (map first group) (queries.db/insert-cards! (mapv second group)))))
-         (sort-by first)
-         (mapv second))))
-
 (defn- card-sourced-parameter-objects
   "`[id parameters]` of each of `cards` whose parameters take their values from a Card."
   [cards]
@@ -1515,6 +1504,13 @@
           [[] {}]
           (map-indexed vector rows)))
 
+(def ^:private WriteOpts
+  "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
+  and `:context`, the context of the events."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
 (mu/defn create-cards! :- [:sequential :map]
   "Creates a Card from each of `rows` and returns the new Cards in order, after checking that each can go where it is
   put and that its Field filters are on Fields of its Database. A user's write computes the result metadata of each
@@ -1524,7 +1520,7 @@
   ([rows :- [:sequential ::queries.schema/card.create]]
    (create-cards! rows nil))
   ([rows :- [:sequential ::queries.schema/card.create]
-    opts :- ::queries.schema/write-opts]
+    opts :- WriteOpts]
    (if (empty? rows)
      []
      (let [importing?       (= :import (:writer opts))
@@ -1543,11 +1539,11 @@
                                 (run! #(check-new-card-placement % placement) rows)
                                 (check-field-filter-fields-are-from-correct-database
                                  (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows))
-                                (let [cards (insert-in-order! rows)]
+                                (let [cards (queries.db/insert-cards! rows)]
                                   (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
                                   (when-let [objects (seq (card-sourced-parameter-objects cards))]
                                     (parameter-card/sync-parameter-cards! "card" (vec objects)))
-                                  (events/publish-event! :event/card-create (events/create-event cards (events/context opts)))
+                                  (events/publish-event! :event/card-create (events/create-event cards opts))
                                   cards)))]
        (when (seq futures)
          (log/info "Metadata not available soon enough. Saving new cards and asynchronously updating metadata")
@@ -1846,11 +1842,11 @@
                                                entries)))]
     (doseq [card (t2/hydrate (mapv :before changing) :moderation_reviews)
             :when (card-is-verified? card)]
-      (moderation-review/create-moderation-review! {:moderated_item_id   (:id card)
-                                                    :moderated_item_type "card"
-                                                    :moderator_id        (:id actor)
-                                                    :status              nil
-                                                    :text                (tru "Unverified due to edit")}))))
+      (moderation-review/create-moderation-reviews! [{:moderated_item_id   (:id card)
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (:id actor)
+                                                      :status              nil
+                                                      :text                (tru "Unverified due to edit")}]))))
 
 (defn- invalidate-cached-results-of-changed-cards!
   "Invalidates the cached results of each Card among `entries` that its change changes."
@@ -1934,10 +1930,10 @@
   in step with its change, and writes the Cards that get the same changes with one statement, so the statements do not
   grow with their number. The `:context` of `opts`, such as `{:archived-with [:model/Dashboard 1]}` for the Cards that the
   archive of Dashboard 1 carries, goes to the event of the writes, which is published as the last step."
-  ([updates :- [:sequential ::queries.schema/card.update-row]]
+  ([updates :- [:sequential ::queries.schema/card.update]]
    (update-cards! updates nil))
-  ([updates :- [:sequential ::queries.schema/card.update-row]
-    opts    :- ::queries.schema/write-opts]
+  ([updates :- [:sequential ::queries.schema/card.update]
+    opts    :- WriteOpts]
    (let [updates (vec updates)]
      (if (empty? updates)
        []
@@ -2032,17 +2028,16 @@
                                       (events/update-event
                                        before
                                        (mapv (fn [{:keys [before changes]}] (assoc changes :id (:id before))) changed)
-                                       {:objects (into {}
-                                                       (keep (fn [{:keys [before changes update]}]
-                                                               (let [id (:id before)]
-                                                                 (cond
-                                                                   (some #(contains? changes %) derived-from-columns)
-                                                                   [id (get after id)]
+                                       (assoc opts :objects (into {}
+                                                                  (keep (fn [{:keys [before changes update]}]
+                                                                          (let [id (:id before)]
+                                                                            (cond
+                                                                              (some #(contains? changes %) derived-from-columns)
+                                                                              [id (get after id)]
 
-                                                                   (= :updated_at (:updated_at update))
-                                                                   [id (t2/instance :model/Card (merge before changes))])))
-                                                             changed))
-                                        :context (events/context opts)}))
+                                                                              (= :updated_at (:updated_at update))
+                                                                              [id (t2/instance :model/Card (merge before changes))])))
+                                                                        changed)))))
                                      (when following?
                                        (cascade-database-changes! entries)
                                        (try
@@ -2062,7 +2057,7 @@
   ([card-ids :- [:sequential ::lib.schema.id/card]]
    (delete-cards! card-ids nil))
   ([card-ids :- [:sequential ::lib.schema.id/card]
-    opts     :- ::queries.schema/write-opts]
+    opts     :- WriteOpts]
    (let [card-ids (vec (distinct card-ids))]
      (when (seq card-ids)
        (t2/with-transaction [_conn]
@@ -2074,7 +2069,7 @@
            (revision/delete-revisions-for-entities! "Card" card-ids)
            (cache-config/delete-target-configs! "question" card-ids)
            (delete-notifications-of-cards! card-ids)
-           (events/publish-event! :event/card-delete (events/delete-event cards (events/context opts)))
+           (events/publish-event! :event/card-delete (events/delete-event cards opts))
            (queries.db/delete-cards! card-ids))))
      nil)))
 
@@ -2316,7 +2311,7 @@
   (autoplace-or-remove-dashcards-for-card! before updates delete-old-dashcards?)
   (assert-is-valid-dashboard-internal-update updates before))
 
-(defn update-row
+(defn update-card-row
   "The row for [[update-cards!]] that `changes` to the Card `card-id` make: the columns of `changes` that an update
   writes, `:collection_id` and a few others even when nil and the rest only when not nil."
   [card-id changes]
@@ -2326,8 +2321,6 @@
                                      :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                      :result_metadata :verified-result-metadata?})
       (assoc :id card-id)))
-
-;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
 (defn- before-revert
   "The `snapshot` of a Card revision to write to the card `card-id`, after the permission check that a revert needs."

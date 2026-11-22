@@ -228,11 +228,6 @@
                [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
               {:refresh_started_at started-at}))
 
-(mu/defn delete-query-cache!
-  "Delete the QueryCache entry for `query-hash`."
-  [query-hash :- bytes?]
-  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
-
 (mu/defn delete-query-caches-updated-before!
   "Delete the QueryCache entries last updated at or before `updated-before`."
   [updated-before :- ::cache.schema/temporal]

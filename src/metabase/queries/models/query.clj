@@ -31,8 +31,6 @@
 
 (derive :model/Query :metabase/model)
 
-;;; Helper Fns
-
 (defn average-execution-time-ms
   "Fetch the average execution time (in milliseconds) for query with QUERY-HASH if available.
    Returns `nil` if no information is available."

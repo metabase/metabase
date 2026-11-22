@@ -104,7 +104,7 @@
   shouldn't fail a query that already ran successfully."
   [^bytes query-hash]
   (try
-    (query-cache/delete-query-cache! query-hash)
+    (query-cache/delete-query-caches! [query-hash])
     (catch Throwable e
       (log/errorf "Error deleting outdated cache entry: %s" (ex-message e))))
   nil)

@@ -61,10 +61,10 @@
                                               :display                :table
                                               :visualization_settings {}
                                               :dataset_query          query}])]
-          (moderation-review/create-moderation-review! {:moderated_item_id   vq
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :crowberto)
-                                                        :status              "verified"})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   vq
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
           ;; re-ingest the now-verified card so the index reflects it
           (search/update! (t2/select-one :model/Card :id vq) true)
           (let [items    [["card" vq] ["card" oq] ["card" pq]
@@ -147,10 +147,10 @@
                  :display                :table
                  :visualization_settings {}
                  :dataset_query          metric}])]
-          (moderation-review/create-moderation-review! {:moderated_item_id   vq
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :crowberto)
-                                                        :status              "verified"})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   vq
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
           (search/update! (t2/select-one :model/Card :id vq) true)
           (let [items   [["card" vq] ["card" oq] ["card" aq] ["metric" lm] ["metric" om] ["metric" pm]
                          ["dashboard" od] ["dashboard" pd]
