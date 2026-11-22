@@ -4,7 +4,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -65,7 +64,6 @@
           :result_metadata        (qp.preprocess/query->expected-cols query)
           :visualization_settings {}
           :display                :table}
-         queries/populate-card-query-fields
          vector
          card/create-cards!
          first)))

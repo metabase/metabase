@@ -11,8 +11,10 @@
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
@@ -2477,3 +2479,26 @@
         (testing "deleting"
           (delete 2)
           (is (= (delete 2) (delete 6))))))))
+
+(deftest create-cards-virtual-database-source-card-test
+  (testing "create-cards! stores the database and table of the source card for a legacy query on the virtual database"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card source {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+        (let [[{:keys [id]}] (card/create-cards! [(assoc (dissoc (mt/with-temp-defaults :model/Card) :database_id)
+                                                         :dataset_query (lib-be/normalize-query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                                                                 :type     :query
+                                                                                                 :query    {:source-table (str "card__" (:id source))}}))])]
+          (is (=? {:database_id (mt/id) :table_id (mt/id :venues) :source_card_id (:id source)}
+                  (t2/select-one :model/Card :id id))))))))
+
+(deftest update-cards-virtual-database-source-card-test
+  (testing "update-cards! stores the database and table of the source card for a legacy query on the virtual database"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card source {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                     :model/Card card   {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :users)))}]
+        (card/update-cards! [{:id            (:id card)
+                              :dataset_query (lib-be/normalize-query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                                      :type     :query
+                                                                      :query    {:source-table (str "card__" (:id source))}})}])
+        (is (=? {:database_id (mt/id) :table_id (mt/id :venues) :source_card_id (:id source)}
+                (t2/select-one :model/Card :id (:id card))))))))

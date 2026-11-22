@@ -85,6 +85,6 @@
  [metabase.query-processor.card
   parameter-template-tag?])
 
-(p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
+(p/import-def metabase.queries.models.card/populate-cards-query-fields populate-cards-query-fields)
 
 (p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)

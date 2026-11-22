@@ -350,8 +350,9 @@
 
 (defn populate-query-fields
   "`card` with the `database_id`, `table_id`, `query_type` and `source_card_id` its query gives, read without the app
-  DB. A query on a Card keeps the `table_id` given, that of the Card, which the write functions read;
-  `clear-stale-table-id?` false keeps a `table_id` the query no longer names."
+  DB. A query on a Card keeps the `table_id` given, and one on the virtual saved-questions database leaves
+  `database_id` as it is, which [[with-source-card-tables]] fills; `clear-stale-table-id?` false keeps a `table_id`
+  the query no longer names."
   ([card]
    (populate-query-fields card true))
   ([{query :dataset_query, :as card} clear-stale-table-id?]
@@ -361,15 +362,15 @@
        (merge card
               {:source_card_id source-card-id
                :query_type     (if (= :mbql.stage/native (:lib/type stage)) :native :query)}
-              (when (:database query)
+              (when (and (:database query) (not= (:database query) lib.schema.id/saved-questions-virtual-database-id))
                 {:database_id (:database query)})
               (when (and (nil? source-card-id) (or table-id clear-stale-table-id?))
                 {:table_id table-id})))
      card)))
 
 (defn- with-source-card-tables
-  "`rows`, each with the `table_id` of the Card its query is built on, when it is built on one, reading those Cards at
-  once."
+  "`rows`, each with the `table_id` of the Card its query is built on, and its `database_id` when the query names the
+  virtual saved-questions database, reading those Cards at once."
   [rows]
   (let [source-card-id (comp :source-card lib-be/query-first-stage :dataset_query)
         source-ids     (into #{} (keep source-card-id) rows)
@@ -377,9 +378,19 @@
                          (u/index-by :id (queries.db/cards-table-ids source-ids)))]
     (mapv (fn [row]
             (if-let [id (source-card-id row)]
-              (assoc row :table_id (:table_id (get sources id)))
+              (let [source (get sources id)]
+                (cond-> (assoc row :table_id (:table_id source))
+                  (and (= lib.schema.id/saved-questions-virtual-database-id (:database (:dataset_query row)))
+                       (:database_id source))
+                  (assoc :database_id (:database_id source))))
               row))
           rows)))
+
+(defn populate-cards-query-fields
+  "`cards` with the query-derived columns of each filled in, including the `table_id` and, on the virtual
+  saved-questions database, the `database_id` of the Card a query is built on, reading those Cards at once."
+  [cards]
+  (with-source-card-tables (mapv populate-query-fields cards)))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters of `cards` reference Fields belonging to the Database the

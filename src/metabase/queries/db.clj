@@ -101,9 +101,9 @@
   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
 (mu/defn cards-table-ids
-  "The `:id` and `:table_id` of each of the Cards with `card-ids`."
+  "The `:id`, `:table_id` and `:database_id` of each of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :table_id] :id [:in card-ids]))
+  (t2/select [:model/Card :id :table_id :database_id] :id [:in card-ids]))
 
 (mu/defn card-schema-versions
   "The stored `:card_schema` of each of the Cards with `card-ids`, by id."
