@@ -53,15 +53,6 @@
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
 
-(mu/defn parent-ids
-  "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."
-  [model      :- :keyword
-   parent-key :- :keyword
-   ids        :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (into {} (t2/select-fn-vec (juxt :id parent-key) [model :id parent-key] :id [:in ids]))
-    {}))
-
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]

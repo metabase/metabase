@@ -2028,7 +2028,7 @@
     (when config/ee-available?
       (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
                      :model/Dashboard  {dashboard-id :id}                 {:name "Elsewhere"}]
-        (doseq [[label insert!] [["a dashboard" #(dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id collection-id})]
+        (doseq [[label insert!] [["a dashboard" #(first (dashboard/create-dashboards! [{:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id collection-id}]))]
                                  ["a collection" #(mt/with-temp [:model/Collection _ {:namespace "data-apps"
                                                                                       :location  (collection/children-location collection)}])]
                                  ["a model" #(mt/with-temp [:model/Card _ {:type :model :collection_id collection-id}])]
@@ -2037,7 +2037,7 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
         (testing "a dashboard moved in"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions"
-                                (dashboard/update-dashboard! dashboard-id {:collection_id collection-id})))
+                                (dashboard/update-dashboards! [{:id dashboard-id :collection_id collection-id}])))
           (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
         (testing "a bookmark is not content"
           (mt/with-temp [:model/CollectionBookmark _ {:collection_id collection-id :user_id (mt/user->id :crowberto)}]
@@ -2109,9 +2109,9 @@
     (mt/with-temp [:model/Collection section {:type collection/library-data-collection-type}]
       (testing "Content a library section doesn't hold is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (first (#'card/create-cards* [(assoc (mt/with-temp-defaults :model/Card)
-                                                                   :type          :model
-                                                                   :collection_id (:id section))])))))
+                              (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+                                                                 :type          :model
+                                                                 :collection_id (:id section))])))))
       (testing "A Collection can't move into a section of another type"
         (mt/with-temp [:model/Collection other {:type collection/library-metrics-collection-type}
                        :model/Collection child {:type     collection/library-metrics-collection-type

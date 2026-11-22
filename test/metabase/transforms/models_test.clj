@@ -244,7 +244,7 @@
         (testing "Can only add allowed content types"
           (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
-                                (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)})])))
+                                (card/create-cards! [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)})])))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
                                 (transform.model/create-transforms!
                                  [(assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))]))))))))

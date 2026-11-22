@@ -177,28 +177,28 @@
                  :model/Card       in-dash   {:dashboard_id (u/the-id dashboard) :collection_id (u/the-id live)}]
     (testing "a row that is not archived cannot be inserted into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)})))
+                            (first (dashboard/create-dashboards! [{:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)}]))))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (timeline/create-timelines! [{:name "t" :creator_id (mt/user->id :rasta)
                                                           :collection_id (u/the-id archived)}]))))
     (testing "an archived row can be inserted into an archived collection"
-      (is (some? (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :archived true
-                                               :archived_directly false :collection_id (u/the-id archived)}))))
+      (is (some? (first (dashboard/create-dashboards! [{:name "d" :creator_id (mt/user->id :rasta) :archived true
+                                                        :archived_directly false :collection_id (u/the-id archived)}])))))
     (testing "a row that is not archived cannot be moved into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))
+                            (card/update-cards! [{:id (u/the-id card) :collection_id (u/the-id archived)}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (collection/update-collections! [{:id       (u/the-id live)
                                                               :location (collection/children-location archived)}]))))
     (testing "a row that is archived can be moved into an archived collection"
       (archive! :model/Card (u/the-id card) true)
-      (is (= 1 (count (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))))
+      (is (= 1 (count (card/update-cards! [{:id (u/the-id card) :collection_id (u/the-id archived)}])))))
     (testing "a card that is not archived cannot be put in an archived dashboard"
       (archive! :model/Dashboard (u/the-id dashboard) true)
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Dashboard"
-                            (first (#'card/create-cards* [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
-                                                              (dissoc :id :entity_id :created_at :updated_at)
-                                                              (assoc :archived false))])))))))
+                            (first (card/create-cards! [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
+                                                            (dissoc :id :entity_id :created_at :updated_at)
+                                                            (assoc :archived false))])))))))
 
 (defn- fill-collection!
   "Puts one item of each kind a Collection archives, restores and deletes with it into the Collection with

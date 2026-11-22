@@ -87,7 +87,7 @@
 (deftest delete-dashboard-deletes-its-cache-config-test
   (mt/with-temp [:model/Dashboard   {dashboard-id :id} {}
                  :model/CacheConfig {config-id :id}    {:model "dashboard" :model_id dashboard-id}]
-    (dashboard/delete-dashboard! dashboard-id)
+    (dashboard/delete-dashboards! [dashboard-id])
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-database-deletes-cache-configs-of-database-and-its-cards-test

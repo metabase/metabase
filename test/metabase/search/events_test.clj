@@ -314,12 +314,12 @@
               older (row {:name "older"})]
           (t2/insert! :model/Revision [older (row {:name "newer"})])
           (is (= [#{["dashboard" [:= dash-id :this.id]]}]
-                 (capture-enqueues! #(revision/publish-created! older))))
-          (revision/publish-created! older)
+                 (capture-enqueues! #(revision/publish-created! [older]))))
+          (revision/publish-created! [older])
           (is (= 1 (indexed-count "dashboard" dash-id))
               "a newer Revision does not make the document of the older one's event unpurgeable")))))
   (testing "a Revision of an entity that feeds no document reindexes nothing"
-    (is (= [] (capture-enqueues! #(revision/publish-created! {:model "Segment" :model_id 1 :user_id 1}))))))
+    (is (= [] (capture-enqueues! #(revision/publish-created! [{:model "Segment" :model_id 1 :user_id 1}]))))))
 
 (deftest revision-create-reindexes-only-documents-that-read-it-test
   (testing "the Revision of a model reindexes the model's own documents, not its indexed values or actions"
@@ -333,9 +333,9 @@
                                                       :creator_id (mt/user->id :rasta)}]
         (is (= #{"card" "dataset" "metric"}
                (enqueued-search-models
-                (capture-enqueues! #(revision/publish-created! {:model    "Card"
-                                                                :model_id card-id
-                                                                :user_id  (mt/user->id :crowberto)})))))))))
+                (capture-enqueues! #(revision/publish-created! [{:model    "Card"
+                                                                 :model_id card-id
+                                                                 :user_id  (mt/user->id :crowberto)}])))))))))
 
 (deftest revision-readers-test
   (testing "the search models that read a Revision are the ones whose spec joins it"
@@ -804,7 +804,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (let [ids (atom [])
             calls (capture-enqueues!
-                   #(reset! ids (mapv :id (#'queries.card/create-cards* (vec (repeatedly 3 (fn [] (mt/with-temp-defaults :model/Card))))))))]
+                   #(reset! ids (mapv :id (queries.card/create-cards! (vec (repeatedly 3 (fn [] (mt/with-temp-defaults :model/Card))))))))]
         (try
           (is (= 1 (count calls)))
           (finally

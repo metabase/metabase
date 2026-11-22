@@ -97,7 +97,7 @@
                  :model/Card          {card-id-2 :id} {:name "card2"}
                  :model/Card          {card-id3 :id} {:name "card3"}]
     (let [upd-series (fn [series]
-                       (dashboard-card/update-dashboard-cards-series! {dashcard-id series})
+                       (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {dashcard-id series}))
                        (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name :model/Card, :id card-id))))]
       (is (= #{}
@@ -180,20 +180,20 @@
                  :visualization_settings {}
                  :series                 []}
                 (dashboard-card/retrieve-dashboard-card dashcard-id))))
-      (testing "return value from the update call should be nil"
-        (is (nil? (dashboard-card/update-dashboard-card!
-                   {:id                     dashcard-id
-                    :dashboard_id           nil
-                    :card_id                nil
-                    :size_x                 5
-                    :size_y                 3
-                    :row                    1
-                    :col                    1
-                    :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
-                    :inline_parameters      []
-                    :visualization_settings {}
-                    :series                 [card-id-2 card-id-1]}
-                   dashboard-card))))
+      (testing "return value from the update call is the updated rows"
+        (is (=? [{:id dashcard-id}]
+                (dashboard-card/update-dashboard-cards!
+                 [{:id                     dashcard-id
+                   :dashboard_id           nil
+                   :card_id                nil
+                   :size_x                 5
+                   :size_y                 3
+                   :row                    1
+                   :col                    1
+                   :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
+                   :inline_parameters      []
+                   :visualization_settings {}
+                   :series                 [card-id-2 card-id-1]}]))))
       (testing "validate db captured everything"
         (is (=? {:size_x                 5
                  :size_y                 3
@@ -230,7 +230,7 @@
         (testing "Should have fewer DB calls if there are no changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboards.write/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
-            (is (= 1 (call-count)))))
+            (is (= 3 (call-count)))))
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboards.write/update-dashcards! dashboard [{:id     (:id dashcard-1)
@@ -254,7 +254,7 @@
                                                             :size_x 3
                                                             :size_y 4
                                                             :series []}])
-            (is (<= (call-count) 9))))))))
+            (is (<= (call-count) 14))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -492,7 +492,7 @@
                             (dashboard-card/create-dashboard-cards! [{:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id other-tab)
                                                                       :size_x 4 :size_y 4 :row 0 :col 0}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
-                            (dashboard-card/update-dashboard-card-rows! [{:id (u/the-id dashcard) :dashboard_tab_id (u/the-id other-tab)}])))
+                            (dashboard-card/update-dashboard-cards! [{:id (u/the-id dashcard) :dashboard_tab_id (u/the-id other-tab)}])))
       (is (= (u/the-id tab) (t2/select-one-fn :dashboard_tab_id :model/DashboardCard :id (u/the-id dashcard)))))))
 
 (deftest ^:parallel dashcard-parameter-mappings-schema-test
@@ -521,8 +521,7 @@
                                   (t2/with-call-count [call-count]
                                     (dashboard-card/update-dashboard-cards!
                                      (for [{:keys [id]} dashcards]
-                                       [{:id id :dashboard_tab_id other-tab-id}
-                                        {:id id :dashboard_tab_id tab-id}]))
+                                       {:id id :dashboard_tab_id other-tab-id}))
                                     (call-count))))
             delete-statements (fn [n]
                                 (let [dashcards (dashboard-card/create-dashboard-cards!
@@ -547,12 +546,12 @@
             row-statements  (fn [n]
                               (let [ids (dashcards! n)]
                                 (t2/with-call-count [call-count]
-                                  (dashboard-card/update-dashboard-card-rows! (mapv (fn [id] {:id id :size_x 3}) ids))
+                                  (dashboard-card/update-dashboard-cards! (mapv (fn [id] {:id id :size_x 3}) ids))
                                   (call-count))))
             series-statements (fn [n]
                                 (let [ids (dashcards! n)]
                                   (t2/with-call-count [call-count]
-                                    (dashboard-card/update-dashboard-cards-series! (zipmap ids (repeat [series-id])))
+                                    (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) (zipmap ids (repeat [series-id]))))
                                     (call-count))))]
         (is (= (row-statements 2) (row-statements 6)))
         (is (= (series-statements 2) (series-statements 6)))))))

@@ -138,12 +138,12 @@
 (defn- update-card!
   "Updates the Card with `id` with `changes` without checking the schema of the changes, returning the number of Cards updated."
   [id changes]
-  (count (#'card/update-cards* [(assoc changes :id id)])))
+  (count (card/update-cards! [(assoc changes :id id)])))
 
 (defn- insert-card!
   "Creates a Card from `row` without checking the schema of the row."
   [row]
-  (first (#'card/create-cards* [row])))
+  (first (card/create-cards! [row])))
 
 (defn- delete-card!
   "Deletes the Card with `id` through `card/delete-cards!`."

@@ -82,13 +82,6 @@
             (vec events)
             (group-by first slots))))
 
-(defn- split-by-counts
-  "`xs` cut into consecutive vectors of the sizes `counts`."
-  [counts xs]
-  (first (reduce (fn [[acc xs] n] [(conj acc (vec (take n xs))) (drop n xs)])
-                 [[] xs]
-                 counts)))
-
 (defn- default-topic
   "The topic of the lifecycle `event`, as it is stored: the one its write function published it under."
   [{:keys [topic]}]
@@ -161,36 +154,6 @@
   (let [{parent-model :model k :key} (audit.spec/parent model)]
     [parent-model (get (row-of event) k)]))
 
-(defn- parent-links
-  "The `[model id]` of the parent of each of `refs`, the `[model id]` of rows whose writes count as writes of a parent,
-  loaded together: one query for the rows of each model, however many levels there are above them."
-  [refs]
-  (loop [pending (into #{} (filter #(chain-parent (first %))) refs)
-         links   {}]
-    (if (empty? pending)
-      links
-      (let [found (into {}
-                        (mapcat (fn [[model refs*]]
-                                  (let [{parent-model :model k :key} (chain-parent model)]
-                                    (for [[id parent-id] (audit-app.db/parent-ids model k (map second refs*))]
-                                      [[model id] [parent-model parent-id]]))))
-                        (group-by first pending))]
-        (recur (into #{}
-                     (comp (map val)
-                           (filter #(chain-parent (first %)))
-                           (remove #(contains? (merge links found) %)))
-                     found)
-               (merge links found))))))
-
-(defn- top-ref
-  "The topmost parent that the `ref` leads up to, through `links`, nil when a parent is missing."
-  [links ref]
-  (loop [ref ref]
-    (cond
-      (nil? (chain-parent (first ref))) ref
-      (contains? links ref)             (recur (get links ref))
-      :else                             nil)))
-
 (defn- rolled-roots
   "The audited models whose rows have the writes of other models counted as writes of them."
   []
@@ -203,32 +166,47 @@
                       model)))))
         (audit.spec/audited-models)))
 
+(defn- touch?
+  "Whether the update `event` changes none of the columns of its row, as the event of the owner of parts that a write
+  changed."
+  [{:keys [object previous-object]}]
+  (and (some? object) (some? previous-object) (= (into {} object) (into {} previous-object))))
+
+(defn- root-touch?
+  "Whether the `event` is the touch of a row that the writes of other models count as writes of, which records the row as
+  updated."
+  [roots {:keys [model] :as event}]
+  (and (contains? roots model) (touch? event)))
+
 (defn- own-rows
-  "The rows of the writes of the models that record them as their own."
+  "The rows of the writes of the models that record them as their own, a row whose parts changed being recorded as
+  updated by its touch."
   [events roots]
-  (for [{:keys [user-id] :as event} (hydrated (filter (fn [{:keys [model user-id] :as event}]
-                                                          (and user-id
-                                                               (nil? (audit.spec/parent model))
-                                                               (not (contains? roots model))
-                                                               (maybe-edit? event)))
-                                                        events))
-          :when (spec-edit? event)]
-    (event-row event user-id (context-details event))))
+  (let [candidates (filter (fn [{:keys [model user-id] :as event}]
+                             (and user-id
+                                  (nil? (audit.spec/parent model))
+                                  (or (maybe-edit? event) (root-touch? roots event))))
+                           events)]
+    (for [{:keys [user-id] :as event} (hydrated candidates)
+          :when (or (spec-edit? event) (root-touch? roots event))
+          :let  [event (cond-> event (touch? event) (dissoc :previous-object))]]
+      (event-row event user-id (context-details event)))))
+
+(defn- parent-created?
+  "Whether the write of the `event` says that it is part of the creation of its parent."
+  [{:keys [context]}]
+  (boolean (get-in context [:details :parent-created?])))
 
 (defn- parent-rows
   "The rows, one per parent and topic, of the writes of the models that record them under a parent with a topic, none for a
-  parent that the batch creates, the details of the parents of each model loaded together."
-  [events all-events]
-  (let [created  (into #{}
-                       (keep (fn [{:keys [model operation id]}]
-                               (when (= :create operation) [model id])))
-                       all-events)
-        groups   (->> events
-                      (filter #(:topics (audit.spec/parent (:model %))))
+  parent that the write says that it creates, the details of the parents of each model loaded together."
+  [events]
+  (let [groups   (->> events
+                      (filter #(and (:topics (audit.spec/parent (:model %))) (not (parent-created? %))))
                       (group-by (fn [{:keys [model operation] :as event}]
                                   (when-let [topic (get (:topics (audit.spec/parent model)) operation)]
                                     (let [[parent-model parent-id] (parent-ref event)]
-                                      (when (and (some? parent-id) (not (contains? created [parent-model parent-id])))
+                                      (when (some? parent-id)
                                         [model parent-model parent-id topic])))))
                       (filter (fn [[k group]] (and (some? k) (some :user-id group)))))
         details  (into {}
@@ -245,36 +223,6 @@
                                   :model-id parent-id
                                   :details  (get details [model parent-id topic])}))))
 
-(defn- rolled-rows
-  "The rows, one per topmost parent, of the writes of a batch to a row and to the rows that count as parts of it, as the
-  write of the row that its own events say, an update when there are none, the rows of those without events of their
-  own loaded together."
-  [events roots]
-  (let [parts   (filter #(chain-parent (:model %)) events)
-        links   (parent-links (into #{} (map parent-ref) parts))
-        ref-of  (fn [{:keys [model] :as event}]
-                  (if (contains? roots model)
-                    [model (:id (row-of event))]
-                    (top-ref links (parent-ref event))))
-        groups  (group-by ref-of (filter #(or (contains? roots (:model %)) (chain-parent (:model %))) events))
-        maybe    (filterv (fn [[[_ root-id] group]]
-                            (and (some? root-id) (some :user-id group) (some maybe-edit? group)))
-                          groups)
-        recorded (filter (fn [[_ group]] (some spec-edit? group))
-                         (map vector
-                              (map key maybe)
-                              (split-by-counts (map (comp count val) maybe) (hydrated (into [] (mapcat val) maybe)))))
-        own-of   (fn [[[root-model] group]] (first (filter #(= root-model (:model %)) group)))
-        loaded   (into {}
-                       (map (juxt (juxt :model :id) identity))
-                       (hydrated (for [[root-model refs] (group-by first (map first (remove own-of recorded)))
-                                       row              (audit-app.db/rows root-model (vec (distinct (map second refs))))]
-                                   {:model root-model :operation :update :id (:id row) :object row})))]
-    (for [[ref group :as entry] recorded
-          :let  [event (or (own-of entry) (get loaded ref))]
-          :when event]
-      (event-row event (some :user-id group) {}))))
-
 (defn- moment-rows
   "The rows that the spec of a model derives from a column that its writes change."
   [events]
@@ -288,23 +236,21 @@
                                        :details  (if moment-details (moment-details event) {})})))
 
 (defn- record-lifecycle-events!
-  "Record the rows of the lifecycle events of the audited models of a batch, once per batch."
-  [events all-events]
+  "Record the rows of the lifecycle events of the audited models of one event."
+  [events]
   (when (premium-features/log-enabled?)
-    (let [roots (rolled-roots)]
-      (audit-log/create-audit-logs! (into []
-                                          (remove nil?)
-                                          (concat (own-rows events roots)
-                                                  (parent-rows events all-events)
-                                                  (rolled-rows events roots)
-                                                  (moment-rows events)))))))
+    (audit-log/create-audit-logs! (into []
+                                        (remove nil?)
+                                        (concat (own-rows events (rolled-roots))
+                                                (parent-rows events)
+                                                (moment-rows events))))))
 
 (events/derive! :metabase/lifecycle-event ::lifecycle)
 
 (methodical/defmethod events/publish-event! ::lifecycle
   [topic event]
   (when-let [events (not-empty (filterv (fn [{:keys [model]}] (audit.spec/spec model)) (events/row-events topic event)))]
-    (record-lifecycle-events! events events)))
+    (record-lifecycle-events! events)))
 
 (def ^:private object-columns
   "The columns that the row of each event of a manual action stores of its object, for the models that have no audit

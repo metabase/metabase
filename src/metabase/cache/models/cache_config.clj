@@ -258,13 +258,13 @@
                       (let [changes (into {} (remove (fn [[k v]] (= v (get current k)))) data)]
                         (when (seq changes)
                           (cache.db/update-cache-config-strategy! (:id current) (select-keys changes [:strategy :config :refresh_automatically]))
-                          (events/publish-lifecycle! [(events/updated :event/cache-config-update
-                                                                      [current]
-                                                                      [(events/updated-row current changes)])]
-                                                     {:context context}))
+                          (events/publish-event! :event/cache-config-update
+                                                 (events/update-event {(:id current) current}
+                                                                      [(assoc changes :id (:id current))]
+                                                                      {:context context})))
                         (:id current))
                       (let [row (cache.db/insert-cache-config! data)]
-                        (events/publish-lifecycle! [(events/created :event/cache-config-create [row])] {:context context})
+                        (events/publish-event! :event/cache-config-create (events/create-event [row] context))
                         (:id row))))))]
     (mdb/with-conflict-retry (save!))))
 
@@ -273,20 +273,19 @@
   [_user-id model model-ids]
   (t2/with-transaction [_conn]
     (doseq [item (cache.db/cache-configs-for model model-ids)]
-      (let [event (events/deleted :event/cache-config-delete :model/CacheConfig [item])]
-        (cache.db/delete-cache-configs! model [(:model_id item)])
-        (events/publish-lifecycle! [event]
-                                   {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}})))))
+      (events/publish-event! :event/cache-config-delete
+                             (events/delete-event [item]
+                                                  {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}))
+      (cache.db/delete-cache-configs! model [(:model_id item)]))))
 
 (defn delete-target-configs!
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
   [model model-ids]
   (when (seq model-ids)
     (t2/with-transaction [_conn]
-      (let [items (cache.db/cache-configs-for model (vec model-ids))
-            event (events/deleted :event/cache-config-delete :model/CacheConfig items)]
-        (cache.db/delete-cache-configs! model (vec model-ids))
-        (events/publish-lifecycle! [event])))))
+      (let [items (cache.db/cache-configs-for model (vec model-ids))]
+        (events/publish-event! :event/cache-config-delete (events/delete-event items))
+        (cache.db/delete-cache-configs! model (vec model-ids))))))
 
 (defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]

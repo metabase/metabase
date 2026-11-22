@@ -688,7 +688,7 @@
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
          (dashboard-card/delete-dashboard-cards! [basic-dashcard-id])
-         (dashboard/update-dashboard! dashboard-id {:parameters []})
+         (dashboard/update-dashboards! [{:id dashboard-id :parameters []}])
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
                                                           :display :scalar}
@@ -762,7 +762,7 @@
                       :to_entity_id column-click-target-dashboard-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-           (dashboard/delete-dashboard! dashboard-id)
+           (dashboard/delete-dashboards! [dashboard-id])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 
@@ -875,10 +875,10 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (#'card/update-cards* [(assoc {:dimension_mappings [{:type         :table
-                                                                :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                                                :table-id     (mt/id :categories)
-                                                                :target       [:field {} (mt/id :categories :name)]}]} :id card-id)])
+           (card/update-cards! [(assoc {:dimension_mappings [{:type         :table
+                                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                              :table-id     (mt/id :categories)
+                                                              :target       [:field {} (mt/id :categories :name)]}]} :id card-id)])
            (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
@@ -1386,7 +1386,7 @@
                (let [card (assoc (mt/with-temp-defaults :model/Card)
                                  :collection_id collection-id
                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
-                 (is (= [] (deps.test/data-app-bundle-reads #(#'card/create-cards* [card]))))))
+                 (is (= [] (deps.test/data-app-bundle-reads #(card/create-cards! [card]))))))
              (let [card-id (t2/select-one-pk :model/Card :collection_id collection-id)]
                (testing "moving a card out"
                  (is (= [] (deps.test/data-app-bundle-reads

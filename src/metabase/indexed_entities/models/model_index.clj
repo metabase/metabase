@@ -203,7 +203,7 @@
                                                        :schedule   (default-schedule)
                                                        :state      "initial"
                                                        :creator_id creator-id})
-      (events/publish-lifecycle! [(events/created :event/model-index-create [<>])]))))
+      (events/publish-event! :event/model-index-create (events/create-event [<>])))))
 
 (mu/defn delete-model-index!
   "Remove the indexing job of the model index with `id` and delete the model index, publishing its delete."
@@ -211,9 +211,9 @@
   (t2/with-transaction [_conn]
     (remove-indexing-job {:id id})
     (if-let [model-index (indexed-entities.db/model-index id)]
-      (let [event (events/deleted :event/model-index-delete :model/ModelIndex [model-index])]
-        (u/prog1 (indexed-entities.db/delete-model-index! id)
-          (events/publish-lifecycle! [event])))
+      (do
+        (events/publish-event! :event/model-index-delete (events/delete-event [model-index]))
+        (indexed-entities.db/delete-model-index! id))
       0)))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------

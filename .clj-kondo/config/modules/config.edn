@@ -842,7 +842,8 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.schema
            metabase.dashboards.settings
-           metabase.dashboards.write}
+           metabase.dashboards.write
+           metabase.dashboards.write-opts}
    :uses #{actions
            activity-feed
            analytics
@@ -1147,7 +1148,7 @@
            metabase.events.hierarchy
            metabase.events.impl
            metabase.events.init}
-   :uses #{app-db models util}
+   :uses #{models util}
    :model-imports #{:model/Collection
                     :model/SecurityAdvisory
                     :model/Table

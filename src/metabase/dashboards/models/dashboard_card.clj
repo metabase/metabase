@@ -12,6 +12,7 @@
    [metabase.dashboards.models.dashboard-card-series :as dashboard-card-series]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
+   [metabase.dashboards.write-opts :as write-opts]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -29,7 +30,6 @@
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -313,118 +313,76 @@
         (when (not= dashboard_id (get tab-id->dashboard-id dashboard_tab_id))
           (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400})))))))
 
-(mu/defn update-dashboard-cards-series* :- [:map {:closed true} [:events events/Events]]
-  "Batch update the DashboardCardSeries for multiple DashboardCards, returning the events of the writes as `:events`,
-  which the caller publishes.
-  Each `card-ids` list should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
-
-  *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
-  *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
-  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [dashcard-id->card-ids :- [:maybe [:map-of ms/PositiveInt [:maybe [:sequential ms/PositiveInt]]]]]
-  (if (empty? dashcard-id->card-ids)
-    {:events []}
-    (let [deleted (dashboard-card-series/delete-dashboard-card-series-for-dashcards* (keys dashcard-id->card-ids))
-          created (dashboard-card-series/create-dashboard-card-series*
-                   (for [[dashcard-id card-ids] dashcard-id->card-ids
-                         [i card-id]            (map-indexed vector card-ids)]
-                     {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      {:events (into (:events deleted) (:events created))})))
-
-(defn update-dashboard-cards-series!
-  "Batch update the DashboardCardSeries as [[update-dashboard-cards-series*]] does, publishing the events of the writes."
-  [dashcard-id->card-ids]
-  (t2/with-transaction [_conn]
-    (events/publish-lifecycle! (:events (update-dashboard-cards-series* dashcard-id->card-ids)))))
-
-(def ^:private DashboardCardUpdates
+(def ^:private DashboardCardWrite
   [:merge
    ::dashboards.schema/dashboard-card.update
    [:map {:closed true}
-    [:id                     ms/PositiveInt]
-    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-    [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-    [:card   {:optional true} [:maybe ::queries.schema/card]]
+    [:id                         ms/PositiveInt]
+    [:series                     {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+    [:card                       {:optional true} [:maybe ::queries.schema/card]]
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]])
-
-(defn- shallow-updates
-  "Returns the keys in `new` that have different values than the corresponding keys in `old`"
-  [new old]
-  (into {}
-        (filter (fn [[k v]]
-                  (not= v (get old k)))
-                new)))
 
 (def ^:private updatable-columns
   [:action_id :card_id :row :col :size_x :size_y :parameter_mappings :visualization_settings :dashboard_tab_id
    :inline_parameters])
 
-(defn- stored-dashboard-ids
-  "A map from the id of each of `dashcard-ids` to the Dashboard it is on."
-  [dashcard-ids]
-  (into {} (map (juxt :id :dashboard_id)) (dashboards.db/dashcards-by-ids (vec dashcard-ids))))
+(defn- shallow-updates
+  "The entries of `new` whose values differ from those of `old`."
+  [new old]
+  (into {} (filter (fn [[k v]] (not= v (get old k)))) new))
 
-(defn- dashcard-previous
-  "The DashboardCard row that `old-dashboard-card` stands for, as an instance of the DashboardCard `dashboard-id`, without
-  what hydration and snapshots add to it."
-  [old-dashboard-card dashboard-id]
-  (t2/instance :model/DashboardCard
-               (-> old-dashboard-card
-                   (select-keys (into [:id :entity_id :created_at :updated_at :dashboard_id] updatable-columns))
-                   (assoc :dashboard_id dashboard-id))))
+(defn- replace-series!
+  "Replace the series of the DashboardCards of `series-by-dashcard`, a map from id to the ids of the Cards in the new
+  series, in the order of their position, for those whose series differ from the stored ones, returning whether any did."
+  [series-by-dashcard opts]
+  (let [stored-series (group-by :dashboardcard_id
+                                (sort-by :position (dashboards.db/dashcard-series-for-dashcards (vec (keys series-by-dashcard)))))
+        changed       (into {}
+                            (filter (fn [[dashcard-id card-ids]]
+                                      (not= (vec card-ids) (mapv :card_id (get stored-series dashcard-id)))))
+                            series-by-dashcard)]
+    (when (seq changed)
+      (dashboard-card-series/delete-dashboard-card-series!
+       (into [] (comp (mapcat #(get stored-series %)) (map :id)) (keys changed))
+       (select-keys opts [:context :writer]))
+      (dashboard-card-series/create-dashboard-card-series!
+       (for [[dashcard-id card-ids] changed
+             [i card-id]            (map-indexed vector card-ids)]
+         {:dashboardcard_id dashcard-id, :card_id card-id, :position i})
+       (select-keys opts [:context :writer])))
+    (boolean (seq changed))))
 
-(mu/defn update-dashboard-cards* :- [:map {:closed true} [:events events/Events]]
-  "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair with `old-dashboard-card`
-  sparing a DB call when nothing changed, rewriting their DashboardCardSeries in one statement for all of them, and
-  returning the events of the writes as `:events`, which the caller publishes. The tab a DashboardCard moves to must
-  belong to its Dashboard, which is read once for all of them, and the DashboardCards with the same changes are one
-  statement."
-  [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
-  (let [changes (into []
-                      (keep (fn [[dashboard-card old-dashboard-card]]
-                              (let [updates (shallow-updates (select-keys dashboard-card updatable-columns)
-                                                             (select-keys old-dashboard-card updatable-columns))]
-                                (when (seq updates)
-                                  {:id           (:id dashboard-card)
-                                   :dashboard_id (or (:dashboard_id dashboard-card) (:dashboard_id old-dashboard-card))
-                                   :old          old-dashboard-card
-                                   :updates      updates}))))
-                      pairs)
-        tab-changes (filter #(contains? (:updates %) :dashboard_tab_id) changes)
-        missing     (not-empty (into [] (comp (remove :dashboard_id) (map :id)) tab-changes))
-        stored      (when missing (stored-dashboard-ids missing))
-        changes     (mapv #(update % :dashboard_id (fn [dashboard-id] (or dashboard-id (get stored (:id %))))) changes)]
-    (check-tabs! (for [change tab-changes]
-                   {:dashboard_id     (or (:dashboard_id change) (get stored (:id change)))
-                    :dashboard_tab_id (get-in change [:updates :dashboard_tab_id])}))
-    (doseq [[updates group] (group-by :updates changes)]
-      (dashboards.db/update-dashcards! (mapv :id group) updates))
-    (let [previous (mapv (fn [{:keys [old dashboard_id id]}]
-                           (dashcard-previous (assoc old :id id) dashboard_id))
-                         changes)
-          objects  (mapv (fn [before {:keys [updates]}] (events/updated-row before updates)) previous changes)
-          series   (update-dashboard-cards-series*
-                    (into {}
-                          (keep (fn [[{dashcard-id :id :keys [series] :as dashboard-card} old-dashboard-card]]
-                                  (when (not= (:series dashboard-card []) (:series old-dashboard-card []))
-                                    [dashcard-id series])))
-                          pairs))]
-      {:events (into [(events/updated :event/dashboard-card-update previous objects)] (:events series))})))
-
-(mu/defn update-dashboard-cards! :- :nil
-  "Update existing DashboardCards as [[update-dashboard-cards*]] does, publishing the events of the writes."
-  [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
-  (t2/with-transaction [_conn]
-    (events/publish-lifecycle! (:events (update-dashboard-cards* pairs))))
-  nil)
-
-(mu/defn update-dashboard-card!
-  "Updates an existing DashboardCard including all DashboardCardSeries.
-   `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
-   Returns nil."
-  [dashboard-card     :- DashboardCardUpdates
-   old-dashboard-card :- DashboardCardUpdates]
-  (update-dashboard-cards! [[dashboard-card old-dashboard-card]]))
+(mu/defn update-dashboard-cards! :- [:sequential :map]
+  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCard, that differ from the stored ones, and
+  replace its series by its `:series`, the ids of Cards, when it has one, publishing the events of the writes and
+  the update event of the Dashboards, and return the rows of the DashboardCards that exist. The tab a DashboardCard
+  moves to must belong to its Dashboard, which is read once for all of them, and the DashboardCards with the same
+  changes are one statement."
+  ([rows :- [:sequential DashboardCardWrite]]
+   (update-dashboard-cards! rows nil))
+  ([rows :- [:sequential DashboardCardWrite]
+    opts :- ::dashboards.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (let [stored  (m/index-by :id (if (seq rows) (dashboards.db/dashcards-by-ids (mapv :id rows)) []))
+           rows    (filterv #(contains? stored (:id %)) rows)
+           changes (mapv (fn [row]
+                           (assoc (shallow-updates (select-keys row updatable-columns) (get stored (:id row)))
+                                  :id (:id row)))
+                         rows)
+           changed (filterv #(seq (dissoc % :id)) changes)]
+       (check-tabs! (for [change changed
+                          :when  (contains? change :dashboard_tab_id)]
+                      {:dashboard_id     (:dashboard_id (get stored (:id change)))
+                       :dashboard_tab_id (:dashboard_tab_id change)}))
+       (doseq [[updates group] (group-by #(dissoc % :id) changed)]
+         (dashboards.db/update-dashcards! (mapv :id group) updates))
+       (events/publish-event! :event/dashboard-card-update
+                              (events/update-event stored changed {:context (write-opts/event-context opts)}))
+       (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
+             series-changed?    (when (seq series-by-dashcard) (replace-series! series-by-dashcard opts))]
+         (when (or (seq changed) series-changed?)
+           (write-opts/touch-dashboards! (mapv #(:dashboard_id (get stored (:id %))) rows) opts)))
+       rows))))
 
 (def ^:private NewDashboardCard
   [:merge
@@ -436,106 +394,75 @@
     [:collection_authority_level  {:optional true} [:maybe [:or :keyword :string]]]
     [:series                      {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
-(mu/defn create-dashboard-cards* :- [:map {:closed true}
-                                     [:dashcards [:sequential :map]]
-                                     [:events events/Events]]
-  "Create new DashboardCards by inserting them into the database along with all associated pieces of data such as
-  DashboardCardSeries. Returns the new DashboardCards, hydrated with their series, as `:dashcards` and the events of the
-  writes as `:events`, which the caller publishes, or throws an Exception. The tabs of the DashboardCards must belong to
-  their Dashboards, which is read once for all of them."
-  [dashboard-cards :- [:sequential NewDashboardCard]]
-  (if (empty? dashboard-cards)
-    {:dashcards [] :events []}
-    (let [card-ids (keep :card_id dashboard-cards)]
-      (when (seq card-ids)
-        (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
-          (when (seq in-report-cards)
-            (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
-                            {:status-code 400
-                             :in-report-card-ids (map :id in-report-cards)})))))
-      (check-tabs! dashboard-cards)
-      (let [inserted (dashboards.db/insert-dashcards!
-                      (for [dashcard dashboard-cards]
-                        (merge {:parameter_mappings []
-                                :visualization_settings {}
-                                :inline_parameters []}
-                               (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))
-            series   (update-dashboard-cards-series* (zipmap (map :id inserted) (map #(get % :series []) dashboard-cards)))]
-        {:dashcards (-> (dashboards.db/dashcards-by-ids (mapv :id inserted))
-                        (t2/hydrate :series))
-         :events    (into [(events/created :event/dashboard-card-create inserted)] (:events series))}))))
+(defn- insert-row
+  "The row to insert for `dashboard-card`: the columns of a new DashboardCard with their defaults, or those of an
+  imported one as they are."
+  [dashboard-card writer]
+  (if (= :import writer)
+    dashboard-card
+    (merge {:parameter_mappings     []
+            :visualization_settings {}
+            :inline_parameters      []}
+           (dissoc dashboard-card :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))
 
 (mu/defn create-dashboard-cards! :- [:sequential :map]
-  "Create new DashboardCards as [[create-dashboard-cards*]] does, publishing the events of the writes with `context`,
-  and return them."
-  ([dashboard-cards :- [:sequential NewDashboardCard]]
-   (create-dashboard-cards! dashboard-cards nil))
-  ([dashboard-cards :- [:sequential NewDashboardCard]
-    context         :- [:maybe :metabase.events.schema/context]]
-   (t2/with-transaction [_conn]
-     (let [{:keys [dashcards events]} (create-dashboard-cards* dashboard-cards)]
-       (events/publish-lifecycle! events {:context context})
-       dashcards))))
-
-(mu/defn delete-dashboard-cards* :- [:map {:closed true} [:events events/Events]]
-  "Delete the DashboardCards with `dashboard-card-ids`, with their PulseCards and DashboardCardSeries, returning the
-  events of the writes as `:events`, which the caller publishes."
-  [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (if (empty? dashboard-card-ids)
-    {:events []}
-    (let [dashcards   (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))
-          pulse-cards (pulse-card/delete-pulse-cards-for-dashcards* dashboard-card-ids)
-          event       (events/deleted :event/dashboard-card-delete :model/DashboardCard dashcards)]
-      (dashboards.db/delete-dashcards! dashboard-card-ids)
-      {:events (conj (vec (:events pulse-cards)) event)})))
+  "Insert the DashboardCards `rows` with their series, publishing the events of the writes and the update event of the
+  Dashboards, and return the new DashboardCards, hydrated with their series, or, for an import, as inserted. The tabs of
+  the DashboardCards must belong to their Dashboards, which is read once for all of them."
+  ([rows :- [:sequential NewDashboardCard]]
+   (create-dashboard-cards! rows nil))
+  ([rows :- [:sequential NewDashboardCard]
+    opts :- ::dashboards.schema/write-opts]
+   (if (empty? rows)
+     []
+     (t2/with-transaction [_conn]
+       (when-let [card-ids (not-empty (keep :card_id rows))]
+         (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
+           (when (seq in-report-cards)
+             (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                             {:status-code 400
+                              :in-report-card-ids (map :id in-report-cards)})))))
+       (check-tabs! rows)
+       (let [writer   (:writer opts)
+             inserted (dashboards.db/insert-dashcards! (mapv #(insert-row % writer) rows))]
+         (events/publish-event! :event/dashboard-card-create
+                                (events/create-event inserted (write-opts/event-context opts)))
+         (when-let [series (not-empty (for [[dashcard row] (map vector inserted rows)
+                                            [i card-id]    (map-indexed vector (:series row))]
+                                        {:dashboardcard_id (:id dashcard), :card_id card-id, :position i}))]
+           (dashboard-card-series/create-dashboard-card-series! series (select-keys opts [:context :writer])))
+         (write-opts/touch-dashboards! (mapv :dashboard_id inserted) opts)
+         (if (= :import writer)
+           inserted
+           (-> (dashboards.db/dashcards-by-ids (mapv :id inserted))
+               (t2/hydrate :series))))))))
 
 (mu/defn delete-dashboard-cards! :- :nil
-  "Delete the DashboardCards with `dashboard-card-ids` as [[delete-dashboard-cards*]] does, publishing the events of the
-  writes."
-  [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/with-transaction [_conn]
-    (events/publish-lifecycle! (:events (delete-dashboard-cards* dashboard-card-ids))))
-  nil)
-
-(defn- insert-imported-dashboard-cards!
-  "Insert the DashboardCard `rows` of an import, keeping their entity ids, and return the inserted instances."
-  [rows]
-  (t2/with-transaction [_conn]
-    (check-tabs! rows)
-    (u/prog1 (dashboards.db/insert-dashcards! rows)
-      (events/publish-lifecycle! [(events/created :event/dashboard-card-create <>)]))))
-
-(mu/defn update-dashboard-card-rows! :- [:sequential :map]
-  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCard, and return the rows. The tab a
-  DashboardCard moves to must belong to its Dashboard, which is read once for all of them, and the DashboardCards with
-  the same changes are one statement."
-  [rows :- [:sequential [:merge
-                         ::dashboards.schema/dashboard-card.update
-                         [:map {:closed true} [:id ms/PositiveInt]]]]]
-  (t2/with-transaction [_conn]
-    (let [rows        (vec rows)
-          previous    (m/index-by :id (if (seq rows) (dashboards.db/dashcards-by-ids (mapv :id rows)) []))
-          tab-changes (filterv #(contains? % :dashboard_tab_id) rows)]
-      (check-tabs! (for [row tab-changes]
-                     {:dashboard_id (:dashboard_id (get previous (:id row))) :dashboard_tab_id (:dashboard_tab_id row)}))
-      (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-        (dashboards.db/update-dashcards! (mapv :id group) changes))
-      (let [stored  (filterv #(contains? previous (:id %)) rows)
-            before  (mapv #(get previous (:id %)) stored)]
-        (events/publish-lifecycle! [(events/updated :event/dashboard-card-update
-                                                    before
-                                                    (mapv (fn [row prev] (events/updated-row prev (dissoc row :id))) stored before))]))
-      rows)))
+  "Delete the DashboardCards with `dashboard-card-ids`, with their PulseCards and DashboardCardSeries, publishing the
+  events of the writes and the update event of the Dashboards."
+  ([dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
+   (delete-dashboard-cards! dashboard-card-ids nil))
+  ([dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]
+    opts               :- ::dashboards.schema/write-opts]
+   (when (seq dashboard-card-ids)
+     (t2/with-transaction [_conn]
+       (let [dashcards (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))]
+         (pulse-card/delete-pulse-cards-for-dashcards! dashboard-card-ids)
+         (events/publish-event! :event/dashboard-card-delete
+                                (events/delete-event dashcards (write-opts/event-context opts)))
+         (dashboards.db/delete-dashcards! (mapv :id dashcards))
+         (write-opts/touch-dashboards! (mapv :dashboard_id dashcards) opts))))
+   nil))
 
 (mu/defn delete-dashcards-of-archived-actions! :- :nil
   "Delete the DashboardCards of the Actions with `action-ids`, which are being archived, in one statement. Unlike
   [[delete-dashboard-cards!]] it leaves their PulseCards, as archiving an Action always has."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/with-transaction [_conn]
-    (let [dashcards (dashboards.db/dashcards-of-actions action-ids)
-          event     (events/deleted :event/dashboard-card-delete :model/DashboardCard dashcards)]
+    (let [dashcards (dashboards.db/dashcards-of-actions action-ids)]
+      (events/publish-event! :event/dashboard-card-delete (events/delete-event dashcards))
       (dashboards.db/delete-dashcards-of-actions! action-ids)
-      (events/publish-lifecycle! [event])))
+      (write-opts/touch-dashboards! (mapv :dashboard_id dashcards) nil)))
   nil)
 
 (defmethod actions.models/delete-for-archived-actions! :model/DashboardCard
@@ -548,7 +475,7 @@
 
 (defmethod card/update-followers! :model/DashboardCard
   [_model rows]
-  (update-dashboard-card-rows! rows))
+  (update-dashboard-cards! rows))
 
 (defmethod card/delete-followers! :model/DashboardCard
   [_model ids]
@@ -593,9 +520,9 @@
                :key   :dashboard_id
                :order (juxt :dashboard_tab_id :row :col :entity_id)}
    :children  {:series :model/DashboardCardSeries}
-   :insert!   insert-imported-dashboard-cards!
-   :update!   update-dashboard-card-rows!
-   :delete!   delete-dashboard-cards!
+   :insert!   #(create-dashboard-cards! % {:writer :import})
+   :update!   #(update-dashboard-cards! % {:writer :import})
+   :delete!   #(delete-dashboard-cards! % {:writer :import})
    :transform {:dashboard_id           serialization/import-only-transform
                :card_id                (serialization/fk-transform :model/Card)
                :action_id              (serialization/fk-transform :model/Action)
@@ -632,7 +559,7 @@
 (defn- update-dashboard-card-columns!
   "Apply `changes` to the DashboardCard with `dashcard-id`."
   [dashcard-id changes]
-  (update-dashboard-card-rows! [(assoc changes :id dashcard-id)])
+  (update-dashboard-cards! [(assoc changes :id dashcard-id)])
   nil)
 
 (defmethod replacement/spec :model/DashboardCard [_model]

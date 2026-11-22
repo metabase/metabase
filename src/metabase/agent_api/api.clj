@@ -24,6 +24,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.dashboards.write-opts :as write-opts]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -1268,24 +1269,17 @@
                                                              :can_read))]
                     (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (dashboards.write/create-dashboard!
-                 {:name          dashboard-name
-                  :description   description
-                  :collection_id collection_id}
-                 {:in-transaction
-                  (fn [dash]
-                    (when (seq cards)
-                      (:events
-                       (reduce (fn [{:keys [placed] :as acc} card]
-                                 (let [display  (or (:display card) :table)
-                                       position (autoplaced-position placed display nil)
-                                       created  (dashboard-card/create-dashboard-cards*
-                                                 [(merge position {:dashboard_id (:id dash)
-                                                                   :card_id      (:id card)})])]
-                                   (-> acc
-                                       (update :placed conj position)
-                                       (update :events into (:events created)))))
-                               {:placed [] :events []}
-                               cards))))})]
+                 (cond-> {:name          dashboard-name
+                          :description   description
+                          :collection_id collection_id}
+                   (seq cards)
+                   (assoc :dashcards (:positioned (reduce (fn [{:keys [placed] :as acc} card]
+                                                            (let [position (autoplaced-position placed (or (:display card) :table) nil)]
+                                                              (-> acc
+                                                                  (update :placed conj position)
+                                                                  (update :positioned conj (assoc position :card_id (:id card))))))
+                                                          {:placed [] :positioned []}
+                                                          cards)))))]
       {:id              (:id dash)
        :name            (:name dash)
        :url             (frontend-url (channel.urls/dashboard-path (:id dash)))
@@ -1376,7 +1370,8 @@
                              [(merge position-fields
                                      {:dashboard_id     dashboard-id
                                       :dashboard_tab_id tab-id}
-                                     columns)]))]
+                                     columns)]
+                             {:owner-event? false}))]
     (swap! state #(-> %
                       (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
@@ -1474,13 +1469,14 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (dashboard-card/update-dashboard-card-rows! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]))
+            (dashboard-card/update-dashboard-cards! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]
+                                                    {:owner-event? false}))
 
           "remove"
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
-            (dashboard/delete-dashcards! [dashcard_id])
+            (dashboard/delete-dashcards! [dashcard_id] {:owner-event? false})
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1509,10 +1505,12 @@
             ;; moved card's height or we get overlapping dashcards (review finding #2).
             (when (= position "top")
               (let [shift (:size_y existing)]
-                (dashboard-card/update-dashboard-card-rows!
+                (dashboard-card/update-dashboard-cards!
                  (for [{:keys [id row]} tab-placed]
-                   {:id id :row (+ row shift)}))))
-            (dashboard-card/update-dashboard-card-rows! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)])
+                   {:id id :row (+ row shift)})
+                 {:owner-event? false})))
+            (dashboard-card/update-dashboard-cards! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)]
+                                                    {:owner-event? false})
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1596,9 +1594,10 @@
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
+        rows         (volatile! [])
         _            (t2/with-transaction [_conn]
                        (when (seq updates)
-                         (dashboard/update-dashboard! id updates)
+                         (vreset! rows (dashboard/update-dashboards! [(assoc updates :id id)] {:owner-event? false}))
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1610,7 +1609,8 @@
                                                   {:collection-id (:collection_id updates)
                                                    :user-id       api/*current-user-id*})))
                        (when (seq mutations)
-                         (apply-dashcard-mutations! id mutations)))
+                         (apply-dashcard-mutations! id mutations))
+                       (write-opts/publish-dashboard-event! {id current-dash} @rows (boolean (seq mutations)) nil))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)
      :name            (:name updated)
