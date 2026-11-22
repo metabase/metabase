@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.protocol.fs
-  "The repository of a folder on the disk of the server, which only has the version it reads the folder as: nothing is
-  kept of earlier ones, and nothing is written to it, so it serves read-only instances, whose pulls take the folder as
-  it is."
+  "The repository of a folder on the disk of the server, where no branch is the folder itself and its branches are its
+  directories, each with only the version it is read as: nothing is kept of earlier ones, and nothing is written to it,
+  so it serves read-only instances, whose pulls take the folder as it is."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
@@ -15,10 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def branch
-  "The only branch of a folder."
-  "main")
-
 (def ^:private no-follow
   ^"[Ljava.nio.file.LinkOption;" (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
 
@@ -27,8 +23,19 @@
   [^Path path]
   (boolean (some #(str/starts-with? (str %) ".") path)))
 
-(defn- folder-files
-  "The content of the files of the folder `root` by their path relative to it, but for hidden files and links."
+(defn- branch-names
+  "The sorted names of the directories of the folder `root`, but for hidden ones and links."
+  [^Path root]
+  (with-open [paths (Files/list root)]
+    (into []
+          (comp (filter #(Files/isDirectory % no-follow))
+                (map #(.relativize root ^Path %))
+                (remove hidden?)
+                (map str))
+          (sort (iterator-seq (.iterator paths))))))
+
+(defn- directory-files
+  "The content of the files of the directory `root` by their path relative to it, but for hidden files and links."
   [^Path root]
   (with-open [paths (Files/walk root (make-array FileVisitOption 0))]
     (into {}
@@ -40,16 +47,24 @@
           (iterator-seq (.iterator paths)))))
 
 (defn- read-tree
-  "The `:files` of the folder `root` (see [[folder-files]]) and the `:version` only they determine."
+  "The `:files` of the directory `root` (see [[directory-files]]) and the `:version` only they determine."
   [root]
-  (let [files (folder-files root)]
+  (let [files (directory-files root)]
     {:files   files
      :version (codecs/bytes->hex (buddy-hash/sha1 (pr-str (into (sorted-map) files))))}))
 
-(defn- tree
-  "The tree `repo` last read its folder as, reading it when it never did."
-  [{:keys [root state]}]
-  (or @state (reset! state (read-tree root))))
+(defn- branch-tree
+  "The tree `repo` read `branch`, the folder itself when nil, as since its last fetch, reading it when it did not, or
+  nil when there is no such branch."
+  [{:keys [^Path root state]} branch]
+  (when (or (nil? branch) (some #{branch} (branch-names root)))
+    (or (get @state branch)
+        (get (swap! state assoc branch (read-tree (cond-> root branch (.resolve ^String branch)))) branch))))
+
+(defn- version-tree
+  "The tree of `version` among those `repo` read since its last fetch."
+  [{:keys [state]} version]
+  (some #(when (= version (:version %)) %) (vals @state)))
 
 (defn- read-only
   "The error of a write to a folder."
@@ -59,28 +74,27 @@
 (defrecord FsRepository [^Path root state]
   protocol/Source
   (has-version? [this version]
-    (= version (:version (tree this))))
+    (some? (version-tree this version)))
 
-  (list-files [this _version]
-    (keys (:files (tree this))))
+  (list-files [this version]
+    (keys (:files (version-tree this version))))
 
-  (read-file [this _version path]
-    (get (:files (tree this)) path))
+  (read-file [this version path]
+    (get (:files (version-tree this version)) path))
 
   protocol/Repository
   (fetch! [_]
-    (reset! state (read-tree root))
+    (reset! state {})
     nil)
 
   (branches [_]
-    [branch])
+    (branch-names root))
 
   (default-branch [_]
-    branch)
+    nil)
 
-  (version [this of-branch]
-    (when (= branch of-branch)
-      (:version (tree this))))
+  (version [this branch]
+    (:version (branch-tree this branch)))
 
   (commit! [_ _branch _parent _changes _message]
     (throw (read-only)))
@@ -99,6 +113,6 @@
     (.toRealPath root (make-array LinkOption 0))))
 
 (defn repository
-  "The repository of the folder at the `file:///` `url`."
+  "The repository of the folder at the `file:///` `url`, whose directories are its branches and which is what no branch names."
   [url]
-  (->FsRepository (folder url) (atom nil)))
+  (->FsRepository (folder url) (atom {})))

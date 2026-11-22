@@ -27,7 +27,7 @@
   :doc false)
 
 (defsetting remote-sync-source-type
-  (deferred-tru "Where remote sync keeps the synced content: in a git repository (git) or in a folder on the disk of the server (fs), which this instance only pulls from.")
+  (deferred-tru "Where remote sync keeps the synced content: in a git repository (git) or in a folder on the disk of the server (fs), which this instance only pulls from: the folder itself when no branch is set, or the directory of it the branch names.")
   :feature :remote-sync
   :type :keyword
   :visibility :internal
@@ -46,10 +46,6 @@
   :feature :remote-sync
   :type :string
   :visibility :admin
-  :getter (fn []
-            (or (setting/get-value-of-type :string :remote-sync-branch)
-                (when (= :fs (remote-sync-source-type))
-                  fs/branch)))
   :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
