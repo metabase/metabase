@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -575,32 +576,32 @@
               "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
-(defn- call-counts!
-  "The app-DB calls of an insert, an update and a delete of a permissions group."
-  []
-  (let [id (atom nil)]
-    {:insert (t2/with-call-count [calls]
-               (reset! id (:id (first (perms-group/create-permissions-groups! [{:name (str (random-uuid))}]))))
-               (calls))
-     :update (t2/with-call-count [calls]
-               (perms-group/update-permissions-groups! [{:id @id :name (str (random-uuid))}])
-               (calls))
-     :delete (t2/with-call-count [calls]
-               (perms-group/delete-permissions-groups! [@id])
-               (calls))}))
+(defn- change-log-write-statement-counts!
+  "The statements that the change log runs for an insert and for a delete of `n` Cards in one call each."
+  [n]
+  (let [run (fn [features]
+              (mt/with-premium-features features
+                (mt/with-model-cleanup [:model/Card]
+                  (let [cards  (atom nil)
+                        mp     (mt/metadata-provider)
+                        rows   (vec (repeatedly n (fn []
+                                                    {:name                   (mt/random-name)
+                                                     :type                   :question
+                                                     :creator_id             (mt/user->id :rasta)
+                                                     :database_id            (mt/id)
+                                                     :display                :table
+                                                     :visualization_settings {}
+                                                     :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+                        insert (events.tu/delivery-statement-count! #(reset! cards (card/create-cards! rows)))
+                        delete (events.tu/delivery-statement-count! #(card/delete-cards! (mapv :id @cards)))]
+                    {:insert insert :delete delete}))))]
+    (merge-with - (run #{:change-log}) (run #{}))))
 
-(deftest call-count-test
-  (mt/with-premium-features #{:change-log}
-    (call-counts!))
-  (let [off (mt/with-premium-features #{}
-              (call-counts!))]
-    (when config/ee-available?
-      (let [on (mt/with-premium-features #{:change-log}
-                 (call-counts!))]
-        (testing "while the change log is on, an insert and an update run one more query, and a delete runs more"
-          (is (= (inc (:insert off)) (:insert on)))
-          (is (= (inc (:update off)) (:update on)))
-          (is (< (inc (:delete off)) (:delete on))))))))
+(deftest batch-of-inserts-and-deletes-logs-with-fixed-statements-test
+  (when config/ee-available?
+    (testing "an insert and a delete of 2 or 6 rows in one call log them with the same number of statements"
+      (change-log-write-statement-counts! 1)
+      (is (= (change-log-write-statement-counts! 2) (change-log-write-statement-counts! 6))))))
 
 (defn- change-log-statement-count!
   "The statements that the change log runs for an update of `n` new Cards in one batch."
