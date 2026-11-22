@@ -253,6 +253,7 @@
                   (call-count))
                 (finally
                   (segment/delete-segments! ids)))))]
+    (archiving 1)
     (is (= (archiving 2) (archiving 6)))))
 
 (deftest revert-goes-through-update-test

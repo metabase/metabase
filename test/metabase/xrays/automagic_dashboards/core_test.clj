@@ -1091,19 +1091,30 @@
           (is (=? [{:tables [{:table {:id table-id}}]}]
                   (magic/candidate-tables (t2/select-one :model/Database :id db-id)))))))))
 
-(deftest ^:parallel call-count-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    {table-id :id} {:db_id db-id}
-                 :model/Field    _ {:table_id table-id}
-                 :model/Field    _ {:table_id table-id}]
-    (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-rollback-only-transaction
-        (let [database (t2/select-one :model/Database :id db-id)]
-          (t2/with-call-count [call-count]
-            (magic/candidate-tables database)
-            ;; 1. load the tables, then for each permission type `can-read?` checks (view-data, create-queries) one
-            ;; query for the databases' rows and one for the rows of every loaded table, however many there are.
-            (is (<= (call-count) 5))))))))
+(deftest call-count-test
+  (testing "finding the candidate Tables of a Database takes the same number of queries for 2 Tables and for 6"
+    (mt/with-temp [:model/Database database {}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (let [counted (fn [n]
+                          (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                    (for [i (range n)]
+                                                                      (assoc (mt/with-temp-defaults :model/Table)
+                                                                             :db_id (:id database)
+                                                                             :name (str "T" n "_" i))))]
+                            (t2/insert! :model/Field (for [table-id table-ids
+                                                           field-name ["A" "B"]]
+                                                       (assoc (mt/with-temp-defaults :model/Field)
+                                                              :table_id table-id
+                                                              :name field-name)))
+                            (t2/with-call-count [call-count]
+                              (let [candidates (magic/candidate-tables database)]
+                                [(count (mapcat :tables candidates)) (call-count)]))))
+                _                          (counted 1)
+                [small-tables small-calls] (counted 2)
+                [large-tables large-calls] (counted 6)]
+            (is (= [3 9] [small-tables large-tables]))
+            (is (= small-calls large-calls))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"

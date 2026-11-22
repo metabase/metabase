@@ -125,8 +125,10 @@
                   (finally
                     (t2/delete! :model/Timeline :id [:in (map :id timelines)]))))))]
     (testing "creating Timelines runs one statement count whatever their number"
+      (creating 1)
       (is (= (creating 2) (creating 6))))
     (testing "archiving Timelines runs one statement count whatever their number"
+      (archiving 1)
       (is (= (archiving 2) (archiving 6))))))
 
 (deftest archiving-timeline-archives-its-events-test

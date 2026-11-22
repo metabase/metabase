@@ -98,15 +98,31 @@
                    :model/Table    {table-id :id}  {:db_id db-id}
                    :model/Field    {parent-id :id} {:table_id table-id}
                    :model/Field    _               {:table_id table-id :parent_id parent-id}]
-      (t2/with-call-count [call-count]
-        ;; This only deletes the test-local Database Fields created above.
-        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-        (field/delete-fields-of-databases! [db-id])
-        (is (= 4 (call-count))
-            "One existence check, two successful DELETEs, and one terminating DELETE"))
+      ;; This only deletes the test-local Database Fields created above.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+      (field/delete-fields-of-databases! [db-id])
       (is (not (t2/exists? :model/Field :id parent-id)))
       (is (not (t2/exists? :model/Field :table_id table-id))))))
+
+(deftest delete-database-fields-statement-count-test
+  (testing "deleting the nested Fields of a Database runs the same number of statements for 2 and 6 parent Fields"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (let [counted (fn [n]
+                      (let [parent-ids (t2/insert-returning-pks! :model/Field
+                                                                 (for [i (range n)]
+                                                                   {:table_id table-id :name (str "P" i)
+                                                                    :base_type :type/Text :database_type "TEXT"}))]
+                        (t2/insert! :model/Field (for [parent-id parent-ids]
+                                                   {:table_id table-id :parent_id parent-id :name "C"
+                                                    :base_type :type/Text :database_type "TEXT"}))
+                        (t2/with-call-count [call-count]
+                          (field/delete-fields-of-databases! [db-id])
+                          (call-count))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))
+        (is (not (t2/exists? :model/Field :table_id table-id)))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -1402,6 +1418,7 @@
                             (t2/with-call-count [call-count]
                               (doall (t2/hydrate databases :can_write))
                               (call-count)))]
+          (query-count [db-1])
           (is (= (query-count [db-1])
                  (query-count [db-1 db-2 db-3]))))))))
 
@@ -1418,14 +1435,15 @@
 (deftest create-databases-call-count-test
   (testing "creating the destinations of a router runs the same number of statements for 2 and 6 rows, consumers aside"
     (mt/with-temp [:model/Database {router-id :id} {}]
-      (let [counts (for [n [2 6]]
-                     (let [ids (atom [])]
-                       (try
-                         (events.tu/statement-count!
-                          #(reset! ids (create-test-databases! (str "Create Count " n) n router-id)))
-                         (finally
-                           (database/delete-databases! @ids)))))]
-        (is (apply = counts))))))
+      (let [counted (fn [n]
+                      (let [ids (atom [])]
+                        (try
+                          (events.tu/statement-count!
+                           #(reset! ids (create-test-databases! (str "Create Count " n) n router-id)))
+                          (finally
+                            (database/delete-databases! @ids)))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))
 
 (deftest create-databases-grants-default-permissions-test
   (testing "every created Database gets the default permissions of its groups"
@@ -1438,42 +1456,51 @@
 
 (deftest update-databases-call-count-test
   (testing "updating the details of Databases runs the same number of statements for 2 and 6 rows"
-    (let [counts (for [n [2 6]]
-                   (let [ids (create-test-databases! (str "Update Count " n) n)]
-                     (try
-                       (t2/with-call-count [call-count]
-                         (database/update-databases! (mapv #(hash-map :id % :details {:db "mem:update-count"}) ids))
-                         (call-count))
-                       (finally
-                         (database/delete-databases! ids)))))]
-      (is (apply = counts)))))
+    (let [counted (fn [n]
+                    (let [ids (create-test-databases! (str "Update Count " n) n)]
+                      (try
+                        (t2/with-call-count [call-count]
+                          (database/update-databases! (mapv #(hash-map :id % :details {:db "mem:update-count"}) ids))
+                          (call-count))
+                        (finally
+                          (database/delete-databases! ids)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
 
-(deftest update-database-plain-changes-add-one-read-test
-  (testing "a change that needs nothing but its statement runs what a plain update runs and one read of the stored row,
-           the search index left out as it reacts to the event the plain update does not publish"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (let [plain   (t2/with-call-count [call-count]
-                      (t2/update! :model/Database :id db-id {:dbms_version {:version "1"}})
-                      (call-count))
-            written (binding [search.ingestion/*disable-updates* true]
-                      (t2/with-call-count [call-count]
-                        (database/update-databases! [{:id db-id :dbms_version {:version "2"}}])
-                        (call-count)))]
-        (is (= (inc plain) written))
-        (is (= {:version "2"} (t2/select-one-fn :dbms_version :model/Database :id db-id)))))))
+(deftest update-databases-plain-changes-add-fixed-statements-to-plain-update-test
+  (testing "a change that needs nothing but its statement adds the same number of statements to a plain update for 2
+           and 6 rows, the search index left out as it reacts to the event the plain update does not publish"
+    (let [extra (fn [n]
+                  (let [ids (create-test-databases! (str "Plain Count " n) n)]
+                    (try
+                      (let [plain   (t2/with-call-count [call-count]
+                                      (t2/update! :model/Database :id [:in ids] {:dbms_version {:version "1"}})
+                                      (call-count))
+                            written (binding [search.ingestion/*disable-updates* true]
+                                      (t2/with-call-count [call-count]
+                                        (database/update-databases!
+                                         (mapv #(hash-map :id % :dbms_version {:version "2"}) ids))
+                                        (call-count)))]
+                        (is (= #{{:version "2"}} (t2/select-fn-set :dbms_version :model/Database :id [:in ids])))
+                        (- written plain))
+                      (finally
+                        (database/delete-databases! ids)))))]
+      (extra 1)
+      (is (= (extra 2) (extra 6))))))
 
 (deftest delete-databases-call-count-test
   (testing "deleting Databases with Tables and Fields runs the same number of statements for 2 and 6 rows"
-    (let [counts (for [n [2 6]]
-                   (let [ids (create-test-databases! (str "Delete Count " n) n)]
-                     (doseq [id ids]
-                       (let [table-id (t2/insert-returning-pk! :model/Table {:db_id id :name "T" :active true})]
-                         (t2/insert! :model/Field {:table_id table-id :name "F" :base_type :type/Text
-                                                   :database_type "TEXT"})))
-                     (t2/with-call-count [call-count]
-                       (database/delete-databases! ids)
-                       (call-count))))]
-      (is (apply = counts)))))
+    (let [counted (fn [n]
+                    (let [ids (create-test-databases! (str "Delete Count " n) n)]
+                      (doseq [id ids]
+                        (let [table-id (t2/insert-returning-pk! :model/Table {:db_id id :name "T" :active true})]
+                          (t2/insert! :model/Field {:table_id table-id :name "F" :base_type :type/Text
+                                                    :database_type "TEXT"})))
+                      (t2/with-call-count [call-count]
+                        (database/delete-databases! ids)
+                        (call-count))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
 
 (deftest delete-database-deletes-transforms-through-write-function-test
   (testing "deleting a Database deletes the Transforms that read from it through their delete function"

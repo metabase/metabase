@@ -42,6 +42,7 @@
 
 (deftest field-writes-call-count-test
   (testing "creating, updating and deleting Fields takes as many statements for 2 rows as for 6"
+    (field-write-counts! 1)
     (is (= (field-write-counts! 2)
            (field-write-counts! 6)))))
 
@@ -57,6 +58,7 @@
 
 (deftest table-writes-call-count-test
   (testing "creating, reordering and deleting Tables takes as many statements for 2 rows as for 6"
+    (table-write-counts! 1)
     (is (= (table-write-counts! 2)
            (table-write-counts! 6)))))
 
@@ -76,6 +78,7 @@
 
 (deftest dimension-writes-call-count-test
   (testing "creating and updating Dimensions takes as many statements for 2 rows as for 6"
+    (dimension-write-counts! 1)
     (is (= (dimension-write-counts! 2)
            (dimension-write-counts! 6)))))
 
@@ -98,6 +101,7 @@
 
 (deftest settings-writes-call-count-test
   (testing "creating and updating Field and Table settings takes as many statements for 2 rows as for 6"
+    (settings-write-counts! 1)
     (is (= (settings-write-counts! 2)
            (settings-write-counts! 6)))))
 
@@ -141,6 +145,7 @@
 
 (deftest same-value-writes-call-count-test
   (testing "updating Tables and Fields to same values, changing case and setting positions takes as many statements for 2 rows as for 6"
+    (same-value-write-counts! 1)
     (is (= (same-value-write-counts! 2)
            (same-value-write-counts! 6)))))
 

@@ -1214,24 +1214,22 @@
 (deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (let [baseline (database-list-call-count)]
-        (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}]
-          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
-          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
-          (is (<= (database-list-call-count) (+ baseline 2))))))))
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (let [small (database-list-call-count)]
+          (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}]
+            (is (= small (database-list-call-count)))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"

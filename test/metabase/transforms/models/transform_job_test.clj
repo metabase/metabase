@@ -153,15 +153,21 @@
                                                                                                       :schedule "0 0 0 * * ? *")))))))))]
       (try
         (testing "creating jobs"
+          (create! 1)
           (is (= (create! 2) (create! 6))))
         (testing "updating jobs"
-          (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (mapv (fn [id] (assoc {:schedule "0 0 1 * * ? *"} :id id)) (take 2 ids)))))
-                   (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (mapv (fn [id] (assoc {:schedule "0 0 1 * * ? *"} :id id)) (take 6 (drop 2 ids))))))))))
+          (let [update! (fn [ids]
+                          (events.tu/statement-count!
+                           (fn [] (transform-job/update-transform-jobs! (mapv (fn [id] {:id id :schedule "0 0 1 * * ? *"}) ids)))))
+                ids     @created]
+            (update! (take 1 ids))
+            (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
         (testing "deleting jobs"
-          (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 2 ids))))
-                   (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 6 (drop 2 ids)))))))))
+          (let [delete! (fn [ids]
+                          (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! ids))))
+                ids     @created]
+            (delete! (take 1 ids))
+            (is (= (delete! (take 2 (drop 1 ids))) (delete! (take 6 (drop 3 ids)))))))
         (finally
           (t2/delete! :model/TransformJob :id [:in @created]))))))
 

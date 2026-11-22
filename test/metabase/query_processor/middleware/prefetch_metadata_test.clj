@@ -4,6 +4,7 @@
   {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
                                                    toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -23,107 +24,98 @@
       (qp.preprocess/preprocess (dissoc query :lib/metadata))
       (call-count))))
 
-(deftest prefetch-metadata-mbql-one-table-call-count-test
-  (mt/dataset test-data
-    (let [mp    (mt/metadata-provider)
-          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                    (lib/limit 1))]
-      ;; the baseline:
-      ;; - fetch the Database
-      ;; - fetch the Tables in bulk
-      ;; - fetch the Tables' columns in bulk
-      ;; - the permissions check (EE only)
-      ;; - the destination-database access check, before the metadata provider is bound (EE only)
-      ;; - the database-routing check (EE only)
-      ;; - the table-remapping check (EE only)
-      (is (<= (preprocess-app-db-call-count query) 7)))))
+(defn- one-table-query
+  "A query of one Table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/limit 1))))
 
-(deftest prefetch-metadata-mbql-three-tables-call-count-test
-  (mt/dataset test-data
-    (let [mp    (mt/metadata-provider)
-          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                    (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
-                                               [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                                       (lib.metadata/field mp (mt/id :products :id)))]))
-                    (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :people))
-                                               [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
-                                                       (lib.metadata/field mp (mt/id :people :id)))]))
-                    (lib/limit 1))]
-      ;; the same number of calls as for a single-table query: all the referenced tables and their columns are
-      ;; bulk-loaded, so the count does not depend on the number of tables
-      (is (<= (preprocess-app-db-call-count query) 7)))))
+(defn- three-tables-query
+  "A query of one Table with joins of two more."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                   [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                           (lib.metadata/field mp (mt/id :products :id)))]))
+        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                   [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
+                                           (lib.metadata/field mp (mt/id :people :id)))]))
+        (lib/limit 1))))
 
-(deftest prefetch-metadata-native-one-field-filter-call-count-test
-  (mt/dataset test-data
-    (let [mp    (mt/metadata-provider)
-          query (-> (lib/native-query mp "SELECT * FROM VENUES WHERE {{ff1}}")
-                    (lib/with-template-tags
-                      {"ff1" {:type         :dimension
-                              :name         "ff1"
-                              :display-name "ff1"
-                              :id           "id1"
-                              :field-id     (mt/id :venues :price)
-                              :widget-type  :id}})
-                    (assoc :parameters [{:type   :id
-                                         :target [:dimension [:template-tag "ff1"]]
-                                         :value  [1]}]))]
-      ;; one more call than for MBQL queries: the fields referenced by the template tags are bulk-loaded by ID, which
-      ;; is also how their tables are discovered
-      (is (<= (preprocess-app-db-call-count query) 8)))))
+(deftest prefetch-metadata-mbql-tables-call-count-test
+  (testing "a query of three Tables takes as many calls as a query of one, as Tables and their columns are bulk-loaded"
+    (mt/dataset test-data
+      (preprocess-app-db-call-count (one-table-query))
+      (is (= (preprocess-app-db-call-count (one-table-query))
+             (preprocess-app-db-call-count (three-tables-query)))))))
 
-(deftest prefetch-metadata-native-three-field-filters-call-count-test
-  (mt/dataset test-data
-    (let [mp    (mt/metadata-provider)
-          tag   (fn [tag-name field-id]
-                  {:type         :dimension
-                   :name         tag-name
-                   :display-name tag-name
-                   :id           tag-name
-                   :field-id     field-id
-                   :widget-type  :id})
-          query (-> (lib/native-query mp "SELECT * FROM VENUES WHERE {{ff1}} AND {{ff2}} AND {{ff3}}")
-                    (lib/with-template-tags
-                      {"ff1" (tag "ff1" (mt/id :venues :price))
-                       "ff2" (tag "ff2" (mt/id :venues :category_id))
-                       "ff3" (tag "ff3" (mt/id :venues :name))})
-                    (assoc :parameters [{:type   :id
-                                         :target [:dimension [:template-tag "ff1"]]
-                                         :value  [1]}]))]
-      ;; the same calls as with a single field filter: all the template-tag Fields are loaded with a single bulk
-      ;; call, while without prefetching parameter substitution would resolve them one at a time
-      (is (<= (preprocess-app-db-call-count query) 8)))))
+(defn- field-filters-query
+  "A native query with a field filter on each of the `venues` Fields with `field-keys`."
+  [field-keys]
+  (let [mp   (mt/metadata-provider)
+        tags (into {} (map-indexed (fn [i field-key]
+                                     (let [tag-name (str "ff" (inc i))]
+                                       [tag-name {:type         :dimension
+                                                  :name         tag-name
+                                                  :display-name tag-name
+                                                  :id           tag-name
+                                                  :field-id     (mt/id :venues field-key)
+                                                  :widget-type  :id}])))
+                   field-keys)]
+    (-> (lib/native-query mp (str "SELECT * FROM VENUES WHERE "
+                                  (str/join " AND " (map #(str "{{" % "}}") (sort (keys tags))))))
+        (lib/with-template-tags tags)
+        (assoc :parameters [{:type   :id
+                             :target [:dimension [:template-tag "ff1"]]
+                             :value  [1]}]))))
+
+(deftest prefetch-metadata-native-field-filters-call-count-test
+  (testing "three field filters take as many calls as one, as all template-tag Fields are loaded with one bulk call"
+    (mt/dataset test-data
+      (preprocess-app-db-call-count (field-filters-query [:price]))
+      (is (= (preprocess-app-db-call-count (field-filters-query [:price]))
+             (preprocess-app-db-call-count (field-filters-query [:price :category_id :name])))))))
 
 (deftest prefetch-metadata-card-source-call-count-test
-  (mt/dataset test-data
-    (let [mp (mt/metadata-provider)]
-      (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-        (let [query (-> (lib/query mp (lib.metadata/card mp (:id card)))
-                        (lib/limit 1))]
-          ;; the baseline calls, plus:
-          ;; - one bulk fetch of the referenced Cards; resolving the source card afterwards hits the cache, and the
-          ;;   card's table and columns are folded into the baseline bulk loads
-          (is (<= (preprocess-app-db-call-count query) 8)))))))
+  (testing "a source Card over three Tables takes as many calls as a source Card over one"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card small {:dataset_query (one-table-query)}
+                     :model/Card large {:dataset_query (three-tables-query)}]
+        (let [mp      (mt/metadata-provider)
+              counted (fn [card]
+                        (preprocess-app-db-call-count (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                                          (lib/limit 1))))]
+          (counted small)
+          (is (= (counted small) (counted large))))))))
 
 (deftest prefetch-metadata-nested-card-source-call-count-test
-  (mt/dataset test-data
-    (let [mp (mt/metadata-provider)]
-      (mt/with-temp [:model/Card inner-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-        (mt/with-temp [:model/Card outer-card {:dataset_query (lib/query mp (lib.metadata/card mp (:id inner-card)))}]
-          (let [query (-> (lib/query mp (lib.metadata/card mp (:id outer-card)))
-                          (lib/limit 1))]
-            ;; one more call than for a single source card: referenced Cards are prefetched with one bulk fetch per
-            ;; level of nesting, and both cards' tables and columns are folded into the same bulk loads
-            (is (<= (preprocess-app-db-call-count query) 9))))))))
+  (testing "a Card over a source Card over three Tables takes as many calls as a Card over a source Card over one"
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card inner-small {:dataset_query (one-table-query)}
+                       :model/Card inner-large {:dataset_query (three-tables-query)}]
+          (mt/with-temp [:model/Card outer-small {:dataset_query (lib/query mp (lib.metadata/card mp (:id inner-small)))}
+                         :model/Card outer-large {:dataset_query (lib/query mp (lib.metadata/card mp (:id inner-large)))}]
+            (let [counted (fn [card]
+                            (preprocess-app-db-call-count (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                                                              (lib/limit 1))))]
+              (counted outer-small)
+              (is (= (counted outer-small) (counted outer-large))))))))))
 
 (deftest prefetch-metadata-card-source-with-join-call-count-test
-  (mt/dataset test-data
-    (let [mp (mt/metadata-provider)]
-      (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-        (let [query (-> (lib/query mp (lib.metadata/card mp (:id card)))
-                        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :categories))
-                                                   [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
-                                                           (lib.metadata/field mp (mt/id :categories :id)))]))
-                        (lib/limit 1))]
-          ;; the same calls as for a plain source card: the joined Table and its columns are folded into the same
-          ;; bulk loads
-          (is (<= (preprocess-app-db-call-count query) 8)))))))
+  (testing "a source Card with a joined Table takes as many calls as a plain source Card"
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card card {:dataset_query (one-table-query)}]
+          (let [plain  (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                           (lib/limit 1))
+                joined (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                           (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                      [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                              (lib.metadata/field mp (mt/id :categories :id)))]))
+                           (lib/limit 1))]
+            (preprocess-app-db-call-count plain)
+            (is (= (preprocess-app-db-call-count plain)
+                   (preprocess-app-db-call-count joined)))))))))

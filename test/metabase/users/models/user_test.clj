@@ -271,15 +271,21 @@
                      _ {:name "Group 3"} #{}]
         (is (= #{"All Users" "Group 2" "Group 1"}
                (group-names (user/group-ids (mt/user->id :lucky)))))))
-    (testing "should be a single DB call"
-      (with-groups! [_ {:name "Group 1"} #{:lucky}
+    (testing "should take the same number of DB calls for a User in 2 groups and in 6"
+      (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
                      _ {:name "Group 2"} #{:lucky}
-                     _ {:name "Group 3"} #{}]
-        (let [lucky-id (mt/user->id :lucky)]
-          (t2/with-call-count [call-count]
-            (user/group-ids lucky-id)
-            (is (= 1
-                   (call-count)))))))
+                     _ {:name "Group 3"} #{:lucky}
+                     _ {:name "Group 4"} #{:lucky}
+                     _ {:name "Group 5"} #{:lucky}]
+        (let [counted (fn [user-id]
+                        (t2/with-call-count [call-count]
+                          (let [group-ids (user/group-ids user-id)]
+                            [(count group-ids) (call-count)])))
+              _               (counted (mt/user->id :crowberto))
+              [small-groups small-calls] (counted (mt/user->id :rasta))
+              [large-groups large-calls] (counted (mt/user->id :lucky))]
+          (is (= [2 6] [small-groups large-groups]))
+          (is (= small-calls large-calls)))))
     (testing "shouldn't barf if passed `nil`"
       (is (= nil
              (user/group-ids nil))))))
@@ -310,15 +316,21 @@
                  (as-> (map test.users/fetch-user [:rasta :lucky]) users
                    (t2/hydrate users :group_ids)
                    (mapv :group_ids users)))))))
-    (testing "should be done in a single DB call"
+    (testing "should take the same number of DB calls for 2 Users and for 6"
       (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
                      _ {:name "Group 2"} #{:lucky}
                      _ {:name "Group 3"} #{}]
-        (let [users (mapv test.users/fetch-user [:lucky :rasta])]
-          (t2/with-call-count [call-count]
-            (dorun (user/add-group-ids users))
-            (is (= 1
-                   (call-count)))))))
+        (mt/with-temp [:model/User user-1 {}
+                       :model/User user-2 {}
+                       :model/User user-3 {}
+                       :model/User user-4 {}]
+          (let [users   (into (mapv test.users/fetch-user [:lucky :rasta]) [user-1 user-2 user-3 user-4])
+                counted (fn [users]
+                          (t2/with-call-count [call-count]
+                            (dorun (user/add-group-ids users))
+                            (call-count)))]
+            (counted (take 1 users))
+            (is (= (counted (take 2 users)) (counted users)))))))
     (testing "shouldn't barf if passed an empty seq"
       (is (= nil
              (user/add-group-ids []))))))
@@ -507,12 +519,16 @@
       (finally
         (t2/delete! :model/User :email [:in emails])))))
 
-(deftest update-user-of-unguarded-columns-runs-no-membership-query-test
-  (mt/with-temp [:model/User {user-id :id} {}]
-    (t2/with-call-count [call-count]
-      (user/update-users! [user-id] {:first_name "Renamed"})
-      (is (= 3 (call-count))))
-    (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
+(deftest update-users-of-unguarded-columns-runs-fixed-statements-test
+  (mt/with-model-cleanup [:model/User]
+    (let [counted (fn [n]
+                    (let [user-ids (t2/insert-returning-pks! :model/User (repeatedly n #(mt/with-temp-defaults :model/User)))]
+                      (t2/with-call-count [call-count]
+                        (user/update-users! user-ids {:first_name "Renamed"})
+                        (is (= #{"Renamed"} (t2/select-fn-set :first_name :model/User :id [:in user-ids])))
+                        (call-count))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
 
 (deftest update-user-refuses-last-admin-test
   (mt/with-model-cleanup [:model/User]

@@ -112,6 +112,7 @@
       (let [write (fn [ids]
                     (let [new-name (str (random-uuid))]
                       (queries.card/update-cards! (mapv (fn [id] {:id id :name new-name}) ids))))]
+        (search-statement-count! 1 write)
         (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
 
 (deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
@@ -167,6 +168,7 @@
                                                     (swap! calls conj [(count instances) (call-count)]))))]
                     (delete-cards-by-hand! (t2/select-pks-vec :model/Card :collection_id coll-id)))
                   @calls)))]
+      (capture-queries 1)
       (let [[[one-rows one-queries] :as one] (capture-queries 1)
             [[three-rows three-queries] :as three] (capture-queries 3)]
         (is (= 1 (count one) (count three)))
@@ -184,22 +186,19 @@
 ;;; Re-derivation on delete
 
 (deftest card-delete-capture-statement-count-test
-  (testing "capture adds a fixed number of statements to a card delete, whatever else the delete runs"
+  (testing "capture adds the same number of statements to a delete of 2 Cards and of 6, whatever else the delete runs"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {captured :id} {}
-                     :model/Card {uncaptured :id} {}]
-        (let [statements      (fn [thunk]
-                                (t2/with-call-count [call-count]
-                                  ;; Stubbed, so the post-commit ingestion this delete queues is not counted.
-                                  (capture-enqueues! thunk)
-                                  (call-count)))
-              with-capture    (statements #(delete-cards-by-hand! [captured]))
-              without-capture (binding [search.ingestion/*disable-updates* true]
-                                (statements #(delete-cards-by-hand! [uncaptured])))]
-          ;; The action and indexed-entity cascade scans.
-          ;; A delete by literal primary key builds the card's snapshot without a select, and the Revision and
-          ;; ModerationReview deletes in its `before-delete` bypass capture.
-          (is (= 2 (- with-capture without-capture))))))))
+      (let [statements (fn [n]
+                         (let [ids (t2/insert-returning-pks! :model/Card (repeatedly n #(mt/with-temp-defaults :model/Card)))]
+                           (t2/with-call-count [call-count]
+                             (capture-enqueues! #(delete-cards-by-hand! ids))
+                             (call-count))))
+            extra      (fn [n]
+                         (- (statements n)
+                            (binding [search.ingestion/*disable-updates* true]
+                              (statements n))))]
+        (extra 1)
+        (is (= (extra 2) (extra 6)))))))
 
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"

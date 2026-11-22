@@ -589,13 +589,18 @@
         (create! 1)
         (is (= (create! 2) (create! 6))))
       (testing "updating transforms with one change set"
-        (let [ids @created]
-          (is (= (events.tu/statement-count! (fn [] (transform/update-transforms! (mapv (fn [id] (assoc {:description "described"} :id id)) (take 2 ids)))))
-                 (events.tu/statement-count! (fn [] (transform/update-transforms! (mapv (fn [id] (assoc {:description "described"} :id id)) (take 6 (drop 2 ids))))))))))
+        (let [update! (fn [ids]
+                        (events.tu/statement-count!
+                         (fn [] (transform/update-transforms! (mapv (fn [id] {:id id :description "described"}) ids)))))
+              ids     @created]
+          (update! (take 1 ids))
+          (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
       (testing "deleting transforms"
-        (let [ids @created]
-          (is (= (events.tu/statement-count! (fn [] (transform/delete-transforms! (take 2 ids))))
-                 (events.tu/statement-count! (fn [] (transform/delete-transforms! (take 6 (drop 2 ids)))))))))
+        (let [delete! (fn [ids]
+                        (events.tu/statement-count! (fn [] (transform/delete-transforms! ids))))
+              ids     @created]
+          (delete! (take 1 ids))
+          (is (= (delete! (take 2 (drop 1 ids))) (delete! (take 6 (drop 3 ids)))))))
       (finally
         (t2/delete! :model/Transform :id [:in @created])))))
 

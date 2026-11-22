@@ -127,6 +127,7 @@
                    (for [i (range n)]
                      (event-row timeline-id {:name (str "event " i)})))
                   (call-count)))))]
+    (creating 1)
     (is (= (creating 2) (creating 6)))))
 
 (deftest create-timeline-events-with-different-columns-test

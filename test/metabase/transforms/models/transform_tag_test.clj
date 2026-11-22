@@ -113,11 +113,14 @@
                    (events.tu/statement-count! (fn [] (swap! created into (map :id (transform-tag/create-transform-tags! (mapv #(hash-map :name %) (tag-names n))))))))]
     (try
       (testing "creating tags"
+        (count-of 1)
         (is (= (count-of 2) (count-of 6))))
       (testing "deleting tags"
-        (let [ids @created]
-          (is (= (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! (take 2 ids))))
-                 (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! (take 6 (drop 2 ids)))))))))
+        (let [delete! (fn [ids]
+                        (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! ids))))
+              ids     @created]
+          (delete! (take 1 ids))
+          (is (= (delete! (take 2 (drop 1 ids))) (delete! (take 6 (drop 3 ids)))))))
       (finally
         (t2/delete! :model/TransformTag :id [:in @created])))))
 

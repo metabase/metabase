@@ -671,6 +671,7 @@
 
 (deftest bulk-field-values-writes-call-count-test
   (testing "creating and updating FieldValues takes the same number of statements for 2 and 6 rows"
+    (field-values-write-call-counts! 1)
     (is (= (field-values-write-call-counts! 2)
            (field-values-write-call-counts! 6)))))
 

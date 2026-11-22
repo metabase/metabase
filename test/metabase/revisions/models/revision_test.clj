@@ -569,6 +569,7 @@
                            (call-count (fn [] (revision/revisions :model/Card card-id))))]
         (move! coll-a)
         (move! coll-b)
+        (extra)
         (let [one-move (extra)]
           (move! coll-c)
           (move! coll-a)
