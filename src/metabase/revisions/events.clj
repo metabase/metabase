@@ -17,14 +17,14 @@
   "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions,
   by a user, that is not a revert or carried by the archive or restore of another entity, and that changes what its spec
   tracks or only touches it."
-  [{:keys [operation context object previous-object user-id] :as event}]
+  [{:keys [operation writer context object previous-object user-id] :as event}]
   (let [model (u.events/model-of event)
         spec  (revisions.spec/spec model)]
     (boolean
      (and user-id
           spec
           (#{:create :update} operation)
-          (not (:reverting? context))
+          (not= :revert writer)
           (nil? (:archived-with context))
           (or (= :create operation)
               (u.events/touch? event)

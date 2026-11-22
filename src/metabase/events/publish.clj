@@ -11,11 +11,22 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private context-keys
+  "The keys of an event context, by which a context given in place of the opts of a write function is told apart."
+  #{:revision-message :archived-with :details :reverting?})
+
 (defn- event
-  "The lifecycle event of `changes` by the current user, with `context`."
-  [changes context]
-  (cond-> {:changes changes :user-id (mi/current-user-id)}
-    (seq context) (assoc :context context)))
+  "The lifecycle event of `changes` by the current user, with the `:context` and the `:writer` of `opts`, the opts of
+  the write function that publishes it."
+  [changes opts]
+  (let [bare?   (some context-keys (keys opts))
+        context (not-empty (dissoc (if bare? opts (:context opts)) :reverting?))
+        writer  (cond
+                  (:reverting? (if bare? opts (:context opts))) :revert
+                  (not bare?)                                   (:writer opts))]
+    (cond-> {:changes changes :user-id (mi/current-user-id)}
+      context (assoc :context context)
+      writer  (assoc :writer writer))))
 
 (mu/defn context :- [:maybe ::events.schema/context]
   "The context of the events of a write function called with `opts`: their `:context`, with `:reverting?` when their
@@ -30,8 +41,8 @@
   ([rows :- [:sequential :map]]
    (create-event rows nil))
   ([rows    :- [:sequential :map]
-    context :- [:maybe ::events.schema/context]]
-   (event (u.events/create-changes rows) context)))
+    opts    :- [:maybe :map]]
+   (event (u.events/create-changes rows) opts)))
 
 (defn- stamped
   "The row `previous` with `changes` and, when its model is timestamped and a column that counts changes, a new
@@ -57,14 +68,13 @@
    (update-event stored rows nil))
   ([stored                    :- [:map-of [:or :int :string] :map]
     rows                      :- [:sequential [:map [:id [:or :int :string]]]]
-    {:keys [objects context]} :- [:maybe [:map {:closed true}
-                                          [:objects {:optional true} [:maybe [:map-of [:or :int :string] :map]]]
-                                          [:context {:optional true} [:maybe ::events.schema/context]]]]]
+    {:keys [objects] :as opts} :- [:maybe [:map
+                                           [:objects {:optional true} [:maybe [:map-of [:or :int :string] :map]]]]]]
    (event (u.events/update-changes stored
                                    rows
                                    (fn [previous changes]
                                      (or (get objects (:id previous)) (stamped previous changes))))
-          context)))
+          (dissoc opts :objects))))
 
 (mu/defn delete-event :- ::events.schema/lifecycle
   "The lifecycle event of the delete of `rows`, instances as the write function read them, by the current user, to
@@ -72,8 +82,8 @@
   ([rows :- [:sequential :map]]
    (delete-event rows nil))
   ([rows    :- [:sequential :map]
-    context :- [:maybe ::events.schema/context]]
-   (event (u.events/delete-changes rows) context)))
+    opts    :- [:maybe :map]]
+   (event (u.events/delete-changes rows) opts)))
 
 (mu/defn touch-event :- ::events.schema/lifecycle
   "The lifecycle event of an update of `rows`, instances of an owner such as a Dashboard, that changed none of their
@@ -82,5 +92,5 @@
   ([rows :- [:sequential :map]]
    (touch-event rows nil))
   ([rows    :- [:sequential :map]
-    context :- [:maybe ::events.schema/context]]
-   (event (mapv (fn [row] {:previous-object row :object row}) rows) context)))
+    opts    :- [:maybe :map]]
+   (event (mapv (fn [row] {:previous-object row :object row}) rows) opts)))

@@ -72,7 +72,7 @@
   "The changes of the lifecycle `event` of `topic`, each merged with what the event says of all of them, as
   `{:topic :model :operation :id :user-id :context :object :previous-object :changed}`, for a consumer that works row by
   row: `:changed` is the set of columns whose value an update changed."
-  [topic {:keys [changes user-id context]}]
+  [topic {:keys [changes user-id writer context]}]
   (mapv (fn [{:keys [object previous-object] :as change}]
           (let [row       (or object previous-object)
                 model     (t2/model row)
@@ -82,6 +82,7 @@
                      :operation operation
                      :id        (get row (first (t2/primary-keys model)))
                      :user-id   user-id
+                     :writer    writer
                      :context   context}
               object                (assoc :object object)
               previous-object       (assoc :previous-object previous-object)

@@ -177,4 +177,5 @@
   [:map {:closed true}
    [:changes [:sequential ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
+   [:writer {:optional true} :keyword]
    [:context {:optional true} ::context]])
