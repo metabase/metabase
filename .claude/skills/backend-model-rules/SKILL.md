@@ -12,6 +12,12 @@ never becomes a query per row.
 
 ## Where a rule lives
 
+Three layers, and a rule goes to the lowest one that can hold it:
+
+1. Column transforms and hooks: they hold for every writer, a plain `t2/update!` included.
+2. `<module>/db.clj`: the statements, where per-row and per-app-DB work goes.
+3. Write functions: orchestration, checks that need other rows, external calls, events.
+
 | The rule | Home |
 |---|---|
 | Default value, also one read from a setting (a Table's humanized `display_name`) | hook |
@@ -19,7 +25,8 @@ never becomes a query per row.
 | Invalid combination of columns of one row, from the row and its stored version | hook |
 | Per-row state transition that is not allowed; a frozen column (no update may change it) | hook, only where the rule already existed |
 | Whether one value is valid (valid MBQL, enum, length) | boundary schema: API request schema, SerDes spec `:schema`, revisions spec `:schema`; never a hook |
-| Needs other rows or the database (parent archived, cycle, uniqueness) | the write function, over all rows of the call |
+| Needs other rows or the database (parent archived, allowed Collection, cycle, uniqueness) | a private `check-<what>` function the write function calls before the statement (see Checks) |
+| A referenced row exists, and a FOREIGN KEY or PRIMARY KEY says so | nothing: the constraint error is the outcome, and it is never caught |
 | Depends on who is acting | `mi/can-*?` (see Permissions) |
 
 - A hook never calls the app DB or anything external (a warehouse, the network); a cached setting read is neither.
@@ -39,17 +46,32 @@ never becomes a query per row.
       ;; (t2/update! :model/Channel :id [:in ids] {:active false}) -> 1 SELECT + one UPDATE per Channel
 
   The change map Toucan compares is each row's DIFF against its stored values, so two rules follow.
-  1. What the hook adds to the changes is a function of the incoming changes and constants alone, never of the stored
-     row. It breaks with a value built from the stored row (its id, its name) and with a value added only for some
-     rows (`(when-not (:published_at stored) ...)`). A hook still READS the stored row to refuse a write (frozen
-     column, invalid combination, state transition): a guard throws or leaves the changes alone, and adds no statement.
+  1. What the hook adds to the changes is the same for every row: a value computed from the incoming changes and
+     constants, or ONE HoneySQL expression the database evaluates per row. It breaks with a Clojure value built from
+     the stored row (its id, its name) and with a value added only for some rows
+     (`(when-not (:published_at stored) ...)`). A hook still READS the stored row to refuse a write (frozen column,
+     invalid combination, state transition): a guard throws or leaves the changes alone, and adds no statement.
+     - A value that depends on the stored row or on another row is an expression, and this is the default: a stamp
+       kept once set (`COALESCE(initially_published_at, now())`), a CASE over stored columns (a Channel's deactivated
+       name, a Field's coercion strategy and effective type through `app-db/isa`), a scalar subquery on the parent
+       (`archived_directly` from the Collection, a Pulse's `collection_id` from its Dashboard, the next position).
+     - The expression is built by a function of the model's `<module>/db.clj` whose name ends in `-clause`
+       (`channel.db/deactivated-name-clause`); the hook calls it and assocs the result. No HoneySQL in a model file. A
+       building block several models share lives in `metabase.models.interface`.
+     - SQL that differs per app DB is a `case` on `(mdb/db-type)` inside the `-clause` function. MySQL assigns SET
+       left to right, so an expression never reads a column the same statement assigns before it; MySQL refuses a
+       subquery on the table being written, so read it through a derived table. Mark a deliberate subquery
+       `^:allow-subquery` and a value `[:auto/param v]`.
+     - Events, returned rows and Revisions carry real values: read the rows once after the statement when the
+       changes held an expression.
+     - What stays in Clojure: values from lib or the query processor, parsing, humanized names, encryption and hashing
+       (from the incoming changes alone, so already uniform).
   2. A write function that updates several rows makes each `t2/update!` uniform itself, also without any derivation:
      an update of two or more columns over rows in mixed state (row A already holds one of the new values) splits
      too. It computes each row's changes against the stored rows it holds, adds the row-dependent derivations there,
      and groups the ids: `(mi/group-ids-by-changes stored rows)` gives `[[changes ids] ...]`, one statement each; the
-     groups are bounded by combinations of columns, not by rows. A value that differs for every row is computed in
-     Clojure and written by a named `db.clj` function in one statement with a CASE over the primary key
-     (`channel.db/update-channels-with-names!`), never with SQL string functions, so it is identical on every app DB.
+     groups are bounded by combinations of columns, not by rows. A value that differs for every row is a hook
+     expression (rule 1), not a group per row.
      Drop a key as unchanged only against the row as STORED: where after-select rewrites columns (Card's schema
      upgrade), the row the function holds is not the stored one, and the columns written in lockstep stay.
   In dev and test a guard in `metabase.models.interface` throws when the rows of one update end with different changes,
@@ -60,6 +82,30 @@ never becomes a query per row.
   `lib-be/transform-query`), not the caller's, the hook's or the write function's.
 - Uniqueness: the write function checks all rows of the call with one read to give a friendly error. Never catch a
   constraint error for it; a concurrent race throws from the database.
+
+### Checks
+
+A check that needs another row runs in the write function, before the statement, in a private function:
+
+```clojure
+(defn- check-dashboards
+  "Throw unless every Dashboard of `rows` satisfies these rules:
+
+  - its Collection is in the default namespace
+  - its Collection is not of a Library type
+  - it is archived, or its Collection is not"
+  [rows]
+  (collection/check-collections-for-model! :model/Dashboard rows))
+```
+
+- Named `check-<what>`, no `!`, throws inside; the docstring lists its rules with `-`. It takes what the call is about
+  to write: the rows on create, the stored rows merged with the changes on update.
+- It reads through `db.clj` functions and may run several statements, a fixed number per call and never one per row.
+  The cheap shape is one query that returns only the referenced rows that break a rule, then the precise error for the
+  first of them in the caller's order.
+- No existence check that a FOREIGN KEY or PRIMARY KEY already makes.
+- What the current user may do is not checked here (see Permissions): a cycle check belongs in the write function,
+  "may this user create a Card here" belongs to the caller.
 - Do not add transition or frozen-column rules that were not there. Stock hooks only: `t2/define-before-insert`,
   `t2/define-before-update`; `(t2/changes row)` holds the changed columns. Checks first, then derivations:
 ```clojure
@@ -76,9 +122,16 @@ never becomes a query per row.
 
 The `Writes` section of the model file, directly before `Specs`, holds the only production writers of the model.
 
-- One function per operation per model, taking a list: `create-<model>s!`, `update-<model>s!` (rows of `:id` and the
-  columns to change), `delete-<model>s!` (ids). No single-row twin (callers pass `[x]`), no `-imported-` variant, no
-  `foo*` layer, no `-where!` variant. A write that fits none keeps a named case function (`increment-view-counts!`).
+- Three general functions per model: `create-<model>s! [models opts]`, `update-<model>s! [ids changes opts]` (ONE
+  change map applied to every id) and `delete-<model>s! [ids opts]`. No single-row twin (callers pass `[x]`), no
+  `foo*` layer, no `-where!` variant. Keep them thin: per-row work goes to hook expressions and to `db.clj`.
+- A consumer whose rows each carry their own values, or whose data size needs another statement, gets a bespoke
+  function named `<op>-<model>s-for-<consumer or owner>!` with its own input: `update-cards-for-import! [rows]`,
+  `update-fields-for-sync!`, `delete-pulses-for-dashboards!`, `delete-task-history-for-cleanup! [cutoff]`. It needs a
+  reason of size or call pattern (import, metadata sync, an archive cascade, deleting a database's content); other
+  callers use the general function, also in a small loop. Every model with a SerDes spec has
+  `update-<model>s-for-import!`, which may write row by row.
+- A write that fits none keeps a named case function (`increment-view-counts!`).
 - Optional last `opts`: a closed map of data, holding only keys the function uses; no `opts` argument when none is.
   - `:writer`, an enum: `:import`, `:revert`, `:replacement`, `:sync`, `:cascade`. Absent means a user's write. A
     function may branch on it (`update-cards!` skips result-metadata inference for any writer).
@@ -95,13 +148,17 @@ The `Writes` section of the model file, directly before `Specs`, holds the only 
 - A write function does not validate the shape of its input: the boundary did. Its `mu/defn` schemas run in dev and
   test only.
 - Toucan calls live only in `<module>/db.clj` (see `backend-module-conventions`), called from the Writes section.
-  One statement per distinct set of changes: `(group-by #(dissoc % :id) rows)`, then one `db.clj` update per group.
+  A general update is one `db.clj` statement for all ids.
 - In `db.clj`, no trivial select after a write: `t2/insert-returning-instances!` when the caller needs the rows it
   inserted, `t2/insert-returning-pks!` when it needs only the ids; never insert and then select the same rows by id.
 - A bulk insert of rows with different key sets goes through `u/map-by-key-set`, as `segments.db/insert-segments!`:
   one insert of mixed rows puts NULL where a row leaves a column out, which a NOT NULL column with a default refuses.
-- An upsert on a hot path (`upsert-field-user-settings!`): `db.clj` has a plain select, insert and update; the write
-  function resolves a lost insert race once, by re-reading the row and updating it.
+- An upsert over a unique key is one statement per app DB in `db.clj` (`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`,
+  `MERGE`), as `metabot.db/upsert-row!`. Where hooks add columns the statement would skip, or an event needs the
+  stored row (`upsert-field-user-settings!`), `db.clj` has a plain select, insert and update, and the write function
+  resolves a lost insert race once, by re-reading the row and updating it.
+- More belongs in `db.clj` than in the write function: `INSERT ... SELECT` over read-then-insert, and a write by owner
+  with a subquery over selecting ids first, unless an event needs the rows.
 - An entry point shared by REST and MCP or Metabot validates in the shared function (`create-segment!` in
   `metabase.segments.rest.api` checks the definition), so no caller skips the check.
 - A cascade to another model calls that model's write functions. Where requiring it would be a load cycle, the cause
@@ -117,13 +174,17 @@ the Document's function calls `create-cards!` / `update-cards!`.
 
 - Child functions (`dashboard-card/create-dashboard-cards!`) are plain writes: no events and no transaction of their
   own, since the parent function that calls them has opened one.
+- A parent has two updates: plural `update-<parent>s! [ids changes opts]` for its own columns, and singular
+  `update-<parent>! [id changes opts]` whose `changes` may carry the parts (`:dashcards`, `:tabs`). The singular one
+  owns the column change and every child write and publishes ONE parent event. It is the only singular function
+  beside a plural one.
 - The parent's model file is the only entry point, also for other modules. `create-dashboards!` rows carry `:tabs`
-  and `:dashcards` (each with `:series`) and publish one `:event/dashboard-create`. `update-dashboards!`,
+  and `:dashcards` (each with `:series`) and publish one `:event/dashboard-create`. `update-dashboard!`,
   `add-dashcards!`, `update-dashcards!` and `remove-dashcards!` change parts of an existing Dashboard and publish one
   `:event/dashboard-update`, built with `events/touch-event` when only children changed.
 - Consumers key on the parent's event and read the parts from the database. An audit row about parts comes from an
   explicit event the parent function publishes (`:event/dashboard-add-cards`, `:event/dashboard-remove-cards`).
-- Action: `create-actions!` / `update-actions!` take the Action's columns together with those of its detail row and
+- Action: `create-actions!` / `update-action!` take the Action's columns together with those of its detail row and
   publish one Action event; the dependency marks read the detail row from the database on that event.
 - SerDes writes children on their own, through the child specs' `:insert!` / `:update!` / `:delete!`, the plain child
   functions. For parents whose children an import changed, it calls the parent's `:update!` with `[{:id ..}]`; under
@@ -183,6 +244,9 @@ stored snapshot through it, which is where older snapshot formats are handled). 
 before the call; a write function never reads the current user for a decision.
 
 ## Permissions
+
+Write functions check no permission of the current user: every user-facing caller does, with the functions below,
+once for all rows of a bulk call.
 
 | Question | Asked with | Answered by |
 |---|---|---|
@@ -289,9 +353,9 @@ What the shared keys mean, wherever they appear:
 
 ## Archiving
 
-- Archiving is an update: `(update-dashboards! [{:id id :archived true}])`. `archived` is the state,
-  `archived_directly` the cause. The write function sets `archived_directly`, not a hook, because it reads the
-  parent's state: true when the row is archived on its own, false when its parent is archived; a cascade gives it.
+- Archiving is an update: `(update-dashboards! [id] {:archived true})`. `archived` is the state,
+  `archived_directly` the cause. The hook sets `archived_directly` as an expression that reads the parent's state
+  (`dashboards.db/archived-directly-clause`): true when the row is archived on its own, false when its parent is archived; a cascade gives it.
 - A Collection carries its content through cascade multimethods taking `[model collection-ids opts]`:
   `collection/archive-in-collections!`, `restore-in-collections!`, `delete-in-collections!`. Each follower implements
   them in its own model file with its own write function and passes `opts` on.
