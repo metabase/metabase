@@ -583,11 +583,12 @@
     (mt/with-temp [:model/Collection snippets {:namespace :snippets}
                    :model/Collection plain    {}
                    :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (first (dashboard/create-dashboards! [{:name "Dash" :creator_id (mt/user->id :rasta)
-                                                                   :collection_id (u/the-id snippets)}]))))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (dashboard/update-dashboards! [(u/the-id dash)] {:collection_id (u/the-id snippets)})))
+      (is (= 400 (:status-code (ex-data (try (dashboard/create-dashboards! [{:name "Dash" :creator_id (mt/user->id :rasta)
+                                                                             :collection_id (u/the-id snippets)}])
+                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (not (t2/exists? :model/Dashboard :name "Dash")))
+      (is (= 400 (:status-code (ex-data (try (dashboard/update-dashboards! [(u/the-id dash)] {:collection_id (u/the-id snippets)})
+                                             (catch clojure.lang.ExceptionInfo e e))))))
       (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
 
 (deftest move-dashboard-moves-dashboard-questions-test

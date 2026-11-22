@@ -43,7 +43,7 @@
                                   :id [:in (into #{} (map :user_id) memberships)])
    :audit       (t2/count :model/AuditLog :model "PermissionsGroupMembership")})
 
-(defn- outcome
+(defn- outcome!
   "Call `add-users-to-groups!` with `memberships` inside a transaction that is rolled back afterwards, returning the
   refusal it threw as `[message data]` or nil, and whether the state is unchanged after a refusal."
   [memberships]
@@ -70,10 +70,10 @@
           (throw e))))
     @result))
 
-(defn- check-case
+(defn- check-case!
   [memberships]
   (let [expected (old-refusal memberships)
-        {:keys [refusal unchanged added]} (outcome memberships)]
+        {:keys [refusal unchanged added]} (outcome! memberships)]
     (testing (pr-str memberships)
       (is (= expected refusal))
       (if expected
@@ -97,12 +97,12 @@
           (doseq [user-id users
                   group-id groups
                   manager? [false true]]
-            (check-case [{:user_id user-id :group_id group-id :is_group_manager manager?}])))
+            (check-case! [{:user_id user-id :group_id group-id :is_group_manager manager?}])))
         (testing "All tenant users, inside the scope that allows changing its members"
           (perms-group-membership/allow-changing-all-external-users-group-members
-            (doseq [user-id users
-                    manager? [false true]]
-              (check-case [{:user_id user-id :group_id (u/the-id (perms/all-external-users-group)) :is_group_manager manager?}]))))
+           (doseq [user-id users
+                   manager? [false true]]
+             (check-case! [{:user_id user-id :group_id (u/the-id (perms/all-external-users-group)) :is_group_manager manager?}]))))
         (testing "several memberships in one call: one refused row refuses the call, with the first refused row's error"
           (doseq [memberships [[{:user_id personal :group_id ordinary-group :is_group_manager true}
                                 {:user_id tenant-user :group_id ordinary-group :is_group_manager false}]
@@ -112,7 +112,7 @@
                                 {:user_id tenant-user :group_id tenant-group :is_group_manager true}]
                                [{:user_id personal :group_id ordinary-group :is_group_manager false}
                                 {:user_id tenant-user :group_id tenant-group :is_group_manager false}]]]
-            (check-case memberships)))))))
+            (check-case! memberships)))))))
 
 (deftest refused-membership-does-not-survive-a-caller-transaction-test
   (mt/with-premium-features #{:tenants}
@@ -127,3 +127,58 @@
       (testing "the caller caught the refusal and committed another write: the refused membership is absent"
         (is (not (t2/exists? :model/PermissionsGroupMembership :user_id tenant-user :group_id ordinary-group)))
         (is (t2/exists? :model/PermissionsGroupMembership :user_id personal :group_id ordinary-group))))))
+
+(defn- old-update-refusal
+  "The `[message data]` the check `update-permissions-group-memberships!` ran before its write refused `changes` to the
+  memberships with `ids` with, in the order of `ids`, from the rows as stored now, or nil."
+  [ids changes]
+  (when (:is_group_manager changes)
+    (let [memberships (u/index-by :id (t2/select :model/PermissionsGroupMembership :id [:in ids]))
+          members     (u/index-by :id (t2/select [:model/User :id :tenant_id :is_superuser]
+                                                 :id [:in (map (comp :user_id memberships) ids)]))]
+      (some (fn [id]
+              (let [{:keys [user_id]} (memberships id)
+                    member            (members user_id)]
+                (cond
+                  (:tenant_id member)    ["Tenant users cannot be made group managers" {:user-id user_id :status-code 400}]
+                  (:is_superuser member) ["Admin cannot be a group manager." {:user-id user_id :status-code 400}])))
+            ids))))
+
+(defn- check-update-case!
+  [memberships changes]
+  (t2/with-transaction [_conn nil {:rollback-only true}]
+    (let [ids      (mapv #(t2/insert-returning-pk! :model/PermissionsGroupMembership
+                                                   {:user_id (:user_id %) :group_id (:group_id %) :is_group_manager false})
+                         memberships)
+          expected (old-update-refusal ids changes)
+          stored   #(t2/select-fn-set (juxt :id :is_group_manager) :model/PermissionsGroupMembership :id [:in ids])
+          before   (stored)
+          refusal  (try
+                     (perms-group-membership/update-permissions-group-memberships! ids changes)
+                     nil
+                     (catch clojure.lang.ExceptionInfo e
+                       [(ex-message e) (dissoc (ex-data e) :toucan2/context-trace)]))]
+      (testing (pr-str {:memberships memberships :changes changes})
+        (is (= expected refusal))
+        (when expected
+          (is (= before (stored))))))))
+
+(deftest update-permissions-group-memberships-refuses-exactly-what-the-pre-write-check-refused-test
+  (mt/with-premium-features #{:tenants :advanced-permissions}
+    (mt/with-temp [:model/Tenant           {tenant-id :id}      {:name "Update Tenant" :slug "update-tenant"}
+                   :model/User             {personal :id}       {}
+                   :model/User             {admin :id}          {:is_superuser true}
+                   :model/User             {tenant-user :id}    {:tenant_id tenant-id}
+                   :model/User             {api-key-user :id}   {:type :api-key}
+                   :model/User             {inactive :id}       {:is_active false}
+                   :model/PermissionsGroup {tenant-group :id}   {:is_tenant_group true}
+                   :model/PermissionsGroup {ordinary-group :id} {:is_tenant_group false}]
+      (let [membership (fn [user-id] {:user_id  user-id
+                                      :group_id (if (= user-id tenant-user) tenant-group ordinary-group)})]
+        (testing "one membership per call, for every kind of User and change"
+          (doseq [user-id [personal admin tenant-user api-key-user inactive]
+                  changes [{:is_group_manager true} {:is_group_manager false}]]
+            (check-update-case! [(membership user-id)] changes)))
+        (testing "several memberships in one call: the first refused one gives the message"
+          (doseq [user-ids [[personal admin] [tenant-user admin] [admin tenant-user] [personal api-key-user]]]
+            (check-update-case! (mapv membership user-ids) {:is_group_manager true})))))))

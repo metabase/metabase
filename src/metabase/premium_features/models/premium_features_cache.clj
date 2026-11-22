@@ -18,18 +18,12 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn save-token-status-cache!
-  "Store `token-status-hash` as the cached status hash of `token-hash`, updating first so that a duplicate key does not
-  poison a PostgreSQL transaction, and updating again when a concurrent instance inserted first."
+  "Store `token-status-hash` as the cached status hash of `token-hash`, in one upsert statement, so that neither a
+  concurrent instance nor a duplicate key can poison a PostgreSQL transaction."
   [token-hash        :- :string
    token-status-hash :- :string]
   (t2/with-connection [_conn (app-db/app-db)]
-    (let [now     (t/offset-date-time)
-          updated (premium-features.db/update-token-status-cache! token-hash token-status-hash now)]
-      (when (zero? updated)
-        (try
-          (premium-features.db/insert-token-status-cache! token-hash token-status-hash now)
-          (catch Exception _e
-            (premium-features.db/update-token-status-cache! token-hash token-status-hash now)))))))
+    (premium-features.db/upsert-token-status-cache! token-hash token-status-hash (t/offset-date-time))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -31,7 +31,7 @@
                 [message 400])))
           rows)))
 
-(defn- check-case
+(defn- check-case!
   [rows]
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [expected (old-refusal rows)
@@ -61,7 +61,7 @@
       (testing "one row per call, for every kind of group and object"
         (doseq [group-id [tenant-group ordinary-group]
                 object   objects]
-          (check-case [{:group_id group-id :object object}])))
+          (check-case! [{:group_id group-id :object object}])))
       (testing "several rows in one call: one refused row refuses the call, with the first refused row's message"
         (doseq [rows [[{:group_id ordinary-group :object (permissions.path/collection-readwrite-path coll-id)}
                        {:group_id tenant-group :object (permissions.path/application-perms-path :monitoring)}]
@@ -70,7 +70,7 @@
                        {:group_id tenant-group :object (permissions.path/application-perms-path :setting)}]
                       [{:group_id tenant-group :object (permissions.path/collection-read-path coll-id)}
                        {:group_id tenant-group :object (permissions.path/application-perms-path :subscription)}]]]
-          (check-case rows))))))
+          (check-case! rows))))))
 
 (deftest refused-grant-does-not-survive-a-caller-transaction-test
   (mt/with-temp [:model/Collection       {coll-id :id}        {}

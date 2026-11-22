@@ -167,6 +167,8 @@
                                      (cond-> {:name (mt/random-name) :creator_id user-id :collection_id live}
                                        (odd? i) (assoc :archived true)))
                                    (range n)))
+          live-rows (fn [n]
+                      (mapv (fn [_] {:name (mt/random-name) :creator_id user-id :collection_id live}) (range n)))
           fresh!   (fn [n & [rows-fn]]
                      (let [timelines (timeline/create-timelines! ((or rows-fn rows) n))]
                        (timeline-event/create-timeline-events!
@@ -195,8 +197,7 @@
           (is (= (restore! 2) (restore! 6)))))
       (testing "moving timelines, some already in the Collection"
         (let [move! (fn [n]
-                      (let [ids (fresh! n)]
-                        (timeline/update-timelines! ids {:archived false} nil)
+                      (let [ids (fresh! n live-rows)]
                         (timeline/update-timelines! (take-nth 2 ids) {:collection_id other} nil)
                         (events.tu/statement-count!
                          #(timeline/update-timelines! ids {:collection_id other} nil))))]

@@ -346,7 +346,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"move a group membership to another user"
                             (perms-group-membership/update-permissions-group-memberships!
                              [member admin] {:user_id admin-id :is_group_manager true})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"move a group membership to another user"
                             (perms-group-membership/update-permissions-group-memberships!
                              [admin member] {:user_id admin-id :is_group_manager true})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"

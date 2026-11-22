@@ -70,7 +70,7 @@
     (cond-> {:a a :plain plain :inactive inactive :outsider outsider :member member}
       b (assoc :b b))))
 
-(defn- check-case
+(defn- check-case!
   [two-admins? names changes]
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [ids      (population! two-admins?)
@@ -99,7 +99,7 @@
                          {:is_active false :is_superuser true}
                          {:is_superuser true}
                          {:first_name "Renamed"}]]
-      (check-case two-admins? names changes))))
+      (check-case! two-admins? names changes))))
 
 (deftest refused-demotion-does-not-survive-a-caller-transaction-test
   (mt/with-model-cleanup [:model/User]

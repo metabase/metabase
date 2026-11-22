@@ -41,8 +41,8 @@
                       (not (contains? after [group_id db_id :perms/create-queries :query-builder-and-native]))))
                rows)))))
 
-(defn- check-case
-  [group-id db-id stored-rows rows]
+(defn- check-case!
+  [group-id stored-rows rows]
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (t2/delete! :model/DataPermissions :group_id group-id)
     (when (seq stored-rows)
@@ -79,7 +79,7 @@
               :let [stored-db-level (into #{} (map (juxt :perm_type :table_id)) stored-rows)]
               ;; the unique key allows one row per group, Database, type and Table: skip calls that duplicate one
               :when (not-any? #(contains? stored-db-level ((juxt :perm_type :table_id) %)) rows)]
-        (check-case g d stored-rows rows)))))
+        (check-case! g stored-rows rows)))))
 
 (deftest refused-transforms-grant-does-not-survive-a-caller-transaction-test
   (mt/with-temp [:model/PermissionsGroup {g :id} {}
