@@ -106,4 +106,4 @@
   (testing "an insert"
     (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 1")))))
   (testing "an update"
-    (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 2"))))))
+    (is (= 5 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 2"))))))

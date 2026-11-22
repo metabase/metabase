@@ -196,7 +196,7 @@
                                        :description description
                                        :schedule schedule
                                        :ui_display_type ui_display_type)]
-        (transform-job/update-transform-jobs! {job-id updates})))
+        (transform-job/update-transform-jobs! [(assoc updates :id job-id)])))
     (when (some? active)
       (if active
         (transform-job/activate-job! job-id)

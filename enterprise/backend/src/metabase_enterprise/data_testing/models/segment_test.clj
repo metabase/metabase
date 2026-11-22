@@ -94,50 +94,28 @@
 (mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
   "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
   validate each row."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential ::data-testing.schema/segment-test.create-row]]
   (data-testing.models/create-saved-tests! :model/SegmentTest rows))
 
-(mu/defn create-segment-test! :- ::data-testing.schema/segment-test
-  "Insert the SegmentTest `segment-test` returning the inserted test."
-  [segment-test :- [:merge ::data-testing.schema/segment-test.create data-testing.models/saved-test-row]]
-  (first (create-segment-tests! [segment-test])))
+(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update-row]
+  "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms
+  of the model normalize and validate, publishing their update event."
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update-row]]
+   (update-segment-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update-row]
+    opts :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
 
-(mu/defn update-segment-tests! :- :nil
-  "Apply the changes in `changes-by-id`, a map from the id of a SegmentTest to its changes, which the column
-  transforms of the model normalize and validate, publishing their update event with `context`."
-  ([changes-by-id :- [:map-of ms/PositiveInt :map]]
-   (update-segment-tests! changes-by-id nil))
-  ([changes-by-id :- [:map-of ms/PositiveInt :map]
-    context       :- [:maybe :metabase.events.schema/context]]
-   (data-testing.models/update-saved-tests! :model/SegmentTest changes-by-id context)))
-
-(mu/defn update-segment-test! :- :nil
-  "Apply `changes` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/segment-test.update]
-  (update-segment-tests! {id changes}))
-
-(mu/defn delete-segment-test! :- :nil
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest [id]))
+(mu/defn delete-segment-tests-by-id! :- :nil
+  "Delete the SegmentTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
 
 (defenterprise delete-segment-tests!
   "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
   [segment-ids]
   (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
-
-(defn- update-imported-segment-tests!
-  "Update the SegmentTests of an import with `rows`, each its id and changed columns, returning `rows`."
-  [rows]
-  (update-segment-tests! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
-  rows)
-
-(defn- delete-segment-tests-by-id!
-  "Delete the SegmentTests with `ids`."
-  [ids]
-  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -184,7 +162,7 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (update-segment-tests! {id (select-keys snapshot revision-columns)} {:reverting? true}))
+  (update-segment-tests! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -203,7 +181,7 @@
 (defmethod serialization/spec :model/SegmentTest [_]
   {:schema              ::data-testing.schema/external-segment-test
    :insert!             create-segment-tests!
-   :update!             update-imported-segment-tests!
+   :update!             update-segment-tests!
    :delete!             delete-segment-tests-by-id!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:segment_id (serialization/fk-transform :model/Segment)

@@ -64,12 +64,7 @@
 
 (mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
   "Insert the TestSuite `suites` and return the inserted instances."
-  [suites :- [:sequential {:min 1}
-              [:map {:closed true}
-               [:name        :string]
-               [:description {:optional true} [:maybe :string]]
-               [:creator_id  ::lib.schema.id/user]
-               [:entity_id   {:optional true} [:maybe :string]]]]]
+  [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.row.create]]
   (t2/insert-returning-instances! :model/TestSuite suites))
 
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
@@ -77,32 +72,30 @@
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select :model/TestSuite :id [:in [:auto/param ids]]))
 
-(mu/defn test-suite-for-update :- [:maybe ::data-testing.schema/test-suite]
-  "The TestSuite with `id`, or nil, its row locked until the transaction ends."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/TestSuite :id id {:for :update}))
+(mu/defn test-suites-for-update :- [:sequential ::data-testing.schema/test-suite]
+  "The TestSuites with `ids`, their rows locked in the order of their ids until the transaction ends."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
 (mu/defn update-test-suites!
   "Apply `updates` to the TestSuites with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- [:map {:closed true}
-               [:name        {:optional true} :string]
-               [:description {:optional true} [:maybe :string]]
-               [:updated_at  {:optional true} [:= :%now]]]]
+   updates :- ::data-testing.schema/test-suite.row.update]
   (t2/update! :model/TestSuite :id [:in [:auto/param ids]] updates))
 
-(mu/defn delete-members-of-suite!
-  "Delete the members of the TestSuite with `suite-id`."
-  [suite-id :- ms/PositiveInt]
-  (t2/delete! :model/TestSuiteMember :suite_id suite-id))
+(mu/defn touch-test-suites!
+  "Set the update time of the TestSuites with `ids` to the database's current time."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/TestSuite :id [:in [:auto/param ids]] {:updated_at :%now}))
+
+(mu/defn delete-members-of-suites!
+  "Delete the members of the TestSuites with `suite-ids`."
+  [suite-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param suite-ids]]))
 
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
-  [rows :- [:sequential [:map {:closed true}
-                         [:suite_id       ms/PositiveInt]
-                         [:test_type      ::data-testing.schema/test-type]
-                         [:test_entity_id :string]
-                         [:position       :int]]]]
+  [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.row.create]]
   (t2/insert-returning-instances! :model/TestSuiteMember rows))
 
 (mu/defn suite-members-by-ids :- [:sequential ::data-testing.schema/test-suite.member]
@@ -113,7 +106,7 @@
 (mu/defn update-suite-members!
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- :map]
+   changes :- ::data-testing.schema/test-suite-member.update]
   (t2/update! :model/TestSuiteMember :id [:in [:auto/param ids]] changes))
 
 (mu/defn delete-suite-members!
@@ -197,7 +190,7 @@
 (mu/defn insert-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
   "Insert the `rows` of `model` and return the inserted instances."
   [model :- saved-test-model
-   rows  :- [:sequential {:min 1} :map]]
+   rows  :- [:sequential {:min 1} ::data-testing.schema/saved-test.create-row]]
   (t2/insert-returning-instances! model rows))
 
 (mu/defn saved-tests-by-ids :- [:sequential ::data-testing.schema/saved-test]
@@ -210,7 +203,7 @@
   "Apply `updates` to the tests of `model` with `ids`."
   [model   :- saved-test-model
    ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- :map]
+   updates :- ::data-testing.schema/saved-test.changes]
   (t2/update! model :id [:in [:auto/param ids]] updates)
   nil)
 

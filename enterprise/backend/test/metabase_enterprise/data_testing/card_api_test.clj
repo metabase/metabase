@@ -476,12 +476,11 @@
       ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
       ;; recorded only under a current user.
       (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
-                          (:id (data-testing.models.card-test/create-card-test!
-                                {:card_id      subject-id
-                                 :name         "No inputs"
-                                 :inputs       []
-                                 :expectations (mapv #(update % :type keyword) expectations)
-                                 :creator_id   (mt/user->id :crowberto)})))
+                          (:id (first (data-testing.models.card-test/create-card-tests! [{:card_id      subject-id
+                                                                                          :name         "No inputs"
+                                                                                          :inputs       []
+                                                                                          :expectations (mapv #(update % :type keyword) expectations)
+                                                                                          :creator_id   (mt/user->id :crowberto)}]))))
             path        (str "ee/card-test/" test-id)
             creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
                              (m/find-first :is_creation)

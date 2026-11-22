@@ -98,7 +98,7 @@
 
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` and return the new instances."
-  [rows :- [:sequential {:min 1} ::transforms.schema/transform.update]]
+  [rows :- [:sequential {:min 1} ::transforms.schema/transform.create]]
   (t2/insert-returning-instances! :model/Transform rows))
 
 (mu/defn update-transforms! :- :nil
@@ -256,7 +256,7 @@
 
 (mu/defn insert-jobs! :- [:sequential ::transforms.schema/transform-job]
   "Insert the TransformJob `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.update]]
+  [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.create]]
   (t2/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil

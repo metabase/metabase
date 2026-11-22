@@ -51,14 +51,14 @@
                  {:suite_id suite-2 :test_type :segment :test_entity_id segment-eid :position 1}
                  {:suite_id suite-2 :test_type :segment :test_entity_id cascaded-eid :position 2}])
     (testing "deleting a card test removes it from both suites, and nothing else"
-      (data-testing.models.card-test/delete-card-test! card-test-id)
+      (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
       (is (= #{[:card kept-eid] [:transform transform-eid]} (members suite-1)))
       (is (= #{[:segment segment-eid] [:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a transform test removes it"
-      (data-testing.models/delete-transform-test! transform-test-id)
+      (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
       (is (= #{[:card kept-eid]} (members suite-1))))
     (testing "deleting a segment test removes it"
-      (data-testing.models.segment-test/delete-segment-test! segment-test-id)
+      (data-testing.models.segment-test/delete-segment-tests-by-id! [segment-test-id])
       (is (= #{[:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a segment removes the members of its tests"
       (segment/delete-segments! [segment-id])
@@ -80,7 +80,7 @@
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-create suite-id))))
         (testing "update names the acting user, and the changed columns"
-          (test-suite/update-test-suite! suite-id {:name "Renamed"})
+          (test-suite/update-test-suites! [{:id suite-id :name "Renamed"}])
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
@@ -90,7 +90,7 @@
         (testing "a change of the members alone is audited as one update of the suite"
           (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
                 before  (count (updates))]
-            (test-suite/update-test-suite! suite-id {:members [{:test_type :card :test_entity_id card-test-eid}]})
+            (test-suite/update-test-suites! [{:id suite-id :members [{:test_type :card :test_entity_id card-test-eid}]}])
             (is (= (inc before) (count (updates))))
             (is (= {:model_id suite-id
                     :user_id  (mt/user->id :rasta)
@@ -99,7 +99,7 @@
                     :model    "TestSuite"}
                    (first (updates))))))
         (testing "delete names the acting user"
-          (test-suite/delete-test-suite! suite-id)
+          (test-suite/delete-test-suites! [suite-id])
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:name "Renamed" :description "abc"}
@@ -113,20 +113,20 @@
       (mt/with-temp [:model/Card     {card-id :id}     {}
                      :model/CardTest {eid-1 :entity_id} {:card_id card-id}
                      :model/CardTest {eid-2 :entity_id} {:card_id card-id}]
-        (let [suite-id (test-suite/create-test-suite! {:name       "Nightly"
-                                                       :creator_id (mt/user->id :rasta)
-                                                       :members    [{:test_type :card :test_entity_id eid-1}
-                                                                    {:test_type :card :test_entity_id eid-2}]})
+        (let [suite-id (:id (first (test-suite/create-test-suites! [{:name       "Nightly"
+                                                                     :creator_id (mt/user->id :rasta)
+                                                                     :members    [{:test_type :card :test_entity_id eid-1}
+                                                                                  {:test_type :card :test_entity_id eid-2}]}])))
               topics   #(t2/select-fn-vec :topic :model/AuditLog :model "TestSuite" :model_id suite-id
                                           {:order-by [[:id :asc]]})]
           (try
             (testing "a create with members records one create"
               (is (= [:test-suite-create] (topics))))
             (testing "a replacement of the members records one update"
-              (test-suite/update-test-suite! suite-id {:members [{:test_type :card :test_entity_id eid-2}]})
+              (test-suite/update-test-suites! [{:id suite-id :members [{:test_type :card :test_entity_id eid-2}]}])
               (is (= [:test-suite-create :test-suite-update] (topics))))
             (testing "a change of the name and the members records one update"
-              (test-suite/update-test-suite! suite-id {:name "Renamed" :members [{:test_type :card :test_entity_id eid-1}]})
+              (test-suite/update-test-suites! [{:id suite-id :name "Renamed" :members [{:test_type :card :test_entity_id eid-1}]}])
               (is (= [:test-suite-create :test-suite-update :test-suite-update] (topics))))
             (finally
               (t2/delete! :model/TestSuite :id suite-id))))))))
@@ -233,11 +233,11 @@
 (deftest suite-update-with-members-statement-count-does-not-grow-with-members-test
   (mt/with-temp [:model/TestSuite {small :id} {}
                  :model/TestSuite {large :id} {}]
-    (test-suite/update-test-suite! small {:members (member-rows 2)})
-    (test-suite/update-test-suite! large {:members (member-rows 6)})
+    (test-suite/update-test-suites! [{:id small :members (member-rows 2)}])
+    (test-suite/update-test-suites! [{:id large :members (member-rows 6)}])
     (testing "replacing the members of a suite that has members"
-      (is (= (events.tu/statement-count! #(test-suite/update-test-suite! small {:name "A" :members (member-rows 2)}))
-             (events.tu/statement-count! #(test-suite/update-test-suite! large {:name "B" :members (member-rows 6)})))))))
+      (is (= (events.tu/statement-count! #(test-suite/update-test-suites! [{:id small :name "A" :members (member-rows 2)}]))
+             (events.tu/statement-count! #(test-suite/update-test-suites! [{:id large :name "B" :members (member-rows 6)}])))))))
 
 (deftest deleting-tests-that-are-members-statement-count-does-not-grow-with-tests-test
   (mt/with-temp [:model/Card      {card-id :id} {}

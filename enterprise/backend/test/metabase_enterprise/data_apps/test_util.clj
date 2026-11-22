@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
@@ -234,21 +235,18 @@
            (let [stored (into {} (map (juxt :table_id identity))
                               (when (seq to-publish)
                                 (t2/select :model/TableUserSettings :table_id [:in (set to-publish)])))
-                 pairs  (vec (for [table-id to-publish
+                 rows   (vec (for [table-id to-publish
+                                   :when (stored table-id)
                                    :let [changes (get previous table-id {:collection_id nil, :is_published nil})]]
                                (do (t2/update! :model/TableUserSettings :table_id table-id changes)
-                                   [(stored table-id) changes])))
-                 pairs  (filterv first pairs)
+                                   (assoc changes :id (:id (stored table-id))))))
                  empty  (when (seq to-publish)
-                          (warehouse-schema.db/empty-table-user-settings (vec to-publish)))
-                 delete (events/deleted :event/table-user-settings-delete :model/TableUserSettings (vec empty))]
+                          (warehouse-schema.db/empty-table-user-settings (vec to-publish)))]
+             (events/publish-event! :event/table-user-settings-update
+                                    (events/update-event (u/index-by :id (vals stored)) rows))
              (when (seq to-publish)
-               (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))
-             (events/publish-lifecycle!
-              [(events/updated :event/table-user-settings-update
-                               (mapv first pairs)
-                               (mapv (fn [[row changes]] (events/updated-row row changes)) pairs))
-               delete]))))))))
+               (events/publish-event! :event/table-user-settings-delete (events/delete-event (vec empty)))
+               (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish))))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

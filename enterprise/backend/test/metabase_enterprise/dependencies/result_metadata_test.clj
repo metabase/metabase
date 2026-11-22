@@ -241,9 +241,9 @@
         (run-jobs!)
         (let [column-name #(:name (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
           (is (= "count" (column-name)))
-          (measure/update-measure! measure-id {:definition (-> (table-query :orders)
-                                                               (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                                           (mt/id :orders :total)))))})
+          (measure/update-measures! [{:id measure-id :definition (-> (table-query :orders)
+                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                                 (mt/id :orders :total)))))}])
           (run-jobs!)
           (is (= "avg" (column-name))))))))
 
@@ -260,9 +260,9 @@
           (run-jobs!)
           (let [base-type #(:base_type (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
             (is (isa? (base-type) :type/Integer))
-            (measure/update-measure! inner-id {:definition (-> (table-query :orders)
-                                                               (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                                           (mt/id :orders :total)))))})
+            (measure/update-measures! [{:id inner-id :definition (-> (table-query :orders)
+                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                                 (mt/id :orders :total)))))}])
             (run-jobs!)
             (is (isa? (base-type) :type/Float))))))))
 

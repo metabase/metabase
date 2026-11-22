@@ -232,9 +232,9 @@
       (let [ids @created]
         (testing "updating plugins with one change set"
           (is (= (events.tu/statement-count!
-                  #(custom-viz-plugin/update-custom-viz-plugins! (zipmap (take 2 ids) (repeat {:enabled false}))))
+                  #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) (take 2 ids))))
                  (events.tu/statement-count!
-                  #(custom-viz-plugin/update-custom-viz-plugins! (zipmap (take 6 (drop 2 ids)) (repeat {:enabled false}))))))))
+                  #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) (take 6 (drop 2 ids)))))))))
       (testing "deleting plugins"
         (let [ids @created]
           (is (= (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! (take 2 ids)))

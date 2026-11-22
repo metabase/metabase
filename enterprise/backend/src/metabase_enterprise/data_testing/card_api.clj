@@ -73,7 +73,7 @@
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
   (validate-test! card_id (data-testing.runner/test-definition body))
-  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.card-test/create-card-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test. The update is refused when it leaves the test on an archived card.
@@ -89,7 +89,7 @@
     (api/update-check card-test body)
     (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-test! id body)))
+      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -97,7 +97,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-test! id)
+  (data-testing.models.card-test/delete-card-tests-by-id! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

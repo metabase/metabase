@@ -270,7 +270,7 @@
   (testing :segment-update
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
-        (segment/update-segment! (:id segment) {:name "Renamed segment"} {:revision-message "update this mofo"})
+        (segment/update-segments! [{:id (:id segment) :name "Renamed segment"}] {:context {:revision-message "update this mofo"}})
         (is (= {:topic       :segment-update
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -505,7 +505,7 @@
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
        (testing :event/transform-update
-         (transform/update-transforms! {(:id transform) {:name "Updated Transform"}})
+         (transform/update-transforms! [{:id (:id transform) :name "Updated Transform"}])
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)

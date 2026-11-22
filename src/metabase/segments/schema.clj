@@ -75,6 +75,13 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::write-opts
+  "The options of the update of Segments: who writes when it matters, and the context of the events."
+  [:maybe
+   [:map {:closed true}
+    [:writer  {:optional true} [:enum :revert]]
+    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
 (mr/def ::segment.row
   "A Segment id and the columns to change, as an update of several Segments takes it."
   [:merge

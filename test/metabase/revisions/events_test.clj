@@ -52,7 +52,7 @@
 (deftest segment-update-message-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment {segment-id :id} {}]
-      (segment/update-segment! segment-id {:name "renamed"} {:revision-message "why"})
+      (segment/update-segments! [{:id segment-id :name "renamed"}] {:context {:revision-message "why"}})
       (is (=? {:message "why"} (last (revisions-of "Segment" segment-id)))))))
 
 (defn- last-object [model model-id]

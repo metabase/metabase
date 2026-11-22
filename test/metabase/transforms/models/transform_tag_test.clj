@@ -101,9 +101,9 @@
         (is (= 400 (:status-code (ex-data (try (transform-tag/create-transform-tags! [{:name tag-name} {:name tag-name}])
                                                (catch clojure.lang.ExceptionInfo e e))))))))
     (testing "renaming a tag to a taken name is a 400, and to its own name is not"
-      (is (= 400 (:status-code (ex-data (try (transform-tag/update-transform-tag! (:id other) {:name (:name tag)})
+      (is (= 400 (:status-code (ex-data (try (transform-tag/update-transform-tags! [{:id (:id other) :name (:name tag)}])
                                              (catch clojure.lang.ExceptionInfo e e))))))
-      (is (nil? (transform-tag/update-transform-tag! (:id other) {:name (:name other)}))))))
+      (is (some? (transform-tag/update-transform-tags! [{:id (:id other) :name (:name other)}]))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (let [created (atom [])

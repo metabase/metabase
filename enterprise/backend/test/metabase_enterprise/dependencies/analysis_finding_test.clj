@@ -531,8 +531,8 @@
                                                              :target {:schema "public"
                                                                       :name "sample"
                                                                       :type :table}}]
-           (is (nil? (transform.model/update-transforms! {transform-id {:source {:type :query
-                                                                                 :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}})))))))))
+           (is (some? (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                                      :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -546,8 +546,8 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (analyzed-by-job!)
-           (transform.model/update-transforms! {transform-id {:source {:type :query
-                                                                       :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}})
+           (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                           :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -560,8 +560,8 @@
                                                            :target {:schema "public"
                                                                     :name "sample"
                                                                     :type :table}}]
-         (is (nil? (transform.model/update-transforms! {transform-id {:source {:type :query
-                                                                               :query (lib/native-query mp "select * from orders")}}}))))))))
+         (is (some? (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                                    :query (lib/native-query mp "select * from orders")}}]))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -607,7 +607,7 @@
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
        (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-         (is (nil? (segment/update-segment! segment-id {:definition (price-segment-definition lib/<)}))))))))
+         (is (some? (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}]))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!
@@ -619,7 +619,7 @@
                                                                                 (lib.metadata/segment (mt/metadata-provider)
                                                                                                       segment-id))}]
              (analyzed-by-job!)
-             (segment/update-segment! segment-id {:definition (price-segment-definition lib/<)})
+             (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}])
              (is (= #{[:segment segment-id] [:card card-id]}
                     (analyzed-among! [:segment segment-id] [:card card-id]))))))))))
 

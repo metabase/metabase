@@ -2391,8 +2391,8 @@
               before     [(audit-rows) (revisions)]]
           (mt/with-current-user (mt/user->id :crowberto)
             (testing "a run saving its checkpoint and its target table"
-              (transform.model/update-transforms! {id {:last_checkpoint_value "5"}})
-              (transform.model/update-transforms! {id {:target_table_id table-id}})
+              (transform.model/update-transforms! [{:id id :last_checkpoint_value "5"}])
+              (transform.model/update-transforms! [{:id id :target_table_id table-id}])
               (is (= before [(audit-rows) (revisions)]))))
           (testing "resetting the checkpoint"
             (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" id))
@@ -2400,7 +2400,7 @@
             (is (= before [(audit-rows) (revisions)])))
           (testing "an edit by a user still records"
             (mt/with-current-user (mt/user->id :crowberto)
-              (transform.model/update-transforms! {id {:name "Renamed"}}))
+              (transform.model/update-transforms! [{:id id :name "Renamed"}]))
             (is (= [(inc (first before)) (inc (second before))] [(audit-rows) (revisions)]))))))))
 
 (deftest reverting-transform-keeps-computed-columns-test
@@ -2409,13 +2409,13 @@
       (mt/with-temp [:model/Table {table-id :id} {}
                      :model/Transform {id :id} {:name "Original"}]
         (mt/with-current-user (mt/user->id :crowberto)
-          (transform.model/update-transforms! {id {:name "Edited"}}))
+          (transform.model/update-transforms! [{:id id :name "Edited"}]))
         (let [revision (t2/select-one :model/Revision :model "Transform" :model_id id {:order-by [[:id :desc]]})]
           (testing "a revision holds no computed column"
             (is (not-any? #(contains? (:object revision) %) [:last_checkpoint_value :target_table_id :table_dependencies])))
-          (transform.model/update-transforms! {id {:last_checkpoint_value "9" :target_table_id table-id}})
+          (transform.model/update-transforms! [{:id id :last_checkpoint_value "9" :target_table_id table-id}])
           (mt/with-current-user (mt/user->id :crowberto)
-            (transform.model/update-transforms! {id {:name "Edited again"}}))
+            (transform.model/update-transforms! [{:id id :name "Edited again"}]))
           (testing "reverting an old revision that holds computed columns does not write them back"
             (let [legacy-id (t2/insert-returning-pk! :model/Revision
                                                      {:model "Transform" :model_id id :user_id (mt/user->id :crowberto)

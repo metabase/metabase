@@ -1,5 +1,5 @@
 (ns metabase-enterprise.dependencies.events
-  "Handlers of the lifecycle events that mark the statuses the writes of a batch make stale, once per batch inside its
+  "Handlers of the lifecycle events that mark the statuses their writes make stale, once per event inside its
   transaction, and trigger the background jobs once it commits."
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
@@ -329,12 +329,11 @@
   FieldValues, which the marking above handles, and Databases, whose creation and deletion trigger the jobs."
   #{:model/Database :model/Dimension :model/FieldValues})
 
-(defn- owner
-  "The one owner of the `event`s of a batch of the models whose writes the jobs read: those with a dependencies spec
-  and the [[spec-less-models]]."
+(defn- jobs-read?
+  "Whether the jobs read the writes of the model of `event`: those with a dependencies spec and the
+  [[spec-less-models]]."
   [{:keys [model]}]
-  (when (or (contains? spec-less-models model) (dependencies/spec model))
-    ::batch))
+  (boolean (or (contains? spec-less-models model) (dependencies/spec model))))
 
 (defn- mark-event!
   "Mark what the `event` makes stale, returning whether it marked anything the jobs read."
@@ -344,10 +343,10 @@
     :update (mark-update! batched lookups event)
     :delete (do (mark-delete! batched lookups model previous-object) true)))
 
-(defn- mark-batch!
-  "Mark what the `events` of a batch make stale, once per entity, with a number of statements that does not grow with
-  the events, and trigger the jobs once the transaction commits."
-  [events _all-events]
+(defn- mark-events!
+  "Mark what the row `events` of one lifecycle event make stale, once per entity, with a number of statements that does
+  not grow with the events, and trigger the jobs once the transaction commits."
+  [events]
   (when (premium-features/has-feature? :dependencies)
     (let [lookups (lookups events)
           batched (atom {})
@@ -360,8 +359,8 @@
 
 (methodical/defmethod events/publish-event! ::dependencies
   [topic event]
-  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
-    (mark-batch! events events)))
+  (when-let [events (not-empty (filterv jobs-read? (events/row-events topic event)))]
+    (mark-events! events)))
 
 (events/derive! ::transform-run :metabase/event)
 (events/derive! :event/transform-run-complete ::transform-run)

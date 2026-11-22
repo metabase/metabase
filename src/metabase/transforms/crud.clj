@@ -175,9 +175,9 @@
 (mu/defn create-transform! :- ::transforms.schema/transform
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
-  ([body :- ::transforms.schema/transform.create]
+  ([body :- ::transforms.schema/transform.request]
    (create-transform! body nil))
-  ([body       :- ::transforms.schema/transform.create
+  ([body       :- ::transforms.schema/transform.request
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
      (check-references definition (written-parts body))
@@ -205,7 +205,7 @@
   "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
   associations hydrated."
   [id   :- ::lib.schema.id/transform
-   body :- ::transforms.schema/transform.create]
+   body :- ::transforms.schema/transform.request]
   (let [transform (t2/with-transaction [_conn]
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
@@ -215,7 +215,7 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (transform.model/update-transforms! {id (dissoc body :tag_ids)})
+                      (transform.model/update-transforms! [(assoc (dissoc body :tag_ids) :id id)])
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409

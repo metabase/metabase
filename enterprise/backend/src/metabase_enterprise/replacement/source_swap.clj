@@ -7,7 +7,6 @@
   leaves unchanged keeps dependencies that are already those of its row."
   (:require
    [metabase-enterprise.replacement.entity :as replacement.entity]
-   [metabase.events.core :as events]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

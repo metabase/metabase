@@ -299,7 +299,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
-      (data-testing.models/delete-transform-test! transform-test-id)
+      (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
       (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
@@ -315,7 +315,7 @@
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}
                  :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
-    (data-testing.models/delete-transform-test! test-id)
+    (data-testing.models/delete-transform-tests-by-id! [test-id])
     (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
@@ -340,8 +340,8 @@
           (is (= (create! 2) (create! 6))))
         (testing "updating transform tests"
           (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (zipmap (take 2 ids) (repeat {:description "same"})))))
-                   (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (zipmap (take 6 (drop 2 ids)) (repeat {:description "same"})))))))))
+            (is (= (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 2 ids)))))
+                   (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 6 (drop 2 ids))))))))))
         (testing "deleting a transform deletes its tests in a fixed number of statements"
           (is (= (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id])))
                  (do (swap! created into
