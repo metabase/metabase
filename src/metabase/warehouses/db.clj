@@ -5,7 +5,6 @@
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
