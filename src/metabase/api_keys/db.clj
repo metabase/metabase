@@ -97,7 +97,7 @@
 (mu/defn insert-api-keys! :- [:sequential ::api-keys.schema/api-key]
   "Insert the ApiKey `rows` in one statement and return the inserted instances in their order."
   [rows :- [:sequential ::api-keys.schema/api-key.create]]
-  (t2/insert-returning-instances! :model/ApiKey rows))
+  (mdb/insert-returning-instances! :model/ApiKey rows))
 
 (mr/def ::api-key-columns.update
   [:map {:closed true}

@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -41,7 +42,7 @@
 (mu/defn insert-snippets!
   "Insert the NativeQuerySnippet `rows` and return the inserted instances."
   [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/NativeQuerySnippet %) rows))
+  (app-db/insert-returning-instances! :model/NativeQuerySnippet rows))
 
 (mu/defn snippets-by-id
   "A map of id to NativeQuerySnippet for the snippets with `ids`."

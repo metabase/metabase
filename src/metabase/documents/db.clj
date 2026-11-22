@@ -74,7 +74,7 @@
 (mu/defn insert-documents!
   "Insert the Document `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::documents.schema/document.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Document %) rows))
+  (mdb/insert-returning-instances! :model/Document rows))
 
 (mu/defn update-documents!
   "Apply `changes` to the Documents with `ids`, returning the number updated."

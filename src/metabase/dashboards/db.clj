@@ -102,7 +102,7 @@
 (mu/defn insert-dashboards!
   "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::dashboards.schema/dashboard.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Dashboard %) rows))
+  (mdb/insert-returning-instances! :model/Dashboard rows))
 
 (mu/defn update-dashboards!
   "Apply `changes` to the Dashboards with `dashboard-ids`, returning the number updated."
@@ -302,7 +302,7 @@
   "Insert the DashboardCard `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
             ::dashboards.schema/dashboard-card.update]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardCard %) rows))
+  (mdb/insert-returning-instances! :model/DashboardCard rows))
 
 (mu/defn update-dashcards!
   "Apply `changes` to the DashboardCards with `dashcard-ids`, returning the number updated."
@@ -345,7 +345,7 @@
   "Insert the DashboardCardSeries `rows`, returning the inserted instances."
   [rows :- [:sequential
             ::dashboards.schema/dashboard-card-series.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardCardSeries %) rows))
+  (mdb/insert-returning-instances! :model/DashboardCardSeries rows))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
@@ -528,7 +528,7 @@
   "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
             ::dashboards.schema/dashboard-tab.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/DashboardTab %) rows))
+  (mdb/insert-returning-instances! :model/DashboardTab rows))
 
 (mu/defn update-dashboard-tabs!
   "Apply `changes` to the DashboardTabs with `tab-ids`, returning the number updated."

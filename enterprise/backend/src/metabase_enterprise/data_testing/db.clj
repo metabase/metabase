@@ -5,6 +5,7 @@
    [malli.util :as mut]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
@@ -67,7 +68,7 @@
 (mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
   "Insert the TestSuite `suites` and return the inserted instances."
   [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/TestSuite %) suites))
+  (app-db/insert-returning-instances! :model/TestSuite suites))
 
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`."
@@ -98,7 +99,7 @@
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.create]]
-  (t2/insert-returning-instances! :model/TestSuiteMember rows))
+  (app-db/insert-returning-instances! :model/TestSuiteMember rows))
 
 (mu/defn suite-members-by-ids :- [:sequential ::data-testing.schema/test-suite.member]
   "The TestSuiteMembers with `ids`."
@@ -193,7 +194,7 @@
   "Insert the `rows` of `model` and return the inserted instances."
   [model :- saved-test-model
    rows  :- [:sequential {:min 1} ::data-testing.schema/saved-test.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! model %) rows))
+  (app-db/insert-returning-instances! model rows))
 
 (mu/defn saved-tests-by-ids :- [:sequential ::data-testing.schema/saved-test]
   "The tests of `model` with `ids`."

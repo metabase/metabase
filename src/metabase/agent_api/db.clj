@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.agent-api.schema :as agent-api.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -67,7 +68,7 @@
   "Insert the AgentApiCallLog `rows` with one statement for each set of columns they have, and return the new instances
   in the order of `rows`."
   [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/AgentApiCallLog %) rows))
+  (app-db/insert-returning-instances! :model/AgentApiCallLog rows))
 
 (mu/defn delete-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."

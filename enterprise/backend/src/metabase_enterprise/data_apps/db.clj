@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -86,7 +87,7 @@
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::data-apps.schema/data-app.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/DataApp %) rows))
+  (app-db/insert-returning-instances! :model/DataApp rows))
 
 (mu/defn update-data-apps! :- :nil
   "Apply `changes` to the DataApps with `data-app-ids`."

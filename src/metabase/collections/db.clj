@@ -264,7 +264,7 @@
 (mu/defn insert-collections!
   "Insert the Collection `rows`, with one statement for each set of columns they have, and return the new instances, in the order of `rows`."
   [rows :- [:sequential (mut/select-keys ::collections.schema/collection collection-write-keys)]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Collection %) rows))
+  (app-db/insert-returning-instances! :model/Collection rows))
 
 (mu/defn update-collections!
   "Apply `changes` to the Collections with `collection-ids`, returning the number updated."

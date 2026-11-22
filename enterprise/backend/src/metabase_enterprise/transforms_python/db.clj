@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -50,7 +51,7 @@
 (mu/defn insert-python-libraries!
   "Insert the PythonLibrary `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms-python.schema/python-library.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/PythonLibrary %) rows))
+  (app-db/insert-returning-instances! :model/PythonLibrary rows))
 
 (mu/defn update-python-libraries!
   "Apply `changes` to the PythonLibraries with `library-ids`."

@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -35,7 +36,7 @@
 (mu/defn insert-timelines!
   "Insert the Timeline `rows` and return the inserted instances."
   [rows :- [:sequential ::timeline.schema/timeline.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Timeline %) rows))
+  (app-db/insert-returning-instances! :model/Timeline rows))
 
 (mu/defn timelines-in-visible-collections
   "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
@@ -113,7 +114,7 @@
 (mu/defn insert-timeline-events!
   "Insert the TimelineEvent `rows` and return the inserted instances."
   [rows :- [:sequential ::timeline.schema/timeline-event.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/TimelineEvent %) rows))
+  (app-db/insert-returning-instances! :model/TimelineEvent rows))
 
 (mu/defn timeline-event
   "The TimelineEvent with `id`, or nil."

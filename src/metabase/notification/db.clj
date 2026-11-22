@@ -277,7 +277,7 @@
 (mu/defn insert-subscriptions!
   "Insert the NotificationSubscription `subscriptions`, returning the inserted instances."
   [subscriptions :- [:sequential NotificationSubscriptionRow]]
-  (u/prog1 (t2/insert-returning-instances! :model/NotificationSubscription subscriptions)
+  (u/prog1 (mdb/insert-returning-instances! :model/NotificationSubscription subscriptions)
     (change-log/log-changes! :model/NotificationSubscription :insert <>)))
 
 ;;; ------------------------------------ NotificationHandler / Recipient ------------------------------------
@@ -308,7 +308,7 @@
   "Insert the NotificationHandler `handlers` with one statement per distinct set of columns, returning the inserted
   instances in their order."
   [handlers :- [:sequential {:min 1} NotificationHandlerRow]]
-  (u/prog1 (u/map-by-key-set #(t2/insert-returning-instances! :model/NotificationHandler %) handlers)
+  (u/prog1 (mdb/insert-returning-instances! :model/NotificationHandler handlers)
     (change-log/log-changes! :model/NotificationHandler :insert <>)))
 
 (mu/defn recipients-for-handlers
@@ -333,7 +333,7 @@
   "Insert the NotificationRecipient `recipients` with one statement per distinct set of columns, returning the inserted
   instances in their order."
   [recipients :- [:sequential {:min 1} NotificationRecipientRow]]
-  (u/prog1 (u/map-by-key-set #(t2/insert-returning-instances! :model/NotificationRecipient %) recipients)
+  (u/prog1 (mdb/insert-returning-instances! :model/NotificationRecipient recipients)
     (change-log/log-changes! :model/NotificationRecipient :insert <>)))
 
 (mu/defn recipient

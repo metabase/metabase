@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
@@ -24,7 +25,7 @@
 (mu/defn insert-glossaries!
   "Insert the Glossary `rows` and return the inserted instances, in the order of `rows`."
   [rows :- [:sequential ::glossary.schema/glossary.create]]
-  (t2/insert-returning-instances! :model/Glossary rows))
+  (app-db/insert-returning-instances! :model/Glossary rows))
 
 (mu/defn glossary-entry
   "The Glossary entry with `id`, or nil."

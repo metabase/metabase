@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -74,7 +75,7 @@
 (mu/defn insert-routers! :- [:sequential ::database-routing.schema/database-router]
   "Insert the DatabaseRouter `rows` in one statement and return the inserted instances in their order."
   [rows :- [:sequential ::database-routing.schema/database-router.create]]
-  (t2/insert-returning-instances! :model/DatabaseRouter rows))
+  (app-db/insert-returning-instances! :model/DatabaseRouter rows))
 
 (mu/defn update-router!
   "Apply `changes` to the DatabaseRouter with `id`."

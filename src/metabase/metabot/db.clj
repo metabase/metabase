@@ -127,7 +127,7 @@
 (mu/defn insert-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
   "Insert the MetabotPrompt `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.create]]
-  (t2/insert-returning-instances! :model/MetabotPrompt rows))
+  (mdb/insert-returning-instances! :model/MetabotPrompt rows))
 
 (mu/defn update-prompts! :- :nil
   "Apply `changes` to the MetabotPrompts with `prompt-ids`."
@@ -257,7 +257,7 @@
   "Insert the MetabotConversation `rows`, each under its client-generated id, in one statement, returning the inserted
   instances in their order."
   [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
-  (t2/insert-returning-instances! :model/MetabotConversation rows))
+  (mdb/insert-returning-instances! :model/MetabotConversation rows))
 
 (mu/defn insert-upserted-conversation!
   "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
@@ -357,7 +357,7 @@
   "Insert the MetabotMessage `rows`, one statement for each set of columns they give, and return the new instances in
   their order."
   [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/MetabotMessage %) rows))
+  (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
 (mu/defn update-message! :- :int
   "Apply `changes` to the MetabotMessage with `message-id`, returning the number updated."
@@ -1238,7 +1238,7 @@
 (mu/defn insert-conversation-row!
   "Insert the MetabotConversation `row`, which carries its own id and timestamps, returning the inserted row."
   [row :- ::metabot.schema/metabot-conversation]
-  (first (t2/insert-returning-instances! :model/MetabotConversation row)))
+  (first (mdb/insert-returning-instances! :model/MetabotConversation row)))
 
 (mu/defn insert-usage-log-row!
   "Insert the AiUsageLog `row`, timestamps and all."

@@ -696,7 +696,7 @@
                                 [:user_id          ::lib.schema.id/user]
                                 [:group_id         ms/PositiveInt]
                                 [:is_group_manager :boolean]]]]
-  (t2/insert-returning-instances! :model/PermissionsGroupMembership memberships))
+  (mdb/insert-returning-instances! :model/PermissionsGroupMembership memberships))
 
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."
@@ -764,17 +764,17 @@
 (mu/defn insert-collection-permission-graph-revisions!
   "Insert the CollectionPermissionGraphRevision `rows` in one statement and return the new instances in their order."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
-  (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision rows))
+  (mdb/insert-returning-instances! :model/CollectionPermissionGraphRevision rows))
 
 (mu/defn insert-permissions-revisions!
   "Insert the PermissionsRevision `rows` in one statement and return the new instances in their order."
   [rows :- [:sequential ::permissions.schema/permissions-revision.create]]
-  (t2/insert-returning-instances! :model/PermissionsRevision rows))
+  (mdb/insert-returning-instances! :model/PermissionsRevision rows))
 
 (mu/defn insert-application-permissions-revisions!
   "Insert the ApplicationPermissionsRevision `rows` in one statement and return the new instances in their order."
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
-  (t2/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
+  (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
 (mu/defn update-collection-permission-graph-revision!
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."

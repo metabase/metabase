@@ -56,7 +56,7 @@
   "Insert the Database `rows` with one statement per distinct set of columns, so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouses.schema/database.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Database %) rows))
+  (mdb/insert-returning-instances! :model/Database rows))
 
 (mu/defn update-databases!
   "Apply the same `changes` to the Databases with `database-ids`, returning the number updated."

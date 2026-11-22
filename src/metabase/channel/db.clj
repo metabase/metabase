@@ -37,7 +37,7 @@
   "Insert the Channel `rows` with one statement per distinct set of columns and return the inserted instances in their
   order."
   [rows :- [:sequential {:min 1} ChannelRow]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Channel %) rows))
+  (app-db/insert-returning-instances! :model/Channel rows))
 
 (mu/defn channels-by-ids
   "The Channels with `ids`."

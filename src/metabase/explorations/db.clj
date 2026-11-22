@@ -97,7 +97,7 @@
 (mu/defn insert-explorations!
   "Insert the Explorations `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Exploration %) rows))
+  (mdb/insert-returning-instances! :model/Exploration rows))
 
 (mu/defn update-explorations!
   "Apply `changes` to the Explorations with `exploration-ids`, returning the number updated."
@@ -203,7 +203,7 @@
 (mu/defn insert-threads!
   "Insert the ExplorationThread `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationThread %) rows))
+  (mdb/insert-returning-instances! :model/ExplorationThread rows))
 
 (mu/defn update-threads!
   "Apply `changes` to the ExplorationThreads with `thread-ids`."
@@ -314,7 +314,7 @@
 (mu/defn insert-blocks!
   "Insert the ExplorationBlock `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-block.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationBlock %) rows))
+  (mdb/insert-returning-instances! :model/ExplorationBlock rows))
 
 ;;; -------------------------------------------------- Pages --------------------------------------------------
 
@@ -378,7 +378,7 @@
 (mu/defn insert-pages!
   "Insert the ExplorationPage `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-page.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationPage %) rows))
+  (mdb/insert-returning-instances! :model/ExplorationPage rows))
 
 (mu/defn update-pages!
   "Apply `changes` to the ExplorationPages with `page-ids`."
@@ -497,7 +497,7 @@
 (mu/defn insert-queries!
   "Insert the ExplorationQuery `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-query.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationQuery %) rows))
+  (mdb/insert-returning-instances! :model/ExplorationQuery rows))
 
 (mu/defn update-queries!
   "Apply `changes` to the ExplorationQueries with `query-ids`, returning the number updated."
@@ -576,7 +576,7 @@
 (mu/defn insert-query-results!
   "Insert the ExplorationQueryResult `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-query-result.create]]
-  (t2/insert-returning-instances! :model/ExplorationQueryResult rows))
+  (mdb/insert-returning-instances! :model/ExplorationQueryResult rows))
 
 ;;; ---------------------------------------------- Stored results ----------------------------------------------
 
@@ -659,7 +659,7 @@
 (mu/defn insert-thread-timelines!
   "Insert the ExplorationThreadTimeline `rows` and return the new instances."
   [rows :- [:sequential ::explorations.schema/exploration-thread-timeline.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationThreadTimeline %) rows))
+  (mdb/insert-returning-instances! :model/ExplorationThreadTimeline rows))
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 

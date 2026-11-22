@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -84,7 +85,7 @@
 (mu/defn insert-tenants! :- [:sequential ::tenants.schema/tenant]
   "Insert the Tenant `rows` in one statement and return the new instances in their order."
   [rows :- [:sequential ::tenant.insert]]
-  (t2/insert-returning-instances! :model/Tenant rows))
+  (app-db/insert-returning-instances! :model/Tenant rows))
 
 (mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."

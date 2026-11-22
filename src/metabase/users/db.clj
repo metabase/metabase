@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -157,7 +158,7 @@
 (mu/defn insert-users!
   "Insert the User `rows`, one statement for each set of columns they give, and return the new instances in their order."
   [rows :- [:sequential ::users.schema/user.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/User %) rows))
+  (app-db/insert-returning-instances! :model/User rows))
 
 (mu/defn users-by-ids
   "The Users with `user-ids`, with every column of `:core_user`."

@@ -99,7 +99,7 @@
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` and return the new instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Transform %) rows))
+  (mdb/insert-returning-instances! :model/Transform rows))
 
 (mu/defn update-transforms! :- :nil
   "Apply `changes` to the Transforms with `transform-ids`."
@@ -158,7 +158,7 @@
 (mu/defn insert-tags! :- [:sequential ::transforms.schema/transform-tag]
   "Insert the TransformTag `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-tag.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/TransformTag %) rows))
+  (mdb/insert-returning-instances! :model/TransformTag rows))
 
 (mu/defn update-tags! :- :nil
   "Apply `changes` to the TransformTags with `tag-ids`."
@@ -257,7 +257,7 @@
 (mu/defn insert-jobs! :- [:sequential ::transforms.schema/transform-job]
   "Insert the TransformJob `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/TransformJob %) rows))
+  (mdb/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil
   "Apply `changes` to the TransformJobs with `job-ids`."

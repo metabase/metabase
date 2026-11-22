@@ -80,6 +80,7 @@
   current-timestamp-string
   delete-oldest-rows!
   increment-counts!
+  insert-returning-instances!
   isa
   join
   qualify

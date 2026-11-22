@@ -168,7 +168,7 @@
   "Insert the Card `rows` with one statement for each set of columns they have and return the new instances, in the
   order of `rows`."
   [rows :- [:sequential ::queries.schema/card.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Card %) rows))
+  (mdb/insert-returning-instances! :model/Card rows))
 
 (mu/defn update-cards!
   "Apply `changes` to the Cards with `card-ids` in one statement, returning the number updated."

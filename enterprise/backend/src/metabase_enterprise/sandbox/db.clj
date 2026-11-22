@@ -89,7 +89,7 @@
 (mu/defn insert-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
   "Insert the Sandbox `rows` in one statement and return the new instances in their order."
   [rows :- [:sequential ::sandbox.schema/sandbox.create]]
-  (t2/insert-returning-instances! :model/Sandbox rows))
+  (mdb/insert-returning-instances! :model/Sandbox rows))
 
 (mu/defn update-sandbox!
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."

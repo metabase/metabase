@@ -140,7 +140,7 @@
   "Insert the Field `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Field %) rows))
+  (app-db/insert-returning-instances! :model/Field rows))
 
 (mu/defn fields-targeting
   "The Fields whose foreign key targets one of the Fields with `field-ids`."
@@ -389,7 +389,7 @@
   "Insert the FieldUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/FieldUserSettings %) rows))
+  (app-db/insert-returning-instances! :model/FieldUserSettings rows))
 
 (mu/defn update-field-user-settings-by-ids!
   "Apply `changes` to the FieldUserSettings with `ids`, returning the number updated."
@@ -431,7 +431,7 @@
   "Insert the TableUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/TableUserSettings %) rows))
+  (app-db/insert-returning-instances! :model/TableUserSettings rows))
 
 (mu/defn update-table-user-settings-by-ids!
   "Apply `changes` to the TableUserSettings with `ids`, returning the number updated."
@@ -563,7 +563,7 @@
   "Insert the Dimension `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Dimension %) rows))
+  (app-db/insert-returning-instances! :model/Dimension rows))
 
 (mu/defn update-dimensions!
   "Apply `changes` to the Dimensions with `ids`, returning the number updated."
@@ -597,7 +597,7 @@
   "Insert the FieldValues `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/FieldValues %) rows))
+  (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
   "Apply `changes` to the FieldValues with `ids`, returning the number updated."
@@ -745,7 +745,7 @@
   "Insert the Table `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
   its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Table %) rows))
+  (app-db/insert-returning-instances! :model/Table rows))
 
 (mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."

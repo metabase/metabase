@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.core :as users]
@@ -101,7 +102,7 @@
 (mu/defn insert-comments!
   "Insert the Comment `rows` and return the inserted instances, in the order of `rows`."
   [rows :- [:sequential ::comments.schema/comment.create]]
-  (t2/insert-returning-instances! :model/Comment rows))
+  (app-db/insert-returning-instances! :model/Comment rows))
 
 (mu/defn comments-by-id
   "A map of id to Comment for the Comments with `ids`."
@@ -171,7 +172,7 @@
 (mu/defn insert-reactions!
   "Insert the CommentReaction `rows` and return the inserted instances, in the order of `rows`."
   [rows :- [:sequential ::comments.schema/comment-reaction.create]]
-  (t2/insert-returning-instances! :model/CommentReaction rows))
+  (app-db/insert-returning-instances! :model/CommentReaction rows))
 
 (mu/defn delete-reactions!
   "Delete the CommentReactions with `ids`, returning the number deleted."

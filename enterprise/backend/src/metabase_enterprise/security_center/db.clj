@@ -127,4 +127,4 @@
 (mu/defn insert-advisories!
   "Insert `advisories` and return the inserted SecurityAdvisory instances."
   [advisories :- [:sequential ::security-center.schema/security-advisory.update]]
-  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
+  (mdb/insert-returning-instances! :model/SecurityAdvisory advisories))

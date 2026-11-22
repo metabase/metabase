@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -132,7 +133,7 @@
 (mu/defn insert-actions!
   "Insert the Action `rows` and return the inserted instances."
   [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
-  (u/map-by-key-set #(t2/insert-returning-instances! :model/Action %) rows))
+  (app-db/insert-returning-instances! :model/Action rows))
 
 (mu/defn update-actions!
   "Apply `changes` to the Actions with `action-ids`, returning the number updated."

@@ -187,6 +187,18 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
+(defn insert-returning-instances!
+  "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in
+  the order of `rows`, read back with one select; Toucan's function of this name returns them in any order."
+  [model rows]
+  (if (empty? rows)
+    []
+    (let [pks     (u/map-by-key-set #(t2/insert-returning-pks! model %) rows)
+          columns (t2/primary-keys model)
+          pk-of   (if (= 1 (count columns)) (first columns) (apply juxt columns))
+          by-pk   (u/index-by pk-of (t2/select model :toucan/pk [:in pks]))]
+      (mapv by-pk pks))))
+
 (defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 

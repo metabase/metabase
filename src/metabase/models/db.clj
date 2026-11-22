@@ -4,6 +4,7 @@
   `toucan2.core`)."
   (:require
    [malli.core :as mc]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -99,7 +100,7 @@
 (mu/defn insert-entities-returning-instances!
   "Insert `entities`'s `:rows` into `entities`'s `:model`, returning the inserted instances in the order of the rows."
   [entities :- ::model-rows]
-  (t2/insert-returning-instances! (:model entities) (:rows entities)))
+  (app-db/insert-returning-instances! (:model entities) (:rows entities)))
 
 (mu/defn insert-entities!
   "Insert `entities`'s `:rows` into `entities`'s `:model`, returning the number inserted."

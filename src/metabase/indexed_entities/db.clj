@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -86,4 +87,4 @@
 (mu/defn insert-model-indexes!
   "Insert the ModelIndex `rows` and return the inserted instances, in order."
   [rows :- [:sequential ::indexed-entities.schema/model-index.update]]
-  (t2/insert-returning-instances! :model/ModelIndex rows))
+  (app-db/insert-returning-instances! :model/ModelIndex rows))
