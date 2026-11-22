@@ -444,19 +444,46 @@
    [:and ::lib.schema.common/keyword [:fn #(not (str/blank? (name %)))]]
    (deferred-tru "value must be a non-blank string.")))
 
+(defn- positive-ids-or-absent?
+  "Whether the value under `k` in `settings` is absent or a sequence of positive integers."
+  [settings k]
+  (let [ids (get settings k)]
+    (or (nil? ids) (and (sequential? ids) (every? pos-int? ids)))))
+
+(def ^:private CardVisualizationSettings
+  "The `visualization_settings` a request writes to a Card, whose timeline selections are sequences of positive ids."
+  [:and
+   {:description (deferred-tru "Value must be a map.")}
+   ::lib.schema.visualization/visualization-settings
+   [:fn
+    {:error/fn (constantly (deferred-tru "Selected timeline IDs must be a sequence of positive integers."))}
+    #(positive-ids-or-absent? % :timeline.selected_timeline_ids)]
+   [:fn
+    {:error/fn (constantly (deferred-tru "Excluded timeline event IDs must be a sequence of positive integers."))}
+    #(positive-ids-or-absent? % :timeline.excluded_timeline_event_ids)]])
+
+(def ^:private CardDatasetQuery
+  "The query a request writes to a Card, which may not be a native query on the audit database."
+  [:and
+   {:description (deferred-tru "value must be a valid MBQL query.")}
+   ::lib-be.schema/maybe-legacy-query
+   [:fn
+    {:error/fn (constantly (deferred-tru "You cannot save a native query that targets the audit database."))}
+    (complement queries/native-audit-db-query?)]])
+
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map {:closed true}
    [:name                   ::queries.schema/card.name]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
-   [:dataset_query          ::lib-be.schema/maybe-legacy-query]
+   [:dataset_query          CardDatasetQuery]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                CardDisplay]
-   [:visualization_settings ::lib.schema.visualization/visualization-settings]
+   [:visualization_settings CardVisualizationSettings]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
@@ -544,11 +571,11 @@
    [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
-   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
+   [:dataset_query          {:optional true} [:maybe CardDatasetQuery]]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe CardDisplay]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
+   [:visualization_settings {:optional true} [:maybe CardVisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]

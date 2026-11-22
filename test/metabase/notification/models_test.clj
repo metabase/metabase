@@ -400,9 +400,9 @@
           (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
-  (mt/with-temp-scheduler!
-    (task/init! ::task.notification/SendNotifications)
-    (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+  (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+    (mt/with-temp-scheduler!
+      (task/init! ::task.notification/SendNotifications)
       (mt/with-temp [:model/Notification {noti-id :id}]
         (testing "trigger timezone is report timezone"
           (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]

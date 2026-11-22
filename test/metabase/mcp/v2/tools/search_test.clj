@@ -17,7 +17,9 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -487,37 +489,39 @@
             type: [\"table\"] finds a table whose data_source is metabase-transform"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Table {table-id :id} {:db_id       (mt/id)
-                                                    :name        "McpTransformOutputTable"
-                                                    :active      true
-                                                    :data_source :metabase-transform}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
-                                                    {:token-scopes #{"agent:content:read"}})
-                  rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
-              (is (not (:isError content)))
-              (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
-                  (str "the table is in the results: " (pr-str rows))))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id       (mt/id)
+                                                                                                                                      :name        "McpTransformOutputTable"
+                                                                                                                                      :active      true
+                                                                                                                                      :data_source :metabase-transform})])]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
+                                                      {:token-scopes #{"agent:content:read"}})
+                    rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
+                (is (not (:isError content)))
+                (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
+                    (str "the table is in the results: " (pr-str rows)))))))))))
 
 (deftest library-table-ranks-first-test
   (testing "search ranks a table in the Library above a final-layer table outside it"
     (search.tu/with-appdb-search-if-available-without-fallback
       (collections.tu/with-library [{data :data}]
         ;; The final layer puts the outside table first unless the Library boost applies.
-        (mt/with-temp [:model/Table {outside-id :id} {:db_id      (mt/id)
-                                                      :name       "mcpboost outside"
-                                                      :active     true
-                                                      :data_layer :final}
-                       :model/Table {inside-id :id}  {:db_id         (mt/id)
-                                                      :name          "mcpboost inside"
-                                                      :active        true
-                                                      :is_published  true
-                                                      :collection_id (:id data)}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
-                                                    {:token-scopes #{"agent:content:read"}})]
-              (is (= [inside-id outside-id]
-                     (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id)))))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{outside-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id      (mt/id)
+                                                                                                                                        :name       "mcpboost outside"
+                                                                                                                                        :active     true
+                                                                                                                                        :data_layer :final})])
+                [{inside-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id         (mt/id)
+                                                                                                                                       :name          "mcpboost inside"
+                                                                                                                                       :active        true
+                                                                                                                                       :is_published  true
+                                                                                                                                       :collection_id (:id data)})])]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
+                                                      {:token-scopes #{"agent:content:read"}})]
+                (is (= [inside-id outside-id]
+                       (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id))))))))))))
 
 (deftest metric-source-card-is-a-numeric-id-test
   (testing "a metric defined on a model names the model by its numeric id, which `fields` can pick"
@@ -607,33 +611,32 @@
             for the analogous reason (the ranking-limit cap); the recents branch must match."
     ;; A fresh temp user, so no other test sharing the app db can have viewed anything as this user —
     ;; recents are per-user, so an isolated user makes the count deterministic under parallel CI.
-    (mt/with-temp [:model/User {uid :id} {}]
-      (mt/with-model-cleanup [:model/Card :model/RecentViews]
-        ;; One more card than the per-model cap, so the cap binds regardless of anything else.
-        (let [card-ids (mapv (fn [i]
-                               (t2/insert-returning-pk!
-                                :model/Card {:name         (str "recents-floor-" i)
-                                             :database_id  (mt/id)
-                                             :creator_id   uid
-                                             :type         :question
-                                             :dataset_query {}
-                                             :display      :table
-                                             :visualization_settings {}}))
-                             (range 21))
-              cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
-          (mt/with-current-user uid
-            (doseq [id card-ids]
-              (recent-views/update-users-recent-views! uid :model/Card id :view))
-            (testing "recents-page: total is capped at the per-model retention limit even though 21 were viewed"
-              (is (= cap (:total (recents-page {} :concise 10 0)))
-                  "total equals the retention cap, not the 21 actually viewed"))
-            (testing "the tool response marks the total as a floor — \"at least\", not an exact count"
-              (let [content (tools.search/search-tool {:recent true :limit 10}
-                                                      {:token-scopes #{"agent:content:read"}})
-                    text    (-> content :content first :text v2.tu/strip-data-boundary)]
-                (is (re-find (re-pattern (str "\"total\":" cap)) text))
-                (is (re-find (re-pattern (str "Returned 10 of at least " cap)) text)
-                    "the steering line must not assert the total is exact — this user viewed 21 cards")))))))))
+    (mt/with-model-cleanup [:model/Card :model/RecentViews :model/User]
+      (let [[{uid :id}] (user/create-users! [{:email (mt/random-email)}])
+            card-ids (mapv (fn [i]
+                             (t2/insert-returning-pk!
+                              :model/Card {:name         (str "recents-floor-" i)
+                                           :database_id  (mt/id)
+                                           :creator_id   uid
+                                           :type         :question
+                                           :dataset_query {}
+                                           :display      :table
+                                           :visualization_settings {}}))
+                           (range 21))
+            cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
+        (mt/with-current-user uid
+          (doseq [id card-ids]
+            (recent-views/update-users-recent-views! uid :model/Card id :view))
+          (testing "recents-page: total is capped at the per-model retention limit even though 21 were viewed"
+            (is (= cap (:total (recents-page {} :concise 10 0)))
+                "total equals the retention cap, not the 21 actually viewed"))
+          (testing "the tool response marks the total as a floor — \"at least\", not an exact count"
+            (let [content (tools.search/search-tool {:recent true :limit 10}
+                                                    {:token-scopes #{"agent:content:read"}})
+                  text    (-> content :content first :text v2.tu/strip-data-boundary)]
+              (is (re-find (re-pattern (str "\"total\":" cap)) text))
+              (is (re-find (re-pattern (str "Returned 10 of at least " cap)) text)
+                  "the steering line must not assert the total is exact — this user viewed 21 cards"))))))))
 
 (deftest recents-floor-line-renders-at-default-limit-test
   (testing "I6: at the DEFAULT limit (20), a user at the per-model retention cap gets a page that
@@ -642,33 +645,33 @@
             line the response reads \"total\":20,\"returned\":20 as an exact, exhausted count, when
             the user may have viewed far more than 20 and can never page past the cap. A prior fix
             covered this only at limit: 10, where the arithmetic truncation still fires normally."
-    (mt/with-temp [:model/User {uid :id} {}]
-      (mt/with-model-cleanup [:model/Card :model/RecentViews]
-        (let [card-ids (mapv (fn [i]
-                               (t2/insert-returning-pk!
-                                :model/Card {:name         (str "recents-floor-default-" i)
-                                             :database_id  (mt/id)
-                                             :creator_id   uid
-                                             :type         :question
-                                             :dataset_query {}
-                                             :display      :table
-                                             :visualization_settings {}}))
-                             (range 21))
-              cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
-          (mt/with-current-user uid
-            (doseq [id card-ids]
-              (recent-views/update-users-recent-views! uid :model/Card id :view))
-            ;; No :limit passed — exercises the tool's own default (20), matching the cap exactly.
-            (let [content (tools.search/search-tool {:recent true} {:token-scopes #{"agent:content:read"}})
-                  text    (-> content :content first :text v2.tu/strip-data-boundary)]
-              (is (re-find (re-pattern (str "\"returned\":" cap ",\"total\":" cap)) text)
-                  "sanity: the page is arithmetically full at the default limit")
-              (is (re-find (re-pattern (str "Returned " cap " of at least " cap)) text)
-                  "the floor line must still render even though the page looks exhaustive")
-              (is (re-find #"narrow with \"type\"" text)
-                  "recents can't be paged past the cap, so it steers to narrowing, not an offset")
-              (is (not (re-find #"offset:" text))
-                  "no offset is offered — there is nothing stored beyond the cap to page to"))))))))
+    (mt/with-model-cleanup [:model/Card :model/RecentViews :model/User]
+      (let [[{uid :id}] (user/create-users! [{:email (mt/random-email)}])
+            card-ids (mapv (fn [i]
+                             (t2/insert-returning-pk!
+                              :model/Card {:name         (str "recents-floor-default-" i)
+                                           :database_id  (mt/id)
+                                           :creator_id   uid
+                                           :type         :question
+                                           :dataset_query {}
+                                           :display      :table
+                                           :visualization_settings {}}))
+                           (range 21))
+            cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
+        (mt/with-current-user uid
+          (doseq [id card-ids]
+            (recent-views/update-users-recent-views! uid :model/Card id :view))
+          ;; No :limit passed — exercises the tool's own default (20), matching the cap exactly.
+          (let [content (tools.search/search-tool {:recent true} {:token-scopes #{"agent:content:read"}})
+                text    (-> content :content first :text v2.tu/strip-data-boundary)]
+            (is (re-find (re-pattern (str "\"returned\":" cap ",\"total\":" cap)) text)
+                "sanity: the page is arithmetically full at the default limit")
+            (is (re-find (re-pattern (str "Returned " cap " of at least " cap)) text)
+                "the floor line must still render even though the page looks exhaustive")
+            (is (re-find #"narrow with \"type\"" text)
+                "recents can't be paged past the cap, so it steers to narrowing, not an offset")
+            (is (not (re-find #"offset:" text))
+                "no offset is offered — there is nothing stored beyond the cap to page to")))))))
 
 ;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint, and with-redefs stubs
 ;; a shared var

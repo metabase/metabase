@@ -18,26 +18,28 @@
   (testing "Creating a Tenant automatically creates a dedicated collection"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
-          (testing "tenant_collection_id is set and references a valid collection"
-            (is (some? tenant-collection-id))
-            (is (t2/exists? :model/Collection :id tenant-collection-id)))
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
-            (testing "collection has correct namespace"
-              (is (= :tenant-specific (:namespace coll))))
-            (testing "collection has correct type"
-              (is (= "tenant-specific-root-collection" (:type coll))))
-            (testing "collection has correct name"
-              (is (= "Tenant Collection: TestyLilTenant" (:name coll))))
-            (testing "collection location is at root"
-              (is (= "/" (:location coll))))))))))
+        (mt/with-model-cleanup [:model/Tenant :model/Collection]
+          (let [{tenant-collection-id :tenant_collection_id} (tenants.model/create-tenant! {:name "TestyLilTenant" :slug "test"})]
+            (testing "tenant_collection_id is set and references a valid collection"
+              (is (some? tenant-collection-id))
+              (is (t2/exists? :model/Collection :id tenant-collection-id)))
+            (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+              (testing "collection has correct namespace"
+                (is (= :tenant-specific (:namespace coll))))
+              (testing "collection has correct type"
+                (is (= "tenant-specific-root-collection" (:type coll))))
+              (testing "collection has correct name"
+                (is (= "Tenant Collection: TestyLilTenant" (:name coll))))
+              (testing "collection location is at root"
+                (is (= "/" (:location coll)))))))))))
 
 (deftest tenant-collection-name-follows-tenant-name-test
   (testing "Tenant collection name includes the tenant name"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "My Company Inc" :slug "mycompany"}]
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+        (mt/with-model-cleanup [:model/Tenant :model/Collection]
+          (let [{tenant-collection-id :tenant_collection_id} (tenants.model/create-tenant! {:name "My Company Inc" :slug "mycompany"})
+                coll                                         (t2/select-one :model/Collection :id tenant-collection-id)]
             (is (= "Tenant Collection: My Company Inc" (:name coll)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

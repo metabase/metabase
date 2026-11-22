@@ -371,9 +371,11 @@
     (data-apps.tu/with-published-tables! [(mt/id :products)]
       (with-world!
         (fn [world]
-          (mt/with-temp [:model/DataApp    {app-id :id collection-id :resource_collection_id} {:slug        "marks"
-                                                                                               :name        "Marks"
-                                                                                               :bundle_path "marks.js"}
+          (mt/with-temp [:model/Collection {own-id :id} {:namespace :data-apps}
+                         :model/DataApp    {app-id :id collection-id :resource_collection_id} {:slug                   "marks"
+                                                                                               :name                   "Marks"
+                                                                                               :bundle_path            "marks.js"
+                                                                                               :resource_collection_id own-id}
                          :model/Collection {other-id :id} {}]
             (let [world   (assoc world :data-app [:data-app app-id])
                   card-id (id-of world :card-f)]

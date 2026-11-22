@@ -12,7 +12,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.dependencies :as measures.dependencies]
    [metabase.measures.replacement :as measures.replacement]
@@ -50,23 +49,14 @@
   (derive :hook/entity-id))
 
 (defn- definition-table-id
-  "The id of the Table `definition`, a full query, is built on."
+  "The id of the Table `definition`, a full query, is built on, read without the app DB."
   [definition]
-  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+  (:source-table (lib-be/query-first-stage definition)))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-definition
-  "Throws unless `definition` is a full query that fits a Measure."
-  [definition]
-  (when-not (and (seq definition)
-                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-    (throw (ex-info (tru "Measure definition must be a full query with a source table.") {:status-code 400})))
-  (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
-
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (check-definition definition)
   (assoc measure :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Measure
@@ -76,8 +66,6 @@
       (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition))
     (cond-> measure
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 

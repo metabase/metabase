@@ -7,11 +7,9 @@
    [toucan2.core :as t2]))
 
 (defn personal-collection
-  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
-  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
-  that failure poisons the surrounding transaction."
+  "The Personal Collection of a User, created with `user->personal-collection` when the User has none yet."
   [user-or-id]
-  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+  (collection/user->personal-collection (u/the-id user-or-id)))
 
 (defn personal-collection-id
   "The ID of a User's Personal Collection. See [[personal-collection]]."

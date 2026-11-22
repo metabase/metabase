@@ -2,6 +2,7 @@
   "Tests for published tables appearing in collection items API."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -198,15 +199,16 @@
 (deftest collection-items-table-can-write-test
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "GET /api/collection/:id/items - table items have `can_write` from the table metadata permission"
-      (mt/with-temp [:model/Collection collection {:type "library-data"}
-                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
-                                                       :is_published  true}]
-        (let [table-item (fn [user]
-                           (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id collection) "/items"))
-                                :data
-                                (filter #(= "table" (:model %)))))]
-          (is (=? [{:id table-id :can_write true}] (table-item :crowberto)))
-          (is (=? [{:id table-id :can_write false}] (table-item :rasta)))
-          (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
-            (data-perms/set-table-permission! (perms/all-users-group) table-id :perms/manage-table-metadata :yes)
-            (is (=? [{:id table-id :can_write true}] (table-item :rasta)))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[collection] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
+          (mt/with-temp [:model/Table      {table-id :id} {:collection_id (u/the-id collection)
+                                                           :is_published  true}]
+            (let [table-item (fn [user]
+                               (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id collection) "/items"))
+                                    :data
+                                    (filter #(= "table" (:model %)))))]
+              (is (=? [{:id table-id :can_write true}] (table-item :crowberto)))
+              (is (=? [{:id table-id :can_write false}] (table-item :rasta)))
+              (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+                (data-perms/set-table-permission! (perms/all-users-group) table-id :perms/manage-table-metadata :yes)
+                (is (=? [{:id table-id :can_write true}] (table-item :rasta)))))))))))

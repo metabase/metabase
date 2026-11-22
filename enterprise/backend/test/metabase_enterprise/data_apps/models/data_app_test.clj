@@ -49,7 +49,8 @@
 
 (deftest the-resource-collection-cannot-change-test
   (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}
-                 :model/DataApp    {id :id collection-id :resource_collection_id} {}]
+                 :model/Collection {own-id :id} {:namespace :data-apps}
+                 :model/DataApp    {id :id collection-id :resource_collection_id} {:resource_collection_id own-id}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
                           (t2/update! :model/DataApp :id id {:resource_collection_id other-id})))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
@@ -60,8 +61,10 @@
       (is (= "Renamed" (t2/select-one-fn :name :model/DataApp :id id))))))
 
 (deftest app-without-collection-can-be-given-one-test
-  (mt/with-temp [:model/DataApp    {id :id collection-id :resource_collection_id} {}
-                 :model/DataApp    {taken-id :resource_collection_id} {}
+  (mt/with-temp [:model/Collection {own-id :id} {:namespace :data-apps}
+                 :model/Collection {second-id :id} {:namespace :data-apps}
+                 :model/DataApp    {id :id collection-id :resource_collection_id} {:resource_collection_id own-id}
+                 :model/DataApp    {taken-id :resource_collection_id} {:resource_collection_id second-id}
                  :model/Collection {other-id :id} {:namespace :data-apps}]
     (collection/delete-collections! [collection-id])
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
@@ -144,7 +147,8 @@
 (deftest two-data-apps-cannot-share-collection-test
   (testing "the database refuses a second app on a collection another app already owns"
     (mt/with-model-cleanup [:model/DataApp]
-      (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {}]
+      (mt/with-temp [:model/Collection {own-id :id} {:namespace :data-apps}
+                     :model/DataApp {collection-id :resource_collection_id} {:resource_collection_id own-id}]
         (let [insert! (fn [slug collection-id]
                         (t2/query-one {:insert-into :data_app
                                        :values      [{:slug                   slug

@@ -13,6 +13,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.registry-test-macro :as registry-test-macro]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -250,3 +251,82 @@
 (deftest ^:parallel ->integer-test
   (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
     (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))
+
+;;; ---------------------------------------- hook statement guard ----------------------------------------
+
+(doseq [model [::clean-hooks ::reading-before-insert ::reading-before-update ::reading-before-delete
+               ::reading-after-insert]]
+  (derive model :metabase/model)
+  (methodical/add-primary-method! #'t2/table-name model (fn [_next-method _model] :setting))
+  (methodical/add-primary-method! #'t2/primary-keys model (fn [_next-method _model] [:key])))
+
+(t2/define-before-insert ::clean-hooks
+  [row]
+  (update row :value str "!"))
+
+(t2/define-before-update ::clean-hooks
+  [row]
+  (update row :value str "?"))
+
+(t2/define-before-delete ::clean-hooks
+  [row]
+  row)
+
+(t2/define-before-insert ::reading-before-insert
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-before-update ::reading-before-update
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-before-delete ::reading-before-delete
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-after-insert ::reading-after-insert
+  [row]
+  (t2/count :model/User)
+  row)
+
+(def ^:private guard-test-key
+  "The setting key the hook guard tests write."
+  (str "hook-guard-test-" (u/generate-nano-id)))
+
+(deftest clean-hooks-pass-statement-guard-test
+  (try
+    (t2/insert! ::clean-hooks {:key guard-test-key, :value "v"})
+    (is (= "v!" (t2/select-one-fn :value ::clean-hooks :key guard-test-key)))
+    (t2/update! ::clean-hooks :key guard-test-key {:value "w"})
+    (is (= "w?" (t2/select-one-fn :value ::clean-hooks :key guard-test-key)))
+    (t2/delete! ::clean-hooks :key guard-test-key)
+    (is (nil? (t2/select-one ::clean-hooks :key guard-test-key)))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))
+
+(deftest hook-running-statement-throws-test
+  (try
+    (testing "before-insert"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-insert hook of .*reading-before-insert ran 1 app-DB statement"
+                            (t2/insert! ::reading-before-insert {:key guard-test-key, :value "v"})))
+      (is (nil? (t2/select-one :setting :key guard-test-key))))
+    (testing "before-update and before-delete"
+      (t2/insert! :setting {:key guard-test-key, :value "v"})
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-update hook of .*reading-before-update"
+                            (t2/update! ::reading-before-update :key guard-test-key {:value "w"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-delete hook of .*reading-before-delete"
+                            (t2/delete! ::reading-before-delete :key guard-test-key)))
+      (is (= "v" (t2/select-one-fn :value :setting :key guard-test-key)))
+      (t2/delete! :setting :key guard-test-key))
+    (testing "after-insert"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"after-insert hook of .*reading-after-insert"
+                            (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))

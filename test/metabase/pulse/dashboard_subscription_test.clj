@@ -268,9 +268,8 @@
                    :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
                      [:map
@@ -290,9 +289,8 @@
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
@@ -303,9 +301,8 @@
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
@@ -315,10 +312,9 @@
                    :model/Card          _ {:dataset_query (mt/mbql-query venues)}
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id
-                                           :visualization_settings {:virtual_card {}, :text "test"}}
-                   :model/User {user-id :id} {}]
+                                           :visualization_settings {:virtual_card {}, :text "test"}}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
-             (execute-dashboard (:id dashboard) user-id nil))))))
+             (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
 
 (deftest basic-table-test
   (tests!
@@ -1710,9 +1706,8 @@
                    :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
-                                           :visualization_settings {:card.hide_empty true}}
-                   :model/User          {user-id :id} {}]
-      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+                                           :visualization_settings {:card.hide_empty true}}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id (mt/user->id :rasta) []))]
         (is (str/includes? text "Has Data Card")
             "the card with results is rendered")
         (is (not (str/includes? text "Hidden Empty Card"))
@@ -1721,9 +1716,8 @@
     (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
                                                         :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
                    :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
-                   :model/User          {user-id :id} {}]
-      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id (mt/user->id :rasta) []))]
         (is (str/includes? text "Shown Empty Card")
             "without the setting, the empty card still appears")
         (is (str/includes? text "No results")

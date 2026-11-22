@@ -2,17 +2,12 @@
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
   (:require
-   [malli.error :as me]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -31,18 +26,12 @@
    :status     mi/transform-keyword
    :context    mi/transform-keyword})
 
-(defn- validate-context [context]
-  (when-let [error (me/humanize (mr/explain ::lib.schema.info/context context))]
-    (throw (ex-info (tru "Invalid query execution context: {0}" (pr-str error))
-                    {:error error}))))
-
 ;; Captures SDK info from dynamic vars. For the normal async QP path, SDK info is already in the map
 ;; (captured on-thread in `process-userland-query/save-execution-metadata!` before async handoff).
 ;; This hook serves as a safety net for any direct sync inserts.
 (t2/define-before-insert :model/QueryExecution
-  [{context :context, :as query-execution}]
-  (u/prog1 (analytics/include-sdk-info query-execution)
-    (validate-context context)))
+  [query-execution]
+  (analytics/include-sdk-info query-execution))
 
 (t2/define-after-select :model/QueryExecution
   [{:keys [result_rows] :as query-execution}]

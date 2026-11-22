@@ -22,6 +22,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -903,9 +904,10 @@
                        :model/Card {model-id :id} (assoc (basic-card "Venues model" :venues)
                                                          :type          :model
                                                          :collection_id (:id readable-collection))
-                       :model/Action {readable-id :id} {:type     :implicit
-                                                        :name     "Create venue"
-                                                        :model_id model-id}
+                       :model/Action {readable-id :id} {:type          :implicit
+                                                        :name          "Create venue"
+                                                        :model_id      model-id
+                                                        :collection_id (:id readable-collection)}
                        :model/ImplicitAction _ {:action_id readable-id, :kind "row/create"}
                        :model/Action {unreadable-id :id} {:type          :query
                                                           :name          "Delete venue"
@@ -2260,63 +2262,65 @@
 (deftest ^:synchronized node-errors-filtering-test
   (testing "node-errors filters by source visibility"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Collection {coll-id :id}     {}
-                     :model/Card       {card-id :id}     {:collection_id coll-id}
-                     :model/Card       {visible-src :id} {:collection_id coll-id}
-                     :model/Card       {archived-src :id} {:collection_id coll-id :archived true}]
-        ;; Create errors: one with visible source, one with archived source, one with nil source
-        (t2/insert! :model/AnalysisFindingError
-                    [{:analyzed_entity_type "card"
-                      :analyzed_entity_id   card-id
-                      :source_entity_type   "card"
-                      :source_entity_id     visible-src
-                      :error_type           "missing-column"
-                      :error_detail         "col1"}
-                     {:analyzed_entity_type "card"
-                      :analyzed_entity_id   card-id
-                      :source_entity_type   "card"
-                      :source_entity_id     archived-src
-                      :error_type           "missing-column"
-                      :error_detail         "col2"}
-                     {:analyzed_entity_type "card"
-                      :analyzed_entity_id   card-id
-                      :source_entity_type   nil
-                      :source_entity_id     nil
-                      :error_type           "syntax-error"}])
-        (let [result      (#'deps.api/node-errors {:card [card-id]})
-              card-errors (get result [:card card-id])]
-          (testing "includes errors with visible source"
-            (is (contains? card-errors {:type :missing-column :detail "col1"})))
-          (testing "excludes errors with archived source"
-            (is (not (contains? card-errors {:type :missing-column :detail "col2"}))))
-          (testing "includes errors with nil source"
-            (is (contains? card-errors {:type :syntax-error}))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+          (mt/with-temp [:model/Card       {card-id :id}     {:collection_id coll-id}
+                         :model/Card       {visible-src :id} {:collection_id coll-id}
+                         :model/Card       {archived-src :id} {:collection_id coll-id :archived true}]
+            ;; Create errors: one with visible source, one with archived source, one with nil source
+            (t2/insert! :model/AnalysisFindingError
+                        [{:analyzed_entity_type "card"
+                          :analyzed_entity_id   card-id
+                          :source_entity_type   "card"
+                          :source_entity_id     visible-src
+                          :error_type           "missing-column"
+                          :error_detail         "col1"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   card-id
+                          :source_entity_type   "card"
+                          :source_entity_id     archived-src
+                          :error_type           "missing-column"
+                          :error_detail         "col2"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   card-id
+                          :source_entity_type   nil
+                          :source_entity_id     nil
+                          :error_type           "syntax-error"}])
+            (let [result      (#'deps.api/node-errors {:card [card-id]})
+                  card-errors (get result [:card card-id])]
+              (testing "includes errors with visible source"
+                (is (contains? card-errors {:type :missing-column :detail "col1"})))
+              (testing "excludes errors with archived source"
+                (is (not (contains? card-errors {:type :missing-column :detail "col2"}))))
+              (testing "includes errors with nil source"
+                (is (contains? card-errors {:type :syntax-error}))))))))))
 
 (deftest ^:synchronized node-downstream-errors-filtering-test
   (testing "node-downstream-errors filters by analyzed entity visibility"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Collection {coll-id :id}       {}
-                     :model/Card       {source-card :id}   {:collection_id coll-id}
-                     :model/Card       {visible-card :id}  {:collection_id coll-id}
-                     :model/Card       {archived-card :id} {:collection_id coll-id :archived true}]
-        ;; Create errors: one with visible analyzed entity, one with archived analyzed entity
-        (t2/insert! :model/AnalysisFindingError
-                    [{:analyzed_entity_type "card"
-                      :analyzed_entity_id   visible-card
-                      :source_entity_type   "card"
-                      :source_entity_id     source-card
-                      :error_type           "missing-column"}
-                     {:analyzed_entity_type "card"
-                      :analyzed_entity_id   archived-card
-                      :source_entity_type   "card"
-                      :source_entity_id     source-card
-                      :error_type           "missing-column"}])
-        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
-              card-errors (get result [:card source-card])]
-          (testing "includes errors with visible analyzed entity"
-            (is (= 1 (count card-errors))))
-          (testing "the included error is the visible one"
-            (is (= visible-card (:analyzed_entity_id (first card-errors))))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+          (mt/with-temp [:model/Card       {source-card :id}   {:collection_id coll-id}
+                         :model/Card       {visible-card :id}  {:collection_id coll-id}
+                         :model/Card       {archived-card :id} {:collection_id coll-id :archived true}]
+            ;; Create errors: one with visible analyzed entity, one with archived analyzed entity
+            (t2/insert! :model/AnalysisFindingError
+                        [{:analyzed_entity_type "card"
+                          :analyzed_entity_id   visible-card
+                          :source_entity_type   "card"
+                          :source_entity_id     source-card
+                          :error_type           "missing-column"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   archived-card
+                          :source_entity_type   "card"
+                          :source_entity_id     source-card
+                          :error_type           "missing-column"}])
+            (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
+                  card-errors (get result [:card source-card])]
+              (testing "includes errors with visible analyzed entity"
+                (is (= 1 (count card-errors))))
+              (testing "the included error is the visible one"
+                (is (= visible-card (:analyzed_entity_id (first card-errors))))))))))))
 
 (deftest ^:synchronized broken-endpoint-error-visibility-filtering-test
   (testing "GET /api/ee/dependencies/graph/breaking - pagination and sorting work with error visibility filtering"
@@ -3041,32 +3045,33 @@
   (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
-        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
-                                                     :last_name "Analyst"
-                                                     :email "data-analyst@metabase.com"
-                                                     :is_data_analyst true}
-                       :model/PermissionsGroupMembership _ {:user_id analyst-id
-                                                            :group_id data-analyst-group-id}
-                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
-                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
-                                                            :name "Analyst Grace Transform - gracetest"}]
-          (letfn [(unreferenced-transform-ids []
-                    (->> (mt/user-http-request analyst-id :get 200
-                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
-                         :data
-                         (map :id)
-                         set))]
-            (testing "graph/unreferenced"
-              (is (contains? (unreferenced-transform-ids) transform-id)))
-            (testing "graph/breaking"
-              (is (map? (mt/user-http-request analyst-id :get 200
-                                              "ee/dependencies/graph/breaking"))))
-            (testing "graph with transform"
-              (is (map? (mt/user-http-request analyst-id :get 200
-                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
-            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
-              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
-                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))
+        (mt/with-model-cleanup [:model/User]
+          (let [[{analyst-id :id}] (user/create-users! [{:first_name      "Data"
+                                                         :last_name       "Analyst"
+                                                         :email           "data-analyst@metabase.com"
+                                                         :is_data_analyst true}])]
+            (mt/with-temp [:model/PermissionsGroupMembership _ {:user_id analyst-id
+                                                                :group_id data-analyst-group-id}
+                           ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                           :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                                :name "Analyst Grace Transform - gracetest"}]
+              (letfn [(unreferenced-transform-ids []
+                        (->> (mt/user-http-request analyst-id :get 200
+                                                   "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                             :data
+                             (map :id)
+                             set))]
+                (testing "graph/unreferenced"
+                  (is (contains? (unreferenced-transform-ids) transform-id)))
+                (testing "graph/breaking"
+                  (is (map? (mt/user-http-request analyst-id :get 200
+                                                  "ee/dependencies/graph/breaking"))))
+                (testing "graph with transform"
+                  (is (map? (mt/user-http-request analyst-id :get 200
+                                                  (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+                (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+                  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                    (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))))
 
 (defn- delete-venue-query []
   (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
@@ -3158,8 +3163,9 @@
   (testing "GET /api/ee/dependencies/graph shows what a data app depends on, and counts the app as a card's dependent"
     (mt/with-premium-features #{:dependencies :data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
-        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                       {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
+        (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                       :model/DataApp {app-id :id collection-id :resource_collection_id}
+                       {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js" :resource_collection_id own-collection-id}
                        :model/Card {card-id :id} (data-app-card collection-id)]
           (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
             (deps.test/synchronously-run-dependency-job!)
@@ -3181,8 +3187,9 @@
 (deftest ^:synchronized graph-data-app-dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:slug "birds" :name "Birds" :bundle_path "birds.js" :enabled false}
+      (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                     :model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js" :enabled false :resource_collection_id own-collection-id}
                      :model/Card {card-id :id} (data-app-card collection-id)]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
@@ -3207,8 +3214,9 @@
 (deftest graph-data-app-names-only-for-non-admins-test
   (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
+      (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                     :model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js" :resource_collection_id own-collection-id}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)
@@ -3226,8 +3234,9 @@
 (deftest graph-data-app-without-data-apps-feature-test
   (testing "GET /api/ee/dependencies/graph refuses a data app start node without the data apps feature"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:slug "birds" :name "Birds" :bundle_path "birds.js"}
+      (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                     :model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js" :resource_collection_id own-collection-id}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)

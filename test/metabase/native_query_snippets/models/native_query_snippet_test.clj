@@ -87,45 +87,55 @@
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{id}}"}]
-      (is (=? {"id" {:type :text,
-                     :name "id",
-                     :display-name "ID"}}
-              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [[{snippet-id :id}] (native-query-snippet/create-snippets!
+                                [{:name "my snippet" :content "{{id}}" :creator_id (mt/user->id :crowberto)}])]
+        (is (=? {"id" {:type :text,
+                       :name "id",
+                       :display-name "ID"}}
+                (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))))))
 
 (deftest update-param-finding-test
   (testing "Can find params on update"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
-      (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
-      (native-query-snippet/update-snippets! [{:id snippet-id :content "{{id}}"}])
-      (is (=? {"id" {:type :text,
-                     :name "id",
-                     :display-name "ID"}}
-              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [[{snippet-id :id}] (native-query-snippet/create-snippets!
+                                [{:name "my snippet" :content "id" :creator_id (mt/user->id :crowberto)}])]
+        (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
+        (native-query-snippet/update-snippets! [{:id snippet-id :content "{{id}}"}])
+        (is (=? {"id" {:type :text,
+                       :name "id",
+                       :display-name "ID"}}
+                (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))))))
 
 (deftest recursive-snippets-test
   (testing "Does not find params in child snippets"
-    (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "id"}
-                   :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]
-      (is (=? {"snippet: inner"
-               {:type :snippet,
-                :name "snippet: inner",
-                :snippet-name "inner",
-                :display-name "Snippet: Inner",
-                :snippet-id inner-id}}
-              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [[{inner-id :id}]   (native-query-snippet/create-snippets!
+                                [{:name "inner" :content "id" :creator_id (mt/user->id :crowberto)}])
+            [{snippet-id :id}] (native-query-snippet/create-snippets!
+                                [{:name "my snippet" :content "{{snippet: inner}}" :creator_id (mt/user->id :crowberto)}])]
+        (is (=? {"snippet: inner"
+                 {:type :snippet,
+                  :name "snippet: inner",
+                  :snippet-name "inner",
+                  :display-name "Snippet: Inner",
+                  :snippet-id inner-id}}
+                (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))))))
 
 (deftest not-parse-recursive-snippets-test
   (testing "Does not find params in child snippets"
-    (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "{{id}}"}
-                   :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]
-      (is (=? {"snippet: inner"
-               {:type :snippet,
-                :name "snippet: inner",
-                :snippet-name "inner",
-                :display-name "Snippet: Inner",
-                :snippet-id inner-id}}
-              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [[{inner-id :id}]   (native-query-snippet/create-snippets!
+                                [{:name "inner" :content "{{id}}" :creator_id (mt/user->id :crowberto)}])
+            [{snippet-id :id}] (native-query-snippet/create-snippets!
+                                [{:name "my snippet" :content "{{snippet: inner}}" :creator_id (mt/user->id :crowberto)}])]
+        (is (=? {"snippet: inner"
+                 {:type :snippet,
+                  :name "snippet: inner",
+                  :snippet-name "inner",
+                  :display-name "Snippet: Inner",
+                  :snippet-id inner-id}}
+                (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))))))
 
 (defn- export-one [snippet]
   (first (serialization/export-batch :model/NativeQuerySnippet [snippet])))
@@ -133,30 +143,30 @@
 (deftest template-tags-serialization-test
   (testing "Template tags serialization preserves nil, empty, and populated states"
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
-      (testing "nil in -> {} out"
-        (let [snippet (first (native-query-snippet/create-snippets!
-                              [{:name "nil-tags"
-                                :content "SELECT 1"
-                                :creator_id user-id
-                                :template_tags nil}]))
-              extracted (export-one snippet)]
-          ;; toucan hooks populate it:
-          (is (= {} (:template_tags extracted)))
-          (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))
-      (testing "empty map in -> empty map out"
-        (mt/with-temp [:model/NativeQuerySnippet snippet
-                       {:name "empty-tags"
-                        :content "SELECT 1"
-                        :creator_id user-id
-                        :template_tags {}}]
-          (let [extracted (export-one snippet)]
-            (is (= {} (:template_tags extracted))))))
-      (testing "tags in -> tags out"
-        (mt/with-temp [:model/NativeQuerySnippet snippet
-                       {:name "with-tags"
-                        :content "WHERE id = {{id}}"
-                        :creator_id user-id}]
-          (let [extracted (export-one snippet)]
+      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+        (testing "nil in -> {} out"
+          (let [snippet (first (native-query-snippet/create-snippets!
+                                [{:name "nil-tags"
+                                  :content "SELECT 1"
+                                  :creator_id user-id
+                                  :template_tags nil}]))
+                extracted (export-one snippet)]
+            ;; toucan hooks populate it:
+            (is (= {} (:template_tags extracted)))))
+        (testing "empty map in -> empty map out"
+          (mt/with-temp [:model/NativeQuerySnippet snippet
+                         {:name "empty-tags"
+                          :content "SELECT 1"
+                          :creator_id user-id
+                          :template_tags {}}]
+            (let [extracted (export-one snippet)]
+              (is (= {} (:template_tags extracted))))))
+        (testing "tags in -> tags out"
+          (let [snippet   (first (native-query-snippet/create-snippets!
+                                  [{:name "with-tags"
+                                    :content "WHERE id = {{id}}"
+                                    :creator_id user-id}]))
+                extracted (export-one snippet)]
             (is (=? {"id" {:type :text
                            :name "id"
                            :display-name "ID"}}

@@ -4,6 +4,7 @@
    gating, Malli validation, and teaching-error conversion are exercised for free."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -91,10 +92,11 @@
 
 (deftest entity-id-test
   (testing "GHY-4152: id accepts a 21-char entity_id as well as a numeric id"
-    (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
-      (is (=? {:type "collection" :id coll-id :bookmarked true}
-              (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
-      (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta)))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{coll-id :id coll-eid :entity_id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (is (=? {:type "collection" :id coll-id :bookmarked true}
+                (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
+        (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))))
   (testing "GHY-4152: a malformed id is a teaching error naming both accepted shapes"
     (is (= "Invalid id \"nope\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :rasta {:type "collection" :id "nope" :bookmarked true})))))

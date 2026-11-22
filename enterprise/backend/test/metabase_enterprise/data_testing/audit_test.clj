@@ -66,11 +66,16 @@
 (deftest transform-test-model-writes-by-user-write-audit-rows-test
   (testing "Inserting, updating and deleting a transform test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Transform     {transform-id :id}      {}
-                     :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
-        (data-testing.models/update-transform-tests! [{:id transform-test-id :name "Renamed"}])
-        (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
-        (is (= 3 (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))
+      (mt/with-temp [:model/Transform {transform-id :id} {}]
+        (mt/with-model-cleanup [:model/TransformTest]
+          (let [{transform-test-id :id} (first (data-testing.models/create-transform-tests! [{:transform_id transform-id
+                                                                                              :creator_id   (mt/user->id :rasta)
+                                                                                              :name         "Original"
+                                                                                              :inputs       []
+                                                                                              :expectations []}]))]
+            (data-testing.models/update-transform-tests! [{:id transform-test-id :name "Renamed"}])
+            (data-testing.models/delete-transform-tests-by-id! [transform-test-id])
+            (is (= 3 (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))))
 
 (deftest transform-test-run-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -177,11 +182,16 @@
 (deftest card-test-model-writes-by-user-write-audit-rows-test
   (testing "Inserting, updating and deleting a card test through the model as a user writes an audit row each"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card     {card-id :id}      {}
-                     :model/CardTest {card-test-id :id} {:card_id card-id}]
-        (data-testing.models.card-test/update-card-tests! [{:id card-test-id :name "Renamed"}])
-        (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
-        (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (mt/with-model-cleanup [:model/CardTest]
+          (let [{card-test-id :id} (first (data-testing.models.card-test/create-card-tests! [{:card_id      card-id
+                                                                                              :creator_id   (mt/user->id :rasta)
+                                                                                              :name         "Original"
+                                                                                              :inputs       []
+                                                                                              :expectations []}]))]
+            (data-testing.models.card-test/update-card-tests! [{:id card-test-id :name "Renamed"}])
+            (data-testing.models.card-test/delete-card-tests-by-id! [card-test-id])
+            (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))))
 
 (deftest card-test-audit-events-name-the-acting-user-test
   (testing "The rows of the create, update and delete of a card test name the user who acts, who is its creator"
@@ -206,29 +216,33 @@
 
 (deftest segment-test-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Segment     {segment-id :id}      (data-testing.test-util/segment-on (mt/id :people) "A segment")
-                   :model/SegmentTest {segment-test-id :id} {:segment_id  segment-id
-                                                             :creator_id  (mt/user->id :crowberto)
-                                                             :name        "Original"
-                                                             :description "Checks output"}]
-      (let [entry (fn [topic details]
-                    {:model_id segment-test-id
-                     :user_id  (mt/user->id :crowberto)
-                     :details  details
-                     :topic    topic
-                     :model    "SegmentTest"})
-            full  (fn [test-name] {:segment_id segment-id :name test-name :description "Checks output"})]
-        (testing "create"
-          (is (= (entry :segment-test-create (full "Original"))
-                 (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
-        (testing "update"
-          (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
-          (is (= (entry :segment-test-update {:previous {:name "Original"} :new {:name "Renamed"}})
-                 (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
-        (testing "delete"
-          (data-testing.models.segment-test/delete-segment-tests-by-id! [segment-test-id])
-          (is (= (entry :segment-test-delete (full "Renamed"))
-                 (mt/latest-audit-log-entry :segment-test-delete segment-test-id))))))))
+    (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/segment-on (mt/id :people) "A segment")]
+      (mt/with-model-cleanup [:model/SegmentTest]
+        (let [{segment-test-id :id} (first (data-testing.models.segment-test/create-segment-tests!
+                                            [{:segment_id   segment-id
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :name         "Original"
+                                              :description  "Checks output"
+                                              :inputs       []
+                                              :expectations []}]))
+              entry (fn [topic details]
+                      {:model_id segment-test-id
+                       :user_id  (mt/user->id :crowberto)
+                       :details  details
+                       :topic    topic
+                       :model    "SegmentTest"})
+              full  (fn [test-name] {:segment_id segment-id :name test-name :description "Checks output"})]
+          (testing "create"
+            (is (= (entry :segment-test-create (full "Original"))
+                   (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
+          (testing "update"
+            (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
+            (is (= (entry :segment-test-update {:previous {:name "Original"} :new {:name "Renamed"}})
+                   (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
+          (testing "delete"
+            (data-testing.models.segment-test/delete-segment-tests-by-id! [segment-test-id])
+            (is (= (entry :segment-test-delete (full "Renamed"))
+                   (mt/latest-audit-log-entry :segment-test-delete segment-test-id)))))))))
 
 (deftest segment-test-run-audit-events-test
   (mt/with-current-user (mt/user->id :crowberto)

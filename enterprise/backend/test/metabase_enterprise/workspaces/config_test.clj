@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -92,46 +93,48 @@
 (deftest build-workspace-config-carries-ssl-root-cert-value-test
   (testing "the SSL root cert ships as its value; the parent's Secret id would not resolve in the child"
     (let [root-cert "-----BEGIN CERTIFICATE-----\nMIIBroot\n-----END CERTIFICATE-----\n"]
-      (mt/with-temp [:model/Database {db-id :id}
-                     {:name    "Cert DW" :engine :postgres
-                      :details {:host                    "h" :port 5432 :user "admin"
-                                :ssl                     true
-                                :ssl-mode                "verify-full"
-                                :ssl-root-cert-options   "uploaded"
-                                :ssl-root-cert-value     root-cert
-                                :ssl-client-cert-options "uploaded"
-                                :ssl-client-cert-value   "client-cert"
-                                :ssl-key-options         "uploaded"
-                                :ssl-key-value           "client-key"
-                                :ssl-key-password-value  "client-key-pass"}}
-                     :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
-                     :model/WorkspaceDatabase _
-                     {:workspace_id     ws-id :database_id db-id
-                      :database_details {:user "iso" :password "iso-pass"}
-                      :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
-        (let [stored  (t2/select-one-fn :details :model/Database :id db-id)
-              details (->> (config/build-workspace-config ws-id) :config :databases
-                           (some #(when (= "Cert DW" (:name %)) (:details %))))]
-          (testing "precondition: the parent stores the certs and the key as Secrets"
-            (is (every? int? (map stored [:ssl-root-cert-id :ssl-client-cert-id :ssl-key-id :ssl-key-password-id]))))
-          (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
-                 (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
-          (testing "the client cert and key ship neither their parent Secret ids, options nor values"
-            (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-options :ssl-client-cert-value
-                                            :ssl-key-id :ssl-key-options :ssl-key-value
-                                            :ssl-key-password-id :ssl-key-password-options
-                                            :ssl-key-password-value])))))))))
+      (mt/with-model-cleanup [:model/Database :model/Secret]
+        (let [[{db-id :id}] (database/create-databases!
+                             [{:name    "Cert DW" :engine :postgres
+                               :details {:host                    "h" :port 5432 :user "admin"
+                                         :ssl                     true
+                                         :ssl-mode                "verify-full"
+                                         :ssl-root-cert-options   "uploaded"
+                                         :ssl-root-cert-value     root-cert
+                                         :ssl-client-cert-options "uploaded"
+                                         :ssl-client-cert-value   "client-cert"
+                                         :ssl-key-options         "uploaded"
+                                         :ssl-key-value           "client-key"
+                                         :ssl-key-password-value  "client-key-pass"}}])]
+          (mt/with-temp [:model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _
+                         {:workspace_id     ws-id :database_id db-id
+                          :database_details {:user "iso" :password "iso-pass"}
+                          :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+            (let [stored  (t2/select-one-fn :details :model/Database :id db-id)
+                  details (->> (config/build-workspace-config ws-id) :config :databases
+                               (some #(when (= "Cert DW" (:name %)) (:details %))))]
+              (testing "precondition: the parent stores the certs and the key as Secrets"
+                (is (every? int? (map stored [:ssl-root-cert-id :ssl-client-cert-id :ssl-key-id :ssl-key-password-id]))))
+              (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
+                     (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
+              (testing "the client cert and key ship neither their parent Secret ids, options nor values"
+                (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-options :ssl-client-cert-value
+                                                :ssl-key-id :ssl-key-options :ssl-key-value
+                                                :ssl-key-password-id :ssl-key-password-options
+                                                :ssl-key-password-value])))))))))))
 
 (defn- with-cert-workspace
   "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
   [details f]
-  (mt/with-temp [:model/Database {db-id :id} {:name "Cert DW" :engine :postgres :details details}
-                 :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
-                 :model/WorkspaceDatabase _
-                 {:workspace_id     ws-id :database_id db-id
-                  :database_details {:user "iso" :password "iso-pass"}
-                  :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
-    (f ws-id)))
+  (mt/with-model-cleanup [:model/Database :model/Secret]
+    (let [[{db-id :id}] (database/create-databases! [{:name "Cert DW" :engine :postgres :details details}])]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id :database_id db-id
+                      :database_details {:user "iso" :password "iso-pass"}
+                      :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+        (f ws-id)))))
 
 (deftest build-workspace-config-drops-unresolvable-ssl-root-cert-id-test
   (testing "a root cert id with no Secret behind it is dropped: in the child it could name an unrelated Secret"

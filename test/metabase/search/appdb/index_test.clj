@@ -389,9 +389,10 @@
                      :model/Card       {model-id :id}  {:type "model"
                                                         ;; :collection_id = coll-id
                                                         :collection_id coll-id}
-                     :model/Action     {action-id :id} {:name       action-name
-                                                        :type       "query"
-                                                        :model_id   model-id
+                     :model/Action     {action-id :id} {:name          action-name
+                                                        :type          "query"
+                                                        :collection_id coll-id
+                                                        :model_id      model-id
                                                         ;; :model_created_at = yesterday
                                                         :created_at yesterday
                                                         ;; :model_updated_at = yesterday

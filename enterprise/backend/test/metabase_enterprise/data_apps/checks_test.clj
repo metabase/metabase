@@ -12,6 +12,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -145,9 +146,11 @@
 (deftest other-cards-are-refused-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp {other-collection-id :resource_collection_id} {:slug         "bees"
-                                                                                  :name         "Bees"
-                                                                                  :bundle_path  "bees.js"}
+     (mt/with-temp [:model/Collection {bees-id :id} {:namespace :data-apps}
+                    :model/DataApp {other-collection-id :resource_collection_id} {:slug                   "bees"
+                                                                                  :name                   "Bees"
+                                                                                  :bundle_path            "bees.js"
+                                                                                  :resource_collection_id bees-id}
                     :model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}
                     :model/Card {other-app-id :id} {:name          "Venues of bees"
                                                     :collection_id other-collection-id
@@ -162,8 +165,9 @@
 (deftest app-without-collection-uses-no-card-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp app             {:slug "wasps"}
-                    :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
+     (mt/with-temp [:model/Collection {wasps-id :id}     {:namespace :data-apps}
+                    :model/DataApp    app                {:slug "wasps" :resource_collection_id wasps-id}
+                    :model/Card       {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
        (collection/delete-collections! [(:resource_collection_id app)])
        (testing "an app without a collection can use no card, not even one in the root collection"
          (is (= (error-message :cards elsewhere-id)
@@ -261,7 +265,8 @@
          (is (= (card-error elsewhere-id)
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
        (testing "an app without a collection runs no card, not even one in the root collection"
-         (mt/with-temp [:model/DataApp app {:slug "wasps"}]
+         (mt/with-temp [:model/Collection {wasps-id :id} {:namespace :data-apps}
+                        :model/DataApp    app            {:slug "wasps" :resource_collection_id wasps-id}]
            (collection/delete-collections! [(:resource_collection_id app)])
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
@@ -418,7 +423,8 @@
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [_collection-id]
-       (mt/with-temp [:model/DataApp    app                          {:slug "wasps"}
+       (mt/with-temp [:model/Collection {wasps-id :id}               {:namespace :data-apps}
+                      :model/DataApp    app                          {:slug "wasps" :resource_collection_id wasps-id}
                       :model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
          (do-with-rename-action!
           elsewhere-collection-id
@@ -474,10 +480,13 @@
          (mt/with-premium-features #{:data-apps :library}
            (data-apps.tu/do-with-library!
             (fn [_library]
-              (mt/with-temp [:model/Database db    {:engine :h2 :details {}}
-                             :model/Table    table {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
-                (mt/with-model-cleanup [:model/Card]
-                  (let [[metric] (card/create-cards! [{:name                   "Zebra outside metric"
+              (mt/with-temp [:model/Database db {:engine :h2 :details {}}]
+                (mt/with-model-cleanup [:model/Card :model/Table]
+                  (let [[table]  (table/create-tables! [{:db_id        (:id db)
+                                                         :name         "ZEBRA_UNPUBLISHED"
+                                                         :display_name "Zebra unpublished"
+                                                         :active       true}])
+                        [metric] (card/create-cards! [{:name                   "Zebra outside metric"
                                                        :type                   :metric
                                                        :creator_id             (mt/user->id :rasta)
                                                        :database_id            (mt/id)

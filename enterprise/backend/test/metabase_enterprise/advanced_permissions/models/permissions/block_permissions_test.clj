@@ -14,6 +14,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -81,28 +82,29 @@
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
       (testing (str description "\n")
-        (mt/with-temp [:model/PermissionsGroup {group-id :id}]
-          (testing "Group should have unrestricted view-data perms upon creation"
-            (is (= :unrestricted
-                   (test-db-perms group-id)))
+        (mt/with-model-cleanup [:model/PermissionsGroup]
+          (let [{group-id :id} (perms-group/create-permissions-group! {:name "Block Perms Group"})]
+            (testing "Group should have unrestricted view-data perms upon creation"
+              (is (= :unrestricted
+                     (test-db-perms group-id)))
             ; Revoke native perms so that we can set block perms
-            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
-            (testing "group has no existing permissions"
+              (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+              (testing "group has no existing permissions"
+                (mt/with-restored-data-perms-for-group! group-id
+                  (grant! group-id)
+                  (is (nil? (test-db-perms group-id))))))
+            (testing "group has existing data permissions... :block should remove them"
               (mt/with-restored-data-perms-for-group! group-id
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
                 (grant! group-id)
-                (is (nil? (test-db-perms group-id))))))
-          (testing "group has existing data permissions... :block should remove them"
-            (mt/with-restored-data-perms-for-group! group-id
-              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
-              (grant! group-id)
-              (is (nil? (test-db-perms group-id)))
-              (is (= #{:blocked}
-                     (t2/select-fn-set :perm_value
-                                       :model/DataPermissions
-                                       {:where [:and
-                                                [:= :db_id (mt/id)]
-                                                [:= :group_id group-id]
-                                                [:= :perm_type (u/qualified-name :perms/view-data)]]}))))))))))
+                (is (nil? (test-db-perms group-id)))
+                (is (= #{:blocked}
+                       (t2/select-fn-set :perm_value
+                                         :model/DataPermissions
+                                         {:where [:and
+                                                  [:= :db_id (mt/id)]
+                                                  [:= :group_id group-id]
+                                                  [:= :perm_type (u/qualified-name :perms/view-data)]]})))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."
@@ -160,61 +162,62 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
-      (mt/with-temp [:model/User                       {user-id :id} {}
-                     :model/PermissionsGroup           {group-id :id} {}
-                     :model/Collection                 {collection-id :id} {}
-                     :model/Card                       {card-id :id} {:collection_id collection-id
-                                                                      :dataset_query query}
-                     :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
-        (perms-group-membership/add-user-to-group! user-id group-id)
-        (mt/with-premium-features #{:advanced-permissions}
-          (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-            (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
-            (letfn [(run-ad-hoc-query []
-                      (mt/with-current-user user-id
-                        (qp/process-query query)))
-                    (run-saved-question []
-                      (binding [qp.perms/*card-id* card-id]
-                        (run-ad-hoc-query)))
-                    (check-block-perms []
-                      (mt/with-current-user user-id
-                        (#'qp.perms/check-block-permissions query)))]
-              (testing "sanity check: should not be able to run ad-hoc query"
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You do not have permissions to run this query"
-                     (run-ad-hoc-query))))
-              (testing "sanity check: should be able to run query as saved Question before block perms are set."
-                (is (run-saved-question))
-                (is (true? (check-block-perms))))
-              ;; 'grant' the block permissions.
-              (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
-                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-                (testing "if EE token does not have the `:advanced-permissions` feature, but we're in EE, we still do the check"
-                  (mt/with-premium-features #{}
-                    (is (true? (check-block-perms)))))
-                (testing "should still not be able to run ad-hoc query"
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You do not have permissions to run this query"
-                       (run-ad-hoc-query))))
-                (testing "should STILL be able to run query as saved Question"
-                  (is (run-saved-question))
-                  (is (true? (check-block-perms)))))
-              (testing "once blocked in all groups, now access is truly blocked"
-                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-                (testing "disallow running the query"
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You do not have permissions to run this query"
-                       (check-block-perms)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You do not have permissions to run this query"
-                       (run-saved-question))))))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "block-perms-user@example.com"})]
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                         :model/Collection                 {collection-id :id} {}
+                         :model/Card                       {card-id :id} {:collection_id collection-id
+                                                                          :dataset_query query}
+                         :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
+            (perms-group-membership/add-user-to-group! user-id group-id)
+            (mt/with-premium-features #{:advanced-permissions}
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+                (letfn [(run-ad-hoc-query []
+                          (mt/with-current-user user-id
+                            (qp/process-query query)))
+                        (run-saved-question []
+                          (binding [qp.perms/*card-id* card-id]
+                            (run-ad-hoc-query)))
+                        (check-block-perms []
+                          (mt/with-current-user user-id
+                            (#'qp.perms/check-block-permissions query)))]
+                  (testing "sanity check: should not be able to run ad-hoc query"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (run-ad-hoc-query))))
+                  (testing "sanity check: should be able to run query as saved Question before block perms are set."
+                    (is (run-saved-question))
+                    (is (true? (check-block-perms))))
+                  ;; 'grant' the block permissions.
+                  (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
+                    (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+                    (testing "if EE token does not have the `:advanced-permissions` feature, but we're in EE, we still do the check"
+                      (mt/with-premium-features #{}
+                        (is (true? (check-block-perms)))))
+                    (testing "should still not be able to run ad-hoc query"
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"You do not have permissions to run this query"
+                           (run-ad-hoc-query))))
+                    (testing "should STILL be able to run query as saved Question"
+                      (is (run-saved-question))
+                      (is (true? (check-block-perms)))))
+                  (testing "once blocked in all groups, now access is truly blocked"
+                    (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                    (testing "disallow running the query"
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"You do not have permissions to run this query"
+                           (check-block-perms)))
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"You do not have permissions to run this query"
+                           (run-saved-question))))))))))))))
 
 (deftest legacy-no-self-service-test
   (mt/with-temp-copy-of-db
@@ -222,26 +225,27 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
-      (mt/with-temp [:model/User                       {user-id :id} {}
-                     :model/PermissionsGroup           {group-id :id} {}]
-        (perms-group-membership/add-user-to-group! user-id group-id)
-        (mt/with-premium-features #{:advanced-permissions}
-          (mt/with-no-data-perms-for-all-users!
-            (testing "legacy-no-self-service does not override block perms for a table"
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :legacy-no-self-service)
-              (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"You do not have permissions to run this query"
-                   (mt/with-current-user user-id
-                     (#'qp.perms/check-block-permissions query)))))
-            (testing "unrestricted overrides block perms for a table even if other tables have legacy-no-self-service"
-              (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-              (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :legacy-no-self-service)
-              (is (true? (mt/with-current-user user-id
-                           (#'qp.perms/check-block-permissions query)))))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "legacy-no-self-service-user@example.com"})]
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}]
+            (perms-group-membership/add-user-to-group! user-id group-id)
+            (mt/with-premium-features #{:advanced-permissions}
+              (mt/with-no-data-perms-for-all-users!
+                (testing "legacy-no-self-service does not override block perms for a table"
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+                  (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :legacy-no-self-service)
+                  (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (mt/with-current-user user-id
+                         (#'qp.perms/check-block-permissions query)))))
+                (testing "unrestricted overrides block perms for a table even if other tables have legacy-no-self-service"
+                  (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+                  (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :legacy-no-self-service)
+                  (is (true? (mt/with-current-user user-id
+                               (#'qp.perms/check-block-permissions query)))))))))))))
 
 (deftest nested-query-full-block-permissions-test
   (mt/with-premium-features #{:advanced-permissions}

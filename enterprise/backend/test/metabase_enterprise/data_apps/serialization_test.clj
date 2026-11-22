@@ -63,8 +63,9 @@
 
 (deftest export-writes-the-manifest-and-the-bundle-file-test
   (ts/with-random-dump-dir [dump-dir "data-app-export-"]
-    (mt/with-temp [:model/DataApp app {:slug "sales-ops" :name "Sales Ops" :description "Pipeline health" :bundle app-bundle
-                                       :allowed_hosts ["https://api.example.com"]}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp app {:slug "sales-ops" :name "Sales Ops" :description "Pipeline health" :bundle app-bundle
+                                       :allowed_hosts ["https://api.example.com"] :resource_collection_id coll-id}]
       (export! dump-dir)
       (testing "the manifest is a serdes YAML in the app's directory, keyed like a hand-written data_app.yaml"
         (is (= {:serdes/meta   [{:model "DataApp"}]
@@ -86,8 +87,9 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection]
       (ts/with-random-dump-dir [dump-dir "data-app-round-trip-"]
-        (mt/with-temp [:model/DataApp app {:slug "sales-ops" :name "Sales Ops" :enabled false :bundle app-bundle
-                                           :allowed_hosts ["https://api.example.com"]}]
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                       :model/DataApp app {:slug "sales-ops" :name "Sales Ops" :enabled false :bundle app-bundle
+                                           :allowed_hosts ["https://api.example.com"] :resource_collection_id coll-id}]
           (let [collection-entity-id (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))]
             (export! dump-dir :with-collections? true)
             (testing "the app's collection is exported with it, like any collection"
@@ -116,7 +118,8 @@
   (mt/with-premium-features #{:data-apps}
     (ts/with-random-dump-dir [dump-dir "data-app-switch-"]
       (mt/with-temp [:model/Collection {other-entity-id :entity_id} {:namespace :data-apps}
-                     :model/DataApp    app                          {:slug "sales-ops"}]
+                     :model/Collection {coll-id :id}                {:namespace :data-apps}
+                     :model/DataApp    app                          {:slug "sales-ops" :resource_collection_id coll-id}]
         (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :collection other-entity-id)
                           {"dist/index.js" "B"})
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
@@ -141,7 +144,9 @@
 (deftest import-updates-in-place-and-keeps-local-state-test
   (mt/with-premium-features #{:data-apps}
     (ts/with-random-dump-dir [dump-dir "data-app-update-"]
-      (mt/with-temp [:model/DataApp app {:name "sales-ops" :enabled false} :model/PermissionsGroup group {}]
+      (mt/with-temp [:model/Collection       {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp          app           {:name "sales-ops" :enabled false :resource_collection_id coll-id}
+                     :model/PermissionsGroup group         {}]
         (group-access/add-groups! app [(:id group)])
         (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
                                                          :path "./dist/index.js"
@@ -186,7 +191,8 @@
 (deftest import-clears-an-omitted-description-test
   (mt/with-premium-features #{:data-apps}
     (ts/with-random-dump-dir [dump-dir "data-app-description-"]
-      (mt/with-temp [:model/DataApp app {:slug "sales-ops" :description "Pipeline health"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:slug "sales-ops" :description "Pipeline health" :resource_collection_id coll-id}]
         (write-app-files! dump-dir "sales-ops"
                           (app-yaml (:entity_id app) "sales-ops" :collection (resource-collection-entity-id app))
                           {"dist/index.js" "B"})
@@ -204,8 +210,10 @@
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
         (mt/with-model-cleanup [:model/DataApp :model/Collection :model/Card :model/Action]
           (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
-            (mt/with-temp [:model/DataApp     {app-id :id app-entity-id :entity_id collection-id :resource_collection_id}
-                           {:slug "sales-ops"}
+            (mt/with-temp [:model/Collection  {coll-id :id}
+                           {:name "Data App: sales-ops" :namespace :data-apps}
+                           :model/DataApp     {app-id :id app-entity-id :entity_id collection-id :resource_collection_id}
+                           {:slug "sales-ops" :resource_collection_id coll-id}
                            :model/Card        {question-eid :entity_id}
                            {:name          "Venues list"
                             :collection_id collection-id

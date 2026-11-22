@@ -21,7 +21,6 @@
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -61,14 +60,11 @@
 ;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
 ;;; [[app-db/do-after-commit]] runs the nudge immediately.
 (defn- nudge-entity-sync!
-  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Returns `row`."
-  [{:keys [entity_type entity_local_id] :as row}]
-  (u/prog1 row
-    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
-
-(t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
+  "After the surrounding transaction commits, nudge a targeted reconcile of the slice of the entity with `entity-type`
+  and `entity-local-id`."
+  [entity-type entity-local-id]
+  (app-db/do-after-commit #(mirror/request-entity-sync! (entity-retrieval/normalize-entity-type entity-type)
+                                                        entity-local-id)))
 
 ;;; ----------------------------------------------------- Writes ----------------------------------------------------
 
@@ -79,6 +75,7 @@
    entity-local-id :- ms/PositiveInt
    ai-context      :- ::osi.schema/osi-ai-context.ai-context]
   (osi.db/upsert-ai-context! entity-type entity-local-id ai-context)
+  (nudge-entity-sync! entity-type entity-local-id)
   nil)
 
 (mu/defn delete-osi-ai-context! :- :nil
@@ -86,6 +83,7 @@
   [entity-type     :- :string
    entity-local-id :- ms/PositiveInt]
   (osi.db/delete-ai-context! entity-type entity-local-id)
+  (nudge-entity-sync! entity-type entity-local-id)
   nil)
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------

@@ -3,23 +3,25 @@
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest superuser-returns-all-tables-test
   (testing "superuser returns all tables regardless of permissions"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table _ {:db_id (:id db)}
-                   :model/Table _ {:db_id (:id db)}
-                   :model/PermissionsGroup _ {}
-                   :model/User user {}]
-      (let [user-info {:user-id (:id user) :is-superuser? true :is-data-analyst? false}
-            permission-mapping {:perms/view-data :unrestricted}
-            query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
-            results (t2/query query)]
-        (is (seq results) "Superuser should get results")
-        (is (every? #(contains? % :id) results) "Results should contain table IDs")
-        (is (every? #(contains? % :group_id) results) "Results should contain group IDs")))))
+    (mt/with-model-cleanup [:model/User]
+      (let [user (user/create-user! {:email "superuser-tables@example.com" :is_superuser true})]
+        (mt/with-temp [:model/Database db {}
+                       :model/Table _ {:db_id (:id db)}
+                       :model/Table _ {:db_id (:id db)}
+                       :model/PermissionsGroup _ {}]
+          (let [user-info {:user-id (:id user) :is-superuser? true :is-data-analyst? false}
+                permission-mapping {:perms/view-data :unrestricted}
+                query (perms/select-tables-and-groups-granting-perm user-info permission-mapping)
+                results (t2/query query)]
+            (is (seq results) "Superuser should get results")
+            (is (every? #(contains? % :id) results) "Results should contain table IDs")
+            (is (every? #(contains? % :group_id) results) "Results should contain group IDs")))))))
 
 (deftest non-superuser-with-table-level-permissions-test
   (testing "non-superuser with table-level permissions"

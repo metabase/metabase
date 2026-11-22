@@ -223,13 +223,6 @@
            (not *normalizing-details*))
       normalize-details)))
 
-(t2/define-before-delete :model/Database
-  [{driver :engine, :as database}]
-  (try
-    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
-    (catch Throwable e
-      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
-
 (defn- assert-router-database-id-not-mutated!
   "Throws if `database`'s pending update changes `router_database_id`. A destination's link to its
   router is set at creation and is immutable thereafter."
@@ -916,6 +909,15 @@
     (t2/resolve-model model)
     (delete-for-databases! model databases)))
 
+(defn- notify-database-deleted!
+  "Tells the driver of `database` that it is being deleted, so that it releases what it holds for it, such as its
+  connection pool; a failure is logged."
+  [{driver :engine, :as database}]
+  (try
+    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
+    (catch Throwable e
+      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
+
 (mu/defn delete-databases! :- :nil
   "Delete the Databases with `database-ids`, after their Secrets and what else belongs to them (see
   [[delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the delete have
@@ -929,6 +931,7 @@
         (models.secret/delete-orphaned-secrets! databases)
         (delete-followers! follower-models databases)
         (events/publish-event! :event/database-delete (events/delete-event databases))
+        (run! notify-database-deleted! databases)
         (warehouses.db/delete-databases! (mapv :id databases)))))
   nil)
 

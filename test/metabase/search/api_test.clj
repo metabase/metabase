@@ -8,9 +8,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.actions.models :as action]
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
@@ -30,9 +32,11 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -124,12 +128,6 @@
 (defn- make-result
   [name & kvs]
   (apply assoc default-search-row :name name kvs))
-
-(defn- query-action
-  [action-id]
-  {:action_id     action-id
-   :database_id   (mt/id)
-   :dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
@@ -240,44 +238,58 @@
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
     (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Collection coll (data-map "collection %s collection")]
-        (mt/with-model-cleanup [:model/Card]
-          (let [query                          (lib/native-query (mt/metadata-provider) "SELECT 1")
-                card-row                       {:creator_id             (mt/user->id :rasta)
-                                                :database_id            (mt/id)
-                                                :dataset_query          query
-                                                :display                :table
-                                                :visualization_settings {}}
-                [action-model card dataset metric]
-                (card/create-cards!
-                 [(merge card-row
-                         action-model-params
-                         (when-not in-root-collection?
-                           {:collection_id (u/the-id coll)}))
-                  (merge card-row (coll-data-map "card %s card" coll))
-                  (merge card-row (coll-data-map "dataset %s dataset" coll) {:type :model})
-                  (merge card-row (coll-data-map "metric %s metric" coll) {:type :metric})])]
-            (mt/with-temp [:model/Action     {action-id :id
-                                              :as action}   (merge (data-map "action %s action")
-                                                                   {:type :query, :model_id (u/the-id action-model)})
-                           :model/Database   {db-id :id
-                                              :as db}       (data-map "database %s database")
-                           :model/Table      table          (merge (data-map "database %s database")
-                                                                   {:db_id db-id})
-                           :model/QueryAction _qa           (query-action action-id)
-                           :model/Dashboard  dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                           :model/Segment    segment        (data-map "segment %s segment")
-                           :model/Measure    measure        (data-map "measure %s measure")]
-              (f {:action     action
-                  :collection coll
-                  :card       card
-                  :database   db
-                  :dataset    dataset
-                  :dashboard  dashboard
-                  :metric     metric
-                  :table      table
-                  :segment    segment
-                  :measure    measure}))))))))
+      (mt/with-model-cleanup [:model/Action :model/Dashboard :model/Segment :model/Measure :model/Table :model/Database
+                              :model/Card :model/Collection]
+        (let [[coll]                         (collection/create-collections! [(data-map "collection %s collection")])
+              query                          (lib/native-query (mt/metadata-provider) "SELECT 1")
+              card-row                       {:creator_id             (mt/user->id :rasta)
+                                              :database_id            (mt/id)
+                                              :dataset_query          query
+                                              :display                :table
+                                              :visualization_settings {}}
+              [action-model card dataset metric]
+              (card/create-cards!
+               [(merge card-row
+                       action-model-params
+                       (when-not in-root-collection?
+                         {:collection_id (u/the-id coll)}))
+                (merge card-row (coll-data-map "card %s card" coll))
+                (merge card-row (coll-data-map "dataset %s dataset" coll) {:type :model})
+                (merge card-row (coll-data-map "metric %s metric" coll) {:type :metric})])
+              [action]                       (action/create-actions!
+                                              [(merge (dissoc (mt/with-temp-defaults :model/Action) :entity_id)
+                                                      (data-map "action %s action")
+                                                      {:type          :query
+                                                       :model_id      (u/the-id action-model)
+                                                       :database_id   (mt/id)
+                                                       :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                        "SELECT * FROM venues")})])
+              [{db-id :id :as db}]           (database/create-databases!
+                                              [(merge (mt/with-temp-defaults :model/Database)
+                                                      (data-map "database %s database"))])
+              [table]                        (table/create-tables!
+                                              [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                                      (data-map "database %s database")
+                                                      {:db_id db-id})])
+              [dashboard]                    (dashboard/create-dashboards!
+                                              [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at :entity_id)
+                                                      (coll-data-map "dashboard %s dashboard" coll))])
+              [segment]                      (segment/create-segments!
+                                              [(merge (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+                                                      (data-map "segment %s segment"))])
+              [measure]                      (measure/create-measures!
+                                              [(merge (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+                                                      (data-map "measure %s measure"))])]
+          (f {:action     action
+              :collection coll
+              :card       card
+              :database   db
+              :dataset    dataset
+              :dashboard  dashboard
+              :metric     metric
+              :table      table
+              :segment    segment
+              :measure    measure}))))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items! ~search-string true (fn [~'_] ~@body)))
@@ -845,30 +857,35 @@
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id  db-id
-                                                   :schema nil}
-                   :model/Segment  _ {:name       "test segment"
-                                      :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                                    (-> (lib/query mp (lib.metadata/table mp table-id))
-                                                        (lib/filter (lib/= 1 1))))}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= []
-               (search-request-data :rasta :q "test")))))))
+                                                   :schema nil}]
+      (mt/with-model-cleanup [:model/Segment]
+        (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+                                          :name       "test segment"
+                                          :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                        (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                            (lib/filter (lib/= 1 1)))))])
+        (mt/with-no-data-perms-for-all-users!
+          (is (= []
+                 (search-request-data :rasta :q "test"))))))))
 
 (deftest measure-permissions-test
   (testing "Measures on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id  db-id
-                                                   :schema nil}
-                   :model/Measure  _ {:name       "test measure"
-                                      :definition (table-count-definition db-id table-id)}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= []
-               (search-request-data :rasta :q "test")))))))
+                                                   :schema nil}]
+      (mt/with-model-cleanup [:model/Measure]
+        (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+                                          :name       "test measure"
+                                          :definition (table-count-definition db-id table-id))])
+        (mt/with-no-data-perms-for-all-users!
+          (is (= []
+                 (search-request-data :rasta :q "test"))))))))
 
 (deftest permissions-test-8
   (testing "Databases for which the user does not have access to should not show up in results"
-    (mt/with-temp [:model/Database _db-1  {:name "db-1"}
-                   :model/Database _db-2 {:name "db-2"}]
+    (mt/with-model-cleanup [:model/Database]
+      (database/create-databases! [(assoc (mt/with-temp-defaults :model/Database) :name "db-1")
+                                   (assoc (mt/with-temp-defaults :model/Database) :name "db-2")])
       (is (set/subset? #{"db-2" "db-1"}
                        (->> (search-request-data-with cleaned-results :rasta :q "db")
                             (map :name)
@@ -906,9 +923,14 @@
 
 (deftest database-test
   (testing "Should search database names and descriptions"
-    (mt/with-temp [:model/Database _ {:name "aviaries"}
-                   :model/Database _ {:name "user_favorite_places" :description "Join table between users and their favorite places, which could include aviaries"}
-                   :model/Database _ {:name "users" :description "As it sounds"}]
+    (mt/with-model-cleanup [:model/Database]
+      (database/create-databases! [(assoc (mt/with-temp-defaults :model/Database) :name "aviaries")
+                                   (assoc (mt/with-temp-defaults :model/Database)
+                                          :name "user_favorite_places"
+                                          :description "Join table between users and their favorite places, which could include aviaries")
+                                   (assoc (mt/with-temp-defaults :model/Database)
+                                          :name "users"
+                                          :description "As it sounds")])
       (letfn [(result [db]
                 (merge {:name nil
                         :model "database"
@@ -1065,114 +1087,85 @@
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
       (mt/with-model-cleanup [:model/Card]
-        (let [[action-model] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                   :database_id (mt/id)
-                                                   :display :table
-                                                   :visualization_settings {}
-                                                   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                   :name (mt/random-name)
-                                                   :type :model}])]
-          (mt/with-temp [:model/Action {action-id :id} (archived {:name     "action test action 2"
-                                                                  :type     :query
-                                                                  :model_id (u/the-id action-model)}) :model/QueryAction _ (query-action action-id)]
-            (let [[_ _] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                     :database_id (mt/id)
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                     :name (mt/random-name)} (archived {:name "card test card 2"})) (merge {:creator_id (mt/user->id :rasta)
-                                                                                                                            :database_id (mt/id)
-                                                                                                                            :display :table
-                                                                                                                            :visualization_settings {}
-                                                                                                                            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                            :name (mt/random-name)} (archived {:name "dataset test dataset" :type :model}))])]
-              (mt/with-temp [:model/Dashboard _ (archived {:name "dashboard test dashboard 2"}) :model/Collection _ (archived-collection {:name "collection test collection 2"})]
-                (let [[_] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                       :database_id (mt/id)
-                                                       :display :table
-                                                       :visualization_settings {}
-                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                       :name (mt/random-name)} (archived {:name "metric test metric 2" :type :metric}))])]
-                  (mt/with-temp [:model/Segment _ (archived {:name "segment test segment 2"})]
-                    (is (= (default-search-results)
-                           (search-request-data :crowberto :q "test")))))))))))))
+        (let [card-row     {:creator_id             (mt/user->id :rasta)
+                            :database_id            (mt/id)
+                            :display                :table
+                            :visualization_settings {}
+                            :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row   (merge (dissoc (mt/with-temp-defaults :model/Action) :entity_id)
+                                  {:type          :query
+                                   :database_id   (mt/id)
+                                   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT * FROM venues")})
+              dashboard-row (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at :entity_id)
+              segment-row  (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+              [action-model] (card/create-cards! [(assoc card-row :name (mt/random-name) :type :model)])]
+          (action/create-actions! [(archived (assoc action-row :name "action test action 2" :model_id (u/the-id action-model)))])
+          (card/create-cards! [(archived (assoc card-row :name "card test card 2"))
+                               (archived (assoc card-row :name "dataset test dataset" :type :model))
+                               (archived (assoc card-row :name "metric test metric 2" :type :metric))])
+          (dashboard/create-dashboards! [(archived (assoc dashboard-row :name "dashboard test dashboard 2"))])
+          (collection/create-collections! [(archived-collection {:name "collection test collection 2"})])
+          (segment/create-segments! [(archived (assoc segment-row :name "segment test segment 2"))])
+          (is (= (default-search-results)
+                 (search-request-data :crowberto :q "test"))))))))
 
 (deftest archived-results-test-2
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
       (mt/with-model-cleanup [:model/Card]
-        (let [[action-model] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                          :database_id (mt/id)
-                                                          :display :table
-                                                          :visualization_settings {}
-                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                          :name (mt/random-name)} action-model-params)])]
-          (mt/with-temp [:model/Action {action-id :id} (archived {:name     "action test action"
-                                                                  :type     :query
-                                                                  :model_id (u/the-id action-model)}) :model/QueryAction _ (query-action action-id) :model/Action _ (archived {:name     "action that will not appear in results"
-                                                                                                                                                                               :type     :query
-                                                                                                                                                                               :model_id (u/the-id action-model)})]
-            (let [[_ _ _] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                       :database_id (mt/id)
-                                                       :display :table
-                                                       :visualization_settings {}
-                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                       :name (mt/random-name)} (archived {:name "card test card"})) (merge {:creator_id (mt/user->id :rasta)
-                                                                                                                            :database_id (mt/id)
-                                                                                                                            :display :table
-                                                                                                                            :visualization_settings {}
-                                                                                                                            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                            :name (mt/random-name)} (archived {:name "card that will not appear in results"})) (merge {:creator_id (mt/user->id :rasta)
-                                                                                                                                                                                                                       :database_id (mt/id)
-                                                                                                                                                                                                                       :display :table
-                                                                                                                                                                                                                       :visualization_settings {}
-                                                                                                                                                                                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                                                                                                       :name (mt/random-name)} (archived {:name "dataset test dataset" :type :model}))])]
-              (mt/with-temp [:model/Dashboard _ (archived {:name "dashboard test dashboard"}) :model/Collection _ (archived-collection {:name "collection test collection"})]
-                (let [[_] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                       :database_id (mt/id)
-                                                       :display :table
-                                                       :visualization_settings {}
-                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                       :name (mt/random-name)} (archived {:name "metric test metric" :type :metric}))])]
-                  (mt/with-temp [:model/Segment _ (archived {:name "segment test segment"}) :model/Measure _ (archived {:name "measure test measure"})]
-                    (is (= (default-archived-results)
-                           (search-request-data :crowberto :q "test", :archived "true")))))))))))))
+        (let [card-row     {:creator_id             (mt/user->id :rasta)
+                            :database_id            (mt/id)
+                            :display                :table
+                            :visualization_settings {}
+                            :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row   (merge (dissoc (mt/with-temp-defaults :model/Action) :entity_id)
+                                  {:type          :query
+                                   :database_id   (mt/id)
+                                   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT * FROM venues")})
+              dashboard-row (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at :entity_id)
+              segment-row  (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+              measure-row  (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+              [action-model] (card/create-cards! [(merge (assoc card-row :name (mt/random-name)) action-model-params)])]
+          (action/create-actions! [(archived (assoc action-row :name "action test action" :model_id (u/the-id action-model)))
+                                   (archived (assoc action-row :name "action that will not appear in results" :model_id (u/the-id action-model)))])
+          (card/create-cards! [(archived (assoc card-row :name "card test card"))
+                               (archived (assoc card-row :name "card that will not appear in results"))
+                               (archived (assoc card-row :name "dataset test dataset" :type :model))
+                               (archived (assoc card-row :name "metric test metric" :type :metric))])
+          (dashboard/create-dashboards! [(archived (assoc dashboard-row :name "dashboard test dashboard"))])
+          (collection/create-collections! [(archived-collection {:name "collection test collection"})])
+          (segment/create-segments! [(archived (assoc segment-row :name "segment test segment"))])
+          (measure/create-measures! [(archived (assoc measure-row :name "measure test measure"))])
+          (is (= (default-archived-results)
+                 (search-request-data :crowberto :q "test", :archived "true"))))))))
 
 (deftest archived-results-test-3
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
       (mt/with-model-cleanup [:model/Card]
-        (let [[action-model] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                          :database_id (mt/id)
-                                                          :display :table
-                                                          :visualization_settings {}
-                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                          :name (mt/random-name)} action-model-params)])]
-          (mt/with-temp [:model/Action {action-id :id} (archived {:name     "action test action"
-                                                                  :type     :query
-                                                                  :model_id (u/the-id action-model)}) :model/QueryAction _ (query-action action-id)]
-            (let [[_ _] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                     :database_id (mt/id)
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                     :name (mt/random-name)} (archived {:name "card test card"})) (merge {:creator_id (mt/user->id :rasta)
-                                                                                                                          :database_id (mt/id)
-                                                                                                                          :display :table
-                                                                                                                          :visualization_settings {}
-                                                                                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                          :name (mt/random-name)} (archived {:name "dataset test dataset" :type :model}))])]
-              (mt/with-temp [:model/Dashboard _ (archived {:name "dashboard test dashboard"}) :model/Collection _ (archived-collection {:name "collection test collection"})]
-                (let [[_] (card/create-cards! [(merge {:creator_id (mt/user->id :rasta)
-                                                       :database_id (mt/id)
-                                                       :display :table
-                                                       :visualization_settings {}
-                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                       :name (mt/random-name)} (archived {:name "metric test metric" :type :metric}))])]
-                  (mt/with-temp [:model/Segment _ (archived {:name "segment test segment"}) :model/Measure _ (archived {:name "measure test measure"})]
-                    (is (mt/ordered-subset? (default-archived-results)
-                                            (search-request-data :crowberto :archived "true")))))))))))))
+        (let [card-row     {:creator_id             (mt/user->id :rasta)
+                            :database_id            (mt/id)
+                            :display                :table
+                            :visualization_settings {}
+                            :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row   (merge (dissoc (mt/with-temp-defaults :model/Action) :entity_id)
+                                  {:type          :query
+                                   :database_id   (mt/id)
+                                   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT * FROM venues")})
+              dashboard-row (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at :entity_id)
+              segment-row  (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+              measure-row  (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+              [action-model] (card/create-cards! [(merge (assoc card-row :name (mt/random-name)) action-model-params)])]
+          (action/create-actions! [(archived (assoc action-row :name "action test action" :model_id (u/the-id action-model)))])
+          (card/create-cards! [(archived (assoc card-row :name "card test card"))
+                               (archived (assoc card-row :name "dataset test dataset" :type :model))
+                               (archived (assoc card-row :name "metric test metric" :type :metric))])
+          (dashboard/create-dashboards! [(archived (assoc dashboard-row :name "dashboard test dashboard"))])
+          (collection/create-collections! [(archived-collection {:name "collection test collection"})])
+          (segment/create-segments! [(archived (assoc segment-row :name "segment test segment"))])
+          (measure/create-measures! [(archived (assoc measure-row :name "measure test measure"))])
+          (is (mt/ordered-subset? (default-archived-results)
+                                  (search-request-data :crowberto :archived "true"))))))))
 
 (deftest alerts-test
   (testing "Search should not return alerts"
@@ -1209,15 +1202,17 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp [:model/Table _ {:name "RoundTable"}]
+    (mt/with-model-cleanup [:model/Table]
+      (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "RoundTable")])
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
-    (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
-                   :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
+    (mt/with-model-cleanup [:model/Table]
+      (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "Foo Visible")
+                             (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "Foo Hidden", :visibility_type :hidden)])
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))
@@ -1225,7 +1220,8 @@
 (deftest table-test-3
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
+      (mt/with-model-cleanup [:model/Table]
+        (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "RoundTable" :display_name lancelot)])
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
@@ -1233,7 +1229,8 @@
 (deftest table-test-4
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
+      (mt/with-model-cleanup [:model/Table]
+        (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "RoundTable" :description lancelot)])
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable")
                          :description lancelot :table_description lancelot :can_write (= user :crowberto))]
@@ -1242,7 +1239,8 @@
 (deftest table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp [:model/Table _ {:name table-name}]
+      (mt/with-model-cleanup [:model/Table]
+        (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name table-name)])
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true))))))))
@@ -1250,59 +1248,65 @@
 (deftest table-test-6
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp [:model/Table _ {:name table-name, :active false}]
+      (mt/with-model-cleanup [:model/Table]
+        (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name table-name, :active false)])
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name))))))))
 
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    table {:db_id db-id}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= []
-               (binding [*search-request-results-database-id* db-id]
-                 (search-request-data :rasta :q (:name table)))))))))
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (let [[table] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :db_id db-id)])]
+          (mt/with-no-data-perms-for-all-users!
+            (is (= []
+                   (binding [*search-request-results-database-id* db-id]
+                     (search-request-data :rasta :q (:name table)))))))))))
 
 (deftest table-test-8
   (testing "you should be able to see a Table when the current user is a superuser"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    table {:db_id db-id}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= 1
-               (binding [*search-request-results-database-id* db-id]
-                 (count (search-request-data :crowberto :q (:name table))))))))))
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (let [[table] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :db_id db-id)])]
+          (mt/with-no-data-perms-for-all-users!
+            (is (= 1
+                   (binding [*search-request-results-database-id* db-id]
+                     (count (search-request-data :crowberto :q (:name table))))))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
     (mt/with-temp [:model/Database                   {db-id :id} {:name "test-data (h2)"}
-                   :model/Table                      table {:name "RoundTable" :db_id db-id}
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
-        (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
-                 (binding [*search-request-results-database-id* db-id]
-                   (search-request-data user :q "RoundTable")))))))))
+      (mt/with-model-cleanup [:model/Table]
+        (let [[table] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "RoundTable" :db_id db-id)])]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+            (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
+            (do-test-users [user [:crowberto :rasta]]
+              (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
+                     (binding [*search-request-results-database-id* db-id]
+                       (search-request-data user :q "RoundTable")))))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
-    (mt/with-temp [:model/Database                   {db-id :id} {}
-                   :model/Table                      table {:name "RoundTable", :db_id db-id}]
-      (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
-        (perms/set-table-permission! (perms/all-users-group) table :perms/create-queries :no)
-        (is (= []
-               (filter #(= (:name %) "RoundTable")
-                       (binding [*search-request-results-database-id* db-id]
-                         (search-request-data :rasta :q "RoundTable")))))))))
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (let [[table] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "RoundTable", :db_id db-id)])]
+          (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+            (perms/set-table-permission! (perms/all-users-group) table :perms/create-queries :no)
+            (is (= []
+                   (filter #(= (:name %) "RoundTable")
+                           (binding [*search-request-results-database-id* db-id]
+                             (search-request-data :rasta :q "RoundTable")))))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
-    (mt/with-temp [:model/Collection _c1 {:name "Normal Collection"}
-                   :model/Collection _c2 {:name "Coin Collection" :namespace "currency"}]
+    (mt/with-model-cleanup [:model/Collection]
+      (collection/create-collections! [{:name "Normal Collection"}
+                                       {:name "Coin Collection" :namespace "currency"}])
       (assert (not (t2/exists? :model/Collection :name "Coin Collection", :namespace nil)))
       (is (=? [{:name "Normal Collection"}]
               (->> (search-request-data :crowberto :q "Collection")
@@ -1313,10 +1317,12 @@
   (testing "Search returns collections with namespace: shared-tenant-collection"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection {shared-name :name} {:name "Shared Tenant Test Collection"
-                                                              :namespace collection/shared-tenant-ns}
-                       :model/Collection {normal-name :name} {:name "Normal Test Collection"}]
-          (let [results (->> (search-request-data :crowberto :q "Test Collection")
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[{shared-name :name} {normal-name :name}]
+                (collection/create-collections! [{:name "Shared Tenant Test Collection"
+                                                  :namespace collection/shared-tenant-ns}
+                                                 {:name "Normal Test Collection"}])
+                results (->> (search-request-data :crowberto :q "Test Collection")
                              (filter #(= (:model %) "collection"))
                              (map :name)
                              set)]
@@ -1403,75 +1409,81 @@
                                                                                                                                                                                                                                                                                                                                                                                                    :display :table
                                                                                                                                                                                                                                                                                                                                                                                                    :visualization_settings {}
                                                                                                                                                                                                                                                                                                                                                                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                                                                                                                                                                                                                                                                                   :name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}])]
-            (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id} :model/Action {action-id :id} {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :query}]
-              (testing "sanity check that without search by created_by we have more results than if a filter is provided"
-                (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
-                       5)))
-              (testing "Able to filter by creator"
-                (let [resp (mt/user-http-request :crowberto :get 200 "search"
-                                                 :q search-term
-                                                 :created_by user-id
-                                                 :calculate_available_models true)]
-                  (testing "only a subset of models are applicable"
-                    (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
-                  (testing "results contains only entities with the specified creator"
-                    (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
-                             [card-id      "card"      "Created by Filter Card 1"]
-                             [card-id-2    "card"      "Created by Filter Card 2"]
-                             [model-id     "dataset"   "Created by Filter Dataset 1"]
-                             [action-id    "action"    "Created by Filter Action 1"]}
-                           (->> (:data resp)
-                                (map (juxt :id :model :name))
-                                set))))))
-              (testing "Able to filter by multiple creators"
-                (let [resp (mt/user-http-request :crowberto :get 200 "search"
-                                                 :q search-term
-                                                 :created_by user-id
-                                                 :created_by user-id-2
-                                                 :calculate_available_models true)]
-                  (testing "only a subset of models are applicable"
-                    (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
-                  (testing "results contains only entities with the specified creator"
-                    (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
-                             [card-id      "card"      "Created by Filter Card 1"]
-                             [card-id-2    "card"      "Created by Filter Card 2"]
-                             [card-id-4    "card"      "Created by Filter Card 4"]
-                             [model-id     "dataset"   "Created by Filter Dataset 1"]
-                             [action-id    "action"    "Created by Filter Action 1"]}
-                           (->> (:data resp)
-                                (map (juxt :id :model :name))
-                                set))))))
-              (testing "Works with archived filter"
-                (is (=? [{:model "card"
-                          :id     card-id-3
-                          :archived true}]
-                        (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
-              (testing "Works with models filter"
-                (testing "return intersections of supported models with provided models"
-                  (is (= #{"dashboard" "card"}
-                         (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
-                              :data
-                              (map :model)
-                              set))))
-                (testing "return nothing if there is no intersection"
-                  (is (= #{}
-                         (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
-                              :data
-                              (map :model)
-                              set)))))
-              (testing "respect the read permissions"
-                (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
-                  (is (not (contains?
-                            (->> (:data resp)
-                                 (filter #(= (:model %) "card"))
-                                 (map :id)
-                                 set)
-                            card-id-2)))))
-              (testing "error if creator_id is not an integer"
-                (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
-                  (is (= {:created_by "nullable vector of value must be an integer greater than zero."}
-                         (:errors resp))))))))))))
+                                                                                                                                                                                                                                                                                                                                                                                                   :name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}])
+                [{dashboard-id :id}] (dashboard/create-dashboards! [{:name (format "%s Dashboard 1" search-term) :creator_id user-id}])
+                [{action-id :id}]    (action/create-actions! [{:name          (format "%s Action 1" search-term)
+                                                               :model_id      model-id
+                                                               :creator_id    user-id
+                                                               :type          :query
+                                                               :database_id   (mt/id)
+                                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}])]
+            (testing "sanity check that without search by created_by we have more results than if a filter is provided"
+              (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
+                     5)))
+            (testing "Able to filter by creator"
+              (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                               :q search-term
+                                               :created_by user-id
+                                               :calculate_available_models true)]
+                (testing "only a subset of models are applicable"
+                  (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+                (testing "results contains only entities with the specified creator"
+                  (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                           [card-id      "card"      "Created by Filter Card 1"]
+                           [card-id-2    "card"      "Created by Filter Card 2"]
+                           [model-id     "dataset"   "Created by Filter Dataset 1"]
+                           [action-id    "action"    "Created by Filter Action 1"]}
+                         (->> (:data resp)
+                              (map (juxt :id :model :name))
+                              set))))))
+            (testing "Able to filter by multiple creators"
+              (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                               :q search-term
+                                               :created_by user-id
+                                               :created_by user-id-2
+                                               :calculate_available_models true)]
+                (testing "only a subset of models are applicable"
+                  (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+                (testing "results contains only entities with the specified creator"
+                  (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                           [card-id      "card"      "Created by Filter Card 1"]
+                           [card-id-2    "card"      "Created by Filter Card 2"]
+                           [card-id-4    "card"      "Created by Filter Card 4"]
+                           [model-id     "dataset"   "Created by Filter Dataset 1"]
+                           [action-id    "action"    "Created by Filter Action 1"]}
+                         (->> (:data resp)
+                              (map (juxt :id :model :name))
+                              set))))))
+            (testing "Works with archived filter"
+              (is (=? [{:model "card"
+                        :id     card-id-3
+                        :archived true}]
+                      (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
+            (testing "Works with models filter"
+              (testing "return intersections of supported models with provided models"
+                (is (= #{"dashboard" "card"}
+                       (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
+                            :data
+                            (map :model)
+                            set))))
+              (testing "return nothing if there is no intersection"
+                (is (= #{}
+                       (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
+                            :data
+                            (map :model)
+                            set)))))
+            (testing "respect the read permissions"
+              (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
+                (is (not (contains?
+                          (->> (:data resp)
+                               (filter #(= (:model %) "card"))
+                               (map :id)
+                               set)
+                          card-id-2)))))
+            (testing "error if creator_id is not an integer"
+              (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
+                (is (= {:created_by "nullable vector of value must be an integer greater than zero."}
+                       (:errors resp)))))))))))
 
 (deftest filter-by-last-edited-by-test
   (let [search-term "last-edited-by"]
@@ -1902,16 +1914,19 @@
                                                             :display :table
                                                             :visualization_settings {}
                                                             :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                            :name (mt/random-name)} action-model-params)])]
-          (mt/with-temp [:model/Action _ (archived {:name     "test action"
-                                                    :type     :query
-                                                    :model_id model-id})]
-            (testing "`archived-string` is 'false'"
-              (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
-                     (get-available-models :archived "false"))))
-            (testing "`archived-string` is 'true'"
-              (is (= #{"action"}
-                     (get-available-models :archived "true"))))))))))
+                                                            :name (mt/random-name)} action-model-params)])
+              _                (action/create-actions! [(merge (mt/with-temp-defaults :model/Action)
+                                                               (archived {:name          "test action"
+                                                                          :type          :query
+                                                                          :model_id      model-id
+                                                                          :database_id   (mt/id)
+                                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}))])]
+          (testing "`archived-string` is 'false'"
+            (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
+                   (get-available-models :archived "false"))))
+          (testing "`archived-string` is 'true'"
+            (is (= #{"action"}
+                   (get-available-models :archived "true")))))))))
 
 (deftest filter-items-in-personal-collection-test
   (let [search-term "filter-items-in-personal-collection"
@@ -1923,183 +1938,191 @@
                                            :data
                                            (map (juxt :model :id))
                                            set))]
-    (mt/with-temp [:model/Collection {coll-sub-public :id} {:location "/" :name search-term} :model/Dashboard {dash-public :id} {:collection_id nil :name search-term} :model/Dashboard {dash-sub-public :id} {:collection_id coll-sub-public :name search-term} :model/Collection {coll-sub-rasta :id} {:location (format "/%d/" rasta-personal-coll-id) :name search-term}]
-      (mt/with-model-cleanup [:model/Card]
-        (let [[{card-rasta :id} {card-sub-rasta :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                                            :database_id (mt/id)
-                                                                            :display :table
-                                                                            :visualization_settings {}
-                                                                            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                            :collection_id rasta-personal-coll-id :name search-term} {:creator_id (mt/user->id :rasta)
-                                                                                                                                      :database_id (mt/id)
-                                                                                                                                      :display :table
-                                                                                                                                      :visualization_settings {}
-                                                                                                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                      :collection_id coll-sub-rasta :name search-term}])]
-          (mt/with-temp [:model/Collection {coll-sub-crowberto :id} {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}]
-            (let [[{model-crowberto :id} {model-sub-crowberto :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                                                          :database_id (mt/id)
-                                                                                          :display :table
-                                                                                          :visualization_settings {}
-                                                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                          :collection_id crowberto-personal-coll-id :type :model :name search-term} {:creator_id (mt/user->id :rasta)
-                                                                                                                                                                     :database_id (mt/id)
-                                                                                                                                                                     :display :table
-                                                                                                                                                                     :visualization_settings {}
-                                                                                                                                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                                                     :collection_id coll-sub-crowberto :type :model :name search-term}])]
-              (testing "admin only"
-                (is (= #{["dataset" model-crowberto]
-                         ["dataset" model-sub-crowberto]
-                         ["card" card-rasta]
-                         ["card" card-sub-rasta]
-                         ["collection" coll-sub-crowberto]
-                         ["collection" coll-sub-rasta]}
-                       (search :crowberto "only"))))
-              (testing "non-admin only"
-                (is (= #{["card" card-rasta]
-                         ["card" card-sub-rasta]
-                         ["collection" coll-sub-rasta]}
-                       (search :rasta "only"))))
-              (testing "admin exclude"
-                (is (= #{["dashboard" dash-public]
-                         ["dashboard" dash-sub-public]
-                         ["collection" coll-sub-public]}
-                       (search :crowberto "exclude"))))
-              (testing "non-admin exclude"
-                (is (= #{["dashboard" dash-public]
-                         ["dashboard" dash-sub-public]
-                         ["collection" coll-sub-public]}
-                       (search :rasta "exclude"))))
-              (testing "non-admin `all` is not exposed to other users' personal collection items"
-                (let [rasta-all     (search :rasta "all")
-                      crowberto-all (search :crowberto "all")
-                      crowberto-items #{["dataset" model-crowberto]
-                                        ["dataset" model-sub-crowberto]
-                                        ["collection" coll-sub-crowberto]}
-                      rasta-items   #{["card" card-rasta]
-                                      ["card" card-sub-rasta]
-                                      ["collection" coll-sub-rasta]}
-                      public-items  #{["dashboard" dash-public]
-                                      ["dashboard" dash-sub-public]
-                                      ["collection" coll-sub-public]}]
-                  (is (= (into rasta-items public-items) rasta-all)
-                      "rasta sees only their own personal items plus public items, none of crowberto's")
-                  (testing "positive control: admin with `all` sees everyone's items"
-                    (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
-              (testing "getting models should return only models that are applied"
-                (is (= #{"dashboard" "collection"}
-                       (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))
-              (testing "admin exclude-others excludes other users' personal collection items"
-                (is (= #{["dashboard" dash-public]
-                         ["dashboard" dash-sub-public]
-                         ["collection" coll-sub-public]
-                         ["dataset" model-crowberto]
-                         ["dataset" model-sub-crowberto]
-                         ["collection" coll-sub-crowberto]}
-                       (search :crowberto "exclude-others"))))
-              (testing "non-admin exclude-others sees own personal items plus public"
-                (is (= #{["dashboard" dash-public]
-                         ["dashboard" dash-sub-public]
-                         ["collection" coll-sub-public]
-                         ["card" card-rasta]
-                         ["card" card-sub-rasta]
-                         ["collection" coll-sub-rasta]}
-                       (search :rasta "exclude-others"))))
-              (testing "admin only-mine"
-                (is (= #{["dataset" model-crowberto]
-                         ["dataset" model-sub-crowberto]
-                         ["collection" coll-sub-crowberto]}
-                       (search :crowberto "only-mine"))))
-              (testing "non-admin only-mine"
-                (is (= #{["card" card-rasta]
-                         ["card" card-sub-rasta]
-                         ["collection" coll-sub-rasta]}
-                       (search :rasta "only-mine"))))
-              (testing "search-app context default excludes others' personal collections for admin"
-                (let [search-with-context (fn [user]
-                                            (->> (mt/user-http-request user :get 200 "search"
-                                                                       :q search-term
-                                                                       :context "search-app")
-                                                 :data
-                                                 (map (juxt :model :id))
-                                                 set))]
-                  (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
-                      "Admin should not see rasta's card in search-app context with default filter")
-                  (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
-                      "Admin should not see rasta's sub-collection card in search-app context with default filter")
-                  (is (contains? (search-with-context :crowberto) ["dataset" model-crowberto])
-                      "Admin should still see their own personal collection items")))
-              (testing "in-place engine: search-app context default should still exclude others' personal collections (#UXW-3238)"
-                (search.tu/with-legacy-search
-                  (let [search-with-context (fn [user]
-                                              (->> (mt/user-http-request user :get 200 "search"
-                                                                         :q search-term
-                                                                         :context "search-app")
-                                                   :data
-                                                   (map (juxt :model :id))
-                                                   set))]
-                    (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
-                        "Admin should not see rasta's card even with in-place engine")
-                    (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
-                        "Admin should not see rasta's sub-collection card even with in-place engine")))))))))))
+    (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Collection]
+      (let [[{coll-sub-public :id} {coll-sub-rasta :id} {coll-sub-crowberto :id}]
+            (collection/create-collections! [{:location "/" :name search-term}
+                                             {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
+                                             {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}])
+            [{dash-public :id} {dash-sub-public :id}]
+            (dashboard/create-dashboards! [{:collection_id nil :name search-term :creator_id (mt/user->id :rasta)}
+                                           {:collection_id coll-sub-public :name search-term :creator_id (mt/user->id :rasta)}])
+            [{card-rasta :id} {card-sub-rasta :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                          :database_id (mt/id)
+                                                                          :display :table
+                                                                          :visualization_settings {}
+                                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                          :collection_id rasta-personal-coll-id :name search-term} {:creator_id (mt/user->id :rasta)
+                                                                                                                                    :database_id (mt/id)
+                                                                                                                                    :display :table
+                                                                                                                                    :visualization_settings {}
+                                                                                                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                                                    :collection_id coll-sub-rasta :name search-term}])
+            [{model-crowberto :id} {model-sub-crowberto :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                                    :database_id (mt/id)
+                                                                                    :display :table
+                                                                                    :visualization_settings {}
+                                                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                    :collection_id crowberto-personal-coll-id :type :model :name search-term} {:creator_id (mt/user->id :rasta)
+                                                                                                                                                               :database_id (mt/id)
+                                                                                                                                                               :display :table
+                                                                                                                                                               :visualization_settings {}
+                                                                                                                                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                                                                               :collection_id coll-sub-crowberto :type :model :name search-term}])]
+        (testing "admin only"
+          (is (= #{["dataset" model-crowberto]
+                   ["dataset" model-sub-crowberto]
+                   ["card" card-rasta]
+                   ["card" card-sub-rasta]
+                   ["collection" coll-sub-crowberto]
+                   ["collection" coll-sub-rasta]}
+                 (search :crowberto "only"))))
+        (testing "non-admin only"
+          (is (= #{["card" card-rasta]
+                   ["card" card-sub-rasta]
+                   ["collection" coll-sub-rasta]}
+                 (search :rasta "only"))))
+        (testing "admin exclude"
+          (is (= #{["dashboard" dash-public]
+                   ["dashboard" dash-sub-public]
+                   ["collection" coll-sub-public]}
+                 (search :crowberto "exclude"))))
+        (testing "non-admin exclude"
+          (is (= #{["dashboard" dash-public]
+                   ["dashboard" dash-sub-public]
+                   ["collection" coll-sub-public]}
+                 (search :rasta "exclude"))))
+        (testing "non-admin `all` is not exposed to other users' personal collection items"
+          (let [rasta-all     (search :rasta "all")
+                crowberto-all (search :crowberto "all")
+                crowberto-items #{["dataset" model-crowberto]
+                                  ["dataset" model-sub-crowberto]
+                                  ["collection" coll-sub-crowberto]}
+                rasta-items   #{["card" card-rasta]
+                                ["card" card-sub-rasta]
+                                ["collection" coll-sub-rasta]}
+                public-items  #{["dashboard" dash-public]
+                                ["dashboard" dash-sub-public]
+                                ["collection" coll-sub-public]}]
+            (is (= (into rasta-items public-items) rasta-all)
+                "rasta sees only their own personal items plus public items, none of crowberto's")
+            (testing "positive control: admin with `all` sees everyone's items"
+              (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
+        (testing "getting models should return only models that are applied"
+          (is (= #{"dashboard" "collection"}
+                 (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))
+        (testing "admin exclude-others excludes other users' personal collection items"
+          (is (= #{["dashboard" dash-public]
+                   ["dashboard" dash-sub-public]
+                   ["collection" coll-sub-public]
+                   ["dataset" model-crowberto]
+                   ["dataset" model-sub-crowberto]
+                   ["collection" coll-sub-crowberto]}
+                 (search :crowberto "exclude-others"))))
+        (testing "non-admin exclude-others sees own personal items plus public"
+          (is (= #{["dashboard" dash-public]
+                   ["dashboard" dash-sub-public]
+                   ["collection" coll-sub-public]
+                   ["card" card-rasta]
+                   ["card" card-sub-rasta]
+                   ["collection" coll-sub-rasta]}
+                 (search :rasta "exclude-others"))))
+        (testing "admin only-mine"
+          (is (= #{["dataset" model-crowberto]
+                   ["dataset" model-sub-crowberto]
+                   ["collection" coll-sub-crowberto]}
+                 (search :crowberto "only-mine"))))
+        (testing "non-admin only-mine"
+          (is (= #{["card" card-rasta]
+                   ["card" card-sub-rasta]
+                   ["collection" coll-sub-rasta]}
+                 (search :rasta "only-mine"))))
+        (testing "search-app context default excludes others' personal collections for admin"
+          (let [search-with-context (fn [user]
+                                      (->> (mt/user-http-request user :get 200 "search"
+                                                                 :q search-term
+                                                                 :context "search-app")
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))]
+            (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
+                "Admin should not see rasta's card in search-app context with default filter")
+            (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
+                "Admin should not see rasta's sub-collection card in search-app context with default filter")
+            (is (contains? (search-with-context :crowberto) ["dataset" model-crowberto])
+                "Admin should still see their own personal collection items")))
+        (testing "in-place engine: search-app context default should still exclude others' personal collections (#UXW-3238)"
+          (search.tu/with-legacy-search
+            (let [search-with-context (fn [user]
+                                        (->> (mt/user-http-request user :get 200 "search"
+                                                                   :q search-term
+                                                                   :context "search-app")
+                                             :data
+                                             (map (juxt :model :id))
+                                             set))]
+              (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
+                  "Admin should not see rasta's card even with in-place engine")
+              (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
+                  "Admin should not see rasta's sub-collection card even with in-place engine"))))))))
 
 (deftest collection-effective-parent-test
-  (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
-                 :model/Collection coll-2  {:name "Collection 2", :location (collection/location-path coll-1)}
-                 :model/Collection _coll-3 {:name "Collection 3", :location (collection/location-path coll-1 coll-2)}]
-    (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
-      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
-        (is (= {:id              (u/the-id coll-2)
-                :name            "Collection 2"
-                :authority_level nil
-                :type            nil}
-               (-> result :data first :collection))))
-      (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
-      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
-        (is (= {:id              (u/the-id coll-1)
-                :name            "Collection 1"
-                :authority_level nil
-                :type            nil}
-               (-> result :data first :collection))))
-      (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
-      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
-        (is (= {:id              "root"
-                :name            "Our analytics"
-                :authority_level nil
-                :type            nil}
-               (-> result :data first :collection)))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [[coll-1] (collection/create-collections! [{:name "Collection 1"}])
+          [coll-2] (collection/create-collections! [{:name "Collection 2", :location (collection/location-path coll-1)}])
+          _        (collection/create-collections! [{:name "Collection 3", :location (collection/location-path coll-1 coll-2)}])]
+      (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
+        (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+          (is (= {:id              (u/the-id coll-2)
+                  :name            "Collection 2"
+                  :authority_level nil
+                  :type            nil}
+                 (-> result :data first :collection))))
+        (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
+        (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+          (is (= {:id              (u/the-id coll-1)
+                  :name            "Collection 1"
+                  :authority_level nil
+                  :type            nil}
+                 (-> result :data first :collection))))
+        (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
+        (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+          (is (= {:id              "root"
+                  :name            "Our analytics"
+                  :authority_level nil
+                  :type            nil}
+                 (-> result :data first :collection))))))))
 
 (deftest official-collection-search-result-authority-level-test
   (testing "Collection search results carry their own official authority level, which the UI badges"
     (let [search-name (str (random-uuid))]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name            (str search-name "-collection")
-                                                      :authority_level "official"}]
-        (is (=? [{:id                         coll-id
-                  :collection_authority_level "official"}]
-                (:data (mt/user-http-request :crowberto :get 200 "search"
-                                             :q search-name :models ["collection"]))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{coll-id :id}] (collection/create-collections! [{:name            (str search-name "-collection")
+                                                                :authority_level "official"}])]
+          (is (=? [{:id                         coll-id
+                    :collection_authority_level "official"}]
+                  (:data (mt/user-http-request :crowberto :get 200 "search"
+                                               :q search-name :models ["collection"])))))))))
 
 (deftest official-collection-item-search-result-authority-level-test
   (testing "Card and dashboard search results carry the official authority level of their collection, which the UI badges"
     (let [search-name (str (random-uuid))]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name            "Official parent"
-                                                      :authority_level "official"}]
-        (mt/with-model-cleanup [:model/Card]
-          (let [[{card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Collection]
+        (let [[{coll-id :id}]   (collection/create-collections! [{:name            "Official parent"
+                                                                  :authority_level "official"}])
+              [{card-id :id}]   (card/create-cards! [{:creator_id (mt/user->id :rasta)
                                                       :database_id (mt/id)
                                                       :display :table
                                                       :visualization_settings {}
                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
                                                       :name          (str search-name "-card")
-                                                      :collection_id coll-id}])]
-            (mt/with-temp [:model/Dashboard {dash-id :id} {:name          (str search-name "-dashboard")
-                                                           :collection_id coll-id}]
-              (let [results (:data (mt/user-http-request :crowberto :get 200 "search"
-                                                         :q search-name :models ["card" "dashboard"]))]
-                (is (=? {"card"      [{:id card-id :collection {:id coll-id :authority_level "official"}}]
-                         "dashboard" [{:id dash-id :collection {:id coll-id :authority_level "official"}}]}
-                        (group-by :model results)))))))))))
+                                                      :collection_id coll-id}])
+              [{dash-id :id}]   (dashboard/create-dashboards! [{:name          (str search-name "-dashboard")
+                                                                :creator_id    (mt/user->id :rasta)
+                                                                :collection_id coll-id}])
+              results           (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                             :q search-name :models ["card" "dashboard"]))]
+          (is (=? {"card"      [{:id card-id :collection {:id coll-id :authority_level "official"}}]
+                   "dashboard" [{:id dash-id :collection {:id coll-id :authority_level "official"}}]}
+                  (group-by :model results))))))))
 
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
@@ -2143,47 +2166,49 @@
 
 (deftest model-ancestors-gets-ancestor-collections
   (testing "Collection names are correct"
-    (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"} :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}]
-      (mt/with-model-cleanup [:model/Card]
-        (let [[{leaf-card-id :id} {top-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                                           :database_id (mt/id)
-                                                                           :display :table
-                                                                           :visualization_settings {}
-                                                                           :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                           :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
-                                                                                                                                       :database_id (mt/id)
-                                                                                                                                       :display :table
-                                                                                                                                       :visualization_settings {}
-                                                                                                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                       :type :model :collection_id top-col-id :name "top model"}])]
-          (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
-                   [top-card-id []]}
-                 (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
-                      :data
-                      (map (juxt :id #(get-in % [:collection :effective_ancestors])))
-                      (into #{})))))))))
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [[{top-col-id :id}] (collection/create-collections! [{:name "top level col" :location "/"}])
+            [{mid-col-id :id}] (collection/create-collections! [{:name "middle level col" :location (str "/" top-col-id "/")}])
+            [{leaf-card-id :id} {top-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                         :database_id (mt/id)
+                                                                         :display :table
+                                                                         :visualization_settings {}
+                                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                         :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
+                                                                                                                                     :database_id (mt/id)
+                                                                                                                                     :display :table
+                                                                                                                                     :visualization_settings {}
+                                                                                                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                                                     :type :model :collection_id top-col-id :name "top model"}])]
+        (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
+                 [top-card-id []]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                    :data
+                    (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                    (into #{}))))))))
 
 (deftest model-ancestors-gets-ancestor-collections-2
   (testing "Collection names are correct"
-    (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"} :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}]
-      (mt/with-model-cleanup [:model/Card]
-        (let [[{leaf-card-id :id} {top-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                                           :database_id (mt/id)
-                                                                           :display :table
-                                                                           :visualization_settings {}
-                                                                           :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                           :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
-                                                                                                                                       :database_id (mt/id)
-                                                                                                                                       :display :table
-                                                                                                                                       :visualization_settings {}
-                                                                                                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                       :type :model :collection_id top-col-id :name "top model"}])]
-          (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
-                   [top-card-id []]}
-                 (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
-                      :data
-                      (map (juxt :id #(get-in % [:collection :effective_ancestors])))
-                      (into #{})))))))))
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [[{top-col-id :id}] (collection/create-collections! [{:name "top level col" :location "/"}])
+            [{mid-col-id :id}] (collection/create-collections! [{:name "middle level col" :location (str "/" top-col-id "/")}])
+            [{leaf-card-id :id} {top-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                         :database_id (mt/id)
+                                                                         :display :table
+                                                                         :visualization_settings {}
+                                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                         :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
+                                                                                                                                     :database_id (mt/id)
+                                                                                                                                     :display :table
+                                                                                                                                     :visualization_settings {}
+                                                                                                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                                                     :type :model :collection_id top-col-id :name "top model"}])]
+        (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
+                 [top-card-id []]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                    :data
+                    (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                    (into #{}))))))))
 
 (deftest model-ancestors-gets-ancestor-collections-3
   (testing "Non-models don't get collection_ancestors"
@@ -2204,78 +2229,80 @@
 
 (deftest model-ancestors-gets-ancestor-collections-4
   (testing "If `model_parents` is not passed, it doesn't get populated"
-    (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"} :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}]
-      (mt/with-model-cleanup [:model/Card]
-        (let [[_ _] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                          :database_id (mt/id)
-                                          :display :table
-                                          :visualization_settings {}
-                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                          :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
-                                                                                                      :database_id (mt/id)
-                                                                                                      :display :table
-                                                                                                      :visualization_settings {}
-                                                                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                      :type :model :collection_id top-col-id :name "top model"}])]
-          (is (= [nil nil]
-                 (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors false :q "model" :models ["dataset"])
-                      :data
-                      (map #(get-in % [:collection :effective_ancestors]))))))))))
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [[{top-col-id :id}] (collection/create-collections! [{:name "top level col" :location "/"}])
+            [{mid-col-id :id}] (collection/create-collections! [{:name "middle level col" :location (str "/" top-col-id "/")}])
+            [_ _] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                        :database_id (mt/id)
+                                        :display :table
+                                        :visualization_settings {}
+                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                        :type :model :collection_id mid-col-id :name "leaf model"} {:creator_id (mt/user->id :rasta)
+                                                                                                    :database_id (mt/id)
+                                                                                                    :display :table
+                                                                                                    :visualization_settings {}
+                                                                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                    :type :model :collection_id top-col-id :name "top model"}])]
+        (is (= [nil nil]
+               (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors false :q "model" :models ["dataset"])
+                    :data
+                    (map #(get-in % [:collection :effective_ancestors])))))))))
 
 (deftest collection-type-is-returned
   (testing "Users without perms for a collection can't see search results that were trashed from that collection"
     (let [search-name (random-uuid)
           named       #(str search-name "-" %)]
-      (mt/with-temp [:model/Collection {parent-id :id :as parent} {} :model/Collection _ {:location (collection/children-location parent)
-                                                                                          :name (named "collection")
-                                                                                          :type "library-data"} :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}]
-        (mt/with-model-cleanup [:model/Card]
-          (let [[_ _] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                            :database_id (mt/id)
-                                            :display :table
-                                            :visualization_settings {}
-                                            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                            :collection_id parent-id :name (named "card")} {:creator_id (mt/user->id :rasta)
-                                                                                            :database_id (mt/id)
-                                                                                            :display :table
-                                                                                            :visualization_settings {}
-                                                                                            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                            :collection_id parent-id :type :model :name (named "model")}])]
-            (testing "the collection data includes the type under `item.type` for collections"
-              (is (every? #(contains? % :type)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection]
+        (let [[{parent-id :id :as parent}] (collection/create-collections! [{:name (mt/random-name)}])
+              _ (collection/create-collections! [{:location (collection/children-location parent) :name (named "collection") :type "library-data"}])
+              _ (dashboard/create-dashboards! [{:collection_id parent-id :name (named "dashboard") :creator_id (mt/user->id :rasta)}])
+              [_ _] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                          :database_id (mt/id)
+                                          :display :table
+                                          :visualization_settings {}
+                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                          :collection_id parent-id :name (named "card")} {:creator_id (mt/user->id :rasta)
+                                                                                          :database_id (mt/id)
+                                                                                          :display :table
+                                                                                          :visualization_settings {}
+                                                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                          :collection_id parent-id :type :model :name (named "model")}])]
+          (testing "the collection data includes the type under `item.type` for collections"
+            (is (every? #(contains? % :type)
+                        (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                             :data
+                             (filter #(= (:model %) "collection")))))
+            (is (not-any? #(contains? % :type)
                           (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
                                :data
-                               (filter #(= (:model %) "collection")))))
-              (is (not-any? #(contains? % :type)
-                            (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                                 :data
-                                 (remove #(= (:model %) "collection"))))))
-            (testing "`item.type` is correct for collections"
-              (is (= #{"library-data"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                                            :data
-                                            (keep :type)
-                                            set)))))))
-      (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
-        (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/" :type "library-dashboards"} :model/Collection {mid-col-id :id} {:name "middle level col" :type "library-dashboards" :location (str "/" top-col-id "/")}]
-          (mt/with-model-cleanup [:model/Card]
-            (let [[{leaf-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                             :database_id (mt/id)
-                                                             :display :table
-                                                             :visualization_settings {}
-                                                             :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                             :type :model :collection_id mid-col-id :name "leaf model"}])
-                  leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                               (remove #(= (:model %) "collection"))))))
+          (testing "`item.type` is correct for collections"
+            (is (= #{"library-data"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
                                           :data
-                                          (filter #(= (:id %) leaf-card-id))
-                                          first)]
-              (is (= {:id mid-col-id
-                      :name "middle level col"
-                      :type "library-dashboards"
-                      :authority_level nil
-                      :effective_ancestors [{:id top-col-id
-                                             :name "top level col"
-                                             :type "library-dashboards"}]}
-                     (:collection leaf-card-response))))))))))
+                                          (keep :type)
+                                          set))))))
+      (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
+        (mt/with-model-cleanup [:model/Card :model/Collection]
+          (let [[{top-col-id :id}] (collection/create-collections! [{:name "top level col" :location "/" :type "library-dashboards"}])
+                [{mid-col-id :id}] (collection/create-collections! [{:name "middle level col" :type "library-dashboards" :location (str "/" top-col-id "/")}])
+                [{leaf-card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                           :database_id (mt/id)
+                                                           :display :table
+                                                           :visualization_settings {}
+                                                           :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                           :type :model :collection_id mid-col-id :name "leaf model"}])
+                leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                                        :data
+                                        (filter #(= (:id %) leaf-card-id))
+                                        first)]
+            (is (= {:id mid-col-id
+                    :name "middle level col"
+                    :type "library-dashboards"
+                    :authority_level nil
+                    :effective_ancestors [{:id top-col-id
+                                           :name "top level col"
+                                           :type "library-dashboards"}]}
+                   (:collection leaf-card-response)))))))))
 
 (deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
@@ -2563,52 +2590,44 @@
                       "Card should not be found in search results after database deletion"))))))))))
 
 (deftest collection-filter-test
-  (mt/with-temp [:model/Collection {parent-coll :id} {:name "Parent Collection"
-                                                      :location "/"} :model/Collection {child-coll :id} {:name "Child Collection"
-                                                                                                         :location (collection/location-path parent-coll)} :model/Collection {grandchild-coll :id} {:name "Grandchild Collection"
-                                                                                                                                                                                                    :location (collection/location-path parent-coll child-coll)}]
-    (mt/with-model-cleanup [:model/Card]
-      (let [[{parent-card :id} {child-card :id} {grandchild-card :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                                                             :database_id (mt/id)
-                                                                                             :display :table
-                                                                                             :visualization_settings {}
-                                                                                             :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                             :collection_id parent-coll :name "Parent Card"} {:creator_id (mt/user->id :rasta)
-                                                                                                                                              :database_id (mt/id)
-                                                                                                                                              :display :table
-                                                                                                                                              :visualization_settings {}
-                                                                                                                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                              :collection_id child-coll :name "Child Card"} {:creator_id (mt/user->id :rasta)
-                                                                                                                                                                                             :database_id (mt/id)
-                                                                                                                                                                                             :display :table
-                                                                                                                                                                                             :visualization_settings {}
-                                                                                                                                                                                             :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                                                                                                                                                             :collection_id grandchild-coll :name "Grandchild Card"}])]
-        (mt/with-temp [:model/Dashboard {parent-dash :id} {:collection_id parent-coll :name "Parent Dashboard"}]
-          (let [[{other-card :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                         :database_id (mt/id)
-                                                         :display :table
-                                                         :visualization_settings {}
-                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                         :collection_id nil :name "No Collection Card"}])]
-            (testing "Filter by parent collection returns parent and all descendants"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-                (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
-                       (set (map :id (:data results)))))))
-            (testing "Filter by child collection returns child and descendants only"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
-                (is (= #{child-card grandchild-card child-coll grandchild-coll}
-                       (set (map :id (:data results)))))))
-            (testing "Filter by leaf collection returns only that collection's items"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
-                (is (= #{grandchild-card grandchild-coll}
-                       (set (map :id (:data results)))))))
-            (testing "Filter by non-existent collection returns no results"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
-                (is (empty? (:data results)))))
-            (testing "Items with no collection are not included when filtering by collection"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-                (is (not (some #{other-card} (map :id (:data results)))))))))))))
+  (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Collection]
+    (let [card-row      {:creator_id             (mt/user->id :rasta)
+                         :database_id            (mt/id)
+                         :display                :table
+                         :visualization_settings {}
+                         :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+          [{parent-coll :id}]     (collection/create-collections! [{:name "Parent Collection"
+                                                                    :location "/"}])
+          [{child-coll :id}]      (collection/create-collections! [{:name "Child Collection"
+                                                                    :location (collection/location-path parent-coll)}])
+          [{grandchild-coll :id}] (collection/create-collections! [{:name "Grandchild Collection"
+                                                                    :location (collection/location-path parent-coll child-coll)}])
+          [{parent-card :id} {child-card :id} {grandchild-card :id}]
+          (card/create-cards! [(assoc card-row :collection_id parent-coll :name "Parent Card")
+                               (assoc card-row :collection_id child-coll :name "Child Card")
+                               (assoc card-row :collection_id grandchild-coll :name "Grandchild Card")])
+          [{parent-dash :id}]     (dashboard/create-dashboards! [{:collection_id parent-coll
+                                                                  :name          "Parent Dashboard"
+                                                                  :creator_id    (mt/user->id :rasta)}])
+          [{other-card :id}]      (card/create-cards! [(assoc card-row :collection_id nil :name "No Collection Card")])]
+      (testing "Filter by parent collection returns parent and all descendants"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+          (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
+                 (set (map :id (:data results)))))))
+      (testing "Filter by child collection returns child and descendants only"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
+          (is (= #{child-card grandchild-card child-coll grandchild-coll}
+                 (set (map :id (:data results)))))))
+      (testing "Filter by leaf collection returns only that collection's items"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
+          (is (= #{grandchild-card grandchild-coll}
+                 (set (map :id (:data results)))))))
+      (testing "Filter by non-existent collection returns no results"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
+          (is (empty? (:data results)))))
+      (testing "Items with no collection are not included when filtering by collection"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+          (is (not (some #{other-card} (map :id (:data results))))))))))
 
 (deftest collection-filter-with-search-string-test
   (mt/with-temp [:model/Collection {coll-1 :id} {:name "Collection 1"} :model/Collection _ {:name "Collection 2"}]
@@ -2653,18 +2672,18 @@
 (deftest collection-filter-respects-permissions-test
   (testing "GET /api/search?collection=<id> excludes results the user cannot read, and includes them once granted (metabase#entity-picker)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (mt/with-model-cleanup [:model/Card]
-          (let [[{card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
-                                                      :database_id (mt/id)
-                                                      :display :table
-                                                      :visualization_settings {}
-                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                                                      :collection_id coll-id :name "scoped one"}])]
-            (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
-            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (is (= #{card-id coll-id}
-                   (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))))))))))
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+              [{card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                    :database_id (mt/id)
+                                                    :display :table
+                                                    :visualization_settings {}
+                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                    :collection_id coll-id :name "scoped one"}])]
+          (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+          (is (= #{card-id coll-id}
+                 (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Search Tests (Phase 4)                                         |
@@ -2673,32 +2692,36 @@
 (deftest measure-search-by-description-test
   (testing "Should be able to find measures by description"
     (let [unique-desc (mt/random-name)]
-      (mt/with-temp [:model/Measure _ {:name        "Some Measure"
-                                       :description unique-desc}]
+      (mt/with-model-cleanup [:model/Measure]
+        (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "Some Measure" :description unique-desc)])
         (is (=? [{:name "Some Measure" :model "measure" :description unique-desc}]
                 (search-request-data :crowberto :q unique-desc)))))))
 
 (deftest measure-table-db-id-filter-test
   (testing "Measures are returned when searching with matching table_db_id"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure _ {:name measure-name}]
+      (mt/with-model-cleanup [:model/Measure]
+        (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name measure-name)])
         (is (=? [{:name measure-name :model "measure"}]
                 (search-request-data :crowberto :q measure-name
                                      :table_db_id (mt/id)))))))
   (testing "Measures are NOT returned when searching with non-matching table_db_id"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Database {other-db-id :id} {}
-                     :model/Measure  _ {:name measure-name}]
-        (is (= []
-               (binding [*search-request-results-database-id* other-db-id]
-                 (search-request-data :crowberto :q measure-name
-                                      :table_db_id other-db-id))))))))
+      (mt/with-temp [:model/Database {other-db-id :id} {}]
+        (mt/with-model-cleanup [:model/Measure]
+          (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name measure-name)])
+          (is (= []
+                 (binding [*search-request-results-database-id* other-db-id]
+                   (search-request-data :crowberto :q measure-name
+                                        :table_db_id other-db-id)))))))))
 
 (deftest measure-search-result-shape-test
   (testing "Measure search results contain table and database context fields"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure _ {:name       measure-name
-                                       :definition (table-count-definition (mt/id) (mt/id :venues))}]
+      (mt/with-model-cleanup [:model/Measure]
+        (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+                                          :name       measure-name
+                                          :definition (table-count-definition (mt/id) (mt/id :venues)))])
         (is (=? [{:name        measure-name
                   :model       "measure"
                   :table_id    true
@@ -2718,33 +2741,35 @@
   (testing "User with view-data access can see measures in search"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      {table-id :id} {:db_id db-id :schema nil}
-                   :model/Measure                    _ {:name "test measure" :definition (table-count-definition db-id table-id)}
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
-        (is (=? [{:name "test measure" :model "measure"}]
-                (binding [*search-request-results-database-id* db-id]
-                  (search-request-data :rasta :q "test measure"))))))))
+      (mt/with-model-cleanup [:model/Measure]
+        (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "test measure" :definition (table-count-definition db-id table-id))])
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
+          (is (=? [{:name "test measure" :model "measure"}]
+                  (binding [*search-request-results-database-id* db-id]
+                    (search-request-data :rasta :q "test measure")))))))))
 
 (deftest measure-archive-round-trip-test
   (testing "Archived measures appear in archived results and not in default results"
     (let [measure-name (mt/random-name)]
-      (mt/with-temp [:model/Measure {measure-id :id} {:name measure-name}]
-        (testing "measure appears in default (non-archived) results"
-          (is (=? [{:name measure-name :model "measure"}]
-                  (search-request-data :crowberto :q measure-name))))
-        (testing "after archiving, measure disappears from default results"
-          (measure/update-measures! [{:id measure-id :archived true}])
-          (is (= [] (search-request-data :crowberto :q measure-name))))
-        (testing "archived measure appears in archived=true results"
-          (is (=? [{:name measure-name :model "measure" :archived true}]
-                  (search-request-data :crowberto :q measure-name :archived "true"))))
-        (testing "after unarchiving, measure returns to default results"
-          (measure/update-measures! [{:id measure-id :archived false}])
-          (is (=? [{:name measure-name :model "measure"}]
-                  (search-request-data :crowberto :q measure-name))))))))
+      (mt/with-model-cleanup [:model/Measure]
+        (let [[{measure-id :id}] (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name measure-name)])]
+          (testing "measure appears in default (non-archived) results"
+            (is (=? [{:name measure-name :model "measure"}]
+                    (search-request-data :crowberto :q measure-name))))
+          (testing "after archiving, measure disappears from default results"
+            (measure/update-measures! [{:id measure-id :archived true}])
+            (is (= [] (search-request-data :crowberto :q measure-name))))
+          (testing "archived measure appears in archived=true results"
+            (is (=? [{:name measure-name :model "measure" :archived true}]
+                    (search-request-data :crowberto :q measure-name :archived "true"))))
+          (testing "after unarchiving, measure returns to default results"
+            (measure/update-measures! [{:id measure-id :archived false}])
+            (is (=? [{:name measure-name :model "measure"}]
+                    (search-request-data :crowberto :q measure-name)))))))))
 
 (deftest ^:synchronized measure-appdb-engine-test
   (when (search/supports-index?)

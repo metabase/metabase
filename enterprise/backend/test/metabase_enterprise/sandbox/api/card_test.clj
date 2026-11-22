@@ -10,6 +10,7 @@
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]))
 
 (deftest sandboxed-users-can-save-cards-test
@@ -105,38 +106,39 @@
 
 (deftest users-with-data-access-and-query-create-may-access-cards
   (mt/with-premium-features #{:advanced-permissions}
-    (mt/with-temp [:model/User                       {user-id :id} {}
-                   :model/PermissionsGroup           group         {}
-                   :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
-                                                                                                      :type :query,
-                                                                                                      :query {:source-table (mt/id :venues)
-                                                                                                              :limit 1}}}]
-      (perms-group-membership/add-user-to-group! user-id group)
-      (let [cases [[:unrestricted           :query-builder-and-native true]
-                   [:unrestricted           :query-builder            true]
-                   [:unrestricted           :no                       true]
-                   [:legacy-no-self-service :no                       false]
-                   [:blocked                :no                       false]]
-            ;; These are invalid permission combinations, so we don't test them:
-            invalid-cases [[:legacy-no-self-service :query-builder-and-native]
-                           [:legacy-no-self-service :query-builder]
-                           [:blocked :query-builder-and-native]
-                           [:blocked :query-builder]]]
-        (is (= (count cases)
-               (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
-                     (-> permissions.schema/data-permissions :perms/create-queries :values count))
-                  (count invalid-cases)))
-            "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
-        (mt/with-no-data-perms-for-all-users!
-          (doseq [[view-perm create-perm should-succeed?] cases]
-            (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
-            (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
-            (testing (str "view-data: " view-perm ", create-queries: " create-perm)
-              (if should-succeed?
-                (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
-                  (is (= 1 (count (mt/rows response)))))
-                (let [response (mt/user-http-request user-id :post 403 (str "card/" (u/the-id card) "/query"))]
-                  (is (partial= {:error_type "missing-required-permissions"} response)))))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [{user-id :id} (user/create-user! {:email "card-data-access-user@example.com"})]
+        (mt/with-temp [:model/PermissionsGroup           group         {}
+                       :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
+                                                                                                          :type :query,
+                                                                                                          :query {:source-table (mt/id :venues)
+                                                                                                                  :limit 1}}}]
+          (perms-group-membership/add-user-to-group! user-id group)
+          (let [cases [[:unrestricted           :query-builder-and-native true]
+                       [:unrestricted           :query-builder            true]
+                       [:unrestricted           :no                       true]
+                       [:legacy-no-self-service :no                       false]
+                       [:blocked                :no                       false]]
+                ;; These are invalid permission combinations, so we don't test them:
+                invalid-cases [[:legacy-no-self-service :query-builder-and-native]
+                               [:legacy-no-self-service :query-builder]
+                               [:blocked :query-builder-and-native]
+                               [:blocked :query-builder]]]
+            (is (= (count cases)
+                   (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
+                         (-> permissions.schema/data-permissions :perms/create-queries :values count))
+                      (count invalid-cases)))
+                "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
+            (mt/with-no-data-perms-for-all-users!
+              (doseq [[view-perm create-perm should-succeed?] cases]
+                (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
+                (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
+                (testing (str "view-data: " view-perm ", create-queries: " create-perm)
+                  (if should-succeed?
+                    (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+                      (is (= 1 (count (mt/rows response)))))
+                    (let [response (mt/user-http-request user-id :post 403 (str "card/" (u/the-id card) "/query"))]
+                      (is (partial= {:error_type "missing-required-permissions"} response)))))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"

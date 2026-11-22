@@ -477,35 +477,37 @@
 (deftest maybe-test-and-migrate-details!-password-test
   (mt/with-driver
    :secret-test-driver
-    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                       :name "Secret Test"
-                                       :details {:keystore-value "secret"
-                                                 :password "secret"}}]
-      (log/with-no-logs
-        (testing "password connects"
-          (binding [*secret-can-connect?* (fn [_driver details]
-                                            (contains? details :password))]
-            (is (= {:keystore-value nil
-                    :password "secret"}
-                   (database/maybe-test-and-migrate-details! db)))
-            (is (= {:password "secret"}
-                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                               :name "Secret Test"
+                                               :details {:keystore-value "secret"
+                                                         :password "secret"}}])]
+        (log/with-no-logs
+          (testing "password connects"
+            (binding [*secret-can-connect?* (fn [_driver details]
+                                              (contains? details :password))]
+              (is (= {:keystore-value nil
+                      :password "secret"}
+                     (database/maybe-test-and-migrate-details! db)))
+              (is (= {:password "secret"}
+                     (t2/select-one-fn :details :model/Database :id (:id db)))))))))))
 
 (deftest maybe-test-and-migrate-details!-keystore-test
   (mt/with-driver
    :secret-test-driver
-    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                       :name "Secret Test"
-                                       :details {:keystore-value "secret"
-                                                 :password "secret"}}]
-      (log/with-no-logs
-        (testing "keystore connects"
-          (binding [*secret-can-connect?* (fn [_driver details]
-                                            (get details :keystore-id))]
-            (is (= {:keystore-id (get-in db [:details :keystore-id])}
-                   (database/maybe-test-and-migrate-details! db)))
-            (is (= {:keystore-id (get-in db [:details :keystore-id])}
-                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                               :name "Secret Test"
+                                               :details {:keystore-value "secret"
+                                                         :password "secret"}}])]
+        (log/with-no-logs
+          (testing "keystore connects"
+            (binding [*secret-can-connect?* (fn [_driver details]
+                                              (get details :keystore-id))]
+              (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                     (database/maybe-test-and-migrate-details! db)))
+              (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                     (t2/select-one-fn :details :model/Database :id (:id db)))))))))))
 
 (deftest secrets-in-details-test
   (mt/with-driver :secret-test-driver
@@ -538,33 +540,34 @@
               "API request"))))))
 
 (deftest secret-value-will-not-save-in-details-test
-  (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                     :name "Secret Test"
-                                     :details {:keystore-value "secret"}}]
-    (let [db-id (:id db)
-          secret-id (get-in db [:details :keystore-id])
-          expected {:keystore-id secret-id}]
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-      (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
-              (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-      (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
-              (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-      (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
-              (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-options "local"
-                                                        :keystore-path "prefer-path"
-                                                        :keystore-value "ignore-value"}}])
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-      (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
-              (secret/latest-for-id secret-id)))
-      (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
-      (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-      (is (=? nil
-              (secret/latest-for-id secret-id))))))
+  (mt/with-model-cleanup [:model/Database :model/Secret]
+    (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                             :name "Secret Test"
+                                             :details {:keystore-value "secret"}}])]
+      (let [db-id (:id db)
+            secret-id (get-in db [:details :keystore-id])
+            expected {:keystore-id secret-id}]
+        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+        (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
+                (secret/latest-for-id secret-id)))
+        (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
+        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+        (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
+                (secret/latest-for-id secret-id)))
+        (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
+        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+        (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
+                (secret/latest-for-id secret-id)))
+        (database/update-databases! [{:id db-id :details {:keystore-options "local"
+                                                          :keystore-path "prefer-path"
+                                                          :keystore-value "ignore-value"}}])
+        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+        (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
+                (secret/latest-for-id secret-id)))
+        (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
+        (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+        (is (=? nil
+                (secret/latest-for-id secret-id)))))))
 
 (deftest secret-db-test-changes
   (mt/with-driver :secret-test-driver
@@ -693,45 +696,49 @@
                                     (is (= exp-val
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
-            (mt/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                              :name    "Test DB with secrets"
-                                                                              :details {:host           "localhost"
-                                                                                        :password-value "new-password"}}]
-              (testing " and saved db-details looks correct"
-                (check-db-fn database {:kind    :password
-                                       :source  :uploaded
-                                       :version 1
-                                       :value   "new-password"})
-                (testing " updating the value works as expected"
-                  (database/update-databases! [{:id id :details (assoc details :password-path "/path/to/my/password-file")}])
-                  (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
-                                                                       :source  :file-path
-                                                                       :version 2
-                                                                       :value   "/path/to/my/password-file"}))))
-            (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
-              (is (seq @secret-ids) "At least one Secret instance should have been created")
-              (doseq [secret-id @secret-ids]
-                (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (t2/select-one :model/Secret :id secret-id))
-                      (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+            (mt/with-model-cleanup [:model/Database :model/Secret]
+              (let [[{:keys [id details] :as database}] (database/create-databases!
+                                                         [{:engine  :secret-test-driver
+                                                           :name    "Test DB with secrets"
+                                                           :details {:host           "localhost"
+                                                                     :password-value "new-password"}}])]
+                (testing " and saved db-details looks correct"
+                  (check-db-fn database {:kind    :password
+                                         :source  :uploaded
+                                         :version 1
+                                         :value   "new-password"})
+                  (testing " updating the value works as expected"
+                    (database/update-databases! [{:id id :details (assoc details :password-path "/path/to/my/password-file")}])
+                    (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
+                                                                         :source  :file-path
+                                                                         :version 2
+                                                                         :value   "/path/to/my/password-file"})))
+                (database/delete-databases! [id])
+                (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
+                  (is (seq @secret-ids) "At least one Secret instance should have been created")
+                  (doseq [secret-id @secret-ids]
+                    (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
+                      (is (nil? (t2/select-one :model/Secret :id secret-id))
+                          (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))))
 
 (deftest write-data-details-secrets-on-insert-test
   (testing "handle-incoming-client-secrets! processes write_data_details on insert"
-    (mt/with-temp [:model/Database db {:engine             "secret-test-driver"
-                                       :name               "Secret Test"
-                                       :details            {:host "localhost"}
-                                       :write_data_details {:keystore-value "write-secret"}}]
-      (let [db-id             (:id db)
-            raw-write-details (t2/select-one-fn
-                               (comp json/decode+kw :write_data_details)
-                               (t2/table-name :model/Database) :id db-id)]
-        (testing "keystore-value replaced with keystore-id"
-          (is (contains? raw-write-details :keystore-id))
-          (is (not (contains? raw-write-details :keystore-value))))
-        (testing "Secret record created with correct value"
-          (when-let [secret-id (:keystore-id raw-write-details)]
-            (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
-                    (secret/latest-for-id secret-id)))))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine             :secret-test-driver
+                                               :name               "Secret Test"
+                                               :details            {:host "localhost"}
+                                               :write_data_details {:keystore-value "write-secret"}}])]
+        (let [db-id             (:id db)
+              raw-write-details (t2/select-one-fn
+                                 (comp json/decode+kw :write_data_details)
+                                 (t2/table-name :model/Database) :id db-id)]
+          (testing "keystore-value replaced with keystore-id"
+            (is (contains? raw-write-details :keystore-id))
+            (is (not (contains? raw-write-details :keystore-value))))
+          (testing "Secret record created with correct value"
+            (when-let [secret-id (:keystore-id raw-write-details)]
+              (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                      (secret/latest-for-id secret-id))))))))))
 
 (deftest write-data-details-secrets-on-update-test
   (testing "handle-incoming-client-secrets! processes write_data_details on update"

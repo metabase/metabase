@@ -14,15 +14,10 @@
    :executor_id  (mt/user->id :rasta)
    :context      context})
 
-(deftest insert-validates-context-test
+(deftest insert-stores-action-contexts-test
   (testing "the action contexts are accepted"
     (doseq [context [:action :action-execute :public-action-execute]]
       (testing context
         (mt/with-model-cleanup [:model/QueryExecution]
           (let [id (t2/insert-returning-pk! :model/QueryExecution (query-execution-row context))]
-            (is (= context (t2/select-one-fn :context :model/QueryExecution :id id))))))))
-  (testing "an unknown context is still rejected"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid query execution context"
-         (t2/insert! :model/QueryExecution (query-execution-row :not-a-real-context))))))
+            (is (= context (t2/select-one-fn :context :model/QueryExecution :id id)))))))))

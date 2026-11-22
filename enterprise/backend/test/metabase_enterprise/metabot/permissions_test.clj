@@ -6,30 +6,33 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest resolve-user-permissions-default-test
   (mt/with-premium-features #{:ai-controls}
     (testing "user with no stored permissions inherits from all-internal-users migration defaults"
-      (mt/with-temp [:model/User {user-id :id} {}
-                     :model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                     :model/PermissionsGroupMembership _ {:user_id  user-id
-                                                          :group_id group-id}]
-        (let [perms (scope/resolve-user-permissions user-id)]
-          ;; all-internal-users magic group has yes from migration
-          (is (= :yes (:permission/metabot-sql-generation perms)))
-          (is (= :yes (:permission/metabot-nlq perms))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "resolve-user-permissions-default-test-1@example.com"})]
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                         :model/PermissionsGroupMembership _ {:user_id  user-id
+                                                              :group_id group-id}]
+            (let [perms (scope/resolve-user-permissions user-id)]
+              ;; all-internal-users magic group has yes from migration
+              (is (= :yes (:permission/metabot-sql-generation perms)))
+              (is (= :yes (:permission/metabot-nlq perms))))))))))
 
 (deftest resolve-user-permissions-tenant-user-default-test
   (mt/with-premium-features #{:ai-controls}
     (testing "a tenant user gets permission/metabot :yes from the migration-seeded All tenant users row"
       (mt/with-temporary-setting-values [metabot-advanced-permissions false]
-        (mt/with-temp [:model/Tenant {tenant-id :id} {}
-                       :model/User   {user-id :id}   {:tenant_id tenant-id}]
-          (is (= #{(u/the-id (perms/all-external-users-group))}
-                 (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))
-          (is (= :yes (:permission/metabot (scope/resolve-user-permissions user-id)))))))))
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}]
+          (mt/with-model-cleanup [:model/User]
+            (let [{user-id :id} (user/create-user! {:email "metabot-tenant-user@example.com" :tenant_id tenant-id})]
+              (is (= #{(u/the-id (perms/all-external-users-group))}
+                     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))
+              (is (= :yes (:permission/metabot (scope/resolve-user-permissions user-id)))))))))))
 
 (deftest resolve-user-permissions-stored-test
   (mt/with-premium-features #{:ai-controls}
@@ -96,23 +99,24 @@
      (fn []
        (let [all-users-id    (u/the-id (perms/all-users-group))
              data-analyst-id (u/the-id (perms/data-analyst-group))]
-         (mt/with-temp [:model/User {user-id :id} {}
-                        :model/PermissionsGroup {group-id :id} {:name "Custom Group"}
-                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
-           (mt/with-premium-features #{:advanced-permissions}
-             (perms-group-membership/add-user-to-group! user-id data-analyst-id))
-           (insert-in-mode-showing-them! [{:group_id all-users-id :perm_type :permission/metabot :perm_value :yes}
-                                          {:group_id data-analyst-id :perm_type :permission/metabot-nlq :perm_value :yes}
-                                          {:group_id group-id :perm_type :permission/metabot-sql-generation :perm_value :yes}])
-           (testing "simple mode resolves only the groups it shows, so hidden All Users :no cannot be overridden"
-             (mt/with-temporary-setting-values [metabot-advanced-permissions false]
-               (is (=? {:permission/metabot                :yes
-                        :permission/metabot-nlq            :no
-                        :permission/metabot-sql-generation :no}
-                       (scope/resolve-user-permissions user-id)))))
-           (testing "group-level mode ignores the All Users rows it hides and resolves every other group"
-             (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-               (is (=? {:permission/metabot                :no
-                        :permission/metabot-nlq            :yes
-                        :permission/metabot-sql-generation :yes}
-                       (scope/resolve-user-permissions user-id)))))))))))
+         (mt/with-model-cleanup [:model/User]
+           (let [{user-id :id} (user/create-user! {:email "resolve-user-permissions-mode-scoping-test-1@example.com"})]
+             (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Custom Group"}
+                            :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+               (mt/with-premium-features #{:advanced-permissions}
+                 (perms-group-membership/add-user-to-group! user-id data-analyst-id))
+               (insert-in-mode-showing-them! [{:group_id all-users-id :perm_type :permission/metabot :perm_value :yes}
+                                              {:group_id data-analyst-id :perm_type :permission/metabot-nlq :perm_value :yes}
+                                              {:group_id group-id :perm_type :permission/metabot-sql-generation :perm_value :yes}])
+               (testing "simple mode resolves only the groups it shows, so hidden All Users :no cannot be overridden"
+                 (mt/with-temporary-setting-values [metabot-advanced-permissions false]
+                   (is (=? {:permission/metabot                :yes
+                            :permission/metabot-nlq            :no
+                            :permission/metabot-sql-generation :no}
+                           (scope/resolve-user-permissions user-id)))))
+               (testing "group-level mode ignores the All Users rows it hides and resolves every other group"
+                 (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+                   (is (=? {:permission/metabot                :no
+                            :permission/metabot-nlq            :yes
+                            :permission/metabot-sql-generation :yes}
+                           (scope/resolve-user-permissions user-id)))))))))))))

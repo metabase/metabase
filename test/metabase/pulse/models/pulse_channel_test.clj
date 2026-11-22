@@ -342,62 +342,68 @@
 
 (deftest e2e-single-pc-trigger-test
   (with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel {pc-id :id}    (merge {:pulse_id       pulse-id
-                                                              :channel_type   :email}
-                                                             daily-at-6pm)]
-      (testing "Creating a PulseChannel will creates a trigger"
-        (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
-               (send-pulse-triggers pulse-id))))
-      (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
-        (update-channel-schedule! pc-id :email daily-at-7pm true)
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
-                (send-pulse-triggers pulse-id))))
-      (testing "disable PC will delete its trigger"
-        (update-channel-schedule! pc-id :email daily-at-7pm false)
-        (is (empty? (send-pulse-triggers pulse-id))))
-      (testing "reenable PC will add its trigger"
-        (update-channel-schedule! pc-id :email daily-at-7pm true)
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
-                (send-pulse-triggers pulse-id))))
-      (testing "remove the trigger if PC is deleted"
-        (pulse-channel/delete-pulse-channels! [pc-id])
-        (is (empty? (send-pulse-triggers pulse-id)))))))
+    (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
+                                                                 :channel_type :email
+                                                                 :enabled      true}
+                                                                daily-at-6pm))]
+          (testing "Creating a PulseChannel will creates a trigger"
+            (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
+                   (send-pulse-triggers pulse-id))))
+          (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
+            (update-channel-schedule! pc-id :email daily-at-7pm true)
+            (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
+                    (send-pulse-triggers pulse-id))))
+          (testing "disable PC will delete its trigger"
+            (update-channel-schedule! pc-id :email daily-at-7pm false)
+            (is (empty? (send-pulse-triggers pulse-id))))
+          (testing "reenable PC will add its trigger"
+            (update-channel-schedule! pc-id :email daily-at-7pm true)
+            (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
+                    (send-pulse-triggers pulse-id))))
+          (testing "remove the trigger if PC is deleted"
+            (pulse-channel/delete-pulse-channels! [pc-id])
+            (is (empty? (send-pulse-triggers pulse-id)))))))))
 
 (deftest e2e-multiple-pcs-test
   (with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel {pc-id-1 :id}  (merge {:pulse_id       pulse-id
-                                                              :channel_type   :email}
-                                                             daily-at-6pm)]
-      (testing "pc 1 will have its own channel to start with"
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
-                (send-pulse-triggers pulse-id))))
-      (testing "add a new pc with the same time will update the existing trigger"
-        (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
-                                                                 :channel_type :slack}
-                                                                daily-at-6pm)]
-          (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                  (send-pulse-triggers pulse-id)))
-          (pulse-channel/delete-pulse-channels! [pc-id-2])
-          (testing "deleting channel-2 should remove the id, but keep the existing trigger"
+    (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id-1 (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
+                                                                   :channel_type :email
+                                                                   :enabled      true}
+                                                                  daily-at-6pm))]
+          (testing "pc 1 will have its own channel to start with"
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
-                    (send-pulse-triggers pulse-id))))))
-      (testing "add a new pc then change its schedule"
-        (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
-                                                                 :channel_type :slack}
-                                                                daily-at-6pm)]
-          (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                  (send-pulse-triggers pulse-id)))
-          (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
-            (update-channel-schedule! pc-id-2 :slack daily-at-7pm true)
-            (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
-                      (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
                     (send-pulse-triggers pulse-id))))
-          (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
-            (update-channel-schedule! pc-id-2 :slack daily-at-6pm true)
-            (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                    (send-pulse-triggers pulse-id)))))))))
+          (testing "add a new pc with the same time will update the existing trigger"
+            (let [pc-id-2 (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
+                                                                       :channel_type :slack
+                                                                       :enabled      true}
+                                                                      daily-at-6pm))]
+              (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                      (send-pulse-triggers pulse-id)))
+              (pulse-channel/delete-pulse-channels! [pc-id-2])
+              (testing "deleting channel-2 should remove the id, but keep the existing trigger"
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
+                        (send-pulse-triggers pulse-id))))))
+          (testing "add a new pc then change its schedule"
+            (let [pc-id-2 (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
+                                                                       :channel_type :slack
+                                                                       :enabled      true}
+                                                                      daily-at-6pm))]
+              (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                      (send-pulse-triggers pulse-id)))
+              (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
+                (update-channel-schedule! pc-id-2 :slack daily-at-7pm true)
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
+                          (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
+                        (send-pulse-triggers pulse-id))))
+              (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
+                (update-channel-schedule! pc-id-2 :slack daily-at-6pm true)
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                        (send-pulse-triggers pulse-id)))))))))))
 
 (defn- status-code
   "The `:status-code` of the exception `thunk` throws, or nil when it throws none."

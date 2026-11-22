@@ -4,9 +4,12 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
@@ -19,6 +22,7 @@
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
@@ -827,11 +831,12 @@
       (search.tu/with-temp-index-table
         (let [admins-coll-id (t2/select-one-pk :model/Collection :personal_owner_id api/*current-user-id*)
               others-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
-          (mt/with-temp [:model/Collection {public-coll-id :id} {}
-                         :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
-                         :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
-                         :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
-            (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
+          (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+            (let [[{public-coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+                  [{dash-id-1 :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Our Dashboard",  :collection_id public-coll-id})])
+                  [{dash-id-2 :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "My Dashboard",   :collection_id admins-coll-id})])
+                  [{dash-id-3 :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Your Dashboard", :collection_id others-coll-id})])
+                  test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
               (is (= #{"Our Dashboard" "My Dashboard"}
                      (->> (search/search {:term-queries ["Dashboard"]})
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
@@ -842,9 +847,9 @@
   (testing "search can discover documents by name"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Document {document-id :id}
-                       {:name "Quarterly planning sh1b0le#doc"}]
-          (let [result (->> (search/search {:term-queries ["sh1b0le#doc"]
+        (mt/with-model-cleanup [:model/Document]
+          (let [[{document-id :id}] (document/create-documents! [(merge (dissoc (mt/with-temp-defaults :model/Document) :created_at :updated_at) {:name "Quarterly planning sh1b0le#doc"})])
+                result (->> (search/search {:term-queries ["sh1b0le#doc"]
                                             :entity-types ["document"]})
                             (filter #(= document-id (:id %)))
                             first)]
@@ -894,33 +899,34 @@
   (mt/with-premium-features #{:content-verification}
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Collection {finance-coll-id :id} {:name "Finance Team"
-                                                                :description "Finance team collection"}
-                       :model/Collection {analytics-coll-id :id} {:name "Analytics"
-                                                                  :description "Analytics collection"}
-                       :model/Collection {no-desc-coll-id :id} {:name "No Description"}
-                       :model/Dashboard {dash-1-id :id} {:name "Finance Dashboard"
-                                                         :collection_id finance-coll-id}
-                       :model/Dashboard {dash-2-id :id} {:name "Analytics Dashboard"
-                                                         :collection_id analytics-coll-id}
-                       :model/Dashboard {dash-3-id :id} {:name "No Desc Dashboard"
-                                                         :collection_id no-desc-coll-id}]
-          (testing "search results include collection descriptions"
-            (let [results (search/search {:term-queries ["Dashboard"]})
-                  test-dashboard-ids #{dash-1-id dash-2-id dash-3-id}
-                  test-results (->> results
-                                    (filter (fn [{:keys [id type]}]
-                                              (and (= "dashboard" type)
-                                                   (contains? test-dashboard-ids id)))))]
-              (testing "includes collection descriptions when present"
-                (let [finance-dash (u/seek #(= dash-1-id (:id %)) test-results)
-                      analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
-                  (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
-                  (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
-              (testing "handles nil collection descriptions"
-                (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
-                  (is (nil? (get-in no-desc-dash [:collection :description])))
-                  (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+        (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+          (let [[{finance-coll-id :id}] (collection/create-collections! [{:name "Finance Team"
+                                                                          :description "Finance team collection"}])
+                [{analytics-coll-id :id}] (collection/create-collections! [{:name "Analytics"
+                                                                            :description "Analytics collection"}])
+                [{no-desc-coll-id :id}] (collection/create-collections! [{:name "No Description"}])
+                [{dash-1-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Finance Dashboard"
+                                                                                                                                                   :collection_id finance-coll-id})])
+                [{dash-2-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Analytics Dashboard"
+                                                                                                                                                   :collection_id analytics-coll-id})])
+                [{dash-3-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "No Desc Dashboard"
+                                                                                                                                                   :collection_id no-desc-coll-id})])]
+            (testing "search results include collection descriptions"
+              (let [results (search/search {:term-queries ["Dashboard"]})
+                    test-dashboard-ids #{dash-1-id dash-2-id dash-3-id}
+                    test-results (->> results
+                                      (filter (fn [{:keys [id type]}]
+                                                (and (= "dashboard" type)
+                                                     (contains? test-dashboard-ids id)))))]
+                (testing "includes collection descriptions when present"
+                  (let [finance-dash (u/seek #(= dash-1-id (:id %)) test-results)
+                        analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
+                    (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
+                    (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
+                (testing "handles nil collection descriptions"
+                  (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
+                    (is (nil? (get-in no-desc-dash [:collection :description])))
+                    (is (= "No Description" (get-in no-desc-dash [:collection :name])))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
@@ -944,8 +950,9 @@
                                       :display                :table
                                       :visualization_settings {}
                                       :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :orders)))}])]
-            (mt/with-temp [:model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
-              (let [results      (search/search {:term-queries ["PortableEID Sample"]})
+            (mt/with-model-cleanup [:model/Dashboard]
+              (let [[{dash-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "PortableEID Sample Dashboard"})])
+                    results      (search/search {:term-queries ["PortableEID Sample"]})
                     by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
                     question-res (get by-id [q-id "question"])
                     model-res    (get by-id [m-id "model"])
@@ -964,20 +971,16 @@
   (testing "measure and segment hits carry a portable entity id and their base table's portable FK, as metrics do"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Measure
-                       {measure-id :id measure-eid :entity_id}
-                       {:name       "MeasureSearch Sample Revenue"
-                        :definition (let [mp (mt/metadata-provider)]
-                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                          (lib/aggregate (lib/count))))}
-
-                       :model/Segment
-                       {segment-id :id segment-eid :entity_id}
-                       {:name       "MeasureSearch Sample Big Orders"
-                        :definition (let [mp (mt/metadata-provider)]
-                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                          (lib/filter (lib/= 1 1))))}]
-          (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+        (mt/with-model-cleanup [:model/Segment :model/Measure]
+          (let [[{measure-id :id measure-eid :entity_id}] (measure/create-measures! [(merge (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at) {:name       "MeasureSearch Sample Revenue"
+                                                                                                                                                                     :definition (let [mp (mt/metadata-provider)]
+                                                                                                                                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                                                                                                                                       (lib/aggregate (lib/count))))})])
+                [{segment-id :id segment-eid :entity_id}] (segment/create-segments! [(merge (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at) {:name       "MeasureSearch Sample Big Orders"
+                                                                                                                                                                     :definition (let [mp (mt/metadata-provider)]
+                                                                                                                                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                                                                                                                                       (lib/filter (lib/= 1 1))))})])
+                db-name (t2/select-one-fn :name :model/Database :id (mt/id))
                 by-key  (into {} (map (juxt (juxt :type :id) identity))
                               (search/search {:term-queries ["MeasureSearch Sample"]}))]
             (is (=? {:type                   "measure"
@@ -1130,26 +1133,27 @@
 (deftest embedded-metabot-search-test
   (mt/with-test-user :crowberto
     (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
-                     :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
-                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
-                                                        :location (collection/location-path collection-id)}
-                     :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
-                     :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
-                     :model/Dashboard _ {:name "Embedded report elsewhere" :collection_id elsewhere-id}]
-        (mt/with-temp-vals-in-db :model/Metabot
-                                 (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
-                                 {:collection_id collection-id :use_verified_content true}
-          (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
-            (let [metabot (metabot.config/resolve-metabot request-id)
-                  search-args {:term-queries ["Embedded report"]
-                               :entity-types ["dashboard"]
-                               :collection-id elsewhere-id
-                               :metabot metabot}]
-              (is (= #{included-id draft-id}
-                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
-              (is (= [included-id]
-                     (mapv :id (search/search search-args)))))))))))
+      (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Embedded sources" :authority_level "official"}])
+              [{elsewhere-id :id}] (collection/create-collections! [{:name "Other sources" :authority_level "official"}])
+              [{drafts-id :id}] (collection/create-collections! [{:name "Embedded drafts"
+                                                                  :location (collection/location-path collection-id)}])
+              [{included-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Embedded report" :collection_id collection-id})])
+              [{draft-id :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Embedded report draft" :collection_id drafts-id})])
+              _ (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Embedded report elsewhere" :collection_id elsewhere-id})])]
+          (mt/with-temp-vals-in-db :model/Metabot
+                                   (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
+                                   {:collection_id collection-id :use_verified_content true}
+            (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
+              (let [metabot (metabot.config/resolve-metabot request-id)
+                    search-args {:term-queries ["Embedded report"]
+                                 :entity-types ["dashboard"]
+                                 :collection-id elsewhere-id
+                                 :metabot metabot}]
+                (is (= #{included-id draft-id}
+                       (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+                (is (= [included-id]
+                       (mapv :id (search/search search-args))))))))))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
@@ -1323,18 +1327,19 @@
   (testing "weights can be overridden on a per-tool-call basis"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
-                       :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
-                       :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
-          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
-                test-entity? (comp #{id-1 id-2} :id)
-                query        (fn [& [weights]]
-                               (->> (search/search (assoc base-query :weights weights))
-                                    (filter test-entity?)
-                                    (map (comp first #(str/split % #"\s") :name))))]
-            (is (= ["Bookmarked" "Regular"] (query)))
-            (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+        (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+          (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+                [{id-1 :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id})])
+                [{id-2 :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id})])]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id id-2, :user_id api/*current-user-id*}]
+              (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
+                    test-entity? (comp #{id-1 id-2} :id)
+                    query        (fn [& [weights]]
+                                   (->> (search/search (assoc base-query :weights weights))
+                                        (filter test-entity?)
+                                        (map (comp first #(str/split % #"\s") :name))))]
+                (is (= ["Bookmarked" "Regular"] (query)))
+                (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))))
 
 (deftest card-ref-hydration-emits-current-string-type-test
   (testing "a card ref hydrates to the Card's CURRENT type as a string — not the stale ref type, not a keyword"

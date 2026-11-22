@@ -21,6 +21,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])
   (:import
@@ -797,51 +798,53 @@
 
 (deftest e2e-native-query-source-card-id-join-perms-test
   (testing "Make sure that a native source card joined to an MBQL query checks card read perms rather than full native access"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type :native
-                                                              :native {:query "SELECT * FROM venues"}}
-                                              :result_metadata (for [field (meta/fields :venues)]
-                                                                 (-> (meta/field-metadata :venues field)
-                                                                     (dissoc :id :table-id)))}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-        (let [query (mt/mbql-query checkins
-                      {:joins [{:fields [[:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
-                                :source-table (format "card__%d" card-id)
-                                :alias "card"
-                                :condition [:=
-                                            $venue_id
-                                            [:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
-                                :strategy :left-join}]
-                       :order-by [[:asc $id]]
-                       :limit 2})]
-          (mt/with-current-user user-id
-            (is (= 2 (count (mt/rows (qp/process-query query)))))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [{user-id :id} (user/create-user! {:email "e2e-native-query-source-card-id-join-perms-test-1@example.com"})]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                  :type :native
+                                                                  :native {:query "SELECT * FROM venues"}}
+                                                  :result_metadata (for [field (meta/fields :venues)]
+                                                                     (-> (meta/field-metadata :venues field)
+                                                                         (dissoc :id :table-id)))}]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (let [query (mt/mbql-query checkins
+                          {:joins [{:fields [[:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
+                                    :source-table (format "card__%d" card-id)
+                                    :alias "card"
+                                    :condition [:=
+                                                $venue_id
+                                                [:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
+                                    :strategy :left-join}]
+                           :order-by [[:asc $id]]
+                           :limit 2})]
+              (mt/with-current-user user-id
+                (is (= 2 (count (mt/rows (qp/process-query query)))))))))))))
 
 (deftest e2e-ignore-user-supplied-source-card-key-test
   (testing "Make sure that you can't bypass native query permissions by including :qp/stage-is-from-source-card in a
            join"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type :native
-                                                              :native {:query "SELECT * FROM venues"}}}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-        (let [query (mt/mbql-query checkins
-                      {:joins [{:fields [$id]
-                                :alias "v"
-                                :source-query {:native "SELECT * from orders"}
-                                :condition [:= true true]
-                                ;; Make sure we can't just pass in this key and join to arbitrary SQL!
-                                :qp/stage-is-from-source-card card-id}]
-                       :order-by [[:asc $id]]
-                       :limit 2})]
-          (mt/with-current-user user-id
-            (is (thrown-with-msg?
-                 ExceptionInfo
-                 perms-error-msg
-                 (qp/process-query query)))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [{user-id :id} (user/create-user! {:email "e2e-ignore-user-supplied-source-card-key-test-1@example.com"})]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                  :type :native
+                                                                  :native {:query "SELECT * FROM venues"}}}]
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (let [query (mt/mbql-query checkins
+                          {:joins [{:fields [$id]
+                                    :alias "v"
+                                    :source-query {:native "SELECT * from orders"}
+                                    :condition [:= true true]
+                                    ;; Make sure we can't just pass in this key and join to arbitrary SQL!
+                                    :qp/stage-is-from-source-card card-id}]
+                           :order-by [[:asc $id]]
+                           :limit 2})]
+              (mt/with-current-user user-id
+                (is (thrown-with-msg?
+                     ExceptionInfo
+                     perms-error-msg
+                     (qp/process-query query)))))))))))
 
 (deftest e2e-card-join-both-permissions-test
   (testing "User can run query when they have permissions to both the source card and joined card"

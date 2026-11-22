@@ -257,16 +257,23 @@
 (deftest segment-create-event-test
   (testing :segment-create
     (mt/with-test-user :rasta
-      (mt/with-temp [:model/Segment segment]
-        (is (= {:topic       :segment-create
-                :user_id     (mt/user->id :rasta)
-                :model       "Segment"
-                :model_id    (:id segment)
-                :details     {:name        (:name segment)
-                              :description (:description segment)
-                              :database_id (mt/id)
-                              :table_id    (mt/id :checkins)}}
-               (mt/latest-audit-log-entry "segment-create" (:id segment))))))))
+      (mt/with-model-cleanup [:model/Segment]
+        (let [mp      (mt/metadata-provider)
+              [segment] (segment/create-segments!
+                         [{:name        "Toucans in the rainforest"
+                           :description "Lookin' for a blueberry"
+                           :creator_id  (mt/user->id :rasta)
+                           :definition  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                            (lib/filter (lib/= 1 1)))}])]
+          (is (= {:topic       :segment-create
+                  :user_id     (mt/user->id :rasta)
+                  :model       "Segment"
+                  :model_id    (:id segment)
+                  :details     {:name        (:name segment)
+                                :description (:description segment)
+                                :database_id (mt/id)
+                                :table_id    (mt/id :checkins)}}
+                 (mt/latest-audit-log-entry "segment-create" (:id segment)))))))))
 
 (deftest segment-update-event-test
   (testing :segment-update
@@ -311,9 +318,12 @@
 (deftest user-invited-event-test
   (testing :event/user-invited
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/User {:keys [id] :as new-user}]
-        (let [details {:invitor {:first_name "Ngoc"
-                                 :email      "ngoc@metabase.com"}}]
+      (mt/with-model-cleanup [:model/User]
+        (let [[{:keys [id] :as new-user}] (user/create-users! [{:email      (mt/random-email)
+                                                                :first_name "Test"
+                                                                :last_name  "User"}])
+              details                     {:invitor {:first_name "Ngoc"
+                                                     :email      "ngoc@metabase.com"}}]
           (is (= {:object  new-user
                   :details details}
                  (events/publish-event! :event/user-invited {:object new-user
@@ -383,27 +393,28 @@
 
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
-      (testing :event/channel-create
-        (is (= {:model_id (:id channel)
-                :user_id  (mt/user->id :rasta)
-                :details  {:id          (:id channel)
-                           :name        "Test channel"
-                           :description "Test channel description"
-                           :type        notification.tu/test-channel-type
-                           :active      true}
-                :topic    :channel-create
-                :model    "Channel"}
-               (mt/latest-audit-log-entry :channel-create (:id channel)))))
-      (testing :event/channel-update
-        (models.channel/update-channels! [{:id (:id channel) :name "New Name"}])
-        (is (= {:model_id (:id channel)
-                :user_id  (mt/user->id :rasta)
-                :details  {:previous {:name "Test channel"}
-                           :new      {:name "New Name"}}
-                :topic    :channel-update
-                :model    "Channel"}
-               (mt/latest-audit-log-entry :channel-update (:id channel))))))))
+    (mt/with-model-cleanup [:model/Channel]
+      (let [[channel] (models.channel/create-channels! [notification.tu/default-can-connect-channel])]
+        (testing :event/channel-create
+          (is (= {:model_id (:id channel)
+                  :user_id  (mt/user->id :rasta)
+                  :details  {:id          (:id channel)
+                             :name        "Test channel"
+                             :description "Test channel description"
+                             :type        notification.tu/test-channel-type
+                             :active      true}
+                  :topic    :channel-create
+                  :model    "Channel"}
+                 (mt/latest-audit-log-entry :channel-create (:id channel)))))
+        (testing :event/channel-update
+          (models.channel/update-channels! [{:id (:id channel) :name "New Name"}])
+          (is (= {:model_id (:id channel)
+                  :user_id  (mt/user->id :rasta)
+                  :details  {:previous {:name "Test channel"}
+                             :new      {:name "New Name"}}
+                  :topic    :channel-update
+                  :model    "Channel"}
+                 (mt/latest-audit-log-entry :channel-update (:id channel)))))))))
 
 (deftest transform-run-start-event-test
   (mt/when-ee-evailable
@@ -428,103 +439,118 @@
 (deftest document-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Document document {:name "Test Document"
-                                              :collection_id nil}]
-       (testing :event/document-create
-         (is (= {:model_id (:id document)
-                 :user_id (mt/user->id :rasta)
-                 :details {:name "Test Document"
-                           :collection_id nil}
-                 :topic :document-create
-                 :model "Document"}
-                (mt/latest-audit-log-entry :document-create (:id document)))))
-       (testing :event/document-update
-         (document/update-documents! [{:id (:id document) :name "Updated Document"}])
-         (is (= {:model_id (:id document)
-                 :user_id (mt/user->id :rasta)
-                 :details {:previous {:name "Test Document"}
-                           :new      {:name "Updated Document"}}
-                 :topic :document-update
-                 :model "Document"}
-                (mt/latest-audit-log-entry :document-update (:id document)))))
-       (testing :event/document-delete
-         (document/delete-documents! [(:id document)])
-         (is (= {:model_id (:id document)
-                 :user_id (mt/user->id :rasta)
-                 :details {:name "Updated Document"
-                           :collection_id nil}
-                 :topic :document-delete
-                 :model "Document"}
-                (mt/latest-audit-log-entry :document-delete (:id document)))))))))
+     (mt/with-model-cleanup [:model/Document]
+       (let [[document] (document/create-documents!
+                         [{:name          "Test Document"
+                           :collection_id nil
+                           :document      {:type "doc" :content []}
+                           :content_type  "application/json+vnd.prose-mirror"
+                           :creator_id    (mt/user->id :rasta)}])]
+         (testing :event/document-create
+           (is (= {:model_id (:id document)
+                   :user_id (mt/user->id :rasta)
+                   :details {:name "Test Document"
+                             :collection_id nil}
+                   :topic :document-create
+                   :model "Document"}
+                  (mt/latest-audit-log-entry :document-create (:id document)))))
+         (testing :event/document-update
+           (document/update-documents! [{:id (:id document) :name "Updated Document"}])
+           (is (= {:model_id (:id document)
+                   :user_id (mt/user->id :rasta)
+                   :details {:previous {:name "Test Document"}
+                             :new      {:name "Updated Document"}}
+                   :topic :document-update
+                   :model "Document"}
+                  (mt/latest-audit-log-entry :document-update (:id document)))))
+         (testing :event/document-delete
+           (document/delete-documents! [(:id document)])
+           (is (= {:model_id (:id document)
+                   :user_id (mt/user->id :rasta)
+                   :details {:name "Updated Document"
+                             :collection_id nil}
+                   :topic :document-delete
+                   :model "Document"}
+                  (mt/latest-audit-log-entry :document-delete (:id document))))))))))
 
 (deftest comment-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Document {doc-id :id} {}
-                    :model/Comment  comment      {:target_id doc-id
-                                                  :content   {:type "doc", :content []}}]
-       (testing :event/comment-create
-         (is (= {:model_id (:id comment)
-                 :user_id (mt/user->id :rasta)
-                 :details {:target_id doc-id
-                           :target_type "document"
-                           :child_target_id nil
-                           :parent_comment_id nil}
-                 :topic :comment-create
-                 :model "Comment"}
-                (mt/latest-audit-log-entry :comment-create (:id comment)))))
-       (testing :event/comment-update
-         (comment/update-comment! (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
-         (is (=? {:model_id (:id comment)
-                  :user_id (mt/user->id :rasta)
-                  :details {}
-                  :topic :comment-update
-                  :model "Comment"}
-                 (mt/latest-audit-log-entry :comment-update (:id comment)))))
-       (testing :event/comment-delete
-         (comment/soft-delete-comment! (:id comment))
-         (is (= {:model_id (:id comment)
-                 :user_id (mt/user->id :rasta)
-                 :details {:previous {}
-                           :new      {}}
-                 :topic :comment-delete
-                 :model "Comment"}
-                (mt/latest-audit-log-entry :comment-delete (:id comment)))))))))
+     (mt/with-temp [:model/Document {doc-id :id} {}]
+       (mt/with-model-cleanup [:model/Comment]
+         (let [comment (comment/create-comment! {:target_type "document"
+                                                 :target_id   doc-id
+                                                 :creator_id  (mt/user->id :rasta)
+                                                 :content     {:type "doc", :content []}})]
+           (testing :event/comment-create
+             (is (= {:model_id (:id comment)
+                     :user_id (mt/user->id :rasta)
+                     :details {:target_id doc-id
+                               :target_type "document"
+                               :child_target_id nil
+                               :parent_comment_id nil}
+                     :topic :comment-create
+                     :model "Comment"}
+                    (mt/latest-audit-log-entry :comment-create (:id comment)))))
+           (testing :event/comment-update
+             (comment/update-comment! (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+             (is (=? {:model_id (:id comment)
+                      :user_id (mt/user->id :rasta)
+                      :details {}
+                      :topic :comment-update
+                      :model "Comment"}
+                     (mt/latest-audit-log-entry :comment-update (:id comment)))))
+           (testing :event/comment-delete
+             (comment/soft-delete-comment! (:id comment))
+             (is (= {:model_id (:id comment)
+                     :user_id (mt/user->id :rasta)
+                     :details {:previous {}
+                               :new      {}}
+                     :topic :comment-delete
+                     :model "Comment"}
+                    (mt/latest-audit-log-entry :comment-delete (:id comment)))))))))))
 
 (deftest transform-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Transform transform {:name "Test Transform"
-                                                :description "Test description"}]
-       (testing :event/transform-create
-         (is (partial=
-              {:model_id (:id transform)
-               :user_id (mt/user->id :rasta)
-               :details {:name "Test Transform"
-                         :description "Test description"}
-               :topic :transform-create
-               :model "Transform"}
-              (mt/latest-audit-log-entry :transform-create (:id transform)))))
-       (testing :event/transform-update
-         (transform/update-transforms! [{:id (:id transform) :name "Updated Transform"}])
-         (is (partial=
-              {:model_id (:id transform)
-               :user_id (mt/user->id :rasta)
-               :details {:previous {:name "Test Transform"}
-                         :new      {:name "Updated Transform"}}
-               :topic :update-transform
-               :model "Transform"}
-              (mt/latest-audit-log-entry :update-transform (:id transform)))))
-       (testing :event/transform-delete
-         (transform/delete-transforms! [(:id transform)])
-         (is (partial=
-              {:model_id (:id transform)
-               :user_id (mt/user->id :rasta)
-               :details {:name "Updated Transform"
-                         :description "Test description"}
-               :topic :transform-delete
-               :model "Transform"}
-              (mt/latest-audit-log-entry :transform-delete (:id transform)))))))))
+     (mt/with-model-cleanup [:model/Transform]
+       (let [[transform] (transform/create-transforms!
+                          [{:name        "Test Transform"
+                            :description "Test description"
+                            :source      {:type  :query
+                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1 as num")}
+                            :target      {:type     "table"
+                                          :name     "audit_log_test_transform"
+                                          :database (mt/id)}}])]
+         (testing :event/transform-create
+           (is (partial=
+                {:model_id (:id transform)
+                 :user_id (mt/user->id :rasta)
+                 :details {:name "Test Transform"
+                           :description "Test description"}
+                 :topic :transform-create
+                 :model "Transform"}
+                (mt/latest-audit-log-entry :transform-create (:id transform)))))
+         (testing :event/transform-update
+           (transform/update-transforms! [{:id (:id transform) :name "Updated Transform"}])
+           (is (partial=
+                {:model_id (:id transform)
+                 :user_id (mt/user->id :rasta)
+                 :details {:previous {:name "Test Transform"}
+                           :new      {:name "Updated Transform"}}
+                 :topic :update-transform
+                 :model "Transform"}
+                (mt/latest-audit-log-entry :update-transform (:id transform)))))
+         (testing :event/transform-delete
+           (transform/delete-transforms! [(:id transform)])
+           (is (partial=
+                {:model_id (:id transform)
+                 :user_id (mt/user->id :rasta)
+                 :details {:name "Updated Transform"
+                           :description "Test description"}
+                 :topic :transform-delete
+                 :model "Transform"}
+                (mt/latest-audit-log-entry :transform-delete (:id transform))))))))))
 
 (deftest glossary-events-test
   (mt/with-current-user (mt/user->id :rasta)

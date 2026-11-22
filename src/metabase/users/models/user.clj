@@ -114,29 +114,11 @@
    :is_superuser    false
    :is_data_analyst false})
 
-(defn- validate-user-email!
-  "Validate that the email is in a valid format."
-  [email]
-  (assert (u/email? email) (tru "Invalid email: {0}" (pr-str email))))
-
-(defn- validate-user-locale!
-  "Validate that the locale is available in the system."
-  [locale]
-  (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
-
 (defn- check-superuser-has-no-tenant
   "Throws a 400 when `user` is both a superuser and a tenant user."
   [{superuser? :is_superuser tenant-id :tenant_id}]
   (when (and superuser? tenant-id)
     (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
-
-(defn- validate-user-insert!
-  "Validate the constraints the row of a new User answers alone."
-  [{:keys [email locale] :as user}]
-  (validate-user-email! email)
-  (check-superuser-has-no-tenant user)
-  (validate-user-locale! locale))
 
 (defn- without-credential-fields
   "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
@@ -171,7 +153,7 @@
 
 (t2/define-before-insert :model/User
   [user]
-  (validate-user-insert! user)
+  (check-superuser-has-no-tenant user)
   (-> (merge insert-default-values user)
       with-acknowledged-version
       normalize-user-fields
@@ -183,9 +165,7 @@
     (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
   (when (:is_superuser (t2/changes user))
     (check-superuser-has-no-tenant user))
-  (let [{:keys [email locale] active? :is_active} (t2/changes user)]
-    (when email (validate-user-email! email))
-    (when locale (validate-user-locale! locale))
+  (let [{active? :is_active} (t2/changes user)]
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))

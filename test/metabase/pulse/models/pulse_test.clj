@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.test :as mt]
@@ -387,25 +388,27 @@
 
 (deftest archive-pulse-will-disable-pulse-channels-test
   (pulse-channel-test/with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel {pc-id :id}    (merge {:pulse_id       pulse-id
-                                                              :channel_type   :email}
-                                                             pulse-channel-test/daily-at-6pm)]
-      (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
-             (pulse-channel-test/send-pulse-triggers pulse-id)))
-      (testing "archived pulse will disable pulse channels and remove triggers"
-        (models.pulse/update-pulses! [pulse-id] {:archived true})
-        (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
-        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
-      (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-        (models.pulse/update-pulses! [pulse-id] {:archived false})
-        (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
-        (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
-               (pulse-channel-test/send-pulse-triggers pulse-id))))
-      (testing "delete pulse will remove pulse channels and triggers"
-        (models.pulse/delete-pulses! [pulse-id])
-        (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
-        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
+    (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
+                                                                 :channel_type :email
+                                                                 :enabled      true}
+                                                                pulse-channel-test/daily-at-6pm))]
+          (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
+                 (pulse-channel-test/send-pulse-triggers pulse-id)))
+          (testing "archived pulse will disable pulse channels and remove triggers"
+            (models.pulse/update-pulses! [pulse-id] {:archived true})
+            (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
+            (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
+          (testing "re-enabled pulse will re-enable pulse channels and add triggers"
+            (models.pulse/update-pulses! [pulse-id] {:archived false})
+            (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
+            (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
+                   (pulse-channel-test/send-pulse-triggers pulse-id))))
+          (testing "delete pulse will remove pulse channels and triggers"
+            (models.pulse/delete-pulses! [pulse-id])
+            (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
+            (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
 
 (defn- status-code
   "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
@@ -592,67 +595,69 @@
 (deftest create-permissions-test
   (when config/ee-available?
     (testing "A user without download permission should not be able to create a pulse with attachments"
-      (mt/with-temp [:model/User {user-id :id} {}
-                     :model/Database {db-id :id} {:engine :h2}
-                     :model/Table {table-id :id} {:db_id db-id}
-                     :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:collection_id collection-id
-                                       :dataset_query {:database db-id
-                                                       :type     :query
-                                                       :query    {:source-table table-id}}}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
-        ;; Grant read access on the card but no download permission
-        (mt/with-premium-features #{:advanced-permissions}
-          (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
-          (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-          (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
-          (perms/set-table-permission! group-id table-id :perms/download-results :no)
-          (perms/set-table-permission! (perms/all-users-group) table-id :perms/download-results :no)
-          (mt/with-current-user user-id
-            (testing "should not be able to create a pulse with CSV attachment"
-              (is (false? (mi/can-create? :model/Pulse
-                                          {:cards         [(assoc card :include_csv true)]
-                                           :dashboard_id  nil
-                                           :collection_id nil}))))
-            (testing "should not be able to create a pulse with XLS attachment"
-              (is (false? (mi/can-create? :model/Pulse
-                                          {:cards         [(assoc card :include_xls true)]
-                                           :dashboard_id  nil
-                                           :collection_id nil}))))
-            (testing "should be able to create a pulse without attachments"
-              (is (true? (mi/can-create? :model/Pulse
-                                         {:cards         [card]
-                                          :dashboard_id  nil
-                                          :collection_id nil}))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+          (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                         :model/Table {table-id :id} {:db_id db-id}
+                         :model/Collection {collection-id :id} {:name "Test Collection"}
+                         :model/Card card {:collection_id collection-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-id}}}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+            ;; Grant read access on the card but no download permission
+            (mt/with-premium-features #{:advanced-permissions}
+              (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
+              (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+              (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
+              (perms/set-table-permission! group-id table-id :perms/download-results :no)
+              (perms/set-table-permission! (perms/all-users-group) table-id :perms/download-results :no)
+              (mt/with-current-user user-id
+                (testing "should not be able to create a pulse with CSV attachment"
+                  (is (false? (mi/can-create? :model/Pulse
+                                              {:cards         [(assoc card :include_csv true)]
+                                               :dashboard_id  nil
+                                               :collection_id nil}))))
+                (testing "should not be able to create a pulse with XLS attachment"
+                  (is (false? (mi/can-create? :model/Pulse
+                                              {:cards         [(assoc card :include_xls true)]
+                                               :dashboard_id  nil
+                                               :collection_id nil}))))
+                (testing "should be able to create a pulse without attachments"
+                  (is (true? (mi/can-create? :model/Pulse
+                                             {:cards         [card]
+                                              :dashboard_id  nil
+                                              :collection_id nil}))))))))))
     (testing "A user with download permission should be able to create a pulse with attachments"
-      (mt/with-temp [:model/User {user-id :id} {}
-                     :model/Database {db-id :id} {:engine :h2}
-                     :model/Table {table-id :id} {:db_id db-id}
-                     :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:collection_id collection-id
-                                       :dataset_query {:database db-id
-                                                       :type     :query
-                                                       :query    {:source-table table-id}}}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
-        ;; Grant read and download permissions
-        (mt/with-premium-features #{:advanced-permissions}
-          (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
-          (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-          (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
-          (perms/set-table-permission! group-id table-id :perms/download-results :one-million-rows)
-          (mt/with-current-user user-id
-            (testing "should be able to create a pulse with CSV attachment"
-              (is (true? (mi/can-create? :model/Pulse
-                                         {:cards         [(assoc card :include_csv true)]
-                                          :dashboard_id  nil
-                                          :collection_id nil}))))
-            (testing "should be able to create a pulse with XLS attachment"
-              (is (true? (mi/can-create? :model/Pulse
-                                         {:cards         [(assoc card :include_xls true)]
-                                          :dashboard_id  nil
-                                          :collection_id nil}))))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+          (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                         :model/Table {table-id :id} {:db_id db-id}
+                         :model/Collection {collection-id :id} {:name "Test Collection"}
+                         :model/Card card {:collection_id collection-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-id}}}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+            ;; Grant read and download permissions
+            (mt/with-premium-features #{:advanced-permissions}
+              (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
+              (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+              (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
+              (perms/set-table-permission! group-id table-id :perms/download-results :one-million-rows)
+              (mt/with-current-user user-id
+                (testing "should be able to create a pulse with CSV attachment"
+                  (is (true? (mi/can-create? :model/Pulse
+                                             {:cards         [(assoc card :include_csv true)]
+                                              :dashboard_id  nil
+                                              :collection_id nil}))))
+                (testing "should be able to create a pulse with XLS attachment"
+                  (is (true? (mi/can-create? :model/Pulse
+                                             {:cards         [(assoc card :include_xls true)]
+                                              :dashboard_id  nil
+                                              :collection_id nil}))))))))))))
 
 (deftest maybe-filter-pulses-recipients-cross-tenant-test
   ;; Tenants are enterprise-only: :model/Tenant is not on the OSS classpath, so guard the body out

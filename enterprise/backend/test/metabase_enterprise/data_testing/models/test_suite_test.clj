@@ -68,45 +68,46 @@
 (deftest test-suite-audit-events-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temp [:model/Card      {card-id :id}         {}
-                     :model/CardTest  {card-test-eid :entity_id} {:card_id card-id}
-                     :model/TestSuite {suite-id :id}         {:creator_id  (mt/user->id :crowberto)
-                                                              :name        "Nightly"
-                                                              :description "abc"}]
-        (testing "create names the acting user"
-          (is (= {:model_id suite-id
-                  :user_id  (mt/user->id :rasta)
-                  :details  {:name "Nightly" :description "abc"}
-                  :topic    :test-suite-create
-                  :model    "TestSuite"}
-                 (mt/latest-audit-log-entry :test-suite-create suite-id))))
-        (testing "update names the acting user, and the changed columns"
-          (test-suite/update-test-suites! [{:id suite-id :name "Renamed"}])
-          (is (= {:model_id suite-id
-                  :user_id  (mt/user->id :rasta)
-                  :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
-                  :topic    :test-suite-update
-                  :model    "TestSuite"}
-                 (mt/latest-audit-log-entry :test-suite-update suite-id))))
-        (testing "a change of the members alone is audited as one update of the suite"
-          (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
-                before  (count (updates))]
-            (test-suite/update-test-suites! [{:id suite-id :members [{:test_type :card :test_entity_id card-test-eid}]}])
-            (is (= (inc before) (count (updates))))
-            (is (= {:model_id suite-id
-                    :user_id  (mt/user->id :rasta)
-                    :details  {:previous {} :new {}}
-                    :topic    :test-suite-update
-                    :model    "TestSuite"}
-                   (first (updates))))))
-        (testing "delete names the acting user"
-          (test-suite/delete-test-suites! [suite-id])
-          (is (= {:model_id suite-id
-                  :user_id  (mt/user->id :rasta)
-                  :details  {:name "Renamed" :description "abc"}
-                  :topic    :test-suite-delete
-                  :model    "TestSuite"}
-                 (mt/latest-audit-log-entry :test-suite-delete suite-id))))))))
+      (mt/with-temp [:model/Card     {card-id :id}              {}
+                     :model/CardTest {card-test-eid :entity_id} {:card_id card-id}]
+        (mt/with-model-cleanup [:model/TestSuite]
+          (let [{suite-id :id} (first (test-suite/create-test-suites! [{:creator_id  (mt/user->id :crowberto)
+                                                                        :name        "Nightly"
+                                                                        :description "abc"}]))]
+            (testing "create names the acting user"
+              (is (= {:model_id suite-id
+                      :user_id  (mt/user->id :rasta)
+                      :details  {:name "Nightly" :description "abc"}
+                      :topic    :test-suite-create
+                      :model    "TestSuite"}
+                     (mt/latest-audit-log-entry :test-suite-create suite-id))))
+            (testing "update names the acting user, and the changed columns"
+              (test-suite/update-test-suites! [{:id suite-id :name "Renamed"}])
+              (is (= {:model_id suite-id
+                      :user_id  (mt/user->id :rasta)
+                      :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
+                      :topic    :test-suite-update
+                      :model    "TestSuite"}
+                     (mt/latest-audit-log-entry :test-suite-update suite-id))))
+            (testing "a change of the members alone is audited as one update of the suite"
+              (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
+                    before  (count (updates))]
+                (test-suite/update-test-suites! [{:id suite-id :members [{:test_type :card :test_entity_id card-test-eid}]}])
+                (is (= (inc before) (count (updates))))
+                (is (= {:model_id suite-id
+                        :user_id  (mt/user->id :rasta)
+                        :details  {:previous {} :new {}}
+                        :topic    :test-suite-update
+                        :model    "TestSuite"}
+                       (first (updates))))))
+            (testing "delete names the acting user"
+              (test-suite/delete-test-suites! [suite-id])
+              (is (= {:model_id suite-id
+                      :user_id  (mt/user->id :rasta)
+                      :details  {:name "Renamed" :description "abc"}
+                      :topic    :test-suite-delete
+                      :model    "TestSuite"}
+                     (mt/latest-audit-log-entry :test-suite-delete suite-id))))))))))
 
 (deftest test-suite-writes-record-one-audit-row-each-test
   (mt/with-premium-features #{:audit-app}

@@ -1684,15 +1684,20 @@
     (throw (ex-info (tru "You cannot put an unarchived item in an archived Collection.")
                     {:status-code 400, :errors {:location (tru "archived Collection")}}))))
 
-(defn- check-valid-location
-  "Throws a 400 unless the `location` of `row` is a valid path, and the root for a Personal Collection."
+(defn- check-personal-collection-at-root
+  "Throws a 400 unless the `location` of `row` is the root for a Personal Collection."
   [{:keys [location personal_owner_id]}]
-  (when-not (valid-location-path? location)
-    (let [msg (tru "Invalid Collection location: path is invalid.")]
-      (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
   (when (and personal_owner_id (not= location "/"))
     (let [msg (tru "You cannot move a Personal Collection.")]
       (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
+
+(defn- check-valid-location
+  "Throws a 400 unless the `location` of `row` is a valid path, and the root for a Personal Collection."
+  [{:keys [location] :as row}]
+  (when-not (valid-location-path? location)
+    (let [msg (tru "Invalid Collection location: path is invalid.")]
+      (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
+  (check-personal-collection-at-root row))
 
 (defn- check-ancestors-exist
   "Throws a 404 unless every Collection in the location of `row` is among `ancestors`."
@@ -1777,7 +1782,7 @@
 (t2/define-before-insert :model/Collection
   [row]
   (when (contains? row :location)
-    (check-valid-location row))
+    (check-personal-collection-at-root row))
   (assoc row :slug (slugify (:name row))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
@@ -1887,7 +1892,7 @@
   [row]
   (let [changes (t2/changes row)]
     (when (contains? changes :location)
-      (check-valid-location row))
+      (check-personal-collection-at-root row))
     (when (and (contains? changes :namespace)
                (not (namespace-equals? (:namespace (t2/original row)) (:namespace changes))))
       (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]

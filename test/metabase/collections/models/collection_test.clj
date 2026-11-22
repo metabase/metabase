@@ -1250,78 +1250,92 @@
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp [:model/PermissionsGroup group]
           (testing "no perms beforehand = no perms after"
-            (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
-              (is (= #{}
-                     (group->perms [collection] group)))))
+            (mt/with-model-cleanup [:model/Collection]
+              (let [collection (first (collection/create-collections! [{:location "/" :name "{new}", :namespace collection-namespace}]))]
+                (is (= #{}
+                       (group->perms [collection] group))))))
           (perms/grant-collection-read-permissions! group root-collection)
-          (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
-            (testing "copy read perms"
-              (is (= #{"/collection/{new}/read/"
-                       (perms/collection-read-path root-collection)}
-                     (group->perms [collection] group))))
-            (testing "revoking root collection perms shouldn't affect perms of existing children"
-              (perms/revoke-collection-permissions! group root-collection)
-              (is (= #{"/collection/{new}/read/"}
-                     (group->perms [collection] group))))
-            (testing "granting new root collection perms shouldn't affect perms of existing children"
-              (perms/grant-collection-readwrite-permissions! group root-collection)
-              (is (= #{(perms/collection-readwrite-path root-collection) "/collection/{new}/read/"}
-                     (group->perms [collection] group)))))
+          (mt/with-model-cleanup [:model/Collection]
+            (let [collection (first (collection/create-collections! [{:location "/" :name "{new}", :namespace collection-namespace}]))]
+              (testing "copy read perms"
+                (is (= #{"/collection/{new}/read/"
+                         (perms/collection-read-path root-collection)}
+                       (group->perms [collection] group))))
+              (testing "revoking root collection perms shouldn't affect perms of existing children"
+                (perms/revoke-collection-permissions! group root-collection)
+                (is (= #{"/collection/{new}/read/"}
+                       (group->perms [collection] group))))
+              (testing "granting new root collection perms shouldn't affect perms of existing children"
+                (perms/grant-collection-readwrite-permissions! group root-collection)
+                (is (= #{(perms/collection-readwrite-path root-collection) "/collection/{new}/read/"}
+                       (group->perms [collection] group))))))
           (testing "copy readwrite perms"
-            (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
-              (is (= #{"/collection/{new}/"
-                       (perms/collection-readwrite-path root-collection)}
-                     (group->perms [collection] group)))))
+            (mt/with-model-cleanup [:model/Collection]
+              (let [collection (first (collection/create-collections! [{:location "/" :name "{new}", :namespace collection-namespace}]))]
+                (is (= #{"/collection/{new}/"
+                         (perms/collection-readwrite-path root-collection)}
+                       (group->perms [collection] group))))))
           (testing (format "Perms for Root Collection in %s namespace should not affect Collections in %s namespace"
                            (pr-str collection-namespace) (pr-str other-namespace))
-            (mt/with-temp [:model/Collection collection {:name "{new}", :namespace other-namespace}]
-              (is (= #{(perms/collection-readwrite-path root-collection)}
-                     (group->perms [collection] group))))))))))
+            (mt/with-model-cleanup [:model/Collection]
+              (let [collection (first (collection/create-collections! [{:location "/" :name "{new}", :namespace other-namespace}]))]
+                (is (= #{(perms/collection-readwrite-path root-collection)}
+                       (group->perms [collection] group)))))))))))
 
 (deftest copy-parent-permissions-test
   (testing "Make sure that when creating a new child Collection, we copy the group permissions for its parent"
     (mt/with-temp [:model/PermissionsGroup group]
       (testing "parent has readwrite permissions"
-        (mt/with-temp [:model/Collection parent {:name "{parent}"}]
-          (perms/grant-collection-readwrite-permissions! group parent)
-          (mt/with-temp [:model/Collection child {:name "{child}", :location (collection/children-location parent)}]
-            (is (= #{"/collection/{parent}/"
-                     "/collection/{child}/"}
-                   (group->perms [parent child] group))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [parent (first (collection/create-collections! [{:location "/" :name "{parent}"}]))]
+            (perms/grant-collection-readwrite-permissions! group parent)
+            (mt/with-model-cleanup [:model/Collection]
+              (let [child (first (collection/create-collections! [{:name "{child}", :location (collection/children-location parent)}]))]
+                (is (= #{"/collection/{parent}/"
+                         "/collection/{child}/"}
+                       (group->perms [parent child] group))))))))
       (testing "parent has read permissions"
-        (mt/with-temp [:model/Collection parent {:name "{parent}"}]
-          (perms/grant-collection-read-permissions! group parent)
-          (mt/with-temp [:model/Collection child {:name "{child}", :location (collection/children-location parent)}]
-            (is (= #{"/collection/{parent}/read/"
-                     "/collection/{child}/read/"}
-                   (group->perms [parent child] group))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [parent (first (collection/create-collections! [{:location "/" :name "{parent}"}]))]
+            (perms/grant-collection-read-permissions! group parent)
+            (mt/with-model-cleanup [:model/Collection]
+              (let [child (first (collection/create-collections! [{:name "{child}", :location (collection/children-location parent)}]))]
+                (is (= #{"/collection/{parent}/read/"
+                         "/collection/{child}/read/"}
+                       (group->perms [parent child] group))))))))
       (testing "parent has no permissions"
-        (mt/with-temp [:model/Collection parent {:name "{parent}"}
-                       :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
-          (is (= #{}
-                 (group->perms [parent child] group)))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [parent (first (collection/create-collections! [{:location "/" :name "{parent}"}]))
+                child (first (collection/create-collections! [{:name "{child}", :location (collection/children-location parent)}]))]
+            (is (= #{}
+                   (group->perms [parent child] group))))))
       (testing "parent given read permissions after the fact -- should not update existing children"
-        (mt/with-temp [:model/Collection parent {:name "{parent}"}
-                       :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
-          (perms/grant-collection-read-permissions! group parent)
-          (is (= #{"/collection/{parent}/read/"}
-                 (group->perms [parent child] group)))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [parent (first (collection/create-collections! [{:location "/" :name "{parent}"}]))
+                child (first (collection/create-collections! [{:name "{child}", :location (collection/children-location parent)}]))]
+            (perms/grant-collection-read-permissions! group parent)
+            (is (= #{"/collection/{parent}/read/"}
+                   (group->perms [parent child] group))))))
       (testing "If we have Root Collection perms they shouldn't be copied for a Child"
-        (mt/with-temp [:model/Collection parent {:name "{parent}"}]
-          (perms/grant-collection-read-permissions! group collection/root-collection)
-          (mt/with-temp [:model/Collection child {:name "{child}", :location (collection/children-location parent)}]
-            (is (= #{"/collection/root/read/"}
-                   (group->perms [parent child] group)))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [parent (first (collection/create-collections! [{:location "/" :name "{parent}"}]))]
+            (perms/grant-collection-read-permissions! group collection/root-collection)
+            (mt/with-model-cleanup [:model/Collection]
+              (let [child (first (collection/create-collections! [{:name "{child}", :location (collection/children-location parent)}]))]
+                (is (= #{"/collection/root/read/"}
+                       (group->perms [parent child] group)))))))))
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
-      (mt/with-temp [:model/Collection child {:name "{child}", :location (lucky-collection-children-location)}]
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [child (first (collection/create-collections! [{:name "{child}", :location (lucky-collection-children-location)}]))]
+          (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))]))))))
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
-      (mt/with-temp [:model/Collection child      {:location (lucky-collection-children-location)}
-                     :model/Collection grandchild {:location (collection/children-location child)}]
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
-        (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [child (first (collection/create-collections! [{:name (mt/random-name) :location (lucky-collection-children-location)}]))
+              grandchild (first (collection/create-collections! [{:name (mt/random-name) :location (collection/children-location child)}]))]
+          (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
+          (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))]))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -1330,26 +1344,26 @@
 (deftest personal-collections-restrictions-test
   (testing "Make sure we're not allowed to *unarchive* a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
-      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (let [personal-collection (collection/user->personal-collection (u/the-id my-cool-user))]
         (is (thrown?
              Exception
              (collection/update-collections! [{:id (u/the-id personal-collection) :archived true}]))))))
   (testing "Make sure we're not allowed to *move* a Personal Collection"
     (mt/with-temp [:model/User       my-cool-user          {}
                    :model/Collection some-other-collection {}]
-      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (let [personal-collection (collection/user->personal-collection (u/the-id my-cool-user))]
         (is (thrown?
              Exception
              (collection/update-collections! [{:id (u/the-id personal-collection) :location (collection/location-path some-other-collection)}]))))))
   (testing "Make sure we're not allowed to change the owner of a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
-      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (let [personal-collection (collection/user->personal-collection (u/the-id my-cool-user))]
         (is (thrown?
              Exception
              (collection/update-collections! [{:id (u/the-id personal-collection) :personal_owner_id (mt/user->id :crowberto)}]))))))
   (testing "We are not allowed to change the authority_level of a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
-      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+      (let [personal-collection (collection/user->personal-collection (u/the-id my-cool-user))]
         (is (thrown-with-msg?
              Exception
              #"You are not allowed to change the authority level of a Personal Collection."
@@ -1808,8 +1822,9 @@
   (testing "Creating a new collection should increment the CollectionPermissionGraphRevision"
     (let [initial-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
       (mt/with-current-user (mt/user->id :rasta)
-        (mt/with-temp [:model/Collection _ {:name "Test Collection"}]
-          (let [final-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+        (mt/with-model-cleanup [:model/Collection]
+          (let [_ (first (collection/create-collections! [{:location "/" :name "Test Collection"}]))
+                final-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
             (is (= (inc initial-revision-count) final-revision-count)
                 "A new CollectionPermissionGraphRevision should be created when inserting a collection")))))))
 
@@ -1960,26 +1975,27 @@
         (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id (:id collection)) :can_write))))))))
 
 (deftest collection-check-hydration-test
-  (mt/with-temp [:model/Collection collection {}]
-    (mt/with-test-user :rasta
-      (testing "check throws on Collection without hydrated answer"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_read is hydrated on a Collection"
-                              (#'mi/can-read? collection)))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_write is hydrated on a Collection"
-                              (#'mi/can-write? collection))))
-      (testing "`:can_read` is kept out of row"
-        (let [hydrated (t2/hydrate collection :can_read)]
-          (is (true? (mi/can-read? hydrated)))
-          (is (= collection hydrated))
-          (is (= (keys collection) (keys hydrated)))))
-      (testing "`:can_write` is set on row"
-        (let [hydrated (t2/hydrate collection :can_write)]
-          (is (true? (:can_write hydrated)))
-          (is (true? (mi/can-write? hydrated)))))
-      (testing "hydration throws without columns it reads"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :namespace is set for a Collection"
-                              (t2/hydrate (t2/select-one [:model/Collection :id :type] :id (:id collection))
-                                          :can_read)))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [collection (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+      (mt/with-test-user :rasta
+        (testing "check throws on Collection without hydrated answer"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_read is hydrated on a Collection"
+                                (#'mi/can-read? collection)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :can_write is hydrated on a Collection"
+                                (#'mi/can-write? collection))))
+        (testing "`:can_read` is kept out of row"
+          (let [hydrated (t2/hydrate collection :can_read)]
+            (is (true? (mi/can-read? hydrated)))
+            (is (= collection hydrated))
+            (is (= (keys collection) (keys hydrated)))))
+        (testing "`:can_write` is set on row"
+          (let [hydrated (t2/hydrate collection :can_write)]
+            (is (true? (:can_write hydrated)))
+            (is (true? (mi/can-write? hydrated)))))
+        (testing "hydration throws without columns it reads"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :namespace is set for a Collection"
+                                (t2/hydrate (t2/select-one [:model/Collection :id :type] :id (:id collection))
+                                            :can_read))))))))
 
 (deftest create-library
   (mt/with-empty-h2-app-db!
@@ -2031,8 +2047,9 @@
       (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
                      :model/Dashboard  {dashboard-id :id}                 {:name "Elsewhere"}]
         (doseq [[label insert!] [["a dashboard" #(first (dashboard/create-dashboards! [{:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id collection-id}]))]
-                                 ["a collection" #(mt/with-temp [:model/Collection _ {:namespace "data-apps"
-                                                                                      :location  (collection/children-location collection)}])]
+                                 ["a collection" #(collection/create-collections! [{:name      (mt/random-name)
+                                                                                    :namespace "data-apps"
+                                                                                    :location  (collection/children-location collection)}])]
                                  ["a model" #(mt/with-model-cleanup [:model/Card]
                                                (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:type :model :collection_id collection-id})]))]
                                  ["a metric" #(mt/with-model-cleanup [:model/Card]

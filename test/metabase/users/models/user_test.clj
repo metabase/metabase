@@ -234,9 +234,10 @@
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
-    (mt/with-temp [:model/User user {:is_superuser true}]
-      (is (true?
-           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [user (user/create-user! {:email "new-admin-user-test-1@example.com" :is_superuser true})]
+        (is (true?
+             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |
@@ -352,31 +353,34 @@
         (is (thrown? Exception
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
     (testing "should be able to add someone to the Admin group"
-      (mt/with-temp [:model/User user]
-        (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
-        (is (= #{"Administrators" "All Users"}
-               (user-group-names user)))
-        (testing "their is_superuser flag should be set to true"
-          (is (true?
-               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [user (user/create-user! {:email "set-permissions-groups-test-1@example.com"})]
+          (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
+          (is (= #{"Administrators" "All Users"}
+                 (user-group-names user)))
+          (testing "their is_superuser flag should be set to true"
+            (is (true?
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
     (testing "should be able to remove someone from the Admin group"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (user/set-permissions-groups! user #{(perms-group/all-users)})
-        (is (= #{"All Users"}
-               (user-group-names user)))
-        (testing "their is_superuser flag should be set to false"
-          (is (= false
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [user (user/create-user! {:email "set-permissions-groups-test-2@example.com" :is_superuser true})]
+          (user/set-permissions-groups! user #{(perms-group/all-users)})
+          (is (= #{"All Users"}
+                 (user-group-names user)))
+          (testing "their is_superuser flag should be set to false"
+            (is (= false
+                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
         ;; should fail, causing the entire transaction to fail
         (mt/test-helpers-set-global-values!
-          (mt/with-temp [:model/User user {:is_superuser true}]
-            (u/ignore-exceptions
-              (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
-            (is (true?
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+          (mt/with-model-cleanup [:model/User]
+            (let [user (user/create-user! {:email "set-permissions-groups-test-3@example.com" :is_superuser true})]
+              (u/ignore-exceptions
+                (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
+              (is (true?
+                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
         (mt/with-temp [:model/User _]
@@ -387,29 +391,14 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest validate-locale-test
-  (testing "`:locale` should be validated"
-    (testing "creating a new User"
-      (testing "valid locale"
-        (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
-          (is (= "en_US"
-                 (t2/select-one-fn :locale :model/User :id user-id)))))
-      (testing "invalid locale"
-        (is (thrown-with-msg?
-             Throwable
-             #"Assert failed: Invalid locale: \"en_XX\""
-             (mt/with-temp [:model/User _ {:locale "en_XX"}])))))
-    (testing "updating a User"
-      (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
-        (testing "valid locale"
-          (t2/update! :model/User :id user-id {:locale "en_GB"})
-          (is (= "en_GB"
-                 (t2/select-one-fn :locale :model/User :id user-id))))
-        (testing "invalid locale"
-          (is (thrown-with-msg?
-               Throwable
-               #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
+(deftest store-locale-test
+  (testing "`:locale` is stored on creation and update"
+    (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
+      (is (= "en_US"
+             (t2/select-one-fn :locale :model/User :id user-id)))
+      (t2/update! :model/User :id user-id {:locale "en_GB"})
+      (is (= "en_GB"
+             (t2/select-one-fn :locale :model/User :id user-id))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -514,15 +503,16 @@
     (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
 
 (deftest update-user-refuses-last-admin-test
-  (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-    (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
-      (testing "deactivating"
-        (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))
-        (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
-      (testing "demoting"
-        (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_superuser false})))
-        (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
-        (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))))
+  (mt/with-model-cleanup [:model/User]
+    (let [{user-id :id} (user/create-user! {:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true})]
+      (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
+        (testing "deactivating"
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))
+          (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
+        (testing "demoting"
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_superuser false})))
+          (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
+          (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id))))))))
 
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"

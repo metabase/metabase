@@ -45,19 +45,20 @@
     (mt/with-temp [:model/Database {db-id :id}    {:name "serdes-db"}
                    :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}
                    :model/Field    {outer-id :id} {:table_id table-id :name "outer"}]
-      (let [field-ids (vec (for [i (range 30)]
-                             (t2/insert-returning-pk! :model/Field {:table_id      table-id
-                                                                    :parent_id     outer-id
-                                                                    :name          (str "inner_" i)
-                                                                    :base_type     :type/Text
-                                                                    :database_type "TEXT"})))
-            export    #(resolve/field-refs store (set %))]
-        (is (= {outer-id          ["serdes-db" "public" "events" "outer"]
-                (first field-ids) ["serdes-db" "public" "events" "outer" "inner_0"]}
-               (select-keys (export (conj field-ids outer-id Integer/MAX_VALUE))
-                            [outer-id (first field-ids) Integer/MAX_VALUE])))
-        (is (= (query-count #(export (take 2 field-ids)))
-               (query-count #(export field-ids))))))))
+      (mt/with-model-cleanup [:model/Field]
+        (let [field-ids (vec (for [i (range 30)]
+                               (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                                      :parent_id     outer-id
+                                                                      :name          (str "inner_" i)
+                                                                      :base_type     :type/Text
+                                                                      :database_type "TEXT"})))
+              export    #(resolve/field-refs store (set %))]
+          (is (= {outer-id          ["serdes-db" "public" "events" "outer"]
+                  (first field-ids) ["serdes-db" "public" "events" "outer" "inner_0"]}
+                 (select-keys (export (conj field-ids outer-id Integer/MAX_VALUE))
+                              [outer-id (first field-ids) Integer/MAX_VALUE])))
+          (is (= (query-count #(export (take 2 field-ids)))
+                 (query-count #(export field-ids)))))))))
 
 (deftest entity-pks-test
   (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
@@ -97,10 +98,10 @@
 
 (deftest field-ids-test
   (testing "finds existing Fields and creates each missing node of the references once"
-    (mt/with-model-cleanup [:model/Field]
-      (mt/with-temp [:model/Database {db-id :id}    {:name "serdes-db"}
-                     :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}
-                     :model/Field    {outer-id :id} {:table_id table-id :name "outer"}]
+    (mt/with-temp [:model/Database {db-id :id}    {:name "serdes-db"}
+                   :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}
+                   :model/Field    {outer-id :id} {:table_id table-id :name "outer"}]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [refs     [["serdes-db" "public" "events" "outer"]
                         ["serdes-db" "public" "events" "outer" "x"]
                         ["serdes-db" "public" "events" "outer" "y"]

@@ -156,10 +156,10 @@
         (t2/insert! :model/EmbeddingSdkReact18Host [{:host "valid.example.com", :last_seen_at now}
                                                     {:host "", :last_seen_at now}])
         (is (= 2 (t2/count :model/EmbeddingSdkReact18Host))))
-      (testing "the model rejects any other host"
+      (testing "the write function refuses any other host"
         (doseq [host ["Upper.example.com" nil]]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid React 18 SDK host"
-                                (t2/insert! :model/EmbeddingSdkReact18Host {:host host, :last_seen_at now}))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                                (sdk-react-18-host/save-sdk-react-18-host! host now))
               (pr-str host)))))))
 
 (deftest record-react-18-sdk-host-handler-test

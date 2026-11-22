@@ -9,6 +9,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.serialization.core :as serialization]
@@ -100,14 +101,19 @@
                    :model/DashboardCard {dc-id :id}    {:dashboard_id dash-id
                                                         :card_id      card-id}
                    :model/Pulse         {pulse-id :id} {:dashboard_id  dash-id
-                                                        :collection_id coll-id}
-                   :model/PulseChannel  {pc-id :id}    {:pulse_id pulse-id}
-                   :model/PulseCard     _              {:pulse_id          pulse-id
-                                                        :card_id           card-id
-                                                        :dashboard_card_id dc-id}]
-      (testing "sanity check that we have a trigger"
-        (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
-      (f {:coll-id coll-id :dash-id dash-id :pulse-id pulse-id :pc-id pc-id}))))
+                                                        :collection_id coll-id}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id (pulse-channel/create-pulse-channel! {:pulse_id      pulse-id
+                                                          :channel_type  :email
+                                                          :enabled       true
+                                                          :schedule_type :daily
+                                                          :schedule_hour 15})]
+          (mt/with-temp [:model/PulseCard _ {:pulse_id          pulse-id
+                                             :card_id           card-id
+                                             :dashboard_card_id dc-id}]
+            (testing "sanity check that we have a trigger"
+              (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+            (f {:coll-id coll-id :dash-id dash-id :pulse-id pulse-id :pc-id pc-id})))))))
 
 (defn- trigger-pc-ids [pulse-id]
   (into #{} (mapcat #(get-in % [:data "channel-ids"])) (pulse-channel-test/send-pulse-triggers pulse-id)))
@@ -189,17 +195,21 @@
        (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
-(deftest ^:parallel parameter-card-test
+(deftest parameter-card-test
   (testing "A new dashboard creates a new ParameterCard"
-    (mt/with-temp [:model/Card      {card-id :id}      {}
-                   :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                            {:values_source_type    "card"
-                                                                             :values_source_config {:card_id card-id}})]}]
-      (is (=? {:card_id                   card-id
-               :parameterized_object_type :dashboard
-               :parameterized_object_id   dashboard-id
-               :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one :model/ParameterCard :card_id card-id))))))
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name       (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [(merge default-parameter
+                                                               {:values_source_type    :card
+                                                                :values_source_config {:card_id card-id}})]}]))]
+          (is (=? {:card_id                   card-id
+                   :parameterized_object_type :dashboard
+                   :parameterized_object_id   dashboard-id
+                   :parameter_id              "_CATEGORY_NAME_"}
+                  (t2/select-one :model/ParameterCard :card_id card-id))))))))
 
 (deftest parameter-card-test-2
   (testing "Adding a card_id creates a new ParameterCard"
@@ -217,13 +227,17 @@
 
 (deftest parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
-    (mt/with-temp [:model/Card      {card-id :id}      {}
-                   :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                            {:values_source_type    "card"
-                                                                             :values_source_config {:card_id card-id}})]}]
-      ;; same setup as earlier test, we know the ParameterCard exists right now
-      (dashboard/delete-dashboards! [dashboard-id])
-      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name       (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [(merge default-parameter
+                                                               {:values_source_type    :card
+                                                                :values_source_config {:card_id card-id}})]}]))]
+          (is (some? (t2/select-one :model/ParameterCard :card_id card-id)))
+          (dashboard/delete-dashboards! [dashboard-id])
+          (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
@@ -318,23 +332,6 @@
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (dashboard/update-dashboards! [{:id card-id :collection_id collection-id}])))))))
-
-(deftest ^:parallel validate-parameters-test
-  (testing "Should validate Dashboard :parameters when"
-    (testing "creating"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))))
-
-(deftest validate-parameters-test-2
-  (testing "Should validate Dashboard :parameters when"
-    (testing "updating"
-      (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
-             (t2/update! :model/Dashboard :id id {:parameters [{:id 100}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"

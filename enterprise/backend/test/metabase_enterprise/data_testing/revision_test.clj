@@ -123,20 +123,20 @@
   (mt/with-premium-features #{:transforms-basic :transforms-testing}
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Transform     {transform-id :id}      (data-testing.test-util/id-transform :people)
-                       :model/TransformTest {transform-test-id :id}
-                       (merge revertible {:transform_id transform-id
-                                          :now          (t/offset-date-time "2026-10-13T00:00:00Z")})]
-          (data-testing.models/update-transform-tests! [{:id transform-test-id :now nil}])
-          (testing "an update of `now` is recorded"
-            (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
-          (mt/user-http-request :crowberto :post 200 "revision/revert"
-                                {:entity      "transform-test"
-                                 :id          transform-test-id
-                                 :revision_id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))})
-          (testing "a revert restores the moment"
-            (is (= (t/instant "2026-10-13T00:00:00Z")
-                   (some-> (t2/select-one-fn :now :model/TransformTest :id transform-test-id) t/instant)))))))))
+        (mt/with-temp [:model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)]
+          (mt/with-model-cleanup [:model/TransformTest]
+            (let [{transform-test-id :id} (transform-test! (merge revertible {:transform_id transform-id
+                                                                              :now          (t/offset-date-time "2026-10-13T00:00:00Z")}))]
+              (data-testing.models/update-transform-tests! [{:id transform-test-id :now nil}])
+              (testing "an update of `now` is recorded"
+                (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity      "transform-test"
+                                     :id          transform-test-id
+                                     :revision_id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))})
+              (testing "a revert restores the moment"
+                (is (= (t/instant "2026-10-13T00:00:00Z")
+                       (some-> (t2/select-one-fn :now :model/TransformTest :id transform-test-id) t/instant)))))))))))
 
 (deftest transform-test-runs-are-not-revisioned-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -250,21 +250,21 @@
 (deftest card-test-revision-revert-restores-now-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card     {card-id :id}      (id-card)
-                     :model/CardTest {card-test-id :id} (merge revertible
-                                                               {:card_id card-id
-                                                                :now     (t/offset-date-time "2026-10-13T00:00:00Z")})]
-        (data-testing.models.card-test/update-card-tests! [{:id card-test-id :now nil}])
-        (testing "an update of `now` is recorded"
-          (is (= 2 (count (revisions/revisions :model/CardTest card-test-id))))
-          (is (=? {:object {:now nil}} (first (revisions/revisions :model/CardTest card-test-id)))))
-        (mt/user-http-request :crowberto :post 200 "revision/revert"
-                              {:entity      "card-test"
-                               :id          card-test-id
-                               :revision_id (:id (last (revisions/revisions :model/CardTest card-test-id)))})
-        (testing "a revert restores the moment"
-          (is (= (t/instant "2026-10-13T00:00:00Z")
-                 (t/instant (t2/select-one-fn :now :model/CardTest :id card-test-id)))))))))
+      (mt/with-temp [:model/Card {card-id :id} (id-card)]
+        (mt/with-model-cleanup [:model/CardTest]
+          (let [{card-test-id :id} (card-test! (merge revertible {:card_id card-id
+                                                                  :now     (t/offset-date-time "2026-10-13T00:00:00Z")}))]
+            (data-testing.models.card-test/update-card-tests! [{:id card-test-id :now nil}])
+            (testing "an update of `now` is recorded"
+              (is (= 2 (count (revisions/revisions :model/CardTest card-test-id))))
+              (is (=? {:object {:now nil}} (first (revisions/revisions :model/CardTest card-test-id)))))
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity      "card-test"
+                                   :id          card-test-id
+                                   :revision_id (:id (last (revisions/revisions :model/CardTest card-test-id)))})
+            (testing "a revert restores the moment"
+              (is (= (t/instant "2026-10-13T00:00:00Z")
+                     (t/instant (t2/select-one-fn :now :model/CardTest :id card-test-id)))))))))))
 
 (deftest card-test-revert-checks-the-reverted-state-test
   (mt/with-premium-features #{:transforms-testing}
@@ -638,36 +638,40 @@
 (deftest segment-test-create-update-and-revert-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Segment     {segment-id :id}      (data-testing.test-util/segment-on (mt/id :people) "A segment")
-                     :model/SegmentTest {segment-test-id :id} (merge revertible
-                                                                     {:segment_id segment-id
-                                                                      :creator_id (mt/user->id :crowberto)
-                                                                      :name       "Original"})]
-        (testing "creation records the initial revision"
-          (is (=? [{:is_creation true :user_id (mt/user->id :crowberto) :object {:segment_id segment-id :name "Original"}}]
-                  (revisions/revisions :model/SegmentTest segment-test-id))))
-        (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
-        (testing "an update records the changed fields, and both history endpoints describe it"
-          (is (=? [{:is_creation false :object {:name "Renamed"}} {:is_creation true}]
-                  (revisions/revisions :model/SegmentTest segment-test-id)))
-          (let [expected [{:is_creation false :description "renamed this Segment test from \"Original\" to \"Renamed\"."}
-                          {:is_creation true :description "created this."}]]
-            (is (=? expected (mt/user-http-request :crowberto :get 200 "revision"
-                                                   :entity "segment-test" :id segment-test-id)))
-            (is (=? expected (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" segment-test-id))))))
-        (testing "a revert restores the saved test"
-          (let [creation (last (revisions/revisions :model/SegmentTest segment-test-id))]
-            (mt/user-http-request :crowberto :post 200 "revision/revert"
-                                  {:entity "segment-test" :id segment-test-id :revision_id (:id creation)})
-            (is (= "Original" (t2/select-one-fn :name :model/SegmentTest :id segment-test-id)))))))))
+      (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/segment-on (mt/id :people) "A segment")]
+        (mt/with-model-cleanup [:model/SegmentTest]
+          (let [{segment-test-id :id} (first (data-testing.models.segment-test/create-segment-tests!
+                                              [(merge saved-test-defaults revertible {:segment_id segment-id
+                                                                                      :creator_id (mt/user->id :crowberto)
+                                                                                      :name       "Original"})]))]
+            (testing "creation records the initial revision"
+              (is (=? [{:is_creation true :user_id (mt/user->id :crowberto) :object {:segment_id segment-id :name "Original"}}]
+                      (revisions/revisions :model/SegmentTest segment-test-id))))
+            (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
+            (testing "an update records the changed fields, and both history endpoints describe it"
+              (is (=? [{:is_creation false :object {:name "Renamed"}} {:is_creation true}]
+                      (revisions/revisions :model/SegmentTest segment-test-id)))
+              (let [expected [{:is_creation false :description "renamed this Segment test from \"Original\" to \"Renamed\"."}
+                              {:is_creation true :description "created this."}]]
+                (is (=? expected (mt/user-http-request :crowberto :get 200 "revision"
+                                                       :entity "segment-test" :id segment-test-id)))
+                (is (=? expected (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" segment-test-id))))))
+            (testing "a revert restores the saved test"
+              (let [creation (last (revisions/revisions :model/SegmentTest segment-test-id))]
+                (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                      {:entity "segment-test" :id segment-test-id :revision_id (:id creation)})
+                (is (= "Original" (t2/select-one-fn :name :model/SegmentTest :id segment-test-id)))))))))))
 
 (deftest segment-test-revert-requires-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Segment     {segment-id :id}      (data-testing.test-util/segment-on (mt/id :people) "A segment")
-                   :model/SegmentTest {segment-test-id :id} (merge revertible
-                                                                   {:segment_id segment-id :name "Original"})]
-      (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
-      (check-revert-requires-the-feature :model/SegmentTest "segment-test" segment-test-id #{} #{:transforms-testing}))))
+    (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/segment-on (mt/id :people) "A segment")]
+      (mt/with-model-cleanup [:model/SegmentTest]
+        (let [{segment-test-id :id} (first (data-testing.models.segment-test/create-segment-tests!
+                                            [(merge saved-test-defaults revertible {:segment_id segment-id
+                                                                                    :creator_id (mt/user->id :rasta)
+                                                                                    :name       "Original"})]))]
+          (data-testing.models.segment-test/update-segment-tests! [{:id segment-test-id :name "Renamed"}])
+          (check-revert-requires-the-feature :model/SegmentTest "segment-test" segment-test-id #{} #{:transforms-testing}))))))
 
 (deftest segment-test-revision-history-after-the-old-segment-is-deleted-test
   (mt/with-premium-features #{:transforms-testing}

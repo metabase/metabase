@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -457,19 +458,20 @@
       ;; orders' FK to products is blocked, reviews' FK to products is blocked
       ;; With orders as focal, products is unreadable so nothing beyond orders+people is found
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/PermissionsGroup {gid :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
-          (grant-table-read! gid (mt/id :orders))
-          (grant-table-read! gid (mt/id :reviews))
-          (grant-table-read! gid (mt/id :people))
-          ;; products is NOT granted — it's the "intermediate" table
-          (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
-                                               :database-id (mt/id)
-                                               :table-ids (mt/id :orders))]
-            (testing "orders reaches people (readable) but not products (unreadable)"
-              (is (= {:orders [:people]
-                      :people []}
-                     (graph-shape response))))))))))
+        (mt/with-model-cleanup [:model/PermissionsGroup]
+          (let [{gid :id} (perms-group/create-permissions-group! {:name (mt/random-name)})]
+            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
+            (grant-table-read! gid (mt/id :orders))
+            (grant-table-read! gid (mt/id :reviews))
+            (grant-table-read! gid (mt/id :people))
+            ;; products is NOT granted — it's the "intermediate" table
+            (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
+                                                 :database-id (mt/id)
+                                                 :table-ids (mt/id :orders))]
+              (testing "orders reaches people (readable) but not products (unreadable)"
+                (is (= {:orders [:people]
+                        :people []}
+                       (graph-shape response)))))))))))
 
 (deftest erd-permissions-manage-table-metadata-allows-erd-test
   (mt/with-premium-features #{:schema-viewer}

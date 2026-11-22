@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -275,92 +276,94 @@
   (testing "GHY-4219: a dashcard card and a series entry the caller cannot read collapse to an id
             with no name. The redaction runs in the tool before the pure projection sees the row,
             so this pins that get_content still applies it."
-    (mt/with-temp [:model/Collection    {open-id :id}       {}
-                   :model/Collection    {locked-id :id}     {}
-                   :model/Dashboard     {dash-id :id}       {:collection_id open-id}
-                   :model/Card          {open-card :id}     {:name "Open" :collection_id open-id}
-                   :model/Card          {hidden-card :id}   {:name "Hidden" :collection_id locked-id}
-                   :model/Card          {hidden-series :id} {:name "Hidden Series"
-                                                             :collection_id locked-id}
-                   :model/DashboardCard {open-dc :id}       {:dashboard_id dash-id
-                                                             :card_id      open-card
-                                                             :row          0 :col 0}
-                   :model/DashboardCard {hidden-dc :id}     {:dashboard_id dash-id
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id open-id}
+                       :model/Card {open-card :id} {:name "Open" :collection_id open-id}
+                       :model/Card {hidden-card :id} {:name "Hidden" :collection_id locked-id}
+                       :model/Card {hidden-series :id} {:name "Hidden Series"
+                                                        :collection_id locked-id}
+                       :model/DashboardCard {open-dc :id} {:dashboard_id dash-id
+                                                           :card_id      open-card
+                                                           :row          0 :col 0}
+                       :model/DashboardCard {hidden-dc :id} {:dashboard_id dash-id
                                                              :card_id      hidden-card
                                                              :row          1 :col 0}
-                   :model/DashboardCardSeries _             {:dashboardcard_id open-dc
-                                                             :card_id          hidden-series
-                                                             :position         0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (testing "an admin, who can read everything, sees every name"
-          (mt/with-test-user :crowberto
-            (let [refs (dashcard-refs (content-one {:items [{:type "dashboard" :id dash-id}]}))]
-              (is (= {:card   {:id open-card :name "Open"}
-                      :series [{:id hidden-series :name "Hidden Series"}]}
-                     (get refs open-dc)))
-              (is (= {:card {:id hidden-card :name "Hidden"}}
-                     (get refs hidden-dc))))))
-        (mt/with-test-user :rasta
-          (let [row  (content-one {:items [{:type "dashboard" :id dash-id}]})
-                refs (dashcard-refs row)]
-            (is (nil? (:error row))
-                "the dashboard itself is readable — only the nested cards are not")
-            (testing "the readable card keeps its name"
-              (is (= {:id open-card :name "Open"} (:card (get refs open-dc)))))
-            (testing "the unreadable card is an id and nothing else"
-              (is (= {:id hidden-card} (:card (get refs hidden-dc)))))
-            (testing "and so is an unreadable series entry"
-              (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
+                       :model/DashboardCardSeries _ {:dashboardcard_id open-dc
+                                                     :card_id          hidden-series
+                                                     :position         0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (testing "an admin, who can read everything, sees every name"
+              (mt/with-test-user :crowberto
+                (let [refs (dashcard-refs (content-one {:items [{:type "dashboard" :id dash-id}]}))]
+                  (is (= {:card   {:id open-card :name "Open"}
+                          :series [{:id hidden-series :name "Hidden Series"}]}
+                         (get refs open-dc)))
+                  (is (= {:card {:id hidden-card :name "Hidden"}}
+                         (get refs hidden-dc))))))
+            (mt/with-test-user :rasta
+              (let [row  (content-one {:items [{:type "dashboard" :id dash-id}]})
+                    refs (dashcard-refs row)]
+                (is (nil? (:error row))
+                    "the dashboard itself is readable — only the nested cards are not")
+                (testing "the readable card keeps its name"
+                  (is (= {:id open-card :name "Open"} (:card (get refs open-dc)))))
+                (testing "the unreadable card is an id and nothing else"
+                  (is (= {:id hidden-card} (:card (get refs hidden-dc)))))
+                (testing "and so is an unreadable series entry"
+                  (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))))
 
 (deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
   ;; The frontend keys `series_settings` by card name, alone or with a column or breakout value after it, and the
   ;; series card's filter mapping carries its field ids.
   (testing "BOT-2561: the layout include names an unreadable series card nowhere and keeps no mapping to it"
-    (mt/with-temp [:model/Collection    {open-id :id}       {}
-                   :model/Collection    {locked-id :id}     {}
-                   :model/Dashboard     {dash-id :id}       {:collection_id open-id
-                                                             :parameters    [{:id   "p"
-                                                                              :name "P"
-                                                                              :slug "p"
-                                                                              :type "category"}]}
-                   :model/Card          {open-card :id}     {:name "Open", :collection_id open-id}
-                   :model/Card          {hidden-series :id} {:name "SECRET Series", :collection_id locked-id}
-                   :model/DashboardCard {dc-id :id}         {:dashboard_id           dash-id
-                                                             :card_id                open-card
-                                                             :row                    0
-                                                             :col                    0
-                                                             :visualization_settings
-                                                             {:series_settings {"Open"                 {:color "#111"}
-                                                                                "SECRET Series"        {:color "#222"}
-                                                                                "SECRET Series: Count" {:color "#333"}}}
-                                                             :parameter_mappings
-                                                             [{:parameter_id "p"
-                                                               :card_id      open-card
-                                                               :target       [:dimension [:field (mt/id :venues :price) nil]]}
-                                                              {:parameter_id "p"
-                                                               :card_id      hidden-series
-                                                               :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
-                   :model/DashboardCardSeries _             {:dashboardcard_id dc-id
-                                                             :card_id          hidden-series
-                                                             :position         0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [read-dashboard  #(content-one {:items   [{:type "dashboard", :id dash-id}]
-                                             :include ["layout" "parameters"]})
-              layout-dashcard (fn [row] (some #(when (= dc-id (:id %)) %) (:dashcards (:layout row))))]
-          (testing "an admin sees the series card's settings and mapping"
-            (mt/with-test-user :crowberto
-              (let [dc (layout-dashcard (read-dashboard))]
-                (is (str/includes? (json/encode dc) "SECRET Series"))
-                (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
-          (mt/with-test-user :rasta
-            (let [row (read-dashboard)
-                  dc  (layout-dashcard row)]
-              (is (some? dc))
-              (is (not (str/includes? (json/encode row) "SECRET Series"))
-                  "checked on the whole response, so a leak through another include fails too")
-              (is (= [open-card] (map :card_id (:parameter_mappings dc))))
-              (testing "the series settings go whole, since composite keys also name the card"
-                (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id open-id
+                                                       :parameters    [{:id   "p"
+                                                                        :name "P"
+                                                                        :slug "p"
+                                                                        :type "category"}]}
+                       :model/Card {open-card :id} {:name "Open", :collection_id open-id}
+                       :model/Card {hidden-series :id} {:name "SECRET Series", :collection_id locked-id}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id           dash-id
+                                                         :card_id                open-card
+                                                         :row                    0
+                                                         :col                    0
+                                                         :visualization_settings
+                                                         {:series_settings {"Open"                 {:color "#111"}
+                                                                            "SECRET Series"        {:color "#222"}
+                                                                            "SECRET Series: Count" {:color "#333"}}}
+                                                         :parameter_mappings
+                                                         [{:parameter_id "p"
+                                                           :card_id      open-card
+                                                           :target       [:dimension [:field (mt/id :venues :price) nil]]}
+                                                          {:parameter_id "p"
+                                                           :card_id      hidden-series
+                                                           :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dc-id
+                                                     :card_id          hidden-series
+                                                     :position         0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (let [read-dashboard  #(content-one {:items   [{:type "dashboard", :id dash-id}]
+                                                 :include ["layout" "parameters"]})
+                  layout-dashcard (fn [row] (some #(when (= dc-id (:id %)) %) (:dashcards (:layout row))))]
+              (testing "an admin sees the series card's settings and mapping"
+                (mt/with-test-user :crowberto
+                  (let [dc (layout-dashcard (read-dashboard))]
+                    (is (str/includes? (json/encode dc) "SECRET Series"))
+                    (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
+              (mt/with-test-user :rasta
+                (let [row (read-dashboard)
+                      dc  (layout-dashcard row)]
+                  (is (some? dc))
+                  (is (not (str/includes? (json/encode row) "SECRET Series"))
+                      "checked on the whole response, so a leak through another include fails too")
+                  (is (= [open-card] (map :card_id (:parameter_mappings dc))))
+                  (testing "the series settings go whole, since composite keys also name the card"
+                    (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))))
 
 (defn- link-card-settings
   "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the

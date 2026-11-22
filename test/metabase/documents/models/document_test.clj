@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -98,29 +99,30 @@
 (deftest personal-collection-edge-cases-test
   (testing "Personal collection handling"
     (binding [collection/*allow-deleting-personal-collections* true]
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@example.com"}
-                     :model/Collection {regular-collection-id :id} {:name "Regular Collection"}
-                     :model/Document {document-id :id} {:collection_id regular-collection-id
-                                                        :name "Personal Test Document"}
-                     :model/Card {card-id :id} {:name "Personal Card"
-                                                :document_id document-id
-                                                :collection_id regular-collection-id
-                                                :dataset_query (mt/mbql-query venues)}]
-        (let [personal-coll-id (personal-collection-id user-id)]
-          (testing "moving document to personal collection moves associated cards"
-            (mt/with-current-user user-id
-              ;; As the personal collection owner, update should succeed
-              (document/update-documents! [{:id document-id :collection_id personal-coll-id}])
-              ;; Verify both document and card moved to personal collection
-              (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
-              (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
-          (testing "moving document from personal collection works"
-            (mt/with-current-user user-id
-              ;; Move back to regular collection
-              (document/update-documents! [{:id document-id :collection_id regular-collection-id}])
-              ;; Verify both document and card moved back
-              (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-              (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
+      (mt/with-model-cleanup [:model/Collection :model/User]
+        (let [{user-id :id} (user/create-user! {:first_name "Test" :last_name "User" :email "test@example.com"})]
+          (mt/with-temp [:model/Collection {regular-collection-id :id} {:name "Regular Collection"}
+                         :model/Document {document-id :id} {:collection_id regular-collection-id
+                                                            :name "Personal Test Document"}
+                         :model/Card {card-id :id} {:name "Personal Card"
+                                                    :document_id document-id
+                                                    :collection_id regular-collection-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+            (let [personal-coll-id (personal-collection-id user-id)]
+              (testing "moving document to personal collection moves associated cards"
+                (mt/with-current-user user-id
+                  ;; As the personal collection owner, update should succeed
+                  (document/update-documents! [{:id document-id :collection_id personal-coll-id}])
+                  ;; Verify both document and card moved to personal collection
+                  (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
+                  (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+              (testing "moving document from personal collection works"
+                (mt/with-current-user user-id
+                  ;; Move back to regular collection
+                  (document/update-documents! [{:id document-id :collection_id regular-collection-id}])
+                  ;; Verify both document and card moved back
+                  (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
+                  (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))))
 
 (defn- move-allowed?
   "Whether the current user may move the Document in `old-collection-id` to `new-collection-id`."
@@ -132,42 +134,45 @@
   (testing "moving a Document needs write access to both its Collection and the Collection it moves to"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {old-id :id} {}
-                     :model/Collection {new-id :id} {}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
-          (is (false? (move-allowed? old-id new-id)))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
-          (is (true? (move-allowed? old-id new-id))))
-        (mt/with-current-user user-id
-          (mt/with-temp [:model/Collection {other-id :id} {}
-                         :model/Document document {:collection_id old-id}]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                  (api/update-check document {:collection_id other-id})))))))))
+                     :model/Collection {new-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+            (mt/with-current-user user-id
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+              (is (false? (move-allowed? old-id new-id)))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
+              (is (true? (move-allowed? old-id new-id))))
+            (mt/with-current-user user-id
+              (mt/with-temp [:model/Collection {other-id :id} {}
+                             :model/Document document {:collection_id old-id}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                      (api/update-check document {:collection_id other-id})))))))))))
 
 (deftest can-update-root-collection-move-test
   (testing "moving a Document from or to the root Collection needs write access to the root Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
-          (is (false? (move-allowed? coll-id nil)))
-          (is (false? (move-allowed? nil coll-id)))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
-          (is (true? (move-allowed? coll-id nil)))
-          (is (true? (move-allowed? nil coll-id))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+            (mt/with-current-user user-id
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (false? (move-allowed? coll-id nil)))
+              (is (false? (move-allowed? nil coll-id)))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+              (is (true? (move-allowed? coll-id nil)))
+              (is (true? (move-allowed? nil coll-id))))))))))
 
 (deftest can-update-without-collection-move-test
   (testing "an update that keeps the Collection needs only write access to the Document"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/Document document {:collection_id coll-id}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
-          (is (true? (mi/can-update? (t2/hydrate document :can_write) {:name "New name"})))
-          (is (true? (mi/can-update? (t2/hydrate document :can_write) {:collection_id coll-id}))))))))
+                     :model/Document document {:collection_id coll-id}]
+        (mt/with-model-cleanup [:model/User]
+          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+            (mt/with-current-user user-id
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (true? (mi/can-update? (t2/hydrate document :can_write) {:name "New name"})))
+              (is (true? (mi/can-update? (t2/hydrate document :can_write) {:collection_id coll-id}))))))))))
 
 (deftest can-update-public-sharing-test
   (testing "only superusers change the public sharing columns of a Document"
@@ -183,12 +188,13 @@
 (deftest can-create-test
   (testing "creating a Document needs write access to its Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (is (false? (mi/can-create? :model/Document {:collection_id coll-id})))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
-          (is (true? (mi/can-create? :model/Document {:collection_id coll-id}))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+            (mt/with-current-user user-id
+              (is (false? (mi/can-create? :model/Document {:collection_id coll-id})))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (true? (mi/can-create? :model/Document {:collection_id coll-id}))))))))))
 
 (deftest document-does-not-go-into-archived-collection-test
   (mt/with-temp [:model/Collection {archived-id :id} {:archived true}

@@ -5,7 +5,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.view-log.db :as view-log.db]
@@ -25,8 +24,6 @@
 
 (t2/define-before-insert :model/ViewLog
   [log-entry]
-  (when (mu.fn/instrument-ns? *ns*)
-    (mu/validate-throw [:map [:context {:optional true} ::context]] log-entry))
   (let [defaults {:timestamp :%now}]
     (->> log-entry
          (merge defaults)

@@ -171,8 +171,15 @@
   (testing "A snippet referencing another snippet produces a snippet->snippet dependency"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1"}
-                     :model/NativeQuerySnippet {outer-id :id} {:name "outer_snip" :content "SELECT * WHERE {{snippet: inner_snip}}"}]
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1" :template_tags {}}
+                     :model/NativeQuerySnippet {outer-id :id} {:name          "outer_snip"
+                                                               :content       "SELECT * WHERE {{snippet: inner_snip}}"
+                                                               :template_tags {"snippet: inner_snip" {:id           (str (random-uuid))
+                                                                                                      :name         "snippet: inner_snip"
+                                                                                                      :display-name "Snippet: Inner Snip"
+                                                                                                      :type         :snippet
+                                                                                                      :snippet-name "inner_snip"
+                                                                                                      :snippet-id   inner-id}}}]
         (forget-status! :snippet inner-id)
         (forget-status! :snippet outer-id)
         (is (false? (t2/exists? :model/Dependency
@@ -190,8 +197,13 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
-                     :model/NativeQuerySnippet {snippet-id :id} {:name "card_ref_snip"
-                                                                 :content (format "SELECT * FROM {{#%d}}" card-id)}]
+                     :model/NativeQuerySnippet {snippet-id :id} {:name          "card_ref_snip"
+                                                                 :content       (format "SELECT * FROM {{#%d}}" card-id)
+                                                                 :template_tags {(str "#" card-id) {:id           (str (random-uuid))
+                                                                                                    :name         (str "#" card-id)
+                                                                                                    :display-name (str "#" card-id)
+                                                                                                    :type         :card
+                                                                                                    :card-id      card-id}}}]
         (forget-status! :card card-id)
         (forget-status! :snippet snippet-id)
         (is (false? (t2/exists? :model/Dependency
@@ -607,8 +619,15 @@
            recomputes the cards whose SQL expands it"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES"}
-                     :model/NativeQuerySnippet _ {:name "birds outer" :content "SELECT * FROM {{snippet: birds inner}}"}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES" :template_tags {}}
+                     :model/NativeQuerySnippet _ {:name          "birds outer"
+                                                  :content       "SELECT * FROM {{snippet: birds inner}}"
+                                                  :template_tags {"snippet: birds inner" {:id           (str (random-uuid))
+                                                                                          :name         "snippet: birds inner"
+                                                                                          :display-name "Snippet: Birds Inner"
+                                                                                          :type         :snippet
+                                                                                          :snippet-name "birds inner"
+                                                                                          :snippet-id   inner-id}}}
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
@@ -1309,8 +1328,9 @@
     (deps.test/run-with-dependencies-setup!
      (fn [mp]
        (let [venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:slug "birds" :name "Birds" :bundle_path "birds.js"}
+         (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                        :model/DataApp {app-id :id collection-id :resource_collection_id}
+                        {:slug "birds" :name "Birds" :bundle_path "birds.js" :resource_collection_id own-collection-id}
                         :model/Collection {other-collection-id :id} {}
                         :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
                         :model/ImplicitAction _ {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
@@ -1348,7 +1368,8 @@
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (deps.test/run-with-dependencies-setup!
        (fn [mp]
-         (mt/with-temp [:model/DataApp    app        {}
+         (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace "data-apps"}
+                        :model/DataApp    app        {:resource_collection_id own-collection-id}
                         :model/Collection collection {:namespace "data-apps"}
                         :model/Card       card       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                       :collection_id (:id collection)}]

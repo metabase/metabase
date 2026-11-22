@@ -50,31 +50,33 @@
                #"You cannot edit or delete the .* permissions group"
                (perms-group/update-permissions-group! (u/the-id group) {:name "Cool People"}))))))))
 
-(deftest ^:parallel new-users-test
+(deftest new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "regular user"
-      (mt/with-temp [:model/User {user-id :id}]
-        (testing "Should be added to All Users group"
-          (is (t2/exists? :model/PermissionsGroupMembership
-                          :user_id  user-id
-                          :group_id (u/the-id (perms-group/all-users)))))
-        (testing "Should not be added to Admin group"
-          (is (not (t2/exists? :model/PermissionsGroupMembership
-                               :user_id  user-id
-                               :group_id (u/the-id (perms-group/admin))))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "new-regular-user@example.com"})]
+          (testing "Should be added to All Users group"
+            (is (t2/exists? :model/PermissionsGroupMembership
+                            :user_id  user-id
+                            :group_id (u/the-id (perms-group/all-users)))))
+          (testing "Should not be added to Admin group"
+            (is (not (t2/exists? :model/PermissionsGroupMembership
+                                 :user_id  user-id
+                                 :group_id (u/the-id (perms-group/admin)))))))))))
 
-(deftest ^:parallel new-users-test-2
+(deftest new-users-test-2
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "superuser"
-      (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (testing "Should be added to All Users group"
-          (is (t2/exists? :model/PermissionsGroupMembership
-                          :user_id  user-id
-                          :group_id (u/the-id (perms-group/all-users)))))
-        (testing "Should be added to Admin group"
-          (is (t2/exists? :model/PermissionsGroupMembership
-                          :user_id  user-id
-                          :group_id (u/the-id (perms-group/admin)))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "new-superuser@example.com" :is_superuser true})]
+          (testing "Should be added to All Users group"
+            (is (t2/exists? :model/PermissionsGroupMembership
+                            :user_id  user-id
+                            :group_id (u/the-id (perms-group/all-users)))))
+          (testing "Should be added to Admin group"
+            (is (t2/exists? :model/PermissionsGroupMembership
+                            :user_id  user-id
+                            :group_id (u/the-id (perms-group/admin))))))))))
 
 (mu/defn- group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
@@ -123,9 +125,10 @@
 (deftest add-remove-from-admin-group-test-2
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "removing user from Admin should set is_superuser -> false"
-      (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (perms-group-membership/remove-user-from-group! user-id (perms-group/admin))
-        (is (false? (t2/select-one-fn :is_superuser :model/User, :id user-id)))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "removed-admin@example.com" :is_superuser true})]
+          (perms-group-membership/remove-user-from-group! user-id (perms-group/admin))
+          (is (false? (t2/select-one-fn :is_superuser :model/User, :id user-id))))))))
 
 (deftest add-remove-from-admin-group-test-3
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
@@ -137,9 +140,10 @@
 (deftest add-remove-from-admin-group-test-4
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> false should remove user from Admin"
-      (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (user/update-users! [user-id] {:is_superuser false})
-        (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [{user-id :id} (user/create-user! {:email "demoted-admin@example.com" :is_superuser true})]
+          (user/update-users! [user-id] {:is_superuser false})
+          (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin))))))))))
 
 (deftest data-graph-for-group-check-all-groups-test
   (mt/with-temp [:model/PermissionsGroup {} {}
@@ -172,32 +176,34 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (mt/with-full-data-perms-for-all-users!
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-            (is
-             (= {group-id
-                 {db-id
-                  {:perms/view-data :unrestricted
-                   :perms/create-queries :query-builder-and-native
-                   :perms/download-results :one-million-rows
-                   :perms/manage-table-metadata :no
-                   :perms/manage-database :no}}}
-                (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))
+          (mt/with-model-cleanup [:model/PermissionsGroup]
+            (let [{group-id :id} (perms-group/create-permissions-group! {:name "Default Values Full"})]
+              (is
+               (= {group-id
+                   {db-id
+                    {:perms/view-data :unrestricted
+                     :perms/create-queries :query-builder-and-native
+                     :perms/download-results :one-million-rows
+                     :perms/manage-table-metadata :no
+                     :perms/manage-database :no}}}
+                  (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))
       (mt/with-temp [:model/Database         {db-id :id}    {}]
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-            (is
-             (= {group-id
-                 {db-id
-                  ;; When EE code is on the classpath, a new group fails CLOSED to :blocked for a DB
-                  ;; where All Users is blocked, regardless of token features (UXW-4927); only a true
-                  ;; OSS jar falls back to :unrestricted.
-                  {:perms/view-data (if config/ee-available? :blocked :unrestricted)
-                   :perms/create-queries :no
-                   :perms/download-results :no
-                   :perms/manage-table-metadata :no
-                   :perms/manage-database :no
-                   :perms/transforms :no}}}
-                (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+          (mt/with-model-cleanup [:model/PermissionsGroup]
+            (let [{group-id :id} (perms-group/create-permissions-group! {:name "Default Values None"})]
+              (is
+               (= {group-id
+                   {db-id
+                    ;; When EE code is on the classpath, a new group fails CLOSED to :blocked for a DB
+                    ;; where All Users is blocked, regardless of token features (UXW-4927); only a true
+                    ;; OSS jar falls back to :unrestricted.
+                    {:perms/view-data (if config/ee-available? :blocked :unrestricted)
+                     :perms/create-queries :no
+                     :perms/download-results :no
+                     :perms/manage-table-metadata :no
+                     :perms/manage-database :no
+                     :perms/transforms :no}}}
+                  (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))))))
 
 (deftest hydrate-members-tests
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}         {}

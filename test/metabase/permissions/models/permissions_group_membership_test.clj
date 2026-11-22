@@ -6,6 +6,7 @@
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -19,10 +20,11 @@
 
 (deftest remove-is-superuser-test
   (testing "when you delete a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"
-    (mt/with-temp [:model/User user {:is_superuser true}]
-      (perms-group-membership/remove-user-from-group! user (perms-group/admin))
-      (is (= false
-             (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [user (user/create-user! {:email "remove-superuser@example.com" :is_superuser true})]
+        (perms-group-membership/remove-user-from-group! user (perms-group/admin))
+        (is (= false
+               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
   (testing "it should not let you remove the last admin"
     (mt/with-single-admin-user! [{id :id}]
       (is (thrown? Exception
@@ -99,17 +101,18 @@
   (u/the-id (perms-group/admin)))
 
 (deftest all-users-group-membership-is-locked-test
-  (mt/with-temp [:model/User {user-id :id} {}]
-    (testing "removing a member of All Users is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
-                            (perms-group-membership/remove-user-from-group! user-id (all-users-group-id))))
-      (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
-    (testing "adding a member to All Users is refused"
-      (perms/allow-changing-all-users-group-members
-        (perms-group-membership/remove-user-from-group! user-id (all-users-group-id)))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
-                            (perms-group-membership/add-user-to-group! user-id (all-users-group-id))))
-      (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id)))))))
+  (mt/with-model-cleanup [:model/User]
+    (let [{user-id :id} (user/create-user! {:email "all-users-locked@example.com"})]
+      (testing "removing a member of All Users is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
+                              (perms-group-membership/remove-user-from-group! user-id (all-users-group-id))))
+        (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
+      (testing "adding a member to All Users is refused"
+        (perms/allow-changing-all-users-group-members
+          (perms-group-membership/remove-user-from-group! user-id (all-users-group-id)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
+                              (perms-group-membership/add-user-to-group! user-id (all-users-group-id))))
+        (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))))))
 
 (deftest add-to-admin-group-sets-is-superuser-test
   (mt/with-temp [:model/User {user-id :id} {}]
@@ -118,12 +121,6 @@
     (testing "and removing it unsets the flag"
       (perms-group-membership/remove-user-from-group! user-id (admin-group-id))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
-
-(deftest temporary-admin-membership-sets-is-superuser-while-it-lives-test
-  (mt/with-temp [:model/User {user-id :id} {}]
-    (mt/with-temp [:model/PermissionsGroupMembership _ {:user_id user-id :group_id (admin-group-id)}]
-      (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id))))
-    (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id)))))
 
 (deftest removing-every-admin-at-once-is-refused-test
   (mt/with-temp [:model/User _ {:is_superuser true}]

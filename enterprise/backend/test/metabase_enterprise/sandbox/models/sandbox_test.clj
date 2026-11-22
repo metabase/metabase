@@ -16,6 +16,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.measures.test-util :as measures.tu]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -365,37 +366,43 @@
                 (is (or (:isError result) error) (some-> error :message message/render))
                 (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))))))
 
-(defn- with-snippet-policy
+(defn- with-snippet-policy!
   "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
   `{{#card}}` tag."
   [f]
   (let [inner-name (mt/random-name)
         outer-name (mt/random-name)]
-    (mt/with-temp [:model/PermissionsGroup   group       {}
-                   :model/Card               nested-card {:dataset_query (mt/mbql-query venues {:limit 1})}
-                   :model/NativeQuerySnippet inner       {:name    inner-name
-                                                          :content (format "ID IN (SELECT ID FROM {{#%d-nested}})"
-                                                                           (:id nested-card))}
-                   :model/NativeQuerySnippet outer       {:name    outer-name
-                                                          :content (format "{{snippet: %s}}" inner-name)}
-                   :model/NativeQuerySnippet other       {:content "1 = 1"}
-                   :model/Card               policy      {:dataset_query (snippet-query outer)}
-                   :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                          :group_id (:id group)
-                                                          :card_id  (:id policy)}]
-      (f {:inner inner, :outer outer, :other other, :nested-card nested-card}))))
+    (mt/with-temp [:model/PermissionsGroup group       {}
+                   :model/Card             nested-card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+        (let [[inner]       (native-query-snippet/create-snippets!
+                             [{:name       inner-name
+                               :content    (format "ID IN (SELECT ID FROM {{#%d-nested}})" (:id nested-card))
+                               :creator_id (mt/user->id :crowberto)}])
+              [outer other] (native-query-snippet/create-snippets!
+                             [{:name       outer-name
+                               :content    (format "{{snippet: %s}}" inner-name)
+                               :creator_id (mt/user->id :crowberto)}
+                              {:name       (mt/random-name)
+                               :content    "1 = 1"
+                               :creator_id (mt/user->id :crowberto)}])]
+          (mt/with-temp [:model/Card    policy {:dataset_query (snippet-query outer)}
+                         :model/Sandbox _      {:table_id (mt/id :venues)
+                                                :group_id (:id group)
+                                                :card_id  (:id policy)}]
+            (f {:inner inner, :outer outer, :other other, :nested-card nested-card})))))))
 
 (deftest only-admins-change-card-read-by-sandbox-through-snippet-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(update-check [nested-card]
               (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
       (testing "a non-admin is refused the query of the nested Card"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [{:keys [nested-card]}]
             (mt/with-test-user :rasta
               (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
       (testing "an admin may change it"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [{:keys [nested-card]}]
             (mt/with-test-user :crowberto
               (is (true? (update-check nested-card))))))))))
@@ -410,26 +417,26 @@
                ["archive"                       outer {:archived true}]
                ["content of the nested snippet" inner {:content "2 = 2"}]])]
       (testing "a non-admin is refused"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [policy]
             (mt/with-test-user :rasta
               (doseq [[change-name snippet changes] (guarded-changes policy)]
                 (testing change-name
                   (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
       (testing "an admin may do all of it"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [policy]
             (mt/with-test-user :crowberto
               (doseq [[change-name snippet changes] (guarded-changes policy)]
                 (testing change-name
                   (is (true? (update-check snippet changes)))))))))
       (testing "a change that does not touch what the sandbox reads is allowed"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [{:keys [outer]}]
             (mt/with-test-user :rasta
               (is (true? (update-check outer {:description "A description"})))))))
       (testing "an unrelated snippet is untouched"
-        (with-snippet-policy
+        (with-snippet-policy!
           (fn [{:keys [other]}]
             (mt/with-test-user :rasta
               (is (true? (update-check other {:content "2 = 2"}))))))))))
@@ -438,7 +445,7 @@
   (mt/with-premium-features #{:sandboxes}
     (letfn [(put-url [snippet]
               (str "native-query-snippet/" (:id snippet)))]
-      (with-snippet-policy
+      (with-snippet-policy!
         (fn [{:keys [inner outer other]}]
           (testing "a non-admin is refused"
             (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
@@ -721,34 +728,41 @@
                        :model/Card               source      {:collection_id (:id chain-coll)
                                                               :dataset_query (measure-then-filter-query (:id measure))}
                        :model/Card               _free-card  {:collection_id (:id free-coll)
-                                                              :dataset_query (mt/mbql-query venues)}
-                       :model/NativeQuerySnippet _inner      {:collection_id (:id dep-snippet-coll)
-                                                              :name          inner-name
-                                                              :content       (format "ID IN (SELECT ID FROM {{#%d-nested}})"
-                                                                                     (:id nested-card))}
-                       :model/NativeQuerySnippet outer       {:collection_id (:id policy-snippet-coll)
-                                                              :name          outer-name
-                                                              :content       (format "{{snippet: %s}}" inner-name)}
-                       :model/NativeQuerySnippet _free-snip  {:collection_id (:id free-snippet-coll), :content "1 = 1"}
-                       :model/Card               policy-a    {:collection_id (:id policy-coll)
-                                                              :dataset_query (snippet-query outer)}
-                       :model/Card               policy-b    {:collection_id (:id policy-coll)
-                                                              :dataset_query (lib/query mp (lib.metadata/card mp (:id source)))}
-                       :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                              :group_id (:id group-a)
-                                                              :card_id  (:id policy-a)}
-                       :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                              :group_id (:id group-b)
-                                                              :card_id  (:id policy-b)}]
-          (let [colls {:policy         policy-coll
-                       :chain          chain-coll
-                       :free           free-coll
-                       :policy-snippet policy-snippet-coll
-                       :dep-snippet    dep-snippet-coll
-                       :free-snippet   free-snippet-coll}]
-            (doseq [coll (vals colls)]
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
-            (f colls)))))))
+                                                              :dataset_query (mt/mbql-query venues)}]
+          (mt/with-model-cleanup [:model/NativeQuerySnippet]
+            (let [[_inner _free-snip] (native-query-snippet/create-snippets!
+                                       [{:collection_id (:id dep-snippet-coll)
+                                         :name          inner-name
+                                         :content       (format "ID IN (SELECT ID FROM {{#%d-nested}})" (:id nested-card))
+                                         :creator_id    (mt/user->id :crowberto)}
+                                        {:collection_id (:id free-snippet-coll)
+                                         :name          (mt/random-name)
+                                         :content       "1 = 1"
+                                         :creator_id    (mt/user->id :crowberto)}])
+                  [outer]             (native-query-snippet/create-snippets!
+                                       [{:collection_id (:id policy-snippet-coll)
+                                         :name          outer-name
+                                         :content       (format "{{snippet: %s}}" inner-name)
+                                         :creator_id    (mt/user->id :crowberto)}])]
+              (mt/with-temp [:model/Card               policy-a    {:collection_id (:id policy-coll)
+                                                                    :dataset_query (snippet-query outer)}
+                             :model/Card               policy-b    {:collection_id (:id policy-coll)
+                                                                    :dataset_query (lib/query mp (lib.metadata/card mp (:id source)))}
+                             :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                                    :group_id (:id group-a)
+                                                                    :card_id  (:id policy-a)}
+                             :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                                    :group_id (:id group-b)
+                                                                    :card_id  (:id policy-b)}]
+                (let [colls {:policy         policy-coll
+                             :chain          chain-coll
+                             :free           free-coll
+                             :policy-snippet policy-snippet-coll
+                             :dep-snippet    dep-snippet-coll
+                             :free-snippet   free-snippet-coll}]
+                  (doseq [coll (vals colls)]
+                    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
+                  (f colls))))))))))
 
 (defn- archive-collection! [coll]
   (collections/update-collection! (:id coll) {:archived true}))

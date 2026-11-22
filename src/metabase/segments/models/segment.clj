@@ -49,23 +49,14 @@
   (derive :hook/entity-id))
 
 (defn- definition-table-id
-  "The id of the Table `definition`, a full query, is built on."
+  "The id of the Table `definition`, a full query, is built on, read without the app DB."
   [definition]
-  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+  (:source-table (lib-be/query-first-stage definition)))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-definition
-  "Throws unless `definition` is a full query that fits a Segment."
-  [definition]
-  (when-not (and (seq definition)
-                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-    (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
-  (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
-
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
-  (check-definition definition)
   (assoc segment :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Segment
@@ -75,8 +66,6 @@
       (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition))
     (cond-> segment
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 

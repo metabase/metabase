@@ -11,6 +11,7 @@
    [metabase.permissions.models.data-permissions :as data-permissions]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
@@ -863,27 +864,31 @@
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          ;; nil table ID is passed to check DB-level value
-          (is (= :query-builder (perm-value nil)))
-          (is (nil? (perm-value table-id-4)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            ;; nil table ID is passed to check DB-level value
+            (is (= :query-builder (perm-value nil)))
+            (is (nil? (perm-value table-id-4))))))
       (testing "New table inherits uniform permission value from schema"
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :query-builder (perm-value table-id-4))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :query-builder (perm-value table-id-4)))))
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :no (perm-value table-id-4)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :no (perm-value table-id-4))))))
       (testing "New table uses default value when schema permissions are not uniform"
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :no (perm-value table-id-4))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :no (perm-value table-id-4)))))))))
 
 ;;; ---------------------------------------- Batch permission function tests ----------------------------------------
 

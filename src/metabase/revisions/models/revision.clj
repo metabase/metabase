@@ -248,9 +248,14 @@
                          :capacity 500
                          :interval 5000)))
 
+(defn- settle-after-commit!
+  "Queues the settling of the Revisions of the row each of the new Revision `rows` is about, once the write commits."
+  [rows]
+  (mdb/do-after-commit #(doseq [{:keys [model model_id]} rows]
+                          (grouper/submit! @settle-queue {:model model :model_id model_id}))))
+
 (t2/define-before-insert :model/Revision
-  [{:keys [model model_id] :as revision}]
-  (mdb/do-after-commit #(grouper/submit! @settle-queue {:model model :model_id model_id}))
+  [revision]
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
@@ -420,12 +425,14 @@
 (mu/defn create-revisions!
   "Insert the Revision `rows` in one statement."
   [rows :- [:sequential ::revisions.schema/revision.create]]
-  (revisions.db/insert-revisions! rows))
+  (u/prog1 (revisions.db/insert-revisions! rows)
+    (settle-after-commit! rows)))
 
 (mu/defn create-revision! :- :map
   "Insert the Revision `row` and return it."
   [row :- ::revisions.schema/revision.create]
-  (revisions.db/insert-revision-returning! row))
+  (u/prog1 (revisions.db/insert-revision-returning! row)
+    (settle-after-commit! [row])))
 
 (mu/defn delete-revisions-for-entity!
   "Delete the Revisions of the row of the model named `model-name` (e.g. \"Card\") with `model-id`."

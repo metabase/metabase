@@ -91,13 +91,11 @@
   (let [defaults  {:parameters []}
         dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
                       maybe-populate-initially-published-at)]
-    (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
-      (params/assert-valid-parameters dashboard))))
+    (public-sharing/add-public-uuid-prefix dashboard)))
 
 (t2/define-before-update :model/Dashboard
   [row]
   (let [dashboard (lib/normalize ::dashboards.schema/dashboard row)]
-    (params/assert-valid-parameters dashboard)
     (-> dashboard
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))

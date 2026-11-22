@@ -175,7 +175,7 @@
   (testing "Insert"
     (is (thrown-with-msg?
          Exception
-         #"Measure definition must be a full query"
+         #"Query must include :lib/type or :type"
          (t2/insert! :model/Measure
                      {:name       "Bad Measure"
                       :creator_id (mt/user->id :rasta)
@@ -187,7 +187,7 @@
                                                     :definition (measure-definition (lib/count))}]
       (is (thrown-with-msg?
            Exception
-           #"Measure definition must be a full query"
+           #"Query must include :lib/type or :type"
            (t2/update! :model/Measure :id measure-id
                        {:definition {:aggregation [[:count]]}}))))))
 

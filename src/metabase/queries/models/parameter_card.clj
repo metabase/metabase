@@ -5,8 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -28,23 +26,6 @@
 
 (mr/def ::parameterized-object-type
   (into [:enum] (sort valid-parameterized-object-type)))
-
-(defn- validate-parameterized-object-type
-  [{:keys [parameterized_object_type] :as _parameter-card}]
-  (when-not (valid-parameterized-object-type parameterized_object_type)
-    (throw (ex-info (tru "invalid parameterized_object_type")
-                    {:allowed-types valid-parameterized-object-type}))))
-
-(t2/define-before-insert :model/ParameterCard
-  [pc]
-  (u/prog1 pc
-    (validate-parameterized-object-type pc)))
-
-(t2/define-before-update :model/ParameterCard
-  [pc]
-  (u/prog1 pc
-    (when (:parameterized_object_type (t2/changes <>))
-      (validate-parameterized-object-type <>))))
 
 (defn values-source-card-ids
   "Returns the ids of the Cards `parameters` draw their values from."

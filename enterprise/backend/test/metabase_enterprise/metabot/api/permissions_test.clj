@@ -6,6 +6,7 @@
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -225,21 +226,22 @@
                                                                        :perm_type  "permission/metabot"
                                                                        :perm_value perm-value}]}))]
             ;; Simple mode hides the custom group, so its :yes must not override All Users.
-            (mt/with-temp [:model/User                       {user-id :id}  {}
-                           :model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
-                           :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
-              (insert-in-mode-showing-them! [{:group_id group-id :perm_type :permission/metabot :perm_value :yes}])
-              (let [metabot-perm (fn []
-                                   (-> (mt/user-http-request user-id :get 200 "metabot/permissions/user-permissions")
-                                       (get-in [:permissions :metabot])))]
-                (testing "the migration-seeded All Users row gives yes"
-                  (is (= "yes" (metabot-perm))))
-                (testing "after the admin turns Metabot off for All Users"
-                  (set-all-users! "no")
-                  (is (= "no" (metabot-perm))))
-                (testing "after the admin turns Metabot on again"
-                  (set-all-users! "yes")
-                  (is (= "yes" (metabot-perm))))))))))))
+            (mt/with-model-cleanup [:model/User]
+              (let [{user-id :id} (user/create-user! {:email "simple-mode-all-users-metabot-round-trip-test-1@example.com"})]
+                (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
+                               :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
+                  (insert-in-mode-showing-them! [{:group_id group-id :perm_type :permission/metabot :perm_value :yes}])
+                  (let [metabot-perm (fn []
+                                       (-> (mt/user-http-request user-id :get 200 "metabot/permissions/user-permissions")
+                                           (get-in [:permissions :metabot])))]
+                    (testing "the migration-seeded All Users row gives yes"
+                      (is (= "yes" (metabot-perm))))
+                    (testing "after the admin turns Metabot off for All Users"
+                      (set-all-users! "no")
+                      (is (= "no" (metabot-perm))))
+                    (testing "after the admin turns Metabot on again"
+                      (set-all-users! "yes")
+                      (is (= "yes" (metabot-perm))))))))))))))
 
 (deftest mode-switch-is-atomic-test
   (mt/with-premium-features #{:ai-controls}

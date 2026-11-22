@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,6 +38,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -1278,8 +1280,8 @@
     (mt/with-premium-features #{}
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
-                         :model/Collection collection {}]
+          (let [{user-id :id} (user/create-user! {:email "oss-db-access-test@example.com"})
+                [collection]  (collection/create-collections! [{:name "Published Tables"}])]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]

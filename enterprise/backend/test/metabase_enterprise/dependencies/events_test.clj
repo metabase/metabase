@@ -140,10 +140,11 @@
         :orders
         (fn [processed! both-pending?]
           (processed!)
-          (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
-                                             :type                    :external
-                                             :name                    "Product"
-                                             :human_readable_field_id (mt/id :products :title)}]
+          (mt/with-model-cleanup [:model/Dimension :model/FieldUserSettings]
+            (dimension/create-dimensions! [{:field_id                (mt/id :orders :product_id)
+                                            :type                    :external
+                                            :name                    "Product"
+                                            :human_readable_field_id (mt/id :products :title)}])
             (testing "adding the remap"
               (is (both-pending?)))
             (testing "changing its human-readable field"
@@ -153,7 +154,8 @@
                 (is (both-pending?))))
             (testing "a user setting of its human-readable field"
               (processed!)
-              (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :title) :display_name "Item"}]
+              (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
+                (field-user-settings/create-field-user-settings! [{:field_id (mt/id :products :title) :display_name "Item"}])
                 (is (both-pending?))))))))))
 
 (deftest internal-remap-values-mark-transitive-dependents-test
@@ -293,9 +295,11 @@
            without looking the app up first"
     (mt/with-premium-features #{:dependencies}
       (data-apps.tu/with-published-tables! [(mt/id :products)]
-        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:slug         "birds"
-                                                                                          :name         "Birds"
-                                                                                          :bundle_path  "birds.js"}
+        (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                       :model/DataApp {app-id :id collection-id :resource_collection_id} {:slug                   "birds"
+                                                                                          :name                   "Birds"
+                                                                                          :bundle_path            "birds.js"
+                                                                                          :resource_collection_id own-collection-id}
                        :model/Collection {other-collection-id :id} {}
                        :model/Card card {:dataset_query (table-query :products) :collection_id collection-id}]
           (let [marks       (fn [hook!]

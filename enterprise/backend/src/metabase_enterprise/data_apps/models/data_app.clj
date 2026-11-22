@@ -71,12 +71,9 @@
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
 (defn- prepare
-  "The DataApp `row` normalized and validated against `schema`."
+  "The DataApp `row` normalized with `schema`, with the bundle hash of its bundle."
   [schema row]
-  (->> row
-       (lib/normalize schema)
-       (mu/validate-throw schema)
-       with-bundle-hash))
+  (with-bundle-hash (lib/normalize schema row)))
 
 (t2/define-before-insert :model/DataApp
   [data-app]

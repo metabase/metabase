@@ -28,7 +28,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
@@ -71,7 +70,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
@@ -350,33 +348,38 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(mu/defn populate-query-fields
-  "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
-  from query definition when inserting/updating a Card.
-
-  `clear-stale-table-id?` (default true) controls whether a nil derived table id overwrites an existing `:table_id`.
-  Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
-  a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
-  deleted)."
-  ([card :- ::queries.schema/card]
+(defn populate-query-fields
+  "`card` with the `database_id`, `table_id`, `query_type` and `source_card_id` its query gives, read without the app
+  DB. A query on a Card keeps the `table_id` given, that of the Card, which the write functions read;
+  `clear-stale-table-id?` false keeps a `table_id` the query no longer names."
+  ([card]
    (populate-query-fields card true))
-  ([{query :dataset_query, :as card} :- ::queries.schema/card
-    clear-stale-table-id? :- :boolean]
-   (merge
-    card
-    (when (and (seq query) (map? query))
-      (merge
-       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
-       {:source_card_id (source-card-id query)
-        :query_type     (if (query/query-is-native? query) :native :query)}
-       (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-         (merge
-          ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
-          ;; native SQL), same as :source_card_id above
-          (when (or table-id clear-stale-table-id?)
-            {:table_id table-id})
-          (when database-id
-            {:database_id database-id}))))))))
+  ([{query :dataset_query, :as card} clear-stale-table-id?]
+   (if-let [stage (lib-be/query-first-stage query)]
+     (let [source-card-id (:source-card stage)
+           table-id       (:source-table stage)]
+       (merge card
+              {:source_card_id source-card-id
+               :query_type     (if (= :mbql.stage/native (:lib/type stage)) :native :query)}
+              (when (:database query)
+                {:database_id (:database query)})
+              (when (and (nil? source-card-id) (or table-id clear-stale-table-id?))
+                {:table_id table-id})))
+     card)))
+
+(defn- with-source-card-tables
+  "`rows`, each with the `table_id` of the Card its query is built on, when it is built on one, reading those Cards at
+  once."
+  [rows]
+  (let [source-card-id (comp :source-card lib-be/query-first-stage :dataset_query)
+        source-ids     (into #{} (keep source-card-id) rows)
+        sources        (when (seq source-ids)
+                         (u/index-by :id (queries.db/cards-table-ids source-ids)))]
+    (mapv (fn [row]
+            (if-let [id (source-card-id row)]
+              (assoc row :table_id (:table_id (get sources id)))
+              row))
+          rows)))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters of `cards` reference Fields belonging to the Database the
@@ -412,29 +415,23 @@
                            :field-filter-database field-db-id}))))))
   nil)
 
-(mu/defn- assert-valid-type
-  "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
-  (assert (not (and (query/query-is-native? query)
-                    (some? source-card)))
-          "A native SQL question cannot have a source card.")
-  (when (= (keyword card-type) :model)
-    (let [template-tag-types (into #{}
-                                   (map :type)
-                                   (some-> query not-empty lib/all-template-tags))]
-      (when (seq (set/difference template-tag-types #{:card :snippet}))
-        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
-                        {:status-code 400})))))
-  nil)
+(defn native-audit-db-query?
+  "Whether `query`, in MBQL 5 or legacy form, is a native query on the audit database."
+  [query]
+  (boolean (and (map? query)
+                (= audit/audit-db-id (:database query))
+                (= :mbql.stage/native (:lib/type (lib-be/query-first-stage query))))))
 
-(mu/defn- assert-not-native-audit-db-query
-  [{query :dataset_query, :as _card} :- [:maybe ::queries.schema/card]]
-  (when (and (seq query)
-             (= (:database query) audit/audit-db-id)
-             (lib/any-native-stage? query))
-    (throw (ex-info (tru "You cannot save a native query that targets the audit database.")
-                    {:status-code 400})))
-  nil)
+(defn- check-model-query
+  "Throws a 400 when `card` is a model whose native query has a variable or a field filter."
+  [{query :dataset_query, :as card}]
+  (when (model? card)
+    (let [stage (lib-be/query-first-stage query)
+          tags  (:template-tags stage)]
+      (when (and (= :mbql.stage/native (:lib/type stage))
+                 (some #(not (contains? #{:card :snippet} (keyword (:type %)))) (if (map? tags) (vals tags) tags)))
+        (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
+                        {:status-code 400}))))))
 
 (defn- dashboard-internal-card? [card]
   (boolean (:dashboard_id card)))
@@ -499,24 +496,6 @@
 (defn- maybe-check-dashboard-internal-card [card]
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-shape))
-
-;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
-;;
-;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
-;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
-(defn- pre-insert [card]
-  (let [card     (lib/normalize ::queries.schema/card card)
-        defaults {:parameters         []
-                  :parameter_mappings []
-                  :card_schema        current-card-schema-version}
-        card     (maybe-check-dashboard-internal-card
-                  (merge defaults card))]
-    (u/prog1 card
-      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
-      (assert-valid-type card)
-      (assert-not-native-audit-db-query card)
-      (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card))))
 
 (defenterprise pre-update-check-sandbox-constraints
   "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
@@ -641,14 +620,6 @@
   [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
   true, top-level `t2/select*` calls and not for the internal reads during an update."
   false)
-
-(defn- pre-update [card changes]
-  (u/prog1 card
-    (when (:dataset_query changes)
-      (assert-not-native-audit-db-query changes))
-    (params/assert-valid-parameters changes)
-    (params/assert-valid-parameter-mappings changes)
-    (assert-valid-type card)))
 
 (defn- metadata-provider-fetch?
   "Whether `card` was selected as one of the lib metadata-provider models (`:metadata/card`, `:metadata/metric`, ...)
@@ -811,39 +782,36 @@
                               :card_schema new-version))))))
         (lib/normalize ::queries.schema/card))))
 
-(defn- migrate-schema-governed-columns
-  "Cards are upgraded to the current schema on read, in memory only.
+(defn- with-schema-governed-columns
+  "`updates` of Cards, `before` the Cards read through after-select and so upgraded to the current schema, by id, each
+  with the upgraded [[card-schema/schema-governed-columns]] it does not give and the current `:card_schema` when it
+  changes one of the [[card-schema/schema-upgrade-triggers]] of a Card stored at an older schema, so that those columns
+  are written in lockstep."
+  [updates before]
+  (let [triggering? (fn [update] (some #(contains? update %) card-schema/schema-upgrade-triggers))
+        stored      (when (some triggering? updates)
+                      (queries.db/card-schema-versions (into [] (comp (filter triggering?) (map :id)) updates)))]
+    (mapv (fn [{:keys [id] :as update}]
+            (let [stored-schema (get stored id)]
+              (if (and stored-schema (< stored-schema current-card-schema-version) (triggering? update))
+                (merge (select-keys (get before id) card-schema/schema-governed-columns)
+                       {:card_schema current-card-schema-version}
+                       update)
+                update)))
+          updates)))
 
-  The vital invariant is that `:card_schema`, `:dataset_query`, `:dimensions`, and the other
-  [[card-schema/schema-governed-columns]] are all upgraded together.
-
-  The superset [[card-schema/schema-upgrade-triggers]] includes other fields which are *read* during schema upgrades, without
-  themselves being updated in lockstep. If any of these change, then all the [[card-schema/schema-upgrade-triggers]] should be
-  updated too. Of course any incoming writes to e.g. `:dataset_query` will win over upgrading the old value.
-
-  Unrelated writes, e.g. to `:name` or `:collection_id`, don't cause the [[card-schema/schema-governed-columns]] to be updated."
-  [card original changes]
-  (let [stored-schema (:card_schema original)]
-    (if-not (and stored-schema
-                 ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
-                 (< stored-schema current-card-schema-version)
-                 (some #(contains? changes %) card-schema/schema-upgrade-triggers))
-      card
-      ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
-      ;; The schema upgrades are suppressed during `t2/update!` so that when it reads the baseline it sees the
-      ;; [[card-schema/schema-governed-columns]] as they are really stored, not post-upgrade. That's important for the `t2/update!`
-      ;; diff process.
-      ;; However, here we really do want to run the upgrades, so we can write back a card which is fully updated in
-      ;; lockstep.
-      (let [upgraded (upgrade-card-schema-to-latest
-                      (merge original changes {:card_schema (:card_schema original)})
-                      false)
-            ;; Keep the `upgraded` version of any [[card-schema/schema-governed-columns]], but prefer those in `changes`.
-            columns  (remove (set (keys changes)) card-schema/schema-governed-columns)
-            relevant (when (seq columns)
-                       (select-keys upgraded columns))]
-        (-> (merge card relevant)
-            (assoc :card_schema current-card-schema-version))))))
+(defn- with-inferred-result-metadata
+  "`row`, a new Card or an update of the Card `stored`, with the result metadata inferred from its query when it gives
+  a query and no metadata."
+  [row stored]
+  (if (and (seq (:dataset_query row))
+           (if stored
+             (not (contains? row :result_metadata))
+             (nil? (:result_metadata row))))
+    (let [row' (update row :dataset_query lib-be/normalize-query)]
+      (assoc row :result_metadata (:result_metadata (card.metadata/populate-result-metadata (merge stored row')
+                                                                                            (when stored row')))))
+    row))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -905,12 +873,6 @@
       (cond-> (schema-governed-select? card) upgrade-card-schema-to-latest)
       monitor-blank-dataset-query))
 
-(defn- normalize-card
-  "`card` normalized to `::queries.schema/card`, checked against that schema wherever `mu/defn`s are instrumented."
-  [card]
-  (cond->> (lib/normalize ::queries.schema/card card)
-    (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
-
 (defn timeline-events-supported-display?
   "Whether `display`, a keyword or string, supports timeline events."
   [display]
@@ -948,22 +910,6 @@
 (def ^:private timeline-visibility-keys
   "The `visualization_settings` keys that select the timelines and timeline events a Card shows."
   [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids :timeline_events.enabled])
-
-(defn- check-id-setting
-  "Throws a 400 with `message` unless the value under `k` in `visibility`, when there is one, is a sequence of
-  positive integers."
-  [visibility k message]
-  (when-some [ids (get visibility k)]
-    (api/check-400 (and (sequential? ids) (every? pos-int? ids)) message)))
-
-(defn- check-timeline-settings
-  "Throws a 400 unless the timeline ids in the `visualization_settings` of `card` are sequences of positive integers."
-  [card]
-  (let [visibility (select-keys (:visualization_settings card) timeline-visibility-keys)]
-    (check-id-setting visibility :timeline.excluded_timeline_event_ids
-                      (tru "Excluded timeline event IDs must be a sequence of positive integers."))
-    (check-id-setting visibility :timeline.selected_timeline_ids
-                      (tru "Selected timeline IDs must be a sequence of positive integers."))))
 
 (defn- timeline-selection-readable?
   "Whether the current user can read every timeline `card` newly shows compared to `previous-card`, which is nil for a
@@ -1315,38 +1261,18 @@
 
 (t2/define-before-insert :model/Card
   [card]
-  (check-timeline-settings card)
-  (-> card
-      (assoc :metabase_version config/mb-version-string
-             :card_schema current-card-schema-version)
-      normalize-card
-      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no
-      ;; longer true, since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
-      (u/assoc-default :type :question)
-      card.metadata/populate-result-metadata
-      derive-model-display
-      pre-insert
-      populate-query-fields
-      maybe-populate-initially-published-at
-      public-sharing/add-public-uuid-prefix))
-
-(mu/defn- populate-result-metadata :- [:map
-                                       [:result_metadata {:optional true} [:maybe
-                                                                           [:sequential
-                                                                            ::lib.schema.metadata/lib-or-legacy-column]]]]
-  "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
-  change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
-  verified-result-metadata? flag (see #37009)."
-  [card                      :- ::queries.schema/card
-   changes                   :- [:maybe ::queries.schema/card]
-   verified-result-metadata? :- [:maybe :boolean]]
-  (-> (cond-> card
-        (or (empty? (:result_metadata card))
-            (not verified-result-metadata?)
-            (contains? (t2/changes card) :type))
-        (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
+  (let [card (-> (merge {:parameters [] :parameter_mappings []} card)
+                 (assoc :metabase_version config/mb-version-string
+                        :card_schema      current-card-schema-version)
+                 (u/assoc-default :entity_id (u/generate-nano-id))
+                 (u/assoc-default :type :question))]
+    (check-model-query card)
+    (-> card
+        derive-model-display
+        maybe-check-dashboard-internal-card
+        populate-query-fields
+        maybe-populate-initially-published-at
+        public-sharing/add-public-uuid-prefix)))
 
 (defn- clear-metabot-origin
   "A card edited after being saved from a Metabot conversation no longer materializes
@@ -1365,26 +1291,15 @@
     card))
 
 (t2/define-before-update :model/Card
-  [{:keys [verified-result-metadata?] :as card}]
-  (let [changes  (some-> card t2/changes normalize-card)
-        ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
-        ;; normalization preserving the instance's original.
-        original (t2/original card)
-        card     (normalize-card card)]
-    (when (contains? changes :visualization_settings)
-      (check-timeline-settings card))
+  [card]
+  (let [changes (t2/changes card)
+        card    (dissoc card :verified-result-metadata?)]
+    (when (some #(contains? changes %) [:type :dataset_query])
+      (check-model-query card))
     (-> card
-        (dissoc :verified-result-metadata?)
-        (migrate-schema-governed-columns original changes)
-        (m/update-existing :dataset_query lib-be/normalize-query)
         (cond-> (contains? changes :type) derive-model-display)
-        (cond-> (contains? changes :dataset_query) (doto check-no-save-cycle))
-        (populate-result-metadata changes verified-result-metadata?)
-        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
-        ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
-        (pre-update changes)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
@@ -1600,6 +1515,7 @@
            cards            (t2/with-transaction [_conn]
                               (let [rows       (cond->> rows
                                                  importing? (mapv queries.serialization/new-card-row))
+                                    rows       (mapv #(with-inferred-result-metadata % nil) (with-source-card-tables rows))
                                     dashboards (queries.db/dashboards-for-placement (into #{} (keep :dashboard_id) rows))
                                     rows       (mapv #(dashboard-question-collection % dashboards) rows)
                                     placement  (load-placement rows dashboards)]
@@ -2028,6 +1944,12 @@
                                                                 (and dashboard_id (not= dashboard_id (:dashboard_id (get before id))))
                                                                 (assoc :collection_id (:collection_id (get question-dash dashboard_id)))))
                                                             updates)
+                                       _              (doseq [{:keys [id dataset_query]} updates
+                                                              :when                    (seq dataset_query)]
+                                                        (check-no-save-cycle {:id id :dataset_query dataset_query}))
+                                       updates        (-> (mapv #(with-inferred-result-metadata % (get before (:id %)))
+                                                                (with-source-card-tables updates))
+                                                          (with-schema-governed-columns before))
                                        entries        (mapv (fn [{:keys [id] :as update}]
                                                               (let [card (get before id)]
                                                                 {:update  update

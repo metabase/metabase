@@ -57,6 +57,7 @@
  [metabase.queries.models.card
   current-card-schema-version
   model?
+  native-audit-db-query?
   sole-dashboard-id
   starting-card-schema-version
   timeline-events-supported-display?

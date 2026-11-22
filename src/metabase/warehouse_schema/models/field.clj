@@ -199,10 +199,7 @@
 
 (t2/define-before-insert :model/Field
   [field]
-  (let [field (merge field
-                     {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
-                     (coercion-changes field field))]
-    (enforce-effective-type-invariant field)))
+  (enforce-effective-type-invariant (merge field (coercion-changes field field))))
 
 (t2/define-before-update :model/Field
   [field]
@@ -447,6 +444,12 @@
           (api/checkp (= target-database-id (table-database-ids table_id))
                       :fk_target_field_id (tru "Target field must belong to the same database")))))))
 
+(defn- with-display-name
+  "`row`, a new Field, with the display name the humanization Setting makes of its name when it gives none."
+  [row]
+  (cond-> row
+    (not (contains? row :display_name)) (assoc :display_name (humanization/name->human-readable-name (:name row)))))
+
 (defn- create-field-instances!
   "Insert the Field `rows` and return the inserted instances, refusing a foreign key target outside the Database of a
   Field's Table."
@@ -455,7 +458,7 @@
     []
     (t2/with-transaction [_conn]
       (check-fk-targets (filter :fk_target_field_id rows))
-      (u/prog1 (vec (warehouse-schema.db/insert-fields! rows))
+      (u/prog1 (vec (warehouse-schema.db/insert-fields! (mapv with-display-name rows)))
         (events/publish-event! :event/field-create (events/create-event <>))))))
 
 (mu/defn create-fields! :- [:sequential ::lib.schema.id/field]

@@ -119,26 +119,26 @@
           (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id table-id-2 :perms/download-results :one-million-rows)
           (data-perms/set-table-permission! group-id table-id-2 :perms/manage-table-metadata :yes)
-          (mt/with-temp [:model/Table {table-id-3 :id} {:db_id  db-id
-                                                        :schema "PUBLIC"}]
-            (is (partial=
-                 {group-id
-                  {db-id
-                   {:perms/view-data             :unrestricted
-                    :perms/create-queries        {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :query-builder
-                                                   table-id-3 :no}}
-                    :perms/download-results      {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :one-million-rows
-                                                   table-id-3 :no}}
-                    :perms/manage-table-metadata {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :yes
-                                                   table-id-3 :no}}
-                    :perms/manage-database       :no}}}
-                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+          (mt/with-model-cleanup [:model/Table]
+            (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+              (is (partial=
+                   {group-id
+                    {db-id
+                     {:perms/view-data             :unrestricted
+                      :perms/create-queries        {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :query-builder
+                                                     table-id-3 :no}}
+                      :perms/download-results      {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :one-million-rows
+                                                     table-id-3 :no}}
+                      :perms/manage-table-metadata {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :yes
+                                                     table-id-3 :no}}
+                      :perms/manage-database       :no}}}
+                   (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))))))
 
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp

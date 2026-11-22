@@ -36,10 +36,11 @@
 (deftest document-create-event-triggers-revision-test
   (testing "Document creation triggers revision creation via events"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
-                                                   :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
-                                                   :creator_id (mt/user->id :crowberto)}]
-        (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+      (mt/with-model-cleanup [:model/Document]
+        (let [{doc-id :id} (first (document/create-documents! [{:content_type "application/json+vnd.prose-mirror" :name "Test Document"
+                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello World"}]}]}
+                                                                :creator_id (mt/user->id :crowberto)}]))
+              revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
           (is revision "Revision should be created")
           (is (= "Document" (:model revision)))
           (is (= doc-id (:model_id revision)))
@@ -196,24 +197,25 @@
                                             (swap! events-received conj [topic event])
                                             (original-event topic event))]
         (mt/with-current-user (mt/user->id :rasta)
-          (mt/with-temp [:model/Document {doc-id :id} {:name "Event Test Document"
-                                                       :document {:type "doc" :content []}
-                                                       :creator_id (mt/user->id :rasta)}]
-            (testing "Create event triggers revision creation"
-              (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
-                (is revision)
-                (is (:is_creation revision))))
-            (testing "Update event triggers revision creation"
-              (document/update-documents! [{:id doc-id :name "Updated Event Document"}])
-              (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
-                (is (= 2 (count revisions)))
-                (let [latest-revision (first revisions)]
-                  (is (not (:is_creation latest-revision)))
-                  (is (= "Updated Event Document" (get-in latest-revision [:object :name]))))))
-            (testing "Events were published correctly"
-              (is (>= (count @events-received) 2))
-              (is (some #(= :event/document-create (first %)) @events-received))
-              (is (some #(= :event/document-update (first %)) @events-received)))))))))
+          (mt/with-model-cleanup [:model/Document]
+            (let [{doc-id :id} (first (document/create-documents! [{:content_type "application/json+vnd.prose-mirror" :name "Event Test Document"
+                                                                    :document {:type "doc" :content []}
+                                                                    :creator_id (mt/user->id :rasta)}]))]
+              (testing "Create event triggers revision creation"
+                (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id)]
+                  (is revision)
+                  (is (:is_creation revision))))
+              (testing "Update event triggers revision creation"
+                (document/update-documents! [{:id doc-id :name "Updated Event Document"}])
+                (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
+                  (is (= 2 (count revisions)))
+                  (let [latest-revision (first revisions)]
+                    (is (not (:is_creation latest-revision)))
+                    (is (= "Updated Event Document" (get-in latest-revision [:object :name]))))))
+              (testing "Events were published correctly"
+                (is (>= (count @events-received) 2))
+                (is (some #(= :event/document-create (first %)) @events-received))
+                (is (some #(= :event/document-update (first %)) @events-received))))))))))
 
 (deftest document-revision-diff-and-descriptions-test
   (testing "Document revision diffs and descriptions work correctly"

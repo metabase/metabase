@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (deftest json-transforms-roundtrip-test
@@ -27,10 +28,11 @@
 
 (deftest perms-delegate-to-thread-test
   (testing "read/write perms delegate to the owning thread/exploration"
-    (mt/with-temp [:model/User owner {}
-                   :model/Exploration e {:name "x" :creator_id (:id owner)}
-                   :model/ExplorationThread t {:exploration_id (:id e)}
-                   :model/ExplorationBlock g {:exploration_thread_id (:id t)}]
-      (mt/with-current-user (:id owner)
-        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_read))))
-        (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_write))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [owner (user/create-user! {:email "explorations-owner@example.com"})]
+        (mt/with-temp [:model/Exploration e {:name "x" :creator_id (:id owner)}
+                       :model/ExplorationThread t {:exploration_id (:id e)}
+                       :model/ExplorationBlock g {:exploration_thread_id (:id t)}]
+          (mt/with-current-user (:id owner)
+            (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_read))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_write))))))))))

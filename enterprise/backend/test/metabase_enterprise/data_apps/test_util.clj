@@ -156,10 +156,11 @@
 
 (defn do-with-app-collection
   "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting
-  the app afterwards deletes what it holds."
+  its collection afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "birds"}]
+    (mt/with-temp [:model/Collection {own-id :id} {:name "Data App: birds" :namespace :data-apps}
+                   :model/DataApp {collection-id :resource_collection_id} {:slug "birds" :resource_collection_id own-id}]
       (f collection-id))))
 
 (defn do-with-library!
@@ -205,7 +206,7 @@
                                 action-id)
              :model-id        model-id
              :model-action-id (:id (first (actions.models/create-actions! [{:name "Create venue" :type :implicit :kind :row/create
-                                                              :model_id model-id}])))}))))))
+                                                                            :model_id model-id}])))}))))))
 
 (defn venues-query
   "A query of the VENUES table, which a card in a data app's collection may read once it is published."

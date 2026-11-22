@@ -127,19 +127,20 @@
 
 (deftest get-document-runs-content-gate-once-test
   (testing "one GET /api/document/:id adjudicates the document's content once"
-    (mt/with-temp [:model/Collection {coll-id :id}     {}
-                   :model/Document   {document-id :id} {:name          "Test Document"
-                                                        :collection_id coll-id
-                                                        :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
-      (let [gate  @#'m.document/doc-content-visibility-fn
-            orig  @gate
-            calls (atom 0)]
-        (try
-          (reset! gate (fn [_doc] (swap! calls inc) true))
-          (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
-          (is (= 1 @calls))
-          (finally
-            (reset! gate orig)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document   {document-id :id} {:name          "Test Document"
+                                                            :collection_id coll-id
+                                                            :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+          (let [gate  @#'m.document/doc-content-visibility-fn
+                orig  @gate
+                calls (atom 0)]
+            (try
+              (reset! gate (fn [_doc] (swap! calls inc) true))
+              (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+              (is (= 1 @calls))
+              (finally
+                (reset! gate orig)))))))))
 
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent

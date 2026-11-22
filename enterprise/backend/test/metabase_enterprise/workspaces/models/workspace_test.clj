@@ -33,8 +33,8 @@
 
 (deftest create-workspace-with-databases-test
   (testing "create-workspace! stores nested workspace_database rows"
-    (mt/with-model-cleanup [:model/Workspace]
-      (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
         (let [created (create-ws!
                        {:name      "With DBs"
                         :databases [(ws-db-attrs)
@@ -78,8 +78,8 @@
 
 (deftest update-workspace-replaces-databases-test
   (testing "update-workspace! replaces the set of workspace_databases"
-    (mt/with-model-cleanup [:model/Workspace]
-      (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
         (let [{id :id} (create-ws!
                         {:name      "Before"
                          :databases [(ws-db-attrs {:output_namespace "keep_out"

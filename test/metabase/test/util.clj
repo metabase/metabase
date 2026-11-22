@@ -25,25 +25,17 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
-   [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.events.core :as events]
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
-   [metabase.notification.models :as models.notification]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
-   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
-   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
-   [metabase.secrets.models.secret :as models.secret]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -63,9 +55,6 @@
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.random :as u.random]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -536,118 +525,6 @@
                       (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
  ::evict-personal-collection-cache)
 
-(def with-temp-lifecycle-topics
-  "The models whose write functions publish their lifecycle events by hand, as `{model {:create topic :delete topic}}`.
-  A temporary row of such a model is inserted and deleted by plain statements, so `with-temp` publishes these events for
-  it as the events trait did: the create after the insert and the delete at cleanup. Leave `:delete` out of a model whose
-  own `do-with-temp*` method deletes through its write function. A model converted to publish by hand adds its entry
-  here."
-  {:model/Glossary              {:create :event/glossary-create
-                                 :delete :event/glossary-delete}
-   :model/Dashboard             {:create :event/dashboard-create}
-   :model/Pulse                 {:create :event/pulse-create
-                                 :delete :event/pulse-delete}
-   :model/Channel               {:create :event/channel-create
-                                 :delete :event/channel-delete}
-   :model/ChannelTemplate       {:create :event/channel-template-create
-                                 :delete :event/channel-template-delete}
-   :model/Notification          {:create :event/notification-row-create}
-   :model/User                  {:create :event/user-create
-                                 :delete :event/user-delete}
-   :model/PermissionsGroup      {:create :event/group-create
-                                 :delete :event/group-delete}
-   :model/PermissionsGroupMembership {:create :event/group-membership-create
-                                      :delete :event/group-membership-delete}
-   :model/ApiKey                {:create :event/api-key-create
-                                 :delete :event/api-key-delete}
-   :model/Tenant                {:create :event/tenant-create
-                                 :delete :event/tenant-delete}
-   :model/Sandbox               {:create :event/sandbox-create
-                                 :delete :event/sandbox-delete}
-   :model/DatabaseRouter        {:create :event/database-router-create
-                                 :delete :event/database-router-delete}
-   :model/Segment               {:create :event/segment-create
-                                 :delete :event/segment-delete}
-   :model/Measure               {:create :event/measure-create
-                                 :delete :event/measure-delete}
-   :model/MetabotConversation   {:create :event/metabot-conversation-create
-                                 :delete :event/metabot-conversation-delete}
-   :model/Transform             {:create :event/transform-create
-                                 :delete :event/transform-delete}
-   :model/TransformJob          {:create :event/transform-job-create
-                                 :delete :event/transform-job-delete}
-   :model/TransformTag          {:create :event/transform-tag-create
-                                 :delete :event/transform-tag-delete}
-   :model/DataApp               {:create :event/data-app-create
-                                 :delete :event/data-app-delete}
-   :model/CustomVizPlugin       {:create :event/custom-viz-plugin-create
-                                 :delete :event/custom-viz-plugin-delete}
-   :model/PythonLibrary         {:create :event/python-library-create
-                                 :delete :event/python-library-delete}
-   :model/TransformTest         {:create :event/transform-test-create
-                                 :delete :event/transform-test-delete}
-   :model/CardTest              {:create :event/card-test-create
-                                 :delete :event/card-test-delete}
-   :model/SegmentTest           {:create :event/segment-test-create
-                                 :delete :event/segment-test-delete}
-   :model/TestSuite             {:create :event/test-suite-create
-                                 :delete :event/test-suite-delete}
-   :model/Database              {:create :event/database-create}
-   :model/Table                 {:create :event/table-create}
-   :model/Field                 {:create :event/field-create}
-   :model/FieldValues           {:create :event/field-values-create
-                                 :delete :event/field-values-delete}
-   :model/Dimension             {:create :event/dimension-create
-                                 :delete :event/dimension-delete}
-   :model/FieldUserSettings     {:create :event/field-user-settings-create
-                                 :delete :event/field-user-settings-delete}
-   :model/TableUserSettings     {:create :event/table-user-settings-create
-                                 :delete :event/table-user-settings-delete}
-   :model/CacheConfig           {:create :event/cache-config-create
-                                 :delete :event/cache-config-delete}
-   :model/ModerationReview      {:create :event/moderation-review-create
-                                 :delete :event/moderation-review-delete}
-   :model/ModelIndex            {:create :event/model-index-create
-                                 :delete :event/model-index-delete}
-   :model/Document              {:create :event/document-create
-                                 :delete :event/document-delete}
-   :model/Exploration           {:create :event/exploration-create
-                                 :delete :event/exploration-delete}
-   :model/Timeline              {:create :event/timeline-create
-                                 :delete :event/timeline-delete}
-   :model/TimelineEvent         {:create :event/timeline-event-create
-                                 :delete :event/timeline-event-delete}
-   :model/NativeQuerySnippet    {:create :event/snippet-create
-                                 :delete :event/snippet-delete}
-   :model/Comment               {:create :event/comment-create
-                                 :delete :event/comment-delete}
-   :model/Action                {:create :event/action-create
-                                 :delete :event/action-delete}})
-
-(defn- delete-temp-row-and-publish!
-  "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."
-  [model id topic]
-  (let [pk (first (t2/primary-keys model))]
-    (when-let [row (t2/select-one model pk id)]
-      (events/publish-event! topic (events/delete-event [row]))
-      (t2/delete! model pk id))))
-
-(methodical/add-aux-method-with-unique-key!
- #'t2.with-temp/do-with-temp* :around :default
- (fn [next-method model explicit-attributes f]
-   (if-let [{:keys [create delete]} (get with-temp-lifecycle-topics (t2/resolve-model model))]
-     (next-method model explicit-attributes
-                  (fn [temp-object]
-                    (events/publish-event! create (events/create-event [temp-object]))
-                    (try
-                      (f temp-object)
-                      (finally
-                        (when delete
-                          (let [model* (t2/model temp-object)]
-                            (delete-temp-row-and-publish! model* (get temp-object (first (t2/primary-keys model*))) delete)))))))
-     (next-method model explicit-attributes f)))
- ::publish-lifecycle-events)
-
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.
 
@@ -665,172 +542,14 @@
   (locking dimension-lock
     (next-method model explicit-attributes f)))
 
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Table
-  "Gives a temporary Table the default permissions of a new Table that `create-tables!` gives it, and deletes it with
-  `delete-tables!`, with the Fields and implicit Actions left on it."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes (fn [temp-table]
-                                           (#'table/set-new-permissions! [temp-table])
-                                           (try
-                                             (f temp-table)
-                                             (finally
-                                               (table/delete-tables! [(:id temp-table)]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Field
-  "Deletes a temporary Field with `delete-fields!`, with the Fields left nested under it."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes (fn [temp-field]
-                                           (try
-                                             (f temp-field)
-                                             (finally
-                                               (field/delete-fields! [(:id temp-field)]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Database
-  "Stores the client secrets of a temporary Database as `create-databases!` does, and deletes it with
-  `delete-database!`."
-  [model explicit-attributes f]
-  (next-method model
-               (cond-> explicit-attributes
-                 (:engine explicit-attributes) (models.secret/handle-incoming-client-secrets! nil))
-               (fn [temp-database]
-                 (try
-                   (f temp-database)
-                   (finally
-                     (database/delete-databases! [(:id temp-database)]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
-  "Creates a temporary Collection with `create-collections!` and deletes it with `delete-collections!`."
-  [model explicit-attributes f]
-  (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
-        temp       (first (collection/create-collections! [attributes]))]
-    (try
-      (testing "\nwith temporary :model/Collection\n"
-        (f temp))
-      (finally
-        (collection/delete-collections! [(:id temp)])))))
-
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
-  "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."
+  "Inserts a Collection for a temporary Tenant whose attributes name none, because `tenant_collection_id` is not null."
   [model explicit-attributes f]
   (if (contains? explicit-attributes :tenant_collection_id)
     (next-method model explicit-attributes f)
-    (let [tenant-name   (:name (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
-          collection-id (:id (first (collection/create-collections! [{:type      collection/tenant-specific-root-collection-type
-                                                                      :name      (format "Tenant Collection: %s" tenant-name)
-                                                                      :namespace :tenant-specific}])))]
+    (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:type      collection/tenant-specific-root-collection-type
+                                                                    :namespace :tenant-specific}]
       (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
-  "Gives a temporary DataApp the resource Collection that `create-data-apps!` makes, unless the attributes name one, and
-  deletes it with the app."
-  [model explicit-attributes f]
-  (if (contains? explicit-attributes :resource_collection_id)
-    (next-method model explicit-attributes f)
-    (let [slug          (:slug (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
-          collection-id (:id (first (collection/create-collections! [{:name      (format "Data App: %s" slug)
-                                                                      :namespace "data-apps"}])))]
-      (try
-        (next-method model (assoc explicit-attributes :resource_collection_id collection-id) f)
-        (finally
-          (collection/delete-collections! [collection-id]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroup
-  "Gives a temporary PermissionsGroup the default permissions on every Database that `create-permissions-group!` gives
-  it."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes (fn [group]
-                                           (#'perms-group/set-default-permission-values! group)
-                                           (f group))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
-  "Sets the flag an Administrators or Data Analysts membership gives its User while the temporary membership lives, as
-  `add-users-to-groups!` and the functions that remove memberships do."
-  [model explicit-attributes f]
-  (let [membership (volatile! nil)]
-    (try
-      (next-method model explicit-attributes (fn [created]
-                                               (vreset! membership created)
-                                               (#'perms-group-membership/set-member-flags! [created] true nil)
-                                               (f created)))
-      (finally
-        (when-let [created @membership]
-          (#'perms-group-membership/set-member-flags! [created] false nil))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
-  "Puts a temporary User in its default groups, as `create-user!` does."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes (fn [temp-user]
-                                           (#'user/add-to-default-groups! [temp-user])
-                                           (f temp-user))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/NativeQuerySnippet
-  "Gives a temporary NativeQuerySnippet the template tags of its content, as `create-snippets!` does, unless the
-  attributes name them."
-  [model explicit-attributes f]
-  (if (contains? explicit-attributes :template_tags)
-    (next-method model explicit-attributes f)
-    (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)
-          ids        (#'native-query-snippet/name->id [attributes])]
-      (next-method model
-                   (assoc explicit-attributes :template_tags (#'native-query-snippet/snippet-template-tags attributes ids))
-                   f))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Action
-  "Files a temporary Action of a model in the Collection of its model, as `create-actions!` does."
-  [model explicit-attributes f]
-  (let [model-id (:model_id explicit-attributes)]
-    (next-method model
-                 (cond-> explicit-attributes
-                   (and model-id (not (contains? explicit-attributes :collection_id)))
-                   (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id model-id)))
-                 f)))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dashboard
-  "Gives a temporary Dashboard the ParameterCards of its parameters that `create-dashboard!` gives it, and deletes it
-  through `delete-dashboard!` when the body is done."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes
-               (fn [{:keys [id] :as dashboard}]
-                 (parameter-card/sync-parameter-cards!
-                  "dashboard" [[id (or (t2/select-one-fn :parameters :model/Dashboard :id id) [])]])
-                 (try
-                   (f dashboard)
-                   (finally
-                     (dashboard/delete-dashboards! [id]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
-  "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."
-  [model explicit-attributes f]
-  (let [attributes   (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)
-        dashboard-id (:dashboard_id attributes)]
-    (next-method model
-                 (cond-> explicit-attributes
-                   dashboard-id (assoc :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))
-                 f)))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Notification
-  "Deletes a temporary Notification through its write function when the body is done, which removes the triggers of its
-  subscriptions along with it."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes
-               (fn [notification]
-                 (try
-                   (f notification)
-                   (finally
-                     (models.notification/delete-notifications! [(:id notification)]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PulseChannel
-  "Adds a temporary PulseChannel to its SendPulse trigger when it is enabled, as `create-pulse-channel!` does, and
-  removes it from the trigger when the body is done."
-  [model explicit-attributes f]
-  (next-method model explicit-attributes
-               (fn [{:keys [id pulse_id] :as pulse-channel}]
-                 (when (:enabled pulse-channel)
-                   (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))
-                 (try
-                   (f pulse-channel)
-                   (finally
-                     (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :remove-pc-ids #{id}))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -1973,15 +1692,16 @@
   [[directory-binding dir-name] & body]
   `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
-(defn do-with-user-in-groups
-  ([f groups-or-ids]
-   (t2.with-temp/with-temp [:model/User user]
-     (do-with-user-in-groups f user groups-or-ids)))
-  ([f user [group-or-id & more]]
-   (if group-or-id
-     (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
-     (f user))))
+(defn do-with-user-in-groups!
+  [f groups-or-ids]
+  (do-with-model-cleanup
+   [:model/User]
+   (fn []
+     (let [user (user/create-user! {:email      (u.random/random-email)
+                                    :first_name (u.random/random-name)
+                                    :last_name  (u.random/random-name)})]
+       (perms-group-membership/add-user-to-groups! user (map u/the-id groups-or-ids))
+       (f user)))))
 
 (defmacro with-user-in-groups
   "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
@@ -2001,7 +1721,7 @@
       `(t2.with-temp/with-temp [:model/PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]
-      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
+      `(do-with-user-in-groups! (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

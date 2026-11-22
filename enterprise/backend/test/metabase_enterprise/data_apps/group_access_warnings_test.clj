@@ -20,7 +20,8 @@
   `table-ids`."
   [table-ids f]
   (data-apps.tu/with-published-tables! [(mt/id :venues)]
-    (mt/with-temp [:model/DataApp app {}
+    (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
+                   :model/DataApp app {:resource_collection_id app-coll-id}
                    :model/Card card {:collection_id (:resource_collection_id app) :dataset_query (data-apps.tu/venues-query)}]
       (mt/with-model-cleanup [:model/Dependency]
         (when (seq table-ids)
@@ -60,8 +61,9 @@
                                                                               ;; CATEGORIES is reached only through this metric
                                                                               (lib/aggregate venues (lib/distinct (some #(when (= (mt/id :categories :name) (:id %)) %)
                                                                                                                         (lib/visible-columns venues)))))}
+                                :model/Collection {app-coll-id :id} {:namespace :data-apps}
                                 :model/DataApp {collection-id :resource_collection_id :as app}
-                                {}
+                                {:resource_collection_id app-coll-id}
                                 :model/Card _ {:collection_id collection-id
                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                                 :model/PermissionsGroup group {}]

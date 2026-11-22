@@ -219,12 +219,9 @@
 (t2/define-before-insert :model/Table
   [table]
   (check-publication table)
-  (merge table
-         (apply dissoc
-                {:display_name   (humanization/name->human-readable-name (:name table))
-                 :data_layer     :internal
-                 :data_authority :unconfigured}
-                (keys table))))
+  (merge {:data_layer     :internal
+          :data_authority :unconfigured}
+         table))
 
 (t2/define-before-update :model/Table
   [table]
@@ -541,6 +538,12 @@
       (set-new-table-permissions! (first tables))
       (set-new-tables-permissions! db-id tables))))
 
+(defn- with-display-name
+  "`row`, a new Table, with the display name the humanization Setting makes of its name when it gives none."
+  [row]
+  (cond-> row
+    (not (contains? row :display_name)) (assoc :display_name (humanization/name->human-readable-name (:name row)))))
+
 (mu/defn create-tables! :- [:sequential ::warehouse-schema.schema/table]
   "Insert the Table `rows` and return the inserted instances, with the default field order of their driver and the
   default permissions of a new Table; a Collection that cannot hold Tables throws."
@@ -549,7 +552,7 @@
     []
     (t2/with-transaction [_conn]
       (check-allowed-contents (map :collection_id rows))
-      (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders rows)))
+      (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders (mapv with-display-name rows))))
         (set-new-permissions! <>)
         (events/publish-event! :event/table-create (events/create-event <>))))))
 

@@ -16,6 +16,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -38,6 +39,8 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.after :as t2.after]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -548,6 +551,44 @@
     (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
+
+(defn- check-hook-runs-no-statement
+  "Calls `thunk`, the `phase` hook of `model`, and throws when it ran an app-DB statement through Toucan."
+  [model phase thunk]
+  (t2/with-call-count [call-count]
+    (u/prog1 (thunk)
+      (when (pos? (call-count))
+        (throw (ex-info (format "The %s hook of %s ran %d app-DB statement(s); a hook must not query the app DB."
+                                (name phase) model (call-count))
+                        {:model model, :phase phase, :statements (call-count)}))))))
+
+(defn- after-hook-phase
+  "The hook phase of a Toucan after-row function for `query-type`."
+  [query-type]
+  (if (isa? query-type :toucan.query-type/insert.*) :after-insert :after-update))
+
+(defn- install-hook-statement-guard!
+  "Wraps the insert, update and delete hooks of every `:metabase/model` in [[check-hook-runs-no-statement]]."
+  []
+  (doseq [[multifn phase] [[#'t2.before-insert/before-insert :before-insert]
+                           [#'t2.before-update/before-update :before-update]
+                           [#'t2.before-delete/before-delete :before-delete]]]
+    (methodical/add-aux-method-with-unique-key!
+     multifn :around :metabase/model
+     (fn [next-method model row]
+       (check-hook-runs-no-statement model phase #(next-method model row)))
+     ::hook-statement-guard))
+  (methodical/add-aux-method-with-unique-key!
+   #'t2.after/each-row-fn :around [:toucan2.tools.after/query-type :metabase/model]
+   (fn [next-method query-type model]
+     (let [row-fn (next-method query-type model)
+           phase  (after-hook-phase query-type)]
+       (fn [row]
+         (check-hook-runs-no-statement model phase #(row-fn row)))))
+   ::hook-statement-guard))
+
+(when (or config/is-dev? config/is-test?)
+  (install-hook-statement-guard!))
 
 ;; --- helper fns
 (defn changes-with-pk

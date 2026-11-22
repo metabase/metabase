@@ -178,16 +178,10 @@
   [action]
   (public-sharing/add-public-uuid-prefix-if-changed action))
 
-(defn- normalized-query
-  "The query of `query-action` normalized, or nil when it has none."
-  [{query :dataset_query}]
-  (when (and (map? query) (seq query))
-    (lib-be/normalize-query query)))
-
 (defn- set-query-database
   "`query-action` with the `:database_id` its query names, when the query names one."
-  [query-action]
-  (if-let [database-id (:database (normalized-query query-action))]
+  [{query :dataset_query, :as query-action}]
+  (if-let [database-id (when (map? query) (:database query))]
     (assoc query-action :database_id database-id)
     query-action))
 
