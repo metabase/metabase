@@ -356,6 +356,13 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/DashboardCard :card_id card-id))
 
+(mu/defn dashcards-for-cards
+  "The DashboardCards showing the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/DashboardCard :card_id [:in card-ids])
+    []))
+
 (mu/defn dashcard-ids-for-card-on-dashboard
   "The IDs of the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
@@ -418,6 +425,21 @@
                                                           :from   [:notification_card]
                                                           :where  [:in :card_id card-ids]}])
     #{}))
+
+(mu/defn active-card-notifications-by-card
+  "The active card Notifications attached to the Cards with `card-ids`, by the ID of the Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (let [payloads (t2/select [:model/NotificationCard :id :card_id] :card_id [:in card-ids])]
+      (if (seq payloads)
+        (let [payload->card (into {} (map (juxt :id :card_id)) payloads)]
+          (group-by (comp payload->card :payload_id)
+                    (t2/select :model/Notification
+                               :active true
+                               :payload_type :notification/card
+                               :payload_id [:in (mapv :id payloads)])))
+        {}))
+    {}))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."

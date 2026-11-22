@@ -18,7 +18,9 @@
   - `:identity`, the columns whose values make the ref of a row, which finds the row an imported row updates,
     `[:entity_id]` by default (see [[metabase.serialization.protocol/select-by-refs]]).
   - `:children`, the map from a key to a child model whose rows the rows of this model own, which they export nested
-    under that key and load with, deleting the children a loaded entity no longer holds.
+    under that key and load with, deleting the children a loaded entity no longer holds. After an import writes the
+    children of a batch, it calls the `:update!` of the model, when it has one, once with the rows `{pk id}` of the
+    parents whose children, at any depth, it inserted, updated or deleted, so that the parent learns of the change.
   - `:parent`, for a child model, `{:model parent-model :key column :order key-fn :import-only? bool}`: `column` holds
     the primary key of the parent, `key-fn` sorts the children nested in its entity, and with `:import-only?` the
     children export as entities of their own and load nested only from older exports.

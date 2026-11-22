@@ -1,5 +1,4 @@
 (ns metabase-enterprise.dependencies.models.dependency-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing use-fixtures]]
@@ -36,7 +35,7 @@
    :display                :table
    :query_type             :query
    :type                   :question
-   :dataset_query          (mt/mbql-query orders)
+   :dataset_query          (deps.test/table-query :orders)
    :visualization_settings {}})
 
 (defn wrap-card
@@ -47,8 +46,7 @@
    :display                :table
    :query_type             :query
    :type                   :question
-   :dataset_query          (mt/mbql-query nil
-                             {:source-table (str "card__" (:id inner-card))})
+   :dataset_query          (deps.test/card-query (:id inner-card))
    :visualization_settings {}})
 
 (deftest ^:synchronized card-deps-maintenance-test-1-new-card
@@ -58,14 +56,14 @@
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
           (mt/with-premium-features #{:dependencies}
             (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-              (let [card1 (card/create-card! (basic-orders) user)]
+              (let [card1 (first (card/create-cards! [(assoc (basic-orders) :creator_id (:id user))]))]
                 (deps.test/synchronously-run-dependency-job!)
                 (is (integer? (:id card1)))
                 (testing "when creating a new card"
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                           (upstream-of :card (:id card1))))
                   (testing "that depends on another card"
-                    (let [card2 (card/create-card! (wrap-card card1) user)]
+                    (let [card2 (first (card/create-cards! [(assoc (wrap-card card1) :creator_id (:id user))]))]
                       (deps.test/synchronously-run-dependency-job!)
                       (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
                               (upstream-of :card (:id card2))))
@@ -74,20 +72,17 @@
                                 (upstream-of :card (:id card1))))))))
                 (testing "when updating an existing card"
                   (testing "to add a new table dep"
-                    (card/update-card! {:card-before-update card1
-                                        :card-updates
-                                        {:dataset_query (mt/mbql-query orders
-                                                          {:joins [{:alias "Products"
-                                                                    :source-table (mt/id :products)
-                                                                    :condition [:= $id &Products.$products.id]}]})}})
+                    (card/update-cards! [{:id (:id card1) :dataset_query (let [mp (mt/metadata-provider)]
+                                                                           (lib/join (deps.test/table-query :orders)
+                                                                                     (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                                                                      [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                                                                              (lib.metadata/field mp (mt/id :products :id)))])))}])
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
                               (depends-on-> :card (:id card1) :table (mt/id :products))}
                             (upstream-of :card (:id card1)))))
                   (testing "to remove a table dep"
-                    (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
-                                        :card-updates
-                                        {:dataset_query (mt/mbql-query products)}})
+                    (card/update-cards! [{:id (:id (t2/select-one :model/Card :id (:id card1))) :dataset_query (deps.test/table-query :products)}])
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                             (upstream-of :card (:id card1))))))))))))))
@@ -98,9 +93,9 @@
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-                  {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-                  {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
+            (let [{id1 :id :as card1} (first (card/create-cards! [(assoc (basic-orders) :creator_id (:id user))]))
+                  {id2 :id :as card2} (first (card/create-cards! [(assoc (wrap-card card1) :creator_id (:id user))]))
+                  {id3 :id :as card3} (first (card/create-cards! [(assoc (wrap-card card2) :creator_id (:id user))]))]
               (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
@@ -136,9 +131,9 @@
         (mt/with-premium-features #{:dependencies}
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [mp (mt/metadata-provider)
-                  {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
-                  {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
-                  {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
+                  {id1 :id :as card1} (first (card/create-cards! [(assoc (sql-card mp "SELECT * FROM orders;") :creator_id (:id user))]))
+                  {id2 :id :as card2} (first (card/create-cards! [(assoc (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) :creator_id (:id user))]))
+                  {id3 :id :as card3} (first (card/create-cards! [(assoc (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) :creator_id (:id user))]))]
               (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
@@ -164,24 +159,22 @@
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [metric-card (card/create-card! {:name "Test Metric"
-                                                  :database_id (mt/id)
-                                                  :table_id (mt/id :orders)
-                                                  :display :scalar
-                                                  :query_type :query
-                                                  :type :metric
-                                                  :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})
-                                                  :visualization_settings {}}
-                                                 user)
-                  question-card (card/create-card! {:name "Question using Metric"
-                                                    :database_id (mt/id)
-                                                    :display :table
-                                                    :query_type :query
-                                                    :type :question
-                                                    :dataset_query (mt/mbql-query orders
-                                                                     {:aggregation [[:metric (:id metric-card)]]})
-                                                    :visualization_settings {}}
-                                                   user)]
+            (let [metric-card (first (card/create-cards! [(assoc {:name "Test Metric"
+                                                                  :database_id (mt/id)
+                                                                  :table_id (mt/id :orders)
+                                                                  :display :scalar
+                                                                  :query_type :query
+                                                                  :type :metric
+                                                                  :dataset_query (lib/aggregate (deps.test/table-query :orders) (lib/count))
+                                                                  :visualization_settings {}} :creator_id (:id user))]))
+                  question-card (first (card/create-cards! [(assoc {:name "Question using Metric"
+                                                                    :database_id (mt/id)
+                                                                    :display :table
+                                                                    :query_type :query
+                                                                    :type :question
+                                                                    :dataset_query (lib/aggregate (deps.test/table-query :orders)
+                                                                                                  (lib.metadata/metric (mt/metadata-provider) (:id metric-card)))
+                                                                    :visualization_settings {}} :creator_id (:id user))]))]
               (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly for question using metric"
                 (is (=? #{(depends-on-> :card (:id question-card) :table (mt/id :orders))
@@ -202,8 +195,7 @@
             (mt/with-temp [:model/Card card {}]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
               (computed! :card (:id card))
-              (card/update-card! {:card-before-update card
-                                  :card-updates       {:dataset_query (mt/mbql-query orders)}})
+              (card/update-cards! [{:id (:id card) :dataset_query (deps.test/table-query :orders)}])
               (is (pending? :card (:id card)))))
           (testing "transforms"
             (mt/with-temp [:model/Transform transform]
@@ -223,7 +215,7 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user]
-          (let [card (card/create-card! (basic-orders) user)]
+          (let [card (first (card/create-cards! [(assoc (basic-orders) :creator_id (:id user))]))]
             (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
             (deps.test/synchronously-run-dependency-job!)
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card)))
@@ -234,9 +226,9 @@
     (mt/with-temp [:model/User user {:email "me@wherever.com"}]
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-          (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-                {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-                {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+          (let [{id1 :id :as card1} (first (card/create-cards! [(assoc (basic-orders) :creator_id (:id user))]))
+                {id2 :id :as card2} (first (card/create-cards! [(assoc (wrap-card card1) :creator_id (:id user))]))
+                {id3 :id :as _card3} (first (card/create-cards! [(assoc (wrap-card card2) :creator_id (:id user))]))]
             (deps.test/synchronously-run-dependency-job!)
             (testing "without filter, returns all dependencies"
               (let [graph (deps.graph/graph-dependencies)
@@ -261,9 +253,9 @@
     (mt/with-temp [:model/User user {:email "me@wherever.com"}]
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-          (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-                {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-                {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+          (let [{id1 :id :as card1} (first (card/create-cards! [(assoc (basic-orders) :creator_id (:id user))]))
+                {id2 :id :as card2} (first (card/create-cards! [(assoc (wrap-card card1) :creator_id (:id user))]))
+                {id3 :id :as _card3} (first (card/create-cards! [(assoc (wrap-card card2) :creator_id (:id user))]))]
             (deps.test/synchronously-run-dependency-job!)
             (testing "without filter, returns all dependents"
               (let [graph (deps.graph/graph-dependents)

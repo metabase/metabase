@@ -12,6 +12,7 @@
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
@@ -26,7 +27,8 @@
    [metabase.queries.core :as queries]
    [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -149,20 +151,22 @@
         collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)
-    (-> (queries.card/create-card!
-         (u/remove-nils
-          {:name                   name
-           :type                   :metric
-           :dataset_query          dataset-query
-           ;; REST requires both on create, so an omitted `display` falls back to the app's default
-           ;; for a single aggregation rather than being left off the insert.
-           :display                (if display (keyword display) default-display)
-           :visualization_settings {}
-           :description            description
-           :collection_id          collection-id
-           :collection_position    collection_position})
-         {:id api/*current-user-id*})
-        write-result)))
+    (let [row (u/remove-nils
+               {:name                   name
+                :type                   :metric
+                :dataset_query          dataset-query
+                ;; REST requires both on create, so an omitted `display` falls back to the app's default
+                ;; for a single aggregation rather than being left off the insert.
+                :display                (if display (keyword display) default-display)
+                :visualization_settings {}
+                :description            description
+                :collection_id          collection-id
+                :collection_position    collection_position
+                :creator_id             api/*current-user-id*})]
+      (write-result
+       (t2/with-transaction [_conn]
+         (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+         (first (queries.card/create-cards! [row])))))))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
@@ -180,13 +184,7 @@
    update check stack before persisting. A `definition`/`query_handle` re-runs the metric shape
    gate; omitting both leaves the stored query untouched."
   [id {:keys [name description display collection_position archived] :as args} session-id]
-  (let [card-before  (v2.resolve/resolve-and-read-with
-                      :model/Card id
-                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
-                      ;; verified card whose query changes by reading `:moderation_reviews` off the
-                      ;; card-before, and a bare row would leave the Verified badge on a swapped
-                      ;; definition.
-                      (fn [cid] (mcp.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
+  (let [card-before  (v2.resolve/resolve-and-read-with :model/Card id #(api/write-check :model/Card %))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)
@@ -203,10 +201,12 @@
                        new-query                             (assoc :dataset_query new-query))
         card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
-    (queries.card/update-card! {:card-before-update    card-before
-                                :card-updates          card-updates
-                                :actor                 @api/*current-user*
-                                :delete-old-dashcards? false})
+    (t2/with-transaction [_conn]
+      (collection/maybe-reconcile-collection-position!
+       (select-keys card-before [:collection_id :collection_position])
+       (select-keys card-updates [:collection_id :collection_position]))
+      (queries.card/place-updated-dashboard-question! card-before card-updates false)
+      (queries.card/update-cards! [(queries.card/update-row card-id card-updates)]))
     (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------

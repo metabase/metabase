@@ -1781,10 +1781,10 @@
         (store-fake-result! qid qp-out)
         (mark-done! qid)
         (let [doc (t2/select-one :model/Document :id doc-id)]
-          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
+          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-cards!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
           (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                                      queries.card/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+                                      queries.card/create-cards!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
@@ -1816,13 +1816,13 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
+        ;; Give the EQ a real dataset_query so create-cards! has a database_id to inherit.
         (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                           :exploration_query_id qid)
               doc       (t2/select-one :model/Document :id doc-id)
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
-              ;; the real create-card! / stored_result write path.
+              ;; the real create-cards! / stored_result write path.
               result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                           (eqr/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
@@ -3014,7 +3014,7 @@
 
 (defn- combine-with-perms-stubbed!
   "Run the composite build with the run-permissions check stubbed out. The temp users these tests
-  create hold no data perms, and `create-card!` runs the same check — the existing single-query
+  create hold no data perms, and `create-cards!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
   (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]

@@ -183,19 +183,20 @@
                                    ;; every non-superuser. See [[composite-data-access-token]].
                                    :data_access_token (composite-data-access-token eq-results)
                                    :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
-              card-id          (:id (queries.card/create-card!
-                                     {:name                   (or (not-empty (:name first-eq))
-                                                                  (not-empty (:name src-card))
-                                                                  (tru "Chart"))
-                                      :description            (:description src-card)
-                                      :type                   :question
-                                      :dashboard_id           nil
-                                      :dataset_query          dataset-query
-                                      :display                display
-                                      :visualization_settings visualization-settings
-                                      :document_id            document-id
-                                      :collection_id          collection-id}
-                                     creator))]
+              card-id          (:id (first (queries.card/create-cards!
+                                            [(queries.card/new-card-row
+                                              {:name                   (or (not-empty (:name first-eq))
+                                                                           (not-empty (:name src-card))
+                                                                           (tru "Chart"))
+                                               :description            (:description src-card)
+                                               :type                   :question
+                                               :dashboard_id           nil
+                                               :dataset_query          dataset-query
+                                               :display                display
+                                               :visualization_settings visualization-settings
+                                               :document_id            document-id
+                                               :collection_id          collection-id}
+                                              (:id creator))])))]
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.

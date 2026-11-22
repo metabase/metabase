@@ -581,8 +581,8 @@
                                                   :result_metadata (native-run-metadata "SELECT ID, NAME FROM VENUES")}
                      :model/Card {card-id :id}   {:dataset_query (card-query native-id)}]
         (run-jobs!)
-        (queries.card/update-cards! [(assoc {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                              "SELECT ID, NAME, PRICE FROM VENUES")} :id native-id)])
+        (t2/update! :model/Card :id native-id {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                "SELECT ID, NAME, PRICE FROM VENUES")})
         (run-jobs!)
         (is (nil? (column card-id "PRICE")))
         (store-run-metadata! native-id (native-run-metadata "SELECT ID, NAME, PRICE FROM VENUES"))

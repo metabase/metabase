@@ -373,6 +373,14 @@
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- create-card-row!
+  "Creates a Card from `card` for `creator`, reconciling the positions in its Collection."
+  [card creator]
+  (t2/with-transaction [_conn]
+    (let [row (queries.card/new-card-row card (:id creator))]
+      (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+      (first (queries.card/create-cards! [row])))))
+
 (defn- create-card!
   "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
   checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
@@ -386,7 +394,7 @@
    (into []
          (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
          (:parameters card)))
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+  (create-card-row! (assoc card :type :question :dashboard_id nil) creator))
 
 (defn clone-card!
   "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
@@ -400,7 +408,7 @@
   [source-card creator]
   (card/with-copy-source-card source-card
     (api/create-check :model/Card source-card))
-  (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator))
+  (create-card-row! (assoc source-card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]

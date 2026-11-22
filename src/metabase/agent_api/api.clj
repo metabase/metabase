@@ -829,7 +829,7 @@
   `:display`), and optional `:validate-query!` (a metric-shape check run before the permission
   checks).
 
-  Mirror REST `POST /api/card/` pre-checks before calling `queries.card/create-card!`. `create-card!`
+  Mirror REST `POST /api/card/` pre-checks before calling `queries.card/create-cards!`. `create-cards!`
   itself does NOT run permissions checks; without these mirroring the REST endpoint, an LLM caller
   could (a) save a card whose query references data the user cannot run, and (b) plant the card in a
   collection they cannot write to.
@@ -857,7 +857,11 @@
                 :collection_id          collection_id
                 :visualization_settings (or visualization_settings {})}]
       (api/create-check :model/Card card)
-      (create-card-response (queries.card/create-card! card {:id api/*current-user-id*})))))
+      (create-card-response
+       (t2/with-transaction [_conn]
+         (let [[created] (queries.card/create-cards! [(assoc card :creator_id api/*current-user-id*)])]
+           (queries.card/place-new-dashboard-questions! [created] [card])
+           created))))))
 
 (defn- apply-agent-card-patch!
   "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
@@ -908,13 +912,15 @@
     (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
-    ;; they cannot query. `queries.card/update-card!` does NOT run this check itself, so we run it here.
+    ;; they cannot query. `queries.card/update-cards!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
-    (queries.card/update-card! {:card-before-update    card-before-update
-                                :card-updates          card-updates
-                                :actor                 @api/*current-user*
-                                :delete-old-dashcards? false})
+    (t2/with-transaction [_conn]
+      (collection/maybe-reconcile-collection-position!
+       (select-keys card-before-update [:collection_id :collection_position])
+       (select-keys card-updates [:collection_id :collection_position]))
+      (queries.card/place-updated-dashboard-question! card-before-update card-updates false)
+      (queries.card/update-cards! [(queries.card/update-row id card-updates)]))
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request

@@ -334,10 +334,9 @@
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
               (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
-              (queries.card/update-card! {:card-before-update card
-                                          :card-updates {:dashboard_id (-> in_dashboards first :id)}
-                                          :actor @api/*current-user*
-                                          :delete-old-dashcards? false})
+              (let [updates {:dashboard_id (-> in_dashboards first :id)}]
+                (queries.card/place-updated-dashboard-question! card updates false)
+                (queries.card/update-cards! [(queries.card/update-row (:id card) updates)]))
               (:id card))
             cards))))
 

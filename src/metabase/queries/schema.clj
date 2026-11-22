@@ -154,10 +154,6 @@
   "The `:dataset_query` column of a Card as stored, decoded, which may be the empty query of an old row."
   ::lib-be.schema/maybe-legacy-or-empty-query)
 
-(mr/def ::card.dataset-query.write
-  "The `:dataset_query` a write of a Card gives: a real query, never an empty one."
-  ::lib-be.schema/maybe-legacy-query)
-
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
   ::lib.schema.visualization/visualization-settings)
@@ -241,7 +237,7 @@
   "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
   and `:context`, the context of the events."
   [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :import :replacement :revert]]
+           [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mr/def ::card.update-row

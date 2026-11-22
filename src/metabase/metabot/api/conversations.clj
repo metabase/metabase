@@ -21,7 +21,6 @@
    [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -206,7 +205,7 @@
    _query-params
    {:keys [chart_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
-  ;; Mirror the POST /api/card pre-checks: `create-card!` itself does not check
+  ;; Mirror the POST /api/card pre-checks: `create-cards!` itself does not check
   ;; permissions on the query's data or the target container. Like the card API's
   ;; `actual-collection-id`, an explicit `collection_id` on a dashboard save must
   ;; match the dashboard's own collection.
@@ -224,14 +223,16 @@
   ;; The stamp is a raw table update — it should not run the Card model's heavy
   ;; before-update pipeline (query normalization, metadata population).
   (let [created (t2/with-transaction [_conn]
-                  (u/prog1 (queries.card/create-card!
-                            (-> (select-keys card [:name :description :dataset_query :display
-                                                   :visualization_settings :collection_id
-                                                   :dashboard_id :dashboard_tab_id])
-                                (update :display keyword)
-                                (update :visualization_settings #(or % {})))
-                            {:id api/*current-user-id*})
-                    (queries.card/link-to-metabot-conversation! (:id <>) id chart_id)))]
+                  (let [row       (-> (select-keys card [:name :description :dataset_query :display
+                                                         :visualization_settings :collection_id
+                                                         :dashboard_id :dashboard_tab_id])
+                                      (update :display keyword)
+                                      (update :visualization_settings #(or % {})))
+                        [created] (queries.card/create-cards!
+                                   [(queries.card/new-card-row row api/*current-user-id*)])]
+                    (queries.card/place-new-dashboard-questions! [created] [row])
+                    (queries.card/link-to-metabot-conversation! (:id created) id chart_id)
+                    created))]
     (assoc created
            :metabot_conversation_id id
            :metabot_chart_id        chart_id)))

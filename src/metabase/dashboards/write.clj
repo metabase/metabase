@@ -585,13 +585,15 @@
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (api/create-check :model/Card (assoc to-copy :collection_id dest-coll-id))
-                                  (queries.card/create-card!
-                                   (cond-> to-copy
-                                     true                    (assoc :collection_id dest-coll-id)
-                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                   @api/*current-user*
-                                   false))]))
+                                  (let [row (queries.card/new-card-row
+                                             (cond-> to-copy
+                                               true                    (assoc :collection_id dest-coll-id)
+                                               same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                               (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                             api/*current-user-id*)]
+                                    (t2/with-transaction [_conn]
+                                      (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+                                      (first (queries.card/create-cards! [row])))))]))
      :discarded  discard
      :referenced reference}))
 

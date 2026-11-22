@@ -640,13 +640,13 @@
                             (reusable-card chart-id dashboard-id dataset_query display))]
       (cond-> {:chart-id chart-id, :card-id (:id reused)}
         (not= name (:name reused)) (assoc :kept-name (:name reused)))
-      (let [card (queries.card/create-card! {:name                   name
-                                             :dataset_query          dataset_query
-                                             :display                display
-                                             :visualization_settings {}
-                                             :dashboard_id           dashboard-id}
-                                            {:id api/*current-user-id*}
-                                            false)]
+      (let [[card] (queries.card/create-cards!
+                    [(queries.card/new-card-row {:name                   name
+                                                 :dataset_query          dataset_query
+                                                 :display                display
+                                                 :visualization_settings {}
+                                                 :dashboard_id           dashboard-id}
+                                                api/*current-user-id*)])]
         (when conversation-id
           (queries.card/link-to-metabot-conversation! (:id card) conversation-id chart-id))
         {:chart-id chart-id, :card-id (:id card), :card card}))))

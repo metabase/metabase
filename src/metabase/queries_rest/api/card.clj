@@ -41,7 +41,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -479,6 +478,16 @@
                    (params/param-target->field-id target {:dataset_query query}))))
          parameters)))
 
+(defn- create-card!
+  "Creates a Card from `card` for the current user, reconciling the positions in its Collection and putting it on its
+  Dashboard when it is a dashboard question, in one transaction."
+  [card]
+  (t2/with-transaction [_conn]
+    (collection/maybe-reconcile-collection-position! (select-keys card [:collection_id :collection_position]))
+    (let [[created] (queries.card/create-cards! [(queries.card/new-card-row card api/*current-user-id*)])]
+      (queries.card/place-new-dashboard-questions! [created] [card])
+      created)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -500,7 +509,7 @@
     (check-parameter-permissions (:parameters card) query)
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
-    (let [created-card (queries.card/create-card! card @api/*current-user*)]
+    (let [created-card (create-card! card)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -523,7 +532,7 @@
         new-card  (assoc orig-card :name new-name)]
     (queries/with-copy-source-card orig-card
       (api/create-check :model/Card new-card))
-    (-> (queries.card/create-card! new-card @api/*current-user*)
+    (-> (create-card! new-card)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
@@ -573,41 +582,32 @@
     (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
                                  (or query (queries-rest.db/card-query id)))
-    (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
-                                             [:moderation_reviews :moderator_details])
-          card-updates           (maybe-populate-collection-id
-                                  card-before-update
-                                  (api/updates-without-collection-when-archiving card-before-update card-updates))
-          is-model-after-update? (if (nil? card-type)
-                                   (queries/model? card-before-update)
-                                   (queries/model? card-updates))]
+    (let [card-before-update (api/write-check :model/Card id)
+          card-updates       (maybe-populate-collection-id
+                              card-before-update
+                              (api/updates-without-collection-when-archiving card-before-update card-updates))]
       (queries/check-allowed-to-update-card! card-before-update card-updates)
-      (let [{:keys [metadata metadata-future]} (queries/maybe-async-result-metadata
-                                                {:original-query    (:dataset_query card-before-update)
-                                                 :query             query
-                                                 :metadata          metadata
-                                                 :original-metadata (:result_metadata card-before-update)
-                                                 :model?            is-model-after-update?
-                                                 :entity-id         (or (:entity_id card-updates)
-                                                                        (:entity_id card-before-update))})
-            card-updates                       (merge card-updates
-                                                      (when (and
-                                                             (api/column-will-change? (:dashboard_id card-before-update)
-                                                                                      (get card-updates :dashboard_id ::api/not-provided))
-                                                             (:dashboard_id card-updates))
-                                                        (api/check-400
-                                                         (not (:archived card-updates)))
-                                                        {:archived false}))
-            card-updates                       (cond-> card-updates
-                                                 metadata
-                                                 (assoc :result_metadata           metadata
-                                                        :verified-result-metadata? true))
-            card                               (-> (queries.card/update-card! {:card-before-update    card-before-update
-                                                                               :card-updates          card-updates
-                                                                               :actor                 @api/*current-user*
-                                                                               :delete-old-dashcards? delete-old-dashcards?})
-                                                   hydrate-card-details
-                                                   (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
+      (let [card-updates (merge card-updates
+                                (when (and
+                                       (api/column-will-change? (:dashboard_id card-before-update)
+                                                                (get card-updates :dashboard_id ::api/not-provided))
+                                       (:dashboard_id card-updates))
+                                  (api/check-400
+                                   (not (:archived card-updates)))
+                                  {:archived false}))
+            row          (cond-> (queries.card/update-row id card-updates)
+                           (and metadata (not query))
+                           (assoc :verified-result-metadata? true))
+            card         (t2/with-transaction [_conn]
+                           (collection/maybe-reconcile-collection-position!
+                            (select-keys card-before-update [:collection_id :collection_position])
+                            (select-keys card-updates [:collection_id :collection_position]))
+                           (queries.card/place-updated-dashboard-question! card-before-update card-updates delete-old-dashcards?)
+                           (queries.card/update-cards! [row])
+                           (queries-rest.db/card id))
+            card         (-> card
+                             hydrate-card-details
+                             (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
         ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
         ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
         ;; reflected synchronously.
@@ -619,9 +619,6 @@
           ;; decided not to complicate the solution further to accomplish this.
           (search/bulk-ingest! (for [search-model ["card" "dataset" "metric"]]
                                  [search-model [:= :this.id id]])))
-        (when metadata-future
-          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (queries.card/save-metadata-async! metadata-future card))
         card))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

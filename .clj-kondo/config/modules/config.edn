@@ -2404,6 +2404,7 @@
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification
+                    :model/NotificationCard
                     :model/Revision
                     :model/Table
                     :model/Timeline}}

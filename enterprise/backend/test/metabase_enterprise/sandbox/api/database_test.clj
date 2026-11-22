@@ -35,7 +35,7 @@
     (mt/with-test-user :crowberto
       (if metadata
         (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-        (queries.card/save-metadata-async! metadata-future card)))))
+        (queries.card/save-metadata-async! [{:future metadata-future :card card}])))))
 
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."

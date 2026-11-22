@@ -2736,14 +2736,14 @@
       ;; Initially no cards should have dashboard_id set
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card2-id)))
-      ;; Mock card/update-card! to fail on the second call
-      (mt/with-dynamic-fn-redefs [card/update-card!
+      ;; Mock card/update-cards! to fail on the second call
+      (mt/with-dynamic-fn-redefs [card/update-cards!
                                   (let [call-count (atom 0)]
                                     (fn [& args]
                                       (swap! call-count inc)
                                       (when (= @call-count 2)
                                         (throw (ex-info "Simulated failure" {})))
-                                      (apply (mt/original-fn #'card/update-card!) args)))]
+                                      (apply (mt/original-fn #'card/update-cards!) args)))]
         (mt/user-http-request :crowberto :post 500
                               (format "collection/%d/move-dashboard-question-candidates" coll-id)))
       ;; Verify neither card was moved (operation rolled back)

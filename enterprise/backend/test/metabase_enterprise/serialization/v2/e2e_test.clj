@@ -1820,7 +1820,7 @@
      :syncs         @syncs}))
 
 (deftest import-by-user-records-as-user-edits-test
-  (testing "An import started by a user records its Cards and Dashboards as that user's creations, and starts no sync"
+  (testing "An import started by a user records its Cards and Dashboards as that user's creations, a Dashboard's parts as its update, and starts no sync"
     (mt/with-premium-features #{:audit-app}
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-dbs [source-db dest-db]
@@ -1832,8 +1832,9 @@
                     _        (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
                     records  (records-of-import! dump-dir importer)
                     model-id (t2/select-one-pk :model/Card :name "Revenue model")]
-                (is (= {["Card" true importer]      3
-                        ["Dashboard" true importer] 1}
+                (is (= {["Card" true importer]       3
+                        ["Dashboard" true importer]  1
+                        ["Dashboard" false importer] 1}
                        (:revisions records)))
                 (is (= {["card-create" importer]      3
                         ["dashboard-create" importer] 1}

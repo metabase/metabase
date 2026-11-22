@@ -420,7 +420,8 @@
     (when (seq reparameterised)
       (parameter-card/sync-parameter-cards!
        "dashboard" (mapv (juxt :id :parameters) reparameterised)))
-    (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (doseq [[changes group] (group-by #(dissoc % :id) rows)
+            :when (seq changes)]
       (dashboards.db/update-dashboards! (mapv :id group) changes))
     (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
     rows))
@@ -490,8 +491,9 @@
   without their parts. A row may hold `:tabs`, `:dashcards`, or both, the new lists of its parts, which replace the stored
   ones: those the lists lack are deleted, the others updated, and those with another id created, the `:dashboard_tab_id`
   of a dashcard naming a tab created by its temporary id. The audit log records the dashcards a replacement adds and
-  removes. The write publishes, last, the update event of each Dashboard whose columns or parts it changes, and the rows
-  with the same columns are one statement. See [[write-columns!]] for what the columns do."
+  removes. The write publishes, last, the update event of each Dashboard whose columns or parts it changes, and for an
+  import, which sends a Dashboard whose children it wrote, a touch of each Dashboard it leaves unchanged; the rows with
+  the same columns are one statement, and a row that changes no column none. See [[write-columns!]] for what the columns do."
   ([rows :- [:sequential UpdateDashboard]]
    (update-dashboards! rows nil))
   ([rows :- [:sequential UpdateDashboard]
@@ -523,7 +525,12 @@
            (publish-cards! after
                            (into [] (mapcat (comp :added val)) replaced)
                            (into [] (mapcat (comp :removed val)) replaced))
-           (publish-update! stored rows (into [] (comp (filter (comp :changed? val)) (map key)) replaced) opts)
+           (publish-update! stored
+                            rows
+                            (into (if (= :import (:writer opts)) (mapv :id rows) [])
+                                  (comp (filter (comp :changed? val)) (map key))
+                                  replaced)
+                            opts)
            rows))))))
 
 (mu/defn add-dashcards! :- [:sequential :map]
@@ -810,7 +817,8 @@
    :hydrate      dashboards.dependencies/hydrate
    :dependencies dashboards.dependencies/dependencies
 
-   :dependency-columns #{:parameters}})
+   :dependency-columns  #{:parameters}
+   :written-with-parts? true})
 
 (defmethod replacement/spec :model/DashboardCard [_model]
   {:update! #(update-dashcards! [(assoc %2 :id %1)] {:writer :replacement})})

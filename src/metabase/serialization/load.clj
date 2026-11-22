@@ -94,8 +94,8 @@
 (defn- write!
   "Inserts the `items` with no row of the app DB, without their nil columns, and updates the others with the columns
   of their `:row` that changed, but those their entity loads without to break a cycle, by the write functions of
-  `model` (see [[metabase.serialization.writes]]). Returns the items that were loaded, each with its `:instance`:
-  an item its write function left out is not among them."
+  `model` (see [[metabase.serialization.writes]]). Returns the items that were loaded, each with its `:instance` and
+  whether it was `:written?`, inserted or updated: an item its write function left out is not among them."
   [model items]
   (let [pk       (serialization.spec/primary-key model)
         new-idxs (into [] (keep-indexed (fn [i {:keys [local]}] (when-not local i))) items)
@@ -118,9 +118,12 @@
           (comp (map-indexed (fn [i {:keys [row local entity] :as item}]
                                (cond
                                  (not local)
-                                 (assoc item :instance (get inserted i))
+                                 (assoc item :instance (get inserted i) :written? true)
 
-                                 (or (not (contains? updates (get local pk))) (contains? updated (get local pk)))
+                                 (contains? updated (get local pk))
+                                 (assoc item :instance (merge local (apply dissoc row (:serdes/stripped entity))) :written? true)
+
+                                 (not (contains? updates (get local pk)))
                                  (assoc item :instance (merge local (apply dissoc row (:serdes/stripped entity)))))))
                 (filter :instance))
           items)))
@@ -136,19 +139,26 @@
 (declare ^:private load-children!)
 
 (defn- load-items!
-  "Writes the load `items` of `model`, loads their child entities (see [[metabase.serialization.spec]]), and passes
-  them to [[after-load]], in `store` with `opts`. Returns the loaded instances."
+  "Writes the load `items` of `model`, loads their child entities (see [[metabase.serialization.spec]]), calls the
+  `:update!` of `model`, when it has one, with the rows `{pk id}` of the items whose children it inserted, updated or
+  deleted, and passes the items to [[after-load]], in `store` with `opts`. Returns the loaded items, each with whether
+  it or a child of it was `:written?`."
   [model store items opts]
-  (let [items (write! model items)]
-    (doseq [[k child-model] (serialization.spec/children model)]
-      (load-children! child-model store items k opts))
+  (let [pk      (serialization.spec/primary-key model)
+        items   (write! model items)
+        changed (into #{}
+                      (mapcat (fn [[k child-model]] (load-children! child-model store items k opts)))
+                      (serialization.spec/children model))]
+    (when (and (seq changed) (:update! (serialization.spec/spec model)))
+      (serialization.writes/update! model (mapv (fn [id] {pk id}) changed)))
     (after-load model items)
-    (mapv :instance items)))
+    (mapv #(cond-> % (contains? changed (get-in % [:instance pk])) (assoc :written? true)) items)))
 
 (defn- load-children!
   "Loads the entities under `k` in the entities of the loaded parent `items` as rows of `model` that hold their parent's
   primary key, deleting first the children of these parents that none matches on the identity of `model`. A parent
-  whose entity lacks `k`, like one loading without the keys that close a dependency cycle, keeps its children."
+  whose entity lacks `k`, like one loading without the keys that close a dependency cycle, keeps its children. Returns
+  the primary keys of the parents whose children it inserted, updated or deleted, at any depth."
   [model store items k opts]
   (let [parent-key (:key (serialization.spec/parent model))
         items      (filter #(contains? (:entity %) k) items)
@@ -162,9 +172,11 @@
             prepared (prepare-items model store entities (assoc opts :nested? true)
                                     #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
-            stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
-        (serialization.writes/delete! model stale)
-        (load-items! model store prepared opts)))))
+            stale    (into [] (remove #(contains? kept (get % pk))) existing)]
+        (serialization.writes/delete! model (into #{} (map #(get % pk)) stale))
+        (into (into #{} (map #(get % parent-key)) stale)
+              (keep #(when (:written? %) (get-in % [:row parent-key])))
+              (load-items! model store prepared opts))))))
 
 (defn load
   "Loads `entities` of `model` into `store`, the app DB by default, with `opts`, creating the rows they refer to by
@@ -174,8 +186,9 @@
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
    (let [entities (vec (loaded-entities model entities))]
-     (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
-                  opts))))
+     (mapv :instance
+           (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
+                        opts)))))
 
 (defn import
   "The rows that `entities` of `model` import to, with their references resolved at once in the app DB."

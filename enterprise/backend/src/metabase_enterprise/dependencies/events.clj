@@ -224,8 +224,8 @@
   (swap! batched update :data-app-collections (fnil into #{}) (remove nil?) collection-ids))
 
 (mu/defn- mark-update! :- :boolean
-  "Mark the statuses the update `event` makes stale: the entity's own, by the columns each job reads, and what reads
-  its output when that changes, returning whether a column some job reads changed."
+  "Mark the statuses the update `event` makes stale: the entity's own, by the columns each job reads or on any update of
+  an entity written with its parts, and what reads its output when that changes, returning whether it marked anything."
   [batched :- Marks
    lookups :- Lookups
    {:keys [model object previous-object] :as event} :- [:map]]
@@ -236,9 +236,9 @@
         analysis?   (u.events/changed-any? event (:analysis-columns spec))
         output?     (output-changed? event)
         part?       (u.events/changed-any? event (:part-columns spec))
-        touched?    (and entity-type (u.events/touch? event))
+        parts?      (boolean (:written-with-parts? spec))
         data-apps?  (data-apps-changed? event)]
-    (when (or dependency? touched?)
+    (when (or dependency? parts?)
       (mark-own! batched :dependency own))
     (when analysis?
       (mark-own! batched :analysis own))
@@ -254,7 +254,7 @@
         nil))
     (when data-apps?
       (mark-data-apps! batched [(:collection_id previous-object) (:collection_id object)]))
-    (or dependency? touched? analysis? output? part? data-apps?
+    (or dependency? parts? analysis? output? part? data-apps?
         (case model
           :model/Dimension   (boolean (when (u.events/changed-any? event dimension-columns)
                                         (run! #(mark-dimension! batched lookups %) (distinct [previous-object object]))

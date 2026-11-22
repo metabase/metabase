@@ -16,6 +16,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.models.interface :as mi]
@@ -637,17 +638,17 @@
                                                           :schema       schema-name
                                                           :table-name   table-name
                                                           :display-name display-name})
-            card              (queries.card/create-card!
-                               {:collection_id          collection-id
-                                :type                   :model
-                                :database_id            (:id database)
-                                :dataset_query          {:database (:id database)
-                                                         :query    {:source-table (:id table)}
-                                                         :type     :query}
-                                :display                :table
-                                :name                   card-name
-                                :visualization_settings {}}
-                               @api/*current-user*)
+            card              (first (queries.card/create-cards!
+                                      [{:collection_id          collection-id
+                                        :type                   :model
+                                        :dataset_query          (lib-be/normalize-query
+                                                                 {:database (:id database)
+                                                                  :query    {:source-table (:id table)}
+                                                                  :type     :query})
+                                        :display                :table
+                                        :name                   card-name
+                                        :visualization_settings {}
+                                        :creator_id             api/*current-user-id*}]))
             upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
         (events/publish-event! :event/upload-create
@@ -761,7 +762,7 @@
             ;; the initial upload.
             fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (queries.card/update-cards! [{:id id :result_metadata metadata}])))))
+        (queries.card/update-cards! [{:id id :result_metadata metadata}] {:writer :sync})))))
 
 (defn- translate-type-keywords [m]
   (match/replace-all m

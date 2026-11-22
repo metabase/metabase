@@ -40,7 +40,6 @@
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
-  create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
   with-copy-source-card]
