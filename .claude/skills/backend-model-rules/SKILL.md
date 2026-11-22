@@ -307,6 +307,9 @@ required by its module's `init.clj`.
   `(metabase.events.test-util/statement-count! thunk)`, which turns consumers off so the number does not depend on
   test order. Take one discarded measurement first so one-time cache reads do not count. A function that fails has an
   N+1: fix the function, never the test.
+- **Never pin a statement count to a number.** `(is (= 12 (call-count)))` breaks on every harmless change, differs by
+  edition and app DB, and proves nothing about growth. Only the comparison matters: one discarded warm-up call, then
+  the same count at two sizes. This holds for every call-count test, of a write function, an endpoint or a consumer.
 
       (deftest write-function-statement-counts-do-not-grow-with-rows-test
         (mt/with-model-cleanup [:model/TransformTag]
