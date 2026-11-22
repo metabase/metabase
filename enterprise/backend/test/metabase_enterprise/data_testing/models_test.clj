@@ -337,16 +337,20 @@
                                                                         (vec (repeat n (valid-row transform-id [])))))))))]
       (try
         (testing "creating transform tests"
+          (create! 1)
           (is (= (create! 2) (create! 6))))
         (testing "updating transform tests"
-          (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 2 ids)))))
-                   (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 6 (drop 2 ids))))))))))
+          (let [[warm-up & ids] @created
+                update!         (fn [ids]
+                                  (events.tu/statement-count!
+                                   (fn [] (data-testing.models/update-transform-tests! (mapv (fn [id] (assoc {:description "same"} :id id)) ids)))))]
+            (update! [warm-up])
+            (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
         (testing "deleting a transform deletes its tests in a fixed number of statements"
-          (is (= (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id])))
-                 (do (swap! created into
-                            (map :id (data-testing.models/create-transform-tests!
-                                      (vec (repeat 6 (valid-row transform-id []))))))
-                     (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id])))))))
+          (let [delete! (fn [n]
+                          (data-testing.models/create-transform-tests! (vec (repeat n (valid-row transform-id []))))
+                          (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id]))))]
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))
         (finally
           (t2/delete! :model/TransformTest :transform_id transform-id))))))

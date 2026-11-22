@@ -533,6 +533,7 @@
                                                           (swap! calls conj (call-count))))))]
                         (table/delete-tables! (vec (t2/select-pks-set :model/Table :db_id (:id db)))))
                       {:rows @rows, :queries (first @calls)})))]
+          (capture-queries 1)
           (let [one   (capture-queries 1)
                 three (capture-queries 3)]
             (is (= [["metabase_table" 1]] (:rows one)))
@@ -615,6 +616,7 @@
 (deftest batch-of-updates-logs-with-fixed-statements-test
   (when config/ee-available?
     (testing "an update of 2 or 6 rows in one batch logs them with the same number of statements"
+      (change-log-statement-count! 1)
       (is (= (change-log-statement-count! 2) (change-log-statement-count! 6))))))
 
 (deftest off-test

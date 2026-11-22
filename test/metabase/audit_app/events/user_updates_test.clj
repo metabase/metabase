@@ -281,6 +281,7 @@
 (deftest skipped-column-update-of-user-runs-no-details-query-test
   (let [user-id   (mt/user->id :rasta)
         before    (max-id)
+        _         (user-qbnewb-call-count! user-id)
         audit-off (mt/with-premium-features #{}
                     (user-qbnewb-call-count! user-id))
         audit-on  (mt/with-premium-features #{:audit-app}
@@ -289,10 +290,20 @@
       (is (= audit-off audit-on))
       (is (= [] (rows-since before)))))
   (mt/with-premium-features #{:audit-app}
+    (testing "deactivating a user runs the same number of queries whatever the number of their groups"
+      (let [deactivating (fn [n]
+                           (mt/with-temp [:model/User {user-id :id} {}]
+                             (mt/with-model-cleanup [:model/PermissionsGroup]
+                               (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                         (repeatedly n #(mt/with-temp-defaults :model/PermissionsGroup)))]
+                                 (t2/insert! :model/PermissionsGroupMembership
+                                             (for [group-id group-ids] {:user_id user-id :group_id group-id}))
+                                 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id))))))]
+        (deactivating 1)
+        (is (= (deactivating 2) (deactivating 6)))))
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [before (max-id)]
-        (testing "deactivating a user runs a fixed number of queries, the session write included"
-          (is (= 14 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id)))))
+        (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!
@@ -306,6 +317,7 @@
 (deftest skipped-column-update-of-segment-runs-no-details-query-test
   (mt/with-temp [:model/Segment {segment-id :id} {}]
     (let [before    (max-id)
+          _         (update-segment-entity-id-call-count! segment-id "bcdefghijklmnopqrstuv")
           audit-off (mt/with-premium-features #{}
                       (update-segment-entity-id-call-count! segment-id "abcdefghijklmnopqrstu"))
           audit-on  (mt/with-premium-features #{:audit-app}

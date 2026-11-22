@@ -201,15 +201,20 @@
                         (events.tu/statement-count! (fn [] (swap! created into (map :id (data-app/create-data-apps! rows)))))))]
     (try
       (testing "creating data apps with collections"
+        (create! 1)
         (is (= (create! 2) (create! 6))))
       (testing "updating data apps"
-        (let [ids @created]
-          (is (= (events.tu/statement-count! (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 2 ids)))))
-                 (events.tu/statement-count! (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 6 (drop 2 ids))))))))))
+        (let [[warm-up & ids] @created
+              update!         (fn [ids]
+                                (events.tu/statement-count!
+                                 (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) ids)))))]
+          (update! [warm-up])
+          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
       (testing "deleting data apps that have no collection"
         (let [rows    (fn [n] (mapv #(assoc % :entity_id (u/generate-nano-id)) (app-rows n)))
               insert! (fn [n] (mapv :id (t2/insert-returning-instances! :model/DataApp (rows n))))
               delete! (fn [ids] (events.tu/statement-count! (fn [] (data-app/delete-data-apps! ids))))]
+          (delete! (insert! 1))
           (is (= (delete! (insert! 2)) (delete! (insert! 6))))))
       (finally
         (data-app/delete-data-apps! @created)))))

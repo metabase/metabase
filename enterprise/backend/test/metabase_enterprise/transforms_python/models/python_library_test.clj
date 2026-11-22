@@ -102,12 +102,25 @@
       (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
       (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))
 
-(deftest update-python-library-source-statement-counts-test
-  (t2/delete! :model/PythonLibrary)
-  (testing "an insert"
-    (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 1")))))
-  (testing "an update"
-    (is (= 5 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 2"))))))
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [create! (fn [n]
+                    (python-library/create-python-libraries! (mapv (fn [_] {:path (mt/random-name) :source "a = 1"}) (range n))))
+          counted (fn [write! n]
+                    (let [ids (mapv :id (create! n))]
+                      (events.tu/statement-count! #(write! ids))))
+          update! (fn [ids] (python-library/update-python-libraries! (mapv (fn [id] {:id id :source "a = 2"}) ids)))]
+      (testing "creating libraries"
+        (let [creating #(events.tu/statement-count! (fn [] (create! %)))]
+          (creating 1)
+          (is (= (creating 2) (creating 6)))))
+      (testing "updating libraries"
+        (counted update! 1)
+        (is (= (counted update! 2) (counted update! 6))))
+      (testing "deleting libraries"
+        (counted python-library/delete-python-libraries! 1)
+        (is (= (counted python-library/delete-python-libraries! 2)
+               (counted python-library/delete-python-libraries! 6)))))))
 
 (deftest create-python-libraries-with-different-key-sets-test
   (mt/with-model-cleanup [:model/PythonLibrary]

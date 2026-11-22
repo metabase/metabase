@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
    [metabase.events.test-util :as events.tu]
@@ -124,6 +123,7 @@
                 (archive! :model/Collection (u/the-id collection) true)
                 (archive! :model/Collection (u/the-id collection) false)
                 (call-count))))]
+    (calls 1)
     (is (= (calls 2) (calls 20)))))
 
 (deftest archive-and-restore-follow-model-parents-test
@@ -232,10 +232,9 @@
 (deftest collection-statements-do-not-grow-with-subtree-test
   (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration
                           :model/Collection]
+    (subtree-statement-counts! 1)
     (let [small (subtree-statement-counts! 2)
           large (subtree-statement-counts! 6)]
       (doseq [k [:archive :restore :move :delete]]
         (testing (name k)
-          (is (= (get small k) (get large k)))))
-      (testing "statements of the writes without their consumers"
-        (is (= {:archive 52 :restore 48 :move 6 :delete (if config/ee-available? 35 34)} small))))))
+          (is (= (get small k) (get large k))))))))

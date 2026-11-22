@@ -826,4 +826,5 @@
         (call-count)))))
 
 (deftest delete-sandboxes-runs-fixed-statement-count-test
+  (delete-sandboxes-count! 1)
   (is (= (delete-sandboxes-count! 2) (delete-sandboxes-count! 6))))

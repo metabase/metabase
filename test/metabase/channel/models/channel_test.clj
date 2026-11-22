@@ -244,6 +244,7 @@
                                                                                                  :name (mt/random-name))))))))))]
     (try
       (testing "creating channels"
+        (create! 1)
         (is (= (create! 2) (create! 6))))
       (testing "deactivating channels costs one statement more per channel, its new name being its own"
         (let [ids        @created

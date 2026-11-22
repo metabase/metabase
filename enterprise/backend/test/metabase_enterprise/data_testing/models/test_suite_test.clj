@@ -251,13 +251,16 @@
                                                     :name         (str (random-uuid))
                                                     :inputs       []
                                                     :expectations []})))))
+          warm-up     (make-tests! 1)
           small       (make-tests! 2)
-          large       (make-tests! 6)]
+          large       (make-tests! 6)
+          delete!     (fn [tests]
+                        (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest (mapv :id tests))))]
       (test-suite/update-test-suites! [{:id      suite-id
                                         :members (mapv (fn [{:keys [entity_id]}] {:test_type :card :test_entity_id entity_id})
-                                                       (concat small large))}])
-      (is (= (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest (mapv :id small)))
-             (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest (mapv :id large))))))))
+                                                       (concat warm-up small large))}])
+      (delete! warm-up)
+      (is (= (delete! small) (delete! large))))))
 
 (deftest suite-writes-publish-one-suite-event-test
   (mt/with-temp [:model/TestSuite {suite-id :id} {}]

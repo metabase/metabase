@@ -807,6 +807,7 @@
                  :model/Dashboard  dashboard  {:name "Refused dashboard"}
                  :model/Pulse      pulse      {:name "Refused pulse"}
                  :model/Card      card      {:name "Refused card"}]
+    (failure-call-count! :event/write-permission-failure collection)
     (let [baseline (failure-call-count! :event/write-permission-failure collection)]
       (doseq [[model object topic] [["Dashboard" dashboard :write-permission-failure]
                                     ["User" (mt/fetch-user :lucky) :update-permission-failure]
@@ -849,4 +850,5 @@
   (testing "a user's update of 2 or 6 rows in one batch records their audit rows with the same number of statements"
     (doseq [[model column] [[:model/Card :description] [:model/Segment :description] [:model/User :first_name]]]
       (testing model
+        (audit-statement-count! model column 1)
         (is (= (audit-statement-count! model column 2) (audit-statement-count! model column 6)))))))

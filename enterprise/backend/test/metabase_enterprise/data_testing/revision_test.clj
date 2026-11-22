@@ -734,6 +734,7 @@
                             (revision/revisions-readable? :model/CardTest objects)
                             (call-count)))]
             (is (= 4 (count objects)))
+            (queries (take 1 objects))
             (is (= (queries (take 1 objects)) (queries objects)))
             (testing "a revision about a deleted card is not readable"
               (t2/delete! :model/Card :id card-id)

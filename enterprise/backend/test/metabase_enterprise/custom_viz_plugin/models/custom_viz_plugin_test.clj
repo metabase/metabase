@@ -228,17 +228,20 @@
                                                              {:identifier identifier :display_name identifier :status :active})))))))))]
     (try
       (testing "creating plugins"
+        (create! 1)
         (is (= (create! 2) (create! 6))))
-      (let [ids @created]
+      (let [[warm-up & ids] @created
+            update!         (fn [ids]
+                              (events.tu/statement-count!
+                               #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) ids))))
+            delete!         (fn [ids]
+                              (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! ids)))]
         (testing "updating plugins with one change set"
-          (is (= (events.tu/statement-count!
-                  #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) (take 2 ids))))
-                 (events.tu/statement-count!
-                  #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] (assoc {:enabled false} :id id)) (take 6 (drop 2 ids)))))))))
-      (testing "deleting plugins"
-        (let [ids @created]
-          (is (= (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! (take 2 ids)))
-                 (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! (take 6 (drop 2 ids))))))))
+          (update! [warm-up])
+          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids))))))
+        (testing "deleting plugins"
+          (delete! [warm-up])
+          (is (= (delete! (take 2 ids)) (delete! (take 6 (drop 2 ids)))))))
       (finally
         (t2/delete! :model/CustomVizPlugin :id [:in @created])))))
 

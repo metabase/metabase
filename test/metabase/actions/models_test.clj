@@ -797,8 +797,10 @@
                       (action/update-actions! (mapv (fn [{id :id}] {:id id :description "described"}) actions))
                       (call-count)))))))]
     (testing "creating actions runs one statement count whatever their number"
+      (creating 1)
       (is (= (creating 2) (creating 6))))
     (testing "updating actions runs one statement count whatever their number"
+      (updating 1)
       (is (= (updating 2) (updating 6))))))
 
 (deftest action-writes-publish-one-action-event-test

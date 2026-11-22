@@ -416,6 +416,7 @@
                                                    %
                                                    (fn [ids]
                                                      (card/update-cards! (mapv (fn [id] {:id id :dataset_query (lib/limit (table-query :venues) 1)}) ids))))]
+          (count! 1)
           (is (= (count! 2) (count! 6)))))
       (testing "an insert of series of dashcards, which reads the Dashboard of each dashcard"
         (let [count! #(dependency-statement-count! :model/DashboardCard
@@ -425,4 +426,5 @@
                                                      (t2/insert! :model/DashboardCardSeries
                                                                  (for [id ids]
                                                                    {:dashboardcard_id id :card_id card-id :position 0}))))]
+          (count! 1)
           (is (= (count! 2) (count! 6))))))))

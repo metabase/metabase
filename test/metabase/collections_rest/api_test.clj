@@ -833,28 +833,44 @@
      (mt/with-temporary-setting-values [transforms-enabled true]
        (mt/with-premium-features #{:library :snippet-collections :transforms :transforms-python :content-verification
                                    :official-collections :data-studio :tenants :remote-sync}
-         (mt/with-temp [:model/Collection {a :id :as coll-a} {:name "A"}
-                        :model/Collection {b :id} {:name "B" :location (collection/children-location coll-a)}
-                        :model/Card _ {:name "Question" :collection_id a}
-                        :model/Card _ {:name "Question in B" :collection_id b}
-                        :model/Dashboard _ {:name "Dashboard" :collection_id a}
-                        :model/Card _ {:name "Root question"}]
-           (perms/revoke-collection-permissions! (perms/all-users-group) a)
-           (perms/revoke-collection-permissions! (perms/all-users-group) b)
-           (perms/grant-collection-read-permissions! (perms/all-users-group) a)
-           (let [query-count (fn [url & params]
+         (let [namespaces  ["snippets" "transforms" "data-actions" "data-apps"]
+               query-count (fn [url & params]
+                             (apply mt/user-http-request :rasta :get 200 url params)
+                             (t2/with-call-count [call-count]
                                (apply mt/user-http-request :rasta :get 200 url params)
-                               (t2/with-call-count [call-count]
-                                 (apply mt/user-http-request :rasta :get 200 url params)
-                                 (call-count)))
-                 a-url       (str "collection/" a "/items/metadata")]
-             (is (= 27 (query-count a-url)))
-             (is (= 41 (query-count a-url :archived true)))
-             (is (= 25 (query-count "collection/root/items/metadata")))
-             (is (= 39 (query-count "collection/root/items/metadata" :archived true)))
-             (doseq [collection-namespace ["snippets" "transforms" "data-actions" "data-apps"]]
-               (is (= 9 (query-count "collection/root/items/metadata" :namespace collection-namespace))
-                   collection-namespace)))))))))
+                               (call-count)))
+               counts      (fn [n]
+                             (mt/with-temp [:model/Collection {a :id :as coll-a} {:name "A"}
+                                            :model/Collection {b :id} {:name "B" :location (collection/children-location coll-a)}]
+                               (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection]
+                                 (let [insert! (fn [model row]
+                                                 (t2/insert! model (repeatedly n #(merge (mt/with-temp-defaults model) row))))
+                                       a-url   (str "collection/" a "/items/metadata")]
+                                   (insert! :model/Card {:collection_id a})
+                                   (insert! :model/Card {:collection_id a :archived true :archived_directly true})
+                                   (insert! :model/Card {:collection_id b})
+                                   (insert! :model/Dashboard {:collection_id a})
+                                   (insert! :model/Card {:collection_id nil})
+                                   (insert! :model/Card {:collection_id nil :archived true :archived_directly true})
+                                   (doseq [collection-namespace namespaces]
+                                     (insert! :model/Collection {:namespace collection-namespace}))
+                                   (perms/revoke-collection-permissions! (perms/all-users-group) a)
+                                   (perms/revoke-collection-permissions! (perms/all-users-group) b)
+                                   (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+                                   (into {"collection"          (query-count a-url)
+                                          "archived collection" (query-count a-url :archived true)
+                                          "root"                (query-count "collection/root/items/metadata")
+                                          "archived root"       (query-count "collection/root/items/metadata" :archived true)}
+                                         (map (fn [collection-namespace]
+                                                [collection-namespace
+                                                 (query-count "collection/root/items/metadata" :namespace collection-namespace)]))
+                                         namespaces)))))
+               _           (counts 1)
+               small       (counts 2)
+               large       (counts 6)]
+           (doseq [list-name (keys small)]
+             (testing list-name
+               (is (= (get small list-name) (get large list-name)))))))))))
 
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
