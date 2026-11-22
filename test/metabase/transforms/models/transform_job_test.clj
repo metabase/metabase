@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-job :as transform-job]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
@@ -201,3 +202,31 @@
       (is (= ["Plain" nil] [(:name plain) (:description plain)]))
       (is (true? (t2/select-one-fn :active :model/TransformJob :id (:id plain))))
       (is (= "About" (t2/select-one-fn :description :model/TransformJob :id (:id described)))))))
+
+(deftest tag-link-writes-statement-count-does-not-grow-with-tags-test
+  (mt/with-temp-scheduler!
+    (mt/with-model-cleanup [:model/TransformJob :model/TransformTag]
+      (let [tags    (mapv :id (transform-tag/create-transform-tags! (mapv #(hash-map :name (str "tag " % (mt/random-name))) (range 8))))
+            counted (fn [n]
+                      (let [id (:id (first (transform-job/create-transform-jobs! [{:name (mt/random-name) :schedule "0 0 0 * * ? *"}])))]
+                        (transform-job/update-job-tags! id (vec (take n tags)))
+                        (events.tu/statement-count!
+                         #(transform-job/update-job-tags! id (into [(nth tags n)] (reverse (rest (take n tags))))))))]
+        (counted 2)
+        (is (= (counted 2) (counted 6)))))))
+
+(deftest mixed-state-job-update-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (mt/with-model-cleanup [:model/TransformJob]
+      (let [jobs    (fn [n schedules]
+                      (let [ids (mapv :id (transform-job/create-transform-jobs!
+                                           (mapv (fn [schedule] {:name (mt/random-name) :schedule schedule})
+                                                 (take n schedules))))]
+                        (run! transform-job/deactivate-job! (take-nth 2 ids))
+                        ids))
+            counted (fn [n]
+                      (let [ids (jobs n (cons "0 0 1 * * ? *" (repeat "0 0 0 * * ? *")))]
+                        (events.tu/statement-count!
+                         #(transform-job/update-transform-jobs! (mapv (fn [id] {:id id :schedule "0 0 1 * * ? *" :description "d"}) ids)))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

@@ -41,9 +41,11 @@
   (t2/insert-returning-instance! :model/EmbeddingTheme row))
 
 (mu/defn insert-embedding-themes!
-  "Insert the EmbeddingTheme `rows`."
+  "Insert the EmbeddingTheme `rows`, with one statement for each set of columns they give, so that a column a row leaves
+  out takes its default."
   [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
-  (t2/insert! :model/EmbeddingTheme rows))
+  (doseq [group (vals (group-by (comp set keys) rows))]
+    (t2/insert! :model/EmbeddingTheme (vec group))))
 
 (mu/defn update-embedding-theme!
   "Apply `changes` to the EmbeddingTheme with `id`."

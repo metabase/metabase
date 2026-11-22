@@ -1,6 +1,7 @@
 (ns metabase.queries.models.parameter-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -153,3 +154,26 @@
                               :parameterized_object_id   1
                               :parameter_id              "param2"
                               :card_id                   card-id}))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card {source-1 :id} {}
+                 :model/Card {source-2 :id} {}]
+    (mt/with-model-cleanup [:model/ParameterCard :model/Card]
+      (let [parameter (fn [id card-id] {:id id :type :number :values_source_type :card :values_source_config {:card_id card-id}})
+            objects   (fn [n]
+                        (let [ids (t2/insert-returning-pks! :model/Card (mapv (fn [_] (mt/with-temp-defaults :model/Card)) (range n)))]
+                          (parameter-card/sync-parameter-cards! "card" (mapv (fn [id] [id [(parameter "p1" source-1)]]) (take-nth 2 ids)))
+                          (parameter-card/sync-parameter-cards! "card" (mapv (fn [id] [id [(parameter "p2" source-1)]]) (take-nth 2 (rest ids))))
+                          ids))
+            counted   (fn [f]
+                        (f 2)
+                        (is (= (f 2) (f 6))))]
+        (testing "syncing parameter cards, some to create, some to change and some to delete"
+          (counted (fn [n]
+                     (let [ids (objects n)]
+                       (events.tu/statement-count!
+                        #(parameter-card/sync-parameter-cards! "card" (mapv (fn [id] [id [(parameter "p1" source-2) (parameter "p3" source-1)]]) ids)))))))
+        (testing "deleting parameter cards of objects and of cards"
+          (counted (fn [n]
+                     (let [ids (objects n)]
+                       (events.tu/statement-count! #(parameter-card/delete-parameter-cards-for-objects! "card" ids [source-1 source-2]))))))))))

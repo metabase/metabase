@@ -13,11 +13,17 @@
   (t2/select-one-fn :source [:model/Transform :id :source] :id transform-id))
 
 (mu/defn transforms-for-ordering
-  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
-   excluding [[transform-id]]."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
-             :id [:not= transform-id]))
+  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform."
+  []
+  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]))
+
+(mu/defn active-tables-named
+  "The id, Database id, schema and name of the active Tables of the `[database-id schema name]` triples."
+  [triples :- [:sequential {:min 1} [:tuple ::lib.schema.id/database [:maybe :string] :string]]]
+  (t2/select [:model/Table :id :db_id :schema :name]
+             :active true
+             :db_id [:in [:auto/param (into [] (comp (map first) (distinct)) triples)]]
+             :name [:in [:auto/param (into [] (comp (map #(nth % 2)) (distinct)) triples)]]))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

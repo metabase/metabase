@@ -5,6 +5,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -771,3 +772,87 @@
         (is (=? {:embedding_params {"q" "locked"}
                  :embedding_type   "guest"}
                 (t2/select-one :model/Dashboard :id id)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card       {card-id :id}   {}
+                 :model/Card       {series-id :id} {}
+                 :model/Collection {live :id}      {}
+                 :model/Collection {other :id}     {}]
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (let [rows    (fn [n]
+                      (mapv (fn [_]
+                              (assoc (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at)
+                                     :collection_id live
+                                     :tabs          [{:id -1 :name "Tab" :position 0}]
+                                     :dashcards     [{:card_id card-id :dashboard_tab_id -1 :row 0 :col 0 :size_x 4 :size_y 4
+                                                      :series  [series-id]}]))
+                            (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (dashboard/create-dashboards! (rows n)))]
+                        (doseq [id ids]
+                          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :dashboard_id id :collection_id live)))
+                        ids))
+            update! (fn [prepare rows-fn n]
+                      (let [ids (fresh! n)]
+                        (prepare (take-nth 2 ids))
+                        (events.tu/statement-count! #(dashboard/update-dashboards! (rows-fn ids)))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating dashboards with their tabs, dashcards and series"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard/create-dashboards! rows))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+        (testing "archiving dashboards and their questions, some already archived"
+          (counted (partial update!
+                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+        (testing "restoring dashboards and their questions, some already live"
+          (counted (partial update!
+                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+        (testing "moving dashboards and their questions, some already in the Collection"
+          (counted (partial update!
+                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids)))))
+        (testing "replacing tabs and dashcards, some of them already as given"
+          (counted (fn [n]
+                     (let [ids      (fresh! n)
+                           tabs     (group-by :dashboard_id (t2/select :model/DashboardTab :dashboard_id [:in ids]))
+                           dashcards (group-by :dashboard_id (t2/select :model/DashboardCard :dashboard_id [:in ids]))
+                           rows     (mapv (fn [[i id]]
+                                            (let [{tab-id :id} (first (get tabs id))
+                                                  {dashcard-id :id} (first (get dashcards id))]
+                                              {:id        id
+                                               :tabs      [{:id tab-id :name (if (even? i) "Tab" "Renamed") :position 0}
+                                                           {:id -2 :name "New" :position 1}]
+                                               :dashcards [{:id dashcard-id :card_id card-id :dashboard_tab_id tab-id
+                                                            :row (if (even? i) 0 1) :col 0 :size_x 4 :size_y 4}
+                                                           {:id -3 :card_id card-id :dashboard_tab_id -2
+                                                            :row 0 :col 0 :size_x 4 :size_y 4}]}))
+                                          (map-indexed vector ids))]
+                       (events.tu/statement-count! #(dashboard/update-dashboards! rows))))))
+        (testing "adding, updating and removing dashcards"
+          (counted (fn [n]
+                     (let [ids (fresh! n)
+                           rows (mapv (fn [id] {:dashboard_id id :card_id card-id :row 5 :col 0 :size_x 4 :size_y 4 :series [series-id]}) ids)]
+                       (events.tu/statement-count! #(dashboard/add-dashcards! rows)))))
+          (counted (fn [n]
+                     (let [ids       (fresh! n)
+                           dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
+                       (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
+                       (events.tu/statement-count! #(dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) dashcards))))))
+          (counted (fn [n]
+                     (let [ids       (fresh! n)
+                           dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
+                       (events.tu/statement-count! #(dashboard/remove-dashcards! dashcards))))))
+        (testing "deleting dashboards"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard/delete-dashboards! ids))))))
+        (testing "counting views and touching the last view"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard/increment-view-counts! {3 ids})))))
+          (counted (fn [n]
+                     (let [ids (fresh! n)]
+                       (events.tu/statement-count!
+                        #(dashboard/touch-last-viewed! (zipmap ids (repeat (java.time.Instant/now)))))))))))))

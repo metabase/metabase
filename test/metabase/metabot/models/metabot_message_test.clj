@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -127,3 +128,28 @@
         (testing "a row that gives the column keeps its value"
           (is (=? {:finished false}
                   (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id explicit)]}))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {}]
+    (mt/with-model-cleanup [:model/MetabotMessage]
+      (let [row     (fn [finished?] {:conversation_id conversation-id :role "user" :profile_id "test" :data [] :data_version 2 :total_tokens 0 :finished finished?})
+            create! (fn [n] (events.tu/statement-count! #(metabot-message/create-metabot-messages! (vec (repeat n (row false))))))
+            mixed   (fn [n]
+                      (mapv :id (metabot-message/create-metabot-messages! (vec (mapcat (fn [_] [(row true) (row false)]) (range n))))))]
+        (testing "creating messages"
+          (create! 1)
+          (is (= (create! 2) (create! 6))))
+        (testing "updating messages that are in different states"
+          (let [counted (fn [ids]
+                          (events.tu/statement-count!
+                           #(metabot-message/update-metabot-messages! (mapv (fn [id] {:id id :finished true :total_tokens 7}) ids))))]
+            (counted (mixed 1))
+            (is (= (counted (mixed 1)) (counted (mixed 3))))))
+        (testing "soft-deleting messages, some of them already soft-deleted by the same user"
+          (let [counted (fn [n]
+                          (let [ids (mixed n)]
+                            (metabot-message/soft-delete-metabot-messages! {:id (vec (take n ids))} (mt/user->id :rasta))
+                            (events.tu/statement-count!
+                             #(metabot-message/soft-delete-metabot-messages! {:id ids} (mt/user->id :rasta)))))]
+            (counted 1)
+            (is (= (counted 1) (counted 3)))))))))

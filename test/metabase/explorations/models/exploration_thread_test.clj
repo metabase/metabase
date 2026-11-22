@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-thread-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-thread :as exploration-thread]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -78,3 +80,20 @@
     (let [id (thread-with-transcript! transcript-with-full-plan-item)]
       (is (= transcript-with-full-plan-item
              (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Exploration {exploration-id :id} {}]
+    (let [started-at (java.time.Instant/now)
+          rows    (fn [n] (mapv (fn [i] {:exploration_id exploration-id :position i :name (mt/random-name)}) (range n)))
+          fresh!  (fn [n] (mapv :id (exploration-thread/create-threads! (rows n))))
+          counted (fn [f]
+                    (f 1)
+                    (is (= (f 2) (f 6))))]
+      (testing "creating threads"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration-thread/create-threads! rows))))))
+      (testing "updating threads, some already holding the new value"
+        (counted (fn [n]
+                   (let [ids (fresh! n)]
+                     (exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) (take-nth 2 ids)))
+                     (events.tu/statement-count!
+                      #(exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) ids))))))))))

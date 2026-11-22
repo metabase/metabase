@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -828,3 +829,17 @@
 (deftest delete-sandboxes-runs-fixed-statement-count-test
   (delete-sandboxes-count! 1)
   (is (= (delete-sandboxes-count! 2) (delete-sandboxes-count! 6))))
+
+(deftest delete-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (mt/with-model-cleanup [:model/Sandbox]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
+            counted   (fn [group-id n]
+                        (let [ids (t2/insert-returning-pks! :model/Sandbox
+                                                            (mapv #(hash-map :group_id group-id :table_id %)
+                                                                  (take n table-ids)))]
+                          (events.tu/statement-count! #(sandboxes/delete-sandboxes! ids))))]
+        (counted group-1 1)
+        (is (= (counted group-2 2) (counted group-3 6)))))))

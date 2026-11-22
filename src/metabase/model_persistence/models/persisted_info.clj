@@ -152,6 +152,13 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- update-in-groups!
+  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, `:state` and `:active` as stored, with one statement
+  per distinct set of effective changes, so that no update is split per row."
+  [rows changes]
+  (doseq [[changes ids] (mi/group-ids-by-changes (u/index-by :id rows) (mapv #(assoc changes :id (:id %)) rows))]
+    (model-persistence.db/update-persisted-infos! ids changes)))
+
 (defn mark-for-pruning!
   "Marks PersistedInfo as `deletable` or `off`, these will at some point be cleaned up by the PersistPrune task.
 
@@ -161,10 +168,11 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (cond
-     (contains? conditions-map :id)          (model-persistence.db/deactivate-persisted-info! (:id conditions-map) state)
-     (contains? conditions-map :database_id) (model-persistence.db/deactivate-persisted-infos-for-database! (:database_id conditions-map) state)
-     :else                                   (model-persistence.db/deactivate-all-persisted-infos! state))))
+   (update-in-groups! (cond
+                        (contains? conditions-map :id)          (model-persistence.db/persisted-info-states-by-ids [(:id conditions-map)])
+                        (contains? conditions-map :database_id) (model-persistence.db/persisted-info-states-of-database (:database_id conditions-map))
+                        :else                                   (model-persistence.db/all-persisted-info-states))
+                      {:active false, :state state, :state_change_at :%now})))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
@@ -172,7 +180,9 @@
   [card-ids]
   ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
   ;; TODO perhaps we should immediately kick off a recalculation of these caches
-  (model-persistence.db/invalidate-persisted-infos-for-cards! card-ids))
+  (when (seq card-ids)
+    (update-in-groups! (model-persistence.db/active-persisted-info-states-of-cards card-ids)
+                       {:active false, :state "creating", :state_change_at :%now})))
 
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."

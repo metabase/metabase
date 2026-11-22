@@ -64,3 +64,12 @@
                     (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! ids))))]
     (counted 1)
     (is (= (counted 2) (counted 6)))))
+
+(deftest create-metabot-conversations-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/MetabotConversation]
+    (let [counted (fn [n]
+                    (events.tu/statement-count!
+                     #(metabot-conversation/create-metabot-conversations!
+                       (vec (repeatedly n (fn [] {:id (str (random-uuid)) :user_id (mt/user->id :rasta)}))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

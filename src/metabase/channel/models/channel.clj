@@ -298,12 +298,18 @@
       (channel.db/delete-channels! (vec ids))))
   nil)
 
+(mu/defn check-channel-templates! :- :nil
+  "Throws what inserting the ChannelTemplate `rows` would throw for the first of them that is invalid."
+  [rows :- [:sequential ::channel.schema/channel-template.create]]
+  (run! check-valid-channel-template rows)
+  nil)
+
 (mu/defn create-channel-templates! :- [:sequential ::channel.schema/channel-template]
   "Insert the ChannelTemplate `rows`, publishing their create event, and return the inserted instances."
   [rows :- [:sequential ::channel.schema/channel-template.create]]
   (if (seq rows)
     (t2/with-transaction [_conn]
-      (u/prog1 (mapv channel.db/insert-channel-template! rows)
+      (u/prog1 (channel.db/insert-channel-templates! rows)
         (events/publish-event! :event/channel-template-create (events/create-event <>))))
     []))
 

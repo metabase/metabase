@@ -492,9 +492,12 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-allowed-contents
-  "Throws unless each Collection among `collection-ids` can hold Tables, each checked once."
+  "Throws unless each Collection among `collection-ids` can hold Tables, all read in one query and checked in the order
+  of their first appearance."
   [collection-ids]
-  (run! #(collection/check-allowed-content :table %) (into #{} (remove nil?) collection-ids)))
+  (when-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (warehouse-schema.db/collections-for-content-checks (set ids))]
+      (run! #(collection/check-allowed-content :table (collections %)) ids))))
 
 (defn- with-default-field-orders
   "Each of the Table `rows` with the default field order of its Database's driver unless it has one, the engines of
@@ -527,10 +530,10 @@
         (set-new-permissions! <>)
         (events/publish-event! :event/table-create (events/create-event <>))))))
 
-(defn- update-field-positions-for-tables!
+(mu/defn update-field-positions!
   "Set the `:position` of the Fields of each of `tables` to their place in its `:field_order`: one read per distinct
   field order and one statement."
-  [tables]
+  [tables :- [:sequential [:map [:id ::lib.schema.id/table] [:field_order {:optional true} [:maybe :keyword]]]]]
   (field/set-positions!
    (into {}
          (for [[field-order tables] (group-by (comp keyword :field_order) tables)
@@ -539,11 +542,6 @@
                                                          field-order))
                [position field]     (map-indexed vector fields)]
            [(:id field) position]))))
-
-(mu/defn update-field-positions!
-  "Set the `:position` of the Fields of `table` to their place in its `:field_order`, in one statement."
-  [table :- [:map [:id ::lib.schema.id/table] [:field_order {:optional true} [:maybe :keyword]]]]
-  (update-field-positions-for-tables! [table]))
 
 (defn- updated-table
   "The Table `previous`, an instance as the function read it, as an update of `changes` leaves it, with the columns its
@@ -584,7 +582,7 @@
                                     :when (and collection_id (not= collection_id (:collection_id (stored id))))]
                                 collection_id))
       (u/prog1 (update-tables-by-change! rows)
-        (update-field-positions-for-tables!
+        (update-field-positions!
          (for [{:keys [id field_order] :as row} rows
                :when (and (contains? row :field_order)
                           (contains? stored id)

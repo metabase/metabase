@@ -818,11 +818,16 @@
 
 (defn- update-by-change!
   "Apply each of `rows`, the id of a Database and the columns to change, with one statement per distinct set of
-  changes, returning the number updated."
-  [rows]
-  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) rows)
+  changes, returning the number updated. Rows read by the function itself, `fresh?`, keep only the columns that differ
+  from `stored`, `{id row}`, so that rows in different states do not make Toucan split the update; rows the caller read
+  may be stale and keep every column."
+  [stored rows fresh?]
+  (reduce + 0 (for [[changes ids] (if fresh?
+                                    (mi/group-ids-by-changes stored rows)
+                                    (map (fn [[changes rows]] [changes (mapv :id rows)])
+                                         (group-by #(dissoc % :id) rows)))
                     :when (seq changes)]
-                (warehouses.db/update-databases! (into #{} (map :id) rows) changes))))
+                (warehouses.db/update-databases! (set ids) changes))))
 
 (defn- with-update
   "`changes`, `{id change}`, with the update of the Database `previous` to `object` added, a Database changed twice
@@ -867,7 +872,7 @@
                                     (and uploads_enabled (not (:uploads_enabled (stored id)))))
                                   rows)
                         (disable-uploads-changes!))]
-         (update-by-change! rows)
+         (update-by-change! stored rows (empty? databases))
          (let [trigger-ids (into []
                                  (comp (filter (fn [row] (some #(contains? row %) trigger-columns)))
                                        (map :id)

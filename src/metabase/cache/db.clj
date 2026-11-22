@@ -203,11 +203,16 @@
   []
   (t2/exists? :model/CacheConfig))
 
-(mu/defn update-cache-config!
-  "Apply `changes` to the CacheConfig with `cache-config-id`."
-  [cache-config-id :- ms/PositiveInt
-   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
-  (t2/update! :model/CacheConfig {:id cache-config-id} changes))
+(mu/defn cache-configs-by-ids
+  "The CacheConfigs with `cache-config-ids`, in any order."
+  [cache-config-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/CacheConfig :id [:in [:auto/param (vec (distinct cache-config-ids))]]))
+
+(mu/defn update-cache-configs!
+  "Apply `changes` to the CacheConfigs with `cache-config-ids`."
+  [cache-config-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes          :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
+  (t2/update! :model/CacheConfig :id [:in [:auto/param (vec cache-config-ids)]] changes))
 
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."

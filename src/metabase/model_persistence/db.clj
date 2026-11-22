@@ -169,31 +169,34 @@
                                            :state  state
                                            :error  error}))
 
-(mu/defn deactivate-all-persisted-infos!
-  "Deactivate every PersistedInfo and move it to `state`, returning the number updated."
-  [state :- :string]
-  (t2/update! :model/PersistedInfo {} {:active false, :state state, :state_change_at :%now}))
+(mu/defn all-persisted-info-states
+  "The id, state and active flag of every PersistedInfo."
+  []
+  (t2/select [:model/PersistedInfo :id :state :active]))
 
-(mu/defn deactivate-persisted-info!
-  "Deactivate the PersistedInfo with `id` and move it to `state`, returning the number updated."
-  [id    :- ms/PositiveInt
-   state :- :string]
-  (t2/update! :model/PersistedInfo :id id {:active false, :state state, :state_change_at :%now}))
+(mu/defn persisted-info-states-by-ids
+  "The id, state and active flag of the PersistedInfos with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/PersistedInfo :id :state :active] :id [:in ids]))
 
-(mu/defn deactivate-persisted-infos-for-database!
-  "Deactivate the PersistedInfos of the Database with `database-id` and move them to `state`, returning the
-  number updated."
-  [database-id :- ::lib.schema.id/database
-   state       :- :string]
-  (t2/update! :model/PersistedInfo :database_id database-id {:active false, :state state, :state_change_at :%now}))
+(mu/defn persisted-info-states-of-database
+  "The id, state and active flag of the PersistedInfos of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select [:model/PersistedInfo :id :state :active] :database_id database-id))
 
-(mu/defn invalidate-persisted-infos-for-cards!
-  "Deactivate the active PersistedInfos of the Cards with `card-ids` and move them back to creating, returning
-  the number updated."
+(mu/defn active-persisted-info-states-of-cards
+  "The id, state and active flag of the active PersistedInfos of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/update! :model/PersistedInfo
-              {:active true, :card_id [:in card-ids]}
-              {:active false, :state "creating", :state_change_at :%now}))
+  (t2/select [:model/PersistedInfo :id :state :active] :active true :card_id [:in card-ids]))
+
+(mu/defn update-persisted-infos!
+  "Apply `changes` to the PersistedInfos with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:active          {:optional true} :boolean]
+               [:state           {:optional true} :string]
+               [:state_change_at {:optional true} [:= :%now]]]]
+  (t2/update! :model/PersistedInfo :id [:in ids] changes))
 
 (mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."

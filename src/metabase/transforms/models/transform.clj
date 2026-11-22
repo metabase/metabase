@@ -188,9 +188,7 @@
         (when (seq to-delete)
           (transform-transform-tag/delete-transform-transform-tags! transform-id to-delete))
         ;; Update positions for existing tags that moved
-        (doseq [tag-id (filter current-set new-tag-ids)]
-          (let [new-pos (get new-positions tag-id)]
-            (transform-transform-tag/update-transform-transform-tag! transform-id tag-id {:position new-pos})))
+        (transform-transform-tag/update-transform-transform-tags! transform-id (select-keys new-positions current-set))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (transform-transform-tag/create-transform-transform-tags!
@@ -443,9 +441,12 @@
 (defn- check-collections!
   "Throws unless each Collection with `collection-ids` can hold Transforms."
   [collection-ids]
-  (doseq [collection-id (into [] (comp (remove nil?) (distinct)) collection-ids)]
-    (collection/check-collection-namespace :model/Transform collection-id)
-    (collection/check-allowed-content :model/Transform collection-id)))
+  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks collection-ids))]
+      (doseq [collection-id collection-ids
+              :let [collection (or (collections collection-id) (collection/content-parent collection-id))]]
+        (collection/check-collection-namespace :model/Transform collection)
+        (collection/check-allowed-content :model/Transform collection)))))
 
 (defn- check-target-databases!
   "Throws a 400 unless each Database with `database-ids` can hold the tables of a transform."
@@ -463,11 +464,12 @@
       (when (:router_database_id database)
         (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
 
-(defn- check-cycle
-  "Throws a 400 when the query transform `transform` has become part of a cycle of transforms feeding one another."
-  [transform]
-  (when (transforms-base.u/query-transform? transform)
-    (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle transform)]
+(defn- check-cycles!
+  "Throws a 400 for the first of the query transforms among `transforms` that has become part of a cycle of transforms
+  feeding one another."
+  [transforms]
+  (when-let [queries (not-empty (filterv transforms-base.u/query-transform? transforms))]
+    (when-let [{:keys [cycle-str]} (some identity (transforms-base.ordering/get-transform-cycles queries))]
       (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                       {:status-code 400})))))
 
@@ -536,7 +538,7 @@
   (when-let [changed (not-empty (filterv #(definition-columns-changed? (stored %) (requested %)) ids))]
     (let [definitions (mapv #(let [merged (merge (stored %) changes)] (merge merged (derived-columns merged))) changed)]
       (check-target-databases! (map :target_db_id definitions))
-      (run! check-cycle definitions)
+      (check-cycles! definitions)
       (table-index/mark-for-revalidation! changed))))
 
 (defn- updated-transform

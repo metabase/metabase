@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.timeline.models.timeline :as timeline]
@@ -146,3 +147,55 @@
                                                   {:name "Archived" :creator_id creator-id :archived true}])]
       (is (= ["Plain" "Archived"] (map :name timelines)))
       (is (= [false true] (map #(t2/select-one-fn :archived :model/Timeline :id (:id %)) timelines))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/TimelineEvent :model/Timeline :model/Collection]
+    (let [user-id  (mt/user->id :rasta)
+          live     (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))
+          other    (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))
+          archived (t2/insert-returning-pk! :model/Collection (assoc (mt/with-temp-defaults :model/Collection) :archived true))
+          rows     (fn [n]
+                     (mapv (fn [i]
+                             (if (even? i)
+                               {:name (mt/random-name) :creator_id user-id :collection_id live}
+                               {:name (mt/random-name) :creator_id user-id :collection_id archived :archived true}))
+                           (range n)))
+          fresh!   (fn [n]
+                     (let [timelines (timeline/create-timelines! (rows n))]
+                       (timeline-event/create-timeline-events!
+                        (mapv (fn [{:keys [id]}]
+                                {:timeline_id id :name (mt/random-name) :timestamp (java.time.Instant/now)
+                                 :creator_id user-id :time_matters false :timezone "UTC"})
+                              timelines))
+                       (mapv :id timelines)))]
+      (testing "creating timelines"
+        (events.tu/statement-count! #(timeline/create-timelines! (rows 1)))
+        (is (= (events.tu/statement-count! #(timeline/create-timelines! (rows 2)))
+               (events.tu/statement-count! #(timeline/create-timelines! (rows 6))))))
+      (testing "archiving timelines, some already archived"
+        (let [archive! (fn [n]
+                         (let [ids (fresh! n)]
+                           (events.tu/statement-count!
+                            #(timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids)))))]
+          (archive! 2)
+          (is (= (archive! 2) (archive! 6)))))
+      (testing "restoring timelines, some already live"
+        (let [restore! (fn [n]
+                         (let [ids (fresh! n)]
+                           (events.tu/statement-count!
+                            #(timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids)))))]
+          (restore! 2)
+          (is (= (restore! 2) (restore! 6)))))
+      (testing "moving timelines, some already in the Collection"
+        (let [move! (fn [n]
+                      (let [ids (fresh! n)]
+                        (timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids))
+                        (timeline/update-timelines! (mapv (fn [id] {:id id :collection_id other}) (take-nth 2 ids)))
+                        (events.tu/statement-count!
+                         #(timeline/update-timelines! (mapv (fn [id] {:id id :collection_id other}) ids)))))]
+          (move! 2)
+          (is (= (move! 2) (move! 6)))))
+      (testing "deleting timelines"
+        (let [delete! (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(timeline/delete-timelines! ids))))]
+          (delete! 1)
+          (is (= (delete! 2) (delete! 6))))))))

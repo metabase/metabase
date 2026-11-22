@@ -62,16 +62,33 @@
   [impersonation-id :- ms/PositiveInt]
   (impersonation.db/delete-impersonation! impersonation-id))
 
+(def ^:private impersonation-pair
+  "The group and Database of an impersonation."
+  (juxt :group_id :db_id))
+
+(defn- impersonation-rounds
+  "The `impersonations`, each with its index, in rounds: the nth round holds the nth impersonation of each group and
+  Database, so that each round replaces the impersonations of the round before."
+  [impersonations]
+  (second (reduce (fn [[seen rounds] [i impersonation]]
+                    (let [n (get seen (impersonation-pair impersonation) 0)]
+                      [(assoc seen (impersonation-pair impersonation) (inc n))
+                       (update rounds n (fnil conj []) [i impersonation])]))
+                  [{} []]
+                  (map-indexed vector impersonations))))
+
 (defenterprise insert-impersonations!
   "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
   group and database before creating new ones."
   :feature :advanced-permissions
   [impersonations]
-  (doall
-   (for [impersonation impersonations]
-     (do
-       (impersonation.db/delete-impersonations-for-group-and-database! (:group_id impersonation) (:db_id impersonation))
-       (impersonation.db/insert-impersonation! impersonation)))))
+  (->> (impersonation-rounds impersonations)
+       (into [] (mapcat (fn [round]
+                          (impersonation.db/delete-impersonations-for-groups-and-databases!
+                           (mapv (comp impersonation-pair second) round))
+                          (map vector (map first round) (impersonation.db/insert-impersonations! (mapv second round))))))
+       (sort-by first)
+       (mapv second)))
 
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -208,3 +209,42 @@
                                                           {:name "Archived" :creator_id creator-id :archived true}])]
       (is (= ["Plain" "Archived"] (map :name explorations)))
       (is (= [false true] (map #(t2/select-one-fn :archived :model/Exploration :id (:id %)) explorations))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {live :id}  {}
+                 :model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Document :model/Exploration]
+      (let [user-id (mt/user->id :rasta)
+            rows    (fn [n] (mapv (fn [_] {:name (mt/random-name) :creator_id user-id :collection_id live}) (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (exploration/create-explorations! (rows n)))]
+                        (doseq [id ids]
+                          (t2/insert! :model/Document (assoc (mt/with-temp-defaults :model/Document) :exploration_id id :collection_id live)))
+                        ids))
+            update! (fn [prepare rows-fn n]
+                      (let [ids (fresh! n)]
+                        (prepare (take-nth 2 ids))
+                        (events.tu/statement-count! #(exploration/update-explorations! (rows-fn ids)))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating explorations"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+        (testing "archiving explorations and their summary documents, some already archived"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+        (testing "restoring explorations and their summary documents, some already live"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+        (testing "moving explorations, some already in the Collection"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids)))))
+        (testing "deleting explorations"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))

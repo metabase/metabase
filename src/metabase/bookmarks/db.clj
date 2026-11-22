@@ -62,6 +62,11 @@
     "exploration" (exploration-bookmark-exists? id user-id)
     (unknown-bookmark-model! model)))
 
+(mu/defn collections-for-content-checks
+  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+
 (def ^:private model->bookmark-model+item-key
   {"card"        [:model/CardBookmark        :card_id]
    "dashboard"   [:model/DashboardBookmark   :dashboard_id]
@@ -69,25 +74,55 @@
    "document"    [:model/DocumentBookmark    :document_id]
    "exploration" [:model/ExplorationBookmark :exploration_id]})
 
+(defn- bookmark-model+item-key
+  "The Toucan model and the item column of the bookmarks of `type`. Throws for an unrecognized `type`."
+  [type]
+  (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type)))
+
 (defn insert-bookmarks!
   "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks, the
-  existing one when there already is one. Does not read-check the item; callers do. Throws for an unrecognized
-  `:type`."
+  existing one when there already is one, with one read and one insert for each type of bookmark. Does not read-check the
+  item; callers do. Throws for an unrecognized `:type`."
   [rows]
-  (mapv (fn [{:keys [type item_id user_id]}]
-          (let [[bookmark-model item-key] (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type))]
-            ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
-            ;; one losing to the (user_id, item) unique constraint.
-            (mdb/select-or-insert! bookmark-model {item-key item_id :user_id user_id} (constantly {}))))
-        rows))
+  (run! (comp bookmark-model+item-key :type) rows)
+  (let [by-type  (group-by :type rows)
+        existing (into {}
+                       (mapcat (fn [[type group]]
+                                 (let [[bookmark-model item-key] (bookmark-model+item-key type)]
+                                   (map (fn [bookmark] [[type (get bookmark item-key) (:user_id bookmark)] bookmark])
+                                        (t2/select bookmark-model
+                                                   item-key   [:in (into [] (comp (map :item_id) (distinct)) group)]
+                                                   :user_id   [:in (into [] (comp (map :user_id) (distinct)) group)])))))
+                       by-type)
+        missing  (into {}
+                       (map (juxt (juxt :type :item_id :user_id) identity))
+                       (remove #(contains? existing ((juxt :type :item_id :user_id) %)) rows))
+        created  (into {}
+                       (mapcat (fn [[type group]]
+                                 (let [[bookmark-model item-key] (bookmark-model+item-key type)
+                                       group (vec group)]
+                                   (map (fn [{:keys [item_id user_id]} bookmark] [[type item_id user_id] bookmark])
+                                        group
+                                        (mdb/insert-returning-instances!
+                                         bookmark-model
+                                         (mapv (fn [{:keys [item_id user_id]}] {item-key item_id :user_id user_id}) group))))))
+                       (group-by :type (vals missing)))]
+    (mapv #(let [k ((juxt :type :item_id :user_id) %)]
+             (or (get existing k) (get created k)))
+          rows)))
 
 (defn delete-bookmarks!
-  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`. No-op for one that
-  has none. Throws for an unrecognized `:type`."
+  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, with one statement for
+  each type of bookmark. No-op for one that has none. Throws for an unrecognized `:type`."
   [rows]
-  (doseq [{:keys [type item_id user_id]} rows
-          :let [[bookmark-model item-key] (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type))]]
-    (t2/delete! bookmark-model item-key item_id :user_id user_id)))
+  (run! (comp bookmark-model+item-key :type) rows)
+  (doseq [[type group] (group-by :type rows)
+          :let [[bookmark-model item-key] (bookmark-model+item-key type)]]
+    (t2/delete! bookmark-model
+                {:where (into [:or]
+                              (map (fn [{:keys [item_id user_id]}]
+                                     [:and [:= item-key [:auto/param item_id]] [:= :user_id [:auto/param user_id]]]))
+                              (distinct group))})))
 
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."

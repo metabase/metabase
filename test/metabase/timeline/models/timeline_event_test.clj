@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -141,3 +142,33 @@
                                                                  :creator_id creator-id :time_matters false :timezone "UTC" :archived true}])]
         (is (= ["Plain" "Archived"] (map :name events)))
         (is (= [false true] (map #(t2/select-one-fn :archived :model/TimelineEvent :id (:id %)) events)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/TimelineEvent :model/Timeline]
+    (let [user-id     (mt/user->id :rasta)
+          timeline-id (t2/insert-returning-pk! :model/Timeline (mt/with-temp-defaults :model/Timeline))
+          rows        (fn [n]
+                        (mapv (fn [i]
+                                (cond-> {:timeline_id timeline-id :name (mt/random-name) :timestamp (java.time.Instant/now)
+                                         :creator_id user-id :time_matters false :timezone "UTC"}
+                                  (odd? i) (assoc :icon "cake")))
+                              (range n)))
+          fresh!      (fn [n]
+                        (let [ids (mapv :id (timeline-event/create-timeline-events! (rows n)))]
+                          (timeline-event/update-timeline-events! (mapv (fn [id] {:id id :description "Same"}) (take-nth 2 ids)))
+                          ids))]
+      (testing "creating events, some with an icon of their own"
+        (events.tu/statement-count! #(timeline-event/create-timeline-events! (rows 1)))
+        (is (= (events.tu/statement-count! #(timeline-event/create-timeline-events! (rows 2)))
+               (events.tu/statement-count! #(timeline-event/create-timeline-events! (rows 6))))))
+      (testing "updating events, some already holding the new value"
+        (let [update! (fn [n]
+                        (let [ids (fresh! n)]
+                          (events.tu/statement-count!
+                           #(timeline-event/update-timeline-events! (mapv (fn [id] {:id id :description "Same"}) ids)))))]
+          (update! 1)
+          (is (= (update! 2) (update! 6)))))
+      (testing "deleting events"
+        (let [delete! (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(timeline-event/delete-timeline-events! ids))))]
+          (delete! 1)
+          (is (= (delete! 2) (delete! 6))))))))

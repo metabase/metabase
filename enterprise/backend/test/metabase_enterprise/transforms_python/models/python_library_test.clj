@@ -128,3 +128,13 @@
                                                                     {:path "flagged_lib" :source "y = 2" :is_default true}])]
       (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id plain))))
       (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id flagged)))))))
+
+(deftest mixed-state-update-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [counted (fn [n]
+                    (let [libraries (python-library/create-python-libraries!
+                                     (mapv (fn [i] {:path (mt/random-name) :source (if (even? i) "a = 9" "a = 1") :is_default (odd? i)}) (range n)))]
+                      (events.tu/statement-count!
+                       #(python-library/update-python-libraries! (mapv (fn [{:keys [id]}] {:id id :source "a = 9"}) libraries)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

@@ -5,6 +5,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
@@ -354,3 +356,73 @@
             (is (= (delete! 2) (delete! 6)))))
         (finally
           (t2/delete! :model/TransformTest :transform_id transform-id))))))
+
+(deftest mixed-state-saved-test-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Transform {t1 :id} {}
+                 :model/Transform {t2 :id} {}
+                 :model/Transform {t3 :id} {}
+                 :model/Transform {t4 :id} {}
+                 :model/Transform {t5 :id} {}
+                 :model/Transform {t6 :id} {}]
+    (let [subjects [t1 t2 t3 t4 t5 t6]]
+      (testing "creating, updating and deleting the tests of several transforms"
+        (let [make!   (fn [n]
+                        (mapv :id (data-testing.models/create-transform-tests!
+                                   (vec (map-indexed (fn [i transform-id]
+                                                       (cond-> (valid-row transform-id [])
+                                                         (even? i) (assoc :description "same")))
+                                                     (take n subjects))))))
+              counted (fn [n]
+                        (let [create (events.tu/statement-count!
+                                      #(data-testing.models/create-transform-tests! (mapv (fn [s] (valid-row s [])) (take n subjects))))
+                              ids    (make! n)
+                              update (events.tu/statement-count!
+                                      #(data-testing.models/update-transform-tests! (mapv (fn [id] {:id id :description "same"}) ids)))
+                              delete (events.tu/statement-count!
+                                      #(data-testing.models/delete-transform-tests! (vec (take n subjects))))]
+                          [create update delete]))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
+
+(deftest card-and-segment-test-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card    {c1 :id} {}
+                 :model/Card    {c2 :id} {}
+                 :model/Card    {c3 :id} {}
+                 :model/Card    {c4 :id} {}
+                 :model/Card    {c5 :id} {}
+                 :model/Card    {c6 :id} {}
+                 :model/Segment {s1 :id} {}
+                 :model/Segment {s2 :id} {}
+                 :model/Segment {s3 :id} {}
+                 :model/Segment {s4 :id} {}
+                 :model/Segment {s5 :id} {}
+                 :model/Segment {s6 :id} {}]
+    (let [row-of  (fn [subject-key id i]
+                    (cond-> {subject-key id :creator_id (mt/user->id :rasta) :name "a test" :inputs [] :expectations []}
+                      (even? i) (assoc :description "same")))
+          measure (fn [subject-key subjects create! update! delete! delete-subjects!]
+                    (fn [n]
+                      (let [rows   #(vec (map-indexed (fn [i id] (row-of subject-key id i)) (take n subjects)))
+                            create (events.tu/statement-count! #(create! (rows)))
+                            ids    (mapv :id (create! (rows)))
+                            update (events.tu/statement-count! #(update! (mapv (fn [id] {:id id :description "same"}) ids)))
+                            delete (events.tu/statement-count! #(delete! ids))
+                            _      (create! (rows))
+                            by-subject (events.tu/statement-count! #(delete-subjects! (vec (take n subjects))))]
+                        [create update delete by-subject])))
+          cards    (measure :card_id [c1 c2 c3 c4 c5 c6]
+                            data-testing.models.card-test/create-card-tests!
+                            data-testing.models.card-test/update-card-tests!
+                            data-testing.models.card-test/delete-card-tests-by-id!
+                            data-testing.models.card-test/delete-card-tests!)
+          segments (measure :segment_id [s1 s2 s3 s4 s5 s6]
+                            data-testing.models.segment-test/create-segment-tests!
+                            data-testing.models.segment-test/update-segment-tests!
+                            data-testing.models.segment-test/delete-segment-tests-by-id!
+                            data-testing.models.segment-test/delete-segment-tests!)]
+      (testing "card tests"
+        (cards 1)
+        (is (= (cards 2) (cards 6))))
+      (testing "segment tests"
+        (segments 1)
+        (is (= (segments 2) (segments 6)))))))

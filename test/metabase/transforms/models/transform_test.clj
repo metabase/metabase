@@ -23,10 +23,12 @@
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.jdbc.query :as t2.jdbc.query]))
 
 (set! *warn-on-reflection* true)
 
@@ -519,10 +521,10 @@
   "Run `body` and return how many times it scanned the transforms for a cycle."
   [& body]
   `(let [scans# (atom 0)
-         scan#  (dynamic-redefs/original-fn #'ordering/get-transform-cycle)]
-     (mt/with-dynamic-fn-redefs [ordering/get-transform-cycle (fn [& args#]
-                                                                (swap! scans# inc)
-                                                                (apply scan# args#))]
+         scan#  (dynamic-redefs/original-fn #'ordering/get-transform-cycles)]
+     (mt/with-dynamic-fn-redefs [ordering/get-transform-cycles (fn [& args#]
+                                                                 (swap! scans# inc)
+                                                                 (apply scan# args#))]
        ~@body)
      @scans#))
 
@@ -610,3 +612,94 @@
                                                            (assoc (first (transform-rows 1)) :description "About")])]
       (is (nil? (t2/select-one-fn :description :model/Transform :id (:id plain))))
       (is (= "About" (t2/select-one-fn :description :model/Transform :id (:id described)))))))
+
+(deftest mixed-state-write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {target :id} {:namespace :transforms}
+                 :model/Collection {c1 :id} {:namespace :transforms}
+                 :model/Collection {c2 :id} {:namespace :transforms}
+                 :model/Collection {c3 :id} {:namespace :transforms}
+                 :model/Collection {c4 :id} {:namespace :transforms}
+                 :model/Collection {c5 :id} {:namespace :transforms}]
+    (mt/with-model-cleanup [:model/Transform]
+      (let [collections [target c1 c2 c3 c4 c5]
+            make!       (fn [n]
+                          (mapv :id (transform/create-transforms!
+                                     (into [] (map-indexed (fn [i row]
+                                                             (cond-> (assoc row :collection_id (nth collections i))
+                                                               (zero? i) (assoc :description "moved")))
+                                                           (transform-rows n))))))]
+        (testing "creating transforms in a Collection each"
+          (let [create! (fn [n]
+                          (let [rows (into [] (map-indexed (fn [i row] (assoc row :collection_id (nth collections i))) (transform-rows n)))]
+                            (events.tu/statement-count! #(transform/create-transforms! rows))))]
+            (create! 1)
+            (is (= (create! 2) (create! 6)))))
+        (testing "moving transforms of several Collections, one already in the target, and describing them"
+          (let [move! (fn [ids]
+                        (events.tu/statement-count!
+                         #(transform/update-transforms! (mapv (fn [id] {:id id :collection_id target :description "moved"}) ids))))]
+            (move! (make! 1))
+            (is (= (move! (make! 2)) (move! (make! 6))))))))))
+
+(deftest definition-update-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Transform]
+    (let [counted (fn [n body]
+                    (let [ids  (mapv :id (transform/create-transforms! (transform-rows n)))
+                          rows (mapv (fn [id] {:id id :source {:type :python :source-tables [] :body body :source-database (mt/id)}}) ids)]
+                      (events.tu/statement-count! #(transform/update-transforms! rows))))]
+      (counted 1 "print(2)")
+      (is (= (counted 2 "print(3)") (counted 6 "print(4)"))))))
+
+(deftest tag-link-writes-statement-count-does-not-grow-with-tags-test
+  (mt/with-model-cleanup [:model/Transform :model/TransformTag]
+    (let [tags    (mapv :id (transform-tag/create-transform-tags! (mapv #(hash-map :name (str "tag " % (mt/random-name))) (range 8))))
+          counted (fn [n]
+                    (let [id (:id (first (transform/create-transforms! (transform-rows 1))))]
+                      (transform/update-transform-tags! id (vec (take n tags)))
+                      (events.tu/statement-count!
+                       #(transform/update-transform-tags! id (into [(nth tags n)] (reverse (rest (take n tags))))))))]
+      (counted 2)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest create-transforms-reports-the-first-invalid-row-test
+  (mt/with-temp [:model/Collection {regular-id :id} {}
+                 :model/Collection {transforms-id :id} {:namespace collection/transforms-ns}]
+    (let [missing-id (inc (t2/select-one-fn :id [:model/Collection :id] {:order-by [[:id :desc]]}))
+          message-of (fn [collection-ids]
+                       (try (transform/create-transforms!
+                             (mapv #(assoc %1 :collection_id %2) (transform-rows (count collection-ids)) collection-ids))
+                            nil
+                            (catch clojure.lang.ExceptionInfo e (ex-message e))))]
+      (mt/with-model-cleanup [:model/Transform]
+        (testing "a row in the wrong namespace before a row in a missing Collection"
+          (is (re-find #"namespace" (message-of [transforms-id regular-id missing-id]))))
+        (testing "a row in a missing Collection before a row in the wrong namespace"
+          (is (= "Collection does not exist." (message-of [transforms-id missing-id regular-id]))))
+        (testing "nothing is written"
+          (is (zero? (t2/count :model/Transform :collection_id [:in [regular-id transforms-id missing-id]]))))))))
+
+(defn- statements-outside-query-analysis!
+  "The number of app-DB statements `thunk` runs, leaving out the reads of group memberships and table remappings that
+  the query processor makes each time it analyzes a query."
+  [thunk]
+  (let [statements (atom [])
+        reduce-fn  @#'t2.jdbc.query/reduce-jdbc-query]
+    (events.tu/without-delivery
+     (with-redefs-fn {#'t2.jdbc.query/reduce-jdbc-query
+                      (fn [& args]
+                        (swap! statements conj (str (first (second (take-last 3 args)))))
+                        (apply reduce-fn args))}
+       thunk))
+    (count (remove #(re-find #"PERMISSIONS_GROUP_MEMBERSHIP|TABLE_REMAPPING" %) @statements))))
+
+(deftest query-definition-update-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Transform]
+    (let [mp      (mt/metadata-provider)
+          query   (fn [limit] (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :orders))) limit))
+          counted (fn [n limit]
+                    (let [ids  (mapv :id (transform/create-transforms!
+                                          (mapv (fn [_] (cycle-transform (query 1) (mt/random-name))) (range n))))
+                          rows (mapv (fn [id] {:id id :source {:type :query :query (query limit)}}) ids)]
+                      (statements-outside-query-analysis! #(transform/update-transforms! rows))))]
+      (counted 1 2)
+      (is (= (counted 2 3) (counted 6 4))))))

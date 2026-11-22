@@ -38,6 +38,7 @@
   can-delete?
   card-read-check-columns
   check-shared-dashboard-timeline-permissions!
+  check-new-dashboard-questions-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   card-exposed-timeline-ids
@@ -69,6 +70,7 @@
  [metabase.queries.models.parameter-card
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions
+  parameter-source-cards-readable?
   values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms

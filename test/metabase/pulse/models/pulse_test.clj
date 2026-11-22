@@ -4,12 +4,15 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.users.models.user :as user]
@@ -702,3 +705,206 @@
                (is (= [{:id internal-id} {:email "ext@example.com"}]
                       (-> (models.pulse/maybe-filter-pulses-recipients pulses)
                           first :channels first :recipients)))))))))))
+
+(defn- pulse-rows
+  "`n` Pulse rows that differ in what they hold: a Collection, one or two Cards, an email channel with a User and a raw
+  address as recipients, and for every other one a Slack channel."
+  [n card-ids collection-ids]
+  (mapv (fn [i]
+          {:name          (mt/random-name)
+           :creator_id    (mt/user->id :rasta)
+           :collection_id (nth collection-ids (mod i 2))
+           :cards         (mapv (fn [card-id] {:id card-id :include_csv false :include_xls false :dashboard_card_id nil})
+                                (take (inc (mod i 2)) card-ids))
+           :channels      (cond-> [{:channel_type  :email
+                                    :schedule_type :daily
+                                    :schedule_hour 18
+                                    :enabled       true
+                                    :recipients    [{:id (mt/user->id :lucky)} {:email "foo@bar.com"}]}]
+                            (odd? i) (conj {:channel_type  :slack
+                                            :schedule_type :hourly
+                                            :enabled       true
+                                            :details       {:channel "#general"}}))})
+        (range n)))
+
+(defn- do-with-pulse-rows!
+  "Call `f` with a function of `n` Pulse rows, two Card ids and two Collection ids, in a scheduler and with the rows it
+  creates cleaned up."
+  [f]
+  (mt/with-temp-scheduler!
+    (task/init! ::task.send-pulses/SendPulses)
+    (mt/with-temp [:model/Card       {card-1 :id}       {}
+                   :model/Card       {card-2 :id}       {}
+                   :model/Collection {collection-1 :id} {}
+                   :model/Collection {collection-2 :id} {}]
+      (mt/with-model-cleanup [:model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient]
+        (let [card-ids       [card-1 card-2]
+              collection-ids [collection-1 collection-2]]
+          (f (fn [n] (pulse-rows n card-ids collection-ids)) card-ids collection-ids))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (do-with-pulse-rows!
+   (fn [rows card-ids collection-ids]
+     (let [create! (fn [n] (mapv :id (models.pulse/create-pulses! (rows n))))
+           [_card-1 card-2] card-ids
+           [collection-1 collection-2] collection-ids]
+       (testing "creating Pulses"
+         (let [counted (fn [n] (events.tu/statement-count! #(models.pulse/create-pulses! (rows n))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "replacing the Cards and Channels of Pulses, and moving them, some already in the new Collection"
+         (let [counted (fn [n]
+                         (let [ids (create! n)]
+                           (events.tu/statement-count!
+                            #(models.pulse/update-pulses!
+                              (mapv (fn [id] {:id            id
+                                              :name          "Renamed"
+                                              :collection_id collection-2
+                                              :cards         [{:id card-2 :include_csv true :include_xls false :dashboard_card_id nil}]
+                                              :channels      [{:channel_type  :email
+                                                               :schedule_type :daily
+                                                               :schedule_hour 9
+                                                               :enabled       true
+                                                               :recipients    [{:email "new@bar.com"}]}]})
+                                    ids)))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "updating the PulseChannels a Pulse has, with and without a change of recipients"
+         (let [counted (fn [n]
+                         (let [ids      (create! n)
+                               channels (t2/select :model/PulseChannel :pulse_id [:in ids] :channel_type :email)
+                               rows     (mapv (fn [{:keys [id pulse_id]}]
+                                                {:id       pulse_id
+                                                 :channels [{:id            id
+                                                             :channel_type  :email
+                                                             :schedule_type :daily
+                                                             :schedule_hour (if (even? id) 18 7)
+                                                             :enabled       true
+                                                             :recipients    (if (even? id) [{:id (mt/user->id :lucky)} {:email "foo@bar.com"}] [{:id (mt/user->id :rasta)}])}]})
+                                              channels)]
+                           (events.tu/statement-count! #(models.pulse/update-pulses! rows))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "archiving and restoring Pulses, some already archived"
+         (let [counted (fn [n archived?]
+                         (let [ids (create! n)]
+                           (models.pulse/update-pulses! (mapv (fn [id] {:id id :archived archived?}) (take-nth 2 ids)))
+                           (events.tu/statement-count! #(models.pulse/update-pulses! (mapv (fn [id] {:id id :archived archived?}) ids)))))]
+           (counted 2 true)
+           (is (= (counted 2 true) (counted 6 true)))
+           (is (= (counted 2 false) (counted 6 false)))))
+       (testing "moving Pulses to a Collection"
+         (let [counted (fn [n]
+                         (let [ids (create! n)]
+                           (events.tu/statement-count!
+                            #(models.pulse/update-pulses! (mapv (fn [id] {:id id :collection_id collection-1}) ids)))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "deleting Pulses"
+         (let [counted (fn [n]
+                         (let [ids (create! n)]
+                           (events.tu/statement-count! #(models.pulse/delete-pulses! ids))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "removing PulseChannels, which archives the Pulses left without one"
+         (let [counted (fn [n]
+                         (let [ids         (create! n)
+                               channel-ids (t2/select-pks-vec :model/PulseChannel :pulse_id [:in ids] :channel_type :email)]
+                           (events.tu/statement-count! #(models.pulse/remove-pulse-channels! channel-ids))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "deleting PulseChannelRecipients"
+         (let [counted (fn [n]
+                         (let [ids           (create! n)
+                               recipient-ids (t2/select-pks-vec :model/PulseChannelRecipient
+                                                                :pulse_channel_id [:in (t2/select-pks-vec :model/PulseChannel :pulse_id [:in ids])])]
+                           (events.tu/statement-count! #(models.pulse/delete-pulse-channel-recipients! recipient-ids))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))
+       (testing "setting the details of a PulseChannel"
+         (let [counted (fn [n]
+                         (let [ids     (create! n)
+                               channel (t2/select-one :model/PulseChannel :pulse_id [:in ids] :channel_type :slack)]
+                           (events.tu/statement-count! #(models.pulse/update-pulse-channel-details! channel {:channel (str "#" n)}))))]
+           (counted 2)
+           (is (= (counted 2) (counted 6)))))))))
+
+(deftest dashboard-subscription-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (task/init! ::task.send-pulses/SendPulses)
+    (mt/with-temp [:model/Card            {card-id :id}        {}
+                   :model/Collection      {collection-1 :id}   {}
+                   :model/Collection      {collection-2 :id}   {}
+                   :model/Dashboard       {dashboard-1 :id}    {:collection_id collection-1}
+                   :model/Dashboard       {dashboard-2 :id}    {:collection_id collection-2}
+                   :model/Dashboard       {dashboard-3 :id}    {:collection_id collection-1}
+                   :model/Dashboard       {dashboard-4 :id}    {:collection_id collection-2}
+                   :model/Dashboard       {dashboard-5 :id}    {:collection_id collection-1}
+                   :model/Dashboard       {dashboard-6 :id}    {:collection_id collection-2}
+                   :model/DashboardCard   {dashcard-1 :id}     {:dashboard_id dashboard-1 :card_id card-id}
+                   :model/DashboardCard   {dashcard-2 :id}     {:dashboard_id dashboard-2 :card_id card-id}
+                   :model/DashboardCard   {dashcard-3 :id}     {:dashboard_id dashboard-3 :card_id card-id}
+                   :model/DashboardCard   {dashcard-4 :id}     {:dashboard_id dashboard-4 :card_id card-id}
+                   :model/DashboardCard   {dashcard-5 :id}     {:dashboard_id dashboard-5 :card_id card-id}
+                   :model/DashboardCard   {dashcard-6 :id}     {:dashboard_id dashboard-6 :card_id card-id}]
+      (mt/with-model-cleanup [:model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient]
+        (let [dashboards [dashboard-1 dashboard-2 dashboard-3 dashboard-4 dashboard-5 dashboard-6]
+              dashcards  [dashcard-1 dashcard-2 dashcard-3 dashcard-4 dashcard-5 dashcard-6]
+              create!    (fn [n]
+                           (mapv :id (models.pulse/create-pulses!
+                                      (mapv (fn [dashboard-id i]
+                                              {:name         (mt/random-name)
+                                               :creator_id   (mt/user->id :rasta)
+                                               :dashboard_id dashboard-id
+                                               :cards        (if (even? i) [{:id card-id :include_csv false :include_xls false :dashboard_card_id (nth dashcards i)}] [])
+                                               :channels     []})
+                                            (take n dashboards) (range)))))]
+          (testing "appending PulseCards to the Pulses of Dashboards, some with PulseCards already"
+            (let [counted (fn [n]
+                            (let [ids (create! n)]
+                              (events.tu/statement-count!
+                               #(models.pulse/append-pulse-cards!
+                                 (mapv (fn [id dashcard-id] {:card_id card-id :pulse_id id :dashboard_card_id dashcard-id})
+                                       ids (reverse (take n dashcards)))))))]
+              (counted 2)
+              (is (= (counted 2) (counted 6)))))
+          (testing "deleting the PulseCards of DashboardCards"
+            (let [counted (fn [n]
+                            (create! n)
+                            (events.tu/statement-count! #(models.pulse/delete-pulse-cards-for-dashcards! (vec (take n dashcards)))))]
+              (counted 2)
+              (is (= (counted 2) (counted 6)))))
+          (testing "naming the Pulses of Dashboards and moving them with their Dashboards"
+            (let [counted (fn [n]
+                            (create! n)
+                            (events.tu/statement-count!
+                             #(models.pulse/update-pulses-for-dashboards!
+                               (into {} (map-indexed (fn [i dashboard-id]
+                                                       [dashboard-id {:name "Renamed" :collection_id (if (even? i) collection-1 collection-2)}]))
+                                     (take n dashboards)))))]
+              (counted 2)
+              (is (= (counted 2) (counted 6))))))))))
+
+(deftest create-pulses-reports-the-first-invalid-row-test
+  (do-with-pulse-rows!
+   (fn [rows _card-ids _collection-ids]
+     (let [[row] (rows 1)
+           bad-schedule   (update-in row [:channels 0] assoc :schedule_type :weekly :schedule_hour 8 :schedule_day nil)
+           bad-collection (assoc row :collection_id Integer/MAX_VALUE)
+           message-of     (fn [pulses]
+                            (try (models.pulse/create-pulses! pulses)
+                                 nil
+                                 (catch clojure.lang.ExceptionInfo e (ex-message e))))
+           schedule-message   (message-of [bad-schedule])
+           collection-message (message-of [bad-collection])]
+       (is (string? schedule-message))
+       (is (string? collection-message))
+       (is (not= schedule-message collection-message))
+       (testing "the message is the one of the first invalid row, whatever the kind of its error"
+         (is (= schedule-message (message-of [bad-schedule bad-collection])))
+         (is (= collection-message (message-of [bad-collection bad-schedule])))
+         (is (= schedule-message (message-of [row bad-schedule bad-collection]))))
+       (testing "nothing is written"
+         (let [before (t2/count :model/Pulse)]
+           (message-of [row bad-schedule bad-collection])
+           (is (= before (t2/count :model/Pulse)))))))))

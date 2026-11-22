@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.agent-api.models.agent-api-call-log :as agent-api-call-log]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,3 +23,12 @@
         (is (=? [{:ip_address "10.0.0.1"}
                  {:ip_address nil}]
                 (map #(t2/select-one :model/AgentApiCallLog :id (:id %)) rows)))))))
+
+(deftest create-agent-api-call-logs-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/AgentApiCallLog]
+    (let [counted (fn [n]
+                    (events.tu/statement-count!
+                     #(agent-api-call-log/create-agent-api-call-logs!
+                       (mapv (fn [i] (cond-> (call-log-row) (odd? i) (assoc :ip_address "10.0.0.1"))) (range n)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

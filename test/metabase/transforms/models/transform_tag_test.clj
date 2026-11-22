@@ -129,3 +129,16 @@
                                                                   {:name "Built in" :built_in_type "daily"}])]
       (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id plain))))
       (is (= "daily" (t2/select-one-fn :built_in_type :model/TransformTag :id (:id built-in)))))))
+
+(deftest update-statement-counts-do-not-grow-with-mixed-state-rows-test
+  (mt/with-model-cleanup [:model/TransformTag]
+    (let [tags    (fn [built-in custom]
+                    (let [ids (mapv :id (transform-tag/create-transform-tags! (mapv #(hash-map :name %) (tag-names (+ built-in custom)))))]
+                      (t2/update! :model/TransformTag :id [:in (take built-in ids)] {:built_in_type "hourly"})
+                      ids))
+          counted (fn [built-in custom]
+                    (let [ids (tags built-in custom)]
+                      (events.tu/statement-count!
+                       #(transform-tag/update-transform-tags! (mapv (fn [id] {:id id :built_in_type nil}) ids)))))]
+      (counted 1 0)
+      (is (= (counted 1 1) (counted 3 3))))))

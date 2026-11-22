@@ -107,6 +107,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id [:auto/param card-id]))
 
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids]))
+
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
   [card-ids    :- [:sequential ::lib.schema.id/card]

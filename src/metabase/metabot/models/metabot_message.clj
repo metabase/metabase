@@ -9,6 +9,7 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -85,16 +86,25 @@
 (mu/defn update-metabot-messages! :- [:sequential ::metabot.schema/metabot-message.update]
   "Apply the `rows`, each the `:id` of a MetabotMessage and the columns to set, and return the rows that exist."
   [rows :- [:sequential ::metabot.schema/metabot-message.update]]
-  (filterv (fn [{id :id :as row}]
-             (pos? (metabot.db/update-message! id (dissoc row :id))))
-           rows))
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (metabot.db/messages-by-ids (mapv :id rows)))
+            rows   (filterv (comp stored :id) rows)]
+        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+          (metabot.db/update-messages! ids changes))
+        rows))))
 
 (mu/defn soft-delete-metabot-messages! :- :int
   "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the
   number of rows updated."
   [conditions         :- ::metabot.schema/metabot-message.soft-delete-conditions
    deleted-by-user-id :- ::lib.schema.id/user]
-  (metabot.db/soft-delete-messages-where! conditions deleted-by-user-id))
+  (t2/with-transaction [_conn]
+    (let [{already true, others false} (group-by #(= deleted-by-user-id (:deleted_by_user_id %))
+                                                 (metabot.db/messages-matching conditions))]
+      (+ (if (seq already) (metabot.db/soft-delete-messages! (mapv :id already) nil) 0)
+         (if (seq others) (metabot.db/soft-delete-messages! (mapv :id others) deleted-by-user-id) 0)))))
 
 (mu/defn seed-metabot-message!
   "Insert the MetabotMessage `row` as given, its timestamps included, which the testing API seeds."

@@ -286,3 +286,18 @@
                                                               {:name "Described" :creator_id creator-id :description "About"}])]
       (is (nil? (t2/select-one-fn :description :model/TestSuite :id (:id plain))))
       (is (= "About" (t2/select-one-fn :description :model/TestSuite :id (:id described)))))))
+
+(deftest suite-write-statement-counts-do-not-grow-with-suites-test
+  (mt/with-model-cleanup [:model/TestSuite]
+    (let [creator-id (mt/user->id :crowberto)
+          rows       (fn [n]
+                       (mapv (fn [i] {:name (str (random-uuid)) :creator_id creator-id :members (member-rows (inc (mod i 3)))}) (range n)))
+          counted    (fn [n]
+                       (let [create (events.tu/statement-count! #(test-suite/create-test-suites! (rows n)))
+                             suites (test-suite/create-test-suites! (rows n))
+                             update (events.tu/statement-count!
+                                     #(test-suite/update-test-suites! (mapv (fn [{:keys [id]}] {:id id :description "d" :members (member-rows 2)}) suites)))
+                             delete (events.tu/statement-count! #(test-suite/delete-test-suites! (mapv :id suites)))]
+                         [create update delete]))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

@@ -223,6 +223,124 @@
   (let [owner-writable (summary-owner-writable documents changes)]
     (every? #(can-update-with? % changes owner-writable) documents)))
 
+(defn- check-new-card!
+  "The checks a new Card of a Document goes through, those `POST /api/card` runs before saving: create access to the
+  target collection, run permission on the query, read access to any card the parameters draw values from, and query
+  permission on the fields the parameter targets name."
+  [{query :dataset_query :as card}]
+  (api/create-check :model/Card card)
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (card/check-parameter-source-card-permissions (:parameters card))
+  (query-perms/check-parameter-field-permissions
+   (into []
+         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
+         (:parameters card))))
+
+(defn- check-clone!
+  "Throws unless the user may create `source-card`, a copy of a Card they can already read, in its Collection: create
+  access to the target collection, without the authoring checks of [[check-new-card!]] (UXW-5037)."
+  [source-card]
+  (card/with-copy-source-card source-card
+    (api/create-check :model/Card source-card)))
+
+(defn- new-cards-permitted?
+  "Whether [[check-new-card!]] passes for each of `entries`, `{:data :source-card-id}`, answered for all of them from
+  reads that do not grow with their number, the query permissions asked once for each distinct query. False when a check
+  does not pass or throws, which [[check-new-cards!]] then tells apart by asking one by one, in order."
+  [entries]
+  (try
+    (let [sources (queries.card/readable-cards-by-id (into #{} (keep :source-card-id) entries))]
+      (and sources
+           (queries.card/can-create-all? (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))
+           (do (run! #(query-perms/check-run-permissions-for-query (dissoc % :query-permissions/perms))
+                     (into #{} (keep (comp :dataset_query :data)) entries))
+               true)
+           (card/parameter-source-cards-readable? (into [] (mapcat (comp :parameters :data)) entries))
+           (do (query-perms/check-parameter-field-permissions
+                (into []
+                      (comp (mapcat (fn [{{:keys [parameters dataset_query]} :data}]
+                                      (keep #(some-> % :target (params/param-target->field-id {:dataset_query dataset_query}))
+                                            parameters)))
+                            (distinct))
+                      entries))
+               true)))
+    (catch Exception _
+      false)))
+
+(defn- check-new-cards!
+  "Throws, for the first of `entries`, `{:data :source-card-id}`, in order that the current user may not create, what
+  [[check-new-card!]] throws for it, after reading the source Card it copies, if any."
+  [entries]
+  (when-not (new-cards-permitted? entries)
+    (run! (fn [{:keys [data source-card-id]}]
+            (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
+              (check-new-card! data)))
+          entries)))
+
+(defn check-clone-cards!
+  "Throws, for the first of `cards`, Cards that are copied into a Document in order, what its read check, then
+  [[check-clone!]] of its copy in `sources`, throws, from reads that do not grow with their number when the user may
+  read and create all of them."
+  [cards sources]
+  (with-content-gate-cache
+    (let [cards (t2/hydrate cards :can_read)]
+      (when-not (and (every? mi/can-read? cards)
+                     (try (queries.card/can-create-all? (mapv (fn [source] [source source]) sources))
+                          (catch Exception _ false)))
+        (doseq [[card source] (map vector cards sources)]
+          (api/read-check card)
+          (check-clone! source))))))
+
+(defn- embedded-cards-to-clone
+  "The existing Cards that the `document`, an AST of `content-type`, embeds and the Document with `document-id`, nil for
+  one not created yet, does not hold."
+  [document-id document content-type]
+  (let [card-ids (prose-mirror/collect-ast {:document document :content_type content-type}
+                                           #(when (and (= prose-mirror/card-embed-type (:type %))
+                                                       (pos-int? (:id (:attrs %))))
+                                              (:id (:attrs %))))]
+    (when (seq card-ids)
+      (if document-id
+        (documents.db/cards-not-in-document card-ids document-id)
+        (documents.db/cards-by-ids card-ids)))))
+
+(defn- check-document-cards!
+  "Throws what the checks of the Cards a write of a Document makes throw, for the first Card in order that the current
+  user may not create: the existing `to-clone` Cards copied into `clone-collection-id`, then the `new-cards`, a map of
+  temporary id to data, put in `new-collection-id` unless they name another Collection."
+  [to-clone clone-collection-id new-cards new-collection-id]
+  (when (seq to-clone)
+    (check-clone-cards! to-clone (mapv #(assoc % :collection_id clone-collection-id) to-clone)))
+  (when (seq new-cards)
+    (check-new-cards! (mapv (fn [[_ card-data]]
+                              {:source-card-id (:source_card_id card-data)
+                               :data           (cond-> (dissoc card-data :source_card_id)
+                                                 (nil? (:collection_id card-data)) (assoc :collection_id new-collection-id))})
+                            new-cards))))
+
+(defn check-creating-document-cards!
+  "Throws what [[create-document-with-cards!]] must not do for the current user: copy a Card that they may not read or
+  create in the Collection, or create the new `cards` of `body`, the body of the creation, that they may not create or
+  whose query, parameters or source Card they may not use. Call it before the write, with fixed statements for any
+  number of Cards."
+  [{:keys [document collection_id cards]}]
+  (with-content-gate-cache
+    (check-document-cards! (embedded-cards-to-clone nil document prose-mirror/prose-mirror-content-type)
+                           collection_id
+                           cards
+                           collection_id)))
+
+(defn check-updating-document-cards!
+  "Throws what [[update-document-with-cards!]] must not do for the current user, as [[check-creating-document-cards!]]
+  does for a creation, for `body` applied to `existing-document`. Nothing is checked unless `body` has a `:document`."
+  [existing-document {:keys [document collection_id cards] :as body}]
+  (when document
+    (with-content-gate-cache
+      (check-document-cards! (embedded-cards-to-clone (:id existing-document) document (:content_type existing-document))
+                             (:collection_id existing-document)
+                             cards
+                             (if (contains? body :collection_id) collection_id (:collection_id existing-document))))))
+
 ;;; ---------- Hydration -----------------------------------------------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
@@ -379,42 +497,28 @@
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
 
-(defn- create-card-row!
-  "Creates a Card from `card` for `creator`, reconciling the positions in its Collection."
-  [card creator]
+(defn- create-card-rows!
+  "Creates a Card from each of `rows`, the rows [[queries.card/new-card-row]] gives, reconciling the positions in their
+  Collections, in one call of [[queries.card/create-cards!]], and returns the new Cards in order."
+  [rows]
   (t2/with-transaction [_conn]
-    (let [row (queries.card/new-card-row card (:id creator))]
-      (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
-      (first (queries.card/create-cards! [row])))))
+    (run! #(collection/maybe-reconcile-collection-position! (select-keys % [:collection_id :collection_position])) rows)
+    (vec (queries.card/create-cards! rows))))
 
-(defn- create-card!
-  "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
-  checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
-  read access to any card the parameters draw values from, and query permission on the fields the parameter targets
-  name."
-  [{query :dataset_query :as card} creator]
-  (api/create-check :model/Card card)
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
-  (card/check-parameter-source-card-permissions (:parameters card))
-  (query-perms/check-parameter-field-permissions
-   (into []
-         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
-         (:parameters card)))
-  (create-card-row! (assoc card :type :question :dashboard_id nil) creator))
+(defn- new-document-card-row
+  "The row for [[create-card-rows!]] that `card`, a new Card of a Document, takes for `creator`."
+  [card creator]
+  (queries.card/new-card-row (assoc card :type :question :dashboard_id nil) (:id creator)))
 
 (defn clone-card!
   "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
 
-  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
-  checks (run permission on the query, parameter source-card and parameter field permissions): the query and
-  parameters come from an existing card row the caller passed a read check on rather than from the request, so the
-  user is not authoring anything -- they may be able to view (and run) the source card without having permission to
-  write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
-  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
+  Checks nothing about the user: the caller has run [[check-clone-cards!]], which checks create access to the target
+  collection but, unlike the checks of new cards, not the authoring checks (run permission on the query, parameter
+  source-card and parameter field permissions), since the query and parameters come from an existing card the caller
+  passed a read check on rather than from the request (UXW-5037)."
   [source-card creator]
-  (card/with-copy-source-card source-card
-    (api/create-check :model/Card source-card))
-  (create-card-row! (assoc source-card :type :question :dashboard_id nil) creator))
+  (first (create-card-rows! [(new-document-card-row source-card creator)])))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -449,21 +553,19 @@
    document-collection-id :- [:or :nil ms/PositiveInt]
    creator :- :metabase.users.schema/user]
   (when (seq cards-to-create)
-    (reduce-kv
-     (fn [result-map original-key card-data]
-       (let [source-card-id   (:source_card_id card-data)
-             ;; Merge document info into card data
-             ;; Cards inherit document's collection_id if not explicitly specified
-             merged-card-data (-> card-data
-                                  (dissoc :source_card_id)
-                                  (assoc :document_id document-id)
-                                  (cond-> (nil? (:collection_id card-data))
-                                    (assoc :collection_id document-collection-id)))
-             new-card         (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
-                                (create-card! merged-card-data creator))]
-         (assoc result-map original-key (:id new-card))))
-     {}
-     cards-to-create)))
+    (let [entries (mapv (fn [[original-key card-data]]
+                          ;; Merge document info into card data
+                          ;; Cards inherit document's collection_id if not explicitly specified
+                          {:key            original-key
+                           :source-card-id (:source_card_id card-data)
+                           :data           (-> card-data
+                                               (dissoc :source_card_id)
+                                               (assoc :document_id document-id)
+                                               (cond-> (nil? (:collection_id card-data))
+                                                 (assoc :collection_id document-collection-id)))})
+                        cards-to-create)
+          created (create-card-rows! (mapv #(new-document-card-row (:data %) creator) entries))]
+      (zipmap (map :key entries) (map :id created)))))
 
 (mu/defn clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
   "Finds all cards in the document that are not associated with the document and clones the cards.
@@ -478,16 +580,11 @@
                                                                 (pos-int? (:id (:attrs %))))
                                                        (:id (:attrs %))))
         to-clone (when (seq card-ids)
-                   (documents.db/cards-not-in-document card-ids id))]
-    (with-content-gate-cache
-      (reduce (fn [accum card]
-                (api/read-check card)
-                (assoc accum
-                       (:id card)
-                       (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
-                                         @api/*current-user*))))
-              {}
-              (t2/hydrate to-clone :can_read)))))
+                   (documents.db/cards-not-in-document card-ids id))
+        sources  (mapv #(assoc % :document_id id :collection_id collection_id) to-clone)
+        created  (when (seq sources)
+                   (create-card-rows! (mapv #(new-document-card-row % @api/*current-user*) sources)))]
+    (zipmap (map :id sources) (map :id created))))
 
 (defn- hydrate-document
   "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or

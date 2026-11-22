@@ -8,6 +8,7 @@
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
+   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
@@ -59,6 +60,16 @@
    [:event_name      {:optional true} [:maybe [:or :keyword :string]]]
    [:cron_schedule   {:optional true} [:maybe :string]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])
+
+(def ^:private PartModel
+  "The models of the parts of a Notification that an update of it writes."
+  [:enum :model/NotificationCard :model/NotificationSubscription :model/NotificationHandler
+   :model/NotificationRecipient :model/ChannelTemplate])
+
+(def ^:private PartRow
+  "A row of a model of [[PartModel]], with the columns an update of a Notification writes."
+  [:or NotificationCardRow NotificationSubscriptionRow NotificationHandlerRow NotificationRecipientRow
+   ::channel.schema/channel-template.update])
 
 (def ^:private AdminFilters
   "The filters accepted by [[admin-notifications-page]] and [[admin-notifications-count]]."
@@ -191,16 +202,45 @@
                           [:= :ns.event_name event-name]
                           [:= :ns.type "notification-subscription/system-event"]]}))
 
-(mu/defn insert-notification!
-  "Insert `notification` and return the new instance."
-  [notification :- NotificationRow]
-  (t2/insert-returning-instance! :model/Notification notification))
+(mu/defn insert-notifications!
+  "Insert the Notification `rows` with one statement per distinct set of columns and return the inserted instances in
+  their order."
+  [rows :- [:sequential {:min 1} NotificationRow]]
+  (mdb/insert-returning-instances! :model/Notification rows))
 
 (mu/defn update-notifications!
   "Apply `changes` to the Notifications with `notification-ids`, returning the number updated."
   [notification-ids :- [:sequential ms/PositiveInt]
    changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
   (t2/update! :model/Notification :id [:in notification-ids] changes))
+
+(mu/defn update-notification-columns!
+  "Apply `changes` to the Notification with `notification-id`, returning the number updated."
+  [notification-id :- ms/PositiveInt
+   changes         :- NotificationRow]
+  (t2/update! :model/Notification :toucan/pk notification-id changes))
+
+(mu/defn insert-part-rows!
+  "Insert the `rows` of `model`, a model of a part of a Notification, with one statement per distinct set of columns
+  and return the inserted instances in their order. The change log is not written."
+  [model :- PartModel
+   rows  :- [:sequential {:min 1} PartRow]]
+  (mdb/insert-returning-instances! model rows))
+
+(mu/defn update-part-rows!
+  "Apply `changes` to the rows of `model`, a model of a part of a Notification, with `ids`."
+  [model   :- PartModel
+   ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- PartRow]
+  (t2/update! model :id [:in [:auto/param ids]] changes)
+  nil)
+
+(mu/defn delete-part-rows!
+  "Delete the rows of `model`, a model of a part of a Notification, with `ids`. The change log is not written."
+  [model :- PartModel
+   ids   :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! model :id [:in [:auto/param ids]])
+  nil)
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
@@ -224,11 +264,12 @@
   [notification-card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :card_id :model/NotificationCard :id notification-card-id))
 
-(mu/defn insert-notification-card!
-  "Insert `notification-card` and return the inserted instance."
-  [notification-card :- NotificationCardRow]
-  (u/prog1 (t2/insert-returning-instance! :model/NotificationCard notification-card)
-    (change-log/log-changes! :model/NotificationCard :insert [<>])))
+(mu/defn insert-notification-cards!
+  "Insert the NotificationCard `rows` with one statement per distinct set of columns and return the inserted instances
+  in their order."
+  [rows :- [:sequential {:min 1} NotificationCardRow]]
+  (u/prog1 (mdb/insert-returning-instances! :model/NotificationCard rows)
+    (change-log/log-changes! :model/NotificationCard :insert <>)))
 
 (mu/defn delete-notification-cards!
   "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."

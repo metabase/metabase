@@ -1916,8 +1916,7 @@
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
-           metabase.models.schema
-           metabase.models.util.spec-update}
+           metabase.models.schema}
    :uses #{api
            app-db
            lib

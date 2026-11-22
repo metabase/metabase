@@ -115,6 +115,7 @@
    _query-params
    {:keys [collection_id] :as body} :- DocumentCreateOptions]
   (api/create-check :model/Document {:collection_id collection_id})
+  (m.document/check-creating-document-cards! body)
   (m.document/create-document-with-cards! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -143,6 +144,7 @@
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/update-check existing-document (select-keys body [:collection_id :archived]))
+    (m.document/check-updating-document-cards! existing-document body)
     (m.document/update-document-with-cards! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
@@ -171,25 +173,26 @@
   [source-document-id :- ms/PositiveInt
    new-document-id :- ms/PositiveInt
    new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (documents.db/cards-for-document source-document-id)]
-    (reduce (fn [accum card]
-              ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
-              ;; collection the caller cannot read. Read-check each card before copying, mirroring
-              ;; `clone-cards-in-document!`.
-              (api/read-check card)
-              (let [new-card (m.document/clone-card! (-> card
-                                                         (dissoc :id :entity_id :created_at :updated_at :creator_id
-                                                                 :public_uuid :made_public_by_id :cache_invalidated_at)
-                                                         (assoc :document_id new-document-id
-                                                                :collection_id new-collection-id))
-                                                     @api/*current-user*)]
+  (let [cards-to-copy (documents.db/cards-for-document source-document-id)
+        sources       (mapv (fn [card]
+                              (-> card
+                                  (dissoc :id :entity_id :created_at :updated_at :creator_id
+                                          :public_uuid :made_public_by_id :cache_invalidated_at)
+                                  (assoc :document_id new-document-id
+                                         :collection_id new-collection-id)))
+                            cards-to-copy)]
+    ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
+    ;; collection the caller cannot read, so each card is read-checked and its copy create-checked before any is made.
+    (m.document/check-clone-cards! cards-to-copy sources)
+    (reduce (fn [accum [card source]]
+              (let [new-card (m.document/clone-card! source @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (queries.card/update-cards! [{:id                (:id new-card)
                                                 :archived          (boolean (:archived card))
                                                 :archived_directly (boolean (:archived_directly card))}]))
                 (assoc accum (:id card) (:id new-card))))
             {}
-            (t2/hydrate cards-to-copy :can_read))))
+            (map vector cards-to-copy sources))))
 
 (defn copy-document!
   "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved

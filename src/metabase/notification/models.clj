@@ -14,7 +14,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
    [metabase.notification.schema :as notification.schema]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
@@ -574,44 +573,42 @@
 ;;                                          Update Spec                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(models.u.spec-update/define-spec notification-update-spec
-  "Spec for updating a notification."
-  {:model        :model/Notification
-   :compare-cols [:active :creator_id]
-   :extra-cols   [:payload_type :internal_id :payload_id]
-   :nested-specs [[:payload       {:model        :model/NotificationCard
-                                   :compare-cols [:send_condition :send_once]
-                                   :extra-cols   [:card_id]}]
-                  [:subscriptions {:model        :model/NotificationSubscription
-                                   :fk-column    :notification_id
-                                   :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
-                                   :multi-row?   true}]
-                  [:handlers      {:model        :model/NotificationHandler
-                                   :fk-column    :notification_id
-                                   :compare-cols [:notification_id :channel_type :channel_id :template_id :active]
-                                   :multi-row?   true
-                                   :nested-specs [[:recipients {:model        :model/NotificationRecipient
-                                                                :fk-column    :notification_handler_id
-                                                                :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                                :multi-row?   true}]
-                                                  [:template   {:model         :model/ChannelTemplate
-                                                                :ref-in-parent :template_id
-                                                                :compare-cols  [:channel_type :name :details]}]]}]]})
+;; An update of a Notification writes the columns below, the payload, the subscriptions, and the handlers with their
+;; recipients and template; see `update-parts!`.
+
+(def ^:private update-columns
+  "The keys of a Notification that an update of it uses."
+  #{:active :creator_id :payload_type :internal_id :payload_id :payload :subscriptions :handlers})
+
+(def ^:private card-update-columns
+  "The columns of the NotificationCard payload that an update writes."
+  [:send_condition :send_once :card_id])
+
+(def ^:private subscription-columns
+  "The columns of a NotificationSubscription that an update writes."
+  [:notification_id :type :event_name :cron_schedule :ui_display_type])
+
+(def ^:private handler-columns
+  "The columns of a NotificationHandler that an update writes."
+  [:notification_id :channel_type :channel_id :template_id :active])
+
+(def ^:private recipient-columns
+  "The columns of a NotificationRecipient that an update writes."
+  [:notification_handler_id :type :user_id :permissions_group_id :details])
+
+(def ^:private template-columns
+  "The columns of a ChannelTemplate that an update writes."
+  [:channel_type :name :details])
 
 (defn- update-input-entries
-  "Entries from `entries` whose key `spec` uses on update."
-  [entries {:keys [compare-cols extra-cols nested-specs multi-row? id-col]}]
-  (let [allowed (into (set (concat compare-cols extra-cols (map first nested-specs)))
-                      ;; multi-row rows are matched by their body-supplied id, so keep the id entry
-                      (when multi-row? [id-col]))]
-    (filterv (comp allowed first) entries)))
+  "Entries from `entries` whose key an update of a Notification uses."
+  [entries]
+  (filterv (comp update-columns first) entries))
 
 (mr/def ::NotificationCardUpdate
-  "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification."
+  "::NotificationCard restricted to what the update writes - `:id` comes from the URL's notification."
   (into [:map {:closed true}]
-        (update-input-entries notification-card-entries
-                              (second (m/find-first (comp #{:payload} first)
-                                                    (:nested-specs notification-update-spec))))))
+        (filterv (comp (set card-update-columns) first) notification-card-entries)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
@@ -777,7 +774,7 @@
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
   `handler-schema`. Callers supply the handler schema because API input accepts a narrower set of templates than what
-  we hand back out. `:update-input? true` keeps only the entries `notification-update-spec` uses."
+  we hand back out. `:update-input? true` keeps only the entries an update uses."
   ([handler-schema]
    (hydrated-notification-schema handler-schema {:with-id? true}))
   ([handler-schema {:keys [with-id? update-input?] :as opts}]
@@ -792,7 +789,7 @@
                                          [:payload_id              {:optional true} [:maybe int?]]
                                          [:triggering_subscription {:optional true} [:maybe ::NotificationSubscription]]])))
          entries (cond-> entries
-                   update-input? (update-input-entries notification-update-spec))]
+                   update-input? update-input-entries)]
      [:merge
       (into [:map {:closed true}] entries)
       [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -860,6 +857,14 @@
 
 ;;; ---------------------------------------------- Writes ----------------------------------------------
 
+(defn- throw-template-mismatch!
+  "Throws the 400 for a handler of `channel-type` that has a template of `template-type`."
+  [channel-type template-type]
+  (throw (ex-info "Channel type and template type mismatch"
+                  {:status-code   400
+                   :channel-type  channel-type
+                   :template-type template-type})))
+
 (defn- check-handler-templates!
   "Throws a 400 unless the channel type of each of `handlers`, rows with their `:template_id` and `:channel_type`,
   matches the type of its ChannelTemplate."
@@ -871,10 +876,7 @@
               :let  [channel-type  (keyword channel_type)
                      template-type (some-> (get template-types template_id) keyword)]]
         (when (not= channel-type template-type)
-          (throw (ex-info "Channel type and template type mismatch"
-                          {:status-code   400
-                           :channel-type  channel-type
-                           :template-type template-type})))))))
+          (throw-template-mismatch! channel-type template-type))))))
 
 (defn- update-subscription-triggers!
   "Add, move or remove the Quartz trigger of each of the NotificationSubscriptions `subscriptions` of a Notification
@@ -921,36 +923,37 @@
     (when (and template (not (map? template)))
       (throw (ex-info "Channel template must be a map" {:status-code 400})))))
 
-(defn- create-notification!
-  "Insert the Notification of `row`, a row of [[create-notifications!]], with its parts, and return its instance."
-  [{:keys [subscriptions handlers] :as row}]
-  (let [notification    (dissoc row :subscriptions :handlers)
-        card            (case (:payload_type notification)
-                          (:notification/system-event :notification/testing)
-                          nil
-                          :notification/card
-                          (notification.db/insert-notification-card! (:payload notification)))
-        instance        (notification.db/insert-notification! (-> notification
-                                                                  (assoc :payload_id (:id card))
-                                                                  (dissoc :payload)))
-        notification-id (:id instance)
-        _               (create-notification-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions))
-        templates       (models.channel/create-channel-templates! (into [] (keep :template) handlers))
-        template-ids    (zipmap (keep-indexed (fn [i handler] (when (:template handler) i)) handlers)
-                                (map :id templates))
-        handler-rows    (vec (map-indexed (fn [i handler]
-                                            (-> handler
-                                                (dissoc :recipients :template)
-                                                (assoc :notification_id notification-id
-                                                       :template_id (or (get template-ids i) (:template_id handler)))))
-                                          handlers))
-        created         (create-notification-handlers! handler-rows)]
-    (create-notification-recipients!
-     (into []
-           (mapcat (fn [[{:keys [recipients]} handler]]
-                     (map #(assoc % :notification_handler_id (:id handler)) recipients)))
-           (map vector handlers created)))
-    instance))
+(defn- check-new-notifications!
+  "Throws what inserting the Notifications of `rows` with their parts would throw for the first of them that is invalid,
+  checking the parts of each in the order they are inserted: the Notification, its subscriptions, the templates of its
+  handlers, its handlers, and their recipients."
+  [rows]
+  (let [template-ids   (into [] (comp (mapcat :handlers) (remove :template) (keep :template_id) (distinct)) rows)
+        template-types (if (seq template-ids)
+                         (update-vals (notification.db/channel-templates-by-id template-ids) :channel_type)
+                         {})]
+    (doseq [{:keys [subscriptions handlers] :as row} rows]
+      (validate-notification (-> row
+                                 (dissoc :subscriptions :handlers :payload)
+                                 (assoc :payload_id (when (= :notification/card (:payload_type row)) 1))))
+      (run! #(validate-subscription (assoc % :notification_id 1)) subscriptions)
+      (models.channel/check-channel-templates! (into [] (keep :template) handlers))
+      (doseq [{:keys [template template_id channel_type]} handlers
+              :when (or template template_id)
+              :let  [channel-type  (keyword channel_type)
+                     template-type (some-> (if template (:channel_type template) (get template-types template_id)) keyword)]]
+        (when (not= channel-type template-type)
+          (throw-template-mismatch! channel-type template-type)))
+      (doseq [handler handlers]
+        (validate-notification-handler (-> handler
+                                           (dissoc :recipients :template)
+                                           (assoc :notification_id 1
+                                                  :template_id (if (:template handler) 1 (:template_id handler))))))
+      (doseq [{:keys [recipients]} handlers
+              recipient            recipients
+              :let                 [recipient (assoc recipient :notification_handler_id 1)]]
+        (check-valid-recipient recipient)
+        (validate-raw-value-email-domain! recipient)))))
 
 (mr/def ::notification-with-parts.create
   [:merge
@@ -961,7 +964,8 @@
 
 (mu/defn create-notifications! :- [:sequential (ms/InstanceOf :model/Notification)]
   "Insert the Notifications of `rows`, each with the `:subscriptions` and `:handlers` (with their recipients and
-  templates) it has, publishing their create event last, and return them in order."
+  templates) it has, with one insert for each kind of row across all of them, publishing their create event last, and
+  return them in order."
   [rows :- [:sequential ::notification-with-parts.create]]
   (doseq [{:keys [handlers]} rows]
     (validate-email-handlers! handlers)
@@ -969,7 +973,39 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (let [instances (mapv create-notification! rows)]
+      (check-new-notifications! rows)
+      (let [card-rows     (into [] (keep #(when (= :notification/card (:payload_type %)) (:payload %))) rows)
+            cards         (when (seq card-rows) (notification.db/insert-notification-cards! card-rows))
+            card-ids      (volatile! (map :id cards))
+            payload-id!   (fn [row]
+                            (when (= :notification/card (:payload_type row))
+                              (u/prog1 (first @card-ids)
+                                (vswap! card-ids rest))))
+            instances     (notification.db/insert-notifications!
+                           (mapv #(-> %
+                                      (dissoc :subscriptions :handlers :payload)
+                                      (assoc :payload_id (payload-id! %)))
+                                 rows))
+            handlers      (vec (mapcat (fn [row instance]
+                                         (map #(assoc % :notification_id (:id instance)) (:handlers row)))
+                                       rows instances))
+            _             (create-notification-subscriptions!
+                           (vec (mapcat (fn [row instance]
+                                          (map #(assoc % :notification_id (:id instance)) (:subscriptions row)))
+                                        rows instances)))
+            templates     (models.channel/create-channel-templates! (into [] (keep :template) handlers))
+            template-ids  (zipmap (keep-indexed (fn [i handler] (when (:template handler) i)) handlers)
+                                  (map :id templates))
+            created       (create-notification-handlers!
+                           (vec (map-indexed (fn [i handler]
+                                               (-> handler
+                                                   (dissoc :recipients :template)
+                                                   (assoc :template_id (or (get template-ids i) (:template_id handler)))))
+                                             handlers)))]
+        (create-notification-recipients!
+         (vec (mapcat (fn [handler created-handler]
+                        (map #(assoc % :notification_handler_id (:id created-handler)) (:recipients handler)))
+                      handlers created)))
         (events/publish-event! :event/notification-row-create (events/create-event instances))
         instances))))
 
@@ -1004,6 +1040,124 @@
                                              row))
     (change-log/log-changes! model :delete (vals (apply dissoc old (keys new))))))
 
+(defn- update-existing-rows!
+  "Write each of `rows`, an `:id` and the columns to set, of `model`, whose stored rows `stored` holds by id, with one
+  statement per distinct set of effective changes."
+  [model stored rows]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+    (notification.db/update-part-rows! model ids changes)))
+
+(defn- replace-part-rows!
+  "Make the rows of `model` that `existing` holds the `new-rows`, matched by id and compared on `columns`: one insert of
+  the new rows, one delete of the missing ones, and one update for each distinct set of changes of the others."
+  [model columns existing new-rows]
+  (let [{:keys [to-create to-delete to-update]} (u/row-diff existing new-rows :to-compare #(select-keys % columns))]
+    (when (seq to-create)
+      (notification.db/insert-part-rows! model (mapv #(select-keys % columns) to-create)))
+    (when (seq to-delete)
+      (notification.db/delete-part-rows! model (mapv :id to-delete)))
+    (update-existing-rows! model (u/index-by :id existing) (map #(assoc (select-keys % columns) :id (:id %)) to-update))))
+
+(defn- update-payload!
+  "Make the NotificationCard `existing` the payload `new`: delete it when there is none, insert it when there was none or
+  it has another id, update it when its columns differ."
+  [existing new]
+  (let [columns (select-keys new card-update-columns)]
+    (cond
+      (nil? new)                       (when existing
+                                         (notification.db/delete-part-rows! :model/NotificationCard [(:id existing)]))
+      (nil? existing)                  (notification.db/insert-part-rows! :model/NotificationCard [columns])
+      (not= (:id new) (:id existing))  (do (notification.db/delete-part-rows! :model/NotificationCard [(:id existing)])
+                                           (notification.db/insert-part-rows! :model/NotificationCard [columns]))
+      (not= (select-keys new [:send_condition :send_once]) (select-keys existing [:send_condition :send_once]))
+      (notification.db/update-part-rows! :model/NotificationCard [(:id existing)] columns))))
+
+(defn- template-write
+  "What the template `new` of a handler asks of its `existing` template: `:delete` the id of one to delete, `:create` the
+  columns of one to insert, `:update` the columns of one to update, and `:id` the id the handler keeps."
+  [existing new]
+  (let [columns (select-keys new template-columns)]
+    (cond
+      (nil? new)                       {:delete (:id existing)}
+      (nil? existing)                  {:create columns}
+      (not= (:id new) (:id existing))  {:delete (:id existing) :create columns}
+      (not= columns (select-keys existing template-columns))
+      {:update (assoc columns :id (:id existing)) :id (:id existing)}
+      :else                            {:id (:id existing)})))
+
+(defn- write-templates!
+  "Apply `writes`, [[template-write]]s, with one delete, one insert and one update for each distinct set of changes, given
+  the `stored` templates by id, and return the id of the template each of them leaves its handler."
+  [writes stored]
+  (let [deletes (into [] (keep :delete) writes)
+        creates (into [] (keep :create) writes)]
+    (when (seq deletes)
+      (notification.db/delete-part-rows! :model/ChannelTemplate deletes))
+    (let [created-ids (volatile! (map :id (when (seq creates)
+                                            (notification.db/insert-part-rows! :model/ChannelTemplate creates))))]
+      (update-existing-rows! :model/ChannelTemplate stored (keep :update writes))
+      (mapv (fn [{:keys [create id]}]
+              (if create
+                (u/prog1 (first @created-ids)
+                  (vswap! created-ids rest))
+                id))
+            writes))))
+
+(defn- update-handlers!
+  "Make the NotificationHandlers `existing`, with their `:recipients` and `:template`, the `new-handlers`: matched by id,
+  with one statement of each kind for all of them and their recipients and templates."
+  [existing new-handlers]
+  (let [{:keys [to-create to-delete to-update to-skip]} (u/row-diff existing new-handlers
+                                                                    :to-compare #(select-keys % handler-columns))
+        stored      (u/index-by :id existing)
+        rows        (vec (concat to-create to-update to-skip))
+        template-ids (write-templates! (mapv #(template-write (:template (stored (:id %))) (:template %)) rows)
+                                       (u/index-by :id (keep :template existing)))
+        with-refs   (mapv #(assoc %1 :template_id %2) rows template-ids)
+        created     (when (seq to-create)
+                      (notification.db/insert-part-rows! :model/NotificationHandler
+                                                         (mapv #(select-keys % handler-columns) (take (count to-create) with-refs))))
+        handler-ids (into (mapv :id created) (map :id) (drop (count to-create) rows))]
+    (when (seq to-delete)
+      (notification.db/delete-part-rows! :model/NotificationHandler (mapv :id to-delete)))
+    (update-existing-rows!
+     :model/NotificationHandler stored
+     (into []
+           (keep-indexed (fn [i [row row-with-refs]]
+                           (when (or (< i (count to-update))
+                                     (not= (select-keys (merge (stored (:id row)) (select-keys row-with-refs [:template_id])) handler-columns)
+                                           (select-keys row handler-columns)))
+                             (assoc (select-keys row-with-refs handler-columns) :id (:id row)))))
+           (drop (count to-create) (map vector rows with-refs))))
+    (let [stored-recipients (u/index-by :id (mapcat :recipients existing))
+          diffs             (for [[row handler-id] (map vector rows handler-ids)
+                                  :when            (contains? row :recipients)]
+                              (u/row-diff (:recipients (stored (:id row)))
+                                          (map #(assoc % :notification_handler_id handler-id) (:recipients row))
+                                          :to-compare #(select-keys % recipient-columns)))
+          to-create-recipients (mapcat :to-create diffs)
+          to-delete-recipients (mapcat :to-delete diffs)]
+      (when (seq to-create-recipients)
+        (notification.db/insert-part-rows! :model/NotificationRecipient (mapv #(select-keys % recipient-columns) to-create-recipients)))
+      (when (seq to-delete-recipients)
+        (notification.db/delete-part-rows! :model/NotificationRecipient (mapv :id to-delete-recipients)))
+      (update-existing-rows! :model/NotificationRecipient stored-recipients
+                             (map #(assoc (select-keys % recipient-columns) :id (:id %)) (mapcat :to-update diffs))))))
+
+(defn- update-parts!
+  "Make the Notification `existing` the `new` one: its columns, its payload, its subscriptions, and its handlers with their
+  recipients and templates, each part by id, so that the statements do not grow with the parts."
+  [existing new]
+  (let [notification-id (:id existing)
+        columns         [:active :creator_id :payload_type :internal_id :payload_id]]
+    (when (not= (select-keys new [:active :creator_id]) (select-keys existing [:active :creator_id]))
+      (notification.db/update-notification-columns! notification-id (select-keys new columns)))
+    (update-payload! (:payload existing) (:payload new))
+    (replace-part-rows! :model/NotificationSubscription subscription-columns (:subscriptions existing)
+                        (map #(assoc % :notification_id notification-id) (:subscriptions new)))
+    (update-handlers! (:handlers existing)
+                      (map #(assoc % :notification_id notification-id) (:handlers new)))))
+
 (mu/defn update-notification! :- :nil
   "Update an existing notification with `new-notification`, publishing its update event last, or its touch when only its
   parts changed."
@@ -1017,7 +1171,7 @@
             parts-before        (parts notification-before)
             subscriptions-old   (get parts-before :model/NotificationSubscription)
             handlers-old        (get parts-before :model/NotificationHandler)]
-        (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec)
+        (update-parts! existing-notification new-notification)
         (let [notification-after (notification.db/notification notification-id)
               parts-after        (parts notification-after)
               active-after?      (:active notification-after)

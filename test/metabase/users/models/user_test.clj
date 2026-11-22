@@ -8,6 +8,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -882,3 +883,28 @@
   (testing "after a first run that fills the caches"
     (bulk-write-counts! 1)
     (is (= (bulk-write-counts! 2) (bulk-write-counts! 6)))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [create! (fn [n]
+                    (user/create-users! (mapv (fn [i] (cond-> {:email      (str (mt/random-name) "@example.com")
+                                                               :first_name "Test"
+                                                               :last_name  "User"}
+                                                        (odd? i) (assoc :is_superuser true)))
+                                              (range n))))
+          counted (fn [prepare! changes n]
+                    (let [user-ids (mapv :id (create! n))]
+                      (prepare! (vec (take-nth 2 user-ids)))
+                      (events.tu/statement-count! #(user/update-users! user-ids changes))))]
+      (testing "creating users and admins"
+        (events.tu/statement-count! #(create! 1))
+        (is (= (events.tu/statement-count! #(create! 2))
+               (events.tu/statement-count! #(create! 6)))))
+      (doseq [[description changes] [["renaming users, half of them with the new name already" {:first_name "Renamed"}]
+                                     ["deactivating users, half of them inactive already"      {:is_active false}]
+                                     ["making users admins, half of them admins already"       {:is_superuser true}]
+                                     ["demoting admins, half of them demoted already"          {:is_superuser false}]]]
+        (testing description
+          (let [prepare! #(user/update-users! % changes)]
+            (counted prepare! changes 1)
+            (is (= (counted prepare! changes 2) (counted prepare! changes 6)))))))))

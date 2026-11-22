@@ -210,6 +210,11 @@
   [model-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pks-vec :model/Action :model_id [:in model-ids]))
 
+(mu/defn action-model-ids
+  "The `:id` and `:model_id` of the Actions of the Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select [:model/Action :id :model_id] :model_id [:in model-ids]))
+
 (mu/defn action-ids-of-databases :- [:set ::lib.schema.id/action]
   "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
   Actions that write to one of their Tables."

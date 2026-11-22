@@ -309,9 +309,7 @@
         (when (seq to-delete)
           (transform-job-transform-tag/delete-transform-job-transform-tags! job-id to-delete))
         ;; Update positions for existing tags that moved
-        (doseq [tag-id (filter current-set new-tag-ids)]
-          (let [new-pos (get new-positions tag-id)]
-            (transform-job-transform-tag/update-transform-job-transform-tag! job-id tag-id {:position new-pos})))
+        (transform-job-transform-tag/update-transform-job-transform-tags! job-id (select-keys new-positions current-set))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (transform-job-transform-tag/create-transform-job-transform-tags!

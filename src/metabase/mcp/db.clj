@@ -257,6 +257,12 @@
         (t2/select-fn-set :group_id [:model/McpGroupPermission :group_id] :group_id [:in group-ids]))
       #{}))
 
+(mu/defn group-permissions
+  "The McpGroupPermissions of the groups among `group-ids`."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (when (seq group-ids)
+    (t2/select :model/McpGroupPermission :group_id [:in [:auto/param group-ids]])))
+
 (mu/defn insert-group-permissions!
   "Insert the McpGroupPermission `rows` in one statement."
   [rows :- [:sequential [:map {:closed true}
@@ -270,8 +276,8 @@
   "Set the McpGroupPermission of the groups with `group-ids` to `values`."
   [group-ids :- [:sequential ms/PositiveInt]
    values    :- [:map {:closed true}
-                 [:mcp_enabled :boolean]
-                 [:tool_access ::mcp.perms/tool-access]]]
+                 [:mcp_enabled {:optional true} :boolean]
+                 [:tool_access {:optional true} ::mcp.perms/tool-access]]]
   (t2/update! :model/McpGroupPermission {:group_id [:in group-ids]} values))
 
 (mu/defn delete-hidden-group-permissions!

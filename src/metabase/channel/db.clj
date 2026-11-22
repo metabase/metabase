@@ -127,10 +127,11 @@
   []
   (t2/select-one :model/User))
 
-(mu/defn insert-channel-template!
-  "Insert `template` and return the inserted instance."
-  [template :- ChannelTemplateRow]
-  (t2/insert-returning-instance! :model/ChannelTemplate template))
+(mu/defn insert-channel-templates!
+  "Insert the ChannelTemplate `rows` with one statement per distinct set of columns and return the inserted instances
+  in their order."
+  [rows :- [:sequential {:min 1} ChannelTemplateRow]]
+  (app-db/insert-returning-instances! :model/ChannelTemplate rows))
 
 (mu/defn channel-templates-by-ids
   "The ChannelTemplates with `template-ids`."

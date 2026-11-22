@@ -85,19 +85,6 @@
   "The weight of the previous average in the exponential rolling average formula, see [[smoothing-factor]]."
   (- 1.0 smoothing-factor))
 
-(defn- update-rolling-average-execution-time!
-  "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
-   or `false` if no matching records were found."
-  ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
-  (let [c1 (* smoothing-factor execution-time-ms)]
-    (or
-     ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
-     ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (pos? (queries.db/backfill-query-and-average-execution-time! query-hash (json/encode query) decay-factor c1))
-     ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
-     ;; updating query on every single UPDATE)
-     (pos? (queries.db/update-average-execution-time! query-hash decay-factor c1)))))
-
 (defn- rolling-average-coefficients
   "Collapse applying the rolling-average formula (see [[smoothing-factor]]) once per execution time into a single
   linear equation `new-average = c0 * average + c1`."
@@ -109,7 +96,7 @@
 
 (defn- initial-average-execution-time
   "Average execution time for a new Query entry: the first execution time, with any subsequent ones folded in the same
-  way consecutive [[update-rolling-average-execution-time!]] calls would."
+  way consecutive updates would."
   ^long [execution-times-ms]
   (reduce (fn [avg t]
             (Math/round (+ (* decay-factor (double avg)) (* smoothing-factor (double t)))))
@@ -179,9 +166,11 @@
                       (get hash->status (hash-key (:query-hash (first group))) :new-entry))
                     groups)]
       (update-rolling-average-execution-times! up-to-date)
-      ;; rare legacy path: rows whose `query` still needs backfilling are handled individually
-      (doseq [{:keys [query query-hash execution-time-ms]} (apply concat needs-query-backfill)]
-        (update-rolling-average-execution-time! query query-hash execution-time-ms))
+      (when (seq needs-query-backfill)
+        (queries.db/backfill-queries-and-average-execution-times!
+         (vec (for [group needs-query-backfill]
+                (let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]
+                  [(:query-hash (first group)) (json/encode (:query (first group))) c0 c1])))))
       (when (seq new-entry)
         (try
           (t2/with-transaction [_conn]

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.schema :as task-history.schema]
@@ -247,3 +248,8 @@
     (is (not (mr/validate ::task-history.schema/task-history.update {:status :bogus})))
     (is (mr/validate ::task-history.schema/task-history.update {:status :unknown}))
     (is (= {:status :unknown} (lib/normalize ::task-history.schema/task-history.update {:status "unknown"})))))
+
+(deftest mark-started-tasks-unknown-statement-count-does-not-grow-with-rows-test
+  (let [counted (fn [run-ids] (events.tu/statement-count! #(task-history/mark-started-tasks-unknown! (set run-ids))))]
+    (counted [Integer/MAX_VALUE])
+    (is (= (counted (range 1000001 1000003)) (counted (range 1000003 1000009))))))

@@ -4,6 +4,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
@@ -562,3 +563,31 @@
                   (t2/select-one :model/DashboardCard :id (:id tabbed))))
           (is (=? {:dashboard_tab_id nil}
                   (t2/select-one :model/DashboardCard :id (:id bare)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                 :model/DashboardTab {tab-id :id} {:dashboard_id dashboard-id}
+                 :model/DashboardTab {other-tab-id :id} {:dashboard_id dashboard-id}
+                 :model/Card {card-id :id} {}
+                 :model/Card {series-id :id} {}
+                 :model/Card {other-series-id :id} {}]
+    (mt/with-model-cleanup [:model/DashboardCard]
+      (let [rows    (fn [n]
+                      (mapv (fn [i] {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4
+                                     :dashboard_tab_id (if (even? i) tab-id other-tab-id)
+                                     :series [series-id]})
+                            (range n)))
+            fresh!  (fn [n] (mapv :id (dashboard-card/create-dashboard-cards! (rows n))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating dashcards with series"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-card/create-dashboard-cards! rows))))))
+        (testing "updating dashcards, some already holding the new values"
+          (counted (fn [n]
+                     (let [ids (fresh! n)
+                           row (fn [id] {:id id :size_x 5 :dashboard_tab_id other-tab-id :series [other-series-id]})]
+                       (dashboard-card/update-dashboard-cards! (mapv row (take-nth 2 ids)))
+                       (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
+        (testing "deleting dashcards"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-card/delete-dashboard-cards! ids))))))))))

@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.glossary.models.glossary :as glossary]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
@@ -104,3 +105,29 @@
           (is (empty? @published)))
         (finally
           (t2/delete! :model/Glossary :id id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Glossary]
+    (let [create! (fn [n]
+                    (let [rows (mapv (fn [_] {:term (mt/random-name) :definition "Definition" :creator_id (mt/user->id :rasta)}) (range n))]
+                      (events.tu/statement-count! #(glossary/create-glossaries! rows))))
+          fresh!  (fn [n]
+                    (let [ids (mapv :id (glossary/create-glossaries!
+                                         (mapv (fn [_] {:term (mt/random-name) :definition "Definition" :creator_id (mt/user->id :rasta)}) (range n))))]
+                      (glossary/update-glossaries! (mapv (fn [id] {:id id :definition "Same"}) (take-nth 2 ids)))
+                      ids))
+          update! (fn [n]
+                    (let [ids (fresh! n)]
+                      (events.tu/statement-count! #(glossary/update-glossaries! (mapv (fn [id] {:id id :definition "Same"}) ids)))))
+          delete! (fn [n]
+                    (let [ids (fresh! n)]
+                      (events.tu/statement-count! #(glossary/delete-glossaries! ids))))]
+      (testing "creating entries"
+        (create! 1)
+        (is (= (create! 2) (create! 6))))
+      (testing "updating entries, some already holding the new value"
+        (update! 1)
+        (is (= (update! 2) (update! 6))))
+      (testing "deleting entries"
+        (delete! 1)
+        (is (= (delete! 2) (delete! 6)))))))

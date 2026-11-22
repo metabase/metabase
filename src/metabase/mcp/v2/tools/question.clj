@@ -358,6 +358,7 @@
                          :creator_id             api/*current-user-id*})
                  result-metadata (assoc :result_metadata result-metadata)
                  dashboard-id    (assoc :dashboard_id dashboard-id))
+          _    (queries/check-new-dashboard-questions-timeline-permissions! [row])
           card (t2/with-transaction [_conn]
                  (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
                  (let [[created] (queries.card/create-cards! [row])]

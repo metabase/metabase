@@ -535,25 +535,20 @@
                               c1)
                        [:inline 0])))
 
-(mu/defn backfill-query-and-average-execution-time!
-  "Set the query text and average execution time (`c0 * average_execution_time + c1`, rounded and cast to an integer)
-  of the query with `query-hash` if its text was never stored, returning the number updated."
-  [query-hash  :- bytes?
-   query-json  :- :string
-   c0          :- number?
-   c1          :- number?]
-  (t2/update! :model/Query
-              {:query_hash query-hash, :query nil}
-              {:query                  query-json
-               :average_execution_time (rolling-average-expr c0 c1)}))
-
-(mu/defn update-average-execution-time!
-  "Set the average execution time of the query with `query-hash` to `c0 * average_execution_time + c1`, rounded and
-  cast to an integer, returning the number updated."
-  [query-hash :- bytes?
-   c0         :- number?
-   c1         :- number?]
-  (t2/update! :model/Query {:query_hash query-hash} {:average_execution_time (rolling-average-expr c0 c1)}))
+(mu/defn backfill-queries-and-average-execution-times!
+  "Set the query text of each Query identified by the `[query-hash query-json c0 c1]` entries of `entries`, and its
+  average execution time to `c0 * average_execution_time + c1`, rounded and cast to an integer, in one statement."
+  [entries :- [:sequential {:min 1} [:tuple bytes? :string number? number?]]]
+  (t2/query {:update (t2/table-name :model/Query)
+             :set    {:query                  (into [:case]
+                                                    (mapcat (fn [[query-hash query-json]]
+                                                              [[:= :query_hash query-hash] query-json]))
+                                                    entries)
+                      :average_execution_time (into [:case]
+                                                    (mapcat (fn [[query-hash _query-json c0 c1]]
+                                                              [[:= :query_hash query-hash] (rolling-average-expr c0 c1)]))
+                                                    entries)}
+             :where  [:in :query_hash (map first entries)]}))
 
 (mu/defn update-average-execution-times!
   "Set the average execution time of each Query identified by the `[query-hash c0 c1]` triples in `hash+coefficients`

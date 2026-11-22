@@ -4,10 +4,12 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (methodical/defmethod t2/table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
 
@@ -52,8 +54,16 @@
 (mu/defn update-collection-permission-graph-revisions! :- :nil
   "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
-  (doseq [{id :id :as row} rows]
-    (permissions.db/update-collection-permission-graph-revision! id (dissoc row :id))))
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id rows)))]
+        (doseq [{id :id :as row} rows
+                :let [before (stored id)]
+                :when before]
+          (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge before (dissoc row :id))))
+        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+          (permissions.db/update-collection-permission-graph-revisions! ids changes)))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

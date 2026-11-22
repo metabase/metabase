@@ -238,3 +238,154 @@
       (doseq [k [:archive :restore :move :delete]]
         (testing (name k)
           (is (= (get small k) (get large k))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Card :model/Collection]
+    (mt/with-temp [:model/Collection {target :id} {}]
+      (let [user-id  (mt/user->id :rasta)
+            rows     (fn [n] (mapv (fn [_] {:name (mt/random-name)}) (range n)))
+            fresh!   (fn [n]
+                       (let [ids (mapv :id (collection/create-collections! (rows n)))]
+                         (doseq [id ids]
+                           (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id id :creator_id user-id)))
+                         ids))
+            update!  (fn [prepare rows-fn n]
+                       (let [ids (fresh! n)]
+                         (prepare (take-nth 2 ids))
+                         (events.tu/statement-count! #(collection/update-collections! (rows-fn ids)))))
+            counted  (fn [f]
+                       (f 1)
+                       (is (= (f 2) (f 6))))]
+        (testing "creating collections"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(collection/create-collections! rows))))))
+        (testing "creating collections under a parent"
+          (let [location (collection/children-location (t2/select-one :model/Collection :id target))]
+            (counted (fn [n]
+                       (let [rows (mapv #(assoc % :location location) (rows n))]
+                         (events.tu/statement-count! #(collection/create-collections! rows)))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+        (testing "archiving collections, some already archived"
+          (counted (partial update!
+                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+        (testing "restoring collections, some already live"
+          (counted (partial update!
+                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+        (testing "moving collections, some already under the parent"
+          (let [location (collection/children-location (t2/select-one :model/Collection :id target))]
+            (counted (partial update!
+                              (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :location location}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :location location}) ids))))))
+        (testing "deleting collections"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(collection/delete-collections! ids))))))))))
+
+(defn- old-operation-ids
+  "The ids of the archive operations as they were given before they were shared: one for each Collection that archives."
+  [entries]
+  (into {}
+        (comp (filter #(:archived (:changes %)))
+              (map (fn [entry] [(:id (:before entry)) (str (random-uuid))])))
+        entries))
+
+(defn- tree!
+  "A Collection under the Collection with id `parent`, or at the top, with its items and one child Collection with its items, as ids."
+  [parent]
+  (let [root  (first (collection/create-collections!
+                      [(cond-> {:name (mt/random-name)} parent (assoc :location (collection/children-location (t2/select-one :model/Collection :id parent))))]))
+        child (first (collection/create-collections! [{:name (mt/random-name) :location (collection/children-location root)}]))]
+    (fill-collection! (u/the-id root))
+    (fill-collection! (u/the-id child))
+    {:root (u/the-id root) :child (u/the-id child)}))
+
+(defn- snapshot
+  "The archive state of each of the Collections `ids` and of the items in them, without ids."
+  [ids]
+  (mapv (fn [id]
+          {:collection (select-keys (row :model/Collection id) [:archived :archived_directly])
+           :items      (into {}
+                             (map (fn [model]
+                                    [model (mapv #(select-keys % [:archived :archived_directly])
+                                                 (t2/select model :collection_id id {:order-by [[:id :asc]]}))]))
+                             [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Exploration])})
+        ids))
+
+(defn- archive-all! [ids]
+  (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids)))
+
+(defn- restore! [id]
+  (collection/update-collections! [{:id id :archived false}]))
+
+(defn- same-as-before!
+  "Runs `scenario`, a function of no arguments returning a snapshot, with the archive operations shared as now and with
+  one for each Collection as before, and checks that the snapshots are the same, returning the first."
+  [scenario]
+  (let [now    (scenario)
+        before (with-redefs-fn {#'collection/operation-ids old-operation-ids} scenario)]
+    (is (= before now))
+    now))
+
+(deftest restore-one-of-two-roots-archived-together-test
+  (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration
+                          :model/Collection]
+    (let [together   (fn []
+                       (let [a (tree! nil), b (tree! nil)]
+                         (archive-all! [(:root a) (:root b)])
+                         (restore! (:root a))
+                         (snapshot [(:root a) (:child a) (:root b) (:child b)])))
+          separately (fn []
+                       (let [a (tree! nil), b (tree! nil)]
+                         (archive-all! [(:root a)])
+                         (archive-all! [(:root b)])
+                         (restore! (:root a))
+                         (snapshot [(:root a) (:child a) (:root b) (:child b)])))
+          result     (same-as-before! together)]
+      (testing "archived together or one after the other, the same comes back"
+        (is (= (separately) result)))
+      (testing "everything under the restored root is live, everything under the other stays archived"
+        (is (every? #(= {:archived false :archived_directly false} (:collection %)) (take 2 result)))
+        (is (every? (fn [state] (every? #(= {:archived false :archived_directly false} %) (mapcat val (:items state))))
+                    (take 2 result)))
+        (is (= {:archived true :archived_directly true} (:collection (nth result 2))))
+        (is (= {:archived true :archived_directly false} (:collection (nth result 3))))
+        (is (every? (fn [state] (every? :archived (mapcat val (:items state)))) (drop 2 result)))))))
+
+(deftest restore-parent-archived-with-unrelated-root-after-child-test
+  (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration
+                          :model/Collection]
+    (let [result (same-as-before!
+                  (fn []
+                    (let [p (tree! nil), r (tree! nil)]
+                      (archive-all! [(:child p)])
+                      (archive-all! [(:root p) (:root r)])
+                      (restore! (:root p))
+                      (snapshot [(:root p) (:child p) (:root r) (:child r)]))))]
+      (testing "the parent comes back"
+        (is (= {:archived false :archived_directly false} (:collection (first result)))))
+      (testing "the child archived before on its own stays archived, with what is in it"
+        (is (= {:archived true :archived_directly true} (:collection (second result))))
+        (is (every? :archived (mapcat val (:items (second result))))))
+      (testing "the unrelated root stays archived"
+        (is (= {:archived true :archived_directly true} (:collection (nth result 2))))
+        (is (= {:archived true :archived_directly false} (:collection (nth result 3))))))))
+
+(deftest restore-nested-roots-archived-together-test
+  (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration
+                          :model/Collection]
+    (let [nested (fn []
+                   (let [p (tree! nil)
+                         d (tree! (:root p))]
+                     (archive-all! [(:root p) (:root d)])
+                     {:p p :d d}))
+          states (fn [{:keys [p d]}] (snapshot [(:root p) (:child p) (:root d) (:child d)]))]
+      (testing "restoring the outer one"
+        (let [result (same-as-before! (fn [] (let [t (nested)] (restore! (:root (:p t))) (states t))))]
+          (is (false? (:archived (:collection (first result)))))
+          (is (true? (:archived (:collection (nth result 2)))))))
+      (testing "restoring the inner one"
+        (let [result (same-as-before! (fn [] (let [t (nested)] (restore! (:root (:d t))) (states t))))]
+          (is (true? (:archived (:collection (first result)))))
+          (is (false? (:archived (:collection (nth result 2))))))))))

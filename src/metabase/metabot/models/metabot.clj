@@ -6,6 +6,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -53,9 +54,14 @@
 (mu/defn update-metabots! :- [:sequential ::metabot-change]
   "Apply the `rows`, each the `:id` of a Metabot and the columns to set, and return the rows that exist."
   [rows :- [:sequential ::metabot-change]]
-  (filterv (fn [{id :id :as row}]
-             (pos? (metabot.db/update-metabot! id (dissoc row :id))))
-           rows))
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (metabot.db/metabots-by-ids (mapv :id rows)))
+            rows   (filterv (comp stored :id) rows)]
+        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+          (metabot.db/update-metabots! ids changes))
+        rows))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

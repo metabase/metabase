@@ -955,13 +955,12 @@
       (delete-actions! (vec ids)))))
 
 (mu/defn move-actions-of-models!
-  "Move the Actions of the model Cards with `model-ids` to the Collection with `collection-id`, nil for the root, in
-  one statement."
-  [model-ids     :- [:sequential ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (when (seq model-ids)
-    (update-actions! (mapv (fn [id] {:id id :collection_id collection-id})
-                           (actions.db/action-ids-of-models model-ids)))
+  "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for
+  the root, with one read and one statement for each Collection."
+  [model-id->collection-id :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]]
+  (when (seq model-id->collection-id)
+    (update-actions! (mapv (fn [{:keys [id model_id]}] {:id id :collection_id (get model-id->collection-id model_id)})
+                           (actions.db/action-model-ids (vec (keys model-id->collection-id)))))
     nil))
 
 (mu/defn delete-implicit-actions-of-tables!

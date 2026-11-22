@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.content-verification.schema :as content-verification.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -42,3 +43,26 @@
                        (:id (first (moderation-review/create-moderation-reviews! [(review card-id :text (str "review " i))])))))]
         (is (= (set (take-last moderation-review/max-moderation-reviews ids))
                (t2/select-pks-set :model/ModerationReview :moderated_item_id card-id)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ModerationReview :model/Card]
+    (let [new-cards (fn [n] (mapv (fn [_] (t2/insert-returning-pk! :model/Card (mt/with-temp-defaults :model/Card))) (range n)))
+          rows      (fn [n]
+                      (let [card-ids (new-cards n)]
+                        (moderation-review/create-moderation-reviews! (mapv #(review %) (take-nth 2 card-ids)))
+                        (moderation-review/create-moderation-reviews! (mapv #(review %) (take-nth 2 card-ids)))
+                        (dotimes [_ 11]
+                          (moderation-review/create-moderation-reviews! (mapv #(review %) (take-nth 3 card-ids))))
+                        (mapv #(review %) card-ids)))]
+      (testing "creating reviews of items that hold reviews, some beyond the newest"
+        (events.tu/statement-count! #(moderation-review/create-moderation-reviews! (rows 1)))
+        (let [small (rows 2)
+              large (rows 6)]
+          (is (= (events.tu/statement-count! #(moderation-review/create-moderation-reviews! small))
+                 (events.tu/statement-count! #(moderation-review/create-moderation-reviews! large))))))
+      (testing "creating several reviews of one item"
+        (let [[card-id] (new-cards 1)
+              reviews   (moderation-review/create-moderation-reviews! (mapv (fn [_] (review card-id)) (range 12)))]
+          (is (= 12 (count reviews)))
+          (is (= 1 (t2/count :model/ModerationReview :moderated_item_id card-id :most_recent true)))
+          (is (= 10 (t2/count :model/ModerationReview :moderated_item_id card-id))))))))

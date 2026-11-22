@@ -56,10 +56,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
 
-(mu/defn insert-impersonation!
-  "Insert `impersonation` and return the new instance."
-  [impersonation :- (mut/select-keys ::impersonation.schema/connection-impersonation.update [:db_id :group_id :attribute])]
-  (first (app-db/insert-returning-instances! :model/ConnectionImpersonation [impersonation])))
+(mu/defn insert-impersonations!
+  "Insert `impersonations` and return the new instances in their order."
+  [impersonations :- [:sequential (mut/select-keys ::impersonation.schema/connection-impersonation.update
+                                                   [:db_id :group_id :attribute])]]
+  (app-db/insert-returning-instances! :model/ConnectionImpersonation impersonations))
 
 (mu/defn delete-impersonation!
   "Delete the ConnectionImpersonation with `impersonation-id`."
@@ -71,6 +72,15 @@
   [group-id    :- ms/PositiveInt
    database-id :- ::lib.schema.id/database]
   (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+
+(mu/defn delete-impersonations-for-groups-and-databases!
+  "Delete the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`."
+  [pairs :- [:sequential {:min 1} [:tuple ms/PositiveInt ::lib.schema.id/database]]]
+  (t2/delete! :model/ConnectionImpersonation
+              {:where (into [:or]
+                            (map (fn [[group-id database-id]]
+                                   [:and [:= :group_id [:auto/param group-id]] [:= :db_id [:auto/param database-id]]]))
+                            (distinct pairs))}))
 
 (mu/defn view-data-permission-values
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."

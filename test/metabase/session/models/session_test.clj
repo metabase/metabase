@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.login-history.record]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -275,3 +276,16 @@
                            {:key_hashed (session/hash-session-key (session/generate-session-key))}]]
             (is (thrown-with-msg? RuntimeException #"You cannot change a Session that has ended"
                                   (t2/update! :model/Session :id session-id changes)))))))))
+
+(deftest end-sessions-by-ids-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (let [ids     (vec (for [_ (range 9)]
+                         (let [id (session/generate-session-id)]
+                           (t2/insert! (t2/table-name :model/Session) {:id         id
+                                                                       :key_hashed (session/hash-session-key (session/generate-session-key))
+                                                                       :user_id    user-id
+                                                                       :created_at :%now})
+                           id)))
+          counted (fn [ids] (events.tu/statement-count! #(session/end-sessions-by-ids! ids "admin" nil)))]
+      (counted (subvec ids 0 1))
+      (is (= (counted (subvec ids 1 3)) (counted (subvec ids 3 9)))))))

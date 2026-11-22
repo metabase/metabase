@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -198,7 +199,7 @@
                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
-          (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
+          (t2/insert! :model/PulseChannelRecipient {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)})
           (is (= (merge default-pulse-channel
                         {:recipients    [(user-details :crowberto)]
                          :channel_type  :email
@@ -232,11 +233,16 @@
                    :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
                    :details       {:channel "#metabaserocks"}}))))))))
 
-(deftest update-recipients!-test
+(deftest update-pulse-channels-recipients-test
   (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                  :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
-              (pulse-channel/update-recipients! channel-id recipients)
+              (pulse-channel/update-pulse-channels! [{:id            channel-id
+                                                      :channel_type  :email
+                                                      :enabled       true
+                                                      :schedule_type :daily
+                                                      :schedule_hour 12
+                                                      :recipients    (mapv (fn [user-id] {:id user-id}) recipients)}])
               (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
@@ -487,3 +493,54 @@
                                                {:schedule_type :monthly, :schedule_frame :mid}))))
           (testing "moves no trigger"
             (is (= triggers (send-pulse-triggers pulse-id)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (with-send-pulse-setup!
+    (mt/with-model-cleanup [:model/Pulse :model/PulseChannel :model/PulseChannelRecipient]
+      (let [pulses!  (fn [n] (mapv :id (t2/insert-returning-instances! :model/Pulse (vec (repeatedly n #(mt/with-temp-defaults :model/Pulse))))))
+            row      (fn [i pulse-id]
+                       {:pulse_id      pulse-id
+                        :channel_type  (if (even? i) :email :slack)
+                        :schedule_type :daily
+                        :schedule_hour 18
+                        :enabled       true
+                        :details       (if (even? i) {} {:channel "#general"})
+                        :recipients    (if (even? i) [{:id (mt/user->id :rasta)} {:email "foo@bar.com"}] [])})
+            rows     (fn [ids] (vec (map-indexed row ids)))
+            create!  (fn [n] (pulse-channel/create-pulse-channels! (rows (pulses! n))))]
+        (testing "creating PulseChannels"
+          (let [counted (fn [n] (let [ids (pulses! n)] (events.tu/statement-count! #(pulse-channel/create-pulse-channels! (rows ids)))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))
+        (testing "updating PulseChannels, some of them with other recipients and some left as they are"
+          (let [counted (fn [n]
+                          (let [channels (pulse-channel/create-pulse-channels! (vec (map #(row 0 %) (pulses! n))))
+                                updates  (vec (map-indexed (fn [i {:keys [id channel_type]}]
+                                                             {:id            id
+                                                              :channel_type  channel_type
+                                                              :schedule_type :daily
+                                                              :schedule_hour (if (even? i) 18 7)
+                                                              :enabled       true
+                                                              :details       (if (= :email channel_type) {} {:channel "#general"})
+                                                              :recipients    (if (= :email channel_type)
+                                                                               (if (even? i) [{:id (mt/user->id :rasta)} {:email "foo@bar.com"}] [{:id (mt/user->id :lucky)}])
+                                                                               [])})
+                                                           channels))]
+                            (events.tu/statement-count! #(pulse-channel/update-pulse-channels! updates))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))
+        (testing "enabling and disabling the PulseChannels of Pulses, some of them already in that state"
+          (let [counted (fn [n enabled?]
+                          (let [channels (create! n)
+                                ids      (mapv :pulse_id channels)]
+                            (pulse-channel/set-pulse-channels-enabled! (vec (take-nth 2 ids)) (not enabled?))
+                            (events.tu/statement-count! #(pulse-channel/set-pulse-channels-enabled! ids enabled?))))]
+            (counted 2 true)
+            (is (= (counted 2 true) (counted 6 true)))
+            (is (= (counted 2 false) (counted 6 false)))))
+        (testing "deleting PulseChannels"
+          (let [counted (fn [n]
+                          (let [ids (mapv :id (create! n))]
+                            (events.tu/statement-count! #(pulse-channel/delete-pulse-channels! ids))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))))))

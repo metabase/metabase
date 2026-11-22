@@ -410,6 +410,7 @@
     (api/create-check :model/Document {:collection_id collection-id})
     (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
+      (document/check-creating-document-cards! {:document ast :collection_id collection-id})
       (let [created (document/create-document-with-cards! {:name                name
                                                            :document            ast
                                                            :collection_id       collection-id
@@ -460,6 +461,7 @@
                       (contains? args :collection_id)       (assoc :collection_id collection-id)
                       (contains? args :collection_position) (assoc :collection_position collection_position)
                       (contains? args :archived)            (assoc :archived (boolean archived)))
+            _       (document/check-updating-document-cards! existing body)
             updated (document/update-document-with-cards! existing body)
             removed (when new-ast
                       (set/difference old-ids (ast-id-set (:document updated))))

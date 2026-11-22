@@ -1433,6 +1433,16 @@
                                                   router-id (assoc :router_database_id router-id))))))))
 
 (deftest create-databases-call-count-test
+  (testing "creating Databases runs the same number of statements for 2 and 6 rows, consumers aside"
+    (let [counted (fn [n]
+                    (let [ids (atom [])]
+                      (try
+                        (events.tu/statement-count!
+                         #(reset! ids (create-test-databases! (str "Create Plain Count " n) n)))
+                        (finally
+                          (database/delete-databases! @ids)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
   (testing "creating the destinations of a router runs the same number of statements for 2 and 6 rows, consumers aside"
     (mt/with-temp [:model/Database {router-id :id} {}]
       (let [counted (fn [n]
@@ -1517,3 +1527,26 @@
             (database/delete-databases! [db-id])))
         (is (= [transform-id] @deleted))
         (is (not (t2/exists? :model/Transform :id transform-id)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (testing "updating Databases, some of which already hold the new values"
+      (let [update! (fn [n]
+                      (mt/with-model-cleanup [:model/Database]
+                        (let [ids (vec (t2/insert-returning-pks! :model/Database
+                                                                 (for [i (range n)] {:name (str "Count " i) :engine :h2 :details {}})))]
+                          (t2/update! :model/Database :id [:in (vec (take-nth 2 ids))] {:auto_run_queries false})
+                          (events.tu/statement-count!
+                           #(database/update-databases! (mapv (fn [id] {:id id :auto_run_queries false :is_full_sync false}) ids))))))]
+        (update! 1)
+        (is (= (update! 2) (update! 6)))))
+    (testing "deleting Databases that have Tables and Fields"
+      (let [delete! (fn [n]
+                      (let [ids (vec (t2/insert-returning-pks! :model/Database
+                                                               (for [i (range n)] {:name (str "Count " i) :engine :h2 :details {}})))]
+                        (doseq [id ids]
+                          (let [table-id (t2/insert-returning-pk! :model/Table {:db_id id :name "T" :active true})]
+                            (t2/insert! :model/Field {:table_id table-id :name "F" :base_type :type/Text :database_type "TEXT" :position 0})))
+                        (events.tu/statement-count! #(database/delete-databases! ids))))]
+        (delete! 1)
+        (is (= (delete! 2) (delete! 6)))))))

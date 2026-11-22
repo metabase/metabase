@@ -269,11 +269,12 @@
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
   [model model-ids]
   (t2/with-transaction [_conn]
-    (doseq [item (cache.db/cache-configs-for model model-ids)]
-      (events/publish-event! :event/cache-config-delete
-                             (events/delete-event [item]
-                                                  {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}}))
-      (cache.db/delete-cache-configs! model [(:model_id item)]))))
+    (when-let [items (not-empty (cache.db/cache-configs-for model model-ids))]
+      (doseq [item items]
+        (events/publish-event! :event/cache-config-delete
+                               (events/delete-event [item]
+                                                    {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}})))
+      (cache.db/delete-cache-configs! model (mapv :model_id items)))))
 
 (defn delete-target-configs!
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
@@ -294,8 +295,10 @@
                          [:id             ms/PositiveInt]
                          [:next_run_at    {:optional true} ::cache.schema/temporal]
                          [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
-  (doseq [{:keys [id] :as row} rows]
-    (cache.db/update-cache-config! id (dissoc row :id))))
+  (when (seq rows)
+    (let [stored (u/index-by :id (cache.db/cache-configs-by-ids (mapv :id rows)))]
+      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+        (cache.db/update-cache-configs! ids changes)))))
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

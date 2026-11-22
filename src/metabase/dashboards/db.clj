@@ -58,6 +58,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
+(mu/defn dashcards-of-dashboards
+  "The DashboardCards of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select :model/DashboardCard :dashboard_id [:in dashboard-ids]))
+
 (mu/defn hydrate-snapshot-parts
   "The `dashboards` with their `:tabs` and their `:dashcards`, each of which with its `:series`, as a Revision records a
   Dashboard."

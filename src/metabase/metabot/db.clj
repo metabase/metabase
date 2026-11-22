@@ -51,11 +51,17 @@
   [metabot-id :- ms/PositiveInt]
   (t2/exists? :model/Metabot :id metabot-id))
 
-(mu/defn update-metabot!
-  "Apply `changes` to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot :id metabot-id changes))
+(mu/defn metabots-by-ids
+  "The Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
+
+(mu/defn update-metabots!
+  "Apply `changes` to the Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes     :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
+  (t2/update! :model/Metabot :id [:in [:auto/param metabot-ids]] changes)
+  nil)
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -128,6 +134,11 @@
   "Insert the MetabotPrompt `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.create]]
   (mdb/insert-returning-instances! :model/MetabotPrompt rows))
+
+(mu/defn prompts-by-ids
+  "The MetabotPrompts with `prompt-ids`."
+  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/MetabotPrompt :id [:in [:auto/param prompt-ids]]))
 
 (mu/defn update-prompts! :- :nil
   "Apply `changes` to the MetabotPrompts with `prompt-ids`."
@@ -359,23 +370,35 @@
   [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
   (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
-(mu/defn update-message! :- :int
-  "Apply `changes` to the MetabotMessage with `message-id`, returning the number updated."
-  [message-id :- ms/PositiveInt
-   changes :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
-  (t2/update! :model/MetabotMessage :id message-id changes))
+(mu/defn messages-by-ids
+  "The MetabotMessages with `message-ids`."
+  [message-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
 
-(mu/defn soft-delete-messages-where!
-  "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
-  rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
-  single MetabotMessage or, given a collection, any of several."
-  [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions
-   deleted-by-user-id :- ::lib.schema.id/user]
+(mu/defn update-messages! :- :nil
+  "Apply `changes` to the MetabotMessages with `message-ids`."
+  [message-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes     :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
+  (t2/update! :model/MetabotMessage :id [:in [:auto/param message-ids]] changes)
+  nil)
+
+(mu/defn messages-matching
+  "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed, as an empty
+  map would match every message. `:id` matches a single MetabotMessage or, given a collection, any of several."
+  [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions]
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
                        (coll? id) (assoc :id [:in id]))]
-    (t2/update! :model/MetabotMessage (h2x/assert-map-or-nil! conditions) {:deleted_at         [:now]
-                                                                           :deleted_by_user_id deleted-by-user-id})))
+    (apply t2/select [:model/MetabotMessage :id :deleted_by_user_id] (mapcat identity conditions))))
+
+(mu/defn soft-delete-messages! :- :int
+  "Stamp the deletion time on the MetabotMessages with `message-ids`, and `deleted-by-user-id` as their deleting User when
+  it is given, returning the number of rows updated."
+  [message-ids        :- [:sequential {:min 1} ms/PositiveInt]
+   deleted-by-user-id :- [:maybe ::lib.schema.id/user]]
+  (t2/update! :model/MetabotMessage :id [:in [:auto/param message-ids]]
+              (cond-> {:deleted_at [:now]}
+                deleted-by-user-id (assoc :deleted_by_user_id deleted-by-user-id))))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."

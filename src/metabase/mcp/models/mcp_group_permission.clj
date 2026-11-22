@@ -73,16 +73,17 @@
 
 (mu/defn upsert-mcp-group-permissions!
   "Set the McpGroupPermission of each group in `rows` in one transaction, creating the row of a group that has none:
-  one read, one insert, and one update per distinct policy."
+  one read, one insert, and one update per distinct change."
   [rows :- [:sequential ::mcp.schema/mcp-group-permission.create]]
   (t2/with-transaction [_conn]
     (check-one-mode (map :group_id rows))
-    (let [existing             (mcp.db/group-ids-with-permission (mapv :group_id rows))
+    (let [stored          (u/index-by :group_id (mcp.db/group-permissions (mapv :group_id rows)))
           {updates true
-           inserts false}      (group-by #(contains? existing (:group_id %)) rows)]
+           inserts false} (group-by #(contains? stored (:group_id %)) rows)]
       (mcp.db/insert-group-permissions! (vec inserts))
-      (doseq [[values rows] (group-by #(dissoc % :group_id) updates)]
-        (mcp.db/update-group-permissions! (mapv :group_id rows) values)))))
+      (doseq [[values group-ids] (mi/group-ids-by-changes (update-vals stored #(assoc % :id (:group_id %)))
+                                                          (map #(assoc (dissoc % :group_id) :id (:group_id %)) updates))]
+        (mcp.db/update-group-permissions! group-ids values)))))
 
 (mu/defn create-missing-mcp-group-permissions!
   "Give each group in `rows` that has no McpGroupPermission the one in its row, in one transaction: one read and one

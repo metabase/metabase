@@ -28,12 +28,13 @@
   (transforms.db/insert-transform-tag-links! rows)
   nil)
 
-(mu/defn update-transform-transform-tag! :- :nil
-  "Apply `changes` to the TransformTransformTag linking the Transform with `transform-id` to the tag with `tag-id`."
+(mu/defn update-transform-transform-tags! :- :nil
+  "Give the TransformTransformTags linking the Transform with `transform-id` to the tags in `positions`, a map from tag
+  id to position, their positions."
   [transform-id :- ::lib.schema.id/transform
-   tag-id       :- ::lib.schema.id/transform-tag
-   changes      :- ::transforms.schema/transform-transform-tag.update]
-  (transforms.db/update-transform-tag-link! transform-id tag-id changes)
+   positions    :- [:map-of ::lib.schema.id/transform-tag :int]]
+  (when (seq positions)
+    (transforms.db/update-transform-tag-link-positions! transform-id positions))
   nil)
 
 (mu/defn delete-transform-transform-tags! :- :nil

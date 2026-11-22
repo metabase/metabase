@@ -148,10 +148,12 @@
   (t2/select :model/Field :fk_target_field_id [:in field-ids]))
 
 (mu/defn nested-fields-matching
-  "The Fields of the Table with `table-id` whose `nfc_path` is `LIKE` `pattern`."
-  [table-id :- ::lib.schema.id/table
-   pattern  :- :string]
-  (t2/select :model/Field {:where [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]}))
+  "The Fields whose Table and `nfc_path` match one of `table-id+patterns`, each a Table id and a SQL LIKE pattern."
+  [table-id+patterns :- [:sequential [:tuple ::lib.schema.id/table :string]]]
+  (t2/select :model/Field {:where (into [:or]
+                                        (map (fn [[table-id pattern]]
+                                               [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]))
+                                        table-id+patterns)}))
 
 (mu/defn field-ids-of-database :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables of the Database with `database-id`."
@@ -234,13 +236,11 @@
                      :where  [:in :f.id (vec field-ids)]}))
     {}))
 
-(mu/defn set-nested-fields-active!
-  "Set the active flag of the Fields of the ::warehouse-schema.schema/table with `table-id` whose NFC path matches the
-  SQL LIKE `nfc-path-pattern`, returning the number updated."
-  [table-id         :- ::lib.schema.id/table
-   nfc-path-pattern :- :string
-   active?          :- :boolean]
-  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+(mu/defn set-fields-active!
+  "Set the active flag of the Fields with `field-ids`, returning the number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   active?   :- :boolean]
+  (t2/update! :model/Field :id [:in field-ids] {:active active?}))
 
 (mu/defn user-renamed-field-names :- [:set :string]
   "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
@@ -279,13 +279,13 @@
   "The columns an insert or update of a FieldUserSettings accepts."
   [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
 
-(mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
-  "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
-  [table-id :- ::lib.schema.id/table]
+(mu/defn field-ids-with-user-settings-for-tables :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
+  [table-ids :- [:set ::lib.schema.id/table]]
   (set (t2/select-fn-set :field_id :model/FieldUserSettings
                          {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
-                          :where [:= :f.table_id table-id]})))
+                          :where [:in :f.table_id (vec table-ids)]})))
 
 (mu/defn update-field-user-settings!
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -868,6 +868,11 @@
   "The engine of the ::warehouses.schema/database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id database-id))
+
+(mu/defn collections-for-content-checks
+  "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`, by id."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (u/index-by :id (t2/select [:model/Collection :id :namespace :type :archived] :id [:in (vec collection-ids)])))
 
 (mu/defn database-engines :- [:map-of ::lib.schema.id/database :keyword]
   "The engine of each of the Databases with `database-ids`, by id."

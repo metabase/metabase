@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -34,11 +35,20 @@
              :most_recent true
              {:order-by [[:id :desc]]}))
 
+(defn- items-clause
+  "The clause over the ModerationReview table for the reviews of `items`, `[item-type item-id]` pairs."
+  [items]
+  (into [:or]
+        (map (fn [[item-type group]]
+               [:and
+                [:= :moderated_item_type [:auto/param (name item-type)]]
+                [:in :moderated_item_id [:auto/param (mapv second group)]]]))
+        (group-by first items)))
+
 (mu/defn moderation-reviews-beyond-newest
-  "The ModerationReviews of the item with `item-id` and `item-type` beyond its newest `n`."
-  [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]
-   n         :- ms/PositiveInt]
+  "The ModerationReviews of each of `items`, `[item-type item-id]` pairs, beyond its newest `n`."
+  [items :- [:sequential {:min 1} [:tuple [:or :string :keyword] ms/PositiveInt]]
+   n     :- ms/PositiveInt]
   (t2/select :model/ModerationReview
              {:where [:in :id
                       ^:allow-subquery
@@ -46,12 +56,11 @@
                        :from   [[^:allow-subquery
                                  {:select [:id
                                            [[:over [[:row_number]
-                                                    ^:allow-subquery {:order-by [[:id :desc]]}]]
+                                                    ^:allow-subquery {:partition-by [:moderated_item_type :moderated_item_id]
+                                                                      :order-by     [[:id :desc]]}]]
                                             :rn]]
                                   :from   [:moderation_review]
-                                  :where  [:and
-                                           [:= :moderated_item_id item-id]
-                                           [:= :moderated_item_type (name item-type)]]}
+                                  :where  (items-clause items)}
                                  :ranked]]
                        :where  [:> :rn n]}]}))
 
@@ -61,25 +70,26 @@
   (t2/delete! :model/ModerationReview :id [:in ids]))
 
 (mu/defn most-recent-moderation-reviews-except
-  "The ModerationReviews of the item with `item-id` and `item-type` marked `most_recent` other than `review-id`."
-  [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]
-   review-id :- ms/PositiveInt]
+  "The ModerationReviews of each of `items`, `[item-type item-id]` pairs, marked `most_recent` other than those with
+  `review-ids`."
+  [items      :- [:sequential {:min 1} [:tuple [:or :string :keyword] ms/PositiveInt]]
+   review-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ModerationReview
-             :moderated_item_id item-id
-             :moderated_item_type item-type
-             :most_recent true
-             :id [:not= review-id]))
+             {:where [:and
+                      (items-clause items)
+                      [:= :most_recent true]
+                      [:not-in :id [:auto/param review-ids]]]}))
 
 (mu/defn unmark-moderation-reviews!
   "Clear `most_recent` on the ModerationReviews with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/update! :model/ModerationReview :id [:in ids] {:most_recent false}))
 
-(mu/defn insert-moderation-review!
-  "Insert the ModerationReview `row` and return the inserted instance."
-  [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
-  (t2/insert-returning-instance! :model/ModerationReview row))
+(mu/defn insert-moderation-reviews!
+  "Insert the ModerationReview `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential (mut/select-keys ::content-verification.schema/moderation-review.update
+                                         [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]]
+  (app-db/insert-returning-instances! :model/ModerationReview rows))
 
 (mu/defn delete-card-reviews!
   "Delete the ModerationReviews of the Cards with `card-ids`, returning the number deleted. By table name, so search's

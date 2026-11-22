@@ -288,8 +288,29 @@
           (statements [(first active)])
           (is (= (statements [(nth active 1) (first inactive)])
                  (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))))))
+      (testing "deleting channels"
+        (let [delete! (fn [n]
+                        (let [ids (mapv :id (models.channel/create-channels!
+                                             (vec (repeatedly n #(assoc notification.tu/default-can-connect-channel :name (mt/random-name))))))]
+                          (events.tu/statement-count! #(models.channel/delete-channels! ids))))]
+          (delete! 1)
+          (is (= (delete! 2) (delete! 6)))))
       (finally
         (t2/delete! :model/Channel :id [:in @created])))))
+
+(deftest channel-template-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ChannelTemplate]
+    (let [rows    (fn [n] (vec (repeatedly n #(assoc notification.tu/channel-template-email-with-handlebars-body :name (mt/random-name)))))
+          create! (fn [n] (events.tu/statement-count! #(models.channel/create-channel-templates! (rows n))))
+          delete! (fn [n]
+                    (let [ids (mapv :id (models.channel/create-channel-templates! (rows n)))]
+                      (events.tu/statement-count! #(models.channel/delete-channel-templates! ids))))]
+      (testing "creating channel templates"
+        (create! 1)
+        (is (= (create! 2) (create! 6))))
+      (testing "deleting channel templates"
+        (delete! 1)
+        (is (= (delete! 2) (delete! 6)))))))
 
 (deftest create-channels-keeps-defaults-of-rows-with-fewer-columns-test
   (mt/with-model-cleanup [:model/Channel]

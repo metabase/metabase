@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.events.test-util :as events.tu]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -287,3 +288,32 @@
         (is (pos? (t2/count :model/Dependency
                             :from_entity_type "card"
                             :from_entity_id (:id card))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Dependency]
+    (let [next-id (atom 900000)
+          fresh   (fn [] (swap! next-id inc))
+          targets (fn [n] (set (repeatedly n fresh)))
+          counted (fn [f]
+                    (f 1)
+                    (is (= (f 2) (f 6))))]
+      (testing "replacing the dependencies of an entity, some of them already there"
+        (counted (fn [n]
+                   (let [from-id (fresh)
+                         ids     (vec (targets n))]
+                     (deps.graph/replace-dependencies! :card from-id {:table (set (take-nth 2 ids)) :card (set (take 1 ids))})
+                     (events.tu/statement-count!
+                      #(deps.graph/replace-dependencies! :card from-id {:table (set ids) :transform #{(fresh)}}))))))
+      (testing "deleting the dependencies of entities"
+        (counted (fn [n]
+                   (let [from-ids (vec (repeatedly n fresh))]
+                     (doseq [from-id from-ids]
+                       (deps.graph/replace-dependencies! :card from-id {:table #{(fresh)}}))
+                     (events.tu/statement-count! #(deps.graph/delete-dependencies-from! :card from-ids))))))
+      (testing "deleting the dependencies of entities on an entity"
+        (counted (fn [n]
+                   (let [to-id    (fresh)
+                         from-ids (vec (repeatedly n fresh))]
+                     (doseq [from-id from-ids]
+                       (deps.graph/replace-dependencies! :card from-id {:table #{to-id}}))
+                     (events.tu/statement-count! #(deps.graph/delete-dependencies-on! :card from-ids :table to-id)))))))))

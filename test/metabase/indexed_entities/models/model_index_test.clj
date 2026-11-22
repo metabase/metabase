@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.query-processor.compile :as qp.compile]
@@ -335,3 +336,21 @@
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ModelIndex :model/Card]
+    (let [model-id (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model))
+          rows     (fn [n]
+                     (mapv (fn [_] {:model-id   model-id
+                                    :pk-ref     (mt/$ids $products.id)
+                                    :value-ref  (mt/$ids $products.title)
+                                    :creator-id (mt/user->id :rasta)})
+                           (range n)))
+          fresh!   (fn [n] (mapv :id (model-index/create-model-indexes! (rows n))))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating model indexes"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(model-index/create-model-indexes! rows))))))
+      (testing "deleting model indexes"
+        (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(model-index/delete-model-indexes! ids)))))))))

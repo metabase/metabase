@@ -236,10 +236,16 @@
   []
   (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false))
 
-(mu/defn insert-pulse!
-  "Insert the Pulse `pulse` and return the inserted instance."
-  [pulse :- ::pulse.schema/pulse.update]
-  (t2/insert-returning-instance! :model/Pulse pulse))
+(mu/defn insert-pulses!
+  "Insert the Pulse `pulses` with one statement per distinct set of columns and return the inserted instances in their
+  order."
+  [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.update]]
+  (app-db/insert-returning-instances! :model/Pulse pulses))
+
+(mu/defn collections-for-content-checks
+  "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
 
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
@@ -290,18 +296,13 @@
                 [:= :c.archived false]]
     :order-by [[:pc.position :asc]]}))
 
-(mu/defn pulse-card-refs
-  "The Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulse with `pulse-id`, in
-  position order."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-             :pulse_id pulse-id
+(mu/defn pulse-card-refs-for-pulses
+  "The Pulse id, the Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulses with
+  `pulse-ids`, in position order."
+  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
+  (t2/select [:model/PulseCard :pulse_id [:card_id :id] :include_csv :include_xls :dashboard_card_id]
+             :pulse_id [:in pulse-ids]
              {:order-by [[:position :asc]]}))
-
-(mu/defn max-pulse-card-position
-  "The `:max` position of the PulseCards of the Pulse with `pulse-id`."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id))
 
 (mu/defn max-pulse-card-positions
   "A map of Pulse id to the largest position of its PulseCards, for the Pulses among `pulse-ids` that have any."
@@ -335,11 +336,11 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select :model/PulseCard :pulse_id pulse-id))
 
-(mu/defn delete-pulse-cards-for-pulse!
-  "Delete the PulseCards of the Pulse with `pulse-id`, returning the number deleted."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (change-log/log-rows! :model/PulseCard :delete :pulse_id pulse-id)
-  (t2/delete! :model/PulseCard :pulse_id pulse-id))
+(mu/defn delete-pulse-cards-for-pulses!
+  "Delete the PulseCards of the Pulses with `pulse-ids`, returning the number deleted."
+  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
+  (change-log/log-rows! :model/PulseCard :delete :pulse_id [:in pulse-ids])
+  (t2/delete! :model/PulseCard :pulse_id [:in pulse-ids]))
 
 (mu/defn pulse-channels-for-pulse
   "The PulseChannels of the Pulse with `pulse-id`."
@@ -409,12 +410,12 @@
   (u/prog1 (app-db/insert-returning-instances! :model/PulseChannel rows)
     (change-log/log-changes! :model/PulseChannel :insert <>)))
 
-(mu/defn update-pulse-channel!
-  "Apply `changes` to the PulseChannel with `channel-id`."
-  [channel-id :- ms/PositiveInt
-   changes    :- ::pulse.schema/pulse-channel.update]
-  (change-log/log-rows! :model/PulseChannel :update :id channel-id)
-  (t2/update! :model/PulseChannel :id channel-id changes))
+(mu/defn update-pulse-channels!
+  "Apply `changes` to the PulseChannels with `channel-ids`."
+  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes     :- ::pulse.schema/pulse-channel.update]
+  (change-log/log-rows! :model/PulseChannel :update :id [:in channel-ids])
+  (t2/update! :model/PulseChannel :id [:in channel-ids] changes))
 
 (mu/defn set-pulse-channels-enabled!
   "Set the enabled flag of the PulseChannels of the Pulses with `pulse-ids` that have the other one."
@@ -457,10 +458,10 @@
    user-id    :- ::lib.schema.id/user]
   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id channel-id :user_id user-id))
 
-(mu/defn pulse-channel-recipient-user-ids
-  "The User ids of the PulseChannelRecipients of the PulseChannel with `channel-id`."
-  [channel-id :- ms/PositiveInt]
-  (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))
+(mu/defn pulse-channel-recipients-for-channels
+  "The PulseChannelRecipients of the PulseChannels with `channel-ids`."
+  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/PulseChannelRecipient :pulse_channel_id [:in channel-ids]))
 
 (mu/defn pulse-channel-recipients-for-users
   "The PulseChannelRecipients of the Users with `user-ids`."
@@ -494,14 +495,12 @@
   (t2/delete! :model/PulseChannelRecipient :id [:in recipient-ids]))
 
 (mu/defn delete-pulse-channel-recipients-raw!
-  "Delete the PulseChannelRecipients of the Users with `user-ids` on the PulseChannel with `channel-id`, without
-  running model hooks."
-  [channel-id :- ms/PositiveInt
-   user-ids   :- [:set ::lib.schema.id/user]]
+  "Delete the PulseChannelRecipients with `recipient-ids`, without running model hooks."
+  [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in recipient-ids])
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :id [:in recipient-ids])))
 
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."

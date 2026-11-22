@@ -15,7 +15,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (set! *warn-on-reflection* true)
 
@@ -307,19 +308,21 @@
   publishing the events of the writes; making a tenant user or an admin a group manager is a 400."
   [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
   (t2/with-transaction [_conn]
-    (into []
-          (filter (fn [{id :id :as row}]
-                    (let [changes (dissoc row :id)
-                          stored  (permissions.db/group-membership id)]
-                      (when (and stored (:is_group_manager changes))
-                        (check-group-manager-member (merge stored changes)
-                                                    (first (permissions.db/member-flags #{(:user_id stored)}))))
-                      (permissions.db/update-group-membership! id changes)
-                      (when stored
-                        (events/publish-event! :event/group-membership-update
-                                               (events/update-event {id stored} [row]))
-                        true))))
-          rows)))
+    (let [stored   (if (seq rows) (u/index-by :id (permissions.db/group-memberships-by-ids (mapv :id rows))) {})
+          rows     (filterv (comp stored :id) rows)
+          user-ids (into #{} (keep (fn [{id :id :as row}] (when (:is_group_manager row) (:user_id (stored id))))) rows)
+          members  (if (seq user-ids) (u/index-by :id (permissions.db/member-flags user-ids)) {})]
+      (doseq [{id :id :as row} rows
+              :let [changes (dissoc row :id)
+                    before  (stored id)]]
+        (when (:is_group_manager changes)
+          (check-group-manager-member (merge before changes) (get members (:user_id before))))
+        (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
+      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+        (permissions.db/update-group-memberships! ids changes))
+      (when (seq rows)
+        (events/publish-event! :event/group-membership-update (events/update-event stored rows)))
+      rows)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

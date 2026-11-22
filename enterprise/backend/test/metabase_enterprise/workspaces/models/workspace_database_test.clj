@@ -12,7 +12,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.models.workspace]
-   [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -180,3 +181,48 @@
         (with-data-analyst (is (false? (mi/can-write? (t2/hydrate wsd :can_write))))))
       (testing "superuser — true"
         (with-admin (is (true? (mi/can-write? (t2/hydrate wsd :can_write)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temp [:model/Workspace {workspace-id :id} {}
+                   :model/Database {d1 :id} {}
+                   :model/Database {d2 :id} {}
+                   :model/Database {d3 :id} {}
+                   :model/Database {d4 :id} {}
+                   :model/Database {d5 :id} {}
+                   :model/Database {d6 :id} {}
+                   :model/Database {d7 :id} {}]
+      (let [database-ids [d1 d2 d3 d4 d5 d6 d7]
+            rows         (fn [ids]
+                           (mapv (fn [database-id]
+                                   {:workspace_id     workspace-id
+                                    :database_id      database-id
+                                    :input_schemas    []
+                                    :database_details {}
+                                    :output_namespace ""})
+                                 ids))
+            clean!       #(workspace-database/delete-workspace-databases-of-databases! database-ids)
+            counted      (fn [ids write!]
+                           (clean!)
+                           (write! ids))]
+        (try
+          (testing "creating workspace databases"
+            (let [create! (fn [ids] (events.tu/statement-count! #(workspace-database/create-workspace-databases! (rows ids))))]
+              (counted (take 1 database-ids) create!)
+              (is (= (counted (take 2 database-ids) create!) (counted (take 6 database-ids) create!)))))
+          (testing "deleting workspace databases by id"
+            (let [delete! (fn [ids]
+                            (clean!)
+                            (workspace-database/create-workspace-databases! (rows ids))
+                            (let [wsd-ids (t2/select-pks-vec :model/WorkspaceDatabase :database_id [:in ids])]
+                              (events.tu/statement-count! #(workspace-database/delete-workspace-databases! wsd-ids))))]
+              (delete! (take 1 database-ids))
+              (is (= (delete! (take 2 database-ids)) (delete! (take 6 database-ids))))))
+          (testing "deleting the workspace databases of databases, some not yet having any"
+            (let [delete! (fn [ids]
+                            (clean!)
+                            (workspace-database/create-workspace-databases! (rows (take-nth 2 ids)))
+                            (events.tu/statement-count! #(workspace-database/delete-workspace-databases-of-databases! ids)))]
+              (delete! (take 1 database-ids))
+              (is (= (delete! (take 2 database-ids)) (delete! (take 6 database-ids))))))
+          (finally (clean!)))))))

@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -842,3 +843,68 @@
                               {:type :query :name "described" :model_id model-id :dataset_query native :description "d"}]))]
           (is (= ["plain" "described"] (map :name actions)))
           (is (= [false false] (map #(t2/select-one-fn :archived :model/Action :id (:id %)) actions))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Action :model/Card :model/Table :model/Database]
+      (let [model-id  (fn [] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model)))
+            table-id  (fn [database-id] (t2/insert-returning-pk! :model/Table (assoc (mt/with-temp-defaults :model/Table) :db_id database-id)))
+            rows      (fn [n]
+                        (mapv (fn [i]
+                                (if (even? i)
+                                  {:name (mt/random-name) :type :implicit :kind :row/create :model_id (model-id)
+                                   :creator_id (mt/user->id :rasta)}
+                                  {:name (mt/random-name) :type :implicit :kind :row/create :table_id (mt/id :venues)
+                                   :creator_id (mt/user->id :rasta)}))
+                              (range n)))
+            fresh!    (fn [n] (mapv :id (action/create-actions! (rows n))))
+            update!   (fn [prepare rows-fn n]
+                        (let [ids (fresh! n)]
+                          (prepare (take-nth 2 ids))
+                          (events.tu/statement-count! #(action/update-actions! (rows-fn ids)))))
+            counted   (fn [f]
+                        (f 1)
+                        (is (= (f 2) (f 6))))]
+        (testing "creating actions"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :description "Same"}) ids)))))
+        (testing "updating details, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :kind :row/delete}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :kind :row/delete}) ids)))))
+        (testing "archiving actions, some already archived"
+          (counted (partial update!
+                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids)))
+                            (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+        (testing "deleting actions"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(action/delete-actions! ids))))))
+        (testing "deleting the actions of models"
+          (counted (fn [n]
+                     (let [ids       (fresh! n)
+                           model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
+                       (events.tu/statement-count! #(action/delete-actions-of-models! model-ids))))))
+        (testing "moving the actions of models"
+          (counted (fn [n]
+                     (let [ids       (fresh! n)
+                           model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
+                       (t2/update! :model/Card :id [:in model-ids] {:collection_id other})
+                       (events.tu/statement-count! #(action/move-actions-of-models! (zipmap model-ids (repeat other))))))))
+        (testing "deleting the actions on tables"
+          (counted (fn [n]
+                     (let [tables (mapv (fn [_] (table-id (mt/id))) (range n))]
+                       (action/create-actions!
+                        (mapv (fn [table] {:name (mt/random-name) :type :implicit :kind :row/create :table_id table
+                                           :creator_id (mt/user->id :rasta)})
+                              tables))
+                       (events.tu/statement-count! #(action/delete-implicit-actions-of-tables! tables))))))
+        (testing "deleting the actions on databases"
+          (counted (fn [n]
+                     (let [databases (mapv (fn [_] (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))) (range n))]
+                       (action/create-actions!
+                        (mapv (fn [database] {:name (mt/random-name) :type :implicit :kind :row/create :table_id (table-id database)
+                                              :creator_id (mt/user->id :rasta)})
+                              databases))
+                       (events.tu/statement-count! #(action/delete-actions-of-databases! databases))))))))))

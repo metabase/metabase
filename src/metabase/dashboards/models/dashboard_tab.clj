@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -119,39 +120,57 @@
     (dashboards.db/delete-dashboard-tabs! (vec ids)))
   nil)
 
-(mu/defn replace-dashboard-tabs! :- [:map
-                                     [:old->new-tab-id [:maybe [:map-of :int ms/PositiveInt]]]
-                                     [:created-tab-ids [:sequential ms/PositiveInt]]
-                                     [:updated-tab-ids [:sequential ms/PositiveInt]]
-                                     [:deleted-tab-ids [:sequential :int]]
-                                     [:total-num-tabs  :int]]
-  "Given the `current-tabs` of the Dashboard with `dashboard-id` and its `new-tabs`, delete, create and update the tabs
-  that differ. Returns:
-  - `:old->new-tab-id`: a map from the ids of the tabs of `new-tabs` that were created to their new ids
+(mr/def ::tab-replacement
+  "The tabs `:current-tabs` of the Dashboard with `:dashboard_id` and the `:new-tabs` that replace them."
+  [:map {:closed true}
+   [:dashboard_id ms/PositiveInt]
+   [:current-tabs [:maybe [:sequential :map]]]
+   [:new-tabs     [:maybe [:sequential :map]]]])
+
+(mu/defn replace-dashboard-tabs! :- [:sequential [:map {:closed true}
+                                                  [:old->new-tab-id [:maybe [:map-of :int ms/PositiveInt]]]
+                                                  [:created-tab-ids [:sequential ms/PositiveInt]]
+                                                  [:updated-tab-ids [:sequential ms/PositiveInt]]
+                                                  [:deleted-tab-ids [:sequential :int]]
+                                                  [:total-num-tabs  :int]]]
+  "Given the `:current-tabs` and the `:new-tabs` of each of `replacements`, delete, create and update the tabs that
+  differ, with one statement for each of them. Returns, for each of `replacements`, in order:
+  - `:old->new-tab-id`: a map from the ids of the tabs of its `:new-tabs` that were created to their new ids
   - `:created-tab-ids`, `:updated-tab-ids`, `:deleted-tab-ids`
-  - `:total-num-tabs`: the total number of active tabs after the operation."
-  [dashboard-id :- ms/PositiveInt
-   current-tabs :- [:maybe [:sequential :map]]
-   new-tabs     :- [:maybe [:sequential :map]]]
-  (let [{:keys [to-create to-update to-delete]} (u/row-diff current-tabs new-tabs)
-        id->current-tab (m/index-by :id current-tabs)
-        update-ks       [:name :position]
-        to-delete-ids   (mapv :id to-delete)
-        _               (delete-dashboard-tabs! to-delete-ids)
-        created         (create-dashboard-tabs! (mapv #(-> % (dissoc :id) (assoc :dashboard_id dashboard-id)) to-create))
-        old->new-tab-id (when (seq created)
-                          (zipmap (map :id to-create) (map :id created)))
-        changed         (into []
-                              (comp (filter #(not= (select-keys (get id->current-tab (:id %)) update-ks)
-                                                   (select-keys % update-ks)))
-                                    (map #(assoc (select-keys % update-ks) :id (:id %))))
-                              to-update)]
-    (update-dashboard-tabs! changed)
-    {:old->new-tab-id old->new-tab-id
-     :updated-tab-ids (mapv :id changed)
-     :created-tab-ids (vec (vals old->new-tab-id))
-     :deleted-tab-ids to-delete-ids
-     :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+  - `:total-num-tabs`: the total number of active tabs of its Dashboard after the operation."
+  [replacements :- [:sequential ::tab-replacement]]
+  (let [update-ks [:name :position]
+        diffs     (mapv (fn [{:keys [current-tabs new-tabs]}] (u/row-diff current-tabs new-tabs)) replacements)
+        deleted   (into [] (mapcat (fn [diff] (map :id (:to-delete diff)))) diffs)
+        _         (delete-dashboard-tabs! deleted)
+        created   (vec (create-dashboard-tabs!
+                        (vec (mapcat (fn [{:keys [dashboard_id]} diff]
+                                       (map #(-> % (dissoc :id) (assoc :dashboard_id dashboard_id)) (:to-create diff)))
+                                     replacements diffs))))
+        changed   (mapv (fn [{:keys [current-tabs]} diff]
+                          (let [id->current-tab (m/index-by :id current-tabs)]
+                            (into []
+                                  (keep (fn [tab]
+                                          (let [current (get id->current-tab (:id tab))
+                                                changes (into {} (filter (fn [[k v]] (not= v (get current k)))) (select-keys tab update-ks))]
+                                            (when (seq changes)
+                                              (assoc changes :id (:id tab))))))
+                                  (:to-update diff))))
+                        replacements diffs)]
+    (update-dashboard-tabs! (into [] cat changed))
+    (mapv (fn [diff changed offset]
+            (let [to-create       (:to-create diff)
+                  new-tabs        (subvec created offset (+ offset (count to-create)))
+                  old->new-tab-id (when (seq new-tabs)
+                                    (zipmap (map :id to-create) (map :id new-tabs)))]
+              {:old->new-tab-id old->new-tab-id
+               :updated-tab-ids (mapv :id changed)
+               :created-tab-ids (vec (vals old->new-tab-id))
+               :deleted-tab-ids (mapv :id (:to-delete diff))
+               :total-num-tabs  (reduce + (map count [to-create (:to-update diff)]))}))
+          diffs
+          changed
+          (reductions + 0 (map (comp count :to-create) diffs)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

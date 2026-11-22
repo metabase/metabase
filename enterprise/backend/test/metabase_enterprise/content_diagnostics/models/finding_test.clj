@@ -10,8 +10,11 @@
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase-enterprise.content-diagnostics.test-util :as cd.test-util]
    [metabase.app-db.core :as mdb]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest finding-round-trip-test
   (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -133,3 +136,39 @@
                    (finding/delete-invalidated-before! long-ago))))
         (is (empty? (t2/select-pks-set :model/ContentDiagnosticsFinding
                                        {:where [:in :id ids]})))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+    (let [rows    (fn [scan-id n]
+                    (mapv (fn [i]
+                            {:scan_id scan-id :entity_type :card :entity_id (+ 800000 (rand-int 100000) (* i 100000))
+                             :scope_collection_id nil :last_active_at nil :duration_ms nil :content_count nil
+                             :duplicate_count nil :entity_name nil :entity_created_at nil :entity_creator_id nil
+                             :entity_creator_name nil :card_type nil :entity_collection_name nil :entity_kind nil
+                             :finding_type :stale :details {:threshold_days 90}})
+                          (range n)))
+          fresh!  (fn [n]
+                    (let [scan-id (str (random-uuid))]
+                      (finding/create-findings! (rows scan-id n))
+                      {:scan-id scan-id
+                       :ids     (t2/select-pks-vec :model/ContentDiagnosticsFinding :scan_id scan-id)
+                       :entities (t2/select-fn-vec :entity_id :model/ContentDiagnosticsFinding :scan_id scan-id)}))
+          counted (fn [f]
+                    (f 1)
+                    (is (= (f 2) (f 6))))]
+      (testing "creating findings"
+        (counted (fn [n] (let [rows (rows (str (random-uuid)) n)]
+                           (events.tu/statement-count! #(finding/create-findings! rows))))))
+      (testing "invalidating the findings of entities"
+        (counted (fn [n] (let [{:keys [entities]} (fresh! n)]
+                           (events.tu/statement-count! #(finding/invalidate-for! {:card entities} #{}))))))
+      (testing "invalidating findings by id"
+        (counted (fn [n] (let [{:keys [ids]} (fresh! n)]
+                           (events.tu/statement-count! #(finding/invalidate-by-ids! ids [:= :finding_type "stale"]))))))
+      (testing "invalidating the findings that a scan supersedes"
+        (counted (fn [n] (let [_ (fresh! n)]
+                           (events.tu/statement-count! #(finding/invalidate-superseded! (str (random-uuid)) #{:stale}))))))
+      (testing "deleting invalidated findings"
+        (counted (fn [n] (let [_ (fresh! n)]
+                           (finding/invalidate-superseded! (str (random-uuid)) #{:stale})
+                           (events.tu/statement-count! #(finding/delete-invalidated-before! (java.time.OffsetDateTime/now))))))))))

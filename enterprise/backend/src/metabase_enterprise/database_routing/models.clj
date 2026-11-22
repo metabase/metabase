@@ -17,7 +17,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
 
@@ -61,17 +62,17 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(defn- check-not-destination
-  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
-  [database-id]
-  (when (database-routing.db/destination-database? database-id)
+(defn- check-not-destinations
+  "Throws a 400 when one of the Databases with `database-ids` is a destination, since a destination cannot be a router."
+  [database-ids]
+  (when (and (seq database-ids) (database-routing.db/destination-database-exists? database-ids))
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
 (mu/defn create-database-routers! :- [:sequential ::database-routing.schema/database-router]
   "Insert the DatabaseRouter `rows` and return them in order, publishing the event of the write; a destination Database
   is a 400."
   [rows :- [:sequential ::database-routing.schema/database-router.create]]
-  (run! (comp check-not-destination :database_id) rows)
+  (check-not-destinations (mapv :database_id rows))
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
@@ -83,15 +84,15 @@
   the event of the write."
   [rows :- [:sequential ::database-routing.schema/database-router.update]]
   (t2/with-transaction [_conn]
-    (into []
-          (filter (fn [{id :id :as row}]
-                    (let [stored (database-routing.db/router id)]
-                      (database-routing.db/update-router! id (dissoc row :id))
-                      (when stored
-                        (events/publish-event! :event/database-router-update
-                                               (events/update-event {id stored} [row]))
-                        true))))
-          rows)))
+    (let [stored (if (seq rows) (u/index-by :id (database-routing.db/routers-by-ids (mapv :id rows))) {})
+          rows   (filterv (comp stored :id) rows)]
+      (doseq [{id :id :as row} rows]
+        (t2.before-update/before-update :model/DatabaseRouter (merge (stored id) (dissoc row :id))))
+      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+        (database-routing.db/update-routers! ids changes))
+      (when (seq rows)
+        (events/publish-event! :event/database-router-update (events/update-event stored rows)))
+      rows)))
 
 (mu/defn delete-database-routers! :- :nil
   "Delete the DatabaseRouters with `ids`, publishing the event of the write."

@@ -822,9 +822,8 @@
   "The `visualization_settings` keys that select the timelines and timeline events a Card shows."
   [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids :timeline_events.enabled])
 
-(defn- timeline-selection-readable?
-  "Whether the current user can read every timeline `card` newly shows compared to `previous-card`, which is nil for a
-  new Card."
+(defn- revealed-timeline-ids
+  "The ids of the timelines `card` newly shows compared to `previous-card`, which is nil for a new Card."
   [card previous-card]
   (let [visibility          (select-keys (:visualization_settings card) timeline-visibility-keys)
         previous-visibility (select-keys (:visualization_settings previous-card) timeline-visibility-keys)
@@ -832,11 +831,38 @@
                               (and (events-enabled? visibility) (timeline-events-supported-display? display)))
         reveals-all?        (and (draws-events? visibility (:display card))
                                  (not (draws-events? previous-visibility (:display previous-card))))]
-    (or (not (or reveals-all? (not= visibility previous-visibility)))
-        (every? mi/can-read?
-                (t2/hydrate (queries.db/timelines
-                             (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))
-                            :can_read)))))
+    (if (or reveals-all? (not= visibility previous-visibility))
+      (newly-revealed-timeline-ids visibility previous-visibility reveals-all?)
+      #{})))
+
+(defn- timelines-readable?
+  "Whether the current user can read every Timeline of `timeline-ids`, from one read."
+  [timeline-ids]
+  (or (empty? timeline-ids)
+      (every? mi/can-read? (t2/hydrate (queries.db/timelines (set timeline-ids)) :can_read))))
+
+(defn- timeline-selection-readable?
+  "Whether the current user can read every timeline `card` newly shows compared to `previous-card`, which is nil for a
+  new Card."
+  [card previous-card]
+  (timelines-readable? (revealed-timeline-ids card previous-card)))
+
+(defn can-create-all?
+  "Whether the current user can create each of `entries`, `[card copy-source]` pairs, as [[mi/can-create?]] answers for
+  one Card, from one read of their Collections and one of the timelines they newly show, whatever their number. False
+  when one cannot, or a Collection does not exist, which asking one by one answers with its error."
+  [entries]
+  (and (collection/can-write-all-collections-or-root? (map (comp :collection_id first) entries) {:root-namespace nil})
+       (timelines-readable? (into #{} (mapcat (fn [[card copy-source]] (revealed-timeline-ids card copy-source))) entries))))
+
+(defn readable-cards-by-id
+  "A map of id to the Card, hydrated with `:can_read`, for the Cards with `card-ids`, from one read, or nil when one does
+  not exist or may not be read by the current user, as [[metabase.api.common/read-check]] would refuse."
+  [card-ids]
+  (let [cards (t2/hydrate (queries.db/cards (set card-ids)) :can_read)]
+    (when (and (= (count cards) (count (set card-ids)))
+               (every? mi/can-read? cards))
+      (u/index-by :id cards))))
 
 (defn card-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows on a dashboard."
@@ -872,6 +898,22 @@
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
       (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
+
+(defn check-new-dashboard-questions-timeline-permissions!
+  "Throws, for the first Dashboard in order, what [[check-shared-dashboard-timeline-permissions!]] throws when `rows`, the
+  Cards about to be created, put dashboard questions on a publicly shared or embedded Dashboard showing timelines that the
+  current user may not read, from one read of the Dashboards and one of the timelines whatever their number."
+  [rows]
+  (let [rows       (into [] (comp (filter :dashboard_id) (map (fn [row] (update row :display #(some-> % keyword))))) rows)
+        dashboards (when (seq rows) (u/index-by :id (queries.db/dashboards (into #{} (map :dashboard_id) rows))))
+        groups     (group-by :dashboard_id rows)
+        shared     (filter (fn [[dashboard-id _]]
+                             (let [dashboard (get dashboards dashboard-id)]
+                               (and api/*current-user-id* (or (:public_uuid dashboard) (:enable_embedding dashboard)))))
+                           groups)]
+    (when-not (timelines-readable? (into #{} (comp (mapcat val) (mapcat card-exposed-timeline-ids)) shared))
+      (doseq [[dashboard-id group] groups]
+        (check-shared-dashboard-timeline-permissions! (get dashboards dashboard-id) group)))))
 
 (defn check-shared-dashboard-timeline-permissions-for-card-ids!
   "[[check-shared-dashboard-timeline-permissions!]] for the saved Cards with `card-ids`."
@@ -1459,18 +1501,30 @@
     (nil? (:type row))   (assoc :type :question)
     (:dataset_query row) (update :dataset_query #(lib-be/normalize-query nil % {:strict? true}))))
 
+(defn- result-metadata-once
+  "[[card.metadata/maybe-async-result-metadata]] of `options`, computed once for the options `cache`, a volatile, holds
+  the answer of, which `:entity-id` does not change, so that Cards with the same query take one computation."
+  [cache options]
+  (let [k (dissoc options :entity-id)]
+    (or (get @cache k)
+        (u/prog1 (card.metadata/maybe-async-result-metadata options)
+          (vswap! cache assoc k <>)))))
+
 (defn- with-new-result-metadata
   "`[rows futures]`: the new Card `rows`, each with the result metadata of its query when that is ready within the
-  time a write waits for it, and the futures of the metadata that is not, by the index of the row."
+  time a write waits for it, and the futures of the metadata that is not, by the index of the row. Rows with the same
+  query and metadata share one computation."
   [rows]
-  (reduce (fn [[rows futures] [i row]]
-            (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                                      {:query     (:dataset_query row)
-                                                       :metadata  (:result_metadata row)
-                                                       :entity-id (:entity_id row)
-                                                       :model?    (model? row)})]
-              [(conj rows (cond-> row metadata (assoc :result_metadata metadata)))
-               (cond-> futures metadata-future (assoc i metadata-future))]))
+  (reduce (let [cache (volatile! {})]
+            (fn [[rows futures] [i row]]
+              (let [{:keys [metadata metadata-future]} (result-metadata-once
+                                                        cache
+                                                        {:query     (:dataset_query row)
+                                                         :metadata  (:result_metadata row)
+                                                         :entity-id (:entity_id row)
+                                                         :model?    (model? row)})]
+                [(conj rows (cond-> row metadata (assoc :result_metadata metadata)))
+                 (cond-> futures metadata-future (assoc i metadata-future))])))
           [[] {}]
           (map-indexed vector rows)))
 
@@ -1614,13 +1668,13 @@
 
 (defn- move-actions-of-cards!
   "Moves the Actions of the models among `updates` whose Collection changed to the Collection of the model, with one
-  statement for each Collection."
+  read and one statement for each Collection."
   [updates after]
-  (doseq [[collection-id ids] (group-by #(:collection_id (get after %))
-                                        (into [] (comp (filter #(contains? (:changes %) :collection_id))
-                                                       (map (comp :id :before)))
-                                              updates))]
-    (actions.models/move-actions-of-models! ids collection-id)))
+  (actions.models/move-actions-of-models!
+   (into {}
+         (comp (filter #(contains? (:changes %) :collection_id))
+               (map (fn [{:keys [before]}] [(:id before) (:collection_id (get after (:id before)))])))
+         updates)))
 
 (defn- group-in-order
   "The entries of `xs`, which `f` gives the key of, as `[key entries]` in the order the keys first appear."
@@ -1765,10 +1819,10 @@
         (u/group-by :source_card_id :id conj #{} deps)))))
 
 (defn- dependent-cards-to-update
-  "Return cards to rewrite when `root-card-id` moves off `old-db-id`, with sources before their dependents.
+  "Return cards to rewrite when `root-card-ids` move off `old-db-id`, with sources before their dependents.
   A card's `database_id` comes from its source card, so updating a dependent first preserves the old ID."
-  [root-card-id old-db-id]
-  (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) [root-card-id]))]
+  [root-card-ids old-db-id]
+  (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) root-card-ids))]
     (let [id->card (m/index-by :id (queries.db/cards-queries-info all-dep-ids))]
       (into []
             (comp (map id->card)
@@ -1784,13 +1838,15 @@
   that is ready within the time a write waits for it, and the futures of the metadata that is not, by the id of the
   Card."
   [updates]
-  (let [queried (filterv :dataset_query updates)
+  (let [cache   (volatile! {})
+        queried (filterv :dataset_query updates)
         before  (if (seq queried)
                   (u/index-by :id (queries.db/cards (into #{} (map :id) queried)))
                   {})]
     (reduce (fn [[updates futures] {:keys [id] :as update}]
               (if-let [card (and (:dataset_query update) (get before id))]
-                (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                (let [{:keys [metadata metadata-future]} (result-metadata-once
+                                                          cache
                                                           {:original-query    (:dataset_query card)
                                                            :query             (:dataset_query update)
                                                            :metadata          (:result_metadata update)
@@ -1810,13 +1866,15 @@
   (when-let [changing (and (:id actor)
                            (not-empty (filterv (fn [{:keys [changes]}] (some #(contains? changes %) card-compare-keys))
                                                entries)))]
-    (doseq [card (t2/hydrate (mapv :before changing) :moderation_reviews)
-            :when (card-is-verified? card)]
-      (moderation-review/create-moderation-reviews! [{:moderated_item_id   (:id card)
-                                                      :moderated_item_type "card"
-                                                      :moderator_id        (:id actor)
-                                                      :status              nil
-                                                      :text                (tru "Unverified due to edit")}]))))
+    (when-let [verified (not-empty (filterv card-is-verified? (t2/hydrate (mapv :before changing) :moderation_reviews)))]
+      (moderation-review/create-moderation-reviews!
+       (mapv (fn [card]
+               {:moderated_item_id   (:id card)
+                :moderated_item_type "card"
+                :moderator_id        (:id actor)
+                :status              nil
+                :text                (tru "Unverified due to edit")})
+             verified)))))
 
 (defn- invalidate-cached-results-of-changed-cards!
   "Invalidates the cached results of each Card among `entries` that its change changes."
@@ -1854,14 +1912,19 @@
                                   :notifications (get notifications id))))
 
 (defn- cascade-database-changes!
-  "Updates, root by root, the Cards that use a Card among `entries` whose Database changes as a source, transitively,
-  so that the `:database` of their queries stays in sync (#74561)."
+  "Updates the Cards that use a Card among `entries` whose Database changes as a source, transitively, so that the
+  `:database` of their queries stays in sync (#74561), with one read and one write for each pair of the old and the new
+  Database."
   [entries]
-  (doseq [{:keys [before changes]} entries
-          :let                     [old-db-id (-> before :dataset_query :database)
-                                    new-db-id (-> changes :dataset_query :database)]
-          :when                    (and old-db-id new-db-id (not= old-db-id new-db-id))
-          :let                     [dependents (seq (dependent-cards-to-update (:id before) old-db-id))]
+  (doseq [[[old-db-id new-db-id] group] (group-by (juxt :old-db-id :new-db-id)
+                                                  (into []
+                                                        (keep (fn [{:keys [before changes]}]
+                                                                (let [old-db-id (-> before :dataset_query :database)
+                                                                      new-db-id (-> changes :dataset_query :database)]
+                                                                  (when (and old-db-id new-db-id (not= old-db-id new-db-id))
+                                                                    {:id (:id before) :old-db-id old-db-id :new-db-id new-db-id}))))
+                                                        entries))
+          :let                     [dependents (seq (dependent-cards-to-update (mapv :id group) old-db-id))]
           :when                    dependents]
     (update-cards! (mapv (fn [{dep-id :id, dep-query :dataset_query}]
                            {:id dep-id :dataset_query (assoc dep-query :database new-db-id)})
@@ -2165,26 +2228,47 @@
   [_model databases]
   (delete-cards-of-databases! (mapv :id databases)))
 
+(defn- hydrated-dashboards
+  "A map of id to the Dashboard, with its dashcards and tabs, for the Dashboards with `dashboard-ids`, read together."
+  [dashboard-ids]
+  (u/index-by :id (t2/hydrate (queries.db/dashboards (set dashboard-ids)) :dashcards [:tabs :tab-cards])))
+
+(defn- autoplace-dashcards-for-cards!
+  "Puts each of `entries`, `{:dashboard-id :dashboard-tab-id :card :size}`, on its Dashboard in the order of `entries`,
+  each in the first tab of its Dashboard that the entry names, or in the first of all, below those placed before it, unless
+  its Card is on the Dashboard, with the Dashboards `dashboards`, as [[hydrated-dashboards]] gives them, and one write."
+  [dashboards entries]
+  (let [[_ rows] (reduce
+                  (fn [[state rows] {:keys [dashboard-id dashboard-tab-id card size]}]
+                    (let [{:keys [dashcards tabs]} (get state dashboard-id)
+                          candidates               (remove #(when dashboard-tab-id (not= dashboard-tab-id (:id %))) tabs)]
+                      (if (some #(= (:id card) (:card_id %)) dashcards)
+                        [state rows]
+                        (let [first-tab          (first candidates)
+                              cards-on-first-tab (or (when first-tab (:cards first-tab)) dashcards)
+                              new-spot           (if-let [{:keys [size_x size_y]} size]
+                                                   (autoplace/get-position-for-new-dashcard
+                                                    cards-on-first-tab size_x size_y autoplace/default-grid-width)
+                                                   (autoplace/get-position-for-new-dashcard
+                                                    cards-on-first-tab (:display card)))
+                              row                (assoc new-spot
+                                                        :dashboard_tab_id (some-> first-tab :id)
+                                                        :card_id (:id card)
+                                                        :dashboard_id dashboard-id)]
+                          [(cond-> (update-in state [dashboard-id :dashcards] (fnil conj []) row)
+                             first-tab (update-in [dashboard-id :tabs]
+                                                  (fn [tabs]
+                                                    (mapv #(if (= (:id %) (:id first-tab)) (update % :cards (fnil conj []) row) %)
+                                                          tabs))))
+                           (conj rows row)]))))
+                  [dashboards []]
+                  entries)]
+    (when (seq rows)
+      (write-followers! create-followers! :model/DashboardCard rows))))
+
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
-        {:keys [dashcards tabs]} dashboard
-        tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
-        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
-    (when-not already-on-dashboard?
-      (let [first-tab (first tabs)
-            cards-on-first-tab (or (when first-tab
-                                     (:cards first-tab))
-                                   dashcards)
-            new-spot (if-let [{:keys [size_x size_y]} size]
-                       (autoplace/get-position-for-new-dashcard
-                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
-                       (autoplace/get-position-for-new-dashcard
-                        cards-on-first-tab (:display card)))]
-        (write-followers! create-followers! :model/DashboardCard
-                          [(assoc new-spot
-                                  :dashboard_tab_id (some-> first-tab :id)
-                                  :card_id (:id card)
-                                  :dashboard_id dashboard-id)])))))
+  (autoplace-dashcards-for-cards! (hydrated-dashboards [dashboard-id])
+                                  [{:dashboard-id dashboard-id :dashboard-tab-id maybe-dashboard-tab-id :card card :size size}]))
 
 (defn- delete-dashcards!
   "Deletes the DashboardCards with `dashcard-ids` through their model, whose namespace requires this one."
@@ -2265,14 +2349,18 @@
 
 (defn place-new-dashboard-questions!
   "Puts each of `cards`, the new Cards that `rows` created in order, on its Dashboard when it is a dashboard question,
-  in the tab and with the size its row names, throwing a 400 for a tab of a row with no Dashboard and for a shared
-  Dashboard whose timeline events the user may not read."
+  in the tab and with the size its row names, throwing a 400 for a tab of a row with no Dashboard, with one read of the
+  Dashboards and one write. What the user may do is the caller's to check, with
+  [[check-new-dashboard-questions-timeline-permissions!]]."
   [cards rows]
-  (doseq [[card row] (map vector cards rows)]
-    (api/check-400 (not (and (:dashboard_tab_id row) (not (:dashboard_id row)))))
-    (when-let [dashboard-id (:dashboard_id card)]
-      (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [card])
-      (autoplace-dashcard-for-card! dashboard-id (:dashboard_tab_id row) card (:size row)))))
+  (run! #(api/check-400 (not (and (:dashboard_tab_id %) (not (:dashboard_id %))))) rows)
+  (let [placed (filterv (comp :dashboard_id first) (map vector cards rows))]
+    (when (seq placed)
+      (autoplace-dashcards-for-cards! (hydrated-dashboards (map (comp :dashboard_id first) placed))
+                                      (mapv (fn [[card row]]
+                                              {:dashboard-id (:dashboard_id card) :dashboard-tab-id (:dashboard_tab_id row)
+                                               :card card :size (:size row)})
+                                            placed)))))
 
 (defn place-updated-dashboard-question!
   "Puts the Card `before` on the Dashboard that `updates`, the columns of an update and its `:dashboard_tab_id`, move

@@ -82,28 +82,31 @@
 
 (mu/defn create-moderation-reviews! :- [:sequential ::content-verification.schema/moderation-review]
   "Create a new ModerationReview from each of `rows`, in order, as the most recent of its item: the item's other reviews
-  lose the mark, and those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, publishing the
-  events of the three writes of each."
+  lose the mark, and those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, with one
+  statement for each of the writes and one event for each of them."
   [rows :- [:sequential ::content-verification.schema/moderation-review.create]]
-  (t2/with-transaction [_conn]
-    (mapv (fn [row]
-            (let [{:keys [id moderated_item_id moderated_item_type] :as review}
-                  (content-verification.db/insert-moderation-review! row)
-                  unmarked (vec (content-verification.db/most-recent-moderation-reviews-except
-                                 moderated_item_id moderated_item_type id))
-                  _        (when (seq unmarked)
-                             (content-verification.db/unmark-moderation-reviews! (mapv :id unmarked)))
-                  beyond   (vec (content-verification.db/moderation-reviews-beyond-newest
-                                 moderated_item_id moderated_item_type max-moderation-reviews))]
-              (events/publish-event! :event/moderation-review-create (events/create-event [review]))
-              (events/publish-event! :event/moderation-review-update
-                                     (events/update-event (m/index-by :id unmarked)
-                                                          (mapv (fn [review] {:id (:id review) :most_recent false}) unmarked)))
-              (events/publish-event! :event/moderation-review-delete (events/delete-event beyond))
-              (when (seq beyond)
-                (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
-              review))
-          rows)))
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [reviews    (vec (content-verification.db/insert-moderation-reviews! rows))
+            item-of    (juxt :moderated_item_type :moderated_item_id)
+            items      (vec (distinct (map item-of reviews)))
+            newest     (into #{} (map (comp :id last)) (vals (group-by item-of reviews)))
+            superseded (into []
+                             (remove #(contains? newest (:id %)))
+                             (concat (content-verification.db/most-recent-moderation-reviews-except items (mapv :id reviews))
+                                     reviews))
+            beyond     (vec (content-verification.db/moderation-reviews-beyond-newest items max-moderation-reviews))]
+        (when (seq superseded)
+          (content-verification.db/unmark-moderation-reviews! (mapv :id superseded)))
+        (events/publish-event! :event/moderation-review-create (events/create-event reviews))
+        (events/publish-event! :event/moderation-review-update
+                               (events/update-event (m/index-by :id superseded)
+                                                    (mapv (fn [review] {:id (:id review) :most_recent false}) superseded)))
+        (events/publish-event! :event/moderation-review-delete (events/delete-event beyond))
+        (when (seq beyond)
+          (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
+        reviews))))
 
 (mu/defn delete-reviews-of-deleted-cards! :- :int
   "Delete the ModerationReviews of the Cards with `card-ids`, which are being deleted, in one statement that bypasses

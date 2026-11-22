@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
+   [metabase.events.test-util :as events.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -353,3 +354,14 @@
                 (is (= before-batch-num (next-batch-num :undo user-id test-scope)))))
             ;; Table should remain unchanged
             (is (= [[1 "Undoable change"]] (table-rows table-id)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-premium-features #{:table-data-editing}
+      (action-v2.tu/with-test-tables! [table-1 [{:id [:int]} {:primary-key [:id]}]]
+        (let [user-id (mt/user->id :crowberto)
+              track!  (fn [n]
+                        (let [changes {table-1 (into {} (map (fn [i] [{:id i} {:raw_before (when (odd? i) {}) :raw_after (when (even? i) {})}])) (range n))}]
+                          (events.tu/statement-count! #(undo/track-change! user-id {:table-id table-1} changes))))]
+          (track! 1)
+          (is (= (track! 2) (track! 6))))))))

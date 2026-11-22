@@ -5,8 +5,10 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -325,3 +327,15 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
                             (t2/update! :model/User :id user-id {:is_superuser true})))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
+
+(deftest create-tenants-statement-count-does-not-grow-with-rows-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-model-cleanup [:model/Tenant :model/Collection]
+        (let [counted (fn [n]
+                        (events.tu/statement-count!
+                         #(tenants.model/create-tenants!
+                           (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                       {:name tenant-name :slug (u/lower-case-en tenant-name)})))))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))

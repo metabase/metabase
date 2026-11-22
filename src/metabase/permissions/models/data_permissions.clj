@@ -83,35 +83,57 @@
        (not (database-native? row))))
 
 (defn- check-transforms-need-native
-  "Throws a 400 when `row` would leave its group with the transforms permission on a Database where it has no stored
-  database-level native query access; table-level create-queries rows are left to the writers, which revoke the
-  transforms permission with them, so a bulk write does not read once per Table."
-  [{:keys [group_id db_id] :as row}]
-  (when (and (transforms-granted? row)
-             (not (permissions.db/database-level-value? group_id db_id "perms/create-queries" "query-builder-and-native")))
-    (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
-                    {:status-code 400})))
-  (when (and (database-create-queries-without-native? row)
-             (permissions.db/database-level-value? group_id db_id "perms/transforms" "yes"))
-    (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
-                    {:status-code 400}))))
+  "Throws a 400 when one of `rows` would leave its group with the transforms permission on a Database where it has no
+  stored database-level native query access, with the stored rows of their groups and Databases read once;
+  table-level create-queries rows are left to the writers, which revoke the transforms permission with them, so a
+  bulk write does not read once per Table."
+  [rows]
+  (when-let [checked (seq (filter (some-fn transforms-granted? database-create-queries-without-native?) rows))]
+    (let [stored (into #{}
+                       (map (juxt :group_id :db_id :perm_type :perm_value))
+                       (permissions.db/database-level-values-of-groups (mapv :group_id checked)
+                                                                       (mapv :db_id checked)
+                                                                       ["perms/create-queries" "perms/transforms"]))
+          held?  (fn [{:keys [group_id db_id]} perm-type perm-value]
+                   (contains? stored [group_id db_id perm-type perm-value]))]
+      (doseq [row checked]
+        (when (or (and (transforms-granted? row)
+                       (not (held? row :perms/create-queries :query-builder-and-native)))
+                  (and (database-create-queries-without-native? row)
+                       (held? row :perms/transforms :yes)))
+          (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
+                          {:status-code 400})))))))
 
 ;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
 
-(def ^:private destination-db-id?
-  "Whether `db-id` is a destination database — one with `router_database_id` set."
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (permissions.db/destination-database? db-id))))
+(defonce ^:private destination-db-ids-cache
+  (atom {}))
+
+(defn- destination-db-id?-fn
+  "A predicate answering whether each of `db-ids` is a destination database, one with `router_database_id` set, from a
+  cache per application DB that the ids not cached yet join with one read."
+  [db-ids]
+  (let [app-db-id (mdb/unique-identifier)
+        cached    (get @destination-db-ids-cache app-db-id {})
+        uncached  (into [] (comp (remove #(contains? cached %)) (distinct)) db-ids)
+        answers   (if (seq uncached)
+                    (let [destinations (permissions.db/destination-database-ids uncached)]
+                      (get (swap! destination-db-ids-cache update app-db-id merge
+                                  (into {} (map (juxt identity (partial contains? destinations))) uncached))
+                           app-db-id))
+                    cached)]
+    (fn [db-id] (get answers db-id))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
   set. Destinations are reachable only through their router and must never carry `data_permissions`
   rows."
   [perm-rows]
-  (when-let [dest-ids (seq (into #{} (comp (keep :db_id) (filter destination-db-id?)) perm-rows))]
-    (throw (ex-info (tru "Cannot grant permissions on a destination database.")
-                    {:status-code 400 :destination-db-ids dest-ids}))))
+  (let [db-ids            (into [] (keep :db_id) perm-rows)
+        destination-db-id? (destination-db-id?-fn db-ids)]
+    (when-let [dest-ids (seq (into #{} (filter destination-db-id?) db-ids))]
+      (throw (ex-info (tru "Cannot grant permissions on a destination database.")
+                      {:status-code 400 :destination-db-ids dest-ids})))))
 
 (def ^:private permission-batch-size 1000)
 
@@ -125,7 +147,7 @@
     (t2/with-transaction [_conn]
       (doseq [rows  [others transforms]
               batch (partition-all permission-batch-size rows)]
-        (run! check-transforms-need-native batch)
+        (check-transforms-need-native batch)
         (assert-no-destination-db-permissions! batch)
         (permissions.db/insert-data-permissions! batch)))))
 

@@ -5,6 +5,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -56,17 +57,18 @@
   "Apply the changes in `rows`, each the `:id` of a MetabotPrompt and the columns to set, setting the model of a prompt
   whose Card changes to the type of the new Card, and return `rows`. Throws a 400 when that Card does not exist."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (let [with-card  (filter #(contains? % :card_id) rows)
-        card-types (when (seq with-card) (card-types-of with-card))
-        changes-by-id (into {}
-                            (map (fn [{:keys [id card_id] :as row}]
-                                   [id (cond-> (dissoc row :id) (contains? row :card_id) (assoc :model (card-types card_id)))]))
-                            rows)]
-    (t2/with-transaction [_conn]
-      (doseq [[changes pairs] (group-by val changes-by-id)
-              :when           (seq changes)]
-        (metabot.db/update-prompts! (mapv key pairs) changes))))
-  rows)
+  (if (empty? rows)
+    rows
+    (let [with-card  (filter #(contains? % :card_id) rows)
+          card-types (when (seq with-card) (card-types-of with-card))
+          modeled         (mapv (fn [{:keys [card_id] :as row}]
+                                  (cond-> row (contains? row :card_id) (assoc :model (card-types card_id))))
+                                rows)]
+      (t2/with-transaction [_conn]
+        (let [stored (u/index-by :id (metabot.db/prompts-by-ids (mapv :id rows)))]
+          (doseq [[changes ids] (mi/group-ids-by-changes stored (filterv (comp stored :id) modeled))]
+            (metabot.db/update-prompts! ids changes))))
+      rows)))
 
 (mu/defn delete-metabot-prompts! :- :nil
   "Delete the MetabotPrompts with `prompt-ids`."

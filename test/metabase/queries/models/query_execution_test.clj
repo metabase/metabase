@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.test-util :as events.tu]
    [metabase.queries.models.query-execution :as query-execution]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -34,3 +35,10 @@
                  {:context :ad-hoc :error "boom"}
                  {:context :question :error nil}]
                 (map #(t2/select-one :model/QueryExecution :id %) ids)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/QueryExecution]
+    (let [rows (fn [n] (mapv (fn [_] (query-execution-row :ad-hoc)) (range n)))]
+      (query-execution/create-query-executions! (rows 1))
+      (is (= (events.tu/statement-count! #(query-execution/create-query-executions! (rows 2)))
+             (events.tu/statement-count! #(query-execution/create-query-executions! (rows 6))))))))

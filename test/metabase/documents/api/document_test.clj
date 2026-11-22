@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
@@ -2766,3 +2767,48 @@
           (reset! published [])
           (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived false})
           (is (= [document-id] @published)))))))
+
+(deftest document-cards-refusals-through-endpoints-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {write-id :id}  {}
+                       :model/Collection {read-id :id}   {}
+                       :model/Card       {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                       :model/Document   {doc-id :id}    {:collection_id write-id
+                                                          :content_type  prose-mirror/prose-mirror-content-type
+                                                          :document      {:type "doc" :content []}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
+          (let [good    (fn [] {:name (mt/random-name) :display "table" :visualization_settings {} :dataset_query (mt/mbql-query venues)})
+                three   (fn [second-card third-card] {"-1" (good) "-2" second-card "-3" third-card})
+                orders  (fn [] (assoc (good) :dataset_query (mt/mbql-query orders)))
+                field   (fn [] (assoc (good) :parameters [{:id "p" :name "p" :slug "p" :type "category"
+                                                           :target [:dimension [:field (mt/id :orders :total) nil]]}]))
+                ast     (documents.test-util/cards->prose-mirror-ast [-1 -2 -3])
+                counts  (fn [] [(t2/count :model/Document) (t2/count :model/Card)])
+                post!   (fn [collection-id cards status]
+                          (mt/user-http-request :rasta :post status "document/"
+                                                {:name (mt/random-name) :collection_id collection-id :document ast :cards cards}))
+                put!    (fn [cards status]
+                          (mt/user-http-request :rasta :put status (format "document/%d" doc-id) {:document ast :cards cards}))
+                refused (fn [f expected-message]
+                          (let [before (counts)]
+                            (is (= expected-message (f)))
+                            (is (= before (counts)) "nothing is written")))]
+            (doseq [[label cards message]
+                    [["a query on a table the user cannot query" (three (orders) (good)) "You cannot save this Question because you do not have permissions to run its query."]
+                     ["a parameter field the user cannot see"    (three (field) (good))  "You must have data permissions to add a parameter referencing this Field."]
+                     ["a source card the user cannot read"       (three (assoc (good) :source_card_id secret-id) (good)) "You don't have permissions to do that."]
+                     ["the first refused card in order"          (three (orders) (field)) "You cannot save this Question because you do not have permissions to run its query."]]]
+              (testing (str "POST /api/document with " label)
+                (refused #(post! write-id cards 403) message))
+              (testing (str "PUT /api/document/:id with " label)
+                (refused #(put! cards 403) message)))
+            (testing "POST /api/document with cards in a collection the user cannot write"
+              (refused #(post! read-id (three (good) (good)) 403) "You don't have permissions to do that."))
+            (testing "cards the user may create are saved by both endpoints"
+              (is (some? (post! write-id (three (good) (good)) 200)))
+              (is (some? (put! (three (good) (good)) 200))))))))))

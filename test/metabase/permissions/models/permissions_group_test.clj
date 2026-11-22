@@ -2,12 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.api-test-util :as perm-test-util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.users.models.user :as user]
@@ -259,3 +261,81 @@
     (testing "renaming a group that is not magic works"
       (t2/update! :model/PermissionsGroup :id group-id {:name "Renamed Test Group"})
       (is (= "Renamed Test Group" (t2/select-one-fn :name :model/PermissionsGroup :id group-id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [create! (fn [n]
+                    (perms-group/create-permissions-groups!
+                     (mapv (fn [i] (cond-> {:name (mt/random-name)} (odd? i) (assoc :is_tenant_group true))) (range n))))
+          counted (fn [write! n]
+                    (let [groups (create! n)]
+                      (events.tu/statement-count! #(write! groups))))]
+      (testing "creating groups, regular and tenant ones"
+        (events.tu/statement-count! #(create! 1))
+        (is (= (events.tu/statement-count! #(create! 2))
+               (events.tu/statement-count! #(create! 6)))))
+      (testing "updating groups that keep their names"
+        (let [update! (fn [groups]
+                        (perms-group/update-permissions-groups! (mapv #(select-keys % [:id :name]) groups)))]
+          (counted update! 1)
+          (is (= (counted update! 2) (counted update! 6)))))
+      (testing "deleting groups, some of them in the LDAP group mappings"
+        (let [delete! (fn [groups]
+                        (mt/with-temporary-setting-values [ldap-group-mappings {"cn=Test,dc=example,dc=com"
+                                                                                (into [] (comp (take-nth 2) (map :id)) groups)}]
+                          (perms-group/delete-permissions-groups! (mapv :id groups))))]
+          (counted delete! 1)
+          (is (= (counted delete! 2) (counted delete! 6))))))))
+
+(deftest create-permissions-groups-refuses-taken-names-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [[existing] (perms-group/create-permissions-groups! [{:name (mt/random-name)}])
+          fresh      (mt/random-name)]
+      (testing "the name of an existing group, in another case, writes nothing"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
+                              (perms-group/create-permissions-groups! [{:name fresh} {:name (u/upper-case-en (:name existing))}])))
+        (is (not (t2/exists? :model/PermissionsGroup :name fresh))))
+      (testing "two rows of one call with the same name, in another case, write nothing"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
+                              (perms-group/create-permissions-groups! [{:name fresh} {:name (u/upper-case-en fresh)}])))
+        (is (not (t2/exists? :model/PermissionsGroup :name fresh))))
+      (testing "groups with free names get the default permissions of every Database"
+        (let [groups (perms-group/create-permissions-groups! [{:name fresh} {:name (mt/random-name) :is_tenant_group true}])]
+          (is (= [fresh false] ((juxt :name :is_tenant_group) (first groups))))
+          (doseq [group groups]
+            (is (t2/exists? :model/DataPermissions :group_id (:id group) :db_id (mt/id)))))))))
+
+(deftest delete-permissions-groups-refuses-magic-groups-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [[group] (perms-group/create-permissions-groups! [{:name (mt/random-name)}])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot edit or delete"
+                            (perms-group/delete-permissions-groups! [(:id group) (:id (perms-group/admin))])))
+      (is (t2/exists? :model/PermissionsGroup :id (:id group))))))
+
+(deftest delete-permissions-groups-drops-them-from-ldap-group-mappings-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [[kept dropped-1 dropped-2] (perms-group/create-permissions-groups! (vec (repeatedly 3 #(hash-map :name (mt/random-name)))))]
+      (mt/with-temporary-setting-values [ldap-group-mappings {"cn=A,dc=example,dc=com" [(:id kept) (:id dropped-1)]
+                                                              "cn=B,dc=example,dc=com" [(:id dropped-2)]}]
+        (perms-group/delete-permissions-groups! [(:id dropped-1) (:id dropped-2)])
+        (is (= {"cn=A,dc=example,dc=com" [(:id kept)]
+                "cn=B,dc=example,dc=com" []}
+               (update-keys (setting/get :ldap-group-mappings) str)))))))
+
+(deftest update-permissions-groups-refuses-in-input-order-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [[group taken] (perms-group/create-permissions-groups! [{:name (mt/random-name)} {:name (mt/random-name)}])]
+      (testing "the first refused row gives the message"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tenant group"
+                              (perms-group/update-permissions-groups! [{:id (:id group) :is_tenant_group true}
+                                                                       {:id (:id taken) :name (:name group)}])))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
+                              (perms-group/update-permissions-groups! [{:id (:id taken) :name (:name group)}
+                                                                       {:id (:id group) :is_tenant_group true}]))))
+      (testing "a rename sees the rename of an earlier row"
+        (let [new-name (mt/random-name)]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
+                                (perms-group/update-permissions-groups! [{:id (:id group) :name new-name}
+                                                                         {:id (:id taken) :name new-name}])))
+          (is (= [(:name group) (:name taken)]
+                 (mapv #(t2/select-one-fn :name :model/PermissionsGroup :id (:id %)) [group taken]))))))))

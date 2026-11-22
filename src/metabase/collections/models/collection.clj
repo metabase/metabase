@@ -591,6 +591,18 @@
                                 (root-collection-with-ui-details root-namespace))
                               :can_write))))
 
+(defn can-write-all-collections-or-root?
+  "Whether the current user can write every one of the Collections with `collection-ids`, nil for the root Collection of
+  the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, from one read of the Collections
+  and one answer for all of them. False when one does not exist, which that function answers with a 404."
+  [collection-ids {:keys [root-namespace]}]
+  (let [ids    (into [] (comp (remove nil?) (distinct)) collection-ids)
+        stored (if (seq ids) (collections.db/collections-by-id ids) {})]
+    (and (= (count stored) (count ids))
+         (every? mi/can-write? (t2/hydrate (vec (vals stored)) :can_write))
+         (or (not-any? nil? collection-ids)
+             (mi/can-write? (t2/hydrate (root-collection-with-ui-details root-namespace) :can_write))))))
+
 (def collection-content-models
   "The models whose rows live in a Collection, by their `collection_id`."
   [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Exploration :model/Action
@@ -2663,20 +2675,39 @@
 (defn- archived-columns
   "The `archived_directly` and `archive_operation_id` that a change of `archived` gives `row`, the Collection an update
   with `changes` leaves, in `parent`: a write that carries an archive operation is the cascade of an archive and gives
-  an inherited archive."
-  [row changes parent]
+  an inherited archive, and one that archives on its own gets `operation-id`."
+  [row changes parent operation-id]
   (let [directly (cond
                    (contains? changes :archived_directly) (:archived_directly changes)
                    (and (:archived row) (some? (:archive_operation_id changes))) false
                    :else (boolean (and (:archived row) (not (:archived parent)))))]
     (cond-> {:archived_directly directly}
       (not (contains? changes :archive_operation_id))
-      (assoc :archive_operation_id (when (and (:archived row) directly) (str (random-uuid)))))))
+      (assoc :archive_operation_id (when (and (:archived row) directly) operation-id)))))
+
+(defn- operation-ids
+  "A map from the id of each of the update `entries` that archives its Collection to the id of the archive operation it
+  starts: the Collections that archive together and are not under one another share one, so that restoring one brings
+  back what its archive took down and nothing of another operation, with one id for each depth of Collections under
+  others that archive."
+  [entries]
+  (let [archiving (filterv #(:archived (:changes %)) entries)
+        by-depth  (zipmap (range (inc (count archiving))) (repeatedly #(str (random-uuid))))]
+    (into {}
+          (map (fn [entry]
+                 (let [location (:location (merged entry))
+                       depth    (count (filter (fn [other]
+                                                 (and (not= (:id (:before other)) (:id (:before entry)))
+                                                      location
+                                                      (str/starts-with? location (children-location (:before other)))))
+                                               archiving))]
+                   [(:id (:before entry)) (get by-depth depth)])))
+          archiving)))
 
 (defn- update-columns
   "The columns to write for `entry`, an update entry, after checking that its changes can be made, `ancestors` holding
-  the Collections it passes through."
-  [{:keys [before changes] :as entry} ancestors]
+  the Collections it passes through, and `operation-id` the archive operation it starts when it archives."
+  [{:keys [before changes] :as entry} ancestors operation-id]
   (let [row    (merged entry)
         moved? (contains? changes :location)
         parent (parent-of row ancestors)]
@@ -2693,7 +2724,7 @@
     (merge changes
            (remote-synced-columns row changes parent)
            (when (:name changes) {:slug (slugify (:name changes))})
-           (when (contains? changes :archived) (archived-columns row changes parent)))))
+           (when (contains? changes :archived) (archived-columns row changes parent operation-id)))))
 
 (defn- update-permissions-of-moves!
   "Adjusts the permissions of the moved update `entries`: a Collection that leaves a Personal Collection gets those of
@@ -2826,7 +2857,8 @@
                             {})
                _          (run! #(check-ancestors-exist (merged %) ancestors) moved)
                _          (check-single-library-update entries)
-               columns    (mapv #(update-columns % ancestors) entries)
+               operations (operation-ids entries)
+               columns    (mapv #(update-columns % ancestors (get operations (:id (:before %)))) entries)
                by-id      (zipmap (map (comp :id :before) entries) columns)]
            (when (seq moved)
              (update-permissions-of-moves! moved ancestors))

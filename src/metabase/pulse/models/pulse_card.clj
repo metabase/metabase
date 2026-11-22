@@ -22,15 +22,6 @@
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
-(defn next-position-for
-  "Return the next available `pulse_card.position` for the given `pulse`"
-  [pulse-id]
-  {:pre [(integer? pulse-id)]}
-  (-> (pulse.db/max-pulse-card-position pulse-id)
-      :max
-      (some-> inc)
-      (or 0)))
-
 (def NewPulseCard
   "What a caller gives to append a PulseCard, which takes the defaults of its other columns."
   [:map {:closed true}
@@ -55,15 +46,17 @@
 (mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.create]
   "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
-    {:card_id           card_id
-     :pulse_id          pulse_id
-     :dashboard_card_id dashboard_card_id
-     :position          (u/or-with some? position (next-position-for pulse_id))
-     :include_csv       (boolean include_csv)
-     :include_xls       (boolean include_xls)
-     :format_rows       (boolean format_rows)
-     :pivot_results     (boolean pivot_results)}))
+  (let [max-positions (when-let [pulse-ids (not-empty (into [] (comp (remove :position) (map :pulse_id) (distinct)) new-pulse-cards))]
+                        (pulse.db/max-pulse-card-positions pulse-ids))]
+    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
+      {:card_id           card_id
+       :pulse_id          pulse_id
+       :dashboard_card_id dashboard_card_id
+       :position          (u/or-with some? position (if-let [max-position (get max-positions pulse_id)] (inc max-position) 0))
+       :include_csv       (boolean include_csv)
+       :include_xls       (boolean include_xls)
+       :format_rows       (boolean format_rows)
+       :pivot_results     (boolean pivot_results)})))
 
 (mu/defn append-pulse-cards! :- [:sequential ::pulse.schema/pulse-card]
   "Create new PulseCards as [[create-pulse-cards!]] does, joining the given card, pulse, and dashboard card and setting
@@ -71,10 +64,11 @@
   [new-pulse-cards :- [:sequential NewPulseCard]]
   (create-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards))))
 
-(mu/defn delete-pulse-cards-for-pulse! :- :boolean
-  "Delete the PulseCards of the Pulse with `pulse-id` and return whether there were any."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (pos? (pulse.db/delete-pulse-cards-for-pulse! pulse-id)))
+(mu/defn delete-pulse-cards-for-pulses! :- :boolean
+  "Delete the PulseCards of the Pulses with `pulse-ids` and return whether there were any."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (boolean (when (seq pulse-ids)
+             (pos? (pulse.db/delete-pulse-cards-for-pulses! pulse-ids)))))
 
 (mu/defn delete-pulse-cards-for-dashcards! :- :nil
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`."

@@ -82,7 +82,7 @@
   with-additional-table-permission
   user-has-transforms-permission-anywhere?
   user-has-transforms-permission-for-database?
-  set-default-group-permissions!
+  set-default-groups-permissions!
   set-default-database-permissions!
   set-default-databases-permissions!
   set-default-table-permissions!

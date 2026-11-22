@@ -9,8 +9,10 @@
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -2502,3 +2504,170 @@
                                                                       :query    {:source-table (str "card__" (:id source))}})}])
         (is (=? {:database_id (mt/id) :table_id (mt/id :venues) :source_card_id (:id source)}
                 (t2/select-one :model/Card :id (:id card))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {from-id :id}      {}
+                 :model/Collection {to-id :id}        {}
+                 :model/Dashboard  {dashboard-id :id} {:collection_id from-id}]
+    (mt/with-model-cleanup [:model/ModerationReview :model/Card :model/Collection]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp       (mt/metadata-provider)
+              query    (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              changed  (lib/filter query (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1))
+              rows     (fn [n] (cards-with-metadata n from-id))
+              fresh!   (fn [n] (mapv :id (card/create-cards! (rows n))))
+              update!  (fn [prepare rows-fn n]
+                         (let [ids (fresh! n)]
+                           (prepare (take-nth 2 ids))
+                           (events.tu/statement-count! #(card/update-cards! (rows-fn ids)))))
+              counted  (fn [f]
+                         (f 1)
+                         (is (= (f 2) (f 6))))]
+          (testing "creating cards, some of them models and some dashboard questions"
+            (counted (fn [n]
+                       (let [rows (mapv (fn [i row]
+                                          (cond-> row
+                                            (odd? i)  (assoc :type :model)
+                                            (even? i) (-> (dissoc :collection_id) (assoc :dashboard_id dashboard-id))))
+                                        (range n)
+                                        (rows n))]
+                         (events.tu/statement-count! #(card/create-cards! rows))))))
+          (testing "updating columns, some already holding the new value"
+            (counted (partial update!
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :name "Same"}) ids)))))
+          (testing "archiving cards, some already archived"
+            (counted (partial update!
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+          (testing "restoring cards, some already live"
+            (counted (partial update!
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+          (testing "moving cards, some already in the Collection"
+            (counted (partial update!
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :collection_id to-id}) ids)))))
+          (testing "moving cards from a Collection of their own each to one Collection"
+            (counted (fn [n]
+                       (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
+                             ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
+                                           sources)]
+                         (events.tu/statement-count!
+                          #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
+          (testing "changing the type of cards, some already of the type"
+            (counted (partial update!
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :type :model}) ids)))))
+          (testing "changing the query of cards, some of them verified"
+            (counted (fn [n]
+                       (let [ids (fresh! n)]
+                         (moderation-review/create-moderation-reviews!
+                          (mapv (fn [id] {:moderated_item_id id :moderated_item_type "card" :moderator_id (mt/user->id :crowberto)
+                                          :status "verified" :text "review"})
+                                (take-nth 2 (rest ids))))
+                         (card/update-cards! (mapv (fn [id] {:id id :dataset_query changed}) (take-nth 2 ids)))
+                         (events.tu/statement-count!
+                          #(card/update-cards! (mapv (fn [id] {:id id :dataset_query changed}) ids)))))))
+          (testing "deleting cards"
+            (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(card/delete-cards! ids))))))
+          (testing "touching and counting uses"
+            (counted (fn [n]
+                       (let [ids (fresh! n)]
+                         (events.tu/statement-count!
+                          #(card/touch-last-used! (zipmap ids (repeat (java.time.Instant/now))))))))
+            (counted (fn [n]
+                       (let [ids (fresh! n)]
+                         (events.tu/statement-count! #(card/increment-view-counts! {3 ids}))))))
+          (testing "invalidating cached results"
+            (counted (fn [n]
+                       (let [ids (fresh! n)]
+                         (events.tu/statement-count! #(card/invalidate-cached-results! ids (java.time.Instant/now)))))))
+          (testing "placing new dashboard questions"
+            (counted (fn [n]
+                       (let [rows  (mapv (fn [row] (-> row (dissoc :collection_id) (assoc :dashboard_id dashboard-id))) (rows n))
+                             cards (card/create-cards! rows)]
+                         (events.tu/statement-count! #(card/place-new-dashboard-questions! cards rows)))))))))))
+
+(deftest can-create-all-answers-as-create-check-does-test
+  (mt/with-temp [:model/Collection writable   {}
+                 :model/Collection read-only  {}
+                 :model/Collection hidden     {}
+                 :model/Collection tl-coll    {}
+                 :model/Timeline   timeline   {:collection_id (:id tl-coll)}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+    (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+    (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
+    (perms/revoke-collection-permissions! (perms-group/all-users) tl-coll)
+    (let [in            (fn [collection] {:collection_id (:id collection)})
+          selecting     (fn [collection] (assoc (in collection) :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}))
+          answers       (fn [cards]
+                          {:bulk     (card/can-create-all? (mapv (fn [c] [c nil]) cards))
+                           :one-each (every? #(mi/can-create? :model/Card %) cards)})
+          check!        (fn [expected cards]
+                          (is (= {:bulk expected :one-each expected} (answers cards))))]
+      (mt/with-test-user :rasta
+        (testing "a user with write access to every Collection"
+          (check! true [(in writable) (in writable)]))
+        (testing "a Collection that the user only reads, not first"
+          (check! false [(in writable) (in read-only) (in writable)]))
+        (testing "a Collection that the user cannot see"
+          (check! false [(in writable) (in hidden)]))
+        (testing "a timeline that the user cannot read, not first"
+          (check! false [(in writable) (selecting tl-coll)])
+          (check! false [(assoc (selecting tl-coll) :collection_id (:id writable)) (in writable)]))
+        (testing "the root Collection"
+          (check! (boolean (mi/can-create? :model/Card {:collection_id nil})) [(in writable) {:collection_id nil}])))
+      (mt/with-test-user :crowberto
+        (testing "a superuser"
+          (check! true [(in writable) (in read-only) (in hidden) (selecting tl-coll) {:collection_id nil}]))))
+    (testing "a Collection that does not exist is not answered in bulk, which leaves the 404 to the single check"
+      (mt/with-test-user :rasta
+        (is (false? (card/can-create-all? [[{:collection_id Integer/MAX_VALUE} nil]])))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found" (mi/can-create? :model/Card {:collection_id Integer/MAX_VALUE})))))))
+
+(deftest new-dashboard-questions-timeline-permissions-test
+  (mt/with-temp [:model/Collection tl-coll   {}
+                 :model/Timeline   timeline  {:collection_id (:id tl-coll)}
+                 :model/Dashboard  dashboard {:public_uuid (str (random-uuid))}
+                 :model/Dashboard  private   {}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) tl-coll)
+    (let [row     (fn [dashboard-id selecting?]
+                    (cond-> {:dashboard_id dashboard-id :display :line :visualization_settings {}}
+                      selecting? (assoc :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]})))
+          check!  card/check-new-dashboard-questions-timeline-permissions!]
+      (testing "a row that selects a timeline the user cannot read, not first, on a shared dashboard"
+        (mt/with-test-user :rasta
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                (check! [(row (:id dashboard) false) (row (:id dashboard) true) (row (:id dashboard) false)])))
+          (testing "with the display given as a string"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (check! [(assoc (row (:id dashboard) true) :display "line")]))))))
+      (testing "a dashboard that is not shared needs no timeline permission"
+        (mt/with-test-user :rasta
+          (is (nil? (check! [(row (:id private) true)])))))
+      (testing "a superuser reads every timeline"
+        (mt/with-test-user :crowberto
+          (is (nil? (check! [(row (:id dashboard) true)])))))
+      (testing "once the user can read the timeline"
+        (perms/grant-collection-read-permissions! (perms-group/all-users) tl-coll)
+        (mt/with-test-user :rasta
+          (is (nil? (check! [(row (:id dashboard) true) (row (:id dashboard) true)])))))
+      (testing "the statements do not grow with the rows"
+        (mt/with-test-user :rasta
+          (let [counted (fn [n] (events.tu/statement-count! #(check! (repeat n (row (:id dashboard) true)))))]
+            (counted 1)
+            (is (= (counted 2) (counted 6)))))))))
+
+(deftest place-new-dashboard-questions-statement-counts-test
+  (mt/with-model-cleanup [:model/DashboardCard :model/Card]
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (let [new-cards (fn [n]
+                        (let [rows  (mapv (fn [_] (assoc (mt/with-temp-defaults :model/Card) :dashboard_id (:id dashboard) :display :line)) (range n))
+                              cards (mapv (fn [row] (t2/select-one :model/Card :id (t2/insert-returning-pk! :model/Card row))) rows)]
+                          [cards (mapv (fn [_] {:dashboard_id (:id dashboard)}) cards)]))
+            counted   (fn [n]
+                        (let [[cards rows] (new-cards n)]
+                          (events.tu/statement-count! #(card/place-new-dashboard-questions! cards rows))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

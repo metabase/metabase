@@ -942,53 +942,52 @@
   []
   (m/map-vals (fn [{:keys [values]}] (last values)) permissions.schema/data-permissions))
 
-(defn set-default-group-permissions!
-  "Bulk-sets default permissions for a newly-created group across all databases.
-   When `use-all-users-perms?` is true (regular groups), values are based on the All Users group's
-   current permissions. When false (tenant/external groups), uses the most restrictive values.
-   Uses batch SQL operations instead of per-row mutations."
-  [group-or-id db-ids use-all-users-perms?]
-  (when (seq db-ids)
-    (let [group-id (u/the-id group-or-id)]
-      (if-not use-all-users-perms?
-        ;; External/tenant groups: all least-permissive values (static, no queries needed)
-        (data-permissions/create-data-permissions!
-         (for [db-id db-ids
-               [perm-type perm-value] (least-permissive-defaults)]
-           {:perm_type  perm-type
-            :group_id   group-id
-            :perm_value perm-value
-            :db_id      db-id}))
-        ;; Regular groups: compute based on All Users group
-        (let [au-id    (permissions.db/group-id-by-magic-type "all-internal-users")
-              au-perms (permissions.db/distinct-database-permission-values-for-group au-id)
-              au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
-                                 (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
-                               {}
-                               au-perms)
-              view-data-levels (new-group-view-data-permission-levels db-ids)]
-          (data-permissions/create-data-permissions!
-           (for [db-id db-ids
-                 :let [view-data-level (get view-data-levels db-id :unrestricted)
-                       cq-values (get-in au-by-db [db-id :perms/create-queries])
-                       cq-level  (or (when (seq cq-values) (coalesce-most-restrictive :perms/create-queries cq-values))
-                                     :query-builder-and-native)
-                       dl-values (get-in au-by-db [db-id :perms/download-results])
-                       dl-level  (or (when (seq dl-values) (coalesce-most-restrictive :perms/download-results dl-values))
-                                     :one-million-rows)
-                       perm-map  (cond-> {:perms/view-data             view-data-level
-                                          :perms/create-queries        cq-level
-                                          :perms/download-results      dl-level
-                                          :perms/manage-table-metadata :no
-                                          :perms/manage-database       :no}
-                                   (or (not= view-data-level :unrestricted)
-                                       (not= cq-level :query-builder-and-native))
-                                   (assoc :perms/transforms :no))]
-                 [perm-type perm-value] perm-map]
-             {:perm_type  perm-type
-              :group_id   group-id
-              :perm_value perm-value
-              :db_id      db-id})))))))
+(defn- regular-group-default-permissions
+  "The `{db-id {perm-type value}}` defaults of a new regular group on the Databases with `db-ids`, which follow the
+  current permissions of the All Users group."
+  [db-ids]
+  (let [au-id            (permissions.db/group-id-by-magic-type "all-internal-users")
+        au-perms         (permissions.db/distinct-database-permission-values-for-group au-id)
+        au-by-db         (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
+                                   (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
+                                 {}
+                                 au-perms)
+        view-data-levels (new-group-view-data-permission-levels db-ids)]
+    (into {}
+          (for [db-id db-ids
+                :let [view-data-level (get view-data-levels db-id :unrestricted)
+                      cq-values (get-in au-by-db [db-id :perms/create-queries])
+                      cq-level  (or (when (seq cq-values) (coalesce-most-restrictive :perms/create-queries cq-values))
+                                    :query-builder-and-native)
+                      dl-values (get-in au-by-db [db-id :perms/download-results])
+                      dl-level  (or (when (seq dl-values) (coalesce-most-restrictive :perms/download-results dl-values))
+                                    :one-million-rows)]]
+            [db-id (cond-> {:perms/view-data             view-data-level
+                            :perms/create-queries        cq-level
+                            :perms/download-results      dl-level
+                            :perms/manage-table-metadata :no
+                            :perms/manage-database       :no}
+                     (or (not= view-data-level :unrestricted)
+                         (not= cq-level :query-builder-and-native))
+                     (assoc :perms/transforms :no))]))))
+
+(defn set-default-groups-permissions!
+  "Bulk-sets default permissions for the newly-created `groups` across the Databases with `db-ids`, in one insert:
+   regular groups follow the All Users group's current permissions, tenant groups get the most restrictive values."
+  [groups db-ids]
+  (when (and (seq groups) (seq db-ids))
+    (let [regular? (complement :is_tenant_group)
+          regular  (when (some regular? groups)
+                     (regular-group-default-permissions db-ids))
+          tenant   (zipmap db-ids (repeat (least-permissive-defaults)))]
+      (data-permissions/create-data-permissions!
+       (for [group                  groups
+             db-id                  db-ids
+             [perm-type perm-value] (get (if (regular? group) regular tenant) db-id)]
+         {:perm_type  perm-type
+          :group_id   (u/the-id group)
+          :perm_value perm-value
+          :db_id      db-id})))))
 
 (defn set-default-databases-permissions!
   "Bulk-sets default permissions for newly-created `databases` across all `groups`, in one insert.

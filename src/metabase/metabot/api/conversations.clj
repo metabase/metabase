@@ -222,13 +222,14 @@
   ;; Create the card and stamp its origin in ONE transaction so they cannot desync.
   ;; The stamp is a raw table update — it should not run the Card model's heavy
   ;; before-update pipeline (query normalization, metadata population).
-  (let [created (t2/with-transaction [_conn]
-                  (let [row       (-> (select-keys card [:name :description :dataset_query :display
-                                                         :visualization_settings :collection_id
-                                                         :dashboard_id :dashboard_tab_id])
-                                      (update :display keyword)
-                                      (update :visualization_settings #(or % {})))
-                        [created] (queries.card/create-cards!
+  (let [row     (-> (select-keys card [:name :description :dataset_query :display
+                                       :visualization_settings :collection_id
+                                       :dashboard_id :dashboard_tab_id])
+                    (update :display keyword)
+                    (update :visualization_settings #(or % {})))
+        _       (queries.card/check-new-dashboard-questions-timeline-permissions! [row])
+        created (t2/with-transaction [_conn]
+                  (let [[created] (queries.card/create-cards!
                                    [(queries.card/new-card-row row api/*current-user-id*)])]
                     (queries.card/place-new-dashboard-questions! [created] [row])
                     (queries.card/link-to-metabot-conversation! (:id created) id chart_id)

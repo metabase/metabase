@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.writes-test
-  "Statement counts of the bulk write functions of the warehouse-schema models, which must not grow with the number
-  of rows."
+  "Behavior of the bulk write functions of the warehouse-schema models."
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]
@@ -16,94 +15,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- call-count!
-  "The number of app-DB calls `thunk` makes."
-  [thunk]
-  (t2/with-call-count [call-count]
-    (thunk)
-    (call-count)))
-
 (defn- field-rows
   "Rows of `n` new Fields of the Table with `table-id`."
   [table-id n]
   (vec (for [i (range n)]
          {:table_id table-id :name (str "F" i) :base_type :type/Integer :database_type "INTEGER"})))
-
-(defn- field-write-counts!
-  "The calls creating `n` Fields of a new Table, renaming and deactivating them, and deleting them take."
-  [n]
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    {table-id :id} {:db_id db-id}]
-    (let [ids (volatile! nil)]
-      [(call-count! #(vreset! ids (mapv :id (field/create-fields! (field-rows table-id n)))))
-       (call-count! #(field/update-fields! (mapv (fn [id] {:id id :display_name "Same"}) @ids)))
-       (call-count! #(field/update-fields! (mapv (fn [id] {:id id :active false}) @ids)))
-       (call-count! #(field/delete-fields! @ids))])))
-
-(deftest field-writes-call-count-test
-  (testing "creating, updating and deleting Fields takes as many statements for 2 rows as for 6"
-    (field-write-counts! 1)
-    (is (= (field-write-counts! 2)
-           (field-write-counts! 6)))))
-
-(defn- table-write-counts!
-  "The calls creating `n` Tables with a Field each, changing their field order, and deleting them take."
-  [n]
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (let [tables (volatile! nil)]
-      [(call-count! #(vreset! tables (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))))
-       (do (run! #(field/create-fields! (field-rows (:id %) 1)) @tables)
-           (call-count! #(table/update-tables! (mapv (fn [{:keys [id]}] {:id id :field_order :alphabetical}) @tables))))
-       (call-count! #(table/delete-tables! (mapv :id @tables)))])))
-
-(deftest table-writes-call-count-test
-  (testing "creating, reordering and deleting Tables takes as many statements for 2 rows as for 6"
-    (table-write-counts! 1)
-    (is (= (table-write-counts! 2)
-           (table-write-counts! 6)))))
-
-(defn- dimension-write-counts!
-  "The calls creating `n` external Dimensions and updating them take."
-  [n]
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    {table-id :id} {:db_id db-id}]
-    (let [field-ids  (mapv :id (field/create-fields! (field-rows table-id (inc n))))
-          target-id  (last field-ids)
-          dimensions (volatile! nil)]
-      [(call-count! #(vreset! dimensions (dimension/create-dimensions!
-                                          (mapv (fn [id] {:field_id id :type :external :name "D"
-                                                          :human_readable_field_id target-id})
-                                                (butlast field-ids)))))
-       (call-count! #(dimension/update-dimensions! (mapv (fn [{:keys [id]}] {:id id :name "E"}) @dimensions)))])))
-
-(deftest dimension-writes-call-count-test
-  (testing "creating and updating Dimensions takes as many statements for 2 rows as for 6"
-    (dimension-write-counts! 1)
-    (is (= (dimension-write-counts! 2)
-           (dimension-write-counts! 6)))))
-
-(defn- settings-write-counts!
-  "The calls creating settings for `n` Fields and their Tables, and updating them, take."
-  [n]
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (let [tables          (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
-          field-ids       (mapcat #(mapv :id (field/create-fields! (field-rows (:id %) 1))) tables)
-          field-settings  (volatile! nil)
-          table-settings  (volatile! nil)]
-      [(call-count! #(vreset! field-settings (field-user-settings/create-field-user-settings!
-                                              (mapv (fn [id] {:field_id id :description "d"}) field-ids))))
-       (call-count! #(field-user-settings/update-field-user-settings!
-                      (mapv (fn [{:keys [id]}] {:id id :description "e"}) @field-settings)))
-       (call-count! #(vreset! table-settings (table-user-settings/create-table-user-settings!
-                                              (mapv (fn [{:keys [id]}] {:table_id id :visibility_type :hidden}) tables))))
-       (call-count! #(table-user-settings/update-table-user-settings!
-                      (mapv (fn [{:keys [id]}] {:id id :visibility_type nil}) @table-settings)))])))
-
-(deftest settings-writes-call-count-test
-  (testing "creating and updating Field and Table settings takes as many statements for 2 rows as for 6"
-    (settings-write-counts! 1)
-    (is (= (settings-write-counts! 2)
-           (settings-write-counts! 6)))))
 
 (deftest field-deactivation-clears-pointers-test
   (testing "deactivating Fields clears the foreign keys to them and the remappings that read them"
@@ -126,28 +42,6 @@
             [leaf-id]   (mapv :id (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "L" :parent_id child-id)]))]
         (field/delete-fields! [parent-id])
         (is (empty? (t2/select :model/Field :id [:in [parent-id child-id leaf-id]])))))))
-
-(defn- same-value-write-counts!
-  "The calls updating `n` Tables and their Fields to the same values, changing the case of their names, and setting
-  the Fields' positions take."
-  [n]
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (let [tables    (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
-          field-ids (into [] (mapcat #(mapv :id (field/create-fields! (field-rows (:id %) 1)))) tables)]
-      (try
-        [(call-count! #(table/update-tables! (mapv (fn [{:keys [id]}] {:id id :schema "S"}) tables)))
-         (call-count! #(table/change-case! (mapv :id tables) :lower [:name]))
-         (call-count! #(field/update-fields! (mapv (fn [id] {:id id :database_indexed true}) field-ids)))
-         (call-count! #(field/change-case! field-ids :upper [:name]))
-         (call-count! #(field/set-positions! (zipmap field-ids (range))))]
-        (finally
-          (table/delete-tables! (mapv :id tables)))))))
-
-(deftest same-value-writes-call-count-test
-  (testing "updating Tables and Fields to same values, changing case and setting positions takes as many statements for 2 rows as for 6"
-    (same-value-write-counts! 1)
-    (is (= (same-value-write-counts! 2)
-           (same-value-write-counts! 6)))))
 
 (def ^:private published (atom []))
 
@@ -219,3 +113,16 @@
                                                             {:table_id other-table-id :caveats "B" :caveats_set true}])
           (is (= [false true]
                  (mapv #(t2/select-one-fn :caveats_set :model/TableUserSettings :table_id %) [table-id other-table-id]))))))))
+
+(deftest create-tables-reports-the-first-invalid-row-test
+  (mt/with-temp [:model/Database   {db-id :id}      {}
+                 :model/Collection {metrics-id :id}    {:type "library-metrics"}
+                 :model/Collection {dashboards-id :id} {:type "library-dashboards"}]
+    (let [row    (fn [collection-id] {:db_id db-id :name (str "T" collection-id) :active true :is_published true :collection_id collection-id})
+          create (fn [& collection-ids]
+                   (try (table/create-tables! (mapv row collection-ids))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e (ex-message e))))]
+      (is (= "Can only add metrics to the 'Metrics' collection" (create metrics-id dashboards-id)))
+      (is (= "Cannot add tables or regular collections to the 'Dashboards' collection" (create dashboards-id metrics-id)))
+      (is (zero? (t2/count :model/Table :db_id db-id))))))

@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as auth-identity.model]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -169,3 +171,18 @@
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
+
+(deftest expire-auth-identities-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/User {user-1 :id} {}
+                 :model/User {user-2 :id} {}
+                 :model/User {user-3 :id} {}
+                 :model/User {user-4 :id} {}
+                 :model/User {user-5 :id} {}
+                 :model/User {user-6 :id} {}]
+    (mt/with-model-cleanup [:model/AuthIdentity]
+      (doseq [user-id [user-1 user-2 user-3 user-4 user-5 user-6]]
+        (auth-identity.model/create-auth-identity! {:user_id user-id :provider "emailed-secret-password-reset"}))
+      (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
+            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/expire-auth-identities! (vec (take n ids)) (t/instant))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

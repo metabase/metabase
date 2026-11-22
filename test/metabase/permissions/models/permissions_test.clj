@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -276,3 +277,35 @@
           (mt/with-test-user :rasta
             (is (false? (mi/can-write? (t2/hydrate instance :can_write))))
             (is (false? (mi/can-read? (t2/hydrate instance :can_read))))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {c-1 :id} {}
+                 :model/Collection {c-2 :id} {}
+                 :model/Collection {c-3 :id} {}
+                 :model/Collection {c-4 :id} {}
+                 :model/Collection {c-5 :id} {}
+                 :model/Collection {c-6 :id} {}]
+    (mt/with-model-cleanup [:model/PermissionsGroup]
+      (let [rows    (fn [n]
+                      (let [[group tenant-group] (perms-group/create-permissions-groups!
+                                                  [{:name (mt/random-name)} {:name (mt/random-name) :is_tenant_group true}])]
+                        (vec (map-indexed (fn [i collection-id]
+                                            (if (even? i)
+                                              {:group_id (:id group) :object (format "/collection/%d/" collection-id)}
+                                              {:group_id (:id tenant-group) :object (format "/collection/%d/read/" collection-id)}))
+                                          (take n [c-1 c-2 c-3 c-4 c-5 c-6])))))
+            ids     (fn [rows] (t2/select-pks-vec :model/Permissions :group_id [:in (map :group_id rows)]))
+            counted (fn [write! n]
+                      (let [created (rows n)]
+                        (events.tu/statement-count! #(write! created))))]
+        (testing "creating Permissions of regular and tenant groups, with write paths a tenant group cannot hold"
+          (counted perms/create-permissions! 1)
+          (is (= (counted perms/create-permissions! 2) (counted perms/create-permissions! 6))))
+        (testing "deleting Permissions"
+          (let [delete! (fn [created] (perms/create-permissions! created) (perms/delete-permissions! (ids created)))]
+            (counted delete! 1)
+            (is (= (counted delete! 2) (counted delete! 6)))))
+        (testing "deleting the Permissions of objects"
+          (let [delete! (fn [created] (perms/create-permissions! created) (perms/delete-permissions-of-objects! (mapv :object created)))]
+            (counted delete! 1)
+            (is (= (counted delete! 2) (counted delete! 6)))))))))

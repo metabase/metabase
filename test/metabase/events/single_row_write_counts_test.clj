@@ -123,3 +123,57 @@
                          #(transform/update-transforms! (mapv (fn [id] {:id id :description (str "Described " n)}) (take n [t1 t2 t3 t4 t5 t6])))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
+
+(deftest segment-create-and-delete-statement-counts-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Segment]
+      (let [mp      (mt/metadata-provider)
+            rows    (fn [n]
+                      (mapv (fn [i]
+                              {:name       (mt/random-name)
+                               :creator_id (mt/user->id :crowberto)
+                               :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                       (lib/> (lib.metadata/field mp (mt/id :orders :total)) i))})
+                            (range n)))
+            create! (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(segment/create-segments! rows))))
+            delete! (fn [n] (let [ids (mapv :id (segment/create-segments! (rows n)))]
+                              (events.tu/statement-count! #(segment/delete-segments! ids))))]
+        (testing "creating segments"
+          (create! 2)
+          (is (= (create! 2) (create! 6))))
+        (testing "deleting segments"
+          (delete! 2)
+          (is (= (delete! 2) (delete! 6))))
+        (testing "creating segments whose definitions use another segment"
+          (mt/with-temp [:model/Segment {referenced :id} {}]
+            (let [rows (fn [n]
+                         (mapv (fn [_]
+                                 {:name       (mt/random-name)
+                                  :creator_id (mt/user->id :crowberto)
+                                  :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                          [:segment {:lib/uuid (str (random-uuid))} referenced])})
+                               (range n)))
+                  create! (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(segment/create-segments! rows))))]
+              (create! 2)
+              (is (= (create! 2) (create! 6))))))))))
+
+(deftest measure-create-and-delete-statement-counts-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Measure]
+      (let [mp      (mt/metadata-provider)
+            rows    (fn [n]
+                      (mapv (fn [i]
+                              {:name       (mt/random-name)
+                               :creator_id (mt/user->id :crowberto)
+                               :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                          (lib/sum (lib.metadata/field mp (mt/id :orders (if (odd? i) :subtotal :total)))))})
+                            (range n)))
+            create! (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(measure/create-measures! rows))))
+            delete! (fn [n] (let [ids (mapv :id (measure/create-measures! (rows n)))]
+                              (events.tu/statement-count! #(measure/delete-measures! ids))))]
+        (testing "creating measures"
+          (create! 2)
+          (is (= (create! 2) (create! 6))))
+        (testing "deleting measures"
+          (delete! 2)
+          (is (= (delete! 2) (delete! 6))))))))

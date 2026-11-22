@@ -459,36 +459,59 @@
                                   :dashcards (vec group)})))
 
 (defn- replace-parts!
-  "Replace the tabs, when `parts` holds `:tabs`, and the dashcards, when it holds `:dashcards`, of the Dashboard
-  `dashboard-id` by those of `parts`: the ones the new lists lack are deleted, the others updated and the new ones, which
-  have no id of the Dashboard, created. Returns the dashcards `:added` and `:removed`, and whether the write `:changed?`
-  anything."
-  [dashboard-id parts]
-  (let [current      (when (contains? parts :dashcards)
-                       (dashboards.db/dashcards dashboard-id))
-        tabs         (when (contains? parts :tabs)
-                       (dashboard-tab/replace-dashboard-tabs!
-                        dashboard-id
-                        (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                              (dashboards.db/dashboard-tabs-for-dashboards [dashboard-id]))
-                        (:tabs parts)))
-        deleted-tabs (set (:deleted-tab-ids tabs))
-        current      (remove (comp deleted-tabs :dashboard_tab_id) current)
-        current-ids  (into #{} (map :id) current)
-        new-ids      (into #{} (keep :id) (:dashcards parts))
-        dashcards    (mapv #(cond-> % (:dashboard_tab_id %) (update :dashboard_tab_id (fn [id] (get (:old->new-tab-id tabs) id id))))
-                           (:dashcards parts))
-        to-update    (filterv #(contains? current-ids (:id %)) dashcards)
-        to-create    (filterv #(not (contains? current-ids (:id %))) dashcards)
-        to-delete    (filterv #(not (contains? new-ids (:id %))) current)
-        updated      (when (seq to-update) (dashboard-card/update-dashboard-cards! to-update))
-        _            (when (seq to-delete) (dashboard-card/delete-dashboard-cards! (mapv :id to-delete)))
-        added        (when (seq to-create)
-                       (dashboard-card/create-dashboard-cards! (mapv #(assoc % :dashboard_id dashboard-id) to-create)))]
-    {:added    (vec added)
-     :removed  to-delete
-     :changed? (boolean (or (seq (:created-tab-ids tabs)) (seq (:updated-tab-ids tabs)) (seq (:deleted-tab-ids tabs))
-                            (seq updated) (seq to-delete) (seq added)))}))
+  "Replace the tabs, for each Dashboard of `parts`, a map from its id to the part lists it gives, when it holds `:tabs`,
+  and the dashcards, when it holds `:dashcards`, by those of `parts`: the ones the new lists lack are deleted, the others
+  updated and the new ones, which have no id of the Dashboard, created, with one statement for each of them. Returns, by
+  Dashboard id, the dashcards `:added` and `:removed`, and whether the write `:changed?` anything."
+  [parts]
+  (let [tabbed        (filterv #(contains? (get parts %) :tabs) (keys parts))
+        carded        (filterv #(contains? (get parts %) :dashcards) (keys parts))
+        current-cards (when (seq carded)
+                        (group-by :dashboard_id (dashboards.db/dashcards-of-dashboards carded)))
+        current-tabs  (when (seq tabbed)
+                        (group-by :dashboard_id (dashboards.db/dashboard-tabs-for-dashboards tabbed)))
+        tab-results   (zipmap tabbed
+                              (dashboard-tab/replace-dashboard-tabs!
+                               (mapv (fn [id]
+                                       {:dashboard_id id
+                                        :current-tabs (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                                            (get current-tabs id))
+                                        :new-tabs     (:tabs (get parts id))})
+                                     tabbed)))
+        plans         (into {}
+                            (map (fn [id]
+                                   (let [tabs         (get tab-results id)
+                                         deleted-tabs (set (:deleted-tab-ids tabs))
+                                         current      (remove (comp deleted-tabs :dashboard_tab_id) (get current-cards id))
+                                         current-ids  (into #{} (map :id) current)
+                                         new-ids      (into #{} (keep :id) (:dashcards (get parts id)))
+                                         dashcards    (mapv #(cond-> % (:dashboard_tab_id %)
+                                                                     (update :dashboard_tab_id (fn [tab-id] (get (:old->new-tab-id tabs) tab-id tab-id))))
+                                                            (:dashcards (get parts id)))]
+                                     [id {:to-update (filterv #(contains? current-ids (:id %)) dashcards)
+                                          :to-create (filterv #(not (contains? current-ids (:id %))) dashcards)
+                                          :to-delete (filterv #(not (contains? new-ids (:id %))) current)}])))
+                            carded)
+        to-update     (into [] (mapcat (comp :to-update val)) plans)
+        to-delete     (into [] (mapcat (comp :to-delete val)) plans)
+        updated       (set (when (seq to-update) (dashboard-card/update-dashboard-cards! to-update)))
+        _             (when (seq to-delete) (dashboard-card/delete-dashboard-cards! (mapv :id to-delete)))
+        added         (group-by :dashboard_id
+                                (when-let [to-create (not-empty
+                                                      (into []
+                                                            (mapcat (fn [[id plan]] (map #(assoc % :dashboard_id id) (:to-create plan))))
+                                                            plans))]
+                                  (dashboard-card/create-dashboard-cards! to-create)))]
+    (into {}
+          (map (fn [id]
+                 (let [tabs (get tab-results id)
+                       plan (get plans id)]
+                   [id {:added    (vec (get added id))
+                        :removed  (vec (:to-delete plan))
+                        :changed? (boolean (or (seq (:created-tab-ids tabs)) (seq (:updated-tab-ids tabs)) (seq (:deleted-tab-ids tabs))
+                                               (some #(contains? updated (:id %)) (:to-update plan))
+                                               (seq (:to-delete plan)) (seq (get added id))))}])))
+          (keys parts))))
 
 (def ^:private UpdateDashboard
   [:merge
@@ -519,10 +542,7 @@
      (if (empty? rows)
        rows
        (t2/with-transaction [_conn]
-         (let [replaced (into {} (keep (fn [{:keys [id]}]
-                                         (when-let [row-parts (get parts id)]
-                                           [id (replace-parts! id row-parts)])))
-                              rows)
+         (let [replaced (replace-parts! (select-keys parts (map :id rows)))
                rows     (mapv (fn [row]
                                 (let [cleaned (parameters-without-orphans
                                                (if (contains? row :parameters)

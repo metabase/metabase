@@ -18,6 +18,7 @@
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -518,20 +519,38 @@
         (u/prog1 (clear-fk-targets! changes field-ids)
           (dimension/delete-dimensions! (mapv :id (warehouse-schema.db/dimensions-reading-fields (vec field-ids))))))))
 
+(defn- like-regex
+  "The regular expression matching what the SQL LIKE `pattern` does, `%` any run of characters, `_` any one and a
+  backslash escaping the next."
+  [pattern]
+  (re-pattern (str "(?s)"
+                   (loop [[c & more] pattern, out ""]
+                     (cond
+                       (nil? c)  out
+                       (= c \%) (recur more (str out ".*"))
+                       (= c \_) (recur more (str out "."))
+                       (= c \\) (recur (rest more) (str out (java.util.regex.Pattern/quote (str (first more)))))
+                       :else     (recur more (str out (java.util.regex.Pattern/quote (str c)))))))))
+
 (defn- json-unfolding-changed!
   "Set the nested Fields of each of the JSON `fields` active when it now unfolds, and inactive when it no longer does,
-  returning `changes` with those updates added."
+  the last of the `fields` that a nested Field is nested under deciding, returning `changes` with those updates added;
+  the nested Fields of all of them are read in one query and written in at most two statements."
   [changes fields]
-  (reduce (fn [changes {:keys [table_id json_unfolding] field-name :name}]
-            (let [pattern (nested-fields-pattern field-name)
-                  active? (boolean json_unfolding)
-                  nested  (warehouse-schema.db/nested-fields-matching table_id pattern)]
-              (if (empty? nested)
-                changes
-                (do (warehouse-schema.db/set-nested-fields-active! table_id pattern active?)
-                    (reduce #(with-change %1 %2 {:active active?}) changes nested)))))
-          changes
-          fields))
+  (let [fields (vec fields)
+        nested (when (seq fields)
+                 (warehouse-schema.db/nested-fields-matching
+                  (mapv (fn [{:keys [table_id] field-name :name}] [table_id (nested-fields-pattern field-name)]) fields)))
+        owners (mapv (fn [{:keys [table_id json_unfolding] field-name :name}]
+                       {:table_id table_id :regex (like-regex (nested-fields-pattern field-name)) :active? (boolean json_unfolding)})
+                     fields)
+        active (fn [{:keys [table_id nfc_path]}]
+                 (let [path (json/encode nfc_path)]
+                   (:active? (last (filter #(and (= table_id (:table_id %)) (re-matches (:regex %) path)) owners)))))
+        nested (keep #(when-some [active? (active %)] [% active?]) nested)]
+    (doseq [[active? pairs] (group-by second nested)]
+      (warehouse-schema.db/set-fields-active! (mapv (comp :id first) pairs) active?))
+    (reduce (fn [changes [field active?]] (with-change changes field {:active active?})) changes nested)))
 
 (defn- with-derived-types
   "`row`, an update of the Field `stored`, with the `:coercion_strategy` and `:effective_type` that the row it leaves

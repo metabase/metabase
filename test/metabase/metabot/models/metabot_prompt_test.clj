@@ -47,3 +47,20 @@
             (is (= (delete! small) (delete! large)))))
         (finally
           (t2/delete! :model/MetabotPrompt :metabot_id metabot-id))))))
+
+(deftest update-metabot-prompts-in-mixed-states-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card    {metric-id :id}   {:type :metric}
+                 :model/Card    {model-id :id}    {:type :model}
+                 :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
+    (mt/with-model-cleanup [:model/MetabotPrompt]
+      (let [row     (fn [card-id prompt] {:metabot_id metabot-id :card_id card-id :prompt prompt})
+            kinds   (fn [n]
+                      (mapv :id (metabot-prompt/create-metabot-prompts!
+                                 (vec (mapcat (fn [_] [(row metric-id "same") (row metric-id "other") (row model-id "other")])
+                                              (range n))))))
+            counted (fn [n]
+                      (let [ids (kinds n)]
+                        (events.tu/statement-count!
+                         #(metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :card_id model-id :prompt "same"}) ids)))))]
+        (counted 1)
+        (is (= (counted 1) (counted 2)))))))

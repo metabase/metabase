@@ -7,9 +7,15 @@
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.models.document :as document]
    [metabase.documents.schema :as documents.schema]
+   [metabase.documents.test-util :as documents.tu]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.serialization.core :as serialization]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -855,3 +861,159 @@
                                                    :content_type "application/json+vnd.prose-mirror"}])]
       (is (= ["Plain" "Archived"] (map :name documents)))
       (is (= [false true] (map #(t2/select-one-fn :archived :model/Document :id (:id %)) documents))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {live :id}  {}
+                 :model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [rows    (fn [n] (mapv (fn [_] {:name (mt/random-name) :collection_id live :creator_id (mt/user->id :rasta)
+                                             :document (documents.tu/text->prose-mirror-ast "text") :content_type "application/json+vnd.prose-mirror"})
+                                    (range n)))
+              fresh!  (fn [n]
+                        (let [ids (mapv :id (document/create-documents! (rows n)))]
+                          (doseq [id ids]
+                            (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :document_id id :collection_id live)))
+                          ids))
+              update! (fn [prepare rows-fn n]
+                        (let [ids (fresh! n)]
+                          (prepare (take-nth 2 ids))
+                          (events.tu/statement-count! #(document/update-documents! (rows-fn ids)))))
+              counted (fn [f]
+                        (f 1)
+                        (is (= (f 2) (f 6))))]
+          (testing "creating documents"
+            (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(document/create-documents! rows))))))
+          (testing "updating columns, some already holding the new value"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :name "Same"}) ids)))))
+          (testing "archiving documents and their cards, some already archived"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :archived true}) ids)))))
+          (testing "restoring documents and their cards, some already live"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :archived false}) ids)))))
+          (testing "moving documents and their cards, some already in the Collection"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                              (fn [ids] (mapv (fn [id] {:id id :collection_id other}) ids)))))
+          (testing "deleting documents"
+            (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/delete-documents! ids))))))
+          (testing "counting views"
+            (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/increment-view-counts! {3 ids})))))))))))
+
+(deftest document-with-cards-statement-counts-do-not-grow-with-cards-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp      (mt/metadata-provider)
+            query   (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            cards   (fn [n]
+                      (into {} (map (fn [i] [(- (inc i)) {:name (mt/random-name) :dataset_query query :display "table"
+                                                          :visualization_settings {}}]))
+                            (range n)))
+            body    (fn [n] {:name     (mt/random-name)
+                             :document (documents.tu/cards->prose-mirror-ast (map (comp - inc) (range n)))
+                             :cards    (cards n)})
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating a document with the new cards it embeds"
+          (counted (fn [n] (let [body (body n)] (events.tu/statement-count! #(document/create-document-with-cards! body))))))
+        (testing "updating a document with the new cards it embeds"
+          (counted (fn [n]
+                     (let [existing (document/create-document-with-cards! {:name (mt/random-name) :document (documents.tu/text->prose-mirror-ast "text")})
+                           body     (select-keys (body n) [:document :cards])]
+                       (events.tu/statement-count! #(document/update-document-with-cards! existing body))))))
+        (testing "creating a document that embeds cards copied from another card"
+          (mt/with-temp [:model/Card {source-id :id} {}]
+            (counted (fn [n]
+                       (let [body (update (body n) :cards update-vals #(assoc % :source_card_id source-id))]
+                         (events.tu/statement-count! #(document/create-document-with-cards! body)))))))))))
+
+(defn- refusal
+  "The status and message of the exception `f` throws, nil when it throws none."
+  [f]
+  (try
+    (f)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      {:status (:status-code (ex-data e)) :message (ex-message e)})))
+
+(def ^:private generic-403 "You don't have permissions to do that.")
+(def ^:private query-403 "You cannot save this Question because you do not have permissions to run its query.")
+(def ^:private field-403 "You must have data permissions to add a parameter referencing this Field.")
+
+(defn- documents-and-cards
+  "The numbers of Documents and Cards."
+  []
+  [(t2/count :model/Document) (t2/count :model/Card)])
+
+(deftest document-cards-checks-before-the-write-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {write-id :id}  {}
+                       :model/Collection {read-id :id}   {}
+                       :model/Card       {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
+          (let [mp          (mt/metadata-provider)
+                venues      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                orders      (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                good        (fn [] {:name (mt/random-name) :dataset_query venues :display "table" :visualization_settings {}})
+                create!     (fn [collection-id cards]
+                              (mt/with-test-user :rasta
+                                (refusal #(let [body {:name          (mt/random-name)
+                                                      :collection_id collection-id
+                                                      :document      (documents.tu/cards->prose-mirror-ast (keys cards))
+                                                      :cards         cards}]
+                                            (document/check-creating-document-cards! body)
+                                            (document/create-document-with-cards! body)))))
+                three       (fn [second-card third-card] {-1 (good) -2 second-card -3 third-card})
+                orders-card (fn [] (assoc (good) :dataset_query orders))
+                field-card  (fn [] (assoc (good) :parameters [{:id "p" :type :category :name "p" :slug "p"
+                                                               :target [:dimension [:field (mt/id :orders :total) nil]]}]))
+                refused     (fn [expected cards & [collection-id]]
+                              (let [before (documents-and-cards)]
+                                (is (= expected (create! (or collection-id write-id) cards)))
+                                (is (= before (documents-and-cards)) "nothing is written")))]
+            (testing "cards the user may create are not refused"
+              (let [before (documents-and-cards)]
+                (is (nil? (create! write-id (three (good) (good)))))
+                (is (= [(inc (first before)) (+ 3 (second before))] (documents-and-cards)))))
+            (testing "the statements of the checks do not grow with the cards"
+              (let [counted (fn [n]
+                              (let [cards (into {} (map (fn [i] [(- (inc i)) (good)])) (range n))
+                                    body  {:collection_id write-id :document (documents.tu/cards->prose-mirror-ast (keys cards)) :cards cards}]
+                                (mt/with-test-user :rasta
+                                  (events.tu/statement-count! #(document/check-creating-document-cards! body)))))]
+                (counted 1)
+                (is (= (counted 2) (counted 6)))))
+            (testing "cards in a collection the user cannot write"
+              (refused {:status 403 :message generic-403} (three (good) (good)) read-id))
+            (testing "a card whose query reads a table the user cannot query"
+              (refused {:status 403 :message query-403} (three (orders-card) (good))))
+            (testing "a card with a native query the user has no native permission for"
+              (refused {:status 403 :message query-403}
+                       (three (assoc (good) :dataset_query (lib/native-query mp "SELECT 1")) (good))))
+            (testing "a card whose parameter draws values from a card the user cannot read"
+              (refused {:status 403 :message generic-403}
+                       (three (good)
+                              (assoc (good) :parameters [{:id "p" :type :category :name "p" :slug "p"
+                                                          :values_source_type   :card
+                                                          :values_source_config {:card_id     secret-id
+                                                                                 :value_field (mt/$ids $venues.name)}}]))))
+            (testing "a card whose parameter targets a field the user cannot see"
+              (refused {:status 403 :message field-403} (three (field-card) (good))))
+            (testing "a card copied from a card the user cannot read"
+              (refused {:status 403 :message generic-403} (three (assoc (good) :source_card_id secret-id) (good))))
+            (testing "the first card in order that the user may not create gives the error"
+              (refused {:status 403 :message query-403} (three (orders-card) (field-card)))
+              (refused {:status 403 :message field-403} (three (field-card) (orders-card)))
+              (refused {:status 403 :message generic-403} (three (assoc (good) :source_card_id secret-id) (orders-card)))
+              (refused {:status 403 :message query-403} (three (orders-card) (assoc (good) :source_card_id secret-id))))))))))

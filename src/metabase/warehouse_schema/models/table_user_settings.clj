@@ -344,7 +344,7 @@
   (t2/with-transaction [_conn]
     (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
-    (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
+    (table/update-field-positions! [(warehouse-schema.db/table (u/the-id table))])))
 
 (mu/defn unset-table-user-settings!
   "Drop the user values of the Table columns `ks` for `table` from its settings, leaving its row as it is for sync to
@@ -387,22 +387,23 @@
 
 (defn- load-legacy-fields!
   "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
-  FieldUserSettings of their Tables."
+  FieldUserSettings of their Tables, all of them in one load and one delete."
   [items]
-  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
+  (when-let [legacy (not-empty (filterv #(contains? (:entity %) :fields) items))]
     (let [kept (into #{} (map :field_id)
-                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
+                     (serialization/load :model/FieldUserSettings
+                                         (into [] (mapcat #(map serialization/restore-identity (:fields (:entity %)))) legacy)))]
       (field-user-settings/delete-field-user-settings!
-       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
+       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-tables
+                          (into #{} (map #(:table_id (:instance %))) legacy))))))))
 
 (defn- after-load
   "Loads the FieldUserSettings that the loaded TableUserSettings `items` of an older export carry, then sets the
   positions of the Fields of the Tables whose field order they load."
   [items]
   (load-legacy-fields! items)
-  (doseq [{{:keys [table_id field_order]} :instance} items
-          :when field_order]
-    (table/update-field-positions! (warehouse-schema.db/table table_id))))
+  (when-let [table-ids (not-empty (into #{} (comp (filter #(:field_order (:instance %))) (map #(:table_id (:instance %)))) items))]
+    (table/update-field-positions! (vec (vals (u/index-by :id (warehouse-schema.db/tables table-ids)))))))
 
 (defmethod collection/archive-in-collections! :model/TableUserSettings
   [_model collection-ids opts]

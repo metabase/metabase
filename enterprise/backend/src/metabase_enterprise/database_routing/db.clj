@@ -27,10 +27,10 @@
    names              :- [:sequential :string]]
   (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
 
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
+(mu/defn destination-database-exists?
+  "Whether one of the Databases with `database-ids` is a routing destination."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/exists? :model/Database :id [:in [:auto/param (vec (distinct database-ids))]] :router_database_id [:not= nil]))
 
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."
@@ -62,11 +62,6 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn router
-  "The DatabaseRouter with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/DatabaseRouter :id [:auto/param id]))
-
 (mu/defn routers-by-ids
   "The DatabaseRouters with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
@@ -77,11 +72,11 @@
   [rows :- [:sequential ::database-routing.schema/database-router.create]]
   (app-db/insert-returning-instances! :model/DatabaseRouter rows))
 
-(mu/defn update-router!
-  "Apply `changes` to the DatabaseRouter with `id`."
-  [id      :- ms/PositiveInt
+(mu/defn update-routers!
+  "Apply `changes` to the DatabaseRouters with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- (mut/dissoc ::database-routing.schema/database-router.update :id)]
-  (t2/update! :model/DatabaseRouter :id [:auto/param id] changes))
+  (t2/update! :model/DatabaseRouter :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn delete-routers!
   "Delete the DatabaseRouters with `ids`."

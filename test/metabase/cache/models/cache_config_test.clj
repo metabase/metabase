@@ -1,11 +1,13 @@
 (ns metabase.cache.models.cache-config-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.cache.schema :as cache.schema]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.queries.models.card :as card]
@@ -187,3 +189,36 @@
           (is (pos-int? (cache-config/save-cache-config! (config 3)))))
         (is (= 1 (t2/count :model/CacheConfig :model "question" :model_id card-id)))
         (is (= 3 (get-in (t2/select-one :model/CacheConfig :model "question" :model_id card-id) [:config :multiplier])))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/CacheConfig]
+    (let [next-id (atom 1000000)
+          create! (fn [n]
+                    (vec (for [_ (range n)]
+                           (cache-config/save-cache-config! {:model    "question"
+                                                             :model_id (swap! next-id inc)
+                                                             :strategy {:type :ttl :multiplier 1 :min_duration_ms 1}}))))
+          configs (fn [ids] (t2/select :model/CacheConfig :id [:in ids]))]
+      (testing "updating configs, half of them due at that time already"
+        (let [next-run (t/offset-date-time 2030 1 1)
+              now      (t/offset-date-time 2029 1 1)
+              update!  #(cache-config/update-cache-configs! (mapv (fn [id] {:id id :next_run_at next-run :invalidated_at now}) %))
+              counted  (fn [n]
+                         (let [ids (create! n)]
+                           (update! (take-nth 2 ids))
+                           (events.tu/statement-count! #(update! ids))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6)))))
+      (testing "deleting the configs of questions, half of them without one"
+        (let [counted (fn [n]
+                        (let [model-ids (mapv :model_id (configs (create! n)))]
+                          (events.tu/statement-count!
+                           #(cache-config/delete-cache-configs! "question" (into model-ids (map (partial * 10)) model-ids)))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6)))))
+      (testing "deleting the configs of deleted questions"
+        (let [counted (fn [n]
+                        (let [model-ids (mapv :model_id (configs (create! n)))]
+                          (events.tu/statement-count! #(cache-config/delete-target-configs! "question" model-ids))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))

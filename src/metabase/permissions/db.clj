@@ -239,19 +239,22 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn database-level-value? :- :boolean
-  "Whether the group with `group-id` has a database-level `perm-type` DataPermissions row of value `perm-value` on the
-  Database with `database-id`."
-  [group-id    :- ms/PositiveInt
-   database-id :- ::lib.schema.id/database
-   perm-type   :- :string
-   perm-value  :- :string]
-  (t2/exists? :model/DataPermissions {:where [:and
-                                              [:= :group_id [:auto/param group-id]]
-                                              [:= :db_id [:auto/param database-id]]
-                                              [:= :table_id nil]
-                                              [:= :perm_type [:auto/param perm-type]]
-                                              [:= :perm_value [:auto/param perm-value]]]}))
+(mu/defn database-level-values-of-groups :- [:sequential [:map {:closed true}
+                                                          [:group_id   ms/PositiveInt]
+                                                          [:db_id      ::lib.schema.id/database]
+                                                          [:perm_type  :keyword]
+                                                          [:perm_value :keyword]]]
+  "The group, Database, type and value of the database-level DataPermissions of `perm-types` that the groups with
+  `group-ids` hold on the Databases with `database-ids`."
+  [group-ids    :- [:sequential {:min 1} ms/PositiveInt]
+   database-ids :- [:sequential {:min 1} ::lib.schema.id/database]
+   perm-types   :- [:sequential {:min 1} :string]]
+  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :perm_value]
+             {:where [:and
+                      [:in :group_id [:auto/param (vec (distinct group-ids))]]
+                      [:in :db_id [:auto/param (vec (distinct database-ids))]]
+                      [:= :table_id nil]
+                      [:in :perm_type [:auto/param (vec perm-types)]]]}))
 
 (mu/defn distinct-table-level-permission-values
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
@@ -567,15 +570,15 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
-(mu/defn permissions-group
-  "The PermissionsGroup with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroup :id [:auto/param id]))
+(mu/defn permissions-groups-by-ids :- [:sequential ::permissions.schema/permissions-group]
+  "The PermissionsGroups with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
 
-(mu/defn insert-permissions-group!
-  "Insert the PermissionsGroup `row` and return the inserted instance."
-  [row :- ::permissions.schema/permissions-group.create]
-  (t2/insert-returning-instance! :model/PermissionsGroup row))
+(mu/defn insert-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
+  "Insert the PermissionsGroup `rows` and return the inserted instances in their order."
+  [rows :- [:sequential ::permissions.schema/permissions-group.create]]
+  (mdb/insert-returning-instances! :model/PermissionsGroup rows))
 
 (mu/defn update-permissions-group!
   "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
@@ -587,10 +590,20 @@
                [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
 
-(mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id [:auto/param id]))
+(mu/defn update-permissions-groups!
+  "Apply `changes` to the PermissionsGroups with `ids`, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:name             {:optional true} [:maybe :string]]
+               [:entity_id        {:optional true} [:maybe :string]]
+               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
+               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
+  (t2/update! :model/PermissionsGroup :id [:in [:auto/param (vec ids)]] changes))
+
+(mu/defn delete-permissions-groups!
+  "Delete the PermissionsGroups with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn magic-group
   "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
@@ -607,6 +620,11 @@
   "Whether a PermissionsGroup whose lower-cased name is `lower-name` exists."
   [lower-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
+
+(mu/defn group-exists-with-lower-names? :- :boolean
+  "Whether a PermissionsGroup exists whose lower-cased name is one of `lower-names`."
+  [lower-names :- [:sequential {:min 1} :string]]
+  (t2/exists? :model/PermissionsGroup :%lower.name [:in [:auto/param (vec (distinct lower-names))]]))
 
 (mu/defn groups-except-magic-type
   "The PermissionsGroups other than the magic group of `magic-group-type`."
@@ -681,14 +699,14 @@
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
-(mu/defn update-group-membership!
-  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-group-memberships!
+  "Apply `changes` to the PermissionsGroupMemberships with `ids`, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- [:map {:closed true}
                [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
                [:group_id         {:optional true} [:maybe ms/PositiveInt]]
                [:is_group_manager {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] changes))
+  (t2/update! :model/PermissionsGroupMembership :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn insert-group-memberships!
   "Insert the PermissionsGroupMemberships `memberships` through the model, returning the inserted instances."
@@ -715,10 +733,10 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
 
-(mu/defn group-membership
-  "The PermissionsGroupMembership with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id [:auto/param id]))
+(mu/defn group-memberships-by-ids :- [:sequential ::permissions.schema/permissions-group-membership]
+  "The PermissionsGroupMemberships with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/PermissionsGroupMembership :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn memberships-for-users-in-groups
   "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroups with `group-ids`."
@@ -776,13 +794,18 @@
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
   (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
-(mu/defn update-collection-permission-graph-revision!
-  "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
-  [revision-id :- ms/PositiveInt
-   changes     :- [:map {:closed true}
-                   [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
-                   [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
-  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
+(mu/defn collection-permission-graph-revisions-by-ids
+  "The CollectionPermissionGraphRevisions with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
+
+(mu/defn update-collection-permission-graph-revisions!
+  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
+               [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
+  (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec ids)]] changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -1190,10 +1213,12 @@
   []
   (t2/select-pks-vec :model/Database :router_database_id nil))
 
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
+(mu/defn destination-database-ids :- [:set ::lib.schema.id/database]
+  "The ids among `database-ids` of the Databases that are routing destinations."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (set (t2/select-pks-set :model/Database
+                          :id                 [:in [:auto/param (vec (distinct database-ids))]]
+                          :router_database_id [:not= nil])))
 
 (mu/defn table-location
   "The ID, Database ID, schema, and data source of the Table with `table-id`.

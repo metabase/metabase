@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-block-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-block :as exploration-block]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
@@ -36,3 +38,11 @@
           (mt/with-current-user (:id owner)
             (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_read))))
             (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationBlock :id (:id g)) :can_write))))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Exploration       {exploration-id :id} {}
+                 :model/ExplorationThread {thread-id :id}      {:exploration_id exploration-id}]
+    (let [rows (fn [n] (mapv (fn [i] {:exploration_thread_id thread-id :position i}) (range n)))]
+      (exploration-block/create-blocks! (rows 1))
+      (is (= (events.tu/statement-count! #(exploration-block/create-blocks! (rows 2)))
+             (events.tu/statement-count! #(exploration-block/create-blocks! (rows 6))))))))

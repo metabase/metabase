@@ -325,10 +325,11 @@
                            (when (seq rows)
                              (warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids)))))))))
 
-(mu/defn delete-field-user-settings-for-table!
-  "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
+(mu/defn delete-field-user-settings-for-tables!
+  "[[delete-field-user-settings!]] for every Field of the Tables with `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (when (seq table-ids)
+    (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-tables table-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

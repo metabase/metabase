@@ -219,12 +219,19 @@
             (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformTransformTag rows))
 
-(mu/defn update-transform-tag-link!
-  "Apply `changes` to the tag link between the Transform with `transform-id` and the tag with `tag-id`."
+(mu/defn update-transform-tag-link-positions!
+  "Give the tag links between the Transform with `transform-id` and the tags in `positions`, a map from tag id to
+  position, their positions in one statement."
   [transform-id :- ::lib.schema.id/transform
-   tag-id       :- ms/PositiveInt
-   changes      :- ::transforms.schema/transform-transform-tag.update]
-  (t2/update! :model/TransformTransformTag {:transform_id transform-id, :tag_id tag-id} changes))
+   positions    :- [:map-of {:min 1} ms/PositiveInt :int]]
+  (t2/update! :model/TransformTransformTag
+              :transform_id transform-id
+              :tag_id       [:in [:auto/param (vec (keys positions))]]
+              {:position (into [:case]
+                               (mapcat (fn [[tag-id position]]
+                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                               positions)})
+  nil)
 
 (mu/defn delete-transform-tag-links!
   "Delete the links between the Transform with `transform-id` and the tags with `tag-ids`."
@@ -312,12 +319,19 @@
             (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformJobTransformTag rows))
 
-(mu/defn update-job-tag-link!
-  "Apply `changes` to the tag link between the TransformJob with `job-id` and the tag with `tag-id`."
-  [job-id  :- ms/PositiveInt
-   tag-id  :- ms/PositiveInt
-   changes :- ::transforms.schema/transform-job-transform-tag.update]
-  (t2/update! :model/TransformJobTransformTag {:job_id job-id, :tag_id tag-id} changes))
+(mu/defn update-job-tag-link-positions!
+  "Give the tag links between the TransformJob with `job-id` and the tags in `positions`, a map from tag id to
+  position, their positions in one statement."
+  [job-id    :- ms/PositiveInt
+   positions :- [:map-of {:min 1} ms/PositiveInt :int]]
+  (t2/update! :model/TransformJobTransformTag
+              :job_id job-id
+              :tag_id [:in [:auto/param (vec (keys positions))]]
+              {:position (into [:case]
+                               (mapcat (fn [[tag-id position]]
+                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                               positions)})
+  nil)
 
 (mu/defn delete-job-tag-links!
   "Delete the links between the TransformJob with `job-id` and the tags with `tag-ids`."
@@ -988,6 +1002,11 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
+
+(mu/defn collections-for-content-checks :- [:sequential :map]
+  "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn databases-by-ids :- [:sequential :map]
   "The Databases with `database-ids`."

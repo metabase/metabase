@@ -29,6 +29,7 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -230,21 +231,25 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
-(defn- set-default-permission-values!
-  [group]
-  (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
-      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
+(defn- check-names-not-already-taken
+  "Throws a 400 when one of `group-names` is the name of an existing group or of an earlier one of them, compared
+  lower-cased."
+  [group-names]
+  (let [lower-names (mapv u/lower-case-en group-names)]
+    (when (or (not (apply distinct? lower-names))
+              (permissions.db/group-exists-with-lower-names? lower-names))
+      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
 
 (defn- remove-from-ldap-group-mappings!
-  "Drop the group with `group-id` from every mapping of the `ldap-group-mappings` setting."
-  [group-id]
-  (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = group-id) val))))))
+  "Drop the groups with `group-ids` from every mapping of the `ldap-group-mappings` setting."
+  [group-ids]
+  (let [group-ids (set group-ids)]
+    (setting/set-value-of-type!
+     :json :ldap-group-mappings
+     (when-let [mappings (setting/get :ldap-group-mappings)]
+       (zipmap (keys mappings)
+               (for [val (vals mappings)]
+                 (remove group-ids val)))))))
 
 (mu/defn create-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
   "Insert the PermissionsGroup `rows`, each with the default permissions on every Database, and return them in order,
@@ -253,27 +258,38 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (u/prog1 (mapv (fn [{group-name :name :as row}]
-                       (check-name-not-already-taken group-name)
-                       (u/prog1 (permissions.db/insert-permissions-group! row)
-                         (set-default-permission-values! <>)))
-                     rows)
+      (check-names-not-already-taken (map :name rows))
+      (u/prog1 (permissions.db/insert-permissions-groups! rows)
+        (data-perms/with-global-permissions-lock
+          (data-perms/set-default-groups-permissions! <> (permissions.db/non-destination-database-ids)))
         (events/publish-event! :event/group-create (events/create-event <>))))))
+
+(defn- before-update-in-memory
+  "Run the before-update hook of the model on the `stored` PermissionsGroup with `changes`, which throws as the update
+  would and runs no statement."
+  [stored changes]
+  (t2.before-update/before-update :model/PermissionsGroup (merge stored changes)))
 
 (mu/defn update-permissions-groups! :- [:sequential ::permissions.schema/permissions-group.update]
   "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups and return the rows that exist,
-  publishing the event of the write; renaming a magic group, or to the name of an existing group, is a 400."
+  publishing the event of the write; renaming a magic group, or to the name of an existing group, is a 400. A rename
+  is written at once, so that the name check of a later row sees it; the other rows are written together."
   [rows :- [:sequential ::permissions.schema/permissions-group.update]]
   (t2/with-transaction [_conn]
-    (let [stored (into {} (keep (fn [{id :id}] (some->> (permissions.db/permissions-group id) (vector id)))) rows)
-          rows   (filterv (comp stored :id) rows)]
+    (let [stored   (if (seq rows) (u/index-by :id (permissions.db/permissions-groups-by-ids (mapv :id rows))) {})
+          rows     (filterv (comp stored :id) rows)
+          renames? (fn [{id :id :as row}] (contains? (mi/effective-changes (stored id) (dissoc row :id)) :name))]
       (doseq [{id :id :as row} rows
               :let [changes (dissoc row :id)
                     before  (stored id)]]
-        (when (and (contains? changes :name) (not= (:name changes) (:name before)))
-          (when-let [group-name (:name changes)]
-            (check-name-not-already-taken group-name)))
-        (permissions.db/update-permissions-group! id changes))
+        (if (renames? row)
+          (do
+            (when-let [group-name (:name changes)]
+              (check-name-not-already-taken group-name))
+            (permissions.db/update-permissions-group! id changes))
+          (before-update-in-memory before changes)))
+      (doseq [[changes ids] (mi/group-ids-by-changes stored (remove renames? rows))]
+        (permissions.db/update-permissions-groups! ids changes))
       (when (seq rows)
         (events/publish-event! :event/group-update (events/update-event stored rows)))
       rows)))
@@ -283,11 +299,13 @@
   write; deleting a magic group is a 400."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (when-let [stored (not-empty (into [] (keep permissions.db/permissions-group) ids))]
+    (when-let [stored (when (seq ids)
+                        (let [by-id (u/index-by :id (permissions.db/permissions-groups-by-ids ids))]
+                          (not-empty (into [] (keep by-id) ids))))]
       (run! check-not-magic-group stored)
-      (run! (comp remove-from-ldap-group-mappings! :id) stored)
+      (remove-from-ldap-group-mappings! (map :id stored))
       (events/publish-event! :event/group-delete (events/delete-event stored))
-      (run! (comp permissions.db/delete-permissions-group! :id) stored)))
+      (permissions.db/delete-permissions-groups! (mapv :id stored))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

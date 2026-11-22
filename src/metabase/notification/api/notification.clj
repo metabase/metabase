@@ -46,7 +46,7 @@
    {:with-id? false}))
 
 (mr/def ::NotificationApiUpdateInput
-  "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT
+  "Notification schema for an update request, restricted to what an update writes. On PUT
   the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/NotificationHandler
@@ -257,7 +257,7 @@
   "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
   payload."
   [body {:keys [id payload_id]}]
-  ;; without the ids the spec-update below would treat the body as a different row and delete +
+  ;; without the ids the update would treat the body as a different row and delete +
   ;; recreate it, changing primary keys out from under the caller
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
@@ -265,7 +265,7 @@
 (mu/defn update-notification!
   "Update notification `id` from `body` with the permission and handler-template checks and
   post-update side effects, and return the updated hydrated notification. `body` is a whole
-  notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
+  notification, not a patch: the update deletes the subscription and handler rows it doesn't
   find there."
   [id   :- ms/PositiveInt
    body :- ::NotificationApiUpdateInput]
