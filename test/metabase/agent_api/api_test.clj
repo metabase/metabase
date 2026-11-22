@@ -32,6 +32,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -238,17 +239,23 @@
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
-                       :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
-                       :model/Collection _ {:name "AgentSearchAcmeCollection"}]
-          (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                                   {:term_queries ["AgentSearchAcme"]})
-                             :data
-                             (map (juxt :name :type))
-                             set)]
-            (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
-            (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
-            (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
+        (mt/with-model-cleanup [:model/Card]
+          (card/create-cards! [{:name                   "AgentSearchAcmeQuestion"
+                                :creator_id             (mt/user->id :rasta)
+                                :database_id            (mt/id)
+                                :display                :table
+                                :visualization_settings {}
+                                :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}])
+          (mt/with-temp [:model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
+                         :model/Collection _ {:name "AgentSearchAcmeCollection"}]
+            (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                     {:term_queries ["AgentSearchAcme"]})
+                               :data
+                               (map (juxt :name :type))
+                               set)]
+              (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
+              (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
+              (is (contains? results ["AgentSearchAcmeCollection" "collection"])))))))))
 
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
@@ -879,10 +886,14 @@
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-appdb-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
-                                          :type          :metric
-                                          :database_id   (mt/id)
-                                          :dataset_query (orders-count-query)}]
+      (mt/with-model-cleanup [:model/Card]
+        (card/create-cards! [{:name                   "AgentSearchTestMetric"
+                              :type                   :metric
+                              :creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (orders-count-query)}])
         (testing "Returns metrics in search results"
           (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                    :total_count 1}
@@ -892,10 +903,14 @@
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-appdb-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
-                                         :type          :model
-                                         :database_id   (mt/id)
-                                         :dataset_query (orders-count-query)}]
+      (mt/with-model-cleanup [:model/Card]
+        (card/create-cards! [{:name                   "AgentSearchTestModel"
+                              :type                   :model
+                              :creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (orders-count-query)}])
         (testing "Returns models in search results"
           (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
                    :total_count 1}

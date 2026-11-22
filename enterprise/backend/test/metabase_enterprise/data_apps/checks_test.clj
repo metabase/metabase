@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -473,16 +474,21 @@
          (mt/with-premium-features #{:data-apps :library}
            (data-apps.tu/do-with-library!
             (fn [_library]
-              (mt/with-temp [:model/Database db     {:engine :h2 :details {}}
-                             :model/Table    table  {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
-                             :model/Card     metric {:name          "Zebra outside metric"
-                                                     :type          :metric
-                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
-                (testing "a data app finds a table not published to the Library and a metric outside it"
-                  (let [found (set (map (juxt :model :id)
-                                        (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
-                    (is (contains? found ["table" (:id table)]))
-                    (is (contains? found ["metric" (:id metric)])))))))))))))
+              (mt/with-temp [:model/Database db    {:engine :h2 :details {}}
+                             :model/Table    table {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
+                (mt/with-model-cleanup [:model/Card]
+                  (let [[metric] (card/create-cards! [{:name                   "Zebra outside metric"
+                                                       :type                   :metric
+                                                       :creator_id             (mt/user->id :rasta)
+                                                       :database_id            (mt/id)
+                                                       :display                :table
+                                                       :visualization_settings {}
+                                                       :dataset_query          (lib/aggregate (data-apps.tu/venues-query) (lib/count))}])]
+                    (testing "a data app finds a table not published to the Library and a metric outside it"
+                      (let [found (set (map (juxt :model :id)
+                                            (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
+                        (is (contains? found ["table" (:id table)]))
+                        (is (contains? found ["metric" (:id metric)])))))))))))))))
 
 (deftest user-key-value-endpoints-are-not-checked-test
   (do-with-app-collection

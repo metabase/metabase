@@ -1,13 +1,14 @@
 (ns metabase.documents.search-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.documents.search-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.documents.models.document :as document]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as card]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -16,32 +17,35 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(defn card-with-name-and-query
-  ([]
-   (card-with-name-and-query (mt/random-name)))
-  ([card-name]
-   {:name card-name
-    :display "scalar"
-    :dataset_query (mt/mbql-query venues)
-    :visualization_settings {:global {:title nil}}}))
-
 (deftest card-search-exclusion-test
   (testing "Cards with document_id are excluded from search indexing"
     (let [card-name (mt/random-name)
           regular-card-name (str card-name "-regular")]
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Document document {:name "Test Document"
-                                                 :document (documents.test-util/text->prose-mirror-ast "")}
-                       :model/Card document-card (-> (card-with-name-and-query card-name)
-                                                     (assoc :document_id (u/the-id document)))
-                       :model/Card regular-card (card-with-name-and-query regular-card-name)]
-          (testing "Search API excludes document cards"
-            (let [results (mt/user-http-request :crowberto :get 200 "search" :q card-name :models "card")]
-              (is (not (some #(= (:id %) (u/the-id document-card)) (:data results)))
-                  "Document card should not appear in search results"))
-            (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q regular-card-name :models "card")]
-              (is (some #(= (:id %) (u/the-id regular-card)) (:data regular-results))
-                  "Regular card should appear in search results"))))))))
+                                                 :document (documents.test-util/text->prose-mirror-ast "")}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [[document-card regular-card] (card/create-cards!
+                                                [{:name                   card-name
+                                                  :document_id            (u/the-id document)
+                                                  :creator_id             (mt/user->id :rasta)
+                                                  :database_id            (mt/id)
+                                                  :display                :table
+                                                  :visualization_settings {}
+                                                  :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                 {:name                   regular-card-name
+                                                  :creator_id             (mt/user->id :rasta)
+                                                  :database_id            (mt/id)
+                                                  :display                :table
+                                                  :visualization_settings {}
+                                                  :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}])]
+              (testing "Search API excludes document cards"
+                (let [results (mt/user-http-request :crowberto :get 200 "search" :q card-name :models "card")]
+                  (is (not (some #(= (:id %) (u/the-id document-card)) (:data results)))
+                      "Document card should not appear in search results"))
+                (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q regular-card-name :models "card")]
+                  (is (some #(= (:id %) (u/the-id regular-card)) (:data regular-results))
+                      "Regular card should appear in search results"))))))))))
 
 (deftest document-permission-filtering-test
   (testing "Document search respects collection-based permissions"

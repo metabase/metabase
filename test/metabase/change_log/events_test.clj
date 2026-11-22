@@ -14,6 +14,7 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -130,21 +131,27 @@
     (when config/ee-available?
       (mt/with-premium-features #{:change-log}
         (mt/with-temp [:model/Database _ {}]
-          (let [card    (atom nil)
-                updated (atom nil)
-                rows    (logged-by #(do (reset! card (first (card/create-cards!
-                                                             [(-> (mt/with-temp-defaults :model/Card)
-                                                                  (dissoc :entity_id))])))
-                                        (card/update-cards! [{:id (:id @card) :name "renamed"}])
-                                        (reset! updated (t2/select-one-fn :updated_at :model/Card :id (:id @card)))
-                                        (card/delete-cards! [(:id @card)])))]
-            (is (= (for [action ["insert" "update" "delete"]]
-                     ["report_card" (:id @card) action])
-                   rows))
-            (testing "entity-id: the insert set entity_id"
-              (is (some? (:entity_id @card))))
-            (testing "timestamped: the update set updated_at"
-              (is (not= (:updated_at @card) @updated)))))))))
+          (mt/with-model-cleanup [:model/Card]
+            (let [card    (atom nil)
+                  updated (atom nil)
+                  rows    (logged-by #(do (reset! card (first (card/create-cards!
+                                                               [{:name                   "logged"
+                                                                 :updated_at             #t "2020-01-01T00:00:00Z"
+                                                                 :creator_id             (mt/user->id :rasta)
+                                                                 :database_id            (mt/id)
+                                                                 :display                :table
+                                                                 :visualization_settings {}
+                                                                 :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}])))
+                                          (card/update-cards! [{:id (:id @card) :name "renamed"}])
+                                          (reset! updated (t2/select-one-fn :updated_at :model/Card :id (:id @card)))
+                                          (card/delete-cards! [(:id @card)])))]
+              (is (= (for [action ["insert" "update" "delete"]]
+                       ["report_card" (:id @card) action])
+                     rows))
+              (testing "entity-id: the insert set entity_id"
+                (is (some? (:entity_id @card))))
+              (testing "timestamped: the update set updated_at"
+                (is (not= (:updated_at @card) @updated))))))))))
 
 (deftest split-update-test
   (testing "an update that Toucan runs as one UPDATE per row logs each row once"
