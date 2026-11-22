@@ -2,6 +2,9 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.execute-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.svg :as js.svg]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
@@ -19,7 +22,7 @@
 
 (def ^:private expected-data-keys
   "The only keys that should appear in the :data sub-map of a notification result."
-  #{:cols :rows :viz-settings :results_metadata :insights :referenced_entities :results_timezone
+  #{:cols :rows :viz-settings :results_metadata :insights :results_timezone
     :format-rows? :pivot-export-options})
 
 (defn- check-result-structure
@@ -66,10 +69,10 @@
                                               :color "#84BB4C"}]}})
 
 (defn- referenced-goal-result [part goal-id]
-  (get-in part [:result :data :referenced_entities "card" (str goal-id)]))
+  (get-in part [:goal-values "card" (str goal-id)]))
 
-(deftest execute-card-keeps-referenced-entities-test
-  (testing "execute-card keeps the dynamic goal values the static renderer and alerts resolve against"
+(deftest execute-card-adds-goal-values-test
+  (testing "execute-card adds the dynamic goal values the static renderer and alerts resolve against, next to the result"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
       (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
@@ -108,8 +111,8 @@
           (is (= :completed (get-in part [:result :status])))
           (is (= "failed" (:status (referenced-goal-result part goal-id)))))))))
 
-(deftest execute-dashboard-subscription-card-keeps-referenced-entities-test
-  (testing "execute-dashboard-subscription-card keeps the dynamic goal values the static renderer resolves against"
+(deftest execute-dashboard-subscription-card-adds-goal-values-test
+  (testing "execute-dashboard-subscription-card adds the dynamic goal values the static renderer resolves against"
     (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins
                                                                         {:aggregation [[:count]]})}
                    :model/Card          {card-id :id} (gauge-with-referenced-goal goal-id)
@@ -142,7 +145,7 @@
                    :data   {:rows [[1000]]}}
                   (referenced-goal-result part goal-id))))))))
 
-(deftest execute-dashboard-subscription-visualizer-card-keeps-referenced-entities-test
+(deftest execute-dashboard-subscription-visualizer-card-adds-goal-values-test
   (testing "a visualizer dashcard's goal, nested in its chart settings, is answered by its primary card's result"
     (mt/with-temp [:model/Card          {goal-id :id}   {:dataset_query (mt/mbql-query checkins
                                                                           {:aggregation [[:count]]})}
@@ -169,7 +172,92 @@
                   (referenced-goal-result part goal-id)))
           (testing "the other combined cards don't run it again"
             (is (= [series-id] (map (comp :id :card) (get-in part [:dashcard :series-results]))))
-            (is (nil? (get-in part [:dashcard :series-results 0 :result :data :referenced_entities])))))))))
+            (is (not (contains? (get-in part [:dashcard :series-results 0]) :goal-values)))))))))
+
+(deftest execute-card-without-goals-runs-no-goal-values-test
+  (testing "a card that draws no dynamic goal runs no goal source"
+    (mt/with-temp [:model/Card {card-id :id} {:display                :gauge
+                                              :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :visualization_settings {:gauge.segments [{:min 0 :max 500 :color "#84BB4C"}]}}]
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [dynamic-goals/run-source (fn [& _] (swap! calls inc) {:status "completed"})]
+          (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+            (check-result-structure (:result part))
+            (is (not (contains? part :goal-values)))))
+        (is (zero? @calls))))))
+
+(deftest execute-card-failed-goal-source-test
+  (testing "a goal source whose query fails gives a failed goal, and the card still runs"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}
+                   :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
+      (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+        (check-result-structure (:result part))
+        (is (= [[100]] (get-in part [:result :data :rows])))
+        (is (=? {:status "failed"} (referenced-goal-result part goal-id)))))))
+
+(deftest goal-values-error-does-not-fail-notification-test
+  (testing "an error getting goal values leaves the goals unresolved and doesn't fail the card"
+    (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card          {card-id :id} (gauge-with-referenced-goal goal-id)
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard dashcard      {:dashboard_id dash-id :card_id card-id}]
+      (mt/with-dynamic-fn-redefs [dynamic-goals/chart-goal-values (fn [& _] (throw (ex-info "boom" {})))]
+        (testing "alert"
+          (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+            (check-result-structure (:result part))
+            (is (not (contains? part :goal-values)))))
+        (testing "dashboard subscription"
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
+              (check-result-structure (:result part))
+              (is (not (contains? part :goal-values))))))))))
+
+(defn- dashboard-card-part
+  "The part of the only card on the dashboard with `dash-id`, executed as `user-id`."
+  [dash-id user-id]
+  (first (filter #(= :card (:type %))
+                 (notification.payload.execute/execute-dashboard dash-id user-id nil))))
+
+(deftest execute-dashboard-resolves-goals-as-the-creator-test
+  (testing "a dashboard subscription resolves its dynamic goals with the permissions of the user who created it"
+    (mt/with-temp [:model/Collection    {secret-id :id} {}
+                   :model/Card          {goal-id :id}   {:collection_id secret-id
+                                                         :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card          {card-id :id}   (gauge-with-referenced-goal goal-id)
+                   :model/Dashboard     {dash-id :id}   {}
+                   :model/DashboardCard _               {:dashboard_id dash-id :card_id card-id}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) secret-id)
+      (testing "a creator who can read the goal's source gets its value"
+        (is (=? {:status "completed" :data {:rows [[1000]]}}
+                (referenced-goal-result (dashboard-card-part dash-id (mt/user->id :crowberto)) goal-id))))
+      (testing "a creator who can't read it gets a failed goal, even though the card itself runs"
+        (let [part (dashboard-card-part dash-id (mt/user->id :rasta))]
+          (is (= :completed (get-in part [:result :status])))
+          (is (=? {:status "failed"} (referenced-goal-result part goal-id))))))))
+
+(deftest render-goal-value-test
+  (testing "the goal value reaches the chart renderer"
+    (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card          card          {:display                :progress
+                                                       :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                       :visualization_settings {:progress.goal {:id     goal-id
+                                                                                                :type   "card"
+                                                                                                :column "count"}}}
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard _             {:dashboard_id dash-id :card_id (:id card)}]
+      (letfn [(rendered-goal [{:keys [card dashcard result goal-values]}]
+                (let [captured (atom nil)]
+                  ;; the JS draws from the card's settings; a dashcard's empty settings shadow them in the second arg
+                  (binding [js.svg/*javascript-visualization* (fn [cards-with-data _viz-settings]
+                                                                (reset! captured (-> cards-with-data first :card :visualization_settings))
+                                                                {:type :svg :content "<svg></svg>"})]
+                    (channel.render/render-pulse-card :inline nil card dashcard result
+                                                      {:channel.render/goal-values goal-values}))
+                  (:progress.goal @captured)))]
+        (testing "alert"
+          (is (= 1000 (rendered-goal (notification.payload.execute/execute-card (mt/user->id :rasta) (:id card))))))
+        (testing "dashboard subscription"
+          (is (= 1000 (rendered-goal (dashboard-card-part dash-id (mt/user->id :rasta))))))))))
 
 (defn- card-parts [parts]
   (filter #(= :card (:type %)) parts))
@@ -258,7 +346,7 @@
                                                              :card_id            card-id
                                                              :parameter_mappings [{:parameter_id "_PRICE_"
                                                                                    :card_id      card-id
-                                                                                   :target       [:dimension (lib/->legacy-MBQL (lib/ref price))]}]}]
+                                                                                   :target       [:dimension (lib/->legacy-MBQL-ref (lib/ref price))]}]}]
             (let [part (first (card-parts (notification.payload.execute/execute-dashboard
                                            dash-id (mt/user->id :rasta) [parameter])))]
               (is (= (mt/rows (qp/process-query (lib/filter query (lib/= price 4))))

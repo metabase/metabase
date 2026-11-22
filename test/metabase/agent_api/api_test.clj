@@ -9,6 +9,7 @@
    [metabase.agent-api.api :as agent-api.api]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
@@ -1044,6 +1045,24 @@
         (mt/user-http-request :rasta :post 403
                               (format "agent/v1/question/%d/query" card-id))))))
 
+(deftest execute-question-runs-no-goal-queries-test
+  (testing "Running a saved question whose chart reads a dynamic goal runs only the question's own query"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (orders-count-query)}
+                   :model/Card {card-id :id} {:dataset_query          (orders-count-query)
+                                              :display                :progress
+                                              :visualization_settings {:progress.goal {:id     goal-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}]
+      (let [runs          (atom 0)
+            process-query (mt/original-fn #'qp/process-query)]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
+                                                       (swap! runs inc)
+                                                       (apply process-query args))]
+          (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+            (is (=? {:status "completed" :row_count 1} resp))
+            (is (not (contains? (:data resp) :referenced_entities)))
+            (is (= 1 @runs))))))))
+
 (deftest execute-question-rejects-parameterized-test
   (testing "Refuses a card with a native template-tag variable (400)"
     (mt/with-temp [:model/Card {card-id :id}
@@ -1326,6 +1345,16 @@
                               {:name "Forbidden Rename"})))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
+
+(deftest create-dashboard-tracks-snowplow-test
+  (snowplow-test/with-fake-snowplow-collector
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Snowplow Dashboard"})]
+      (is (some #{{:data    {"dashboard_id" (:id resp)
+                             "event"        "dashboard_created"}
+                   :user-id (str (mt/user->id :rasta))}}
+                (snowplow-test/pop-event-data-and-user-id!)))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
 
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"

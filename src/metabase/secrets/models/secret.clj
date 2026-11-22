@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -421,3 +422,8 @@
       (handle-secrets-for-details-key :details)
       (handle-secrets-for-details-key :write_data_details)
       (handle-secrets-for-details-key :admin_details)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Secret [_model]
+  {:skip? false})

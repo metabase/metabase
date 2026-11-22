@@ -87,14 +87,18 @@ describe("HomeLayout", () => {
     setup({
       currentUser: createMockUser({ first_name: "Test", is_superuser: true }),
     });
-    expect(screen.getByText(/Customize/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Customize/ }),
+    ).toBeInTheDocument();
   });
 
   it("should not show customize button when user is not an admin", () => {
     setup({
       currentUser: createMockUser({ first_name: "Test", is_superuser: false }),
     });
-    expect(screen.queryByText(/Customize/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Customize/ }),
+    ).not.toBeInTheDocument();
   });
 
   describe("EE with whitelabel", () => {

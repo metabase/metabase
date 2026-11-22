@@ -14,6 +14,7 @@
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.revisions.core :as revisions]
+   [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
@@ -270,12 +271,11 @@
        (let [goal-dashcard #(merge layout {:dashboard_id           dash-id
                                            :card_id                card-id
                                            :visualization_settings (gauge-viz (card-goal goal-id))})
-             snapshot      #(revisions/serialize-instance :model/Dashboard dash-id
-                                                          (t2/select-one :model/Dashboard :id dash-id))
+             snapshot      #(revisions/snapshot :model/Dashboard (t2/select-one :model/Dashboard :id dash-id))
              revert-status (fn [serialized]
                              (mt/with-test-user :rasta
-                               (status-of #(revisions/revert-to-revision! :model/Dashboard dash-id
-                                                                          (mt/user->id :rasta) serialized))))]
+                               (status-of #(revision/revert-to-revision! :model/Dashboard dash-id
+                                                                         (mt/user->id :rasta) serialized))))]
          (testing "restoring a dashcard whose goal another dashcard still carries succeeds"
            (let [restored-id (t2/insert-returning-pk! :model/DashboardCard (goal-dashcard))
                  _           (t2/insert! :model/DashboardCard (goal-dashcard))
@@ -293,12 +293,11 @@
   (do-with-unreadable-card!
    (fn [goal-id]
      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
-       (let [snapshot      #(revisions/serialize-instance :model/Card card-id
-                                                          (t2/select-one :model/Card :id card-id))
+       (let [snapshot      #(revisions/snapshot :model/Card (t2/select-one :model/Card :id card-id))
              revert-status (fn [serialized]
                              (mt/with-test-user :rasta
-                               (status-of #(revisions/revert-to-revision! :model/Card card-id
-                                                                          (mt/user->id :rasta) serialized))))]
+                               (status-of #(revision/revert-to-revision! :model/Card card-id
+                                                                         (mt/user->id :rasta) serialized))))]
          ;; writes with no user bound aren't checked, so these set up revisions the user couldn't save
          (t2/update! :model/Card :id card-id {:visualization_settings (gauge-viz (card-goal goal-id))})
          (let [serialized (snapshot)]
@@ -338,9 +337,7 @@
                                                                      :public_uuid   (str (random-uuid))}]
            (mt/user-http-request :rasta :put 403 (format "card/%d" card-id)
                                  {:visualization_settings (gauge-viz (card-goal goal-id))})
-           (let [response (client/client :get 202 (str "public/card/" uuid "/query"))]
-             (is (= "completed" (:status response)))
-             (is (nil? (get-in response [:data :referenced_entities]))))))))))
+           (is (= {} (client/client :get 202 (str "public/card/" uuid "/goal-values"))))))))))
 
 (deftest shared-dashboard-goal-reference-placement-test
   (do-with-unreadable-card!

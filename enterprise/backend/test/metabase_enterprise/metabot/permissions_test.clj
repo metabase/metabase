@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -70,6 +71,13 @@
                    :permission/metabot-nlq            :yes}
                   (scope/resolve-user-permissions user-id))))))))
 
+(defn- insert-in-mode-showing-them!
+  "Insert MetabotPermissions `rows`, each while the permission mode that shows its group is set."
+  [rows]
+  (doseq [[simple? rows] (group-by #(usage-controls/visible-group? (:group_id %) false) rows)]
+    (mt/with-temporary-setting-values [metabot-advanced-permissions (not simple?)]
+      (t2/insert! :model/MetabotPermissions (map #(select-keys % [:group_id :perm_type :perm_value]) rows)))))
+
 (defn- do-with-empty-metabot-permissions!
   "Run `thunk` with the `metabot_permissions` table emptied, restoring the migration-seeded rows afterwards."
   [thunk]
@@ -79,9 +87,7 @@
       (thunk)
       (finally
         (t2/delete! :model/MetabotPermissions)
-        (when (seq snapshot)
-          (t2/insert! :model/MetabotPermissions
-                      (map #(select-keys % [:group_id :perm_type :perm_value]) snapshot)))))))
+        (insert-in-mode-showing-them! snapshot)))))
 
 (deftest resolve-user-permissions-mode-scoping-test
   (mt/with-premium-features #{:ai-controls}
@@ -91,17 +97,12 @@
              data-analyst-id (u/the-id (perms/data-analyst-group))]
          (mt/with-temp [:model/User {user-id :id} {}
                         :model/PermissionsGroup {group-id :id} {:name "Custom Group"}
-                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id data-analyst-id}
-                        :model/MetabotPermissions _ {:group_id   all-users-id
-                                                     :perm_type  :permission/metabot
-                                                     :perm_value :yes}
-                        :model/MetabotPermissions _ {:group_id   data-analyst-id
-                                                     :perm_type  :permission/metabot-nlq
-                                                     :perm_value :yes}
-                        :model/MetabotPermissions _ {:group_id   group-id
-                                                     :perm_type  :permission/metabot-sql-generation
-                                                     :perm_value :yes}]
+                        :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+           (mt/with-premium-features #{:advanced-permissions}
+             (perms/add-user-to-group! user-id data-analyst-id))
+           (insert-in-mode-showing-them! [{:group_id all-users-id :perm_type :permission/metabot :perm_value :yes}
+                                          {:group_id data-analyst-id :perm_type :permission/metabot-nlq :perm_value :yes}
+                                          {:group_id group-id :perm_type :permission/metabot-sql-generation :perm_value :yes}])
            (testing "simple mode resolves only the groups it shows, so hidden All Users :no cannot be overridden"
              (mt/with-temporary-setting-values [metabot-advanced-permissions false]
                (is (=? {:permission/metabot                :yes

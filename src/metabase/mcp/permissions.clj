@@ -30,7 +30,7 @@
 
 (mr/def ::tool
   "A registry entry, of which [[tool-allowed?]] reads the name, the author's default, and the former names."
-  [:map {::mr/deliberately-open true}
+  [:map
    [:name           :string]
    [:default-access [:enum :allowed :denied]]
    [:renamed-from   {:optional true} [:sequential :string]]])

@@ -17,6 +17,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.events.hierarchy :as events.hierarchy]
+   [metabase.events.impl :as events.impl]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.internal-stats.core :as internal-stats]
@@ -165,23 +167,23 @@
 (def ^:private Meters
   "The `:meters` of a token status response, keyed by the meter names the license server defines, each meter's fields
   also being the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
+  [:map {:closed false, :description "license-server meters"}])
 
 (def ^:private StoreUser
   "A store user of a token status response, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server store user"}
+  [:map {:closed false, :description "license-server store user"}
    [:email :string]])
 
 (def ^:private Quota
   "A quota of a token status response, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server quota"}
+  [:map {:closed false, :description "license-server quota"}
    [:hosting-feature {:optional true} :string]
    [:soft-limit      {:optional true} number?]
    [:usage           {:optional true} number?]])
 
 (def TokenStatus
   "Schema for a response from the token status API, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server token status"}
+  [:map {:closed false, :description "license-server token status"}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -722,6 +724,9 @@
     (log/info "Token is valid.")
     status))
 
+(events.hierarchy/derive! ::premium-token-update :metabase/event)
+(events.hierarchy/derive! :event/premium-token-update ::premium-token-update)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
@@ -732,7 +737,7 @@
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (when status
         (install! (state-box) new-value status)))
-    ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
+    (events.impl/publish-event! :event/premium-token-update {})
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present

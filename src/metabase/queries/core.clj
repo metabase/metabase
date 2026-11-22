@@ -13,7 +13,6 @@
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
    [metabase.query-processor.card]
-   [metabase.query-processor.template-tags]
    [potemkin :as p]))
 
 (comment metabase.queries.cached-result/keep-me
@@ -26,8 +25,7 @@
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
          metabase.queries.models.stored-result-use/keep-me
-         metabase.query-processor.card/keep-me
-         metabase.query-processor.template-tags/keep-me)
+         metabase.query-processor.card/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -38,6 +36,7 @@
   card-query-info
   cards-queries-info]
  [metabase.queries.models.card
+  can-delete?
   card-read-check-columns
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
@@ -45,6 +44,7 @@
   check-new-goal-references!
   check-shared-dashboard-goal-permissions!
   check-newly-exposed-dashcards-goal-permissions!
+  card-reads-parameters?
   create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
@@ -54,8 +54,7 @@
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
-  check-card-can-be-saved!
-  check-no-save-cycle!]
+  check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
@@ -63,7 +62,6 @@
   batch-fetch-query-metadata]
  [metabase.queries.models.card
   current-card-schema-version
-  fully-parameterized?
   maybe-unverify!
   model?
   sole-dashboard-id
@@ -94,7 +92,7 @@
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
   carry-pairings-for-document!]
- [metabase.query-processor.template-tags
+ [metabase.query-processor.card
   parameter-template-tag?])
 
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

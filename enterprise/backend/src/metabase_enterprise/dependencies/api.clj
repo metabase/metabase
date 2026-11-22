@@ -56,8 +56,7 @@
    :data-app  [:slug :name :description :created_at]})
 
 (mr/def ::data-value
-  [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
-   :any])
+  :metabase.util.malli/value)
 
 (mu/defn- format-subentity :- ::data-value
   "`entity` slimmed to the keys the response shows when it is a hydrated Collection, Dashboard, or Document."
@@ -654,9 +653,7 @@
   (let [types (or types (case query-type
                           :unreferenced (vec deps.dependency-types/dependency-types)
                           :breaking [:card :table]))
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes have no name or location to search.
-                         query (remove #{:sandbox}))]
+        selected-types (if (sequential? types) types [types])]
     (merge (current-user-visibility nil)
            {:query-type query-type
             :entity-types selected-types

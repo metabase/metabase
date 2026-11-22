@@ -54,23 +54,23 @@
       (is (= 0 (ui-logic/find-goal-value result))))))
 
 (deftest ^:parallel find-goal-value-with-card-ref-test
-  (testing "a {:id N :type ... :column ...} goal resolves against [:result :data :referenced_entities]"
-    (let [referenced-entities {"card" {"42" {:status "completed"
-                                             :data   {:cols [{:name "total"}]
-                                                      :rows [[75]]}}}}]
+  (testing "a {:id N :type ... :column ...} goal resolves against the result's :goal-values"
+    (let [goal-values {"card" {"42" {:status "completed"
+                                     :data   {:cols [{:name "total"}]
+                                              :rows [[75]]}}}}]
       (testing "graph goal line"
         (let [result {:card   {:display :bar
                                :visualization_settings {:graph.goal_value {:id 42 :type "card" :column "total"}}}
                       :result {:data {:cols []
-                                      :rows []
-                                      :referenced_entities referenced-entities}}}]
+                                      :rows []}}
+                      :goal-values goal-values}]
           (is (= 75 (ui-logic/find-goal-value result)))))
       (testing "progress goal"
         (let [result {:card   {:display :progress
                                :visualization_settings {:progress.goal {:id 42 :type "card" :column "total"}}}
                       :result {:data {:cols []
-                                      :rows []
-                                      :referenced_entities referenced-entities}}}]
+                                      :rows []}}
+                      :goal-values goal-values}]
           (is (= 75 (ui-logic/find-goal-value result))))))))
 
 (deftest ^:parallel find-goal-value-with-failed-card-ref-test
@@ -78,8 +78,8 @@
     (let [result {:card   {:display :bar
                            :visualization_settings {:graph.goal_value {:id 42 :type "card" :column "total"}}}
                   :result {:data {:cols []
-                                  :rows []
-                                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}}}]
+                                  :rows []}}
+                  :goal-values {"card" {"42" {:status "failed" :error "boom"}}}}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
                             (ui-logic/find-goal-value result))))))
 

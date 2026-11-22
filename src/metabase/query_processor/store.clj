@@ -49,7 +49,7 @@
 
 (mr/def ::miscellaneous-value
   "Any value cached for the duration of a QP run via [[store-miscellaneous-value!]] or [[cached]]."
-  [:schema {::mr/deliberately-open true, :description "a per-query-execution cached value of any kind"} :any])
+  [:maybe :metabase.util.malli/object])
 
 (mr/def ::miscellaneous-value.ks
   "Key sequence for a value in the store's miscellaneous cache; [[cached]] prefixes it with a unique symbol."
@@ -223,19 +223,6 @@
   {:style/indent [:defn]}
   [database-id-or-metadata-providerable & body]
   `(do-with-metadata-provider ~database-id-or-metadata-providerable (^:once fn* [] ~@body)))
-
-(defn do-with-fresh-store
-  "Implementation for [[with-fresh-store]]."
-  [thunk]
-  (binding [*store* uninitialized-store]
-    (thunk)))
-
-(defmacro with-fresh-store
-  "Run `body` with no QP store bound, so a nested query binds its own. Otherwise it reuses the caller's store and
-  resolves its tables against the caller's database."
-  {:style/indent 0}
-  [& body]
-  `(do-with-fresh-store (^:once fn* [] ~@body)))
 
 ;;;;
 ;;;; DEPRECATED STUFF

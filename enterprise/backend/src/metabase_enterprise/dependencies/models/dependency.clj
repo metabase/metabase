@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -40,7 +41,7 @@
 
 (mr/def ::entity-with-id
   "Any map with an optional `:id`, whatever else it holds."
-  [:map {::mr/deliberately-open true, :description "a Toucan, metadata, or user-supplied entity"}
+  [:map {:description "a Toucan, metadata, or user-supplied entity"}
    [:id {:optional true} [:maybe ::deps.dependency-types/entity-id]]])
 
 (def ^:private EntitiesMap
@@ -55,7 +56,7 @@
 
 (def ^:private UncheckedEntityId
   "A dependency entity ID as a caller gives it, which [[ensure-entity-id]] checks."
-  [:schema {::mr/deliberately-open true, :description "an unchecked dependency entity id"} :any])
+  :metabase.util.malli/value)
 
 (def ^:private DependenciesByType
   "The dependencies of an entity as `{entity-type #{entity-id}}`, with the IDs not yet checked."
@@ -281,3 +282,8 @@
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})

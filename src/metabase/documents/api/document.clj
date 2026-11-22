@@ -41,7 +41,7 @@
 
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
-   [:name m.document/DocumentName]
+   [:name documents.schema/DocumentName]
    [:document ::prose-mirror/ast]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -49,7 +49,7 @@
 
 (def ^:private DocumentUpdateOptions
   [:map {:closed true}
-   [:name {:optional true} m.document/DocumentName]
+   [:name {:optional true} documents.schema/DocumentName]
    [:document {:optional true} [:maybe ::prose-mirror/ast]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
@@ -60,13 +60,14 @@
   "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
   transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
   [document-id card-id position extra-attrs]
-  (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
-          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-          updates  (cond-> (select-keys updated [:document])
-                     (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
-      (merge document updates))))
+  (let [updated (events/with-batched-events
+                  (let [document (api/check-404 (documents.db/document document-id))
+                        updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+                        updates  (cond-> (select-keys updated [:document])
+                                   (:is_placeholder document) (assoc :is_placeholder false))]
+                    (documents.db/update-document! document-id updates)
+                    (merge document updates)))]
+    updated))
 
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
@@ -74,8 +75,8 @@
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
   Optional kwargs:
-  - `:extra-attrs` — string-keyed map merged onto the `cardEmbed` attrs (e.g. `\"stored_result_id\"`,
-    `\"chart_href\"`, `\"child_target_id\"`, `\"host_data\"`).
+  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
+    `:chart_href`, `:child_target_id`, `:host_data`).
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
@@ -101,7 +102,7 @@
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents) docs
-            (filterv mi/can-read? (t2/hydrate docs :can_read))
+            (mi/readable docs)
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -135,15 +136,13 @@
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [collection_id] :as body} :- DocumentUpdateOptions]
+   body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
   (let [existing-document (api/check-404 (documents.db/document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
-    (api/write-check existing-document)
-    (when (api/column-will-change? (:collection_id existing-document) (get body :collection_id ::api/not-provided))
-      (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
+    (api/update-check existing-document (select-keys body [:collection_id :archived]))
     (m.document/update-document! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
@@ -155,9 +154,6 @@
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
     (documents.db/delete-document! document-id)
-    (events/publish-event! :event/document-delete
-                           {:object document
-                            :user-id api/*current-user-id*})
     api/generic-204-no-content))
 
 ;;; ---------------------------------------------------- Copy --------------------------------------------------------
@@ -186,9 +182,7 @@
                                                                  :public_uuid :made_public_by_id :cache_invalidated_at)
                                                          (assoc :document_id new-document-id
                                                                 :collection_id new-collection-id))
-                                                     @api/*current-user*
-                                                     ;; published by [[rewire-goals-and-publish-copied-cards!]]
-                                                     true)]
+                                                     @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (documents.db/update-card! (:id new-card)
                                              {:archived          (boolean (:archived card))
@@ -197,25 +191,18 @@
             {}
             (t2/hydrate cards-to-copy :can_read))))
 
-(defn- rewire-goals-and-publish-copied-cards!
-  "Points the goals of the Document's cards that read a copied card (`card-id-map`: old id -> copy's id) at the copy,
-  then publishes each card's `:event/card-create`, held back by [[copy-cards-for-document!]] so the first revision has
-  the rewired goals."
+(defn- rewire-copied-goals!
+  "Points the goals of the Document's cards that read a copied card (`card-id-map`: old id -> copy's id) at the copy."
   [document-id card-id-map]
-  (doseq [{:keys [id visualization_settings] :as card} (documents.db/cards-for-document document-id)
-          :let [viz (dynamic-goals/remap-goal-card-ids visualization_settings card-id-map)]]
-    (when (not= viz visualization_settings)
-      (documents.db/update-card! id {:visualization_settings viz}))
-    (events/publish-event! :event/card-create {:object  (assoc card :visualization_settings viz)
-                                               :user-id api/*current-user-id*})))
+  (doseq [{:keys [id visualization_settings]} (documents.db/cards-for-document document-id)
+          :let [viz (dynamic-goals/remap-goal-card-ids visualization_settings card-id-map)]
+          :when (not= viz visualization_settings)]
+    (documents.db/update-card! id {:visualization_settings viz})))
 
 (defn copy-document!
-  "Copy the document with `from-document-id` into `:collection_id` (nil = root), along with the
-  questions saved inside it, and return the new document. `copy-opts` may override `:name` and set
-  `:collection_position`.
-
-  Requires read permission on the source and create permission on the destination collection.
-  Publishes `:event/document-create`."
+  "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved
+  inside it and returns the new document, requiring read permission on the source and create permission on the
+  destination collection."
   [from-document-id {:keys [name collection_id collection_position]}]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
@@ -227,12 +214,12 @@
                        :creator_id          api/*current-user-id*
                        :collection_id       collection_id
                        :collection_position collection_position}
-        new-document (t2/with-transaction [_conn]
+        new-document (events/with-batched-events
                        (when collection_position
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
-                         (rewire-goals-and-publish-copied-cards! new-document-id card-id-map)
+                         (rewire-copied-goals! new-document-id card-id-map)
                          (when (seq card-id-map)
                            (documents.db/update-document! new-document-id
                                                           (m.document/update-cards-in-ast
@@ -240,9 +227,6 @@
                                                             :content_type (:content_type existing-document)}
                                                            card-id-map)))
                          (m.document/get-document new-document-id)))]
-    (events/publish-event! :event/document-create
-                           {:object new-document
-                            :user-id api/*current-user-id*})
     new-document))
 
 (api.macros/defendpoint :post "/:from-document-id/copy" :- [:map [:id ::documents.schema/document.id]]
@@ -251,7 +235,7 @@
                                   [:from-document-id ms/PositiveInt]]
    _query-params
    {:keys [name collection_id collection_position]} :- [:map {:closed true}
-                                                        [:name                {:optional true} [:maybe ms/NonBlankString]]
+                                                        [:name                {:optional true} [:maybe documents.schema/DocumentName]]
                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   (copy-document! from-document-id {:name                name
@@ -284,7 +268,6 @@
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})
-        ;; Always select after update to ensure we return what's actually stored
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
@@ -176,16 +176,6 @@
                               :from_entity_type :card :from_entity_id card-id
                               :to_entity_type :card :to_entity_id new-source-id)))))))))
 
-(deftest swap-goal-refs-skips-measure-goal-test
-  (testing "a card swap leaves a measure goal with the old card's id as it is"
-    (let [card-goal    {:id 1 :type "card" :column "count"}
-          measure-goal {:id 1 :type "measure" :column "count"}]
-      (is (= {:gauge.segments [{:min (assoc card-goal :id 2) :max measure-goal :color "red"}]}
-             (#'replacement.source-swap/swap-goal-refs
-              {:gauge.segments [{:min card-goal :max measure-goal :color "red"}]}
-              [:card 1]
-              [:card 2]))))))
-
 (deftest card-swap-source!-dynamic-goal-card-to-table-test
   (testing "swap-source! to a table leaves a dynamic goal, which can't read a table, and its dependency on the old card"
     (mt/with-premium-features #{:dependencies}
@@ -223,7 +213,7 @@
                           :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (deps.test/synchronously-run-dependency-job!)
-              (mt/with-dynamic-fn-redefs [replacement.db/update-card! (fn [& _] (throw (ex-info "refused" {})))]
+              (mt/with-dynamic-fn-redefs [replacement.db/update-row! (fn [& _] (throw (ex-info "refused" {})))]
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refused"
                                       (replacement.source-swap/swap-source! [:card card-id]
                                                                             [:card old-source-id]
@@ -312,6 +302,21 @@
                    (get-in (t2/select-one :model/Transform :id transform-id)
                            [:source :query :stages 0 :source-table])))))))))
 
+(deftest transform-swap-source!-publishes-audit-event-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-test-user :rasta
+      (let [mp     (mt/metadata-provider)
+            query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            topics (atom [])]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                            :source {:type :query :query query}
+                                                            :target {:database (mt/id) :type "table" :name "out"}}]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+            (replacement.source-swap/swap-source! [:transform transform-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)]))
+          (is (some #{[:event/transform-update transform-id]} @topics)))))))
+
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
 (deftest segment-swap-source!-source-table-test
@@ -321,8 +326,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (replacement.source-swap/swap-source! [:segment segment-id]
                                                   [:table (mt/id :orders)]
@@ -339,8 +343,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (t2/query-one {:update :segment
                            :set    {:definition "{}"}
                            :where  [:= :id segment-id]})
@@ -357,8 +360,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (replacement.source-swap/swap-source! [:measure measure-id]
@@ -376,8 +378,7 @@
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/count)))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (t2/query-one {:update :measure
                            :set    {:definition "{}"}
@@ -502,7 +503,7 @@
         (let [mp           (mt/metadata-provider)
               query        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               category-col (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
-              target       [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+              target       [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]]
           (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query query}
                          :model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}
@@ -545,7 +546,7 @@
                                 (lib/breakout (lib.metadata/field mp (mt/id :orders :id))))
               source-query  (lib/query mp (lib.metadata/table mp (mt/id :products)))
               category-col  (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns target-query))
-              target        [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+              target        [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]]
           (mt/with-temp [:model/Card          {target-card-id :id} {:dataset_query target-query}
                          :model/Card          {source-card-id :id} {:dataset_query source-query}
                          :model/Dashboard     {dashboard-id :id}   {}
@@ -569,7 +570,7 @@
                       viz)))))))))
 
 (deftest card-swap-source!-dependencies-updated-test
-  (testing "swap-source! for card updates dependency records from old-source to new-source"
+  (testing "dependency job moves dependency records of swapped card from old-source to new-source"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
@@ -600,14 +601,13 @@
                   "Dependency on reviews should exist after swap"))))))))
 
 (deftest segment-swap-source!-dependencies-updated-test
-  (testing "swap-source! for segment updates dependency records"
+  (testing "dependency job moves dependency records of swapped segment"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition query}]
+          (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/segment-create {:object (t2/select-one :model/Segment :id segment-id)
@@ -630,14 +630,13 @@
                   "Dependency on reviews should exist"))))))))
 
 (deftest measure-swap-source!-dependencies-updated-test
-  (testing "swap-source! for measure updates dependency records"
+  (testing "dependency job moves dependency records of swapped measure"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                          :name       "test measure"
+          (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (mt/with-model-cleanup [:model/Dependency]
@@ -661,7 +660,7 @@
                   "Dependency on reviews should exist"))))))))
 
 (deftest transform-swap-source!-dependencies-updated-test
-  (testing "swap-source! for transform updates dependency records"
+  (testing "dependency job moves dependency records of swapped transform"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)

@@ -24,9 +24,6 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Database   {db :id}  {}
                      :model/Collection {off :id} {:authority_level "official"}
-                     ;; name avoids the "curationfixture" search token so the collection itself isn't a
-                     ;; result (curated-ids only handles recent-view models, not collections)
-                     :model/Collection {lib :id} {:type "library-data" :name "fixturelibcoll"}
                      :model/Card  {vq :id} {:name "curationfixture verified"}
                      :model/Card  {oq :id} {:name "curationfixture official" :collection_id off}
                      :model/Card  {pq :id} {:name "curationfixture plain"}
@@ -35,10 +32,9 @@
                      :model/Table {at :id} {:db_id db :name "curationfixture authoritative" :active true
                                             :data_authority :authoritative}
                      :model/Table {xt :id} {:db_id db :name "curationfixture plaintable" :active true}
-                     ;; final-layer table under a library collection but NOT published: the spec joins the
-                     ;; collection only for published tables, so neither source nor index marks it curated
+                     ;; final-layer table that is NOT published: neither source nor index marks it curated
                      :model/Table {ult :id} {:db_id db :name "curationfixture unpublishedlib" :active true
-                                             :is_published false :data_layer :final :collection_id lib}]
+                                             :is_published false :data_layer :final}]
         (moderation/create-review! {:moderated_item_id   vq
                                     :moderated_item_type "card"
                                     :moderator_id        (mt/user->id :crowberto)

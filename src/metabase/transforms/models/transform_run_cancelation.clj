@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -41,3 +42,9 @@
   "Delete cancelations for runs that are no longer running."
   []
   (transforms.db/delete-cancelations-for-inactive-runs!))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformRunCancelation [_model]
+  {:skip?    false
+   :sequence false})

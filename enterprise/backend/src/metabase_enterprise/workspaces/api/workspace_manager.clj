@@ -4,6 +4,7 @@
    [[metabase-enterprise.workspaces.core]] and permission predicates live on
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
@@ -16,14 +17,13 @@
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
 (def ^:private WorkspaceName
   "A workspace name that fits the `workspace.name` column, a `varchar(254)`. Postgres and MySQL count that limit in
@@ -103,9 +103,7 @@
   {:scope api-scope.workspace-manager/workspace-manager}
   []
   (api/check-superuser)
-  (into [] (comp (filter mi/can-read?)
-                 (map present-workspace))
-        (t2/hydrate (ws/list-workspaces) :can_read)))
+  (into [] (map present-workspace) (mi/readable (ws/list-workspaces))))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
@@ -114,18 +112,43 @@
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
+(defn- request-idempotency-key
+  "The request's `Idempotency-Key` header, or nil when absent. 400 unless it is 1 to
+   255 characters, not blank, with no leading or trailing whitespace. A MySQL app DB
+   ignores trailing spaces when it compares keys, so `\"k\"` and `\"k \"` would be
+   one key."
+  [request]
+  (when-let [k (get-in request [:headers "idempotency-key"])]
+    (api/check-400 (and (not (str/blank? k)) (= k (str/trim k)) (<= (count k) 255))
+                   "Idempotency-Key must be 1 to 255 characters, not blank, with no leading or trailing whitespace")
+    k))
+
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces) and provision it (blocking). A failed provisioning is an error,
    never a 200: the database's status code, or 500, with `message` and
    `cleanup_required`, true when the workspace was kept and must be deleted to
-   finish the teardown."
+   finish the teardown.
+
+   Send an `Idempotency-Key` header to make the request safe to retry. The key must be
+   1 to 255 characters, not blank, with no leading or trailing whitespace; otherwise
+   400. Keys are compared exactly, letter case included. When the current user
+   already has a workspace with that key, nothing is provisioned. The response is
+   that workspace (200); 409 with error code `workspace_busy` while a create or
+   delete of that workspace is still running; or 500 with `workspace_id` and `cleanup_required` when
+   that workspace has no databases or one that is not `provisioned`: its create
+   failed or stopped, or a later delete failed. Delete the workspace, then create
+   again with a new key. A create that failed and deleted its workspace frees its
+   key. The body of a retry is not compared with the original, so send a key again
+   only to retry the same intended workspace."
   {:scope api-scope.workspace-manager/workspace-manager}
-  [_route-params _query-params params :- CreateWorkspaceParams]
+  [_route-params _query-params params :- CreateWorkspaceParams request]
   (api/create-check :model/Workspace params)
   (present-workspace
    (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+    (assoc params
+           :creator_id      api/*current-user-id*
+           :idempotency_key (request-idempotency-key request)))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
@@ -144,13 +167,30 @@
   while a create or deprovision is running on any of its databases, meaning a row
   is `:provisioning` or `:deprovisioning` and any row of the workspace was last
   updated within the last 15 minutes. Once every row is older, such a row is
-  treated as left by a crashed instance and is torn down. A row whose teardown
-  succeeds is deleted. A row whose teardown fails is kept, the workspace is kept
-  with it, and the combined failure is the error, so the delete can be retried.
-  204 on success, no response body."
+  treated as left by a crashed instance and is torn down. A DELETE sets every
+  database `deprovisioning` before its first warehouse call, so a second DELETE
+  and the config download answer 409 while it runs. A `never_started` row is
+  deleted without a warehouse teardown: a create that failed before that
+  database's provisioning started left it, so the warehouse has nothing of its.
+  A row whose teardown succeeds is deleted. A row whose teardown fails is kept,
+  the workspace is kept with it, and the combined failure is the error, so the delete can be retried. Only a failure of the
+  warehouse teardown itself marks the row `teardown_failed`. A failure before the
+  warehouse call (a lock timeout, a failed connection lookup) leaves the row's
+  status as it was, and the next DELETE retries it. After a successful warehouse
+  teardown, a failed row delete or remapping cleanup also restores the row's
+  previous status, so a `provisioned` row can then name dropped objects until the
+  DELETE is retried. 204 on success, no response body.
+
+  `force=true` deletes `teardown_failed` rows without a warehouse teardown and
+  logs at WARN the identifiers of what may remain. It does so after the busy
+  check, so a 409 deletes nothing. Use it only when the warehouse is gone for
+  good. Other rows are torn down as without `force`."
   {:scope api-scope.workspace-manager/workspace-manager}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map {:closed true} [:force {:default false} ms/BooleanValue]]]
   (api/write-check :model/Workspace id)
+  (when force
+    (ws/abandon-teardown-failed-databases! id))
   (ws/delete-workspace! id)
   nil)
 
@@ -162,10 +202,12 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`; retry later. 422 if a
-  database's connection settings need an admin to fix them, if any emitted
-  value contains `{{` or `[[`, or if the workspace has no databases; retrying
-  does not help.
+  of the workspace's databases is not `:provisioned`. The body does not say which
+  status; read `GET /:id`. Retry while a database is `provisioning` or
+  `deprovisioning`. In any other status, waiting does not clear the 409; delete
+  the workspace. 422 if a database's connection settings need an admin to fix
+  them, if any emitted value contains `{{` or `[[`, or if the workspace has no
+  databases; retrying does not help.
   A scoped credential (an `mb:workspace-manager` API key or token) gets 422 when any
   of the workspace's databases uses an SSH tunnel, because the config would need the
   parent's tunnel secrets; an unscoped admin credential gets them."

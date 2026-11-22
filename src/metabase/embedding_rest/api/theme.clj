@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.embedding-rest.db :as embedding-rest.db]
+   [metabase.embedding.schema :as embedding.schema]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -19,7 +20,7 @@
    [:id        ms/PositiveInt]
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
-   [:settings ms/OpaqueJSONObject]
+   [:settings ::embedding.schema/embedding-theme.settings]
    [:is_default :boolean]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
@@ -43,7 +44,7 @@
    _query-params
    {:keys [name settings]} :- [:map {:closed true}
                                [:name     ms/NonBlankString]
-                               [:settings ms/OpaqueJSONObject]]]
+                               [:settings ::embedding.schema/embedding-theme.settings]]]
   (embedding-rest.db/insert-embedding-theme! {:name name
                                               :settings settings}))
 
@@ -53,7 +54,7 @@
    _query-params
    {:keys [name settings]} :- [:map {:closed true}
                                [:name {:optional true} [:maybe ms/NonBlankString]]
-                               [:settings {:optional true} [:maybe ms/OpaqueJSONObject]]]]
+                               [:settings {:optional true} [:maybe ::embedding.schema/embedding-theme.settings]]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (embedding-rest.db/update-embedding-theme! id
                                              (cond-> {}
@@ -87,7 +88,7 @@
    {:keys [themes]} :- [:map {:closed true}
                         [:themes [:sequential [:map {:closed true}
                                                [:name     ms/NonBlankString]
-                                               [:settings ms/OpaqueJSONObject]]]]]]
+                                               [:settings ::embedding.schema/embedding-theme.settings]]]]]]
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)

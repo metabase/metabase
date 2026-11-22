@@ -15,7 +15,6 @@
    [metabase.server.db :as server.db]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
-   [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]

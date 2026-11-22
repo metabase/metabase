@@ -382,6 +382,9 @@ export type VisualizationSettings = {
   /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
   "table.pivot"?: boolean;
 
+  /** Show a `#` column numbering rows 1, 2, 3… in display order. Defaults to `false`. */
+  "table.row_index"?: boolean;
+
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
@@ -407,6 +410,13 @@ export type VisualizationSettings = {
 
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
+
+  /**
+   * Fit the y-axis to the data instead of always including 0. Only for unstacked
+   * line and scatter charts with `graph.y_axis.auto_range` on; ignored otherwise.
+   * Defaults to `true` for scatter, `false` for the rest.
+   */
+  "graph.y_axis.unpin_from_zero"?: boolean;
 
   /** Show the y-axis title. `"auto"` hides it on narrow cards. */
   "graph.y_axis.labels_enabled"?: boolean | "auto";
@@ -467,8 +477,19 @@ export type VisualizationSettings = {
   /** Per-series labels, colors, and display tweaks. Keys are data-dependent. */
   series_settings?: Record<string, SeriesSettings | undefined>;
 
-  /** Explicit order, labels, colors, and enabled state for breakout series. */
+  /**
+   * Order of a chart's breakout series; `enabled: false` hides one. Ignored
+   * unless `graph.series_order_dimension` is set and every entry has `key`,
+   * `name` and `color` (`name` and `color` aren't drawn). On a stacked chart,
+   * the first entry is the top (on a row chart, the left end).
+   */
   "graph.series_order"?: SeriesOrderSetting[];
+
+  /**
+   * The breakout column `graph.series_order` applies to: the second
+   * `graph.dimensions` entry. Unless it matches, `graph.series_order` is ignored.
+   */
+  "graph.series_order_dimension"?: string;
 
   // Timeline events settings
   "timeline.selected_timeline_ids"?: TimelineId[];

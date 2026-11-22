@@ -641,9 +641,9 @@
                           "LIMIT"
                           "  1"]
                   :params nil}
-                 (-> @executed-query
-                     :native
-                     (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
+                 (let [{sql :native, :keys [params]} (lib/query-stage @executed-query 0)]
+                   {:query  (str/split-lines (driver/prettify-native-form :athena sql))
+                    :params params}))))))))
 
 (deftest ^:parallel source-column-name-conflict-test
   (testing "A column named `source` should not conflict with the subquery alias (#70224)"

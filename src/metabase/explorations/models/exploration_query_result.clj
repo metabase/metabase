@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.composite :as composite]
    [metabase.explorations.db :as explorations.db]
    [metabase.interestingness.core :as interestingness]
@@ -192,3 +193,8 @@
             (doseq [{:keys [sr]} eq-results]
               (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationQueryResult [_model]
+  {:skip? true})

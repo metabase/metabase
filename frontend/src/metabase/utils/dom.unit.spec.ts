@@ -1,4 +1,8 @@
-import { getPathnameWithoutSubPath, isLoopbackHostname } from "./dom";
+import {
+  getPathnameWithoutSubPath,
+  isLoopbackHostname,
+  isLoopbackOrigin,
+} from "./dom";
 
 describe("getPathnameWithoutSubPath", () => {
   it("should leave the pathname unchanged when the site url has no subpath", () => {
@@ -73,5 +77,19 @@ describe("isLoopbackHostname", () => {
     "10.0.0.1",
   ])("does not treat %s as this machine", (hostname) => {
     expect(isLoopbackHostname(hostname)).toBe(false);
+  });
+});
+
+describe("isLoopbackOrigin", () => {
+  it.each([
+    ["http://localhost:3000", true],
+    ["http://127.0.0.1:5173", true],
+    ["https://[::1]:444", true],
+    ["https://localhost.example.com", false],
+    ["https://example.com", false],
+    ["null", false],
+    [null, false],
+  ])("treats origin %s as loopback: %s", (origin, isLoopback) => {
+    expect(isLoopbackOrigin(origin)).toBe(isLoopback);
   });
 });

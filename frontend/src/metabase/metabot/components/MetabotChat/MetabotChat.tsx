@@ -24,7 +24,7 @@ import {
   useMetabotConversation,
   useUserMetabotPermissions,
 } from "../../hooks";
-import { type MetabotAgentId, isGeneratedEntityPart } from "../../state";
+import type { MetabotAgentId } from "../../state";
 import type { MetabotChatConfig } from "../Metabot";
 import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
@@ -78,19 +78,7 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  // outside the full page, metabot navigates to generated entities instead of
-  // showing them in the conversation
   const isFullPageMetabot = useIsFullPageMetabot();
-  const messages = useMemo(
-    () =>
-      isFullPageMetabot
-        ? metabot.messages
-        : metabot.messages.map((message) => ({
-            ...message,
-            parts: message.parts.filter((part) => !isGeneratedEntityPart(part)),
-          })),
-    [metabot.messages, isFullPageMetabot],
-  );
 
   const { scrollContainerRef, fillerRef } = useScrollManager(
     hasMessages,
@@ -222,7 +210,8 @@ export const MetabotChat = ({
             >
               {/* conversation messages */}
               <Messages
-                messages={messages}
+                messages={metabot.messages}
+                chartsAsLinks={!isFullPageMetabot}
                 onRetryMessage={metabot.retryMessage}
                 onContinueMessage={metabot.continueResponse}
                 onRefreshConversation={() => {

@@ -4,16 +4,23 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.models.query-execution :as query-execution]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.revisions.sql :as revisions.sql]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -130,6 +137,11 @@
   "The Documents with `document-ids` narrowed to `:id`, `:collection_id` and `:exploration_id`."
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Document :id :collection_id :exploration_id] :id [:in document-ids]))
+
+(mu/defn explorations
+  "The Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Exploration :id [:in exploration-ids]))
 
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
@@ -281,6 +293,16 @@
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
 
+(mu/defn dashboard-archived?
+  "Whether the Dashboard with `dashboard-id` is archived."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
+
+(mu/defn document-archived?
+  "Whether the Document with `document-id` is archived."
+  [document-id :- ms/PositiveInt]
+  (t2/exists? :model/Document :id document-id :archived true))
+
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -374,10 +396,10 @@
   [model-id :- ms/PositiveInt]
   (t2/delete! :model/Action :model_id model-id))
 
-(mu/defn actions-for-model
-  "The Actions of the model Card with `model-id`."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id))
+(mu/defn delete-actions-of-models!
+  "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
+  [model-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Action :model_id [:in model-ids]))
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
@@ -418,6 +440,11 @@
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/ParameterCard :card_id card-id))
+
+(mu/defn parameter-cards-for-cards
+  "The ParameterCards drawing values from the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select :model/ParameterCard :card_id [:in card-ids]))
 
 (mu/defn parameter-card-card-ids
   "The set of Card IDs the parameters of the given parameterized object draw values from."
@@ -586,3 +613,217 @@
     (-> (t2/select [:model/Card :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-card-candidates :- ::staleness/query
+  "The query of the Cards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery {:select [:report_card.id
+                             [(h2x/literal "Card") :model]
+                             [:report_card.name :name]
+                             :last_used_at
+                             :report_card.collection_id]
+                    :from :report_card
+                    :left-join [:moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_card.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]
+                                :pulse_card [:= :pulse_card.card_id :report_card.id]
+                                :pulse [:and
+                                        [:= :pulse_card.pulse_id :pulse.id]
+                                        [:= :pulse.archived false]]
+                                :sandboxes [:= :sandboxes.card_id :report_card.id]
+                                :collection [:= :collection.id :report_card.collection_id]]
+                    :where [:and
+                            [:= :sandboxes.id nil]
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_card.archived false]
+                            [:<= :report_card.last_used_at (:cutoff-date opts)]
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_card.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_card.public_uuid nil])
+                            (staleness/collection-filter :report_card.collection_id opts)]})
+
+(mu/defn stale-card-items
+  "The listing columns of the Cards with `card-ids`, with the hydrations the stale content page shows. `:type` is read
+  to label each Card, and the columns after it are there for the Card schema upgrade, not for the listing."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (-> (t2/select [:model/Card
+                  :id
+                  :dashboard_id
+                  :description
+                  :collection_id
+                  :name
+                  :entity_id
+                  :archived
+                  :collection_position
+                  :display
+                  :database_id
+                  [nil :location]
+                  :dataset_query
+                  :card_schema
+                  :type
+                  :entity_id
+                  :result_metadata
+                  :dimensions
+                  :dimension_mappings
+                  :last_used_at
+                  [^:allow-subquery
+                   {:select   [:status]
+                    :from     [:moderation_review]
+                    :where    [:and
+                               [:= :moderated_item_type "card"]
+                               [:= :moderated_item_id :report_card.id]
+                               [:= :most_recent true]]
+                    :order-by [[:id :desc]]
+                    :limit    1}
+                   :moderated_status]]
+                 :id [:in card-ids])
+      (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count
+                  [:dashboard :moderation_status])))
+
+(mu/defn dependency-card-items :- [:maybe :map]
+  "The query of the Cards the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
+  collections the user reads, of the `:card-types`, without the internal ones unless `:include-internal?` and those in
+  personal collections unless `:include-personal-collections?`, located by their dashboard, document or collection."
+  [{:keys [include-archived include-personal-collections? include-internal? card-types] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location [:case
+                  [:not= :card.dashboard_id nil] :dashboard.name
+                  [:not= :card.document_id nil]  :document.name
+                  :else                          (collections.listing/collection-location :collection nil)]]
+    {:select    [[:card.id :entity_id] [:card.name :name] [location :location]]
+     :from      [[:report_card :card]]
+     :left-join [:collection                  [:= :card.collection_id :collection.id]
+                 [:report_dashboard :dashboard] [:= :card.dashboard_id :dashboard.id]
+                 :document                    [:= :card.document_id :document.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [(collections.listing/visible-in-collections-clause :card opts include-archived nil)
+                       (collections.listing/archived-clause :card include-archived)
+                       (when (seq card-types)
+                         [:in :card.type (mapv name card-types)])
+                       (when-not include-internal?
+                         (mi/non-internal-filter-clause :model/Card :card))
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :card :collection))])}))
+
+(defn- collection-card-items
+  "The query of the Cards of `card-type`, `:question`, `:model` or `:metric`, in `collection` that the collection items
+  listing of `opts` holds."
+  [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
+  {:select    (cond-> [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
+                       :dashboard_id
+                       :last_used_at
+                       :c.collection_id
+                       :c.archived_directly
+                       :c.archived
+                       :c.dataset_query
+                       [(h2x/literal (case card-type
+                                       :model "dataset"
+                                       :metric  "metric"
+                                       "card"))
+                        :model]
+                       [:u.id :last_edit_user]
+                       [:u.email :last_edit_email]
+                       [:u.first_name :last_edit_first_name]
+                       [:u.last_name :last_edit_last_name]
+                       [:r.timestamp :last_edit_timestamp]
+                       [:mr.status :moderated_status]]
+                (#{:question :model} card-type) (conj :c.database_id)
+                (= :model card-type)            (conj :c.table_id :t.is_upload :c.query_type))
+   :from      [[:report_card :c]]
+   :left-join (cond-> [[:revision :r] [:and
+                                       [:= :r.model_id :c.id]
+                                       [:= :r.model (h2x/literal "Card")]
+                                       (revisions.sql/newest-revision-clause :r "Card" :c.id)]
+                       [:moderation_review :mr] [:and
+                                                 [:= :mr.moderated_item_id :c.id]
+                                                 [:= :mr.most_recent true]
+                                                 [:= :mr.moderated_item_type (h2x/literal "card")]]
+                       [:core_user :u] [:= :u.id :r.user_id]]
+                (= :model card-type) (conj [:metabase_table :t] [:= :t.id :c.table_id]))
+   :where     [:and
+               (collections.listing/visible-items-clause :c.collection_id archived? {:root-namespace nil})
+               (if (collection/is-trash? collection)
+                 [:= :c.archived_directly true]
+                 [:and
+                  [:= :c.collection_id (:id collection)]
+                  [:= :c.archived_directly false]])
+               (when-not show-dashboard-questions?
+                 [:= :c.dashboard_id nil])
+               [:= :c.document_id nil]
+               (when created-by-id
+                 [:= :c.creator_id created-by-id])
+               [:= :c.archived (boolean archived?)]
+               (case card-type
+                 :model
+                 [:= :c.type (h2x/literal "model")]
+
+                 :metric
+                 [:= :c.type (h2x/literal "metric")]
+
+                 [:= :c.type (h2x/literal "question")])
+               (collections.listing/pinned-state->clause pinned-state)]})
+
+(mu/defn collection-question-items :- :map
+  "The query of the saved questions in `collection` that the collection items listing of `opts` holds."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :question collection opts))
+
+(mu/defn collection-model-items :- :map
+  "The query of the models in `collection` that the collection items listing of `opts` holds."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :model collection opts))
+
+(mu/defn collection-metric-items :- :map
+  "The query of the metrics in `collection` that the collection items listing of `opts` holds."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :metric collection opts))
+
+(mu/defn recent-view-cards
+  "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/hydrate
+   (t2/select :model/Card
+              {:select [:card.name
+                        :card.description
+                        :card.archived
+                        :card.id
+                        :card.database_id
+                        :card.display
+                        :card.card_schema
+                        ;; required alongside :card_schema for the Card schema upgrade
+                        :card.type
+                        :card.dimensions
+                        :card.dimension_mappings
+                        :card.result_metadata
+                        :card.dataset_query
+                        :card.entity_id
+                        :card.visualization_settings
+                        [:dashboard.id :dashboard_id]
+                        [:dashboard.name :dashboard_name]
+                        [:card.collection_id :entity-coll-id]
+                        [:mr.status :moderated-status]
+                        [:collection.id :collection_id]
+                        [:collection.name :collection_name]
+                        [:collection.authority_level :collection_authority_level]]
+               :from [[:report_card :card]]
+               :where [:in :card.id card-ids]
+               :left-join [[:moderation_review :mr]
+                           [:and
+                            [:= :mr.moderated_item_id :card.id]
+                            [:= :mr.moderated_item_type "card"]
+                            [:= :mr.most_recent true]]
+                           [:collection]
+                           [:and
+                            [:= :collection.id :card.collection_id]
+                            [:= :collection.archived false]]
+                           [:report_dashboard :dashboard]
+                           [:= :dashboard.id :card.dashboard_id]]}) :can_read :can_write))

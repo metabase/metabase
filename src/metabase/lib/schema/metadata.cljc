@@ -945,7 +945,7 @@
    [:display-name :string]])
 
 (mr/def ::dimension-source.type
-  [:enum :field])
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :field])
 
 (mr/def ::dimension-source
   [:map {:closed true}
@@ -955,7 +955,7 @@
 
 (mr/def ::dimension-mapping.type
   "Type of dimension mapping."
-  [:enum :table])
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :table])
 
 (mr/def ::dimension-mapping.target
   "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2]."

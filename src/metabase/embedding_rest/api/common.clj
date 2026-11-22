@@ -6,10 +6,13 @@
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.database-routing.core :as database-routing]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
@@ -18,7 +21,9 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
@@ -70,7 +75,7 @@
 
 (def UnsignedToken
   "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
-  [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
+  [:map {:closed false, :description "embedding JWT claims"}
    [:resource          {:optional true} [:map {:closed true}
                                          [:question  {:optional true} ResourceId]
                                          [:dashboard {:optional true} ResourceId]]]
@@ -388,30 +393,98 @@
   (let [signed-slugs (into #{} (keep (fn [[slug v]] (when (sets-a-value? v) (name slug)))) token-params)]
     (into #{} (keep (fn [{:keys [slug id]}] (when (signed-slugs slug) id))) parameters)))
 
+;;; ------------------------------------------- Shared chart context resolvers -------------------------------------------
+;;;
+;;; A chart route and its `/goal-values` route resolve their context through the same family resolver (in `embed` and
+;;; `preview-embed`), which ends in [[card-context]] or [[dashcard-context]]. A goal request carries no user params, so
+;;; it passes `{}`; the token is validated against `embedding-params` exactly as for the chart.
+
+(mr/def ::card-context
+  [:map {:closed true}
+   [:card                 ::queries.schema/card]
+   [:parameters           [:maybe ::parameters.schema/parameter-values]]
+   [:signed-parameter-ids [:set :string]]])
+
+(mr/def ::dashcard-context
+  [:map {:closed true}
+   [:dashboard            ::dashboards.schema/dashboard]
+   [:dashcard             ::dashboards.schema/dashboard-card]
+   [:card                 ::queries.schema/card]
+   [:parameters           ::parameters.schema/parameter-values]
+   [:signed-parameter-ids [:set :string]]])
+
+(mu/defn card-context :- ::card-context
+  "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `card`. Throws a 400 on bad
+  params. Returns the card, its query parameters, and the ids of the parameters the token signs a value for."
+  [card             :- ::queries.schema/card
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   token-params     :- SlugValueMap
+   query-params     :- [:or QueryParams ParsedQueryParams]]
+  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        card-parameters    (resolve-card-parameters card)]
+    {:card                 card
+     :parameters           (apply-slug->value card-parameters merged-slug->value)
+     :signed-parameter-ids (signed-parameter-ids card-parameters token-params)}))
+
+(mu/defn dashcard-context :- ::dashcard-context
+  "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `dashboard`, then check that
+  `card` is on `dashcard` on `dashboard`. Throws a 400 on bad params, a 404 on a membership mismatch."
+  [dashboard        :- ::dashboards.schema/dashboard
+   dashcard         :- ::dashboards.schema/dashboard-card
+   card             :- ::queries.schema/card
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   token-params     :- SlugValueMap
+   query-params     :- [:or QueryParams ParsedQueryParams]]
+  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters  (resolve-dashboard-parameters dashboard slug->value)]
+    (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) (:id card) dashcard)
+    {:dashboard            dashboard
+     :dashcard             dashcard
+     :card                 card
+     :parameters           parameters
+     :signed-parameter-ids (signed-parameter-ids (:parameters dashboard) token-params)}))
+
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
 ;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
 ;;; endpoints cannot forget them. (For preview_embed this also means the preview shows what the published embed will
 ;;; show, rather than routing via the previewing admin's own user attribute.)
 
-(defn process-query-for-card-with-params
-  "Run the query associated with pre-loaded Card `card` using JWT `token-params`, user-supplied URL `query-params`,
-   an `embedding-params` whitelist, and additional query `options`. Callers are responsible for selecting `card`
-  exactly once per request and threading it here. Runs with database routing off (see above). Returns
-  `StreamingResponse` that should be returned as the API endpoint result."
-  [& {:keys [export-format card embedding-params token-params query-params qp constraints options]
-      :or   {qp qp.card/process-query-for-card-default-qp}}]
-  {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
-    (database-routing/with-anonymous-router-access
-      (m/mapply api.public/process-query-for-card-with-id
-                card export-format parameters
-                :context     (get-embed-card-context export-format)
-                :constraints constraints
-                :qp          qp
-                :signed-parameter-ids (signed-parameter-ids parameters token-params)
-                options))))
+(mr/def ::query-options
+  "Extra options the embed card routes pass through to the card query."
+  [:map {:closed true}
+   [:qp          {:optional true} [:maybe ifn?]]
+   [:constraints {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:middleware  {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]])
+
+(mr/def ::card-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:qp            {:optional true} [:maybe ifn?]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:options       {:optional true} [:maybe ::query-options]]])
+
+(mu/defn process-query-for-card-context
+  "Run the query of a [[card-context]] with additional query `options`. Runs with database routing off (see above).
+  Returns a `StreamingResponse`."
+  [{:keys [card parameters]} :- ::card-context
+   & {:keys [export-format qp constraints options]
+      :or   {qp qp.card/process-query-for-card-default-qp}} :- [:maybe ::card-context-options]]
+  (database-routing/with-anonymous-router-access
+    (m/mapply api.public/process-query-for-card-with-id
+              card export-format parameters
+              :context     (get-embed-card-context export-format)
+              :constraints constraints
+              :qp          qp
+              options)))
+
+(mu/defn goal-values-response
+  "The goal values of a resolved [[card-context]] or [[dashcard-context]], with database routing off like its chart.
+  Withheld when the token signs a parameter value. Returns a `StreamingResponse`."
+  [context :- [:or ::card-context ::dashcard-context]]
+  (database-routing/with-anonymous-router-access
+    ;; goals run without parameter values
+    (dynamic-goals/chart-context-goal-values-response (dissoc context :parameters))))
 
 (defn- tile-slug->value
   [object-parameters parameter-values]
@@ -503,34 +576,35 @@
     :json :embedded-json-download
     :embedded-dashboard))
 
-(defn process-query-for-dashcard
-  "Return results for running the query belonging to a DashboardCard. Callers are responsible for selecting the
-  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Runs with database
-  routing off (see the comment above [[process-query-for-card-with-params]]). Returns a `StreamingResponse`."
-  [& {:keys [dashboard dashcard card export-format embedding-params token-params middleware
-             query-params constraints qp]
+(mr/def ::dashcard-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:middleware    {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:qp            {:optional true} [:maybe ifn?]]])
+
+(mu/defn process-query-for-dashcard-context
+  "Run the query of a [[dashcard-context]]. Runs with database routing off (see the comment above
+  [[process-query-for-card-context]]). Returns a `StreamingResponse`."
+  [{:keys [dashboard dashcard card parameters]} :- ::dashcard-context
+   & {:keys [export-format middleware constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          qp.card/process-query-for-card-default-qp}}]
-  {:pre [(map? dashboard) (map? dashcard) (map? card) (u/maybe? map? embedding-params)
-         (map? token-params) (map? query-params)]}
-  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (database-routing/with-anonymous-router-access
-      (api.public/process-query-for-dashcard
-       :dashboard     dashboard
-       :card          card
-       :dashcard      dashcard
-       :export-format export-format
-       :parameters    parameters
-       :qp            qp
-       :context       (get-embed-dashboard-context export-format)
-       :constraints   constraints
-       :middleware    middleware
-       :signed-parameter-ids (signed-parameter-ids parameters token-params)))))
+             qp          qp.card/process-query-for-card-default-qp}} :- [:maybe ::dashcard-context-options]]
+  (database-routing/with-anonymous-router-access
+    (api.public/process-query-for-dashcard
+     :dashboard     dashboard
+     :card          card
+     :dashcard      dashcard
+     :export-format export-format
+     :parameters    parameters
+     :qp            qp
+     :context       (get-embed-dashboard-context export-format)
+     :constraints   constraints
+     :middleware    middleware)))
 
 (defn process-tiles-query-for-dashcard
   "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card
-  entities and runs with database routing off (see the comment above [[process-query-for-card-with-params]]). Used by
+  entities and runs with database routing off (see the comment above [[process-query-for-card-context]]). Used by
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
   (database-routing/with-anonymous-router-access

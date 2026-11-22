@@ -379,7 +379,7 @@
   [val goal-part]
   (-> (timeseries-result val)
       (assoc-in [:card :visualization_settings :graph.goal_value] {:id 42 :type "card" :column "target"})
-      (assoc-in [:result :data :referenced_entities] {"card" {"42" goal-part}})))
+      (assoc :goal-values {"card" {"42" goal-part}})))
 
 (deftest ^:parallel goal-met-referenced-goal-test
   (testing "Timeseries whose goal is another card's value"
@@ -398,7 +398,7 @@
           (testing "value above goal" (is (false? (goal-met? alert (referenced-timeseries-result 6 goal-part))))))))))
 
 (deftest ^:parallel goal-met-referenced-goal-failed-test
-  (testing "a failed referenced query makes the alert error instead of silently (not) firing"
+  (testing "a failed goal source query makes the alert error instead of silently (not) firing"
     (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
                             (goal-met? {:send_condition "goal_above"}

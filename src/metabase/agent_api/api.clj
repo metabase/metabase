@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.agent-api.db :as agent-api.db]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.agent-api.schema :as agent-api.schema]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
@@ -18,9 +19,10 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -36,6 +38,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -210,7 +213,7 @@
   `referenced_entities` envelope from before the repr migration) are dropped during request
   decoding, so a caller still sending the old shape is served.
 
-  The inner `:query` value is an opaque, string-keyed JSON object ([[ms/OpaqueJSONObject]]) at this boundary
+  The inner `:query` value is an open JSON object (`::agent-api.schema/query-object`) at this boundary
   rather than `::lib.schema/external-query`. Being open matters: a closed map with no declared
   entries would have every key stripped before the handler saw it. Reasons for not naming the
   real schema:
@@ -227,7 +230,7 @@
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
-    ms/OpaqueJSONObject]
+    ::agent-api.schema/query-object]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
    ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
@@ -844,17 +847,15 @@
     (when validate-query!
       (validate-query! dataset-query))
     (query-perms/check-run-permissions-for-query dataset-query)
-    (api/create-check :model/Card {:collection_id collection_id})
-    (create-card-response
-     (queries/create-card!
-      {:name                   card-name
-       :type                   card-type
-       :dataset_query          dataset-query
-       :display                (keyword (or display default-display))
-       :description            description
-       :collection_id          collection_id
-       :visualization_settings (or visualization_settings {})}
-      {:id api/*current-user-id*}))))
+    (let [card {:name                   card-name
+                :type                   card-type
+                :dataset_query          dataset-query
+                :display                (keyword (or display default-display))
+                :description            description
+                :collection_id          collection_id
+                :visualization_settings (or visualization_settings {})}]
+      (api/create-check :model/Card card)
+      (create-card-response (queries/create-card! card {:id api/*current-user-id*})))))
 
 (defn- apply-agent-card-patch!
   "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
@@ -865,7 +866,7 @@
   before anything is written.
 
   TODO (Bryan 2026-05-20): see the matching TODO on `create-card-from-agent!`. The pre-check stack
-  mirrored here (collection move, run-permissions, cycle detection) is also duplicated against REST's
+  mirrored here (collection move, run-permissions) is also duplicated against REST's
   update-card path; extracting a shared `metabase.queries.*` helper is the larger fix that stops REST
   + agent-api from drifting."
   [card-before-update body {:keys [validate-query!]}]
@@ -898,29 +899,16 @@
 
                       new-query
                       (assoc :dataset_query new-query))
-        ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived). The
-        ;; REST endpoint runs this in `update-card!` on every update; we need it too so LLM-archived
-        ;; cards behave the same as UI-archived ones.
-        card-updates (api/updates-with-archived-directly card-before-update raw-updates)]
+        card-updates (api/updates-without-collection-when-archiving card-before-update raw-updates)]
     ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
-    ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
-    (collection/check-allowed-to-change-collection card-before-update card-updates)
+    ;; The update check asks write on both collections.
+    (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
-      ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
-      ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
-      (try
-        (lib/check-card-overwrite id (:dataset_query card-updates))
-        (catch clojure.lang.ExceptionInfo e
-          ;; Don't downgrade a more specific status if the throwing fn ever starts setting one
-          ;; (e.g. a 404 for a missing card).
-          (let [data (ex-data e)]
-            (throw (ex-info (ex-message e)
-                            (assoc data :status-code (or (:status-code data) 400))))))))
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
     (queries/update-card! {:card-before-update    card-before-update
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
@@ -929,7 +917,7 @@
 
 (mr/def ::create-question-request
   [:map {:closed true}
-   [:name                   ms/NonBlankString]
+   [:name                   ::queries.schema/card.name]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -980,7 +968,7 @@
 
 (mr/def ::create-metric-request
   [:map {:closed true}
-   [:name                   ms/NonBlankString]
+   [:name                   ::queries.schema/card.name]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -1048,7 +1036,7 @@
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
   [:map {:closed true}
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -1107,7 +1095,7 @@
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer)."
   [:map {:closed true}
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -1272,18 +1260,17 @@
   (let [collection_id (if (contains? body :collection_id)
                         (:collection_id body)
                         (personal-collection-id))]
-    (api/create-check :model/Dashboard {:collection_id collection_id})
+    (api/create-check :model/Dashboard {:name dashboard-name, :description description, :collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (let [id->card (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids (vec (distinct question_ids)))
                                                              :can_read))]
                     (mapv #(api/read-check (id->card %)) question_ids)))
-          dash  (t2/with-transaction [_conn]
-                  (let [dash (agent-api.db/insert-dashboard!
-                              {:name          dashboard-name
-                               :description   description
-                               :parameters    []
-                               :creator_id    api/*current-user-id*
-                               :collection_id collection_id})]
+          dash  (dashboards.write/create-dashboard!
+                 {:name          dashboard-name
+                  :description   description
+                  :collection_id collection_id}
+                 {:in-transaction
+                  (fn [dash]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
@@ -1293,9 +1280,7 @@
                                                     :card_id      (:id card)}))
                                   (conj placed position)))
                               []
-                              cards))
-                    dash))]
-      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+                              cards)))})]
       {:id              (:id dash)
        :name            (:name dash)
        :url             (frontend-url (channel.urls/dashboard-path (:id dash)))
@@ -1544,7 +1529,7 @@
     ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
-      (dashboard/archive-or-unarchive-internal-dashboard-questions!
+      (dashboard-card/archive-or-unarchive-internal-dashboard-questions!
        dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
@@ -1585,21 +1570,17 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
-  (let [current-dash (api/write-check :model/Dashboard id)
+  (let [current-dash (api/check-404 (agent-api.db/dashboard id))
         updates      (cond-> {}
                        (contains? body :name)          (assoc :name (:name body))
                        (contains? body :description)   (assoc :description (:description body))
                        (contains? body :collection_id) (assoc :collection_id (:collection_id body))
                        (contains? body :archived)      (assoc :archived (boolean (:archived body))))
-        ;; Keep `archived_directly` in sync (and drop any `collection_id` sent alongside an
-        ;; archive), mirroring the REST PUT-dashboard path.
         ;; TODO (Chris 2026-07-10) -- the drop is silent: archive + move in one request returns
         ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
         ;; may serve LLM callers better.
-        updates      (api/updates-with-archived-directly current-dash updates)
-        ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
-        ;; above only covered the source entity. Mirror the REST endpoint's gate.
-        _            (collection/check-allowed-to-change-collection current-dash updates)
+        updates      (api/updates-without-collection-when-archiving current-dash updates)
+        _            (api/update-check current-dash updates)
         mutations    (:dashcards body)
         ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes
         ;; a dashboard being archived by THIS request — otherwise the post-mutation
@@ -1611,9 +1592,8 @@
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
-        result       (t2/with-transaction [_conn]
+        _            (events/with-batched-events
                        (when (seq updates)
-                         (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
                          (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
@@ -1626,31 +1606,18 @@
                                                   {:collection-id (:collection_id updates)
                                                    :user-id       api/*current-user-id*})))
                        (when (seq mutations)
-                         (apply-dashcard-mutations! id mutations)))]
-    ;; Publish dashcard events outside the transaction, matching the REST endpoint's ordering.
-    (when (seq (:added result))
-      (events/publish-event! :event/dashboard-add-cards
-                             {:object current-dash
-                              :user-id api/*current-user-id*
-                              :dashcards (:added result)}))
-    (when (seq (:removed result))
-      (events/publish-event! :event/dashboard-remove-cards
-                             {:object current-dash
-                              :user-id api/*current-user-id*
-                              :dashcards (:removed result)}))
-    (let [updated (agent-api.db/dashboard id)]
-      (events/publish-event! :event/dashboard-update
-                             {:object updated :user-id api/*current-user-id*})
-      {:id              (:id updated)
-       :name            (:name updated)
-       :collection_id   (:collection_id updated)
-       :collection_path (collection-path (:collection_id updated))
-       :description     (:description updated)
-       :archived        (boolean (:archived updated))
-       ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
-                            [])
-       :tabs            (dashboard-tabs id)})))
+                         (apply-dashcard-mutations! id mutations)))
+        updated      (agent-api.db/dashboard id)]
+    {:id              (:id updated)
+     :name            (:name updated)
+     :collection_id   (:collection_id updated)
+     :collection_path (collection-path (:collection_id updated))
+     :description     (:description updated)
+     :archived        (boolean (:archived updated))
+     ;; select-fn-vec returns nil, not [], when there are no rows
+     :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
+                          [])
+     :tabs            (dashboard-tabs id)}))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 
@@ -1659,7 +1626,7 @@
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field)."
   [:map {:closed true}
-   [:name                 ms/NonBlankString]
+   [:name                 ::collections.schema/collection.name]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 

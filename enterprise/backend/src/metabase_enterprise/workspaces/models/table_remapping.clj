@@ -15,6 +15,7 @@
    They also drop this process's [[database-ids-with-remappings]] cache."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.cache.core :as cache]
    [methodical.core :as methodical]
@@ -97,3 +98,8 @@
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
 (t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableRemapping [_model]
+  {:skip? false})

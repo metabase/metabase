@@ -7,7 +7,7 @@
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -137,8 +137,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
-                {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
+          (let [{card-id-1 :id :as dependency-card} (mt/with-current-user (:id user) (card/create-card! (basic-card) user))
+                {card-id-2 :id} (mt/with-current-user (:id user) (card/create-card! (wrap-card dependency-card) user))
                 _ (deps.test/synchronously-run-dependency-job!)
                 response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph" :id card-id-2 :type "card")
                 creator {:email "me@wherever.com"
@@ -198,8 +198,8 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
           (mt/with-temp [:model/User user {:email "test@test.com"}]
-            (let [_card-1 (card/create-card! (basic-card "Card 1" :orders) user)
-                  _card-2 (card/create-card! (basic-card "Card 2" :orders) user)
+            (let [_card-1 (mt/with-current-user (:id user) (card/create-card! (basic-card "Card 1" :orders) user))
+                  _card-2 (mt/with-current-user (:id user) (card/create-card! (basic-card "Card 2" :orders) user))
                   _ (deps.test/synchronously-run-dependency-job!)
                   response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
                                                  :id (mt/id :orders)
@@ -235,13 +235,9 @@
                                       :type :metric)
                                user)
             (mt/with-temp [:model/Segment {:as segment} {:name "Segment on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
-                                                                         (lib/filter (lib/> price 50))
-                                                                         lib/->legacy-MBQL
-                                                                         :query)}
+                                                                         (lib/filter (lib/> price 50)))}
                            :model/Measure {:as measure} {:name "Measure on products"
-                                                         :table_id products-id
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/aggregate (lib/sum price)))}
                            :model/Transform _ {:name   "Transform on products"
@@ -267,8 +263,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card) user)
-                {card-id-2 :id} (card/create-card! (wrap-card dependency-card) user)
+          (let [{card-id-1 :id :as dependency-card} (mt/with-current-user (:id user) (card/create-card! (basic-card) user))
+                {card-id-2 :id} (mt/with-current-user (:id user) (card/create-card! (wrap-card dependency-card) user))
                 _ (deps.test/synchronously-run-dependency-job!)
                 response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                :id card-id-1
@@ -324,15 +320,14 @@
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/DashboardCard]
         (mt/with-temp [:model/User user {:email "test@test.com"}
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - multi") user)
-                _dependent-card (card/create-card! (wrap-card dependency-card) user)]
+          (let [{card-id-1 :id :as dependency-card} (mt/with-current-user (:id user) (card/create-card! (basic-card "Base card - multi") user))
+                _dependent-card (mt/with-current-user (:id user) (card/create-card! (wrap-card dependency-card) user))]
             (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
                                               :card_id card-id-1
                                               :row 0
                                               :col 0
                                               :size_x 4
                                               :size_y 4})
-            (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (testing "single dependent-types value (backward compatibility)"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
@@ -362,9 +357,9 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (let [{dependency-card-id :id :as dependency-card} (card/create-card! (basic-card "Base card - cardtypes") user)
-                _question-card (card/create-card! (assoc (wrap-card dependency-card) :name "Question card") user)
-                _model-card (card/create-card! (assoc (wrap-card dependency-card) :name "Model card" :type :model) user)]
+          (let [{dependency-card-id :id :as dependency-card} (mt/with-current-user (:id user) (card/create-card! (basic-card "Base card - cardtypes") user))
+                _question-card (mt/with-current-user (:id user) (card/create-card! (assoc (wrap-card dependency-card) :name "Question card") user))
+                _model-card (mt/with-current-user (:id user) (card/create-card! (assoc (wrap-card dependency-card) :name "Model card" :type :model) user))]
             (deps.test/synchronously-run-dependency-job!)
             (testing "single dependent-card-types value"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
@@ -403,8 +398,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (let [base-card (card/create-card! (basic-card "Archived Base Card") user)
-                dependent-card (card/create-card! (wrap-card base-card) user)]
+          (let [base-card (mt/with-current-user (:id user) (card/create-card! (basic-card "Archived Base Card") user))
+                dependent-card (mt/with-current-user (:id user) (card/create-card! (wrap-card base-card) user))]
             (card/update-card! {:card-before-update base-card
                                 :card-updates {:archived true}})
             (deps.test/synchronously-run-dependency-job!)
@@ -425,8 +420,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (let [base-card      (card/create-card! (basic-card "Archived Base Card") user)
-                dependent-card (card/create-card! (wrap-card base-card) user)]
+          (let [base-card      (mt/with-current-user (:id user) (card/create-card! (basic-card "Archived Base Card") user))
+                dependent-card (mt/with-current-user (:id user) (card/create-card! (wrap-card base-card) user))]
             (card/update-card! {:card-before-update base-card
                                 :card-updates {:archived true}})
             (deps.test/synchronously-run-dependency-job!)
@@ -448,8 +443,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (let [base-card (card/create-card! (basic-card "Base Card") user)
-                dependent-card (card/create-card! (wrap-card base-card) user)]
+          (let [base-card (mt/with-current-user (:id user) (card/create-card! (basic-card "Base Card") user))
+                dependent-card (mt/with-current-user (:id user) (card/create-card! (wrap-card base-card) user))]
             (card/update-card! {:card-before-update dependent-card
                                 :card-updates {:archived true}})
             (deps.test/synchronously-run-dependency-job!)
@@ -476,7 +471,7 @@
                                                                      :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform :id transform-id {:target_table_id table-id})
-          (deps.hooks/after-transform-run transform-id table-id)
+          (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (testing "GET /graph/dependents returns the inactive table as a child"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
@@ -550,7 +545,7 @@
         (mt/with-temp [:model/Collection collection {}
                        :model/User user {:email "test@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [card (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user)]
+            (let [card (mt/with-current-user (:id user) (card/create-card! (assoc (basic-card) :collection_id (u/the-id collection)) user))]
               (deps.test/synchronously-run-dependency-job!)
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
@@ -570,7 +565,7 @@
         (mt/with-temp [:model/Collection collection {}
                        :model/User user {:email "test@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [{card-id :id} (card/create-card! (assoc (basic-card) :collection_id (:id collection)) user)]
+            (let [{card-id :id} (mt/with-current-user (:id user) (card/create-card! (assoc (basic-card) :collection_id (:id collection)) user))]
               (deps.test/synchronously-run-dependency-job!)
               (testing "Returns 403 when user lacks read permissions"
                 (is (= "You don't have permissions to do that."
@@ -637,7 +632,7 @@
                        :model/Collection unreadable-collection {}
                        :model/User user {:email "test@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+            (let [base-card (mt/with-current-user (:id user) (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user))
                   readable-dependent (card/create-card! (assoc (wrap-card base-card)
                                                                :collection_id (:id readable-collection))
                                                         user)
@@ -666,7 +661,7 @@
                            :model/Collection unreadable-collection {}
                            :model/User user {:email "test@test.com"}]
               (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-                (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+                (let [base-card (mt/with-current-user (:id user) (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user))
                       unreadable-middle (card/create-card! (assoc (wrap-card base-card)
                                                                   :collection_id (:id unreadable-collection))
                                                            user)
@@ -836,7 +831,7 @@
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
           (mt/with-temp [:model/User user {:email "test@test.com"}
                          :model/Dashboard dashboard {:name "Test Dashboard"}]
-            (let [base-card (card/create-card! (basic-card "Base Card") user)
+            (let [base-card (mt/with-current-user (:id user) (card/create-card! (basic-card "Base Card") user))
                   dashboard-card (card/create-card! (assoc (wrap-card base-card)
                                                            :dashboard_id (:id dashboard))
                                                     user)]
@@ -869,7 +864,7 @@
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user {:email "test@test.com"}
                        :model/Document document {:name "Test Document"}]
-          (let [base-card (card/create-card! (basic-card "Base Card") user)
+          (let [base-card (mt/with-current-user (:id user) (card/create-card! (basic-card "Base Card") user))
                 document-card (card/create-card! (assoc (wrap-card base-card)
                                                         :document_id (:id document))
                                                  user)]
@@ -900,23 +895,19 @@
   (testing "GET /api/ee/dependencies/graph with segment as root node"
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:dependencies}
-        (let [products-id (mt/id :products)
-              price-field-id (mt/id :products :price)]
-          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}]
-            (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-            (deps.test/synchronously-run-dependency-job!)
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                 :id segment-id
-                                                 :type "segment")
-                  node-types (set (map :type (:nodes response)))]
-              (testing "returns segment and table nodes"
-                (is (contains? node-types "segment"))
-                (is (contains? node-types "table")))
-              (testing "segment node has correct data"
-                (let [segment-node (first (filter #(= (:type %) "segment") (:nodes response)))]
-                  (is (= segment-id (:id segment-node))))))))))))
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"}]
+          (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+          (deps.test/synchronously-run-dependency-job!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                               :id segment-id
+                                               :type "segment")
+                node-types (set (map :type (:nodes response)))]
+            (testing "returns segment and table nodes"
+              (is (contains? node-types "segment"))
+              (is (contains? node-types "table")))
+            (testing "segment node has correct data"
+              (let [segment-node (first (filter #(= (:type %) "segment") (:nodes response)))]
+                (is (= segment-id (:id segment-node)))))))))))
 
 (deftest graph-segment-dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents with segment"
@@ -925,8 +916,9 @@
         (let [products-id (mt/id :products)
               price-field-id (mt/id :products :price)]
           (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
-                                                                      :table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                                                                      :definition (let [mp (mt/metadata-provider)]
+                                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                                        (lib/filter (lib/> (lib.metadata/field mp price-field-id) 50))))}
                          :model/User user {:email "test@test.com"}]
             (mt/with-test-user :crowberto
               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)}))
@@ -934,7 +926,7 @@
                   products (lib.metadata/table mp products-id)
                   query-with-segment (-> (lib/query mp products)
                                          (lib/filter (lib.metadata/segment mp segment-id)))
-                  card (card/create-card! (card-with-query "Card using segment" query-with-segment) user)
+                  card (mt/with-current-user (:id user) (card/create-card! (card-with-query "Card using segment" query-with-segment) user))
                   _ (deps.test/synchronously-run-dependency-job!)
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id segment-id
@@ -1031,7 +1023,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
@@ -1057,14 +1048,12 @@
               price (lib.metadata/field mp (mt/id :products :price))
               rating (lib.metadata/field mp (mt/id :products :rating))]
           (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
-                                                                          :table_id products-id
                                                                           :definition (-> (lib/query mp products)
                                                                                           (lib/aggregate (lib/sum price)))}]
             (events/publish-event! :event/measure-create {:object measure-a :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [mp' (mt/metadata-provider)]
               (mt/with-temp [:model/Measure {measure-b-id :id :as measure-b} {:name "Measure B"
-                                                                              :table_id products-id
                                                                               :definition (-> (lib/query mp' products)
                                                                                               (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                                                     (lib/sum rating))))}]
@@ -1095,7 +1084,6 @@
               products (lib.metadata/table mp products-id)
               price (lib.metadata/field mp (mt/id :products :price))]
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
-                                                                      :table_id products-id
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}
                          :model/User user {:email "test@test.com"}]
@@ -1104,7 +1092,7 @@
             (let [mp' (mt/metadata-provider)
                   query-with-measure (-> (lib/query mp' products)
                                          (lib/aggregate (lib.metadata/measure mp' measure-id)))
-                  card (card/create-card! (card-with-query "Card using measure" query-with-measure) user)
+                  card (mt/with-current-user (:id user) (card/create-card! (card-with-query "Card using measure" query-with-measure) user))
                   _ (deps.test/synchronously-run-dependency-job!)
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id measure-id
@@ -1283,7 +1271,7 @@
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform :id referenced-transform-id {:target_table_id referenced-table-id})
-          (deps.hooks/after-transform-run referenced-transform-id referenced-table-id)
+          (events/publish-event! :event/transform-run-complete {:object {:transform-id referenced-transform-id :table-id referenced-table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id
@@ -1326,8 +1314,8 @@
                                                         :document {:type "doc"
                                                                    :content [{:type "paragraph"
                                                                               :content [{:type "smartLink"
-                                                                                         :attrs {"entityId" referenced-dashboard-id
-                                                                                                 "model" "dashboard"}}]}]}
+                                                                                         :attrs {:entityId referenced-dashboard-id
+                                                                                                 :model "dashboard"}}]}]}
                                                         :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
@@ -1345,8 +1333,8 @@
                                                                  :document {:type "doc"
                                                                             :content [{:type "paragraph"
                                                                                        :content [{:type "smartLink"
-                                                                                                  :attrs {"entityId" referenced-document-id
-                                                                                                          "model" "document"}}]}]}
+                                                                                                  :attrs {:entityId referenced-document-id
+                                                                                                          :model "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id unreffed-document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
@@ -1374,6 +1362,30 @@
                              :type "sandbox"
                              :data {:table {:name "PRODUCTS"}}}]}
                     response))))))))
+
+(deftest ^:synchronized unreferenced-sandboxes-search-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - a search applies to sandboxes, by their id"
+    (mt/with-premium-features #{:dependencies :sandboxes}
+      (let [mp       (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Sandbox Group - searchtest"}
+                       :model/Card {sandbox-card-id :id} {:name          "Sandbox Card - searchtest"
+                                                          :type          :question
+                                                          :dataset_query (lib/query mp products)}
+                       :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                        :table_id (mt/id :products)
+                                                        :card_id  sandbox-card-id}]
+          (deps.test/synchronously-run-dependency-job!)
+          (let [sandbox-ids (fn [query]
+                              (->> (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                                         :types "sandbox" :query query)
+                                   :data
+                                   (map :id)
+                                   set))]
+            (testing "a search text that no sandbox matches returns no sandbox"
+              (is (empty? (sandbox-ids "nosuchsandbox"))))
+            (testing "a search text that the sandbox matches returns it"
+              (is (contains? (sandbox-ids (str sandbox-id)) sandbox-id)))))))))
 
 (deftest ^:synchronized unreferenced-card-types-test
   (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card-types and pagination"
@@ -1523,22 +1535,16 @@
 (deftest ^:synchronized unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}
-      (let [products-id (mt/id :products)
-            price-field-id (mt/id :products :price)]
-        (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
-                       :model/Segment {archived-segment-id :id :as archived-segment} {:name "Archived Unreferenced Segment - archivedtest"
-                                                                                      :table_id products-id
-                                                                                      :definition {:filter [:> [:field price-field-id nil] 100]}
-                                                                                      :archived true}]
-          (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
-          (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
-          (deps.test/synchronously-run-dependency-job!)
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
-                segment-ids (set (map :id (:data response)))]
-            (is (contains? segment-ids unreffed-segment-id))
-            (is (not (contains? segment-ids archived-segment-id)))))))))
+      (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"}
+                     :model/Segment {archived-segment-id :id :as archived-segment} {:name     "Archived Unreferenced Segment - archivedtest"
+                                                                                    :archived true}]
+        (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
+        (deps.test/synchronously-run-dependency-job!)
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
+              segment-ids (set (map :id (:data response)))]
+          (is (contains? segment-ids unreffed-segment-id))
+          (is (not (contains? segment-ids archived-segment-id))))))))
 
 (deftest ^:synchronized unreferenced-archived-table-test
   (testing "GET /api/ee/dependencies/graph/unreferenced includes inactive and hidden tables"
@@ -1609,10 +1615,8 @@
             measure-definition (-> (lib/query mp products)
                                    (lib/aggregate (lib/sum price)))]
         (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition}
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
-                                                                                      :table_id products-id
                                                                                       :definition measure-definition
                                                                                       :archived true}]
           (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
@@ -1750,10 +1754,14 @@
                                                   :collection_id collection4-id}
                      :model/Document           _ {:name          "Document with Collection 5 sorttest"
                                                   :collection_id collection5-id}
-                     :model/Segment            _ {:name     "Segment with Table 1 sorttest"
-                                                  :table_id table1-id}
-                     :model/Measure            _ {:name     "Measure with Table 2 sorttest"
-                                                  :table_id table2-id}]
+                     :model/Segment            _ {:name       "Segment with Table 1 sorttest"
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table1-id))
+                                                                    (lib/filter (lib/= 1 1))))}
+                     :model/Measure            _ {:name       "Measure with Table 2 sorttest"
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table2-id))
+                                                                    (lib/aggregate (lib/count))))}]
         (deps.test/synchronously-run-dependency-job!)
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200
@@ -2171,7 +2179,7 @@
 (defn- create-dependent!
   "Create a dependent card with the given name."
   [base-card user card-name & opts]
-  (card/create-card! (apply assoc (wrap-card base-card) :name card-name opts) user))
+  (mt/with-current-user (:id user) (card/create-card! (apply assoc (wrap-card base-card) :name card-name opts) user)))
 
 (defmacro ^:private with-dependents-test!
   [[user-binding base-card-binding] & body]
@@ -2274,7 +2282,6 @@
                 {high-id :id} (create-dependent! base-card user "High")]
             (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id base-card-id
                                               :row 0 :col 0 :size_x 4 :size_y 4})
-            (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (t2/update! :model/Card :id low-id {:view_count 10})
             (t2/update! :model/Card :id high-id {:view_count 100})

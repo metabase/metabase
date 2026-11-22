@@ -79,6 +79,11 @@
                                    finding-row-columns)]))
         finding-details))
 
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
   [rows :- [:sequential FindingRow]]
@@ -92,16 +97,6 @@
   (t2/update! :model/ContentDiagnosticsFinding
               {:scan_id        [:not= scan-id]
                :finding_type   [:in finding-types]
-               :invalidated_at nil}
-              {:invalidated_at (mi/now)}))
-
-(mu/defn invalidate-for-entity!
-  "Stamp `invalidated_at` on one entity's still-active findings; returns the row count."
-  [entity-type :- :keyword
-   entity-id   :- ms/PositiveInt]
-  (t2/update! :model/ContentDiagnosticsFinding
-              {:entity_type    entity-type
-               :entity_id      entity-id
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 

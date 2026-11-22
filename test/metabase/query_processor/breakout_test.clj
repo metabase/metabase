@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -386,8 +385,7 @@
               source-card-query (-> base
                                     (lib/join people-join)
                                     (lib/join products-join)
-                                    (lib/with-fields [(field :orders :id)])
-                                    lib.convert/->legacy-MBQL)]
+                                    (lib/with-fields [(field :orders :id)]))]
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [source-card-query])
             (let [query      (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))

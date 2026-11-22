@@ -103,6 +103,20 @@
             (is (nil? (:query_handle payload)))
             (is (nil? (:next_cursor payload)))))))))
 
+(deftest ^:parallel run-card-with-dynamic-goal-test
+  (testing "a card whose chart reads a dynamic goal runs and returns only its own rows (GDGT-3505)"
+    (mt/with-temp [:model/Card {goal-id :id} (plain-card "rsq goal source")
+                   :model/Card {card-id :id} (assoc (plain-card "rsq goal chart")
+                                                    :display                :progress
+                                                    :visualization_settings {:progress.goal {:id     goal-id
+                                                                                             :type   "card"
+                                                                                             :column "ID"}})]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 5}))]
+          (is (= 5 (:returned payload)))
+          (is (= ["ID" "CATEGORY"] (map :name (:cols payload))))
+          (is (not (contains? payload :referenced_entities))))))))
+
 (deftest ^:parallel run-complete-result-not-truncated-test
   (testing "a result that fits under row_limit reports truncated: false and carries no steering line"
     (mt/with-temp [:model/Card {card-id :id} (plain-card "rsq complete")]

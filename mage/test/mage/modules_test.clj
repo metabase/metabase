@@ -406,7 +406,8 @@
           ;;            lib and query-processor, which already trigger driver tests
           ;; 2026-10-01 Bumped to 48: parameters.schema is carved out of parameters, which already triggers driver tests
           ;; 2026-10-15 49 after merging master's 48 into Dynamic goals (+1 visualization-settings)
-          max-allowed-count 49]
+          ;; 2026-11-20 50 after merging master's 48 into Dynamic goals (+1 visualization-settings, +1 dynamic-goals)
+          max-allowed-count 50]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
