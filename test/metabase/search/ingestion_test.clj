@@ -1,5 +1,4 @@
 (ns metabase.search.ingestion-test
-  {:clj-kondo/config '{:hooks {:analyze-call {metabase.search.test-util/with-temp-created-cards hooks.toucan2.tools.with-temp/with-temp}}}}
   (:require
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
@@ -7,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -287,8 +287,14 @@
 (deftest ^:synchronized failing-run-keeps-later-tombstones-test
   (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (search.tu/with-temp-created-cards [:model/Card {id :id} {:name "Failingrunprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingrunprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (is (thrown? Exception
                        (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
@@ -297,8 +303,14 @@
           (is (false? (indexed?)))))))
   (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (search.tu/with-temp-created-cards [:model/Card {id :id} {:name "Failingassertprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingassertprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
             (is (thrown? AssertionError
@@ -308,8 +320,14 @@
           (is (false? (indexed?)))))))
   (testing "any other Error is fatal, and stops the batch before the tombstone"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (search.tu/with-temp-created-cards [:model/Card {id :id} {:name "Fatalerrorprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Fatalerrorprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
             (is (thrown? LinkageError

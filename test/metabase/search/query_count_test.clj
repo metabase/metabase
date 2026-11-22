@@ -8,6 +8,7 @@
    [metabase.documents.models.document :as document]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
    [metabase.measures.models.measure :as measure]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
@@ -48,7 +49,8 @@
    (fn [collection names row-attrs]
      ((create-rows model)
       (vec (for [n names]
-             (merge (dissoc (if (= :model/Card model) (search.tu/card-row {}) (mt/with-temp-defaults model)) :created_at :updated_at)
+             (merge (cond-> (dissoc (mt/with-temp-defaults model) :created_at :updated_at)
+                      (= :model/Card model) (assoc :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")))
                     (collection-attrs collection)
                     row-attrs
                     {:name n})))))))
@@ -56,7 +58,8 @@
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."
   [collection]
-  (first (card/create-cards! [(assoc (search.tu/card-row {})
+  (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
                                      :collection_id (:id collection)
                                      :type :model)])))
 

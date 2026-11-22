@@ -1,13 +1,14 @@
 (ns metabase.search.impl-test
   "There are a lot more tests around search in [[metabase.search.api-test]]. TODO: we should move more of those tests
   into this namespace."
-  {:clj-kondo/config '{:hooks {:analyze-call {metabase.search.test-util/with-temp-created-cards hooks.toucan2.tools.with-temp/with-temp}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
    [metabase.queries-rest.api.card :as api.card]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -307,40 +308,45 @@
     (let [search-term (str (random-uuid))]
       (search.tu/with-temp-index-table
         (binding [search.ingestion/*force-sync* true]
-          (search.tu/with-temp-created-cards
-            [:model/Card {card-id :id} {:name search-term}]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (testing "Initially finds the question"
-                (is (= #{["card" card-id]}
-                       (->> (search.impl/search (search.impl/search-context
-                                                 {:search-string      search-term
-                                                  :search-engine      "appdb"
-                                                  :archived           false
-                                                  :models             search.config/all-models
-                                                  :current-user-id    (mt/user->id :crowberto)
-                                                  :is-superuser?      true
-                                                  :is-impersonated-user? false
-                                                  :is-sandboxed-user? false
-                                                  :is-routed-user?    false}))
-                            :data
-                            (map (juxt :model :id))
-                            set))))
-              (testing "Changing to a different type removes the old value from the index"
-                (api.card/update-card! card-id {:type :model} true)
-                (is (= #{["dataset" card-id]}
-                       (->> (search.impl/search (search.impl/search-context
-                                                 {:search-string      search-term
-                                                  :search-engine      "appdb"
-                                                  :archived           false
-                                                  :models             search.config/all-models
-                                                  :current-user-id    (mt/user->id :crowberto)
-                                                  :is-superuser?      true
-                                                  :is-impersonated-user? false
-                                                  :is-sandboxed-user? false
-                                                  :is-routed-user?    false}))
-                            :data
-                            (map (juxt :model :id))
-                            set)))))))))))
+          (mt/with-model-cleanup [:model/Card]
+            (let [[{card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                        :database_id (mt/id)
+                                                        :display :table
+                                                        :visualization_settings {}
+                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                        :name search-term}])]
+              (mt/with-current-user (mt/user->id :crowberto)
+                (testing "Initially finds the question"
+                  (is (= #{["card" card-id]}
+                         (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :search-engine      "appdb"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :is-impersonated-user? false
+                                                    :is-sandboxed-user? false
+                                                    :is-routed-user?    false}))
+                              :data
+                              (map (juxt :model :id))
+                              set))))
+                (testing "Changing to a different type removes the old value from the index"
+                  (api.card/update-card! card-id {:type :model} true)
+                  (is (= #{["dataset" card-id]}
+                         (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :search-engine      "appdb"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :is-impersonated-user? false
+                                                    :is-sandboxed-user? false
+                                                    :is-routed-user?    false}))
+                              :data
+                              (map (juxt :model :id))
+                              set))))))))))))
 
 (deftest limit-correct-with-permissions
   (let [search-term "permissions-filtering"]
