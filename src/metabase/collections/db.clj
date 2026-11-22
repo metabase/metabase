@@ -322,18 +322,20 @@
   [collection-ids     :- [:sequential ms/PositiveInt]
    allowed-namespaces :- [:set [:maybe :keyword]]
    blocked-types      :- [:sequential :string]]
-  (let [named (mapv name (remove nil? allowed-namespaces))]
+  (let [named      (mapv name (remove nil? allowed-namespaces))
+        namespaced [:not= :namespace nil]]
     (t2/select [:model/Collection :id :namespace :type :archived]
                {:where [:and
                         [:in :id collection-ids]
-                        [:or
-                         [:= :archived true]
-                         [:not (into [:or]
-                                     (cond-> []
-                                       (seq named)                      (conj [:in :namespace named])
-                                       (contains? allowed-namespaces nil) (conj [:= :namespace nil])))]
-                         (when (seq blocked-types)
-                           [:in :type blocked-types])]]})))
+                        (into [:or [:= :archived true]]
+                              (concat
+                               (when-not (contains? allowed-namespaces nil)
+                                 [[:= :namespace nil]])
+                               [(if (seq named)
+                                  [:and namespaced [:not-in :namespace named]]
+                                  namespaced)]
+                               (when (seq blocked-types)
+                                 [[:in :type blocked-types]])))]})))
 
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 

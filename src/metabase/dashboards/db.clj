@@ -553,10 +553,10 @@
   [tab-ids  :- [:maybe [:sequential ms/PositiveInt]]
    card-ids :- [:maybe [:sequential ms/PositiveInt]]]
   {:document-card-ids (if (seq card-ids)
-                        (t2/select-pks-vec :model/Card :id [:in card-ids] :document_id [:<> nil])
+                        (vec (t2/select-pks-vec :model/Card :id [:in card-ids] :document_id [:<> nil]))
                         [])
    :tab-dashboard-ids (if (seq tab-ids)
-                        (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in tab-ids])
+                        (into {} (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in tab-ids]))
                         {})})
 
 (mu/defn dashboard-tabs-by-ids

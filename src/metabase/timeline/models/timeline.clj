@@ -95,7 +95,7 @@
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Timeline is"
   [rows]
-  (check-timelines (map #(update % :archived boolean) rows)))
+  (collection/check-collections-for-model! :model/Timeline rows))
 
 (mu/defn create-timelines! :- [:sequential (ms/InstanceOf :model/Timeline)]
   "Insert the Timeline `rows` and return the inserted instances, in one transaction, publishing their create event. A
