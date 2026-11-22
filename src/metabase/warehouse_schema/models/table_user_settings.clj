@@ -2,6 +2,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -263,6 +264,29 @@
          (publish-writes! writes opts)
          rows)))))
 
+(defn- duplicate-key?
+  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
+  [e]
+  (= :duplicate-key (sql-errors/error-kind e)))
+
+(defn- update-or-insert-settings!
+  "Write `settings` as the user values of the Table with `table-id`, its pairs completed from `stored-table`: as changes
+  to its `stored` settings, or as a new row when there are none, and as changes to the settings a concurrent insert
+  stored first; returns `{:stored s :changes c}` or `{:inserted s}`."
+  [table-id stored settings stored-table]
+  (if stored
+    (let [flagged (with-set-flags settings settings settings)
+          changes (merge flagged (completed-changes (changed-columns flagged stored) stored-table))]
+      (warehouse-schema.db/update-table-user-settings! table-id changes)
+      {:stored stored :changes changes})
+    (try
+      {:inserted (warehouse-schema.db/insert-table-user-settings-row!
+                  (assoc (completed-changes settings stored-table) :table_id table-id))}
+      (catch Exception e
+        (if-let [stored (when (duplicate-key? e) (warehouse-schema.db/table-user-settings table-id))]
+          (update-or-insert-settings! table-id stored settings stored-table)
+          (throw e))))))
+
 (mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
   row; a nil for a column without a set flag unsets it."
@@ -272,19 +296,11 @@
     (when (seq settings)
       (t2/with-transaction [_conn]
         (let [stored-table (when (pair-columns-written? settings) (warehouse-schema.db/table id))
-              existing     (volatile! nil)
-              written      (volatile! nil)
-              pk           (warehouse-schema.db/update-or-insert-table-user-settings!
-                            id (fn [stored]
-                                 (vreset! existing stored)
-                                 (vreset! written
-                                          (let [row (cond-> settings stored (with-set-flags settings settings))]
-                                            (if stored
-                                              (merge row (completed-changes (changed-columns row stored) stored-table))
-                                              (completed-changes row stored-table))))))
-              writes       (-> (if-let [stored @existing]
-                                 (with-updated {} [stored] (constantly @written))
-                                 (with-created {} (warehouse-schema.db/table-user-settings-by-ids [pk])))
+              {:keys [stored changes inserted]} (update-or-insert-settings!
+                                                 id (warehouse-schema.db/table-user-settings id) settings stored-table)
+              writes       (-> (if stored
+                                 (with-updated {} [stored] (constantly changes))
+                                 (with-created {} [inserted]))
                                (delete-empty! [id]))]
           (u/prog1 (count (table/update-tables! [(assoc settings :id id)]))
             (publish-writes! writes)))))))

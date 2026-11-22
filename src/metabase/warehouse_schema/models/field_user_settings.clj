@@ -2,6 +2,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.change-log.core :as change-log]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -209,6 +210,25 @@
           (publish-writes! writes))
         rows))))
 
+(defn- duplicate-key?
+  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
+  [e]
+  (= :duplicate-key (sql-errors/error-kind e)))
+
+(defn- update-or-insert-settings!
+  "Apply `changes` to the `stored` settings of the Field with `field-id`, or insert `row` when there are none and apply
+  `changes` to the settings a concurrent insert stored first, returning `{:stored s}` or `{:inserted s}`."
+  [field-id stored row changes]
+  (if stored
+    (do (warehouse-schema.db/update-field-user-settings! field-id changes)
+        {:stored stored})
+    (try
+      {:inserted (warehouse-schema.db/insert-field-user-settings-row! row)}
+      (catch Exception e
+        (if-let [stored (when (duplicate-key? e) (warehouse-schema.db/field-user-settings field-id))]
+          (update-or-insert-settings! field-id stored row changes)
+          (throw e))))))
+
 (mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
   row; a nil for a column without a set flag unsets it."
@@ -217,15 +237,13 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_conn]
-        (let [writes   (remove-remappings-ended-by! {} field settings)
-              existing (volatile! nil)
-              pk       (warehouse-schema.db/update-or-insert-field-user-settings!
-                        id (fn [stored]
-                             (vreset! existing stored)
-                             (cond->> settings stored (with-set-flags settings))))
-              writes   (if-let [stored @existing]
-                         (with-updated writes [stored] (constantly (with-set-flags settings settings)))
-                         (with-created writes (warehouse-schema.db/field-user-settings-by-ids [pk])))
+        (let [writes  (remove-remappings-ended-by! {} field settings)
+              changes (with-set-flags settings settings)
+              {:keys [stored inserted]} (update-or-insert-settings!
+                                         id (warehouse-schema.db/field-user-settings id) (assoc settings :field_id id) changes)
+              writes  (if stored
+                        (with-updated writes [stored] (constantly changes))
+                        (with-created writes [inserted]))
               writes   (delete-empty! writes [id])]
           (u/prog1 (count (field/update-fields! [(assoc settings :id id)]))
             (publish-writes! writes)))))))

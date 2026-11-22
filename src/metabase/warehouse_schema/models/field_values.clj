@@ -28,6 +28,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.database-routing.core :as database-routing]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -754,6 +755,20 @@
         (events/publish-event! :event/field-values-update (events/update-event stored rows))
         rows))))
 
+(defn- duplicate-key?
+  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
+  [e]
+  (= :duplicate-key (sql-errors/error-kind e)))
+
+(defn- insert-unless-concurrent!
+  "Insert the FieldValues `row` and return the inserted instance, or nil when a concurrent insert stored it first."
+  [row]
+  (try
+    (warehouse-schema.db/insert-field-values-row! row)
+    (catch Exception e
+      (when-not (duplicate-key? e)
+        (throw e)))))
+
 (mu/defn find-or-create-full-field-values! :- ::warehouse-schema.schema/field-values
   "The full FieldValues of the Field with `field-id`, creating one with `has-more-values`, `values` and no
   human-readable values, which deletes its advanced FieldValues, when it has none."
@@ -761,17 +776,34 @@
    has-more-values :- :boolean
    values          :- [:maybe ms/FieldValues]]
   (t2/with-transaction [_conn]
-    (let [created (volatile! false)]
-      (u/prog1 (warehouse-schema.db/find-or-insert-full-field-values!
-                field-id
-                (fn []
-                  (clear-advanced-field-values-for-fields! [field-id])
-                  (vreset! created true)
-                  {:has_more_values       has-more-values
+    (or (warehouse-schema.db/full-field-values field-id)
+        (let [row {:field_id              field-id
+                   :type                  :full
+                   :has_more_values       has-more-values
                    :values                values
-                   :human_readable_values nil}))
-        (when @created
-          (events/publish-event! :event/field-values-create (events/create-event [<>])))))))
+                   :human_readable_values nil}]
+          (clear-advanced-field-values-for-fields! [field-id])
+          (u/prog1 (or (insert-unless-concurrent! row)
+                       (warehouse-schema.db/full-field-values field-id)
+                       (warehouse-schema.db/insert-field-values-row! row))
+            (events/publish-event! :event/field-values-create (events/create-event [<>])))))))
+
+(defn- update-or-insert-full-field-values!
+  "Apply `changes` to the `stored` full FieldValues of the Field with `field-id`, or insert them when there are none,
+  deleting its advanced FieldValues first when its values change; a lost race re-reads and goes once more, `retried?`
+  then letting a failure through. Returns `{:stored s}` or `{:inserted s}`."
+  [field-id stored changes retried?]
+  (when (or (nil? stored) (not= (:values stored) (:values changes)))
+    (clear-advanced-field-values-for-fields! [field-id]))
+  (if stored
+    (do (warehouse-schema.db/update-field-values! [(:id stored)] changes)
+        {:stored stored})
+    (let [row (assoc changes :field_id field-id :type :full)]
+      (if retried?
+        {:inserted (warehouse-schema.db/insert-field-values-row! row)}
+        (if-let [inserted (insert-unless-concurrent! row)]
+          {:inserted inserted}
+          (update-or-insert-full-field-values! field-id (warehouse-schema.db/full-field-values field-id) changes true))))))
 
 (mu/defn update-or-create-full-field-values! :- :int
   "Set the values and human-readable values of the full FieldValues of the Field with `field-id`, creating it when it
@@ -780,21 +812,15 @@
    values                :- [:maybe ms/FieldValues]
    human-readable-values :- [:maybe ms/FieldValues]]
   (t2/with-transaction [_conn]
-    (let [previous (volatile! nil)
-          changes  {:values                values
-                    :human_readable_values human-readable-values}]
-      (u/prog1 (warehouse-schema.db/update-or-insert-full-field-values!
-                field-id
-                (fn [existing]
-                  (vreset! previous existing)
-                  (when (or (nil? existing) (not= (:values existing) values))
-                    (clear-advanced-field-values-for-fields! [field-id]))
-                  changes))
-        (if-let [existing @previous]
-          (events/publish-event! :event/field-values-update
-                                 (events/update-event {(:id existing) existing} [(assoc changes :id (:id existing))]))
-          (events/publish-event! :event/field-values-create
-                                 (events/create-event (warehouse-schema.db/field-values-by-ids [<>]))))))))
+    (let [changes                   {:values                values
+                                     :human_readable_values human-readable-values}
+          {:keys [stored inserted]} (update-or-insert-full-field-values!
+                                     field-id (warehouse-schema.db/full-field-values field-id) changes false)]
+      (if stored
+        (events/publish-event! :event/field-values-update
+                               (events/update-event {(:id stored) stored} [(assoc changes :id (:id stored))]))
+        (events/publish-event! :event/field-values-create (events/create-event [inserted])))
+      (:id (or stored inserted)))))
 
 (mu/defn find-or-create-advanced-field-values! :- [:maybe ::warehouse-schema.schema/field-values]
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, creating the one `insert-fn` returns when it
@@ -803,11 +829,12 @@
    hash-key  :- :string
    insert-fn :- fn?]
   (t2/with-transaction [_conn]
-    (let [created (volatile! false)]
-      (u/prog1 (warehouse-schema.db/find-or-insert-advanced-field-values!
-                field-id hash-key (fn [] (u/prog1 (insert-fn) (vreset! created true))))
-        (when (and @created <>)
-          (events/publish-event! :event/field-values-create (events/create-event [<>])))))))
+    (or (warehouse-schema.db/advanced-field-values field-id hash-key)
+        (let [row (merge (insert-fn) {:field_id field-id, :type :advanced, :hash_key hash-key})]
+          (u/prog1 (or (insert-unless-concurrent! row)
+                       (warehouse-schema.db/advanced-field-values field-id hash-key)
+                       (warehouse-schema.db/insert-field-values-row! row))
+            (events/publish-event! :event/field-values-create (events/create-event [<>])))))))
 
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on `field-values`, the FieldValues as the caller read them, so sync keeps them up to date, in

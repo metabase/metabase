@@ -293,13 +293,11 @@
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
   (t2/update! :model/FieldUserSettings :field_id field-id changes))
 
-(mu/defn update-or-insert-field-user-settings!
-  "Update the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id` with what `update-fn` returns
-  for it, or insert what `update-fn` returns for nil when it has none."
-  [field-id  :- ::lib.schema.id/field
-   update-fn :- [:=> [:cat [:maybe ::warehouse-schema.schema/field-user-settings]]
-                 (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]
-  (app-db/update-or-insert! :model/FieldUserSettings {:field_id field-id} update-fn))
+(mu/defn insert-field-user-settings-row! :- ::warehouse-schema.schema/field-user-settings
+  "Insert the FieldUserSettings `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
+  [row :- ::warehouse-schema.schema/field-user-settings.create]
+  (t2/with-transaction [_conn]
+    (t2/insert-returning-instance! :model/FieldUserSettings row)))
 
 (mu/defn update-field-user-settings-custom-positions!
   "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
@@ -467,13 +465,11 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/delete! :model/TableUserSettings {:where (empty-table-user-settings-clause table-ids)}))
 
-(mu/defn update-or-insert-table-user-settings!
-  "Update the TableUserSettings of the ::warehouse-schema.schema/table with `table-id` with what `update-fn` returns
-  for it, or insert what `update-fn` returns for nil when it has none."
-  [table-id  :- ::lib.schema.id/table
-   update-fn :- [:=> [:cat [:maybe ::warehouse-schema.schema/table-user-settings]]
-                 (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]
-  (app-db/update-or-insert! :model/TableUserSettings {:table_id table-id} update-fn))
+(mu/defn insert-table-user-settings-row! :- ::warehouse-schema.schema/table-user-settings
+  "Insert the TableUserSettings `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
+  [row :- ::warehouse-schema.schema/table-user-settings.create]
+  (t2/with-transaction [_conn]
+    (t2/insert-returning-instance! :model/TableUserSettings row)))
 
 (mu/defn update-table-user-settings!
   "Apply `changes` to the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the
@@ -609,27 +605,22 @@
    changes :- (mut/dissoc ::warehouse-schema.schema/field-values.update :id)]
   (t2/update! :model/FieldValues :id [:in ids] changes))
 
-(mu/defn find-or-insert-full-field-values!
-  "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting the row `insert-fn` returns
-  if none exists yet."
-  [field-id  :- ::lib.schema.id/field
-   insert-fn :- fn?]
-  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :full} insert-fn))
+(mu/defn full-field-values
+  "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :full))
 
-(mu/defn update-or-insert-full-field-values!
-  "Update the full FieldValues of the Field with `field-id` with what `update-fn` returns for it, or insert what it
-  returns for nil when there is none. Returns the primary key of the row."
-  [field-id  :- ::lib.schema.id/field
-   update-fn :- fn?]
-  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full} update-fn))
+(mu/defn advanced-field-values
+  "The advanced FieldValues of the ::warehouse-schema.schema/field with `field-id` and `hash-key`, or nil."
+  [field-id :- ::lib.schema.id/field
+   hash-key :- :string]
+  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :advanced :hash_key [:auto/param hash-key]))
 
-(mu/defn find-or-insert-advanced-field-values!
-  "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
-  `insert-fn` if none exists yet."
-  [field-id  :- ::lib.schema.id/field
-   hash-key  :- :string
-   insert-fn :- fn?]
-  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
+(mu/defn insert-field-values-row! :- ::warehouse-schema.schema/field-values
+  "Insert the FieldValues `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
+  [row :- ::warehouse-schema.schema/field-values.create]
+  (t2/with-transaction [_conn]
+    (t2/insert-returning-instance! :model/FieldValues row)))
 
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."

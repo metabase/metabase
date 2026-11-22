@@ -8,6 +8,7 @@
    [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -440,3 +441,17 @@
                    :model/Dimension _              {:field_id field-id :type :internal :name "Rating"}]
       (sync.updates/update-field-unless-user-set! field-id {:semantic_type :type/Score})
       (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))
+
+(deftest upsert-after-concurrent-insert-updates-stored-row-test
+  (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
+    (mt/with-temp [:model/Field {field-id :id :as field} {}]
+      (t2/insert! :model/FieldUserSettings {:field_id field-id :description "Other Writer"})
+      (let [reads (atom 0)
+            read  (mt/original-fn #'warehouse-schema.db/field-user-settings)]
+        (mt/with-dynamic-fn-redefs [warehouse-schema.db/field-user-settings (fn [id]
+                                                                              (when (> (swap! reads inc) 1)
+                                                                                (read id)))]
+          (field-user-settings/upsert-field-user-settings! field {:display_name "User Name"})))
+      (is (=? [{:description "Other Writer" :display_name "User Name"}]
+              (t2/select :model/FieldUserSettings :field_id field-id)))
+      (is (= "User Name" (t2/select-one-fn :display_name :model/Field :id field-id))))))
