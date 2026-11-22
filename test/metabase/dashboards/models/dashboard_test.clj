@@ -675,3 +675,54 @@
                            (dashboard/delete-dashboards! (mapv :id dashboards))
                            (call-count))))]
       (is (= (statements 2) (statements 6))))))
+
+(deftest create-dashboards-with-parts-test
+  (testing "A Dashboard is created with its tabs, dashcards and series, and its Revision holds them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id}   {}
+                     :model/Card {series-id :id} {}]
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [[{dashboard-id :id}] (dashboard/create-dashboards!
+                                      [{:name      "With parts"
+                                        :creator_id (mt/user->id :crowberto)
+                                        :tabs      [{:id -1 :name "Tab" :position 0}]
+                                        :dashcards [{:card_id card-id :dashboard_tab_id -1 :row 0 :col 0 :size_x 4 :size_y 4
+                                                     :series  [series-id]}]}])
+                tab-id               (t2/select-one-pk :model/DashboardTab :dashboard_id dashboard-id)
+                dashcard             (t2/select-one :model/DashboardCard :dashboard_id dashboard-id)]
+            (is (= tab-id (:dashboard_tab_id dashcard)))
+            (is (= [series-id] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id (:id dashcard))))
+            (is (=? [{:is_creation true :object {:tabs [{:name "Tab"}] :cards [{:card_id card-id :series [series-id]}]}}]
+                    (t2/select :model/Revision :model "Dashboard" :model_id dashboard-id)))))))))
+
+(deftest update-dashboards-with-parts-test
+  (testing "The parts of a Dashboard are replaced, with one update event and one audit row for the dashcards added"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Before"}
+                       :model/Card      {card-id :id}      {}]
+          (let [audit-before (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0)
+                revisions    #(t2/select :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})
+                before       (count (revisions))
+                topics       #(map :topic (t2/select :model/AuditLog :id [:> audit-before] {:order-by [[:id :asc]]}))]
+            (dashboard/update-dashboards! [{:id        dashboard-id
+                                            :name      "After"
+                                            :dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]}])
+            (is (= (inc before) (count (revisions))))
+            (is (=? {:object {:name "After" :cards [{:card_id card-id}]}} (last (revisions))))
+            (is (= [:dashboard-add-cards] (topics)))
+            (dashboard/update-dashboards! [{:id dashboard-id :dashcards []}])
+            (is (= (+ before 2) (count (revisions))))
+            (is (= [:dashboard-add-cards :dashboard-remove-cards] (topics)))))))))
+
+(deftest remove-dashcards-cleans-inline-parameters-test
+  (testing "Removing a dashcard removes the inline parameters it held from its Dashboard, in one Revision"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:id "p" :name "P" :slug "p" :type :category}]}
+                     :model/Card      {card-id :id}      {}]
+        (let [[{dashcard-id :id}] (dashboard/add-dashcards! [{:dashboard_id dashboard-id :card_id card-id :row 0 :col 0
+                                                              :size_x 4 :size_y 4 :inline_parameters ["p"]}])
+              before              (t2/count :model/Revision :model "Dashboard" :model_id dashboard-id)]
+          (dashboard/remove-dashcards! [dashcard-id])
+          (is (= [] (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)))
+          (is (= (inc before) (t2/count :model/Revision :model "Dashboard" :model_id dashboard-id))))))))

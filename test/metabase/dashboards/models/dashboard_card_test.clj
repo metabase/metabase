@@ -1,9 +1,9 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
@@ -180,8 +180,8 @@
                  :visualization_settings {}
                  :series                 []}
                 (dashboard-card/retrieve-dashboard-card dashcard-id))))
-      (testing "return value from the update call is the updated rows"
-        (is (=? [{:id dashcard-id}]
+      (testing "return value from the update call is the ids of the changed rows"
+        (is (=? [dashcard-id]
                 (dashboard-card/update-dashboard-cards!
                  [{:id                     dashcard-id
                    :dashboard_id           nil
@@ -219,42 +219,43 @@
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
     PUT /api/dashboard/:id/cards handler"
-    (mt/with-temp [:model/Dashboard     {dashboard-id :id :as dashboard} {}
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id} {}
                    :model/DashboardCard dashcard-1 {:dashboard_id dashboard-id :card_id card-id}
                    :model/DashboardCard dashcard-2 {:dashboard_id dashboard-id :card_id card-id}
                    :model/DashboardCard dashcard-3 {:dashboard_id dashboard-id :card_id card-id}
                    :model/Card          {series-id-1 :id} {:name "Series Card 1"}
                    :model/Card          {series-id-2 :id} {:name "Series Card 2"}]
-      (let [dashboard (t2/hydrate dashboard [:dashcards :series :card])]
+      (do
         (testing "Should have fewer DB calls if there are no changes to the dashcards"
           (t2/with-call-count [call-count]
-            (dashboards.write/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+            (dashboard/update-dashboards! [{:id dashboard-id :dashcards (mapv #(select-keys % [:id :card_id :row :col :size_x :size_y]) [dashcard-1 dashcard-2 dashcard-3])}])
             (is (= 3 (call-count)))))
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
-            (dashboards.write/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series [{:id series-id-1}]}
-                                                           {:id     (:id dashcard-2)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series [{:id series-id-2}]}
-                                                           {:id     (:id dashcard-3)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series []}])
-            (is (<= (call-count) 14))))))))
+            (dashboard/update-dashboards! [{:id        dashboard-id
+                                            :dashcards [{:id     (:id dashcard-1)
+                                                         :card_id card-id
+                                                         :row    1
+                                                         :col    2
+                                                         :size_x 3
+                                                         :size_y 4
+                                                         :series [series-id-1]}
+                                                        {:id     (:id dashcard-2)
+                                                         :card_id card-id
+                                                         :row    1
+                                                         :col    2
+                                                         :size_x 3
+                                                         :size_y 4
+                                                         :series [series-id-2]}
+                                                        {:id     (:id dashcard-3)
+                                                         :card_id card-id
+                                                         :row    1
+                                                         :col    2
+                                                         :size_x 3
+                                                         :size_y 4
+                                                         :series []}]}])
+            (is (<= (call-count) 15))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"

@@ -28,6 +28,12 @@
   [event columns]
   (boolean (some #(changed? event %) columns)))
 
+(defn touch?
+  "Whether the lifecycle `event` is the touch of a row, the update of an owner, such as a Dashboard, that changed none of
+  its columns but its parts."
+  [{:keys [object previous-object]}]
+  (and (some? object) (some? previous-object) (= (into {} object) (into {} previous-object))))
+
 (defn operation
   "The operation of the `change` of a lifecycle event: a create has only `:object`, a delete only `:previous-object`."
   [{:keys [object previous-object]}]

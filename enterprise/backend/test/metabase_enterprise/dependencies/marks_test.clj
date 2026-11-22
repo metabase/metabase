@@ -10,8 +10,6 @@
    [metabase.actions.models :as action]
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.measures.models.measure :as measure]
    [metabase.native-query-snippets.models.native-query-snippet :as snippet]
@@ -318,28 +316,26 @@
                    (marks! world #(dashboard/update-dashboards! [{:id dashboard-id :parameters [{:id "p" :name "P" :slug "p" :type :category}]}])))))
           (testing "a dashboard card marks the dashboard's dependency when it is created, changed or deleted"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(reset! dashcard-id (:id (first (dashboard-card/create-dashboard-cards!
+                   (marks! world #(reset! dashcard-id (:id (first (dashboard/add-dashcards!
                                                                    [{:dashboard_id dashboard-id
                                                                      :card_id      (id-of world :card-f)
                                                                      :row 0 :col 0 :size_x 4 :size_y 4}])))))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(dashboard-card/update-dashboard-cards! [{:id @dashcard-id :card_id (id-of world :card-a)}]))))
-            (is (= (marked {:triggers? false})
-                   (marks! world #(dashboard-card/update-dashboard-cards! [{:id @dashcard-id :row 2}]))))
+                   (marks! world #(dashboard/update-dashcards! [{:id @dashcard-id :card_id (id-of world :card-a)}]))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard-id [(id-of world :card-b)]})))))
+                   (marks! world #(dashboard/update-dashcards! [{:id @dashcard-id :series [(id-of world :card-b)]}]))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard-id []})))))
+                   (marks! world #(dashboard/update-dashcards! [{:id @dashcard-id :series []}]))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(dashboard-card/delete-dashboard-cards! [@dashcard-id])))))
+                   (marks! world #(dashboard/remove-dashcards! [@dashcard-id])))))
           (testing "a tab marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(let [tab-id (first (map :id (dashboard-tab/create-dashboard-tabs! [{:dashboard_id dashboard-id
-                                                                                                       :name         "Tab"
-                                                                                                       :position     0}])))]
-                                    (dashboard-tab/replace-dashboard-tabs! dashboard-id
-                                                                           (t2/select :model/DashboardTab :id tab-id)
-                                                                           [])))))))))))
+                   (marks! world #(dashboard/update-dashboards! [{:id dashboard-id :tabs [{:id -1 :name "Tab" :position 0}]}]))))
+            (is (= (marked {:dependency [:dashboard]})
+                   (marks! world #(dashboard/update-dashboards! [{:id dashboard-id :tabs []}])))))
+          (testing "a write that changes nothing marks nothing"
+            (is (= (marked {:triggers? false})
+                   (marks! world #(dashboard/update-dashboards! [{:id dashboard-id :tabs [] :dashcards []}]))))))))))
 
 (deftest transform-and-action-writes-test
   (mt/with-premium-features #{:dependencies}

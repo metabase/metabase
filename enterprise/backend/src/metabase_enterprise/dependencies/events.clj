@@ -236,8 +236,9 @@
         analysis?   (u.events/changed-any? event (:analysis-columns spec))
         output?     (output-changed? event)
         part?       (u.events/changed-any? event (:part-columns spec))
+        touched?    (and entity-type (u.events/touch? event))
         data-apps?  (data-apps-changed? event)]
-    (when dependency?
+    (when (or dependency? touched?)
       (mark-own! batched :dependency own))
     (when analysis?
       (mark-own! batched :analysis own))
@@ -253,7 +254,7 @@
         nil))
     (when data-apps?
       (mark-data-apps! batched [(:collection_id previous-object) (:collection_id object)]))
-    (or dependency? analysis? output? part? data-apps?
+    (or dependency? touched? analysis? output? part? data-apps?
         (case model
           :model/Dimension   (boolean (when (u.events/changed-any? event dimension-columns)
                                         (run! #(mark-dimension! batched lookups %) (distinct [previous-object object]))

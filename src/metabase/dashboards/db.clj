@@ -730,8 +730,3 @@
   "The DashboardCards of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/DashboardCard :action_id [:in action-ids]))
-
-(mu/defn delete-dashcards-of-actions!
-  "Delete the DashboardCards of the Actions with `action-ids`, returning the number deleted."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/delete! :model/DashboardCard :action_id [:in action-ids]))

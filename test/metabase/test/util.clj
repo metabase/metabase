@@ -545,12 +545,6 @@
   {:model/Glossary              {:create :event/glossary-create
                                  :delete :event/glossary-delete}
    :model/Dashboard             {:create :event/dashboard-create}
-   :model/DashboardCard         {:create :event/dashboard-card-create
-                                 :delete :event/dashboard-card-delete}
-   :model/DashboardTab          {:create :event/dashboard-tab-create
-                                 :delete :event/dashboard-tab-delete}
-   :model/DashboardCardSeries   {:create :event/dashboard-card-series-create
-                                 :delete :event/dashboard-card-series-delete}
    :model/Pulse                 {:create :event/pulse-create
                                  :delete :event/pulse-delete}
    :model/PulseCard             {:create :event/pulse-card-create

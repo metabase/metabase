@@ -142,42 +142,23 @@
                                     :model-id model-id
                                     :details  (merge extra details)})))))
 
-(defn- chain-parent
-  "The `:parent` of `model` when a write of its rows counts as a write of the parent, nil otherwise."
-  [model]
-  (let [parent (audit.spec/parent model)]
-    (when-not (:topics parent)
-      parent)))
-
-(defn- parent-ref
-  "The `[parent-model parent-id]` of the row that the `event` writes."
-  [{:keys [model] :as event}]
-  (let [{parent-model :model k :key} (audit.spec/parent model)]
-    [parent-model (get (row-of event) k)]))
-
 (defn- rolled-roots
   "The audited models whose rows have the writes of other models counted as writes of them."
   []
   (into #{}
         (keep (fn [model]
-                (when (chain-parent model)
+                (when (audit.spec/parent model)
                   (loop [model model]
-                    (if-let [{parent-model :model} (chain-parent model)]
+                    (if-let [{parent-model :model} (audit.spec/parent model)]
                       (recur parent-model)
                       model)))))
         (audit.spec/audited-models)))
-
-(defn- touch?
-  "Whether the update `event` changes none of the columns of its row, as the event of the owner of parts that a write
-  changed."
-  [{:keys [object previous-object]}]
-  (and (some? object) (some? previous-object) (= (into {} object) (into {} previous-object))))
 
 (defn- root-touch?
   "Whether the `event` is the touch of a row that the writes of other models count as writes of, which records the row as
   updated."
   [roots {:keys [model] :as event}]
-  (and (contains? roots model) (touch? event)))
+  (and (contains? roots model) (u.events/touch? event)))
 
 (defn- own-rows
   "The rows of the writes of the models that record them as their own, a row whose parts changed being recorded as
@@ -191,40 +172,9 @@
     (for [{:keys [user-id] :as event} (hydrated candidates)
           :when (or (spec-edit? event) (root-touch? roots event))
           :let  [event (cond-> event
-                         (and (touch? event) (= :row (:touch (audit.spec/spec (:model event)))))
+                         (and (u.events/touch? event) (= :row (:touch (audit.spec/spec (:model event)))))
                          (dissoc :previous-object))]]
       (event-row event user-id (context-details event)))))
-
-(defn- created-with-parent?
-  "Whether the `event` says through its context that the creation of its parent, or a SerDes import, made its row."
-  [{:keys [context]}]
-  (or (some? (:created-with context)) (boolean (:importing? context))))
-
-(defn- parent-rows
-  "The rows, one per parent and topic, of the writes of the models that record them under a parent with a topic, none for a
-  parent that the write says that it creates, the details of the parents of each model loaded together."
-  [events]
-  (let [groups   (->> events
-                      (filter #(and (:topics (audit.spec/parent (:model %))) (not (created-with-parent? %))))
-                      (group-by (fn [{:keys [model operation] :as event}]
-                                  (when-let [topic (get (:topics (audit.spec/parent model)) operation)]
-                                    (let [[parent-model parent-id] (parent-ref event)]
-                                      (when (some? parent-id)
-                                        [model parent-model parent-id topic])))))
-                      (filter (fn [[k group]] (and (some? k) (some :user-id group)))))
-        details  (into {}
-                       (mapcat (fn [[model model-groups]]
-                                 (let [by-parent (into {}
-                                                       (map (fn [[[_ _ parent-id topic] group]] [[parent-id topic] group]))
-                                                       model-groups)]
-                                   (for [[[parent-id topic] detail] ((:details (audit.spec/parent model)) by-parent)]
-                                     [[model parent-id topic] detail]))))
-                       (group-by (comp first key) groups))]
-    (for [[[model parent-model parent-id topic] group] groups]
-      (audit-log/audit-row topic {:user-id  (some :user-id group)
-                                  :model    parent-model
-                                  :model-id parent-id
-                                  :details  (get details [model parent-id topic])}))))
 
 (defn- moment-rows
   "The rows that the spec of a model derives from a column that its writes change."
@@ -245,7 +195,6 @@
     (audit-log/create-audit-logs! (into []
                                         (remove nil?)
                                         (concat (own-rows events (rolled-roots))
-                                                (parent-rows events)
                                                 (moment-rows events))))))
 
 (events/derive! :metabase/lifecycle-event ::lifecycle)
@@ -254,6 +203,28 @@
   [topic event]
   (when-let [events (not-empty (filterv (fn [{:keys [model]}] (audit.spec/spec model)) (u.events/row-events topic event)))]
     (record-lifecycle-events! events)))
+
+(events/derive! ::dashboard-cards-event ::event)
+(events/derive! :event/dashboard-add-cards ::dashboard-cards-event)
+(events/derive! :event/dashboard-remove-cards ::dashboard-cards-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-cards-event
+  "Record the dashcards that the write of a Dashboard added or removed, with the name and the description of their
+  Cards."
+  [topic {:keys [object dashcards user-id]}]
+  (when (and user-id (premium-features/log-enabled?))
+    (let [cards (into {}
+                      (map (juxt :id #(select-keys % [:name :description])))
+                      (audit-app.db/cards (mapv :card_id dashcards)))]
+      (record! topic
+               {:details  (-> (select-keys object [:description :name :id])
+                              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                                  (-> (get cards card_id)
+                                                      (assoc :id id)
+                                                      (assoc :card_id card_id)))))
+                :user-id  user-id
+                :model    :model/Dashboard
+                :model-id (:id object)}))))
 
 (def ^:private object-columns
   "The columns that the row of each event of a manual action stores of its object, for the models that have no audit

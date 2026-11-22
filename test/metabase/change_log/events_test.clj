@@ -10,8 +10,7 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
@@ -554,7 +553,7 @@
         (testing "deleting a dashboard card, which is not logged, logs the subscription card deleted with it"
           (is (= [["pulse_card" (:id pc) "delete"]
                   ["pulse" (:id pulse) "update"]]
-                 (logged-by #(dashboard-card/delete-dashboard-cards! [(:id dc)])))
+                 (logged-by #(dashboard/remove-dashcards! [(:id dc)])))
               "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
@@ -571,7 +570,7 @@
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
           (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(dashboard-tab/replace-dashboard-tabs! (:id dash) [tab] []))))
+                 (logged-by #(dashboard/update-dashboards! [{:id (:id dash) :tabs []}]))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (defn- call-counts!

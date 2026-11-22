@@ -3,8 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
@@ -42,13 +40,12 @@
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}]
       (let [before (count (revisions-of "Dashboard" dashboard-id))]
-        (dashboard-card/create-dashboard-cards!
-         (for [i (range 2)]
-           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))
-        (testing "the writes of the parts record no Revision of the Dashboard"
-          (is (= before (count (revisions-of "Dashboard" dashboard-id)))))
-        (dashboard/touch-dashboards! [dashboard-id] {:context {:revision-message "add two"}})
-        (is (= (inc before) (count (revisions-of "Dashboard" dashboard-id))))
+        (dashboard/update-dashboards! [{:id        dashboard-id
+                                        :dashcards (for [i (range 2)]
+                                                     {:id -1 :card_id card-id :row i :col 0 :size_x 4 :size_y 4})}]
+                                      {:context {:revision-message "add two"}})
+        (testing "the writes of the dashcards of a Dashboard record one Revision"
+          (is (= (inc before) (count (revisions-of "Dashboard" dashboard-id)))))
         (is (=? {:message "add two" :object {:cards [{} {}]}}
                 (last (revisions-of "Dashboard" dashboard-id))))))))
 
@@ -91,49 +88,44 @@
         (is (empty? (set/intersection #{:public_uuid :made_public_by_id :enable_embedding}
                                       (set (keys object)))))))))
 
-(deftest dashboard-touch-after-part-writes-records-revision-test
+(deftest dashboard-part-writes-record-one-revision-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}
                    :model/Card      {series-id :id}    {}]
       (let [revisions #(count (revisions-of "Dashboard" dashboard-id))
-            records!  (fn [what write]
+            tab       (fn [name] (select-keys (t2/select-one :model/DashboardTab :dashboard_id dashboard-id) [:id :name :position]))
+            dashcards #(mapv (fn [dashcard] (assoc (select-keys dashcard [:id :card_id :row :col :size_x :size_y])
+                                                   :series (mapv :card_id (t2/select :model/DashboardCardSeries
+                                                                                     :dashboardcard_id (:id dashcard)))))
+                             (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+            records!  (fn [what parts]
                         (let [before (revisions)]
-                          (write)
+                          (dashboard/update-dashboards! [(assoc parts :id dashboard-id)])
                           (testing what
-                            (is (= before (revisions)))
-                            (dashboard/touch-dashboards! [dashboard-id])
-                            (is (= (inc before) (revisions))))))
-            tab-id    (atom nil)
-            dashcard  (atom nil)]
-        (records! "adding a tab"
-                  #(reset! tab-id (first (map :id (dashboard-tab/create-dashboard-tabs! [{:dashboard_id dashboard-id :name "First" :position 0}])))))
-        (is (=? {:tabs [{:id @tab-id :name "First"}]} (last-object "Dashboard" dashboard-id)))
-        (records! "renaming a tab"
-                  #(dashboard-tab/replace-dashboard-tabs! dashboard-id
-                                                          (t2/select :model/DashboardTab :dashboard_id dashboard-id)
-                                                          [{:id @tab-id :name "Renamed" :position 0}]))
+                            (is (= (inc before) (revisions))))))]
+        (records! "adding a tab" {:tabs [{:id -1 :name "First" :position 0}]})
+        (is (=? {:tabs [{:name "First"}]} (last-object "Dashboard" dashboard-id)))
+        (records! "renaming a tab" {:tabs [(assoc (tab "First") :name "Renamed")]})
         (is (=? {:tabs [{:name "Renamed"}]} (last-object "Dashboard" dashboard-id)))
-        (records! "adding a dashcard"
-                  #(reset! dashcard (:id (first (dashboard-card/create-dashboard-cards!
-                                                 [{:dashboard_id dashboard-id :card_id card-id
-                                                   :row 0 :col 0 :size_x 4 :size_y 4}])))))
-        (records! "repositioning a dashcard" #(dashboard-card/update-dashboard-cards! [{:id @dashcard :size_x 3}]))
+        (records! "adding a dashcard" {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})
+        (records! "repositioning a dashcard" {:dashcards (mapv #(assoc % :size_x 3) (dashcards))})
         (is (=? {:cards [{:size_x 3}]} (last-object "Dashboard" dashboard-id)))
-        (records! "adding a series to a dashcard"
-                  #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard [series-id]})))
+        (records! "adding a series to a dashcard" {:dashcards (mapv #(assoc % :series [series-id]) (dashcards))})
         (is (=? {:cards [{:series [series-id]}]} (last-object "Dashboard" dashboard-id)))
-        (records! "removing the series"
-                  #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard []})))
+        (records! "removing the series" {:dashcards (mapv #(assoc % :series []) (dashcards))})
         (is (=? {:cards [{:series []}]} (last-object "Dashboard" dashboard-id)))
-        (records! "removing a dashcard" #(dashboard-card/delete-dashboard-cards! [@dashcard]))
+        (records! "removing a dashcard" {:dashcards []})
         (is (=? {:cards []} (last-object "Dashboard" dashboard-id)))
-        (records! "removing a tab"
-                  #(dashboard-tab/replace-dashboard-tabs! dashboard-id (t2/select :model/DashboardTab :dashboard_id dashboard-id) []))
-        (is (=? {:tabs []} (last-object "Dashboard" dashboard-id)))))))
+        (records! "removing a tab" {:tabs []})
+        (is (=? {:tabs []} (last-object "Dashboard" dashboard-id)))
+        (testing "a write that changes nothing records none"
+          (let [before (revisions)]
+            (dashboard/update-dashboards! [{:id dashboard-id :tabs [] :dashcards []}])
+            (is (= before (revisions)))))))))
 
 (defn- revision-statement-count!
-  "The statements that the revisions consumer runs for the touch of each of `n` new Dashboards after a user's write of a
+  "The statements that the revisions consumer runs for the update of each of `n` new Dashboards after a user's write of a
   dashcard of each, which records a Revision of each Dashboard."
   [card-id n]
   (let [dashboard-ids (atom nil)]
@@ -141,11 +133,9 @@
                                          (repeatedly n #(mt/with-temp-defaults :model/Dashboard))
                                          (fn [ids]
                                            (reset! dashboard-ids ids)
-                                           (dashboard-card/create-dashboard-cards!
+                                           (dashboard/update-dashboards!
                                             (for [id ids]
-                                              (assoc (mt/with-temp-defaults :model/DashboardCard)
-                                                     :dashboard_id id :card_id card-id)))
-                                           (dashboard/touch-dashboards! ids))
+                                              {:id id :dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})))
                                          #(mt/with-current-user (mt/user->id :crowberto)
                                             (u/prog1 (%)
                                               (is (= (count @dashboard-ids)
@@ -154,7 +144,7 @@
                                          #(mt/with-current-user nil (%)))))
 
 (deftest batch-of-part-writes-records-with-fixed-statements-test
-  (testing "the touch of 2 or 6 Dashboards after dashcard writes records a Revision each with the same number of statements"
+  (testing "the update of 2 or 6 Dashboards after dashcard writes records a Revision each with the same number of statements"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (= (revision-statement-count! card-id 2) (revision-statement-count! card-id 6)))))))

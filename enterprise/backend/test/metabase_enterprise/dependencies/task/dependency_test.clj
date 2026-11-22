@@ -22,7 +22,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -687,7 +686,7 @@
                     :to_entity_id param-source-card-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-         (dashboard-card/delete-dashboard-cards! [basic-dashcard-id])
+         (dashboard/remove-dashcards! [basic-dashcard-id])
          (dashboard/update-dashboards! [{:id dashboard-id :parameters []}])
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
@@ -707,26 +706,26 @@
                                                                               (lib/breakout category-field)
                                                                               (lib/aggregate (lib/count)))
                                                            :display :table}]
-           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
-                                                                                                :card_id scalar-card-id
-                                                                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                                                                          :linkType "question"
-                                                                                                                                          :targetId scalar-click-target-card-id}}})])
-           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
-                                                                                                :card_id scalar-card-2-id
-                                                                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                                                                          :linkType "dashboard"
-                                                                                                                                          :targetId scalar-click-target-dashboard-id}}})])
-           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
-                                                                                                :card_id table-card-id
-                                                                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                                                                       :linkType "question"
-                                                                                                                                                                                       :targetId column-click-target-card-id}}}}})])
-           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
-                                                                                                :card_id table-card-2-id
-                                                                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                                                                       :linkType "dashboard"
-                                                                                                                                                                                       :targetId column-click-target-dashboard-id}}}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id scalar-card-id
+                                                                                  :visualization_settings {:click_behavior {:type "link"
+                                                                                                                            :linkType "question"
+                                                                                                                            :targetId scalar-click-target-card-id}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id scalar-card-2-id
+                                                                                  :visualization_settings {:click_behavior {:type "link"
+                                                                                                                            :linkType "dashboard"
+                                                                                                                            :targetId scalar-click-target-dashboard-id}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id table-card-id
+                                                                                  :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                         :linkType "question"
+                                                                                                                                                                         :targetId column-click-target-card-id}}}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id table-card-2-id
+                                                                                  :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                         :linkType "dashboard"
+                                                                                                                                                                         :targetId column-click-target-dashboard-id}}}}})])
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :dashboard
                       :from_entity_id dashboard-id

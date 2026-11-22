@@ -1359,23 +1359,23 @@
    [:tabs            [:sequential ::dashboard-tab]]])
 
 (defn- insert-new-dashcard!
-  "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
-   Goes through [[dashboard-card/create-dashboard-cards!]] so model-level invariants (e.g. no
-   document-backed cards on dashboards) are enforced. The returned instance (with its :id) goes
-   into :placed so later mutations in the batch — notably a `move` to \"top\", which shifts every
-   other card by id — can address it."
-  [state dashboard-id tab-id position-fields columns]
-  (let [new-dashcard (first (dashboard-card/create-dashboard-cards!
-                             [(merge position-fields
-                                     {:dashboard_id     dashboard-id
-                                      :dashboard_tab_id tab-id}
-                                     columns)]))]
-    (swap! state #(-> %
-                      (update :placed conj new-dashcard)
-                      (update :added conj new-dashcard)))))
+  "Add a new dashcard at `position-fields` on `tab-id` to the mutation `state`, under a temporary negative id that
+  [[dashboard/update-dashboards!]] replaces when the batch is saved. It goes into :placed, so later mutations in the
+  batch, notably a `move` to \"top\", which shifts every other card, see it."
+  [state tab-id position-fields columns]
+  (swap! state (fn [{:keys [next-id] :as current}]
+                 (let [new-dashcard (merge position-fields
+                                           {:id next-id :dashboard_tab_id tab-id}
+                                           columns)]
+                   (-> current
+                       (update :placed conj new-dashcard)
+                       (update :added conj new-dashcard)
+                       (assoc :next-id (dec next-id)))))))
 
 (defn- apply-dashcard-mutations!
-  "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
+  "Apply a sequence of LLM-friendly dashcard mutations to the dashcards of the Dashboard, in memory. Returns
+  {:dashcards [...] :added [...] :removed [...]}: the dashcards the Dashboard is to have, those added with temporary ids,
+  and those removed.
 
   Errors:
   - `card_id` that doesn't exist or the user can't read -> 404 / 403 via `api/read-check`.
@@ -1413,7 +1413,7 @@
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
-                              :moved   []})]
+                              :next-id -1})]
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]
             (map-indexed vector mutations)]
       (try
@@ -1438,19 +1438,19 @@
                           (api/check-not-archived card))
                 display (or (:display card) :table)
                 tab-id  (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) display display_size)
                                   {:card_id card_id}))
 
           "add_heading"
           (let [tab-id (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
                                   {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
                                   {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
@@ -1467,13 +1467,15 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (dashboard-card/update-dashboard-cards! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]))
+            (swap! state update :placed (fn [cards]
+                                          (mapv #(cond-> % (= dashcard_id (:id %))
+                                                         (assoc :visualization_settings (assoc vs :text text)))
+                                                cards))))
 
           "remove"
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
-            ;; Model-level delete also cleans up pulse cards; the orphaned inline parameters go with the final update.
-            (dashboard-card/delete-dashboard-cards! [dashcard_id])
+            ;; Saving deletes it and cleans up its pulse cards and its orphaned inline parameters.
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1500,20 +1502,13 @@
                 shifted?   (fn [c] (and (= position "top") (same-tab? c)))]
             ;; "top" parks the card at row 0; everything else on its tab has to shift down by the
             ;; moved card's height or we get overlapping dashcards (review finding #2).
-            (when (= position "top")
-              (let [shift (:size_y existing)]
-                (dashboard-card/update-dashboard-cards!
-                 (for [{:keys [id row]} tab-placed]
-                   {:id id :row (+ row shift)}))))
-            (dashboard-card/update-dashboard-cards! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)])
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
                                                    (cond-> c
                                                      (shifted? c) (update :row + (:size_y existing))))
                                                  others)
-                                           (merge existing (select-keys new-pos [:row :col]))))
-                              (update :moved conj (merge existing new-pos))))))
+                                           (merge existing (select-keys new-pos [:row :col]))))))))
         (catch Exception e
           ;; Re-throw with the mutation index so the LLM can tell which entry failed when
           ;; submitting a batch. The whole batch rolls back via the surrounding transaction.
@@ -1523,12 +1518,9 @@
                                  :mutation-index mutation-index
                                  :mutation       mutation)
                           e)))))
-    ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
-    ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
-    (when (or (seq (:added @state)) (seq (:removed @state)))
-      (dashboard-card/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (agent-api.db/dashcards dashboard-id)))
-    (select-keys @state [:added :removed :moved])))
+    (-> @state
+        (select-keys [:added :removed])
+        (assoc :dashcards (:placed @state)))))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
   "Update a dashboard. Patch semantics - only fields you pass are changed.
@@ -1589,26 +1581,28 @@
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
         _            (t2/with-transaction [_conn]
-                       (let [changes (when (seq mutations)
-                                       (apply-dashcard-mutations! id mutations))
-                             cleaned (dashboard/parameters-without-orphans (:parameters current-dash) (:removed changes))
-                             updates (cond-> updates
-                                       cleaned (assoc :parameters cleaned))]
-                         (if (seq updates)
-                           (do
-                             (dashboard/update-dashboards! [(assoc updates :id id)])
-                             ;; Fire :event/collection-touch with the *target* collection id so the
-                             ;; activity feed records the right collection. Note: the dashboards-rest
-                             ;; PUT-dashboard endpoint passes the dashboard id here instead, which
-                             ;; appears to be a bug - the other collection-touch publishers
-                             ;; (collections_rest, queries_rest, collections/models/collection) all
-                             ;; pass the real collection id. Filed for follow-up.
-                             (when (contains? updates :collection_id)
-                               (events/publish-event! :event/collection-touch
-                                                      {:collection-id (:collection_id updates)
-                                                       :user-id       api/*current-user-id*})))
-                           (when (seq mutations)
-                             (dashboard/touch-dashboards! [id])))))
+                       (let [changes   (when (seq mutations)
+                                         (apply-dashcard-mutations! id mutations))
+                             dashcards (:dashcards changes)]
+                         (when (or (seq updates) dashcards)
+                           (dashboard/update-dashboards! [(cond-> (assoc updates :id id)
+                                                            dashcards (assoc :dashcards dashcards))]))
+                         ;; Fire :event/collection-touch with the *target* collection id so the
+                         ;; activity feed records the right collection. Note: the dashboards-rest
+                         ;; PUT-dashboard endpoint passes the dashboard id here instead, which
+                         ;; appears to be a bug - the other collection-touch publishers
+                         ;; (collections_rest, queries_rest, collections/models/collection) all
+                         ;; pass the real collection id. Filed for follow-up.
+                         (when (contains? updates :collection_id)
+                           (events/publish-event! :event/collection-touch
+                                                  {:collection-id (:collection_id updates)
+                                                   :user-id       api/*current-user-id*}))
+                         ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
+                         ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
+                         (when (or (seq (:added changes)) (seq (:removed changes)))
+                           (let [saved (agent-api.db/dashcards id)]
+                             (dashboard-card/unarchive-internal-dashboard-questions! id saved)
+                             (dashboard-card/archive-internal-dashboard-questions! id saved)))))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)
      :name            (:name updated)

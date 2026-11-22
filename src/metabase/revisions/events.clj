@@ -13,12 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- touch?
-  "Whether the update `event` changes none of the columns of its row, as the event of the owner of parts that a write
-  changed."
-  [{:keys [object previous-object]}]
-  (= (into {} object) (into {} previous-object)))
-
 (defn- recorded?
   "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions of its own,
   by a user, that is not a revert or carried by the archive or restore of another entity, and that changes what its spec
@@ -34,7 +28,7 @@
           (not (:reverting? context))
           (nil? (:archived-with context))
           (or (= :create operation)
-              (touch? event)
+              (u.events/touch? event)
               (revision/changed? model previous-object object))))))
 
 (defn- revision-info

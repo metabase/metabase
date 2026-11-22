@@ -7,9 +7,7 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
-   [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
@@ -98,45 +96,26 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-dashboard-tabs! :- [:sequential :map]
-  "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows, publishing their create
-  event."
-  ([rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
-   (create-dashboard-tabs! rows nil))
-  ([rows :- [:sequential ::dashboards.schema/dashboard-tab.create]
-    opts :- ::dashboards.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [tabs (dashboards.db/insert-dashboard-tabs! rows)]
-       (events/publish-event! :event/dashboard-tab-create (events/create-event tabs (events/context opts)))
-       tabs))))
+  "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows."
+  [rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
+  (dashboards.db/insert-dashboard-tabs! rows))
 
 (mu/defn update-dashboard-tabs! :- [:sequential :map]
-  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardTab, publishing the update event of the
-  tabs, and return the rows of the tabs that exist."
-  ([rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]]
-   (update-dashboard-tabs! rows nil))
-  ([rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]
-    opts :- ::dashboards.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashboard-tabs-by-ids (mapv :id rows)) []))
-           rows   (filterv #(contains? stored (:id %)) rows)]
-       (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-         (dashboards.db/update-dashboard-tabs! (mapv :id group) changes))
-       (events/publish-event! :event/dashboard-tab-update
-                              (events/update-event stored rows {:context (events/context opts)}))
-       rows))))
+  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardTab, and return the rows of the tabs
+  that exist."
+  [rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]]
+  (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashboard-tabs-by-ids (mapv :id rows)) []))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+      (dashboards.db/update-dashboard-tabs! (mapv :id group) changes))
+    rows))
 
 (mu/defn delete-dashboard-tabs! :- :nil
-  "Delete the DashboardTabs with `ids`, publishing their delete event right before the statement."
-  ([ids :- [:sequential ms/PositiveInt]]
-   (delete-dashboard-tabs! ids nil))
-  ([ids  :- [:sequential ms/PositiveInt]
-    opts :- ::dashboards.schema/write-opts]
-   (when (seq ids)
-     (t2/with-transaction [_conn]
-       (let [tabs (dashboards.db/dashboard-tabs-by-ids (vec ids))]
-         (events/publish-event! :event/dashboard-tab-delete (events/delete-event tabs (events/context opts)))
-         (dashboards.db/delete-dashboard-tabs! (mapv :id tabs)))))
-   nil))
+  "Delete the DashboardTabs with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (dashboards.db/delete-dashboard-tabs! (vec ids)))
+  nil)
 
 (mu/defn replace-dashboard-tabs! :- [:map
                                      [:old->new-tab-id [:maybe [:map-of :int ms/PositiveInt]]]
@@ -149,35 +128,28 @@
   - `:old->new-tab-id`: a map from the ids of the tabs of `new-tabs` that were created to their new ids
   - `:created-tab-ids`, `:updated-tab-ids`, `:deleted-tab-ids`
   - `:total-num-tabs`: the total number of active tabs after the operation."
-  ([dashboard-id :- ms/PositiveInt
-    current-tabs :- [:maybe [:sequential :map]]
-    new-tabs     :- [:maybe [:sequential :map]]]
-   (replace-dashboard-tabs! dashboard-id current-tabs new-tabs nil))
-  ([dashboard-id :- ms/PositiveInt
-    current-tabs :- [:maybe [:sequential :map]]
-    new-tabs     :- [:maybe [:sequential :map]]
-    opts         :- ::dashboards.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [{:keys [to-create to-update to-delete]} (u/row-diff current-tabs new-tabs)
-           id->current-tab (m/index-by :id current-tabs)
-           update-ks       [:name :position]
-           to-delete-ids   (mapv :id to-delete)
-           _               (delete-dashboard-tabs! to-delete-ids opts)
-           created         (create-dashboard-tabs! (mapv #(-> % (dissoc :id) (assoc :dashboard_id dashboard-id)) to-create)
-                                                   opts)
-           old->new-tab-id (when (seq created)
-                             (zipmap (map :id to-create) (map :id created)))
-           changed         (into []
-                                 (comp (filter #(not= (select-keys (get id->current-tab (:id %)) update-ks)
-                                                      (select-keys % update-ks)))
-                                       (map #(assoc (select-keys % update-ks) :id (:id %))))
-                                 to-update)]
-       (update-dashboard-tabs! changed opts)
-       {:old->new-tab-id old->new-tab-id
-        :updated-tab-ids (mapv :id changed)
-        :created-tab-ids (vec (vals old->new-tab-id))
-        :deleted-tab-ids to-delete-ids
-        :total-num-tabs  (reduce + (map count [to-create to-update]))}))))
+  [dashboard-id :- ms/PositiveInt
+   current-tabs :- [:maybe [:sequential :map]]
+   new-tabs     :- [:maybe [:sequential :map]]]
+  (let [{:keys [to-create to-update to-delete]} (u/row-diff current-tabs new-tabs)
+        id->current-tab (m/index-by :id current-tabs)
+        update-ks       [:name :position]
+        to-delete-ids   (mapv :id to-delete)
+        _               (delete-dashboard-tabs! to-delete-ids)
+        created         (create-dashboard-tabs! (mapv #(-> % (dissoc :id) (assoc :dashboard_id dashboard-id)) to-create))
+        old->new-tab-id (when (seq created)
+                          (zipmap (map :id to-create) (map :id created)))
+        changed         (into []
+                              (comp (filter #(not= (select-keys (get id->current-tab (:id %)) update-ks)
+                                                   (select-keys % update-ks)))
+                                    (map #(assoc (select-keys % update-ks) :id (:id %))))
+                              to-update)]
+    (update-dashboard-tabs! changed)
+    {:old->new-tab-id old->new-tab-id
+     :updated-tab-ids (mapv :id changed)
+     :created-tab-ids (vec (vals old->new-tab-id))
+     :deleted-tab-ids to-delete-ids
+     :total-num-tabs  (reduce + (map count [to-create to-update]))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -188,9 +160,9 @@
   {:schema    ::dashboards.schema/external-dashboard-tab
    :copy      [:entity_id :name :position]
    :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
-   :insert!   #(create-dashboard-tabs! % {:writer :import})
-   :update!   #(update-dashboard-tabs! % {:writer :import})
-   :delete!   #(delete-dashboard-tabs! % {:writer :import})
+   :insert!   create-dashboard-tabs!
+   :update!   update-dashboard-tabs!
+   :delete!   delete-dashboard-tabs!
    :transform {:dashboard_id serialization/import-only-transform}})
 
 (defmethod remote-sync/spec :model/DashboardTab
@@ -201,10 +173,6 @@
   {:track  [:name :position :dashboard_id]
    :skip   [:entity_id]
    :parent {:model :model/Dashboard :key :dashboard_id}})
-
-(defmethod dependencies/spec :model/DashboardTab [_model]
-  {:part-of      {:type :dashboard :key :dashboard_id}
-   :part-columns #{}})
 
 (defmethod eid-translation/spec :model/DashboardTab [_model]
   {:names [:dashboard-tab]})

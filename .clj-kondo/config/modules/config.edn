@@ -2316,7 +2316,6 @@
                     :model/Channel
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
                     :model/User}}
 
   queries

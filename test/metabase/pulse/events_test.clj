@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.pulse.events :as pulse.events]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -16,7 +15,7 @@
       (dashboard/update-dashboards! [{:id dashboard-id :name "After"}])
       (is (= "After" (t2/select-one-fn :name :model/Pulse :id pulse-id))))
     (testing "adding a dashcard adds its card to the subscriptions"
-      (dashboard-card/create-dashboard-cards! [{:dashboard_id dashboard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}])
+      (dashboard/update-dashboards! [{:id dashboard-id :dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]}])
       (is (= [card-id] (t2/select-fn-vec :card_id :model/PulseCard :pulse_id pulse-id))))))
 
 (defn- sync-statement-count!

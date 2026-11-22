@@ -9,8 +9,7 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
@@ -226,7 +225,7 @@
         (is (pending? :card card-id))))))
 
 (deftest dashboard-parts-mark-dashboard-test
-  (testing "inserting, updating and deleting a dashboard card, a series or a tab marks the dashboard's dependencies stale"
+  (testing "adding, updating and removing a dashboard card, a series or a tab marks the dashboard's dependencies stale"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
@@ -238,24 +237,20 @@
                            (pending? :dashboard dashboard-id))
                 dashcard (atom nil)]
             (testing "inserting a dashboard card"
-              (is (changes? #(reset! dashcard (:id (first (dashboard-card/create-dashboard-cards!
+              (is (changes? #(reset! dashcard (:id (first (dashboard/add-dashcards!
                                                            [{:dashboard_id dashboard-id :card_id card-id
                                                              :row 0 :col 0 :size_x 4 :size_y 4}])))))))
             (testing "pointing a dashboard card at another card"
-              (is (changes? #(dashboard-card/update-dashboard-cards! [{:id @dashcard :card_id other-id}]))))
+              (is (changes? #(dashboard/update-dashcards! [{:id @dashcard :card_id other-id}]))))
             (testing "adding a series"
-              (is (changes? #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard [card-id]})))))
+              (is (changes? #(dashboard/update-dashcards! [{:id @dashcard :series [card-id]}]))))
             (testing "removing a series"
-              (is (changes? #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard []})))))
+              (is (changes? #(dashboard/update-dashcards! [{:id @dashcard :series []}]))))
             (testing "adding and removing a tab"
-              (let [tab-id (atom nil)]
-                (is (changes? #(reset! tab-id (first (map :id (dashboard-tab/create-dashboard-tabs! [{:dashboard_id dashboard-id :name "Tab"
-                                                                                                      :position 0}]))))))
-                (is (changes? #(dashboard-tab/replace-dashboard-tabs! dashboard-id
-                                                                      (t2/select :model/DashboardTab :id @tab-id)
-                                                                      [])))))
+              (is (changes? #(dashboard/update-dashboards! [{:id dashboard-id :tabs [{:id -1 :name "Tab" :position 0}]}])))
+              (is (changes? #(dashboard/update-dashboards! [{:id dashboard-id :tabs []}]))))
             (testing "removing a dashboard card"
-              (is (changes? #(dashboard-card/delete-dashboard-cards! [@dashcard]))))
+              (is (changes? #(dashboard/remove-dashcards! [@dashcard]))))
             (testing "nothing else"
               (computed! :dashboard dashboard-id)
               (is (not (pending? :dashboard dashboard-id))))))))))

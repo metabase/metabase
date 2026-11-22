@@ -28,10 +28,7 @@
     under the name of its event.
   - `:parent {:model parent-model :key column}`: a write of a row of this model is a write of the row of `parent-model`
     whose id its `column` holds, a parent that has a `:parent` of its own passing it on up, all the writes of a batch
-    to one such row being one update of the topmost parent. With a `:topics` map from an operation to the stored topic
-    and a `:details` fn of a map from `[parent-id topic]` to the vector of the events, returning a map from the same keys
-    to the details, a write is instead recorded under the parent with that topic, once per topic and parent for a
-    batch, none for a parent that the batch creates.
+    to one such row being one update of the topmost parent.
   - `:moments`, a vector of `{:topic topic :when f}` and optionally `:details`, each a row that an update or a create
     records beside its own when the fn of the event is true, with the details that the fn of the event returns, none by
     default.
@@ -60,10 +57,8 @@
    [:same?           {:optional true} [:map-of :keyword fn?]]
    [:topics          {:optional true} [:map-of Operation [:or :keyword fn?]]]
    [:parent          {:optional true} [:map {:closed true}
-                                       [:model   :keyword]
-                                       [:key     :keyword]
-                                       [:topics  {:optional true} [:map-of Operation :keyword]]
-                                       [:details {:optional true} fn?]]]
+                                       [:model :keyword]
+                                       [:key   :keyword]]]
    [:moments         {:optional true} [:sequential [:map {:closed true}
                                                     [:topic   :keyword]
                                                     [:when    fn?]

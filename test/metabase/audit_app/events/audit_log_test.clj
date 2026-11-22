@@ -11,7 +11,6 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.comments.models.comment :as comment]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
@@ -151,9 +150,9 @@
     (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}
                    :model/Card      card {}]
       (mt/with-test-user :rasta
-        (let [dashcard (first (dashboard-card/create-dashboard-cards! [{:dashboard_id (:id dashboard)
-                                                                        :card_id      (:id card)
-                                                                        :row 0 :col 0 :size_x 4 :size_y 4}]))]
+        (let [dashcard (first (dashboard/add-dashcards! [{:dashboard_id (:id dashboard)
+                                                          :card_id      (:id card)
+                                                          :row 0 :col 0 :size_x 4 :size_y 4}]))]
           (is (partial=
                {:topic    :dashboard-add-cards
                 :user_id  (mt/user->id :rasta)
@@ -168,7 +167,7 @@
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-test-user :rasta
-        (dashboard-card/delete-dashboard-cards! [(:id dashcard)])
+        (dashboard/remove-dashcards! [(:id dashcard)])
         (is (partial=
              {:topic    :dashboard-remove-cards
               :user_id  (mt/user->id :rasta)

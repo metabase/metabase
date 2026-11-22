@@ -24,6 +24,13 @@
   [entity-id :- :string]
   (t2/select-one :model/Dashboard :entity_id entity-id))
 
+(mu/defn cards
+  "The Cards with `card-ids`, each with its `:name` and `:description`."
+  [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
+  (if-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) card-ids))]
+    (t2/select [:model/Card :id :name :description] :id [:in ids])
+    []))
+
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]

@@ -38,14 +38,12 @@
 
 (deftest parent-test
   (doseq [model (audited-models!)
-          :let  [{parent-model :model, parent-key :key, topics :topics, details :details} (audit.spec/parent model)]
+          :let  [{parent-model :model, parent-key :key} (audit.spec/parent model)]
           :when parent-model]
     (testing (str model)
       (testing "belongs to a model with a spec, through a column of its table"
         (is (some? (audit.spec/spec parent-model)))
-        (is (contains? (spec-test-util/table-columns model) parent-key)))
-      (testing "has the details of its rows under the parent if it records them there with topics"
-        (is (= (some? topics) (some? details)))))))
+        (is (contains? (spec-test-util/table-columns model) parent-key))))))
 
 (def ^:private function-topics
   "The topics that the functions in the `:topics` of the specs return, which cannot be enumerated from the specs."
@@ -59,7 +57,8 @@
 (def ^:private published-topics
   "The topics that the write functions of the models without an `events/spec` publish by hand, which the audit log
   stores under their names."
-  #{:glossary-create :glossary-update :glossary-delete
+  #{:dashboard-add-cards :dashboard-remove-cards
+    :glossary-create :glossary-update :glossary-delete
     :group-create :group-update :group-delete
     :segment-create :segment-update :segment-delete
     :measure-create :measure-update :measure-delete
@@ -72,13 +71,12 @@
 
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
-  and the keywords in `:topics`, the `:topics` of `:parent` and `:moments`."
+  and the keywords in `:topics` and `:moments`."
   [models]
   (into #{}
         (mapcat (fn [model]
-                  (let [{:keys [topics parent moments]} (audit.spec/spec model)]
+                  (let [{:keys [topics moments]} (audit.spec/spec model)]
                     (concat (filter keyword? (vals topics))
-                            (vals (:topics parent))
                             (map :topic moments)))))
         models))
 

@@ -1,7 +1,6 @@
 (ns metabase.pulse.events
-  "Handlers of the lifecycle events that keep the subscriptions of a Dashboard in step with its dashcards, its name and
-  its Collection, once per Dashboard for the writes of one batch. The subscriptions follow the Cards of the dashcards,
-  so Tabs and series do not matter."
+  "Handler of the update event of a Dashboard, which keeps its subscriptions in step with its dashcards, its name and
+  its Collection. The subscriptions follow the Cards of the dashcards, so Tabs and series do not matter."
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
@@ -16,18 +15,10 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboard-id-of
-  "The id of the Dashboard whose subscriptions the `change` of a Dashboard or a DashboardCard calls to sync, or nil."
-  [{:keys [object previous-object] :as change}]
-  (let [row       (or object previous-object)
-        operation (u.events/operation change)]
-    (case (t2/model row)
-      :model/Dashboard     (when (and (= :update operation)
-                                      (u.events/changed-any? change #{:name :collection_id}))
-                             (:id object))
-      :model/DashboardCard (when (or (#{:create :delete} operation)
-                                     (u.events/changed-any? change #{:card_id :dashboard_id}))
-                             (:dashboard_id row))
-      nil)))
+  "The id of the Dashboard whose subscriptions the `change` of a Dashboard calls to sync, or nil."
+  [change]
+  (when (= :update (u.events/operation change))
+    (:id (:object change))))
 
 (defn- new-pulse-cards
   "The PulseCards to add so that the `subscriptions` of each Dashboard, rows of
@@ -47,32 +38,18 @@
      :dashboard_card_id dashcard-id
      :position          position}))
 
-(defn- deleted-dashcard-ids
-  "The ids of the DashboardCards that the `changes` of a lifecycle event delete, which is published before their
-  statement, so that they still exist when it is delivered."
-  [changes]
-  (into #{}
-        (keep (fn [{:keys [previous-object] :as change}]
-                (when (and (= :delete (u.events/operation change))
-                           (= :model/DashboardCard (t2/model previous-object)))
-                  (:id previous-object))))
-        changes))
-
 (defn- sync-subscriptions!
-  "Update the names and Collection ids of the Pulses of the Dashboards that the changes of the lifecycle `event` change,
-  and sync their PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the
-  Dashboards."
+  "Update the names and Collection ids of the Pulses of the Dashboards that the lifecycle `event` updates, and sync their
+  PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the Dashboards."
   [{:keys [changes]}]
   (when-let [dashboard-ids (not-empty (into [] (comp (keep dashboard-id-of) (distinct)) changes))]
     (when-let [subscriptions (not-empty (pulse.db/subscriptions-for-dashboards dashboard-ids))]
       (let [dashboards    (into {} (map (juxt :id identity))
                                 (pulse.db/dashboards-by-id (vec (distinct (map :dashboard-id subscriptions)))))
             subscriptions (filter #(contains? dashboards (:dashboard-id %)) subscriptions)
-            deleted       (deleted-dashcard-ids changes)
             dashcards     (when (seq subscriptions)
                             (group-by :dashboard_id
-                                      (remove (comp deleted :id)
-                                              (pulse.db/dashcards-with-cards-for-dashboards (vec (keys dashboards))))))
+                                      (pulse.db/dashcards-with-cards-for-dashboards (vec (keys dashboards)))))
             pulse-ids     (vec (distinct (map :pulse-id subscriptions)))
             max-positions (when (seq pulse-ids) (pulse.db/max-pulse-card-positions pulse-ids))
             stale         (into []
@@ -96,9 +73,7 @@
                      stale))
               (pulse-card/append-pulse-cards! new-cards))))))))
 
-(doseq [topic [:event/dashboard-update :event/dashboard-card-create :event/dashboard-card-update
-               :event/dashboard-card-delete]]
-  (events/derive! topic ::dashboard-subscriptions))
+(events/derive! :event/dashboard-update ::dashboard-subscriptions)
 
 (methodical/defmethod events/publish-event! ::dashboard-subscriptions
   [_topic event]

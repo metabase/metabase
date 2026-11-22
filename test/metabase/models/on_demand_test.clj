@@ -174,14 +174,30 @@
     :parameter_id "12121212"
     :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
+(defn- dashcards-of [dashboard-or-id]
+  (t2/select :model/DashboardCard :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:id :asc]]}))
+
+(defn- save-dashcards! [dashboard-or-id dashcards]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (dashboards.write/update-dashboard! (u/the-id dashboard-or-id) {:dashcards dashcards})))
+
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
-  (dashboards.write/add-dashcards! dashboard-or-id
-                                   [{:card_id            (u/the-id card-or-id)
-                                     :row                0
-                                     :col                0
-                                     :size_x             4
-                                     :size_y             4
-                                     :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}]))
+  (save-dashcards! dashboard-or-id
+                   (conj (dashcards-of dashboard-or-id)
+                         {:id                 -1
+                          :card_id            (u/the-id card-or-id)
+                          :row                0
+                          :col                0
+                          :size_x             4
+                          :size_y             4
+                          :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
+  [(last (dashcards-of dashboard-or-id))])
+
+(defn- remap-dashcard-parameter! [dash dashcard card field]
+  (save-dashcards! dash
+                   (mapv #(cond-> % (= (:id %) (:id dashcard))
+                                  (assoc :parameter_mappings (parameter-mappings-for-card-and-field card field)))
+                         (dashcards-of dash))))
 
 (defn- do-with-updated-fields-for-dashboard! [options & [f]]
   (do-with-updated-fields-for-card! (merge {:card {:dataset_query (basic-mbql-query)}}
@@ -232,8 +248,7 @@
                   ;; clear out the list of updated Field Names
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values
-                  (dashboards.write/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                                                      [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                  (remap-dashcard-parameter! dash dashcard card new-field)))))))))
 
 (deftest existing-dashboard-test-4
   (testing "Existing Dashboard"
@@ -259,5 +274,4 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [table card dash dashcard]}]
                 (mt/with-temp [:model/Field new-field {:table_id (u/the-id table), :has_field_values "list"}]
-                  (dashboards.write/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                                                      [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                  (remap-dashcard-parameter! dash dashcard card new-field)))))))))
