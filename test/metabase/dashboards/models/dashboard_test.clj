@@ -103,11 +103,11 @@
                    :model/Pulse         {pulse-id :id} {:dashboard_id  dash-id
                                                         :collection_id coll-id}]
       (mt/with-model-cleanup [:model/PulseChannel]
-        (let [pc-id (pulse-channel/create-pulse-channel! {:pulse_id      pulse-id
-                                                          :channel_type  :email
-                                                          :enabled       true
-                                                          :schedule_type :daily
-                                                          :schedule_hour 15})]
+        (let [pc-id (:id (first (pulse-channel/create-pulse-channels! [{:pulse_id      pulse-id
+                                                                        :channel_type  :email
+                                                                        :enabled       true
+                                                                        :schedule_type :daily
+                                                                        :schedule_hour 15}])))]
           (mt/with-temp [:model/PulseCard _ {:pulse_id          pulse-id
                                              :card_id           card-id
                                              :dashboard_card_id dc-id}]
@@ -139,7 +139,7 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id]}]
      (testing "a subscription the user deleted before the Dashboard was trashed stays deleted after restore"
-       (models.pulse/update-pulses! [pulse-id] {:archived true})
+       (models.pulse/update-pulses! [{:id pulse-id :archived true}])
        (t2/update! :model/Dashboard :id dash-id {:archived true})
        (t2/update! :model/Dashboard :id dash-id {:archived false})
        (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
@@ -167,7 +167,7 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [coll-id pulse-id pc-id]}]
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
-       (models.pulse/update-pulses! [pulse-id] {:archived true})
+       (models.pulse/update-pulses! [{:id pulse-id :archived true}])
        (mt/with-current-user (mt/user->id :crowberto)
          (collection/update-collections! [{:id coll-id :archived true}])
          (collection/update-collections! [{:id coll-id :archived false}]))

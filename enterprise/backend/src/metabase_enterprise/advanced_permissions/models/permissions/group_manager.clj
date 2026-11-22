@@ -56,6 +56,8 @@
           (throw (ex-info (tru "Not allowed to edit group memberships")
                           {:status-code 403}))))
       (t2/with-transaction [_conn]
-        (perms-group-membership/remove-user-from-groups! user-id to-remove-group-ids)
+        (perms-group-membership/remove-users-from-groups! [user-id] (vec to-remove-group-ids))
         (doseq [group-id to-add-group-ids]
-          (perms-group-membership/add-user-to-group! user-id group-id (:is_group_manager (new-group-id->membership-info group-id))))))))
+          (perms-group-membership/add-users-to-groups! [{:user              user-id
+                                                         :group             group-id
+                                                         :is-group-manager? (:is_group_manager (new-group-id->membership-info group-id))}]))))))

@@ -44,7 +44,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (not (mi/can-read? (t2/hydrate app :can_read)))))
       (group-access/add-groups! app [(:id group)])
-      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id group))
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
       (mt/with-current-user (mt/user->id :rasta)
         (is (mi/can-read? (t2/hydrate app :can_read))))
       (group-access/remove-group! app (:id group))
@@ -68,8 +68,8 @@
                    :model/PermissionsGroup owls {}]
       (group-access/add-groups! app [(:id finches) (:id owls)])
       (group-access/add-groups! disabled [(:id finches)])
-      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id finches))
-      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id owls))
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id finches)}])
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id owls)}])
       (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
         (mt/with-current-user (mt/user->id :rasta)
           (list-apps {} {})
@@ -87,9 +87,9 @@
                      :model/DataApp app {:bundle (.getBytes "BUNDLE" "UTF-8") :resource_collection_id app-coll-id}
                      :model/PermissionsGroup group {}]
         (group-access/add-groups! app [(:id group)])
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id group))
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
         (group-access/add-groups! app [(:id tenant-group)])
-        (perms-group-membership/add-user-to-group! (:id tenant-user) (:id tenant-group))
+        (perms-group-membership/add-users-to-groups! [{:user (:id tenant-user) :group (:id tenant-group)}])
         (doseq [[user-id admin? allowed?] [[(mt/user->id :crowberto) true true]
                                            [(mt/user->id :rasta) false true]
                                            [(mt/user->id :lucky) false false]
@@ -180,7 +180,7 @@
                    :model/DataApp app {:resource_collection_id app-coll-id}
                    :model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
-      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id group))
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
@@ -357,8 +357,8 @@
                      :model/Collection {app-coll-id :id} {:namespace :data-apps}
                      :model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js" :resource_collection_id app-coll-id}]
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [group (perms-group/create-permissions-group! {:name (mt/random-name) :is_tenant_group true})]
-            (perms-group-membership/add-user-to-group! (:id user) (:id group))
+          (let [[group] (perms-group/create-permissions-groups! [{:name (mt/random-name) :is_tenant_group true}])]
+            (perms-group-membership/add-users-to-groups! [{:user (:id user) :group (:id group)}])
             (mt/user-http-request (:id user) :get 403 "ee/apps/birds")
             (let [data-permissions (t2/select :model/DataPermissions :group_id (:id group))]
               (is (seq data-permissions))
@@ -419,6 +419,6 @@
         (is (not (mi/can-read? (t2/hydrate internal-app :can_read)))))
       (mt/with-current-user (mt/user->id :rasta)
         (is (not (mi/can-read? (t2/hydrate tenant-app :can_read)))))
-      (perms-group-membership/add-user-to-group! (:id tenant-user) (:id tenant-group))
+      (perms-group-membership/add-users-to-groups! [{:user (:id tenant-user) :group (:id tenant-group)}])
       (mt/with-current-user (:id tenant-user)
         (is (mi/can-read? (t2/hydrate tenant-app :can_read)))))))

@@ -24,7 +24,7 @@
                        :model/PermissionsGroup           group {}
                        :model/Sandbox     _ {:group_id (u/the-id group)
                                              :table_id (u/the-id table)}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group}])
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -46,7 +46,7 @@
                                                              :collection_id (u/the-id collection)}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group}])
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -70,7 +70,7 @@
                                                              :collection_id (u/the-id collection)}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group}])
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -92,7 +92,7 @@
                      :model/PermissionsGroup           group {}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group}])
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -107,13 +107,13 @@
 (deftest users-with-data-access-and-query-create-may-access-cards
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-model-cleanup [:model/User]
-      (let [{user-id :id} (user/create-user! {:email "card-data-access-user@example.com"})]
+      (let [[{user-id :id}] (user/create-users! [{:email "card-data-access-user@example.com"}])]
         (mt/with-temp [:model/PermissionsGroup           group         {}
                        :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
                                                                                                           :type :query,
                                                                                                           :query {:source-table (mt/id :venues)
                                                                                                                   :limit 1}}}]
-          (perms-group-membership/add-user-to-group! user-id group)
+          (perms-group-membership/add-users-to-groups! [{:user user-id :group group}])
           (let [cases [[:unrestricted           :query-builder-and-native true]
                        [:unrestricted           :query-builder            true]
                        [:unrestricted           :no                       true]

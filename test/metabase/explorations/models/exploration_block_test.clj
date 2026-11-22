@@ -29,7 +29,7 @@
 (deftest perms-delegate-to-thread-test
   (testing "read/write perms delegate to the owning thread/exploration"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "explorations-owner@example.com"})]
+      (let [[owner] (user/create-users! [{:email "explorations-owner@example.com"}])]
         (mt/with-temp [:model/Exploration e {:name "x" :creator_id (:id owner)}
                        :model/ExplorationThread t {:exploration_id (:id e)}
                        :model/ExplorationBlock g {:exploration_thread_id (:id t)}]

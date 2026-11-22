@@ -236,7 +236,7 @@
 ;;; ------------------------------------------------------- Writes -------------------------------------------------------
 
 (mu/defn create-channels! :- [:sequential ::channel.schema/channel]
-  "Insert the Channel `rows`, publishing their events, and return the inserted channels."
+  "Insert the Channel `rows`, publishing their events, and return the inserted channels in order."
   [rows :- [:sequential ::channel.schema/channel.create]]
   (if (seq rows)
     (t2/with-transaction [_conn]
@@ -250,14 +250,22 @@
   {:arglists '([model channel-ids opts])}
   (fn [model _channel-ids _opts] model))
 
-(mu/defn update-channels! :- [:sequential ::channel.schema/channel.update-row]
+(mr/def ::write-opts
+  [:maybe [:map {:closed true}
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(def ^:private ChannelUpdate
+  "What [[update-channels!]] takes for one Channel: its `:id` and the columns to set."
+  [:merge ::channel.schema/channel.update [:map [:id ms/PositiveInt]]])
+
+(mu/defn update-channels! :- [:sequential ChannelUpdate]
   "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, with one statement per distinct
   change set, publishing the events of the writes, and return `rows`. Deactivating an active Channel first deletes its
   PulseChannels."
-  ([rows :- [:sequential ::channel.schema/channel.update-row]]
+  ([rows :- [:sequential ChannelUpdate]]
    (update-channels! rows nil))
-  ([rows :- [:sequential ::channel.schema/channel.update-row]
-    {:keys [context]} :- ::channel.schema/write-opts]
+  ([rows :- [:sequential ChannelUpdate]
+    opts :- ::write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
        (let [changes-by-id (into {} (map (fn [row] [(:id row) (dissoc row :id)])) rows)
@@ -268,7 +276,7 @@
                                             changes-by-id))]
          (when active-ids
            (t2/resolve-model :model/PulseChannel)
-           (delete-for-channels! :model/PulseChannel active-ids {:context context}))
+           (delete-for-channels! :model/PulseChannel active-ids opts))
          (doseq [[changes pairs] (group-by val changes-by-id)
                  :when           (seq changes)]
            (channel.db/update-channels! (mapv key pairs) changes))
@@ -280,9 +288,8 @@
            (events/publish-event! :event/channel-update
                                   (events/update-event previous
                                                        rows
-                                                       {:objects (when deactivated
-                                                                   (m/index-by :id (channel.db/channels-by-ids deactivated)))
-                                                        :context context}))))))
+                                                       (assoc opts :objects (when deactivated
+                                                                              (m/index-by :id (channel.db/channels-by-ids deactivated))))))))))
    rows))
 
 (mu/defn delete-channels! :- :nil
@@ -294,7 +301,7 @@
       (channel.db/delete-channels! (vec ids))))
   nil)
 
-(mu/defn create-channel-templates! :- [:sequential :map]
+(mu/defn create-channel-templates! :- [:sequential ::channel.schema/channel-template]
   "Insert the ChannelTemplate `rows`, publishing their create event, and return the inserted instances."
   [rows :- [:sequential ::channel.schema/channel-template.create]]
   (if (seq rows)

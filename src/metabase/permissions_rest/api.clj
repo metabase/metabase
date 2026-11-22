@@ -223,7 +223,7 @@
     (when-not (setting/get :use-tenants)
       (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
                       {:status-code 400}))))
-  (permissions-group/create-permissions-group! {:name name :is_tenant_group (boolean is_tenant_group)}))
+  (first (permissions-group/create-permissions-groups! [{:name name :is_tenant_group (boolean is_tenant_group)}])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -238,7 +238,7 @@
                       [:name ms/NonBlankString]]]
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (permissions-group/update-permissions-group! group-id {:name name})
+  (permissions-group/update-permissions-groups! [{:id group-id :name name}])
   (permissions-rest.db/permissions-group group-id))
 
 (api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
@@ -247,7 +247,7 @@
                           [:group-id ms/PositiveInt]]]
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (permissions-group/delete-permissions-group! group-id)
+  (permissions-group/delete-permissions-groups! [group-id])
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
@@ -288,7 +288,7 @@
     (perms/check-tenant-groups-visible [group_id])
     (when is_group_manager
       (perms/check-advanced-permissions-enabled :group-manager))
-    (permissions-group-membership/add-user-to-group! user_id group_id is_group_manager)
+    (permissions-group-membership/add-users-to-groups! [{:user user_id :group group_id :is-group-manager? is_group_manager}])
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id}) :members))))
@@ -309,7 +309,7 @@
   (let [old (api/check-404 (permissions-rest.db/group-membership id))]
     (perms/check-tenant-groups-visible [(:group_id old)])
     (api/write-check old)
-    (permissions-group-membership/update-permissions-group-membership! (:id old) {:is_group_manager is_group_manager})
+    (permissions-group-membership/update-permissions-group-memberships! [{:id (:id old) :is_group_manager is_group_manager}])
     (permissions-rest.db/group-membership (:id old))))
 
 (api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content
@@ -319,7 +319,7 @@
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible [group-id])
-  (permissions-group-membership/remove-all-users-from-group! group-id)
+  (permissions-group-membership/remove-users-from-groups! (permissions-rest.db/group-member-ids group-id) [group-id])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete "/membership/:id" :- ::api/generic-204-no-content
@@ -330,5 +330,5 @@
     (api/check-404 membership)
     (perms/check-tenant-groups-visible [(:group_id membership)])
     (api/write-check membership)
-    (permissions-group-membership/remove-user-from-group! (:user_id membership) (:group_id membership))
+    (permissions-group-membership/remove-users-from-groups! [(:user_id membership)] [(:group_id membership)])
     api/generic-204-no-content))

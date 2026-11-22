@@ -48,7 +48,7 @@
           (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app)))
         (testing "a member can open a data app"
           (group-access/add-groups! app [group-id])
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (is (str/includes? (str (mt/user-real-request :rasta :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))
         (testing "a non-superuser is still forbidden from managing data apps"
@@ -121,7 +121,7 @@
                                                                                                       :kind      "row/update"
                                                                                                       :table_id  (mt/id :venues)}]
             (group-access/add-groups! app [group-id])
-            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
             (testing "the group with access reads the action copied into the app collection"
               (is (=? {:id copied-id}
                       (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
@@ -140,7 +140,7 @@
                      :model/DataApp          old            {:version 1 :resource_collection_id old-coll-id}
                      :model/DataApp          current        {:bundle app-bundle :version 2 :resource_collection_id current-coll-id}
                      :model/PermissionsGroup {group-id :id} {}]
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
         (doseq [app [old current]]
           (group-access/add-groups! app [group-id]))
         (with-redefs [data-app.config/supported-app-version 2]

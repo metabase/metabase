@@ -355,7 +355,7 @@
   (testing "Empty mappings leave a returning user's memberships alone, since only mapped groups are synced"
     (let [email (str "oidc-keep-" (random-uuid) "@example.com")]
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email email})]
+        (let [[{user-id :id}] (user/create-users! [{:email email}])]
           (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name (str "OIDC Unmapped Group " (random-uuid))}
                          :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
             (let [provider-config (assoc test-provider

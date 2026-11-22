@@ -2,9 +2,11 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn database
@@ -59,20 +61,28 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`, returning the inserted
-  instances."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- ::database-routing.schema/database-router.user-attribute]
-  (t2/insert-returning-instances! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+(mu/defn router
+  "The DatabaseRouter with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/DatabaseRouter :id [:auto/param id]))
+
+(mu/defn routers-by-ids
+  "The DatabaseRouters with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/DatabaseRouter :id [:in ids]))
+
+(mu/defn insert-routers! :- [:sequential ::database-routing.schema/database-router]
+  "Insert the DatabaseRouter `rows` in one statement and return the inserted instances in their order."
+  [rows :- [:sequential ::database-routing.schema/database-router.create]]
+  (t2/insert-returning-instances! :model/DatabaseRouter rows))
 
 (mu/defn update-router!
-  "Apply `changes` to the DatabaseRouter of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::database-routing.schema/database-router.update]
-  (t2/update! :model/DatabaseRouter :database_id database-id changes))
+  "Apply `changes` to the DatabaseRouter with `id`."
+  [id      :- ms/PositiveInt
+   changes :- (mut/dissoc ::database-routing.schema/database-router.update :id)]
+  (t2/update! :model/DatabaseRouter :id [:auto/param id] changes))
 
-(mu/defn delete-router!
-  "Delete the DatabaseRouter of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/DatabaseRouter :database_id database-id))
+(mu/defn delete-routers!
+  "Delete the DatabaseRouters with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/DatabaseRouter :id [:in ids]))

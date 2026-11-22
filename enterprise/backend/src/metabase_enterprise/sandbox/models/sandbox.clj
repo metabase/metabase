@@ -298,49 +298,48 @@
              (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
 
-(mu/defn create-sandbox! :- ::sandbox.schema/sandbox
-  "Insert `sandbox` and return it, publishing the event of the write. A Card whose columns do not match the Table is a
-  400, and the group loses native query access to the Database of the Table where it has it."
-  [sandbox :- ::sandbox.schema/sandbox.create]
-  (t2/with-transaction [_conn]
-    (check-columns-match-table sandbox)
-    (remove-native-access! sandbox)
-    (u/prog1 (sandbox.db/insert-sandbox! sandbox)
-      (events/publish-event! :event/sandbox-create (events/create-event [<>])))))
+(mu/defn create-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
+  "Insert the Sandbox `rows` and return them in order, publishing the event of the write; a Card whose columns do not
+  match the Table is a 400, and the group loses native query access to the Database of the Table where it has it."
+  [rows :- [:sequential ::sandbox.schema/sandbox.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (doseq [row rows]
+        (check-columns-match-table row)
+        (remove-native-access! row))
+      (u/prog1 (sandbox.db/insert-sandboxes! rows)
+        (events/publish-event! :event/sandbox-create (events/create-event <>))))))
 
-(mu/defn update-sandbox! :- [:maybe ::sandbox.schema/sandbox]
-  "Apply `changes` to the Sandbox with `sandbox-id` and return it, or nil when no Sandbox has `sandbox-id`, publishing
-  the event of the write. A new Card whose columns do not match the Table is a 400."
-  [sandbox-id :- ::lib.schema.id/sandbox
-   changes    :- ::sandbox.schema/sandbox.update]
-  (t2/with-transaction [_conn]
+(defn- update-sandbox!
+  "Apply `row`, an `:id` and its changes, to its Sandbox as [[update-sandboxes!]] does, returning the Sandbox after the
+  update, or nil when it does not exist."
+  [{sandbox-id :id :as row}]
+  (let [changes (dissoc row :id)]
     (when-let [stored (sandbox.db/sandbox sandbox-id)]
       (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id stored)))
         (check-columns-match-table (merge stored changes)))
       (sandbox.db/update-sandbox! sandbox-id changes)
       (u/prog1 (sandbox.db/sandbox sandbox-id)
         (events/publish-event! :event/sandbox-update
-                               (events/update-event {sandbox-id stored}
-                                                    [(assoc changes :id sandbox-id)]
-                                                    {:objects {sandbox-id <>}}))))))
+                               (events/update-event {sandbox-id stored} [row] {:objects {sandbox-id <>}}))))))
 
-(mu/defn delete-sandboxes!
-  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted and publishing the event of the write."
-  [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
-  (if (empty? sandbox-ids)
-    0
+(mu/defn update-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
+  "Apply the `rows`, each an `:id` and its changes, to their Sandboxes and return those that exist as stored after the
+  update, publishing the events of the writes; a new Card whose columns do not match the Table is a 400."
+  [rows :- [:sequential ::sandbox.schema/sandbox.update]]
+  (t2/with-transaction [_conn]
+    (into [] (keep update-sandbox!) rows)))
+
+(mu/defn delete-sandboxes! :- :nil
+  "Delete the Sandboxes with `sandbox-ids`, publishing the event of the write."
+  [sandbox-ids :- [:sequential ::lib.schema.id/sandbox]]
+  (when (seq sandbox-ids)
     (t2/with-transaction [_conn]
-      (let [sandboxes (sandbox.db/sandboxes-by-ids sandbox-ids)]
-        (if (empty? sandboxes)
-          0
-          (do
-            (events/publish-event! :event/sandbox-delete (events/delete-event (vec sandboxes)))
-            (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes))))))))
-
-(mu/defn delete-sandbox!
-  "Delete the Sandbox with `sandbox-id`, returning the number deleted, as [[delete-sandboxes!]] does."
-  [sandbox-id :- ::lib.schema.id/sandbox]
-  (delete-sandboxes! #{sandbox-id}))
+      (when-let [sandboxes (not-empty (sandbox.db/sandboxes-by-ids (set sandbox-ids)))]
+        (events/publish-event! :event/sandbox-delete (events/delete-event (vec sandboxes)))
+        (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes)))))
+  nil)
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
@@ -354,9 +353,9 @@
        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
        ;; This allows existing values to be "cleared" by being set to nil
        (if (some #(contains? sandbox %) [:card_id :attribute_remappings])
-         (update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}))
+         (first (update-sandboxes! [(assoc (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}) :id id)]))
          (sandbox.db/sandbox id))
-       (create-sandbox! sandbox)))))
+       (first (create-sandboxes! [sandbox]))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

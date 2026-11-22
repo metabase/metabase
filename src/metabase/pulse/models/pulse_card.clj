@@ -45,7 +45,7 @@
 
 ;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
-(mu/defn create-pulse-cards! :- [:sequential :map]
+(mu/defn create-pulse-cards! :- [:sequential ::pulse.schema/pulse-card]
   "Insert the PulseCard `rows` and return the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.create]]
   (if (seq rows)
@@ -65,7 +65,7 @@
      :format_rows       (boolean format_rows)
      :pivot_results     (boolean pivot_results)}))
 
-(mu/defn append-pulse-cards! :- [:sequential :map]
+(mu/defn append-pulse-cards! :- [:sequential ::pulse.schema/pulse-card]
   "Create new PulseCards as [[create-pulse-cards!]] does, joining the given card, pulse, and dashboard card and setting
   appropriate defaults for other values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]

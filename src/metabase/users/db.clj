@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -154,9 +155,9 @@
   (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
 
 (mu/defn insert-users!
-  "Insert the User `rows` and return the inserted instances."
+  "Insert the User `rows`, one statement for each set of columns they give, and return the new instances in their order."
   [rows :- [:sequential ::users.schema/user.create]]
-  (t2/insert-returning-instances! :model/User rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/User %) rows))
 
 (mu/defn users-by-ids
   "The Users with `user-ids`, with every column of `:core_user`."

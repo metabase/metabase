@@ -248,42 +248,50 @@
              (for [val (vals mappings)]
                (remove (partial = group-id) val))))))
 
-(mu/defn create-permissions-group! :- ::permissions.schema/permissions-group
-  "Insert the PermissionsGroup `row` with the default permissions on every Database and return it, publishing the event
-  of the write; the name of an existing group is a 400."
-  [{group-name :name :as row} :- ::permissions.schema/permissions-group.create]
-  (t2/with-transaction [_conn]
-    (check-name-not-already-taken group-name)
-    (u/prog1 (permissions.db/insert-permissions-group! row)
-      (set-default-permission-values! <>)
-      (events/publish-event! :event/group-create (events/create-event [<>])))))
+(mu/defn create-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
+  "Insert the PermissionsGroup `rows`, each with the default permissions on every Database, and return them in order,
+  publishing the event of the write; the name of an existing group is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions-group.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (u/prog1 (mapv (fn [{group-name :name :as row}]
+                       (check-name-not-already-taken group-name)
+                       (u/prog1 (permissions.db/insert-permissions-group! row)
+                         (set-default-permission-values! <>)))
+                     rows)
+        (events/publish-event! :event/group-create (events/create-event <>))))))
 
-(mu/defn update-permissions-group!
-  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated and publishing the event of the
-  write; renaming a magic group, or to the name of an existing group, is a 400."
-  [id      :- ms/PositiveInt
-   changes :- ::permissions.schema/permissions-group.update]
+(mu/defn update-permissions-groups! :- [:sequential ::permissions.schema/permissions-group.update]
+  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups and return the rows that exist,
+  publishing the event of the write; renaming a magic group, or to the name of an existing group, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions-group.update]]
   (t2/with-transaction [_conn]
-    (if-let [stored (permissions.db/permissions-group id)]
-      (do
-        (when (and (contains? changes :name) (not= (:name changes) (:name stored)))
-          (check-not-magic-group stored)
+    (let [stored (into {} (keep (fn [{id :id}] (some->> (permissions.db/permissions-group id) (vector id)))) rows)
+          rows   (filterv (comp stored :id) rows)]
+      (doseq [{id :id :as row} rows
+              :let [changes (dissoc row :id)
+                    before  (stored id)]]
+        (when (and (contains? changes :name) (not= (:name changes) (:name before)))
+          (check-not-magic-group before)
           (when-let [group-name (:name changes)]
             (check-name-not-already-taken group-name)))
-        (u/prog1 (permissions.db/update-permissions-group! id changes)
-          (events/publish-event! :event/group-update (events/update-event {id stored} [(assoc changes :id id)]))))
-      0)))
+        (permissions.db/update-permissions-group! id changes))
+      (when (seq rows)
+        (events/publish-event! :event/group-update (events/update-event stored rows)))
+      rows)))
 
-(mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id` and drop it from the LDAP group mappings, returning the number deleted and
-  publishing the event of the write; deleting a magic group is a 400."
-  [id :- ms/PositiveInt]
+(mu/defn delete-permissions-groups! :- :nil
+  "Delete the PermissionsGroups with `ids` and drop them from the LDAP group mappings, publishing the event of the
+  write; deleting a magic group is a 400."
+  [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (when-let [stored (permissions.db/permissions-group id)]
-      (check-not-magic-group stored)
-      (remove-from-ldap-group-mappings! id)
-      (events/publish-event! :event/group-delete (events/delete-event [stored]))
-      (permissions.db/delete-permissions-group! id))))
+    (when-let [stored (not-empty (into [] (keep permissions.db/permissions-group) ids))]
+      (run! check-not-magic-group stored)
+      (run! (comp remove-from-ldap-group-mappings! :id) stored)
+      (events/publish-event! :event/group-delete (events/delete-event stored))
+      (run! (comp permissions.db/delete-permissions-group! :id) stored)))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

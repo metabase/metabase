@@ -30,9 +30,9 @@
    [toucan2.core :as t2]))
 
 (defn- create-and-delete-sandbox!
-  "Create `sandbox` through [[sandboxes/create-sandbox!]], delete it again, and return `:ok`."
+  "Create `sandbox` through [[sandboxes/create-sandboxes!]], delete it again, and return `:ok`."
   [sandbox]
-  (let [{sandbox-id :id} (sandboxes/create-sandbox! sandbox)]
+  (let [[{sandbox-id :id}] (sandboxes/create-sandboxes! [sandbox])]
     (t2/delete! :model/Sandbox :id sandbox-id)
     :ok))
 
@@ -60,8 +60,8 @@
 (deftest attribute-remappings-shape-test
   (testing "schema"
     (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
-      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
-    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings {"cat" "CATEGORY_ID"}})))
   (testing "update normalizes the stored remappings"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                    :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
@@ -84,11 +84,11 @@
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
                                                                           (fn [table-id] (swap! checks inc) (f table-id)))]
-            (sandboxes/update-sandbox! sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
+            (sandboxes/update-sandboxes! [{:id sandbox-id :attribute_remappings {"cat" "CATEGORY_ID"}}])
             (is (= 0 @checks))
-            (sandboxes/update-sandbox! sandbox-id {:card_id card-id})
+            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id card-id}])
             (is (= 0 @checks))
-            (sandboxes/update-sandbox! sandbox-id {:card_id other-id})
+            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id other-id}])
             (is (= 1 @checks))))))))
 
 (deftest insert-removes-native-access-of-each-group-test
@@ -102,7 +102,7 @@
       (doseq [sandbox [{:table_id (mt/id :venues) :group_id group-1}
                        {:table_id (mt/id :checkins) :group_id group-2}
                        {:table_id (mt/id :venues) :group_id group-3}]]
-        (sandboxes/create-sandbox! sandbox))
+        (sandboxes/create-sandboxes! [sandbox]))
       (is (= {(mt/id :venues) :query-builder}
              (perms/table-permissions-for-groups #{group-1} :perms/create-queries {(mt/id :venues) (mt/id)})))
       (is (= {(mt/id :checkins) :query-builder}
@@ -129,7 +129,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (sandboxes/update-sandbox! (:id gtap) {:card_id (:id card)})
+                         (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -171,7 +171,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (sandboxes/update-sandbox! (:id gtap) {:card_id (:id card)})
+                           (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -504,7 +504,7 @@
   (mt/with-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
                    :model/User             {analyst-id :id} {:is_data_analyst true}]
-      (perms-group-membership/add-user-to-group! analyst-id group-id)
+      (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
       (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
       (mt/with-current-user analyst-id
         (thunk)))))
@@ -821,7 +821,8 @@
                                                 (for [group-id group-ids]
                                                   {:group_id group-id :table_id (mt/id :venues)}))]
       (t2/with-call-count [call-count]
-        (is (= n (sandboxes/delete-sandboxes! (set sandbox-ids))))
+        (sandboxes/delete-sandboxes! sandbox-ids)
+        (is (not (t2/exists? :model/Sandbox :id [:in sandbox-ids])))
         (call-count)))))
 
 (deftest delete-sandboxes-runs-fixed-statement-count-test

@@ -2649,7 +2649,7 @@
                      :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
                      :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
                      :model/PermissionsGroup pg                      {}]
-        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         ;; Set database-level defaults to blocked
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)

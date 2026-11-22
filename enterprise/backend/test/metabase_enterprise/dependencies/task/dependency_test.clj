@@ -855,7 +855,7 @@
                     :to_entity_id card1-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (sandbox/update-sandbox! sandbox-id {:card_id card2-id})
+         (sandbox/update-sandboxes! [{:id sandbox-id :card_id card2-id}])
          (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
                     :from_entity_id sandbox-id
@@ -863,7 +863,7 @@
                     :to_entity_id card2-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (sandbox/delete-sandbox! sandbox-id)
+         (sandbox/delete-sandboxes! [sandbox-id])
          (deps.test/synchronously-run-dependency-job!)
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 

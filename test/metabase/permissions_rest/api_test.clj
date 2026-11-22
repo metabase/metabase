@@ -76,7 +76,7 @@
   "Add `user-id` to the Data Analysts group, temporarily enabling `advanced-permissions` to get past the addition gate."
   [user-id]
   (mt/with-premium-features #{:advanced-permissions}
-    (perms-group-membership/add-user-to-group! user-id (data-analyst-group-id))))
+    (perms-group-membership/add-users-to-groups! [{:user user-id :group (data-analyst-group-id)}])))
 
 (defn- data-analyst-group-listed? []
   (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))
@@ -110,7 +110,7 @@
        (add-to-data-analyst-group-with-feature! user-id)
        (mt/with-premium-features #{}
          (is (data-analyst-group-listed?))
-         (perms-group-membership/remove-user-from-group! user-id (data-analyst-group-id))
+         (perms-group-membership/remove-users-from-groups! [user-id] [(data-analyst-group-id)])
          (is (not (data-analyst-group-listed?))))))))
 
 (mt/when-ee-evailable
@@ -435,7 +435,7 @@
 (deftest delete-group-audit-test
   (mt/with-premium-features #{:audit-app}
     (testing "permissions group delete is audited"
-      (let [{group-id :id} (perms-group/create-permissions-group! {:name "Delete Me"})
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Delete Me"}])
             before-delete-count (t2/count :model/AuditLog)]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
         (is (= (inc before-delete-count) (t2/count :model/AuditLog)))
@@ -675,7 +675,7 @@
                      :model/Database         {db-id :id}  {}
                      :model/Table            {table-id :id} {:db_id db-id, :schema "PUBLIC"}]
         (mt/with-no-data-perms-for-all-users!
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group}])
           ;; First set both permissions to unrestricted/full
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
@@ -905,8 +905,7 @@
                                                       :created_at now
                                                       :updated_at now}))
               group-ids  (vec (for [i (range num-groups)]
-                                (:id (perms-group/create-permissions-group!
-                                      {:name (str "perf-test-group-" i "-" (random-uuid))}))))]
+                                (:id (first (perms-group/create-permissions-groups! [{:name (str "perf-test-group-" i "-" (random-uuid))}])))))]
           (try
             (let [base-graph    (data-perms.graph/api-graph {:group-ids group-ids})
                   view-perms    {"PUBLIC" (zipmap table-ids (repeat :unrestricted))}
@@ -959,7 +958,7 @@
      (let [group-id (u/the-id (perms-group/data-analyst))]
        (mt/with-temp [:model/User {user-id :id} {}]
          (mt/with-premium-features #{:advanced-permissions}
-           (perms-group-membership/add-user-to-group! user-id group-id))
+           (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))
          (mt/with-premium-features #{}
            (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))

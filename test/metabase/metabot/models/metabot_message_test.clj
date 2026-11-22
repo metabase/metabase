@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -111,3 +112,18 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid metabot_message.data"
                                 (t2/update! :model/MetabotMessage :id id {:data [{:type "text"}]})))
           (is (pos? (t2/update! :model/MetabotMessage :id id {:data [{:type "text" :text "hi"}]}))))))))
+
+(deftest create-with-different-columns-keeps-defaults-test
+  (mt/with-temp [:model/MetabotConversation conv {}]
+    (mt/with-model-cleanup [:model/MetabotMessage]
+      (let [[plain explicit] (metabot-message/create-metabot-messages!
+                              [{:conversation_id (:id conv) :profile_id "p" :total_tokens 0 :role :user :data [] :data_version 2}
+                               {:conversation_id (:id conv) :profile_id "p" :total_tokens 0 :role :assistant :data [] :data_version 2 :finished false}])]
+        (testing "rows come back in the order given"
+          (is (= [:user :assistant] [(:role plain) (:role explicit)])))
+        (testing "a row that leaves a column out keeps its default"
+          (is (=? {:finished true}
+                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id plain)]}))))
+        (testing "a row that gives the column keeps its value"
+          (is (=? {:finished false}
+                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id explicit)]}))))))))

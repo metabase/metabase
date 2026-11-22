@@ -43,18 +43,18 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (perms-group/delete-permissions-group! (u/the-id group)))))
+               (perms-group/delete-permissions-groups! [(u/the-id group)]))))
         (testing "make sure we're not allowed to edit the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (perms-group/update-permissions-group! (u/the-id group) {:name "Cool People"}))))))))
+               (perms-group/update-permissions-groups! [{:id (u/the-id group) :name "Cool People"}]))))))))
 
 (deftest new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "regular user"
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "new-regular-user@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:email "new-regular-user@example.com"}])]
           (testing "Should be added to All Users group"
             (is (t2/exists? :model/PermissionsGroupMembership
                             :user_id  user-id
@@ -68,7 +68,7 @@
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "superuser"
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "new-superuser@example.com" :is_superuser true})]
+        (let [[{user-id :id}] (user/create-users! [{:email "new-superuser@example.com" :is_superuser true}])]
           (testing "Should be added to All Users group"
             (is (t2/exists? :model/PermissionsGroupMembership
                             :user_id  user-id
@@ -119,15 +119,15 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true"
       (mt/with-temp [:model/User {user-id :id}]
-        (perms-group-membership/add-user-to-group! user-id (u/the-id (perms-group/admin)))
+        (perms-group-membership/add-users-to-groups! [{:user user-id :group (u/the-id (perms-group/admin))}])
         (is (true? (t2/select-one-fn :is_superuser :model/User, :id user-id)))))))
 
 (deftest add-remove-from-admin-group-test-2
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "removed-admin@example.com" :is_superuser true})]
-          (perms-group-membership/remove-user-from-group! user-id (perms-group/admin))
+        (let [[{user-id :id}] (user/create-users! [{:email "removed-admin@example.com" :is_superuser true}])]
+          (perms-group-membership/remove-users-from-groups! [user-id] [(perms-group/admin)])
           (is (false? (t2/select-one-fn :is_superuser :model/User, :id user-id))))))))
 
 (deftest add-remove-from-admin-group-test-3
@@ -141,7 +141,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "demoted-admin@example.com" :is_superuser true})]
+        (let [[{user-id :id}] (user/create-users! [{:email "demoted-admin@example.com" :is_superuser true}])]
           (user/update-users! [user-id] {:is_superuser false})
           (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin))))))))))
 
@@ -177,7 +177,7 @@
       (mt/with-temp [:model/Database {db-id :id} {}]
         (mt/with-full-data-perms-for-all-users!
           (mt/with-model-cleanup [:model/PermissionsGroup]
-            (let [{group-id :id} (perms-group/create-permissions-group! {:name "Default Values Full"})]
+            (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Default Values Full"}])]
               (is
                (= {group-id
                    {db-id
@@ -190,7 +190,7 @@
       (mt/with-temp [:model/Database         {db-id :id}    {}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-model-cleanup [:model/PermissionsGroup]
-            (let [{group-id :id} (perms-group/create-permissions-group! {:name "Default Values None"})]
+            (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Default Values None"}])]
               (is
                (= {group-id
                    {db-id

@@ -206,7 +206,7 @@
         (mt/with-model-cleanup [:model/Collection]
           (let [[{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type collection/library-data-collection-type}])]
             (mt/with-model-cleanup [:model/User]
-              (let [{analyst-id :id} (user/create-user! {:first_name "Data" :last_name "Analyst" :email "data-analyst@metabase.com" :is_data_analyst true})]
+              (let [[{analyst-id :id}] (user/create-users! [{:first_name "Data" :last_name "Analyst" :email "data-analyst@metabase.com" :is_data_analyst true}])]
                 (mt/with-temp [:model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                                :model/Database {db-id :id} {}
                                :model/Table {table-id :id} {:db_id db-id}]

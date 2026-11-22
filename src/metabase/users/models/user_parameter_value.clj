@@ -13,7 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/UserParameterValue [_model] :user_parameter_value)
 
@@ -59,7 +59,7 @@
 
 (mu/defn upsert-user-parameter-values!
   "Delete the stored values of `parameters` and store again those with a value or a default."
-  [parameters :- [:sequential [:map
+  [parameters :- [:sequential [:map {:closed true}
                                [:user_id      pos-int?]
                                [:dashboard_id pos-int?]
                                [:parameter_id :string]

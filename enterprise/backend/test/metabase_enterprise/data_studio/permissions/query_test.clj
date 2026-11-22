@@ -41,7 +41,7 @@
   (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
     (mt/with-premium-features #{:library}
       (mt/with-model-cleanup [:model/User :model/Collection]
-        (let [{user-id :id}         (user/create-user! {:email "published-venues@example.com"})
+        (let [[{user-id :id}]         (user/create-users! [{:email "published-venues@example.com"}])
               [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) (select-keys (t2/select-one :model/Table :id (mt/id :venues))
                                                                              [:is_published :collection_id])
@@ -74,7 +74,7 @@
           (let [mbql-query (mt/mbql-query venues)]
             (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
               (t2/with-transaction [_conn nil {:rollback-only true}]
-                (let [{user-id :id}         (user/create-user! {:email "published-table-user@example.com"})
+                (let [[{user-id :id}]         (user/create-users! [{:email "published-table-user@example.com"}])
                       [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
                   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                                  :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
@@ -107,7 +107,7 @@
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
           ;; Create a test user that only belongs to all-users group (no extra permissions)
-          (let [{user-id :id} (user/create-user! {:email "view-data-test@example.com"})
+          (let [[{user-id :id}] (user/create-users! [{:email "view-data-test@example.com"}])
                 [collection]  (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})

@@ -71,22 +71,25 @@
                          :router_database_id router_database_id
                          :creator_id         api/*current-user-id*})
                       destinations)
-                {:details {:primary_db_name (:name router-db)
-                           :primary_db_id   (:id router-db)}})
+                {:context {:details {:primary_db_name (:name router-db)
+                                     :primary_db_id   (:id router-db)}}})
         (run! #(sync/start-initial-sync! % nil) <>)))))
 
 (defn- delete-router!
   [db-id]
-  (database-routing.models/delete-database-router! db-id))
+  (if-let [router (database-routing.db/router-for-database db-id)]
+    (do (database-routing.models/delete-database-routers! [(:id router)])
+        1)
+    0))
 
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-    (if (database-routing.db/router-for-database db-id)
-      (database-routing.models/update-database-router! db-id {:user_attribute user-attribute})
-      (database-routing.models/create-database-router! {:database_id db-id :user_attribute user-attribute}))))
+    (count (if-let [router (database-routing.db/router-for-database db-id)]
+             (database-routing.models/update-database-routers! [{:id (:id router) :user_attribute user-attribute}])
+             (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute user-attribute}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

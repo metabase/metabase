@@ -765,7 +765,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Audited group"}
                    :model/User             {user-id :id}  {}]
-      (perms-group-membership/add-user-to-group! user-id group-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
       (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
         (testing "creating a membership records its id"
           (is (partial= {:model "PermissionsGroupMembership"
@@ -775,7 +775,7 @@
                          :topic :group-membership-create}
                         (mt/latest-audit-log-entry :group-membership-create membership-id))))
         (testing "deleting a membership records its id"
-          (perms-group-membership/remove-user-from-group! user-id group-id)
+          (perms-group-membership/remove-users-from-groups! [user-id] [group-id])
           (is (partial= {:model "PermissionsGroupMembership"
                          :model_id membership-id
                          :user_id (mt/user->id :crowberto)

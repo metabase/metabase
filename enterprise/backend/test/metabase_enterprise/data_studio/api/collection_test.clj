@@ -58,7 +58,7 @@
                        :model/Table      {table-id :id :as table} {:collection_id (u/the-id collection)
                                                                    :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (testing "with collection read but no view-data, user should not see published table"
@@ -97,7 +97,7 @@
                        :model/Table      table {:collection_id (u/the-id collection)
                                                 :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (perms/revoke-collection-permissions! (perms/all-users-group) collection)
           (data-perms/set-table-permission! group-id table :perms/view-data :unrestricted)
@@ -109,7 +109,7 @@
         (mt/with-temp [:model/Table {table-id :id :as table} {:collection_id nil
                                                               :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (testing "with no view-data, user should not see published table in root"
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
@@ -148,7 +148,7 @@
                                                     :is_published  true}
                        :model/Table      _         {:is_published false}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (let [metadata-url (str "collection/" (u/the-id collection) "/items/metadata")
                 items-url    (str "collection/" (u/the-id collection) "/items")
@@ -184,7 +184,7 @@
           (mt/with-temp [:model/Table table {:collection_id nil
                                              :is_published  true}
                          :model/PermissionsGroup {group-id :id} {}]
-            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
             (let [fetch (fn []
                           (mt/user-http-request :rasta :get 200 "collection/root/items/metadata" :models "table"))]
               (testing "with view-data blocked, no table is counted"

@@ -56,7 +56,7 @@
                                   (not (setup/has-user-setup)) (assoc :is_superuser true))]
                        (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
                        (log/info (u/colorize :green "Creating new User"))
-                       (u/the-id (user/create-user! user))))]
+                       (u/the-id (first (user/create-users! [user])))))]
       ;; passwords live in the AuthIdentity, not on the User row
       (auth-identity/set-password! user-id password))))
 

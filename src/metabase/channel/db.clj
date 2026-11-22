@@ -5,6 +5,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -33,9 +34,10 @@
   (t2/exists? :model/Channel :name channel-name))
 
 (mu/defn insert-channels!
-  "Insert the Channel `rows` and return the inserted instances."
+  "Insert the Channel `rows` with one statement per distinct set of columns and return the inserted instances in their
+  order."
   [rows :- [:sequential {:min 1} ChannelRow]]
-  (t2/insert-returning-instances! :model/Channel rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Channel %) rows))
 
 (mu/defn channels-by-ids
   "The Channels with `ids`."

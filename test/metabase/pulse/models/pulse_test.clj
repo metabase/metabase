@@ -38,16 +38,19 @@
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
   [pulse-name creator cards channels skip-if-empty? & [dashboard-id]]
-  (-> (models.pulse/create-pulse! cards channels
-                                  {:name          pulse-name
-                                   :creator_id    (u/the-id creator)
-                                   :skip_if_empty skip-if-empty?
-                                   :dashboard_id dashboard-id})
+  (-> (models.pulse/create-pulses! [{:name          pulse-name
+                                     :creator_id    (u/the-id creator)
+                                     :skip_if_empty skip-if-empty?
+                                     :dashboard_id  dashboard-id
+                                     :cards         cards
+                                     :channels      channels}])
+      first
       remove-uneeded-pulse-keys))
 
 (defn- update-pulse-then-select!
   [pulse]
-  (-> (models.pulse/update-pulse! pulse)
+  (models.pulse/update-pulses! [pulse])
+  (-> (models.pulse/retrieve-pulse (:id pulse))
       remove-uneeded-pulse-keys))
 
 (def ^:private pulse-defaults
@@ -113,7 +116,7 @@
                               1 card-1
                               2 card-2
                               3 card-3))]
-                (models.pulse/update-pulse! {:id (u/the-id pulse) :cards (mapv models.pulse/card->ref cards)}))
+                (models.pulse/update-pulses! [{:id (u/the-id pulse) :cards (mapv models.pulse/card->ref cards)}]))
               (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, :pulse_id (u/the-id pulse)))]
                 (t2/select-fn-set :name :model/Card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil
@@ -125,7 +128,7 @@
           (is (= expected
                  (update-cards! cards))))))))
 
-;; create-pulse!
+;; create-pulses!
 ;; simple example with a single card
 (deftest create-pulse-test
   (mt/with-temp [:model/Card card {:name "Test Card"}]
@@ -169,15 +172,15 @@
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
           (let [pulse (mt/with-current-user (mt/user->id :rasta)
-                        (models.pulse/create-pulse! [(models.pulse/card->ref card)]
-                                                    [{:channel_type  :email
-                                                      :schedule_type :daily
-                                                      :schedule_hour 18
-                                                      :enabled       true
-                                                      :recipients    [{:email "foo@bar.com"}]}]
-                                                    {:name          "pulse-name"
-                                                     :creator_id    (mt/user->id :rasta)
-                                                     :skip_if_empty false}))]
+                        (first (models.pulse/create-pulses! [{:name          "pulse-name"
+                                                              :creator_id    (mt/user->id :rasta)
+                                                              :skip_if_empty false
+                                                              :cards         [(models.pulse/card->ref card)]
+                                                              :channels      [{:channel_type  :email
+                                                                               :schedule_type :daily
+                                                                               :schedule_hour 18
+                                                                               :enabled       true
+                                                                               :recipients    [{:email "foo@bar.com"}]}]}])))]
             (is (= {:topic    :pulse-create
                     :user_id  (mt/user->id :rasta)
                     :model    "Pulse"
@@ -215,7 +218,7 @@
                  false
                  dashboard-id)))))))
 
-;; update-pulse!
+;; update-pulses!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Pulse name
 ;;  2. creator_id cannot be changed
@@ -390,18 +393,18 @@
   (pulse-channel-test/with-send-pulse-setup!
     (mt/with-temp [:model/Pulse {pulse-id :id} {}]
       (mt/with-model-cleanup [:model/PulseChannel]
-        (let [pc-id (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
-                                                                 :channel_type :email
-                                                                 :enabled      true}
-                                                                pulse-channel-test/daily-at-6pm))]
+        (let [pc-id (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                               :channel_type :email
+                                                                               :enabled      true}
+                                                                              pulse-channel-test/daily-at-6pm)])))]
           (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                  (pulse-channel-test/send-pulse-triggers pulse-id)))
           (testing "archived pulse will disable pulse channels and remove triggers"
-            (models.pulse/update-pulses! [pulse-id] {:archived true})
+            (models.pulse/update-pulses! [{:id pulse-id :archived true}])
             (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
           (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-            (models.pulse/update-pulses! [pulse-id] {:archived false})
+            (models.pulse/update-pulses! [{:id pulse-id :archived false}])
             (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                    (pulse-channel-test/send-pulse-triggers pulse-id))))
@@ -422,9 +425,11 @@
 (defn- insert-pulse!
   "Create a Pulse named at random with `overrides`, and return its id."
   [overrides]
-  (:id (models.pulse/create-pulse! [] [] (merge {:name       (mt/random-name)
-                                                 :creator_id (mt/user->id :rasta)}
-                                                overrides))))
+  (:id (first (models.pulse/create-pulses! [(merge {:name       (mt/random-name)
+                                                    :creator_id (mt/user->id :rasta)
+                                                    :cards      []
+                                                    :channels   []}
+                                                   overrides)]))))
 
 (deftest dashboard-subscription-collection-is-derived-on-insert-test
   (mt/with-temp [:model/Collection {collection-id :id}       {}
@@ -525,7 +530,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
+             (models.pulse/update-pulses! [{:id card-id :collection_id collection-id}])))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |

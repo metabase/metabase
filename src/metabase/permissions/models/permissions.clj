@@ -304,7 +304,7 @@
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (delete-permissions! (permissions.db/related-permissions-where group-id path paths)))))
+      (delete-permissions! (permissions.db/related-permission-ids group-id path paths)))))
 
 (defn grant-permissions!
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
@@ -431,13 +431,22 @@
   (run! assert-not-admin-group rows)
   (permissions.db/insert-permissions! rows))
 
-(mu/defn delete-permissions! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Permissions rows matching the HoneySQL `where` clause, returning the number deleted. Matching a row of
-  the Admin group is a 400 and deletes nothing."
-  [where :- vector?]
-  (t2/with-transaction [_conn]
-    (run! #(assert-not-admin-group {:group_id %}) (permissions.db/permissions-group-ids-where where))
-    (permissions.db/delete-permissions! where)))
+(mu/defn delete-permissions! :- :nil
+  "Delete the Permissions rows with `ids`; a row of the Admin group among them is a 400 and deletes nothing."
+  [ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) (permissions.db/permissions-by-ids ids)))
+      (permissions.db/delete-permissions! ids)))
+  nil)
+
+(def collection-permission-ids
+  "The ids of the Permissions rows of a Collection, see [[permissions.db/collection-permission-ids]]."
+  permissions.db/collection-permission-ids)
+
+(def database-permission-ids
+  "The ids of the Permissions rows under a Database, see [[permissions.db/database-permission-ids]]."
+  permissions.db/database-permission-ids)
 
 (mu/defn delete-permissions-of-objects! :- [:maybe :int]
   "Delete every Permissions row for `objects`, in one raw statement, returning the number deleted. Unlike

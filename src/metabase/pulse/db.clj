@@ -403,11 +403,11 @@
                           [:not= :p.dashboard_id nil]
                           [:= :d.archived false]]}))
 
-(mu/defn insert-pulse-channel!
-  "Insert the PulseChannel `row` and return the inserted instance."
-  [row :- ::pulse.schema/pulse-channel.update]
-  (u/prog1 (t2/insert-returning-instance! :model/PulseChannel row)
-    (change-log/log-changes! :model/PulseChannel :insert [<>])))
+(mu/defn insert-pulse-channels! :- [:sequential ::pulse.schema/pulse-channel]
+  "Insert the PulseChannel `rows` in one statement and return the inserted instances in their order."
+  [rows :- [:sequential ::pulse.schema/pulse-channel.update]]
+  (u/prog1 (t2/insert-returning-instances! :model/PulseChannel rows)
+    (change-log/log-changes! :model/PulseChannel :insert <>)))
 
 (mu/defn update-pulse-channel!
   "Apply `changes` to the PulseChannel with `channel-id`."

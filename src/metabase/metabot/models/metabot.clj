@@ -1,12 +1,13 @@
 (ns metabase.metabot.models.metabot
   (:require
-   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -60,11 +61,18 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn update-metabot!
-  "Apply `changes` to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   changes    :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (metabot.db/update-metabot! metabot-id changes))
+(mr/def ::metabot-change
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:use_verified_content {:optional true} [:maybe :boolean]]
+   [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mu/defn update-metabots! :- [:sequential ::metabot-change]
+  "Apply the `rows`, each the `:id` of a Metabot and the columns to set, and return the rows that exist."
+  [rows :- [:sequential ::metabot-change]]
+  (filterv (fn [{id :id :as row}]
+             (pos? (metabot.db/update-metabot! id (dissoc row :id))))
+           rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

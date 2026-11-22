@@ -676,7 +676,7 @@
             [{blind-analyst-id :id}] (user/create-users! [{:email (mt/random-email) :is_data_analyst true}])]
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
           (doseq [user-id [analyst-id plain-id]]
-            (perms-group-membership/add-user-to-group! user-id group-id))
+            (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))
           (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
           (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
           (let [segment-args {:method "create" :table_id (mt/id :venues)
@@ -726,7 +726,7 @@
          (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision :model/User]
            (let [[{analyst-id :id}] (user/create-users! [{:email (mt/random-email) :is_data_analyst true}])]
              (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-               (perms-group-membership/add-user-to-group! analyst-id group-id)
+               (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
                (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
                (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
                (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)

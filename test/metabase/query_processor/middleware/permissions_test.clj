@@ -799,7 +799,7 @@
 (deftest e2e-native-query-source-card-id-join-perms-test
   (testing "Make sure that a native source card joined to an MBQL query checks card read perms rather than full native access"
     (mt/with-model-cleanup [:model/User]
-      (let [{user-id :id} (user/create-user! {:email "e2e-native-query-source-card-id-join-perms-test-1@example.com"})]
+      (let [[{user-id :id}] (user/create-users! [{:email "e2e-native-query-source-card-id-join-perms-test-1@example.com"}])]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                                   :type :native
                                                                   :native {:query "SELECT * FROM venues"}}
@@ -825,7 +825,7 @@
   (testing "Make sure that you can't bypass native query permissions by including :qp/stage-is-from-source-card in a
            join"
     (mt/with-model-cleanup [:model/User]
-      (let [{user-id :id} (user/create-user! {:email "e2e-ignore-user-supplied-source-card-key-test-1@example.com"})]
+      (let [[{user-id :id}] (user/create-users! [{:email "e2e-ignore-user-supplied-source-card-key-test-1@example.com"}])]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                                   :type :native
                                                                   :native {:query "SELECT * FROM venues"}}}]

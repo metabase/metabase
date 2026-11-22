@@ -112,7 +112,7 @@
 (deftest run-one-iteration-happy-path-test
   (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "happy@example.com"})]
+      (let [[u] (user/create-users! [{:email "happy@example.com"}])]
         (mt/with-temp [:model/Card card {:type :metric
                                          :creator_id (:id u)
                                          :dataset_query (venues-count-query)}]
@@ -170,7 +170,7 @@
 (deftest run-one-iteration-writes-interestingness-score-test
   (testing "A 2-column result gets scored and the score lands on the result row"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "score@example.com"})]
+      (let [[u] (user/create-users! [{:email "score@example.com"}])]
         (mt/with-temp [:model/Card card {:type :metric
                                          :creator_id (:id u)
                                          :dataset_query (venues-count-query)}]
@@ -209,7 +209,7 @@
 (deftest run-one-iteration-writes-contextual-score-test
   (testing "When the thread has a prompt and the lego returns a score, it lands on the result row"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "ctx-score@example.com"})]
+      (let [[u] (user/create-users! [{:email "ctx-score@example.com"}])]
         (mt/with-temp [:model/Card card {:type :metric
                                          :creator_id (:id u)
                                          :dataset_query (venues-count-query)}]
@@ -226,7 +226,7 @@
 (deftest run-one-iteration-hands-computed-stats-to-the-scorer-test
   (testing "The deep stats the runner already computed are handed to the contextual scorer, not recomputed"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "ctx-stats@example.com"})]
+      (let [[u] (user/create-users! [{:email "ctx-stats@example.com"}])]
         (mt/with-temp [:model/Card card {:type :metric
                                          :creator_id (:id u)
                                          :dataset_query (venues-count-query)}]
@@ -265,7 +265,7 @@
 (deftest run-one-iteration-survives-contextual-failure-test
   (testing "A throwing contextual scorer leaves the row done, heuristic still scored, contextual nil"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "ctx-throw@example.com"})]
+      (let [[u] (user/create-users! [{:email "ctx-throw@example.com"}])]
         (mt/with-temp [:model/Card card {:type :metric
                                          :creator_id (:id u)
                                          :dataset_query (venues-count-query)}]

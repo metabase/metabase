@@ -315,13 +315,13 @@
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
                                                                         :name       (mt/random-name)}))
-                  pc-ids    (mapv #(pulse-channel/create-pulse-channel!
-                                    (merge {:pulse_id     %
-                                            :channel_type :slack
-                                            :enabled      true
-                                            :details      {:channel "#random"}}
-                                           daily-at-6pm))
-                                  pulse-ids)]
+                  pc-ids    (mapv :id (pulse-channel/create-pulse-channels!
+                                       (mapv #(merge {:pulse_id     %
+                                                      :channel_type :slack
+                                                      :enabled      true
+                                                      :details      {:channel "#random"}}
+                                                     daily-at-6pm)
+                                             pulse-ids)))]
               (testing "sanity check that we have the correct number of triggers and no channel has been sent yet"
                 (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count))))
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
@@ -353,11 +353,11 @@
                 (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
                                                             :name            (mt/random-name)
                                                             :alert_condition "rows"}]
-                  (pulse-channel/create-pulse-channel! (merge {:pulse_id     pulse-id
-                                                               :channel_type :slack
-                                                               :enabled      true
-                                                               :details      {:channel "#random"}}
-                                                              daily-at-6pm))
+                  (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                             :channel_type :slack
+                                                                             :enabled      true
+                                                                             :details      {:channel "#random"}}
+                                                                            daily-at-6pm)])))
                   (testing "trigger exists after creation"
                     (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
                   (testing "waiting for cron job to fire"
@@ -396,24 +396,24 @@
     (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh" #_utc+7]
       (mt/with-temp [:model/Pulse {pulse :id} {}]
         (mt/with-model-cleanup [:model/PulseChannel]
-          (pulse-channel/create-pulse-channel! (merge
-                                                {:pulse_id     pulse
-                                                 :channel_type :slack
-                                                 :enabled      true
-                                                 :details      {:channel "#random"}}
-                                                daily-at-8am))
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-8am)])))
           ;; if its want to be fired at 8 am utc+7, then it should be fired at 1am utc
           (is (= (next-fire-hour 1)
                  (send-pusle-triggers-next-fire-time pulse))))))
     (mt/with-temporary-setting-values [report-timezone "UTC"]
       (mt/with-temp [:model/Pulse {pulse :id} {}]
         (mt/with-model-cleanup [:model/PulseChannel]
-          (pulse-channel/create-pulse-channel! (merge
-                                                {:pulse_id     pulse
-                                                 :channel_type :slack
-                                                 :enabled      true
-                                                 :details      {:channel "#random"}}
-                                                daily-at-8am))
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-8am)])))
           (is (= (next-fire-hour 8)
                  (send-pusle-triggers-next-fire-time pulse))))))))
 
@@ -422,12 +422,12 @@
     (mt/discard-setting-changes [report-timezone]
       (mt/with-temp [:model/Pulse {pulse :id} {}]
         (mt/with-model-cleanup [:model/PulseChannel]
-          (let [pc (pulse-channel/create-pulse-channel! (merge
-                                                         {:pulse_id     pulse
-                                                          :channel_type :slack
-                                                          :enabled      true
-                                                          :details      {:channel "#random"}}
-                                                         daily-at-8am))]
+          (let [pc (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                                       {:pulse_id     pulse
+                                                                        :channel_type :slack
+                                                                        :enabled      true
+                                                                        :details      {:channel "#random"}}
+                                                                       daily-at-8am)])))]
             (testing "Sanity check"
               (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
                               :timezone "UTC"
@@ -448,12 +448,12 @@
         [:model/Dashboard {dash-id :id}  {}
          :model/Pulse     {pulse-id :id} {:dashboard_id dash-id}]
         (mt/with-model-cleanup [:model/PulseChannel]
-          (pulse-channel/create-pulse-channel! (merge
-                                                {:pulse_id     pulse-id
-                                                 :channel_type :slack
-                                                 :enabled      true
-                                                 :details      {:channel "#random"}}
-                                                daily-at-1am))
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse-id
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-1am)])))
           (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
             (testing "sanity check that it has triggers to begin with"
               (is (not-empty pulse-triggers)))

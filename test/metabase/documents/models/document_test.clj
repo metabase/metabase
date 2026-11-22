@@ -100,7 +100,7 @@
   (testing "Personal collection handling"
     (binding [collection/*allow-deleting-personal-collections* true]
       (mt/with-model-cleanup [:model/Collection :model/User]
-        (let [{user-id :id} (user/create-user! {:first_name "Test" :last_name "User" :email "test@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:first_name "Test" :last_name "User" :email "test@example.com"}])]
           (mt/with-temp [:model/Collection {regular-collection-id :id} {:name "Regular Collection"}
                          :model/Document {document-id :id} {:collection_id regular-collection-id
                                                             :name "Personal Test Document"}
@@ -136,7 +136,7 @@
       (mt/with-temp [:model/Collection {old-id :id} {}
                      :model/Collection {new-id :id} {}]
         (mt/with-model-cleanup [:model/User]
-          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
             (mt/with-current-user user-id
               (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
               (is (false? (move-allowed? old-id new-id)))
@@ -153,7 +153,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (mt/with-model-cleanup [:model/User]
-          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
             (mt/with-current-user user-id
               (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
               (is (false? (move-allowed? coll-id nil)))
@@ -168,7 +168,7 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Document document {:collection_id coll-id}]
         (mt/with-model-cleanup [:model/User]
-          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
             (mt/with-current-user user-id
               (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
               (is (true? (mi/can-update? (t2/hydrate document :can_write) {:name "New name"})))
@@ -190,7 +190,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (mt/with-model-cleanup [:model/User]
-          (let [{user-id :id} (user/create-user! {:email (mt/random-email)})]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
             (mt/with-current-user user-id
               (is (false? (mi/can-create? :model/Document {:collection_id coll-id})))
               (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)

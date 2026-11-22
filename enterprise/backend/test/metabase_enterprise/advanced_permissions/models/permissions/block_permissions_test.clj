@@ -83,7 +83,7 @@
                                   api-grant-block-perms!}]
       (testing (str description "\n")
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [{group-id :id} (perms-group/create-permissions-group! {:name "Block Perms Group"})]
+          (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Block Perms Group"}])]
             (testing "Group should have unrestricted view-data perms upon creation"
               (is (= :unrestricted
                      (test-db-perms group-id)))
@@ -163,13 +163,13 @@
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "block-perms-user@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:email "block-perms-user@example.com"}])]
           (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
                          :model/Collection                 {collection-id :id} {}
                          :model/Card                       {card-id :id} {:collection_id collection-id
                                                                           :dataset_query query}
                          :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
-            (perms-group-membership/add-user-to-group! user-id group-id)
+            (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
             (mt/with-premium-features #{:advanced-permissions}
               (mt/with-no-data-perms-for-all-users!
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -226,9 +226,9 @@
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "legacy-no-self-service-user@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:email "legacy-no-self-service-user@example.com"}])]
           (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}]
-            (perms-group-membership/add-user-to-group! user-id group-id)
+            (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
             (mt/with-premium-features #{:advanced-permissions}
               (mt/with-no-data-perms-for-all-users!
                 (testing "legacy-no-self-service does not override block perms for a table"

@@ -1200,7 +1200,7 @@
   [n-groups n-tables]
   (let [db-id     (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
         group-ids (vec (for [_ (range n-groups)]
-                         (:id (perms-group/create-permissions-group! {:name (mt/random-name)}))))
+                         (:id (first (perms-group/create-permissions-groups! [{:name (mt/random-name)}])))))
         table-ids (vec (for [_ (range n-tables)]
                          (t2/insert-returning-pk! :model/Table
                                                   (merge (mt/with-temp-defaults :model/Table)
@@ -1587,7 +1587,7 @@
     ;; able to obtain the lock simultaneously).
     (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
       (let [db-id (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
-            group-id (:id (perms-group/create-permissions-group! {:name (mt/random-name)}))
+            group-id (:id (first (perms-group/create-permissions-groups! [{:name (mt/random-name)}])))
             table-id (t2/insert-returning-pk! :model/Table (merge (mt/with-temp-defaults :model/Table)
                                                                   {:db_id db-id}))]
         ;; when testing locally, without a cluster lock this failed 9/10 times. Run it a few times to make sure a lock

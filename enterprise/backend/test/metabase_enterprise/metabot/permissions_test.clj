@@ -14,7 +14,7 @@
   (mt/with-premium-features #{:ai-controls}
     (testing "user with no stored permissions inherits from all-internal-users migration defaults"
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "resolve-user-permissions-default-test-1@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:email "resolve-user-permissions-default-test-1@example.com"}])]
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
                          :model/PermissionsGroupMembership _ {:user_id  user-id
                                                               :group_id group-id}]
@@ -29,7 +29,7 @@
       (mt/with-temporary-setting-values [metabot-advanced-permissions false]
         (mt/with-temp [:model/Tenant {tenant-id :id} {}]
           (mt/with-model-cleanup [:model/User]
-            (let [{user-id :id} (user/create-user! {:email "metabot-tenant-user@example.com" :tenant_id tenant-id})]
+            (let [[{user-id :id}] (user/create-users! [{:email "metabot-tenant-user@example.com" :tenant_id tenant-id}])]
               (is (= #{(u/the-id (perms/all-external-users-group))}
                      (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))
               (is (= :yes (:permission/metabot (scope/resolve-user-permissions user-id)))))))))))
@@ -100,11 +100,11 @@
        (let [all-users-id    (u/the-id (perms/all-users-group))
              data-analyst-id (u/the-id (perms/data-analyst-group))]
          (mt/with-model-cleanup [:model/User]
-           (let [{user-id :id} (user/create-user! {:email "resolve-user-permissions-mode-scoping-test-1@example.com"})]
+           (let [[{user-id :id}] (user/create-users! [{:email "resolve-user-permissions-mode-scoping-test-1@example.com"}])]
              (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Custom Group"}
                             :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
                (mt/with-premium-features #{:advanced-permissions}
-                 (perms-group-membership/add-user-to-group! user-id data-analyst-id))
+                 (perms-group-membership/add-users-to-groups! [{:user user-id :group data-analyst-id}]))
                (insert-in-mode-showing-them! [{:group_id all-users-id :perm_type :permission/metabot :perm_value :yes}
                                               {:group_id data-analyst-id :perm_type :permission/metabot-nlq :perm_value :yes}
                                               {:group_id group-id :perm_type :permission/metabot-sql-generation :perm_value :yes}])

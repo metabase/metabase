@@ -74,12 +74,12 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (u/prog1 (user/create-user! {:email        email
-                                         :first_name   first-name
-                                         :last_name    last-name
-                                         :is_superuser superuser
-                                         :is_qbnewb    true
-                                         :is_active    active})
+            (u/prog1 (first (user/create-users! [{:email        email
+                                                  :first_name   first-name
+                                                  :last_name    last-name
+                                                  :is_superuser superuser
+                                                  :is_qbnewb    true
+                                                  :is_active    active}]))
               (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)

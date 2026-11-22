@@ -76,22 +76,22 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (ai-usage-log/create-ai-usage-log!
-         {:source                 source
-          :model                  model
-          :provider               provider
-          :model_name             model-name
-          :prompt_tokens          prompt-tokens
-          :completion_tokens      completion-tokens
-          :total_tokens           total-tokens
-          :cache_creation_tokens  cache-creation
-          :cache_read_tokens      cache-read
-          :user_id                (or user-id api/*current-user-id*)
-          :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-          :conversation_id        conversation-id
-          :profile_id             (some-> profile-id name)
-          :request_id             request-id
-          :ai_proxied             ai-proxied}))
+        (ai-usage-log/create-ai-usage-logs!
+         [{:source                 source
+           :model                  model
+           :provider               provider
+           :model_name             model-name
+           :prompt_tokens          prompt-tokens
+           :completion_tokens      completion-tokens
+           :total_tokens           total-tokens
+           :cache_creation_tokens  cache-creation
+           :cache_read_tokens      cache-read
+           :user_id                (or user-id api/*current-user-id*)
+           :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+           :conversation_id        conversation-id
+           :profile_id             (some-> profile-id name)
+           :request_id             request-id
+           :ai_proxied             ai-proxied}]))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 

@@ -8,13 +8,13 @@
    [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -67,41 +67,48 @@
   (when (database-routing.db/destination-database? database-id)
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
-(mu/defn create-database-router!
-  "Insert the DatabaseRouter `row`, publishing the event of the write; a destination Database is a 400."
-  [{:keys [database_id user_attribute]} :- ::database-routing.schema/database-router.create]
-  (check-not-destination database_id)
-  (t2/with-transaction [_conn]
-    (let [routers (database-routing.db/insert-router! database_id user_attribute)]
-      (events/publish-event! :event/database-router-create (events/create-event routers))
-      (count routers))))
+(mu/defn create-database-routers! :- [:sequential ::database-routing.schema/database-router]
+  "Insert the DatabaseRouter `rows` and return them in order, publishing the event of the write; a destination Database
+  is a 400."
+  [rows :- [:sequential ::database-routing.schema/database-router.create]]
+  (run! (comp check-not-destination :database_id) rows)
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (u/prog1 (database-routing.db/insert-routers! rows)
+        (events/publish-event! :event/database-router-create (events/create-event <>))))))
 
-(mu/defn update-database-router!
-  "Apply `changes` to the DatabaseRouter of the Database with `database-id`, publishing the event of the write."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::database-routing.schema/database-router.update]
+(mu/defn update-database-routers! :- [:sequential ::database-routing.schema/database-router.update]
+  "Apply the `rows`, each an `:id` and its changes, to their DatabaseRouters and return the rows that exist, publishing
+  the event of the write."
+  [rows :- [:sequential ::database-routing.schema/database-router.update]]
   (t2/with-transaction [_conn]
-    (let [stored (database-routing.db/router-for-database database-id)]
-      (u/prog1 (database-routing.db/update-router! database-id changes)
-        (when stored
-          (events/publish-event! :event/database-router-update
-                                 (events/update-event {(:id stored) stored} [(assoc changes :id (:id stored))])))))))
+    (into []
+          (filter (fn [{id :id :as row}]
+                    (let [stored (database-routing.db/router id)]
+                      (database-routing.db/update-router! id (dissoc row :id))
+                      (when stored
+                        (events/publish-event! :event/database-router-update
+                                               (events/update-event {id stored} [row]))
+                        true))))
+          rows)))
 
-(mu/defn delete-database-router!
-  "Delete the DatabaseRouter of the Database with `database-id`, publishing the event of the write."
-  [database-id :- ::lib.schema.id/database]
-  (t2/with-transaction [_conn]
-    (if-let [stored (database-routing.db/router-for-database database-id)]
-      (do
-        (events/publish-event! :event/database-router-delete (events/delete-event [stored]))
-        (database-routing.db/delete-router! database-id))
-      0)))
+(mu/defn delete-database-routers! :- :nil
+  "Delete the DatabaseRouters with `ids`, publishing the event of the write."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (when-let [stored (not-empty (database-routing.db/routers-by-ids ids))]
+        (events/publish-event! :event/database-router-delete (events/delete-event (vec stored)))
+        (database-routing.db/delete-routers! (mapv :id stored)))))
+  nil)
 
 (defenterprise delete-associated-database-router!
   "Deletes the Database Router associated with this router database."
   :feature :database-routing
   [db-id]
-  (delete-database-router! db-id))
+  (when-let [router (database-routing.db/router-for-database db-id)]
+    (delete-database-routers! [(:id router)])))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

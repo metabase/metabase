@@ -227,7 +227,7 @@
                                                                        :perm_value perm-value}]}))]
             ;; Simple mode hides the custom group, so its :yes must not override All Users.
             (mt/with-model-cleanup [:model/User]
-              (let [{user-id :id} (user/create-user! {:email "simple-mode-all-users-metabot-round-trip-test-1@example.com"})]
+              (let [[{user-id :id}] (user/create-users! [{:email "simple-mode-all-users-metabot-round-trip-test-1@example.com"}])]
                 (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
                                :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
                   (insert-in-mode-showing-them! [{:group_id group-id :perm_type :permission/metabot :perm_value :yes}])

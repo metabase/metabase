@@ -10,8 +10,8 @@
 (deftest router-needs-user-attribute-test
   (testing "a router routes on a non-blank user attribute"
     (doseq [user-attribute [nil "" " "]]
-      (is (not (mr/validate ::database-routing.schema/database-router.update {:user_attribute user-attribute}))))
-    (is (mr/validate ::database-routing.schema/database-router.update {:user_attribute "tenant"}))))
+      (is (not (mr/validate ::database-routing.schema/database-router.update {:id 1 :user_attribute user-attribute}))))
+    (is (mr/validate ::database-routing.schema/database-router.update {:id 1 :user_attribute "tenant"}))))
 
 (deftest router-database-is-frozen-test
   (testing "a router stays with the database it was made for"
@@ -30,15 +30,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot make a destination database a router database"
-           (database-routing.models/create-database-router! {:database_id dest-id :user_attribute "tenant"})))
-      (is (pos? (database-routing.models/create-database-router! {:database_id router-db-id :user_attribute "tenant"})))
+           (database-routing.models/create-database-routers! [{:database_id dest-id :user_attribute "tenant"}])))
+      (is (seq (database-routing.models/create-database-routers! [{:database_id router-db-id :user_attribute "tenant"}])))
       (t2/delete! :model/DatabaseRouter :database_id router-db-id))))
 
 (deftest database-router-events-test
   (mt/with-premium-features #{:audit-app :database-routing}
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Routed"}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (database-routing.models/create-database-router! {:database_id db-id :user_attribute "tenant"})
+        (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute "tenant"}])
         (testing "creating a router is recorded as an update of its database"
           (is (= {:model_id db-id
                   :user_id  (mt/user->id :crowberto)
@@ -47,7 +47,7 @@
                   :model    "Database"}
                  (mt/latest-audit-log-entry :database-update db-id))))
         (testing "changing the attribute of a router is recorded as an update of its database with the change"
-          (database-routing.models/update-database-router! db-id {:user_attribute "other"})
+          (database-routing.models/update-database-routers! [{:id (t2/select-one-pk :model/DatabaseRouter :database_id db-id) :user_attribute "other"}])
           (is (= {:model_id db-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:db_routing "enabled"
@@ -57,7 +57,7 @@
                   :model    "Database"}
                  (mt/latest-audit-log-entry :database-update db-id))))
         (testing "deleting a router is recorded as an update of its database"
-          (database-routing.models/delete-database-router! db-id)
+          (database-routing.models/delete-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)])
           (is (= {:model_id db-id
                   :user_id  (mt/user->id :crowberto)
                   :details  {:db_routing "disabled"}
@@ -65,8 +65,8 @@
                   :model    "Database"}
                  (mt/latest-audit-log-entry :database-update db-id))))
         (testing "a write without a change records nothing"
-          (database-routing.models/create-database-router! {:database_id db-id :user_attribute "tenant"})
+          (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute "tenant"}])
           (let [before (t2/count :model/AuditLog)]
-            (database-routing.models/update-database-router! db-id {:user_attribute "tenant"})
+            (database-routing.models/update-database-routers! [{:id (t2/select-one-pk :model/DatabaseRouter :database_id db-id) :user_attribute "tenant"}])
             (is (= before (t2/count :model/AuditLog))))
-          (database-routing.models/delete-database-router! db-id))))))
+          (database-routing.models/delete-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)]))))))

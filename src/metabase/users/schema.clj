@@ -73,37 +73,6 @@
     [:attributes      {:optional true} [:maybe UserAttributes]]
     [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]]])
 
-(mr/def ::user.full
-  "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/user]
-   [:email                   :string]
-   [:first_name              [:maybe :string]]
-   [:last_name               [:maybe :string]]
-   [:password                [:maybe :string]]
-   [:password_salt           [:maybe :string]]
-   [:date_joined             ms/TemporalInstant]
-   [:last_login              [:maybe ms/TemporalInstant]]
-   [:is_superuser            :boolean]
-   [:is_active               :boolean]
-   [:reset_token             [:maybe :string]]
-   [:reset_triggered         [:maybe :int]]
-   [:is_qbnewb               :boolean]
-   [:login_attributes        [:maybe LoginAttributes]]
-   [:updated_at              [:maybe ms/TemporalInstant]]
-   [:sso_source              [:maybe [:or :keyword :string]]]
-   [:locale                  [:maybe :string]]
-   [:is_datasetnewb          :boolean]
-   [:settings                [:maybe ::user.settings]]
-   [:type                    ::user.type]
-   [:entity_id               :string]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:tenant_id               [:maybe ms/PositiveInt]]
-   [:jwt_attributes          [:maybe LoginAttributes]]
-   [:deactivated_with_tenant [:maybe :boolean]]
-   [:is_data_analyst         :boolean]
-   [:common_name             {:optional true} [:maybe :string]]])
-
 (mr/def ::user.update
   "What an update (or insert) of a User accepts: every column of `:core_user` except `id`, all optional."
   [:map {:closed true}

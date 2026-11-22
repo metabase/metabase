@@ -2356,7 +2356,7 @@
                                                    :created_at #t "2020"
                                                    :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
-      (perms-group-membership/add-user-to-group! user-id group-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
       (migrate!)
       (clear-permissions!)
       ;; set one table to be unrestricted

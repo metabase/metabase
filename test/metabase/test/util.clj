@@ -1697,10 +1697,10 @@
   (do-with-model-cleanup
    [:model/User]
    (fn []
-     (let [user (user/create-user! {:email      (u.random/random-email)
-                                    :first_name (u.random/random-name)
-                                    :last_name  (u.random/random-name)})]
-       (perms-group-membership/add-user-to-groups! user (map u/the-id groups-or-ids))
+     (let [[user] (user/create-users! [{:email      (u.random/random-email)
+                                        :first_name (u.random/random-name)
+                                        :last_name  (u.random/random-name)}])]
+       (perms-group-membership/add-users-to-groups! (for [group groups-or-ids] {:user user :group (u/the-id group)}))
        (f user)))))
 
 (defmacro with-user-in-groups

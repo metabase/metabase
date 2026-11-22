@@ -7,11 +7,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::write-opts
-  "The options of the write functions of a Pulse: the context of the events they publish."
-  [:maybe [:map {:closed true}
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (mr/def ::pulse.parameter
   "One entry of the `:parameters` column of a Pulse, decoded. A dashboard subscription stores only the
   filter values it overrides (`:id`/`:value`), not the dashboard's own parameter declaration, so `:type`

@@ -25,7 +25,7 @@
         (mt/with-premium-features features
           (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
             (t2/with-transaction [_conn nil {:rollback-only true}]
-              (let [{user-id :id}         (user/create-user! {:email "published-table-reader@example.com"})
+              (let [[{user-id :id}]         (user/create-users! [{:email "published-table-reader@example.com"}])
                     [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
                 (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                                :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]

@@ -235,7 +235,7 @@
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "new-admin-user-test-1@example.com" :is_superuser true})]
+      (let [[user] (user/create-users! [{:email "new-admin-user-test-1@example.com" :is_superuser true}])]
         (is (true?
              (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin)))))))))
 
@@ -354,7 +354,7 @@
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
     (testing "should be able to add someone to the Admin group"
       (mt/with-model-cleanup [:model/User]
-        (let [user (user/create-user! {:email "set-permissions-groups-test-1@example.com"})]
+        (let [[user] (user/create-users! [{:email "set-permissions-groups-test-1@example.com"}])]
           (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
           (is (= #{"Administrators" "All Users"}
                  (user-group-names user)))
@@ -363,7 +363,7 @@
                  (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
     (testing "should be able to remove someone from the Admin group"
       (mt/with-model-cleanup [:model/User]
-        (let [user (user/create-user! {:email "set-permissions-groups-test-2@example.com" :is_superuser true})]
+        (let [[user] (user/create-users! [{:email "set-permissions-groups-test-2@example.com" :is_superuser true}])]
           (user/set-permissions-groups! user #{(perms-group/all-users)})
           (is (= #{"All Users"}
                  (user-group-names user)))
@@ -376,7 +376,7 @@
         ;; should fail, causing the entire transaction to fail
         (mt/test-helpers-set-global-values!
           (mt/with-model-cleanup [:model/User]
-            (let [user (user/create-user! {:email "set-permissions-groups-test-3@example.com" :is_superuser true})]
+            (let [[user] (user/create-users! [{:email "set-permissions-groups-test-3@example.com" :is_superuser true}])]
               (u/ignore-exceptions
                 (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
               (is (true?
@@ -459,14 +459,14 @@
   (let [email (mt/random-email)]
     (try
       (testing "personal user joins All Users only"
-        (let [{user-id :id} (user/create-user! {:email email})]
+        (let [[{user-id :id}] (user/create-users! [{:email email}])]
           (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
       (finally
         (t2/delete! :model/User :email email))))
   (let [email (mt/random-email)]
     (try
       (testing "superuser joins All Users and Administrators"
-        (let [{user-id :id} (user/create-user! {:email email :is_superuser true})]
+        (let [[{user-id :id}] (user/create-users! [{:email email :is_superuser true}])]
           (is (= #{(:id (perms-group/all-users)) (:id (perms-group/admin))} (group-ids-of user-id)))
           (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))
       (finally
@@ -477,13 +477,25 @@
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly 1)]
       (testing "personal user over limit is refused"
         (is (thrown-with-msg? Exception #"Adding another user would exceed the maximum"
-                              (user/create-user! {:email email})))
+                              (first (user/create-users! [{:email email}]))))
         (is (not (t2/exists? :model/User :email email))))
       (testing "api-key user is not counted"
         (try
-          (is (some? (user/create-user! {:email email :type :api-key})))
+          (is (some? (first (user/create-users! [{:email email :type :api-key}]))))
           (finally
             (t2/delete! :model/User :email email)))))))
+
+(deftest create-users-with-different-columns-keeps-defaults-test
+  (mt/with-model-cleanup [:model/User]
+    (let [emails [(mt/random-email) (mt/random-email)]
+          users  (user/create-users! [{:email (first emails) :is_qbnewb false :type :api-key}
+                                      {:email (second emails)}])]
+      (testing "rows come back in order"
+        (is (= emails (map :email users))))
+      (testing "row without a column keeps its default"
+        (is (= [{:type :api-key :is_qbnewb false} {:type :personal :is_qbnewb true}]
+               (for [{id :id} users]
+                 (into {} (t2/select-one [:model/User :type :is_qbnewb] :id id)))))))))
 
 (deftest import-created-users-join-all-users-test
   (let [emails [(mt/random-email) (mt/random-email)]]
@@ -504,7 +516,7 @@
 
 (deftest update-user-refuses-last-admin-test
   (mt/with-model-cleanup [:model/User]
-    (let [{user-id :id} (user/create-user! {:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true})]
+    (let [[{user-id :id}] (user/create-users! [{:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true}])]
       (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
         (testing "deactivating"
           (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))

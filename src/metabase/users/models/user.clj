@@ -27,6 +27,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]
@@ -34,7 +35,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; --------------------------------------------------- Definition ---------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
@@ -341,7 +342,7 @@
   (when user-or-id
     (users.db/user-group-ids (u/the-id user-or-id))))
 
-(declare create-user! form-password-reset-url)
+(declare create-users! form-password-reset-url)
 
 (mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending them a welcome email.
@@ -356,7 +357,7 @@
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
-   (u/prog1 (create-user! new-user)
+   (u/prog1 (first (create-users! [new-user]))
      (events/publish-event! :event/user-invited
                             {:object
                              (cond-> (assoc <>
@@ -383,7 +384,7 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-        (perms-group-membership/remove-user-from-groups! user-id (vec to-remove))
+        (perms-group-membership/remove-users-from-groups! [user-id] (vec to-remove))
         (perms-group-membership/add-users-to-groups! (for [group-id to-add]
                                                        {:user user-id :group group-id}))))
     true))
@@ -453,15 +454,10 @@
     (t2/with-transaction [_conn]
       (check-sso-setup rows)
       (check-user-limit rows)
-      (let [users (vec (sort-by :id (users.db/insert-users! rows)))]
+      (let [users (users.db/insert-users! rows)]
         (events/publish-event! :event/user-create (events/create-event users))
         (add-to-default-groups! users)
         users))))
-
-(mu/defn create-user! :- ::users.schema/user
-  "Insert the User `row` and return it, in its default groups, as [[create-users!]] does."
-  [row :- ::users.schema/user.create]
-  (first (create-users! [row])))
 
 (defn- user-after
   "The row of the stored `user` as the hooks of the model leave it after an update of `changes`, which they run here
@@ -472,44 +468,47 @@
                                (not (instance? java.time.temporal.Temporal (:updated_at row)))
                                (assoc :updated_at (:updated_at user))))))
 
+(mr/def ::write-opts
+  [:map {:closed true}
+   [:context {:optional true} :metabase.events.schema/context]])
+
 (defn- write-users!
-  "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `context` and returning
+  "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `opts` and returning
   the number updated."
-  [users changes context]
+  [users changes opts]
   (u/prog1 (users.db/update-users! (mapv :id users) changes)
     (events/publish-event! :event/user-update
                            (events/update-event (u/index-by :id users)
                                                 (mapv #(assoc changes :id (:id %)) users)
-                                                {:objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users)
-                                                 :context context}))))
+                                                (assoc opts :objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users))))))
 
 (defn- set-admin-memberships!
   "Add the Users with `user-ids` to Administrators when `superuser?`, else remove them, leaving their `is_superuser`
-  flag alone; `admin-ids` holds those already in it. Publishes the events of the writes with `context`."
-  [user-ids admin-ids superuser? context]
+  flag alone; `admin-ids` holds those already in it. Publishes the events of the writes with `opts`."
+  [user-ids admin-ids superuser? opts]
   (let [admin-group-id (:id (perms/admin-group))]
     (perms/without-is-superuser-sync-on-add-to-admin-group
      (if superuser?
        (perms-group-membership/add-users-to-groups! (for [user-id user-ids
                                                           :when   (not (contains? admin-ids user-id))]
                                                       {:user user-id :group admin-group-id})
-                                                    context)
-       (perms-group-membership/remove-users-from-group! (filterv #(contains? admin-ids %) user-ids)
-                                                        admin-group-id
-                                                        context)))))
+                                                    opts)
+       (perms-group-membership/remove-users-from-groups! (filterv #(contains? admin-ids %) user-ids)
+                                                         [admin-group-id]
+                                                         opts)))))
 
 (defmulti delete-for-users!
   "Deletes the rows of `model` that belong to the deactivated Users with `user-ids`, which a model that follows its
-  Users implements with its own write function, publishing its events with `context`."
-  {:arglists '([model user-ids context])}
-  (fn [model _user-ids _context] model))
+  Users implements with its own write function, publishing its events with the `:context` of `opts`."
+  {:arglists '([model user-ids opts])}
+  (fn [model _user-ids _opts] model))
 
 (defn- delete-subscriptions!
   "Delete the dashboard subscription recipients of the deactivated Users with `user-ids`."
-  [user-ids context]
+  [user-ids opts]
   (binding [api/*current-user-id* nil]
     (t2/resolve-model :model/PulseChannelRecipient)
-    (delete-for-users! :model/PulseChannelRecipient user-ids context)))
+    (delete-for-users! :model/PulseChannelRecipient user-ids opts)))
 
 (def user-ids-of-type
   "The ids among a sequence of user ids of the Users of a type, see [[users.db/user-ids-of-type]]."
@@ -528,15 +527,15 @@
   users.db/active-tenant-user-ids)
 
 (mu/defn update-users! :- :int
-  "Apply `changes` to the Users with `user-ids`, returning the number updated and publishing the events of the writes
-  with `context`. Deactivating or demoting the last admin throws, and a change of `is_superuser` adds or removes
-  the Administrators membership; deactivating a User deletes its subscriptions."
+  "Apply `changes` to the Users with `user-ids` and return the number updated, publishing the events of the writes with
+  `opts`; deactivating or demoting the last admin throws, a change of `is_superuser` adds or removes the
+  Administrators membership, and deactivating a User deletes its subscriptions."
   ([user-ids :- [:sequential ::lib.schema.id/user]
     changes  :- ::users.schema/user.update]
    (update-users! user-ids changes nil))
   ([user-ids :- [:sequential ::lib.schema.id/user]
     changes  :- ::users.schema/user.update
-    context  :- [:maybe :metabase.events.schema/context]]
+    opts     :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
      (let [superuser?   (:is_superuser changes)
            deactivates? (false? (:is_active changes))
@@ -546,18 +545,18 @@
          0
 
          (not (or (some? superuser?) deactivates?))
-         (write-users! users changes context)
+         (write-users! users changes opts)
 
          :else
          (let [user-ids  (into #{} (map :id) users)
                admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
            (when (or deactivates? (false? superuser?))
              (perms-group-membership/throw-if-last-admins! admin-ids))
-           (u/prog1 (write-users! users changes context)
+           (u/prog1 (write-users! users changes opts)
              (when (some? superuser?)
-               (set-admin-memberships! user-ids admin-ids superuser? context))
+               (set-admin-memberships! user-ids admin-ids superuser? opts))
              (when deactivates?
-               (delete-subscriptions! user-ids context)))))))))
+               (delete-subscriptions! user-ids opts)))))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only
@@ -592,14 +591,13 @@
   (set-settings! user-id settings-json))
 
 (defmethod perms-group-membership/set-member-flags-of! :model/User
-  [_model flag-changes context]
+  [_model flag-changes opts]
   (let [stored (u/index-by :id (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes)))]
     (reduce (fn [rows [user-ids changes]]
               (users.db/update-users! (vec user-ids) changes)
               (let [event (events/update-event rows
                                                (mapv #(assoc changes :id %) user-ids)
-                                               {:objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)
-                                                :context context})]
+                                               (assoc opts :objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)))]
                 (events/publish-event! :event/user-update event)
                 (into rows (map (juxt (comp :id :object) :object)) (:changes event))))
             stored

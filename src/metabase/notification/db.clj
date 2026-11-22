@@ -305,9 +305,10 @@
                                     user-clause)})))
 
 (mu/defn insert-handlers!
-  "Insert the NotificationHandler `handlers`, returning the inserted instances in their order."
+  "Insert the NotificationHandler `handlers` with one statement per distinct set of columns, returning the inserted
+  instances in their order."
   [handlers :- [:sequential {:min 1} NotificationHandlerRow]]
-  (u/prog1 (t2/insert-returning-instances! :model/NotificationHandler handlers)
+  (u/prog1 (u/map-by-key-set #(t2/insert-returning-instances! :model/NotificationHandler %) handlers)
     (change-log/log-changes! :model/NotificationHandler :insert <>)))
 
 (mu/defn recipients-for-handlers
@@ -329,9 +330,10 @@
                        :type :notification-recipient/raw-value))
 
 (mu/defn insert-recipients!
-  "Insert the NotificationRecipient `recipients`, returning the inserted instances."
+  "Insert the NotificationRecipient `recipients` with one statement per distinct set of columns, returning the inserted
+  instances in their order."
   [recipients :- [:sequential {:min 1} NotificationRecipientRow]]
-  (u/prog1 (t2/insert-returning-instances! :model/NotificationRecipient recipients)
+  (u/prog1 (u/map-by-key-set #(t2/insert-returning-instances! :model/NotificationRecipient %) recipients)
     (change-log/log-changes! :model/NotificationRecipient :insert <>)))
 
 (mu/defn recipient
@@ -350,10 +352,10 @@
   (change-log/log-rows! :model/NotificationRecipient :delete :id [:in recipient-ids])
   (t2/delete! :model/NotificationRecipient :id [:in recipient-ids]))
 
-(mu/defn recipients-for-user
-  "The NotificationRecipients of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select :model/NotificationRecipient :user_id user-id))
+(mu/defn recipients-for-users
+  "The NotificationRecipients of the Users with `user-ids`."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (t2/select :model/NotificationRecipient :user_id [:in user-ids]))
 
 (mu/defn user-recipients-for-notification
   "The NotificationRecipients for the User with `user-id` on the Notification with `notification-id`."
