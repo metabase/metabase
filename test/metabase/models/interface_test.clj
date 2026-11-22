@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -17,6 +18,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914

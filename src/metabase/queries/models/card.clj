@@ -422,6 +422,13 @@
                 (= audit/audit-db-id (:database query))
                 (= :mbql.stage/native (:lib/type (lib-be/query-first-stage query))))))
 
+(defn- check-not-native-audit-db-query
+  "Throws a 400 when the query of `card` is a native query on the audit database, for every writer."
+  [{query :dataset_query}]
+  (when (native-audit-db-query? query)
+    (throw (ex-info (tru "You cannot save a native query that targets the audit database.")
+                    {:status-code 400}))))
+
 (defn- check-model-query
   "Throws a 400 when `card` is a model whose native query has a variable or a field filter."
   [{query :dataset_query, :as card}]
@@ -1267,6 +1274,7 @@
                  (u/assoc-default :entity_id (u/generate-nano-id))
                  (u/assoc-default :type :question))]
     (check-model-query card)
+    (check-not-native-audit-db-query card)
     (-> card
         derive-model-display
         maybe-check-dashboard-internal-card
@@ -1296,6 +1304,8 @@
         card    (dissoc card :verified-result-metadata?)]
     (when (some #(contains? changes %) [:type :dataset_query])
       (check-model-query card))
+    (when (some #(contains? changes %) [:dataset_query :database_id])
+      (check-not-native-audit-db-query card))
     (-> card
         (cond-> (contains? changes :type) derive-model-display)
         (populate-query-fields (contains? changes :dataset_query))
