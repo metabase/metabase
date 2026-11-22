@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot-message
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -10,7 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -77,21 +77,17 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-metabot-message! :- ms/PositiveInt
-  "Insert the MetabotMessage `row` and return its id."
-  [row :- ::metabot.schema/metabot-message.create]
-  (metabot.db/insert-message-returning-pk! row))
-
-(mu/defn create-metabot-messages!
-  "Insert the MetabotMessage `rows` in one statement."
+(mu/defn create-metabot-messages! :- [:sequential ::metabot.schema/metabot-message]
+  "Insert the MetabotMessage `rows` and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::metabot.schema/metabot-message.create]]
   (metabot.db/insert-messages! rows))
 
-(mu/defn update-metabot-message!
-  "Apply `changes` to the MetabotMessage with `message-id`."
-  [message-id :- ms/PositiveInt
-   changes    :- ::metabot.schema/metabot-message.update]
-  (metabot.db/update-message! message-id changes))
+(mu/defn update-metabot-messages! :- [:sequential ::metabot.schema/metabot-message.update]
+  "Apply the `rows`, each the `:id` of a MetabotMessage and the columns to set, and return the rows that exist."
+  [rows :- [:sequential ::metabot.schema/metabot-message.update]]
+  (filterv (fn [{id :id :as row}]
+             (pos? (metabot.db/update-message! id (dissoc row :id))))
+           rows))
 
 (mu/defn soft-delete-metabot-messages! :- :int
   "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the
@@ -102,8 +98,8 @@
 
 (mu/defn seed-metabot-message!
   "Insert the MetabotMessage `row` as given, its timestamps included, which the testing API seeds."
-  [row :- ::metabot.schema/metabot-message.update]
-  (metabot.db/insert-messages! row))
+  [row :- (mut/dissoc ::metabot.schema/metabot-message :id)]
+  (metabot.db/insert-messages! [row]))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

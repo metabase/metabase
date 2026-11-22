@@ -199,8 +199,8 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (perms/set-database-permission! (:id other-group) (mt/id) :perms/view-data :unrestricted)
           (group-access/add-groups! app [(:id group)])
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id group))
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id other-group))
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id other-group)}])
           (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
                   (group-access/permission-warnings app))))))))
 

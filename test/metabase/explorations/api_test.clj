@@ -328,7 +328,7 @@
 (deftest exploration-create-persists-everything-and-runs-test
   (testing "POST / creates an exploration with one thread, persists selections, and materializes queries"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "create@example.com"})]
+      (let [[u] (user/create-users! [{:email "create@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))
                        :model/Timeline tl {:creator_id (:id u)}]
           (let [body {:name         "Why is revenue down"
@@ -374,7 +374,7 @@
 (deftest exploration-get-hydrates-thread-timelines-test
   (testing "GET /api/exploration/:id hydrates thread :timelines so the detail page can offer them"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "tl-hydrate@example.com"})]
+      (let [[u] (user/create-users! [{:email "tl-hydrate@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))
                        :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
           (let [body      {:name         "Timeline hydrate"
@@ -395,7 +395,7 @@
 (deftest exploration-block-naming-test
   (testing "GET builds block headings (the metric name) + dimension-named pages"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "group-naming@example.com"})]
+      (let [[u] (user/create-users! [{:email "group-naming@example.com"}])]
         (mt/with-temp [:model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")
                        :model/Card signups (assoc (valid-metric-card (:id u)) :name "Signups")]
           (let [mapping (fn [card-id]
@@ -429,7 +429,7 @@
 (deftest exploration-create-persists-blocks-verbatim-test
   (testing "POST / persists each :blocks entry as its own ExplorationBlock row — no dedup across blocks"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "groups@example.com"})]
+      (let [[u] (user/create-users! [{:email "groups@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))
                        :model/Timeline tl {:creator_id (:id u)}]
           (let [mapping [{:dimension_id (duid "d1")
@@ -463,7 +463,7 @@
 (deftest exploration-create-applies-default-binning-test
   (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "binning@example.com"})]
+      (let [[u] (user/create-users! [{:email "binning@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [tbl-id  (mt/id :venues)
                 ;; Real venues field IDs; numeric/coordinate cases need fingerprinted Fields, the
@@ -513,7 +513,7 @@
 (deftest exploration-create-skips-binning-when-fingerprint-missing-test
   (testing "POST / skips default numeric binning when the underlying Field has no min/max fingerprint"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "no-fp@example.com"})]
+      (let [[u] (user/create-users! [{:email "no-fp@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [field-id (mt/id :venues :price)]
             ;; Null the fingerprint to simulate a fresh-synced / native-result / all-null field.
@@ -540,7 +540,7 @@
 (deftest exploration-create-strips-metric-default-breakout-test
   (testing "POST / drops the metric's default temporal breakout so only the chosen dim remains"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "strip@example.com"})]
+      (let [[u] (user/create-users! [{:email "strip@example.com"}])]
         (mt/with-temp [:model/Card metric {:type          :metric
                                            :creator_id    (:id u)
                                            :dataset_query (let [mp (mt/metadata-provider)]
@@ -571,7 +571,7 @@
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "matrix@example.com"})]
+      (let [[u] (user/create-users! [{:email "matrix@example.com"}])]
         (mt/with-temp [:model/Card m1 (valid-metric-card (:id u))
                        :model/Card m2 (valid-metric-card (:id u))]
           (let [mapping  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
@@ -624,7 +624,7 @@
 (deftest exploration-create-fans-out-applicable-segments-test
   (testing "POST / produces base + one extra row per Segment whose table_id matches the metric's source-table"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "segments@example.com"})]
+      (let [[u] (user/create-users! [{:email "segments@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                        :model/Segment internal {:name       "internal"
                                                 :definition (let [mp (mt/metadata-provider)]
@@ -663,7 +663,7 @@
 (deftest exploration-create-skips-segments-on-other-tables-test
   (testing "Segments whose table_id doesn't match the metric's source-table are not applied"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "seg-scope@example.com"})]
+      (let [[u] (user/create-users! [{:email "seg-scope@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))
                        :model/Segment _other {:name       "users-only"
                                               :definition (let [mp (mt/metadata-provider)]
@@ -709,7 +709,7 @@
 (deftest exploration-create-temporal-dim-emits-pattern-variants-test
   (testing "POST / with a datetime dim emits default + day-of-week + hour-of-day"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "temporal-dt@example.com"})]
+      (let [[u] (user/create-users! [{:email "temporal-dt@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))]
           (let [mapping [{:dimension_id (duid "created")
                           ;; a mapping's :table_id is the table of the *target* column (see
@@ -731,7 +731,7 @@
 (deftest exploration-create-date-dim-skips-hour-of-day-test
   (testing "POST / with a pure-date dim emits default + day-of-week (no HoD)"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "temporal-date@example.com"})]
+      (let [[u] (user/create-users! [{:email "temporal-date@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))]
           (let [mapping [{:dimension_id (duid "created")
                           :table_id     (mt/id :venues)
@@ -748,7 +748,7 @@
 (deftest exploration-create-time-facet-test
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "time-facet@example.com"})]
+      (let [[u] (user/create-users! [{:email "time-facet@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")]
           (let [mapping [{:dimension_id (duid "cat")
                           :table_id     (mt/id :products)
@@ -777,7 +777,7 @@
 (deftest exploration-create-time-facet-skipped-without-default-breakout-test
   (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "no-default-breakout@example.com"})]
+      (let [[u] (user/create-users! [{:email "no-default-breakout@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))]
           (let [mapping [{:dimension_id (duid "price")
                           :table_id     (mt/id :venues)
@@ -794,7 +794,7 @@
 (deftest exploration-create-high-cardinality-routes-to-top-n-other-test
   (testing "POST / categorical dim with very high distinct-count → no default, no time-facet, just top-n-other"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "high-card@example.com"})]
+      (let [[u] (user/create-users! [{:email "high-card@example.com"}])]
         (mt/with-temp [:model/Card metric (products-monthly-metric-card (:id u))]
           (let [mapping [{:dimension_id (duid "email")
                           ;; :table_id is the target column's table, not the metric's source table
@@ -811,7 +811,7 @@
 (deftest exploration-create-time-facet-skips-segments-test
   (testing "POST / time-facet variant does NOT fan out across segments (category + time + segment filter is too noisy to surface)"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "facet-no-seg@example.com"})]
+      (let [[u] (user/create-users! [{:email "facet-no-seg@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")
                        :model/Segment s {:name       "premium"
                                          :definition (let [mp (mt/metadata-provider)]
@@ -838,7 +838,7 @@
 (deftest exploration-create-segments-multiply-every-variant-test
   (testing "Segment fan-out applies uniformly to each candidate variant"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "seg-multiply@example.com"})]
+      (let [[u] (user/create-users! [{:email "seg-multiply@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                        :model/Segment s {:name       "cheap"
                                          :definition (let [mp (mt/metadata-provider)]
@@ -868,7 +868,7 @@
 (deftest exploration-create-variants-grouped-into-pages-test
   (testing "variants for a (card, dim) are materialized and partitioned across the block's pages"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "groups-collapse@example.com"})]
+      (let [[u] (user/create-users! [{:email "groups-collapse@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))]
           (let [mapping [{:dimension_id (duid "created")
                           ;; a mapping's :table_id is the table of the *target* column (see
@@ -896,7 +896,7 @@
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "empty@example.com"})
+      (let [[u] (user/create-users! [{:email "empty@example.com"}])
             resp (mt/user-http-request u :post 200 "exploration" {:name "empty"})]
         (is (= 1 (count (:threads resp))))
         (is (zero? (count (-> resp :threads first :metrics))))
@@ -905,7 +905,7 @@
 (deftest exploration-restart-reruns-existing-thread-test
   (testing "POST /thread/:thread-id/restart re-runs that thread in place, keeping selections"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "restart@example.com"})]
+      (let [[u] (user/create-users! [{:email "restart@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))
                        :model/Timeline tl {:creator_id (:id u)}]
           (let [body      {:name         "Why is revenue down"
@@ -973,7 +973,7 @@
   (testing "POST /thread/:thread-id/restart restarts the addressed thread, not the exploration's newest one —"
     (testing "an exploration holds several threads once \"Explore further\" is used, each with its own Restart"
       (mt/with-model-cleanup [:model/User]
-        (let [u (user/create-user! {:email "rs-multi@example.com"})
+        (let [[u] (user/create-users! [{:email "rs-multi@example.com"}])
               created  (mt/user-http-request u :post 200 "exploration" {:name "multi"})
               expl-id  (:id created)
               root-tid (-> created :threads first :id)
@@ -1026,7 +1026,7 @@
 (deftest exploration-create-skips-pairs-without-mapping-test
   (testing "POST / drops (metric, dimension) pairs where the metric has no mapping for the dimension"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "applicability@example.com"})]
+      (let [[u] (user/create-users! [{:email "applicability@example.com"}])]
         (mt/with-temp [:model/Card revenue (valid-metric-card (:id u))
                        :model/Card signups (valid-metric-card (:id u))]
           (let [body {:name "applicability"
@@ -1053,7 +1053,7 @@
 (deftest exploration-create-names-queries-by-metric-and-dimension-test
   (testing "POST / sets each query's name to '{metric} by {dimension}' using the dimension's display_name"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "naming@example.com"})]
+      (let [[u] (user/create-users! [{:email "naming@example.com"}])]
         (mt/with-temp [:model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
           (let [body {:name "naming"
                       :metrics    [{:card_id (:id revenue)
@@ -1077,7 +1077,7 @@
           orders-created "00000000-0000-0000-0000-00000000bbbb"
           users-country  "00000000-0000-0000-0000-00000000cccc"]
       (mt/with-model-cleanup [:model/User]
-        (let [u (user/create-user! {:email "ambig@example.com"})]
+        (let [[u] (user/create-users! [{:email "ambig@example.com"}])]
           (mt/with-temp [:model/Card revenue (assoc (valid-metric-card (:id u))
                                                     :name "Revenue"
                                                     :dimensions
@@ -1117,7 +1117,7 @@
 (deftest exploration-get-attaches-dimension-name-test
   (testing "hydrate-exploration assoc's :dimension_name onto each query using the dim's display_name"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "dim-name@example.com"})]
+      (let [[u] (user/create-users! [{:email "dim-name@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [body {:name "dim-name"
                       :metrics    [{:card_id (:id metric)
@@ -1139,7 +1139,7 @@
     (let [users-created  "00000000-0000-0000-0000-00000000dddd"
           orders-created "00000000-0000-0000-0000-00000000eeee"]
       (mt/with-model-cleanup [:model/User]
-        (let [u (user/create-user! {:email "dim-name-ambig@example.com"})]
+        (let [[u] (user/create-users! [{:email "dim-name-ambig@example.com"}])]
           (mt/with-temp [:model/Card metric (assoc (valid-metric-card (:id u))
                                                    :dimensions
                                                    [{:id users-created  :name "CREATED_AT" :display-name "Created At"
@@ -1162,7 +1162,7 @@
 (deftest exploration-get-includes-interestingness-on-queries-test
   (testing "GET /:id hydrates both interestingness scores on each nested query"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "get-score@example.com"})]
+      (let [[u] (user/create-users! [{:email "get-score@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (create-exploration! u
                                           {:name "get-score"
@@ -1243,7 +1243,7 @@
 (deftest exploration-query-result-streams-stored-result-test
   (testing "GET /query/:id streams the stored worker result as JSON"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "result@example.com"})]
+      (let [[u] (user/create-users! [{:email "result@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp     (create-exploration! u
                                               {:name "result"
@@ -1266,7 +1266,7 @@
 (deftest exploration-query-result-409-when-not-done-test
   (testing "GET /query/:id returns 409 with status info while the query is still pending"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "pending@example.com"})]
+      (let [[u] (user/create-users! [{:email "pending@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (create-exploration! u
                                           {:name "pending"
@@ -1283,7 +1283,7 @@
             row values from a query the reader may not be able to run themselves, so every path that
             surfaces an ExplorationQuery carries the generic message and the real one is only logged"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "err@example.com"})]
+      (let [[u] (user/create-users! [{:email "err@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp   (create-exploration! u
                                             {:name "errored"
@@ -1308,7 +1308,7 @@
 (deftest exploration-lens-stamps-never-reach-the-client-test
   (testing "GET /:id strips the lens stamp and resolved source ids from every thread and every query"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "stamps@example.com"})]
+      (let [[u] (user/create-users! [{:email "stamps@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp      (create-exploration! u
                                                {:name "stamped"
@@ -1334,8 +1334,8 @@
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "qr-owner@example.com"})
-            other (user/create-user! {:email "qr-other@example.com"})]
+      (let [[owner] (user/create-users! [{:email "qr-owner@example.com"}])
+            other (first (user/create-users! [{:email "qr-other@example.com"}]))]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id owner))]
           (let [resp (create-exploration! owner
                                           {:name "qr-private"
@@ -1349,7 +1349,7 @@
 (deftest exploration-page-starred-roundtrip-test
   (testing "PUT /page/:id/starred sets the flag both ways; reflected in GET /:id"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "page-mark@example.com"})]
+      (let [[u] (user/create-users! [{:email "page-mark@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (create-exploration! u
                                           {:name "page-mark"
@@ -1373,8 +1373,8 @@
 (deftest exploration-page-starred-permissions-test
   (testing "PUT /page/:id/starred enforces write-check — non-owner gets 403"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "page-mp-owner@example.com"})
-            other (user/create-user! {:email "page-mp-other@example.com"})]
+      (let [[owner] (user/create-users! [{:email "page-mp-owner@example.com"}])
+            other (first (user/create-users! [{:email "page-mp-other@example.com"}]))]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id owner))]
           (let [resp (create-exploration! owner
                                           {:name "page-mark-private"
@@ -1393,7 +1393,7 @@
 (deftest exploration-page-hidden-roundtrip-test
   (testing "PUT /pages/hidden sets the flag both ways; reflected in GET /:id"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "page-hide@example.com"})]
+      (let [[u] (user/create-users! [{:email "page-hide@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (create-exploration! u
                                           {:name "page-hide"
@@ -1417,7 +1417,7 @@
 (deftest exploration-pages-hidden-bulk-test
   (testing "PUT /pages/hidden hides every page id it is given in one call"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "pages-hide-bulk@example.com"})]
+      (let [[u] (user/create-users! [{:email "pages-hide-bulk@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (create-exploration! u
                                           {:name "pages-hide-bulk"
@@ -1438,8 +1438,8 @@
 (deftest exploration-page-hidden-permissions-test
   (testing "PUT /pages/hidden enforces write-check — non-owner gets 403"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "page-hide-owner@example.com"})
-            other (user/create-user! {:email "page-hide-other@example.com"})]
+      (let [[owner] (user/create-users! [{:email "page-hide-owner@example.com"}])
+            other (first (user/create-users! [{:email "page-hide-other@example.com"}]))]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id owner))]
           (let [resp (create-exploration! owner
                                           {:name "page-hide-private"
@@ -1459,7 +1459,7 @@
   (testing "a block with two metric cards stamps its drill thread with every table either card reads, the same tables
             its token is computed over"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "explore-further-union@example.com"})]
+      (let [[u] (user/create-users! [{:email "explore-further-union@example.com"}])]
         (mt/with-temp [:model/Card venues-metric (venues-metric-card (:id u))
                        :model/Card products-metric {:type          :metric
                                                     :creator_id    (:id u)
@@ -1496,7 +1496,7 @@
 (deftest exploration-explore-further-creates-filtered-thread-test
   (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "explore-further@example.com"})]
+      (let [[u] (user/create-users! [{:email "explore-further@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")
                        :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
           (let [filter-value 2
@@ -1577,7 +1577,7 @@
             drilling a thread the derived-data gate is blocking has to be refused outright — the
             alternative is laundering those values through a thread stamped with the caller's lens."
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "explore-further-gate@example.com"})]
+      (let [[u] (user/create-users! [{:email "explore-further-gate@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")]
           (let [created   (create-exploration! u {:name       "gated drill"
                                                   :prompt     "why down?"
@@ -1614,7 +1614,7 @@
     ;; plan message enqueued by `start-thread!` is what actually triggers planning (see
     ;; `metabase.explorations.queues`).
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "explore-further-enqueue@example.com"})]
+      (let [[u] (user/create-users! [{:email "explore-further-enqueue@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")]
           (let [body     {:name       "base drill"
                           :prompt     "why down?"
@@ -1643,8 +1643,8 @@
 (deftest exploration-explore-further-permissions-and-404-test
   (testing "POST /:id/explore-further enforces write-check and 404s unknown pages"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "ef-owner@example.com"})
-            other (user/create-user! {:email "ef-other@example.com"})]
+      (let [[owner] (user/create-users! [{:email "ef-owner@example.com"}])
+            other (first (user/create-users! [{:email "ef-other@example.com"}]))]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id owner))]
           (let [resp (create-exploration! owner
                                           {:name         "private drill"
@@ -1668,7 +1668,7 @@
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, queries, and the Summary document"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "cd@example.com"})]
+      (let [[u] (user/create-users! [{:email "cd@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))
                        :model/Timeline tl {:creator_id (:id u)}]
           (let [resp (mt/user-http-request u :post 200 "exploration"
@@ -1693,7 +1693,7 @@
 (deftest exploration-create-auto-creates-summary-document-test
   (testing "POST / auto-creates a placeholder Summary document owned by the exploration"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "summary-auto@example.com"})]
+      (let [[u] (user/create-users! [{:email "summary-auto@example.com"}])]
         (mt/with-model-cleanup [:model/Collection]
           (let [[coll] (collection/create-collections! [{:name "summary-coll"}])
                 resp (mt/user-http-request u :post 200 "exploration"
@@ -1721,7 +1721,7 @@
 (deftest exploration-append-records-stored-result-use-test
   (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "append-use@example.com"})]
+      (let [[u] (user/create-users! [{:email "append-use@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp   (create-exploration! u
                                             {:name "append-use"
@@ -1769,7 +1769,7 @@
 (deftest exploration-append-bakes-explore-filters-into-host-data-test
   (testing "Appending a chart from an explore-further thread snapshots explore_filters onto host_data"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "append-filters@example.com"})]
+      (let [[u] (user/create-users! [{:email "append-filters@example.com"}])]
         (mt/with-temp [:model/Card metric (venues-metric-card (:id u))]
           (let [filter-value 2
                 field-ref    ["field" (mt/id :venues :price) nil]
@@ -1812,7 +1812,7 @@
 (deftest exploration-append-rolls-back-on-failure-test
   (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "append-rollback@example.com"})]
+      (let [[u] (user/create-users! [{:email "append-rollback@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp   (create-exploration! u
                                             {:name "append-rollback"
@@ -1849,7 +1849,7 @@
 (deftest exploration-append-single-query-reuses-source-snapshot-test
   (testing "A single-query append reuses the source stored_result instead of duplicating its bytes into a fresh row"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "append-single@example.com"})]
+      (let [[u] (user/create-users! [{:email "append-single@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp   (create-exploration! u
                                             {:name "append-single"
@@ -1887,7 +1887,7 @@
 (deftest exploration-summary-save-carries-stored-result-pairing-test
   (testing "PUT /api/document/:id carries (card, stored_result) pairings onto draft-created Cards so Summary embeds stay readable"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "summary-carry@example.com"})]
+      (let [[u] (user/create-users! [{:email "summary-carry@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp   (create-exploration! u
                                             {:name "summary-carry"
@@ -2084,7 +2084,7 @@
 (deftest exploration-http-delete-returns-204-test
   (testing "DELETE /api/exploration/:id returns 204 and removes the row — guards a malli regression where returning the Ring response map `generic-204-no-content` instead of literal `nil` made the `:- :nil` schema reject the response and yield a 400"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "http-delete@example.com"})]
+      (let [[u] (user/create-users! [{:email "http-delete@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [resp (mt/user-http-request u :post 200 "exploration"
                                            {:name "http-delete"
@@ -2236,7 +2236,7 @@
 (deftest exploration-get-includes-blocks-and-pages-test
   (testing "GET /:id attaches nested :blocks → :pages to each thread"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "groups@example.com"})]
+      (let [[u] (user/create-users! [{:email "groups@example.com"}])]
         (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                        :model/Segment _seg-a {:name "alpha"
                                               :definition (let [mp (mt/metadata-provider)]
@@ -2292,7 +2292,7 @@
 (deftest exploration-get-multiple-blocks-test
   (testing "Threads with multiple blocks emit one node per block, each with its own pages"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "multi-groups@example.com"})]
+      (let [[u] (user/create-users! [{:email "multi-groups@example.com"}])]
         (mt/with-temp [:model/Card m1 (assoc (venues-metric-card (:id u)) :name "Revenue")
                        :model/Card m2 (assoc (venues-metric-card (:id u)) :name "Order count")]
           (let [dims [{:dimension_id (duid "category") :display_name "Category"}
@@ -2319,7 +2319,7 @@
 (deftest exploration-get-empty-thread-has-empty-blocks-test
   (testing "A thread with no queries gets :blocks => []"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "no-groups@example.com"})
+      (let [[u] (user/create-users! [{:email "no-groups@example.com"}])
             {eid :id} (mt/user-http-request u :post 200 "exploration" {:name "no-groups"})
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread    (-> resp :threads first)]
@@ -2344,8 +2344,8 @@
             mass-assign protected columns — reassigning `creator_id` (ownership / \"My explorations\"
             attribution) is the sharpest case."
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "owner@example.com"})
-            thief (user/create-user! {:email "thief@example.com"})]
+      (let [[owner] (user/create-users! [{:email "owner@example.com"}])
+            thief (first (user/create-users! [{:email "thief@example.com"}]))]
         (mt/with-temp [:model/Exploration e {:name "old" :creator_id (:id owner)}]
           (let [before (t2/select-one :model/Exploration :id (:id e))]
             (mt/user-http-request owner :put 200 (format "exploration/%d" (:id e))
@@ -2573,8 +2573,8 @@
 (deftest mine-membership-and-permissions-test
   (testing "GET /mine returns explorations the caller created or edited, excluding moved-away and archived"
     (mt/with-model-cleanup [:model/User]
-      (let [me (user/create-user! {:email "mine-member@example.com"})
-            other (user/create-user! {:email "mine-other@example.com"})]
+      (let [[me] (user/create-users! [{:email "mine-member@example.com"}])
+            other (first (user/create-users! [{:email "mine-other@example.com"}]))]
         (mt/with-model-cleanup [:model/Collection]
           (let [[readable hidden] (collection/create-collections! [{:name "readable"}
                                                                    {:name "hidden"}])]
@@ -2610,7 +2610,7 @@
 (deftest mine-ordering-composes-document-edits-test
   (testing "GET /mine sorts by the caller's most-recent touch, counting Summary document edits"
     (mt/with-model-cleanup [:model/User]
-      (let [me (user/create-user! {:email "mine-order@example.com"})]
+      (let [[me] (user/create-users! [{:email "mine-order@example.com"}])]
         (mt/with-model-cleanup [:model/Collection]
           (let [[coll] (collection/create-collections! [{:name "order-coll"}])]
             (mt/with-temp [:model/Exploration _created-only {:name "created-only" :creator_id (:id me) :collection_id (:id coll)}
@@ -2635,7 +2635,7 @@
 (deftest mine-pagination-test
   (testing "GET /mine pages with a stable order and a post-filter total"
     (mt/with-model-cleanup [:model/User]
-      (let [me (user/create-user! {:email "mine-page@example.com"})]
+      (let [[me] (user/create-users! [{:email "mine-page@example.com"}])]
         (mt/with-model-cleanup [:model/Collection]
           (let [[coll] (collection/create-collections! [{:name "page-coll"}])]
             (mt/with-temp [:model/Exploration _e1 {:name "e1" :creator_id (:id me) :collection_id (:id coll)}
@@ -2876,7 +2876,7 @@
           users-field    (mt/id :venues :latitude)
           orders-field   (mt/id :venues :longitude)]
       (mt/with-model-cleanup [:model/User]
-        (let [u (user/create-user! {:email "explore-further-ambig@example.com"})]
+        (let [[u] (user/create-users! [{:email "explore-further-ambig@example.com"}])]
           (mt/with-temp [:model/Card metric (assoc (venues-metric-card (:id u))
                                                    :name "Revenue"
                                                    :dimensions
@@ -2960,7 +2960,7 @@
 (deftest explore-further-checks-card-permissions-test
   (testing "POST /:id/explore-further read-checks the metric card it re-attaches into the new thread"
     (mt/with-model-cleanup [:model/User]
-      (let [owner (user/create-user! {:email "ef-card-perms@example.com"})]
+      (let [[owner] (user/create-users! [{:email "ef-card-perms@example.com"}])]
         (mt/with-model-cleanup [:model/Collection]
           (let [[hidden] (collection/create-collections! [{:name "hidden-drill-metrics"}])]
             (mt/with-temp [:model/Card metric (assoc (venues-metric-card (mt/user->id :crowberto))
@@ -2990,7 +2990,7 @@
 (deftest create-dedupes-timeline-ids-test
   (testing "POST / dedupes repeated timeline_ids instead of 500ing on the unique constraint"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "tl-dupes@example.com"})]
+      (let [[u] (user/create-users! [{:email "tl-dupes@example.com"}])]
         (mt/with-temp [:model/Timeline tl {:creator_id (:id u)}]
           (let [resp (mt/user-http-request u :post 200 "exploration"
                                            {:name         "tl dupes"
@@ -3006,7 +3006,7 @@
 (deftest restart-refuses-in-flight-thread-test
   (testing "POST /thread/:thread-id/restart refuses non-terminal or mid-execution threads with a 409"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "restart-guard@example.com"})]
+      (let [[u] (user/create-users! [{:email "restart-guard@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [created (create-exploration! u {:name       "restart guard"
                                                 :metrics    [{:card_id (:id metric)
@@ -3088,7 +3088,7 @@
   (testing "A multi-query composite snapshot is stamped with its sources' data-access lens — without one the
             read gate denies the embed to every non-superuser, including the collaborators it was added for"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "composite-token@example.com"})]
+      (let [[u] (user/create-users! [{:email "composite-token@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
                 doc      (t2/select-one :model/Document :id document-id)
@@ -3110,7 +3110,7 @@
   (testing "A multi-query composite is stamped with the union of its sources' resolved source ids, under its own
             query's digest, so the read gate holds a viewer to every source's tables without a live preprocess"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "composite-sources@example.com"})]
+      (let [[u] (user/create-users! [{:email "composite-sources@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
                 doc       (t2/select-one :model/Document :id document-id)
@@ -3144,7 +3144,7 @@
   (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
             rather than persisted under one of them"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "composite-mixed@example.com"})]
+      (let [[u] (user/create-users! [{:email "composite-mixed@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
                 doc    (t2/select-one :model/Document :id document-id)
@@ -3169,7 +3169,7 @@
             every source query — not just the first, which would let a caller materialize rows from a table
             they cannot read"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "composite-perms@example.com"})]
+      (let [[u] (user/create-users! [{:email "composite-perms@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
                 doc     (t2/select-one :model/Document :id document-id)
@@ -3196,7 +3196,7 @@
   (testing "A repeated exploration_query_id is collapsed: it passes the caller's de-duped ownership check, and
             left alone would duplicate every row into the composite and insert a duplicate pairing row"
     (mt/with-model-cleanup [:model/User]
-      (let [u (user/create-user! {:email "composite-dupes@example.com"})]
+      (let [[u] (user/create-users! [{:email "composite-dupes@example.com"}])]
         (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
           (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
                 qid    (first query-ids)

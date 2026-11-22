@@ -126,13 +126,13 @@
 
 (mu/defn insert-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
   "Insert the MetabotPrompt `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.update]]
+  [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.create]]
   (t2/insert-returning-instances! :model/MetabotPrompt rows))
 
 (mu/defn update-prompts! :- :nil
   "Apply `changes` to the MetabotPrompts with `prompt-ids`."
   [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- ::metabot.schema/metabot-prompt.update]
+   changes    :- (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]
   (t2/update! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]] changes)
   nil)
 
@@ -141,19 +141,6 @@
   [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/delete! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]])
   nil)
-
-(mu/defn delete-metabot-prompt!
-  "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   prompt-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id metabot-id]]}))
-
-(mu/defn delete-prompts-for-metabot!
-  "Delete the MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
@@ -266,11 +253,11 @@
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
-(mu/defn insert-conversation!
-  "Insert `conversation` under the client-generated `conversation-id`, returning the inserted row."
-  [conversation-id :- :string
-   conversation    :- ::metabot.schema/metabot-conversation.create]
-  (first (t2/insert-returning-instances! :model/MetabotConversation (assoc conversation :id conversation-id))))
+(mu/defn insert-conversations! :- [:sequential ::metabot.schema/metabot-conversation]
+  "Insert the MetabotConversation `rows`, each under its client-generated id, in one statement, returning the inserted
+  instances in their order."
+  [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
+  (t2/insert-returning-instances! :model/MetabotConversation rows))
 
 (mu/defn insert-upserted-conversation!
   "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
@@ -366,20 +353,16 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
-(mu/defn insert-message-returning-pk!
-  "Insert `message` and return its ID."
-  [message :- ::metabot.schema/metabot-message.update]
-  (t2/insert-returning-pk! :model/MetabotMessage message))
+(mu/defn insert-messages! :- [:sequential ::metabot.schema/metabot-message]
+  "Insert the MetabotMessage `rows`, one statement for each set of columns they give, and return the new instances in
+  their order."
+  [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/MetabotMessage %) rows))
 
-(mu/defn insert-messages!
-  "Insert one MetabotMessage map or a sequence of them."
-  [messages :- [:or ::metabot.schema/metabot-message.update [:sequential ::metabot.schema/metabot-message.update]]]
-  (t2/insert! :model/MetabotMessage messages))
-
-(mu/defn update-message!
-  "Apply `changes` to the MetabotMessage with `message-id`."
+(mu/defn update-message! :- :int
+  "Apply `changes` to the MetabotMessage with `message-id`, returning the number updated."
   [message-id :- ms/PositiveInt
-   changes :- ::metabot.schema/metabot-message.update]
+   changes :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
   (t2/update! :model/MetabotMessage :id message-id changes))
 
 (mu/defn soft-delete-messages-where!
@@ -401,10 +384,10 @@
 
 ;;; -------------------------------------------------- AI usage --------------------------------------------------
 
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.create]
-  (t2/insert! :model/AiUsageLog row))
+(mu/defn insert-usage-logs!
+  "Insert the AiUsageLog `rows` in one statement."
+  [rows :- [:sequential ::metabot.schema/ai-usage-log.create]]
+  (t2/insert! :model/AiUsageLog rows))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

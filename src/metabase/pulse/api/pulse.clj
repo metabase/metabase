@@ -130,9 +130,10 @@
       ;; check that and fix it if needed
       (collection/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
       ;; ok, now create the Pulse
-      (let [pulse (api/check-500
-                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        pulse))))
+      (api/check-500
+       (first (models.pulse/create-pulses! [(assoc pulse-data
+                                                   :cards    (mapv models.pulse/card->ref cards)
+                                                   :channels channels)]))))))
 
 (def ^:private PulseChannelRecipient
   [:map {:closed true}
@@ -165,7 +166,7 @@
    [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
 
 (def ^:private PulseChannel
-  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channels!]] reads off a channel."
   (into [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}]
         (drop 2 TestPulseChannel)))
 
@@ -311,10 +312,10 @@
           ;; depending on what changed.
           (collection/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
           ;; ok, now update the Pulse
-          (models.pulse/update-pulse!
-           (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                              :archived :parameters])
-                  :id id))))))
+          (models.pulse/update-pulses!
+           [(assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                               :archived :parameters])
+                   :id id)])))))
   (models.pulse/retrieve-pulse id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

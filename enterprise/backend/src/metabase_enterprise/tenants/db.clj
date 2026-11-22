@@ -6,6 +6,7 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -61,12 +62,12 @@
   (t2/exists? :model/Tenant :id tenant-id :is_active true))
 
 (mu/defn tenant-name-or-slug-exists?
-  "Whether a Tenant named `tenant-name` or with `slug` exists."
-  [tenant-name :- :string
-   slug        :- :string]
+  "Whether a Tenant with one of `tenant-names` or one of `slugs` exists."
+  [tenant-names :- [:sequential {:min 1} :string]
+   slugs        :- [:sequential {:min 1} :string]]
   (t2/exists? :model/Tenant {:where [:or
-                                     [:= :slug slug]
-                                     [:= :name tenant-name]]}))
+                                     [:in :slug slugs]
+                                     [:in :name tenant-names]]}))
 
 (mu/defn other-tenant-named?
   "Whether a Tenant other than `tenant-id` is named `tenant-name`."
@@ -74,15 +75,21 @@
    tenant-id   :- ms/PositiveInt]
   (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
 
-(mu/defn insert-tenant!
-  "Insert `tenant` and return the new instance."
-  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes :tenant_collection_id])]
-  (t2/insert-returning-instance! :model/Tenant tenant))
+(mr/def ::tenant.insert
+  [:merge
+   ::tenants.schema/tenant.create
+   [:map {:closed true}
+    [:tenant_collection_id ::lib.schema.id/collection]]])
+
+(mu/defn insert-tenants! :- [:sequential ::tenants.schema/tenant]
+  "Insert the Tenant `rows` in one statement and return the new instances in their order."
+  [rows :- [:sequential ::tenant.insert]]
+  (t2/insert-returning-instances! :model/Tenant rows))
 
 (mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
   [tenant-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
+   changes   :- (mut/dissoc ::tenants.schema/tenant.update :id)]
   (t2/update! :model/Tenant {:id tenant-id} changes))
 
 (mu/defn active-member-counts

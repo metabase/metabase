@@ -90,7 +90,7 @@
                                   candidate-sandboxes)]
           (when (seq ids-to-delete)
             (log/debugf "Deleting %d unneeded GTAPs: %s" (count ids-to-delete) (pr-str ids-to-delete))
-            (sandbox/delete-sandboxes! ids-to-delete)))))
+            (sandbox/delete-sandboxes! (vec ids-to-delete))))))
     (catch Throwable e
       (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
                       {:changes changes}

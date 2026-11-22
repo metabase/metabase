@@ -52,10 +52,10 @@
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
       (mt/with-model-cleanup [:model/Collection :model/User]
-        (let [user (user/create-user! {:email      (mt/random-email)
-                                       :locale     "fr"
-                                       :first_name "Taco"
-                                       :last_name  "Bell"})]
+        (let [[user] (user/create-users! [{:email      (mt/random-email)
+                                           :locale     "fr"
+                                           :first_name "Taco"
+                                           :last_name  "Bell"}])]
           (f user (personal-collection user)))))))
 
 (defmacro ^:private with-french-user-and-personal-collection!

@@ -1094,10 +1094,10 @@
     (testing "test that admins can edit other Users\n"
       (mt/with-premium-features #{}
         (mt/with-model-cleanup [:model/User]
-          (let [{user-id :id} (user/create-user! {:first_name "Cam"
-                                                  :last_name "Era"
-                                                  :email "cam.era@metabase.com"
-                                                  :is_superuser true})]
+          (let [[{user-id :id}] (user/create-users! [{:first_name "Cam"
+                                                      :last_name "Era"
+                                                      :email "cam.era@metabase.com"
+                                                      :is_superuser true}])]
             (mt/with-temp [:model/Collection _ {}]
               (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
                                             (t2/hydrate :personal_collection_id ::personal-collection-name)
@@ -1605,7 +1605,7 @@
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
       (mt/with-premium-features #{}
         (mt/with-model-cleanup [:model/User]
-          (let [user (user/create-user! {:email "blue-man-group-member@example.com"})]
+          (let [[user] (user/create-users! [{:email "blue-man-group-member@example.com"}])]
             (mt/with-temp [:model/PermissionsGroup group {:name "Blue Man Group"}]
               (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
                                     {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
@@ -1653,7 +1653,7 @@
                   "and user_group_memberships including admin group ID)")
       (mt/with-premium-features #{}
         (mt/with-model-cleanup [:model/User]
-          (let [{:keys [email id]} (user/create-user! {:email "admin-membership-and-flag@example.com"})]
+          (let [[{:keys [email id]}] (user/create-users! [{:email "admin-membership-and-flag@example.com"}])]
             (mt/user-http-request :crowberto :put 200 (str "user/" id)
                                   {:is_superuser true
                                    :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
@@ -1700,7 +1700,7 @@
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
       (mt/with-premium-features #{}
         (mt/with-model-cleanup [:model/User]
-          (let [{:keys [email id]} (user/create-user! {:email "admin-membership-only@example.com"})]
+          (let [[{:keys [email id]}] (user/create-users! [{:email "admin-membership-only@example.com"}])]
             (is (=? {:id id
                      :is_superuser true}
                     (mt/user-http-request :crowberto :put 200 (str "user/" id)

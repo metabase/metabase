@@ -56,7 +56,7 @@
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:group_id             ms/PositiveInt]
             [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
-  (sandbox/create-sandbox! (select-keys body [:table_id :card_id :group_id :attribute_remappings])))
+  (first (sandbox/create-sandboxes! [(select-keys body [:table_id :card_id :group_id :attribute_remappings])])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -76,7 +76,7 @@
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (if (some #(contains? body %) [:card_id :attribute_remappings])
-    (sandbox/update-sandbox! id (u/select-keys-when body :present #{:card_id :attribute_remappings}))
+    (first (sandbox/update-sandboxes! [(assoc (u/select-keys-when body :present #{:card_id :attribute_remappings}) :id id)]))
     (sandbox.db/sandbox id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -105,7 +105,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-404 (sandbox.db/sandbox id))
-  (sandbox/delete-sandbox! id)
+  (sandbox/delete-sandboxes! [id])
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

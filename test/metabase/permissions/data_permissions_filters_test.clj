@@ -10,7 +10,7 @@
 (deftest superuser-returns-all-tables-test
   (testing "superuser returns all tables regardless of permissions"
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "superuser-tables@example.com" :is_superuser true})]
+      (let [[user] (user/create-users! [{:email "superuser-tables@example.com" :is_superuser true}])]
         (mt/with-temp [:model/Database db {}
                        :model/Table _ {:db_id (:id db)}
                        :model/Table _ {:db_id (:id db)}

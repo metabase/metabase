@@ -37,10 +37,10 @@
     (do
       (user/update-users! [(:id user)] {:is_active true :is_superuser true})
       (assoc user :is_active true :is_superuser true))
-    (user/create-user! {:email        (sag.settings/support-access-grant-email)
-                        :first_name   (sag.settings/support-access-grant-first-name)
-                        :last_name    (sag.settings/support-access-grant-last-name)
-                        :is_superuser true})))
+    (first (user/create-users! [{:email        (sag.settings/support-access-grant-email)
+                                 :first_name   (sag.settings/support-access-grant-first-name)
+                                 :last_name    (sag.settings/support-access-grant-last-name)
+                                 :is_superuser true}]))))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]

@@ -53,9 +53,9 @@
                     :after   changes
                     :user_id api/*current-user-id*}]
       (case model
-        :model/PermissionsRevision            (permissions-revision/create-permissions-revision! revision)
-        :model/ApplicationPermissionsRevision (application-permissions-revision/create-application-permissions-revision!
-                                               revision)))))
+        :model/PermissionsRevision            (first (permissions-revision/create-permissions-revisions! [revision]))
+        :model/ApplicationPermissionsRevision (first (application-permissions-revision/create-application-permissions-revisions!
+                                                      [revision]))))))
 
 (mu/defn increment-implicit-perms-revision!
   "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
@@ -68,12 +68,12 @@
   (when api/*current-user-id*
     (case model
       :model/CollectionPermissionGraphRevision
-      (collection-permission-graph-revision/create-collection-permission-graph-revision!
-       {:id      (inc (collection-permission-graph-revision/latest-id))
-        :before  {}
-        :after   {}
-        :user_id api/*current-user-id*
-        :remark  remark}))))
+      (first (collection-permission-graph-revision/create-collection-permission-graph-revisions!
+              [{:id      (inc (collection-permission-graph-revision/latest-id))
+                :before  {}
+                :after   {}
+                :user_id api/*current-user-id*
+                :remark  remark}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |

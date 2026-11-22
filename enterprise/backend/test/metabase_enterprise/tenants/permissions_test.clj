@@ -34,7 +34,7 @@
 (deftest new-tenant-groups-get-no-perms-on-existing-dbs
   (mt/with-temp [:model/Database {db-id :id} {}]
     (mt/with-model-cleanup [:model/PermissionsGroup]
-      (let [{group-id :id} (perms-group/create-permissions-group! {:name (mt/random-name) :is_tenant_group true})]
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name (mt/random-name) :is_tenant_group true}])]
         (is (t2/exists? :model/DataPermissions :db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :blocked))
         (is (t2/exists? :model/DataPermissions :db_id db-id :group_id group-id :perm_type :perms/create-queries :perm_value :no))
         (is (t2/exists? :model/DataPermissions :db_id db-id :group_id group-id :perm_type :perms/download-results :perm_value :no))
@@ -51,16 +51,16 @@
       (testing "cannot be added to a normal group"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms-group-membership/add-user-to-group! tenant-user normal-group))))
+                              (perms-group-membership/add-users-to-groups! [{:user tenant-user :group normal-group}]))))
       (testing "can be added to tenant groups"
-        (perms-group-membership/add-user-to-group! tenant-user tenant-group)))
+        (perms-group-membership/add-users-to-groups! [{:user tenant-user :group tenant-group}])))
     (testing "A normal user"
       (testing "cannot be added to a tenant group"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms-group-membership/add-user-to-group! normal-user tenant-group))))
+                              (perms-group-membership/add-users-to-groups! [{:user normal-user :group tenant-group}]))))
       (testing "can be added to a normal group"
-        (perms-group-membership/add-user-to-group! normal-user normal-group)))))
+        (perms-group-membership/add-users-to-groups! [{:user normal-user :group normal-group}])))))
 
 (deftest tenant-users-cannot-be-group-managers-of-tenant-group-test
   (testing "External/tenant users cannot be made group managers of tenant groups"
@@ -128,7 +128,7 @@
                        :model/User {tenant-user-id :id} {:tenant_id tenant-id}
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
-          (perms-group-membership/add-user-to-group! tenant-user-id tenant-group-id)
+          (perms-group-membership/add-users-to-groups! [{:user tenant-user-id :group tenant-group-id}])
           (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
                                                 :user_id tenant-user-id :group_id tenant-group-id)]
             (is (=? "Tenant users cannot be made group managers"
@@ -145,24 +145,23 @@
                                                                              {:email (mt/random-email) :tenant_id nil}])]
         (testing "adding a tenant user to a normal group is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add non-tenant user to tenant-group or vice versa"
-                                (perms-group-membership/add-user-to-group! tenant-user-id normal-group-id))))
+                                (perms-group-membership/add-users-to-groups! [{:user tenant-user-id :group normal-group-id}]))))
         (testing "adding a normal user to a tenant group is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add non-tenant user to tenant-group or vice versa"
-                                (perms-group-membership/add-user-to-group! normal-user-id tenant-group-id))))
+                                (perms-group-membership/add-users-to-groups! [{:user normal-user-id :group tenant-group-id}]))))
         (testing "adding a tenant user as group manager is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
-                                (perms-group-membership/add-user-to-group! tenant-user-id tenant-group-id true))))
+                                (perms-group-membership/add-users-to-groups! [{:user tenant-user-id :group tenant-group-id :is-group-manager? true}]))))
         (testing "making a tenant user's membership a group manager is refused"
-          (perms-group-membership/add-user-to-group! tenant-user-id tenant-group-id)
+          (perms-group-membership/add-users-to-groups! [{:user tenant-user-id :group tenant-group-id}])
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
-                                (perms-group-membership/update-permissions-group-membership!
-                                 (t2/select-one-pk :model/PermissionsGroupMembership
+                                (perms-group-membership/update-permissions-group-memberships!
+                                 [{:id               (t2/select-one-pk :model/PermissionsGroupMembership
                                                    :user_id tenant-user-id :group_id tenant-group-id)
-                                 {:is_group_manager true}))))
+                                   :is_group_manager true}]))))
         (testing "removing a tenant user from All tenant users is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All tenant users' group"
-                                (perms-group-membership/remove-user-from-group!
-                                 tenant-user-id (perms/all-external-users-group)))))
+                                (perms-group-membership/remove-users-from-groups! [tenant-user-id] [(perms/all-external-users-group)]))))
         (is (= #{tenant-group-id (u/the-id (perms/all-external-users-group))}
                (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id tenant-user-id)))
         (is (= #{(u/the-id (perms/all-users-group))}

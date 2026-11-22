@@ -204,20 +204,18 @@
     (boolean (or (seq recipients+) (seq recipients-)))))
 
 (def ^:private PulseChannelWithRecipients
-  "A PulseChannel and its `:id` and `:recipients`, as [[update-pulse-channel!]] takes it."
+  "A PulseChannel and its `:id` and `:recipients`, as [[update-pulse-channels!]] takes it."
   [:merge
    ::pulse.schema/pulse-channel.update
    [:map {:closed true}
     [:id         ms/PositiveInt]
     [:recipients {:optional true} [:maybe [:sequential ::pulse.schema/pulse-channel.recipient]]]]])
 
-(mu/defn update-pulse-channel! :- :boolean
-  "Updates an existing `PulseChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`, and moves its SendPulse trigger when its schedule or enabled state changes. Returns whether
-  it changed anything."
+(defn- update-pulse-channel!
+  "Apply `row` to its PulseChannel as [[update-pulse-channels!]] does, returning whether it changed anything."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
-           recipients       []}} :- PulseChannelWithRecipients]
+           recipients       []}}]
   {:pre [(integer? id)
          (m/boolean? enabled)
          (coll? recipients)
@@ -243,6 +241,13 @@
                              (update-recipients! id (or (get recipients-by-type true) [])))]
     (boolean (or updated? recipients?))))
 
+(mu/defn update-pulse-channels! :- [:sequential PulseChannelWithRecipients]
+  "Update the PulseChannels of `rows`, each an `:id` with its columns and `:recipients`, along with their
+  PulseChannelRecipients, moving their SendPulse triggers when their schedule or enabled state changes, and return the
+  rows that changed anything."
+  [rows :- [:sequential PulseChannelWithRecipients]]
+  (filterv update-pulse-channel! rows))
+
 (mu/defn update-pulse-channel-details! :- :nil
   "Set the `:details` of the PulseChannel `pulse-channel`, a row as selected from the app DB."
   [pulse-channel :- [:map [:id ms/PositiveInt]]
@@ -261,37 +266,44 @@
       (update-triggers! (if enabled? :add-pc-ids :remove-pc-ids) flipped)))
   nil)
 
-(mu/defn create-pulse-channel! :- ms/PositiveInt
-  "Create a new `PulseChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`, and add it to its SendPulse trigger when it is enabled. Returns the id of the new channel."
+(defn- channel-row
+  "The PulseChannel row of `channel`, a row of [[create-pulse-channels!]], with every column it sets."
   [{:keys [channel_type channel_id details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
-    :or   {details          {}
-           recipients       []}} :- ::pulse.schema/pulse-channel.create]
+    :or   {details    {}
+           recipients []}}]
   {:pre [(integer? pulse_id)
          (boolean? enabled)
          (coll? recipients)
          (every? map? recipients)]}
-  (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        row                {:pulse_id       pulse_id
-                            :channel_type   channel_type
-                            :channel_id     channel_id
-                            :details        (cond-> details
-                                              (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                            :enabled        enabled
-                            :schedule_type  schedule_type
-                            :schedule_hour  (when (not= schedule_type :hourly)
-                                              schedule_hour)
-                            :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                              schedule_day)
-                            :schedule_frame (when (= schedule_type :monthly)
-                                              schedule_frame)}
-        channel            (pulse.db/insert-pulse-channel! row)
-        id                 (:id channel)]
-    (when enabled
-      (update-triggers! :add-pc-ids [(assoc row :id id)]))
-    (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
-      (update-recipients! id (get recipients-by-type true)))
-    id))
+  (let [emails (get (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients))) false)]
+    {:pulse_id       pulse_id
+     :channel_type   channel_type
+     :channel_id     channel_id
+     :details        (cond-> details
+                       (supports-recipients? channel_type) (assoc :emails emails))
+     :enabled        enabled
+     :schedule_type  schedule_type
+     :schedule_hour  (when (not= schedule_type :hourly)
+                       schedule_hour)
+     :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                       schedule_day)
+     :schedule_frame (when (= schedule_type :monthly)
+                       schedule_frame)}))
+
+(mu/defn create-pulse-channels! :- [:sequential ::pulse.schema/pulse-channel]
+  "Insert the PulseChannels of `rows` with their PulseChannelRecipients, adding the enabled ones to their SendPulse
+  triggers, and return the new channels in order."
+  [rows :- [:sequential ::pulse.schema/pulse-channel.create]]
+  (if (empty? rows)
+    []
+    (let [channels (pulse.db/insert-pulse-channels! (mapv channel-row rows))]
+      (doseq [[{:keys [channel_type recipients]} channel] (map vector rows channels)
+              :let [user-ids (get (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients))) true)]]
+        (when (:enabled channel)
+          (update-triggers! :add-pc-ids [channel]))
+        (when (and (supports-recipients? channel_type) (seq user-ids))
+          (update-recipients! (:id channel) user-ids)))
+      channels)))
 
 (mu/defn delete-pulse-channels! :- :boolean
   "Delete the PulseChannels with `channel-ids` and remove them from their SendPulse triggers, and return whether there

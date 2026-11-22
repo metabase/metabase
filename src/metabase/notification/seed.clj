@@ -204,10 +204,7 @@
                          (dissoc :template)
                          (assoc :template_id (:id (first (models.channel/create-channel-templates! [template])))))
                      handler))]
-    (models.notification/create-notification!
-     (dissoc notification :handlers :subscriptions)
-     (:subscriptions notification)
-     handlers)))
+    (first (models.notification/create-notifications! [(assoc notification :handlers handlers)]))))
 
 (defn- replace-notification!
   "Replace an existing notification with a new one"

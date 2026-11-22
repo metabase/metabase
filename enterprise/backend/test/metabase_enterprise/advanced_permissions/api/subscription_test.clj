@@ -123,7 +123,7 @@
         (notification.tu/with-notification-testing-setup!
           (notification.tu/with-channel-fixtures [:channel/email]
             (mt/with-model-cleanup [:model/User]
-              (let [{sub-creator-id :id} (user/create-user! {:email "drift@example.com"})]
+              (let [[{sub-creator-id :id}] (user/create-users! [{:email "drift@example.com"}])]
                 (mt/with-temp [:model/PermissionsGroup           {group-id :id}       {}
                                :model/PermissionsGroupMembership _                    {:user_id sub-creator-id :group_id group-id}]
                   ;; Subscription creator initially has full download perms on the products table.

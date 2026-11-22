@@ -80,9 +80,8 @@
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
   (api/let-404 [api-key-before (api-keys.db/api-key id)]
-    (api-key/update-api-key! id
-                             (m/assoc-some {} ::api-keys/group-id group-id, :name key-name)
-                             {:details {:previous-group (:group (t2/hydrate api-key-before :group))}})
+    (api-key/update-api-keys! [(m/assoc-some {:id id} ::api-keys/group-id group-id, :name key-name)]
+                              {:context {:details {:previous-group (:group (t2/hydrate api-key-before :group))}}})
     (present-api-key (api-keys.db/api-key id))))
 
 (api.macros/defendpoint :put "/:id/regenerate" :- [:map
@@ -118,7 +117,7 @@
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
   (api/let-404 [api-key (api-keys.db/api-key id)]
-    (api-key/delete-api-key! id {:details {:previous-group (:group (t2/hydrate api-key :group))}}))
+    (api-key/delete-api-keys! [id] {:context {:details {:previous-group (:group (t2/hydrate api-key :group))}}}))
   api/generic-204-no-content)
 
 (comment

@@ -114,19 +114,17 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [active-notification   (models.notification/create-notification!
-                                     {:payload_type :notification/card
-                                      :payload      {:card_id card-id}
-                                      :creator_id   (mt/user->id :crowberto)}
-                                     []
-                                     [])
-              inactive-notification (models.notification/create-notification!
-                                     {:payload_type :notification/card
-                                      :payload      {:card_id card-id}
-                                      :active       false
-                                      :creator_id   (mt/user->id :crowberto)}
-                                     []
-                                     [])]
+        (let [[active-notification]   (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                                   :payload      {:card_id card-id}
+                                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                                   :subscriptions []
+                                                                                   :handlers []}])
+              inactive-notification (first (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                                        :payload      {:card_id card-id}
+                                                                                        :active       false
+                                                                                        :creator_id   (mt/user->id :crowberto)
+                                                                                        :subscriptions []
+                                                                                        :handlers []}]))]
           (testing "sanity: both notifications and notification cards exist"
             (is (t2/exists? :model/Notification :id (:id active-notification)))
             (is (t2/exists? :model/Notification :id (:id inactive-notification)))
@@ -190,21 +188,18 @@
                    :model/PermissionsGroupMembership _ {:group_id (:id group)
                                                         :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
-        (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription
-                     default-card-created-subscription]
-                    [{:channel_type (:type chn-1)
-                      :channel_id   (:id chn-1)
-                      :template_id  (:id tmpl)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :rasta)}
-                                     {:type                 :notification-recipient/group
-                                      :permissions_group_id (:id group)}]}
-                     {:channel_type (:type chn-1)
-                      :channel_id   (:id chn-2)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :crowberto)}]}])]
+        (let [[noti] (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription
+                                                                                                                          default-card-created-subscription] :handlers [{:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-1)
+                                                                                                                                                                         :template_id  (:id tmpl)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :rasta)}
+                                                                                                                                                                                        {:type                 :notification-recipient/group
+                                                                                                                                                                                         :permissions_group_id (:id group)}]}
+                                                                                                                                                                        {:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-2)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :crowberto)}]}])])]
           (testing "hydrate subscriptions"
             (is (=? [default-user-invited-subscription
                      default-card-created-subscription]
@@ -246,14 +241,11 @@
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
                      :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
-        (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription]
-                    [{:channel_type (:type chn-1)
-                      :channel_id   (:id chn-1)
-                      :template_id  (:id tmpl-1)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :rasta)}]}])]
+        (let [[noti] (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription] :handlers [{:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-1)
+                                                                                                                                                                         :template_id  (:id tmpl-1)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :rasta)}]}])])]
           (t2/delete! :model/ChannelTemplate :id (:id tmpl-1))
           (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti)))))))))
 
@@ -263,13 +255,12 @@
                                                   :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (models.notification/create-notification!
-                             {:payload_type :notification/testing :active true}
-                             []
-                             [{:channel_type :channel/slack
-                               :channel_id   (:id chn-1)
-                               :template_id  (:id tmpl-1)
-                               :recipients   []}])))))
+                            (first (models.notification/create-notifications! [{:payload_type :notification/testing :active true
+                                                                                :subscriptions []
+                                                                                :handlers [{:channel_type :channel/slack
+                                                                                            :channel_id   (:id chn-1)
+                                                                                            :template_id  (:id tmpl-1)
+                                                                                            :recipients   []}]}]))))))
   (testing "can't update a handler with a template that has different channel type"
     (mt/with-temp [:model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
@@ -454,12 +445,9 @@
   "`n` system event Notifications, each with a subscription and an email handler with a recipient."
   [n]
   (mapv (fn [_]
-          (models.notification/create-notification!
-           default-system-event-notification
-           [default-user-invited-subscription]
-           [{:channel_type :channel/email
-             :recipients   [{:type    :notification-recipient/raw-value
-                             :details {:value "ngoc@metabase.com"}}]}]))
+          (first (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription] :handlers [{:channel_type :channel/email
+                                                                                                                                                                     :recipients   [{:type    :notification-recipient/raw-value
+                                                                                                                                                                                     :details {:value "ngoc@metabase.com"}}]}])])))
         (range n)))
 
 (defn- write-statement-count!
@@ -490,12 +478,9 @@
                     (let [notification (atom nil)
                           statements   (t2/with-call-count [call-count]
                                          (reset! notification
-                                                 (models.notification/create-notification!
-                                                  default-system-event-notification
-                                                  [default-user-invited-subscription]
-                                                  (vec (repeat n {:channel_type :channel/email
-                                                                  :recipients   [{:type    :notification-recipient/raw-value
-                                                                                  :details {:value "ngoc@metabase.com"}}]}))))
+                                                 (first (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription] :handlers (vec (repeat n {:channel_type :channel/email
+                                                                                                                                                                                                                          :recipients   [{:type    :notification-recipient/raw-value
+                                                                                                                                                                                                                                          :details {:value "ngoc@metabase.com"}}]})))])))
                                          (call-count))]
                       (models.notification/delete-notifications! [(:id @notification)])
                       statements))]

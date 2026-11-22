@@ -2,6 +2,7 @@
   "Application database queries for the sandbox module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -85,15 +86,15 @@
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandbox!
-  "Insert `sandbox` and return the new instance."
-  [sandbox :- ::sandbox.schema/sandbox.create]
-  (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
+(mu/defn insert-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
+  "Insert the Sandbox `rows` in one statement and return the new instances in their order."
+  [rows :- [:sequential ::sandbox.schema/sandbox.create]]
+  (t2/insert-returning-instances! :model/Sandbox rows))
 
 (mu/defn update-sandbox!
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
   [sandbox-id :- ::lib.schema.id/sandbox
-   changes    :- ::sandbox.schema/sandbox.update]
+   changes    :- (mut/dissoc ::sandbox.schema/sandbox.update :id)]
   (t2/update! :model/Sandbox :id sandbox-id changes))
 
 (mu/defn sandboxes-by-ids

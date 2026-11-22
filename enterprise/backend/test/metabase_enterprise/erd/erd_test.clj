@@ -413,7 +413,7 @@
                                                         :database_type "INTEGER" :base_type :type/Integer
                                                         :semantic_type :type/FK
                                                         :fk_target_field_id target-pk-id}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group gid}])
           (perms/grant-collection-read-permissions! gid coll-id)
           (let [response      (mt/user-http-request :rasta :get 200 "ee/erd"
                                                     :database-id db-id
@@ -448,7 +448,7 @@
     (testing "unreadable table is excluded from graph, edges, and FK fields"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/PermissionsGroup {gid :id} {}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group gid}])
           ;; Grant orders only — products is unreachable
           (grant-table-read! gid (mt/id :orders))
           (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
@@ -473,8 +473,8 @@
       ;; With orders as focal, products is unreadable so nothing beyond orders+people is found
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [{gid :id} (perms-group/create-permissions-group! {:name (mt/random-name)})]
-            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
+          (let [[{gid :id}] (perms-group/create-permissions-groups! [{:name (mt/random-name)}])]
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group gid}])
             (grant-table-read! gid (mt/id :orders))
             (grant-table-read! gid (mt/id :reviews))
             (grant-table-read! gid (mt/id :people))
@@ -498,7 +498,7 @@
                        :model/Field _ {:table_id table-id :name "id" :display_name "id"
                                        :database_type "INTEGER" :base_type :type/Integer
                                        :semantic_type :type/PK}]
-          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group gid}])
           (data-perms/set-database-permission! gid db-id :perms/view-data :blocked)
           (data-perms/set-database-permission! gid db-id :perms/create-queries :no)
           (data-perms/set-table-permission! gid table-id :perms/manage-table-metadata :yes)

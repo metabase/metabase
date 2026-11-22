@@ -280,7 +280,7 @@
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
     (mt/with-model-cleanup [:model/PermissionsGroup]
-      (let [{group-id :id} (perms-group/create-permissions-group! {:name "Test Group for Routing"})]
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Test Group for Routing"}])]
         (testing "New group should have permissions for the router database"
           (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
         (testing "New group should NOT have permissions for the destination database"

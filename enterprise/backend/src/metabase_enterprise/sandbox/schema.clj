@@ -39,15 +39,18 @@
 
 (mr/def ::sandbox
   "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
-  [:merge
-   ::sandbox.update
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]
-    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::sandbox.update
-  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+  "What an update of a Sandbox takes: its `:id` and the columns to set."
   [:map {:closed true}
+   [:id                   ms/PositiveInt]
    [:group_id             {:optional true} [:maybe ms/PositiveInt]]
    [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]

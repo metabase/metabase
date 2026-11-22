@@ -492,11 +492,11 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (perms-group-membership/remove-user-from-all-groups! user-id)
+     (perms-group-membership/remove-users-from-groups! [user-id] (vec (user/group-ids user-id)))
      (when tenant-id
-       (perms-group-membership/add-user-to-group! user-id (perms/all-external-users-group)))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-external-users-group)}]))
      (when (nil? tenant-id)
-       (perms-group-membership/add-user-to-group! user-id (perms/all-users-group))))))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-users-group)}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -556,8 +556,8 @@
         (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
           (let [data-analyst-group-id (:id (perms/data-analyst-group))]
             (if is_data_analyst
-              (perms-group-membership/add-user-to-group! id data-analyst-group-id)
-              (perms-group-membership/remove-user-from-group! id data-analyst-group-id))))
+              (perms-group-membership/add-users-to-groups! [{:user id :group data-analyst-group-id}])
+              (perms-group-membership/remove-users-from-groups! [id] [data-analyst-group-id]))))
         (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))

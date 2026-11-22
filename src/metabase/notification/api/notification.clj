@@ -2,6 +2,7 @@
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,6 +16,7 @@
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -91,6 +93,15 @@
    (when (or (some handler-touches-template? handlers)
              (some handler-touches-template? existing-handlers))
      (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
+
+(defn- check-request-shape
+  "Throws a 400 unless `value` is valid for `schema`, the request schema of the endpoint that shares the entry function
+  with the tools that call it directly."
+  [schema value]
+  (when-let [error (mr/explain schema value)]
+    (throw (ex-info (tru "Invalid notification request.")
+                    {:status-code 400
+                     :errors      (me/humanize error)}))))
 
 (defn get-notification
   "Get a notification by id."
@@ -184,12 +195,11 @@
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
   [notification-info :- ::CreateNotificationParams]
+  (check-request-shape ::CreateNotificationParams notification-info)
+  (check-handler-templates! (:handlers notification-info))
   (api/create-check :model/Notification notification-info)
   (let [notification (models.notification/hydrate-notification
-                      (models.notification/create-notification!
-                       (dissoc notification-info :handlers :subscriptions)
-                       (:subscriptions notification-info)
-                       (:handlers notification-info)))]
+                      (first (models.notification/create-notifications! [notification-info])))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
     notification))
@@ -197,7 +207,6 @@
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
-  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -260,6 +269,7 @@
   find there."
   [id   :- ms/PositiveInt
    body :- ::NotificationApiUpdateInput]
+  (check-request-shape ::NotificationApiUpdateInput body)
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (check-handler-templates! (:handlers body) (:handlers existing-notification))

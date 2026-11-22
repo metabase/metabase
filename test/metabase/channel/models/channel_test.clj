@@ -252,3 +252,13 @@
           (is (= (+ (statements (take 2 ids)) 4) (statements (take 6 (drop 2 ids)))))))
       (finally
         (t2/delete! :model/Channel :id [:in @created])))))
+
+(deftest create-channels-keeps-defaults-of-rows-with-fewer-columns-test
+  (mt/with-model-cleanup [:model/Channel]
+    (let [[inactive defaulted] (models.channel/create-channels!
+                                [(assoc notification.tu/default-can-connect-channel :name (mt/random-name) :active false)
+                                 (-> notification.tu/default-can-connect-channel
+                                     (assoc :name (mt/random-name))
+                                     (dissoc :active :description))])]
+      (is (false? (t2/select-one-fn :active :model/Channel :id (:id inactive))))
+      (is (true? (t2/select-one-fn :active :model/Channel :id (:id defaulted)))))))

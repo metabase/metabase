@@ -3,11 +3,11 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -43,10 +43,10 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey :id id))
 
-(mu/defn delete-api-key!
-  "Delete the ApiKey with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey :id id))
+(mu/defn api-keys-by-ids
+  "The ApiKeys with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/ApiKey :id [:in ids]))
 
 (mu/defn api-keys-with-scope
   "The ApiKeys with `scope`."
@@ -94,15 +94,23 @@
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))
 
-(mu/defn insert-api-key!
-  "Insert the ApiKey `row` and return the inserted instance."
-  [row :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey row))
+(mu/defn insert-api-keys! :- [:sequential ::api-keys.schema/api-key]
+  "Insert the ApiKey `rows` in one statement and return the inserted instances in their order."
+  [rows :- [:sequential ::api-keys.schema/api-key.create]]
+  (t2/insert-returning-instances! :model/ApiKey rows))
+
+(mr/def ::api-key-columns.update
+  [:map {:closed true}
+   [:name          {:optional true} ::api-keys.schema/name]
+   [:key           {:optional true} [:ref ::api-keys.schema/key.hashed]]
+   [:key_prefix    {:optional true} [:ref ::api-keys.schema/prefix]]
+   [:updated_by_id {:optional true} pos-int?]
+   [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
 
 (mu/defn update-api-key!
   "Apply `changes` to the ApiKey with `id`."
   [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:name :key :key_prefix :updated_by_id :updated_at])]
+   changes :- ::api-key-columns.update]
   (t2/update! :model/ApiKey :id id changes))
 
 (defn lock-available-key-ids

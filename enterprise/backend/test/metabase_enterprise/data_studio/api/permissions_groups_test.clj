@@ -26,7 +26,7 @@
   [user-id]
   ;; additions are gated on the feature, so grant it for the setup
   (mt/with-premium-features #{:advanced-permissions}
-    (perms-group-membership/add-user-to-group! user-id (:id (perms-group/data-analyst)))))
+    (perms-group-membership/add-users-to-groups! [{:user user-id :group (:id (perms-group/data-analyst))}])))
 
 (def ^:private no-permissions-message "You don't have permissions to do that.")
 
@@ -93,7 +93,7 @@
                    :model/Table    {table-id :id}   {:db_id db-id}]
       (add-data-analyst! analyst-id)
       (mt/with-premium-features #{}
-        (perms-group-membership/remove-user-from-group! analyst-id (:id (perms-group/data-analyst)))
+        (perms-group-membership/remove-users-from-groups! [analyst-id] [(:id (perms-group/data-analyst))])
         (is (not (t2/exists? :model/PermissionsGroupMembership
                              :user_id analyst-id :group_id (:id (perms-group/data-analyst)))))
         (is (= no-permissions-message

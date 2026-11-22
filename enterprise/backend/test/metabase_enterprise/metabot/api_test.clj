@@ -83,8 +83,8 @@
           (with-redefs [config/is-dev? true]
             (mt/with-temp [:model/Tenant {tenant-id :id} {}]
               (mt/with-model-cleanup [:model/User]
-                (let [{internal-user-id :id} (user/create-user! {:email "quota-internal-user@example.com"})
-                      {tenant-user-id :id}   (user/create-user! {:email "quota-tenant-user@example.com" :tenant_id tenant-id})]
+                (let [[{internal-user-id :id}] (user/create-users! [{:email "quota-internal-user@example.com"}])
+                      {tenant-user-id :id}   (first (user/create-users! [{:email "quota-tenant-user@example.com" :tenant_id tenant-id}]))]
                   (mt/with-temp [:model/MetabotGroupLimit    _ {:group_id  (u/the-id (perms/all-users-group))
                                                                 :max_usage 0}
                                  :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 0}]

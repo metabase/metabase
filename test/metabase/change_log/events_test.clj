@@ -77,9 +77,9 @@
                    (set (logged-by #(table/update-tables! (mapv (fn [id] {:id id :active true}) (table/ids-of-database (:id db))))))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse pulse {:name "Before"}]
-            (is (= [] (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "Before"}))))
+            (is (= [] (logged-by #(models.pulse/update-pulses! [{:id (:id pulse) :name "Before"}]))))
             (is (= [["pulse" (:id pulse) "update"]]
-                   (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "After"}))))))
+                   (logged-by #(models.pulse/update-pulses! [{:id (:id pulse) :name "After"}]))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [] (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 99}]))))
@@ -172,7 +172,7 @@
         (testing "a write rolled back takes its log row with it"
           (is (= [] (logged-by #(try
                                   (t2/with-transaction [_conn]
-                                    (perms-group/update-permissions-group! (:id group) {:name "rolled back"})
+                                    (perms-group/update-permissions-groups! [{:id (:id group) :name "rolled back"}])
                                     (throw (ex-info "boom" {})))
                                   (catch Exception _))))))))))
 
@@ -185,7 +185,7 @@
           (testing "without `log-rows!`, a write that bypasses the model is not logged"
             (is (= [] (logged-by #(t2/update! :permissions_group :id (:id group) {:name "raw"})))))
           (testing "a group membership added"
-            (let [rows (logged-by #(perms-group-membership/add-user-to-group! user group))]
+            (let [rows (logged-by #(perms-group-membership/add-users-to-groups! [{:user user :group group}]))]
               (is (= [["permissions_group_membership"
                        (t2/select-one-pk :model/PermissionsGroupMembership :user_id (:id user) :group_id (:id group))
                        "insert"]]
@@ -579,13 +579,13 @@
   []
   (let [id (atom nil)]
     {:insert (t2/with-call-count [calls]
-               (reset! id (:id (perms-group/create-permissions-group! {:name (str (random-uuid))})))
+               (reset! id (:id (first (perms-group/create-permissions-groups! [{:name (str (random-uuid))}]))))
                (calls))
      :update (t2/with-call-count [calls]
-               (perms-group/update-permissions-group! @id {:name (str (random-uuid))})
+               (perms-group/update-permissions-groups! [{:id @id :name (str (random-uuid))}])
                (calls))
      :delete (t2/with-call-count [calls]
-               (perms-group/delete-permissions-group! @id)
+               (perms-group/delete-permissions-groups! [@id])
                (calls))}))
 
 (deftest call-count-test
@@ -621,7 +621,7 @@
   (mt/with-temp [:model/PermissionsGroup group {}]
     (mt/with-premium-features #{}
       (testing "without the `:change-log` feature, nothing is logged"
-        (is (= [] (logged-by #(perms-group/update-permissions-group! (:id group) {:name "unlicensed"})))))
+        (is (= [] (logged-by #(perms-group/update-permissions-groups! [{:id (:id group) :name "unlicensed"}])))))
       (testing "while the change log is off, `log-rows!` runs no query"
         (t2/with-call-count [calls]
           (is (nil? (change-log/log-rows! :model/PermissionsGroup :update :id (:id group))))

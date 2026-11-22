@@ -961,7 +961,7 @@
   (mt/with-premium-features #{:advanced-permissions}
     (with-all-users-as-settings-managers
       (mt/with-model-cleanup [:model/User]
-        (let [{user-id :id} (user/create-user! {:email "dwh-uploads-manager@example.com"})]
+        (let [[{user-id :id}] (user/create-users! [{:email "dwh-uploads-manager@example.com"}])]
           (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
                          :model/PermissionsGroup {group-id :id} {}
                          :model/PermissionsGroupMembership {} {:user_id user-id

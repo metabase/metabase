@@ -505,15 +505,33 @@
   (t2/select-fn-set :object :model/Permissions
                     {:where (related-permissions-where group-id path also-under-paths)}))
 
-(mu/defn permissions-group-ids-where :- [:set ms/PositiveInt]
-  "The ids of the groups holding a Permissions row matching the HoneySQL `where` clause."
-  [where :- vector?]
-  (set (t2/select-fn-set :group_id :model/Permissions {:where where})))
+(mu/defn related-permission-ids
+  "The ids of the Permissions rows held by the group with `group-id` that are ancestors or descendants of `path` (also
+  checking each of `also-under-paths`, e.g. a v2-equivalent path)."
+  [group-id         :- ms/PositiveInt
+   path             :- :string
+   also-under-paths :- [:sequential :string]]
+  (t2/select-pks-vec :model/Permissions {:where (related-permissions-where group-id path also-under-paths)}))
+
+(mu/defn collection-permission-ids
+  "The ids of the Permissions rows of the Collection with `collection-id`."
+  [collection-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/Permissions :collection_id [:auto/param collection-id]))
+
+(mu/defn database-permission-ids
+  "The ids of the Permissions rows whose object is a path under the Database with `database-id`."
+  [database-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/Permissions {:where [:like :object [:auto/param (str "%/db/" database-id "/%")]]}))
+
+(mu/defn permissions-by-ids
+  "The Permissions rows with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Permissions :id [:in ids]))
 
 (mu/defn delete-permissions! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Permissions rows matching the HoneySQL `where` clause, returning the number deleted."
-  [where :- vector?]
-  (t2/delete! :model/Permissions {:where where}))
+  "Delete the Permissions rows with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/Permissions :id [:in ids]))
 
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects` with a raw statement, which runs no Permissions hook, returning the
@@ -562,7 +580,11 @@
 (mu/defn update-permissions-group!
   "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- ::permissions.schema/permissions-group.update]
+   changes :- [:map {:closed true}
+               [:name             {:optional true} [:maybe :string]]
+               [:entity_id        {:optional true} [:maybe :string]]
+               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
+               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
 
 (mu/defn delete-permissions-group!
@@ -662,7 +684,10 @@
 (mu/defn update-group-membership!
   "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- ::permissions.schema/permissions-group-membership.update]
+   changes :- [:map {:closed true}
+               [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
+               [:group_id         {:optional true} [:maybe ms/PositiveInt]]
+               [:is_group_manager {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] changes))
 
 (mu/defn insert-group-memberships!
@@ -695,27 +720,11 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id [:auto/param id]))
 
-(mu/defn memberships-for-user
-  "The PermissionsGroupMemberships of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn memberships-for-user-in-groups
-  "The PermissionsGroupMemberships of the User with `user-id` in the groups with `group-ids`."
-  [user-id   :- ::lib.schema.id/user
-   group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
-
-(mu/defn memberships-for-users-in-group
-  "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroup with `group-id`."
-  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
-   group-id :- ms/PositiveInt]
-  (t2/select :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
-
-(mu/defn memberships-for-group
-  "The PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt]
-  (t2/select :model/PermissionsGroupMembership :group_id group-id))
+(mu/defn memberships-for-users-in-groups
+  "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroups with `group-ids`."
+  [user-ids  :- [:sequential {:min 1} ::lib.schema.id/user]
+   group-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/PermissionsGroupMembership :user_id [:in user-ids] :group_id [:in group-ids]))
 
 (mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
   "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
@@ -752,25 +761,27 @@
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
 
-(mu/defn insert-collection-permission-graph-revision!
-  "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
-  [revision :- ::permissions.schema/collection-permission-graph-revision.create]
-  (t2/insert-returning-instance! :model/CollectionPermissionGraphRevision revision))
+(mu/defn insert-collection-permission-graph-revisions!
+  "Insert the CollectionPermissionGraphRevision `rows` in one statement and return the new instances in their order."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
+  (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision rows))
 
-(mu/defn insert-permissions-revision!
-  "Insert `revision` into PermissionsRevision and return the new instance."
-  [revision :- ::permissions.schema/permissions-revision.create]
-  (t2/insert-returning-instance! :model/PermissionsRevision revision))
+(mu/defn insert-permissions-revisions!
+  "Insert the PermissionsRevision `rows` in one statement and return the new instances in their order."
+  [rows :- [:sequential ::permissions.schema/permissions-revision.create]]
+  (t2/insert-returning-instances! :model/PermissionsRevision rows))
 
-(mu/defn insert-application-permissions-revision!
-  "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
-  [revision :- ::permissions.schema/application-permissions-revision.create]
-  (t2/insert-returning-instance! :model/ApplicationPermissionsRevision revision))
+(mu/defn insert-application-permissions-revisions!
+  "Insert the ApplicationPermissionsRevision `rows` in one statement and return the new instances in their order."
+  [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
+  (t2/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
 (mu/defn update-collection-permission-graph-revision!
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
-   changes     :- ::permissions.schema/collection-permission-graph-revision.update]
+   changes     :- [:map {:closed true}
+                   [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
+                   [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
   (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------

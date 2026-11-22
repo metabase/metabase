@@ -471,7 +471,7 @@
       (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
                       {:status-code 500})))
     (t2/with-transaction [_]
-      (let [{user-id :id :as new-user} (user/create-user! (select-keys user-data insert-fields))]
+      (let [[{user-id :id :as new-user}] (user/create-users! [(select-keys user-data insert-fields)])]
         (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true

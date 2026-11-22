@@ -82,7 +82,7 @@
                                   :creator_id       nil
                                   :auto_run_queries true}])
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-    (permissions/delete-permissions! [:like :object (str "%/db/" id "/%")])))
+    (permissions/delete-permissions! (permissions/database-permission-ids id))))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]

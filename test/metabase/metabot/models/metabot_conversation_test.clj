@@ -50,7 +50,7 @@
   (let [make! (fn [n]
                 (vec (repeatedly n (fn []
                                      (let [id (str (random-uuid))]
-                                       (metabot-conversation/create-metabot-conversation! id {:user_id (mt/user->id :rasta)})
+                                       (metabot-conversation/create-metabot-conversations! [{:id id :user_id (mt/user->id :rasta)}])
                                        id)))))
         small (make! 2)
         large (make! 6)]

@@ -25,10 +25,10 @@
   (when (seq to-remove)
     (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
     (try
-      (perms-group-membership/remove-user-from-groups! user-or-id to-remove)
+      (perms-group-membership/remove-users-from-groups! [user-or-id] (vec to-remove))
       (catch clojure.lang.ExceptionInfo e
         ;; in case sync attempts to delete the last admin,
-        ;; [[metabase.permissions.models.permissions-group-membership/remove-user-from-groups!]] will throw an exception.
+        ;; [[metabase.permissions.models.permissions-group-membership/remove-users-from-groups!]] will throw an exception.
         ;; but we don't want to block user from logging-in, so catch this exception and log a warning
         (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
           (log/warn "Attempted to remove the last admin during group sync!"
@@ -40,7 +40,7 @@
   (doseq [group-or-id to-add]
     (log/debugf "Adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))
     (try
-      (perms-group-membership/add-user-to-group! user-or-id group-or-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-or-id :group group-or-id}])
       (catch Throwable e
         ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
         ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),

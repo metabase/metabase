@@ -338,7 +338,6 @@
            permissions
            premium-features
            users
-           users.schema
            util}
    :model-exports #{:model/ApiKey}
    :model-imports #{:model/User}}

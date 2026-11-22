@@ -34,10 +34,12 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-application-permissions-revision!
-  "Insert the ApplicationPermissionsRevision `row` and return it."
-  [row :- ::permissions.schema/application-permissions-revision.create]
-  (permissions.db/insert-application-permissions-revision! row))
+(mu/defn create-application-permissions-revisions!
+  "Insert the ApplicationPermissionsRevision `rows` and return them in order."
+  [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
+  (if (empty? rows)
+    []
+    (permissions.db/insert-application-permissions-revisions! rows)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -6,7 +6,6 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,16 +42,18 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-collection-permission-graph-revision!
-  "Insert the CollectionPermissionGraphRevision `row` and return it."
-  [row :- ::permissions.schema/collection-permission-graph-revision.create]
-  (permissions.db/insert-collection-permission-graph-revision! row))
+(mu/defn create-collection-permission-graph-revisions!
+  "Insert the CollectionPermissionGraphRevision `rows` and return them in order."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
+  (if (empty? rows)
+    []
+    (permissions.db/insert-collection-permission-graph-revisions! rows)))
 
-(mu/defn update-collection-permission-graph-revision!
-  "Apply `changes` to the CollectionPermissionGraphRevision with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::permissions.schema/collection-permission-graph-revision.update]
-  (permissions.db/update-collection-permission-graph-revision! id changes))
+(mu/defn update-collection-permission-graph-revisions! :- :nil
+  "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
+  (doseq [{id :id :as row} rows]
+    (permissions.db/update-collection-permission-graph-revision! id (dissoc row :id))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

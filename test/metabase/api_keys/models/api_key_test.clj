@@ -12,8 +12,8 @@
                                                  :user_id               (mt/user->id :crowberto)
                                                  :creator_id            (mt/user->id :crowberto)
                                                  :updated_by_id         (mt/user->id :crowberto)}]
-    (is (= 1
-           (api-key/delete-api-key! api-key-id)))
+    (api-key/delete-api-keys! [api-key-id])
+    (is (not (t2/exists? :model/ApiKey :id api-key-id)))
     (is (true? (t2/select-one-fn :is_active :model/User :id (mt/user->id :crowberto))))))
 
 (deftest delete-api-key-deactivates-its-user-test
@@ -21,13 +21,13 @@
     (let [{key-id :id user-id :user_id} (mt/with-current-user (mt/user->id :crowberto)
                                           (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)}))]
       (is (true? (t2/select-one-fn :is_active :model/User :id user-id)))
-      (is (= 1 (api-key/delete-api-key! key-id)))
+      (api-key/delete-api-keys! [key-id])
       (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))))
 
 (deftest update-api-key-renames-its-user-test
   (mt/with-model-cleanup [:model/ApiKey :model/User]
     (let [{key-id :id user-id :user_id} (mt/with-current-user (mt/user->id :crowberto)
                                           (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)}))]
-      (api-key/update-api-key! key-id {:name "Renamed key"})
+      (api-key/update-api-keys! [{:id key-id :name "Renamed key"}])
       (is (= "Renamed key" (t2/select-one-fn :name :model/ApiKey :id key-id)))
       (is (= "Renamed key" (t2/select-one-fn :first_name :model/User :id user-id))))))

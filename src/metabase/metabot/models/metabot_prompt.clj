@@ -61,10 +61,10 @@
         (metabot.db/insert-prompts! (mapv #(assoc % :model (card-types (:card_id %))) rows))))
     []))
 
-(mu/defn update-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt.update-row]
+(mu/defn update-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt.update]
   "Apply the changes in `rows`, each the `:id` of a MetabotPrompt and the columns to set, setting the model of a prompt
   whose Card changes to the type of the new Card, and return `rows`. Throws a 400 when that Card does not exist."
-  [rows :- [:sequential ::metabot.schema/metabot-prompt.update-row]]
+  [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
   (let [with-card  (filter #(contains? % :card_id) rows)
         card-types (when (seq with-card) (card-types-of with-card))
         changes-by-id (into {}
@@ -83,19 +83,6 @@
   (when (seq prompt-ids)
     (t2/with-transaction [_conn]
       (metabot.db/delete-prompts! (vec prompt-ids))))
-  nil)
-
-(mu/defn delete-metabot-prompt! :- :nil
-  "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   prompt-id  :- ms/PositiveInt]
-  (metabot.db/delete-metabot-prompt! metabot-id prompt-id)
-  nil)
-
-(mu/defn delete-metabot-prompts-for-metabot! :- :nil
-  "Delete the MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (metabot.db/delete-prompts-for-metabot! metabot-id)
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

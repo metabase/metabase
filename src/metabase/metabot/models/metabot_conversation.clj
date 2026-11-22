@@ -64,13 +64,15 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-metabot-conversation!
-  "Insert the MetabotConversation `row` under the client-generated `conversation-id`."
-  [conversation-id :- :string
-   row             :- ::metabot.schema/metabot-conversation.create]
-  (t2/with-transaction [_conn]
-    (u/prog1 (metabot.db/insert-conversation! conversation-id row)
-      (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
+(mu/defn create-metabot-conversations! :- [:sequential ::metabot.schema/metabot-conversation]
+  "Insert the MetabotConversation `rows`, each under its client-generated `:id`, and return them in order, publishing
+  the event of the write."
+  [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (u/prog1 (metabot.db/insert-conversations! rows)
+        (events/publish-event! :event/metabot-conversation-create (events/create-event <>))))))
 
 (mu/defn upsert-metabot-conversation!
   "Insert or update the MetabotConversation with `conversation-id`; `update-fn` receives the existing row, or nil, and

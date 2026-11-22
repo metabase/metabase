@@ -256,7 +256,7 @@
       (letfn [(get-user [req-user status]
                 (testing (format "- get user with %s user" (mt/user-descriptor user))
                   (mt/with-model-cleanup [:model/User]
-                    (let [new-user (user/create-user! {:email "get-user-api-test-1@example.com"})]
+                    (let [[new-user] (user/create-users! [{:email "get-user-api-test-1@example.com"}])]
                       (mt/user-http-request req-user :get status (format "user/%d" (:id new-user)))))))]
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
@@ -282,7 +282,7 @@
         [group {:name "New Group"}
          user  [group]]
         (mt/with-model-cleanup [:model/User]
-          (let [user-to-update (user/create-user! {:email "update-user-api-test-1@example.com"})]
+          (let [[user-to-update] (user/create-users! [{:email "update-user-api-test-1@example.com"}])]
             (letfn [(update-user-firstname! [req-user status]
                       (testing (format "- update users firstname with %s test-user" (mt/user-descriptor user))
                         (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
@@ -312,7 +312,7 @@
                     (remove-user-from-group! [req-user status group-to-remove]
                       (u/ignore-exceptions
                         ;; ensure `user-to-update` is in `group-to-remove`
-                        (perms-group-membership/add-user-to-group! user-to-update group-to-remove))
+                        (perms-group-membership/add-users-to-groups! [{:user user-to-update :group group-to-remove}]))
                       (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                             new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
                                                                                   (:id %))
@@ -423,7 +423,7 @@
   (testing "PUT /api/user/:id refuses to make an admin a group manager"
     (mt/with-premium-features #{:advanced-permissions}
       (mt/with-model-cleanup [:model/User]
-        (let [admin (user/create-user! {:email "admin-group-manager@example.com" :is_superuser true})]
+        (let [[admin] (user/create-users! [{:email "admin-group-manager@example.com" :is_superuser true}])]
           (mt/with-temp [:model/PermissionsGroup group {}]
             (is (= "Admin cannot be a group manager."
                    (mt/user-http-request :crowberto :put 400 (format "user/%d" (:id admin))
@@ -443,9 +443,9 @@
                  :model/User             plain         {}
                  :model/User             member        {}
                  :model/User             newcomer      {}]
-    (perms-group-membership/add-user-to-group! manager group true)
-    (perms-group-membership/add-user-to-group! other-manager other-group true)
-    (perms-group-membership/add-user-to-group! member group)
+    (perms-group-membership/add-users-to-groups! [{:user manager :group group :is-group-manager? true}])
+    (perms-group-membership/add-users-to-groups! [{:user other-manager :group other-group :is-group-manager? true}])
+    (perms-group-membership/add-users-to-groups! [{:user member :group group}])
     (f {:group         group
         :manager       manager
         :other-manager other-manager

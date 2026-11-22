@@ -412,13 +412,13 @@
 (defn- e2e-usage-auditing-group-id!
   []
   (or (testing-api.db/permissions-group-id e2e-usage-auditing-group-name)
-      (:id (permissions-group/create-permissions-group! {:name e2e-usage-auditing-group-name}))))
+      (:id (first (permissions-group/create-permissions-groups! [{:name e2e-usage-auditing-group-name}])))))
 
 (defn- ensure-seeded-usage-auditing-group-membership!
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
     (when-not (testing-api.db/group-membership-exists? user-id group-id)
-      (perms-group-membership/add-user-to-group! user-id group-id))))
+      (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))))
 
 (defn- delete-seeded-usage-auditing-data!
   []

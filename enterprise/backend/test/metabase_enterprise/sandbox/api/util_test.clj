@@ -30,12 +30,12 @@
 (deftest enforce-sandbox?-test
   (testing "If a user is in a single group with a sandbox, the sandbox should be enforced"
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "enforce-sandbox-test-1@example.com"})]
+      (let [[user] (user/create-users! [{:email "enforce-sandbox-test-1@example.com"}])]
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (is (sandbox.api.util/sandboxed-user?))))))
   (testing "If a user is in another group with view data access, the sandbox should not be enforced"
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "enforce-sandbox-test-2@example.com"})]
+      (let [[user] (user/create-users! [{:email "enforce-sandbox-test-2@example.com"}])]
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (mt/with-full-data-perms-for-all-users!
             (is (not (sandbox.api.util/sandboxed-user?))))))))
@@ -43,7 +43,7 @@
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
     ;; to fail closed
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "enforce-sandbox-test-3@example.com"})]
+      (let [[user] (user/create-users! [{:email "enforce-sandbox-test-3@example.com"}])]
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
             (is (sandbox.api.util/sandboxed-user?)))))))
@@ -51,7 +51,7 @@
     ;; Similar to above, this is also an unsupported configuration for querying, but we want to treat this user as
     ;; sandboxed
     (mt/with-model-cleanup [:model/User]
-      (let [{user-id :id} (user/create-user! {:email "enforce-sandbox-test-4@example.com"})]
+      (let [[{user-id :id}] (user/create-users! [{:email "enforce-sandbox-test-4@example.com"}])]
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                        :model/PermissionsGroupMembership _ {:user_id user-id
                                                             :group_id group-id}]
@@ -63,7 +63,7 @@
   (testing "If a user is in two groups with conflicting sandboxes, *and* a third group that grants full access to the table,
             neither sandbox is enforced"
     (mt/with-model-cleanup [:model/User]
-      (let [user (user/create-user! {:email "enforce-sandbox-test-5@example.com"})]
+      (let [[user] (user/create-users! [{:email "enforce-sandbox-test-5@example.com"}])]
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
             (mt/with-full-data-perms-for-all-users!

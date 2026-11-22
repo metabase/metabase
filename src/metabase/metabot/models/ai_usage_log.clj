@@ -15,10 +15,11 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-ai-usage-log!
-  "Record the LLM call `row`."
-  [row :- ::metabot.schema/ai-usage-log.create]
-  (metabot.db/insert-usage-log! row))
+(mu/defn create-ai-usage-logs!
+  "Record the LLM call `rows` in one statement."
+  [rows :- [:sequential ::metabot.schema/ai-usage-log.create]]
+  (when (seq rows)
+    (metabot.db/insert-usage-logs! rows)))
 
 (mu/defn delete-ai-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

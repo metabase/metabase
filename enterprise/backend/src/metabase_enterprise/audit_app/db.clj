@@ -138,17 +138,18 @@
 (mu/defn delete-pulse-channel-recipients-of-user!
   "Delete the PulseChannelRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (pulse/delete-pulse-channel-recipients-for-user! user-id))
+  (pulse/delete-pulse-channel-recipients-for-users! [user-id]))
 
 (mu/defn delete-notification-recipients-of-user!
   "Delete the NotificationRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (models.notification/delete-notification-recipients-for-user! user-id))
+  (models.notification/delete-notification-recipients-for-users! [user-id]))
 
 (mu/defn archive-pulses-of-creator!
   "Archive the unarchived Pulses created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (pulse/update-pulses! (vec (t2/select-pks-vec :model/Pulse :creator_id user-id :archived false)) {:archived true}))
+  (pulse/update-pulses! (mapv (fn [id] {:id id :archived true})
+                              (t2/select-pks-vec :model/Pulse :creator_id user-id :archived false))))
 
 (mu/defn deactivate-notifications-of-creator!
   "Deactivate the active Notifications created by the User with `user-id`."

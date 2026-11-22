@@ -1282,7 +1282,7 @@
     (mt/with-premium-features #{}
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (let [{user-id :id} (user/create-user! {:email "oss-db-access-test@example.com"})
+          (let [[{user-id :id}] (user/create-users! [{:email "oss-db-access-test@example.com"}])
                 [collection]  (collection/create-collections! [{:name "Published Tables"}])]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})

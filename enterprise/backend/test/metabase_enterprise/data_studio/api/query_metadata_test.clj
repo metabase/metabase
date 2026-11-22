@@ -13,7 +13,7 @@
     (testing "GET /api/table/:id/query_metadata"
       (testing "Published tables in collections should be accessible with collection read permission (no data permissions)"
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [{group-id :id} (perms-group/create-permissions-group! {:name "Collection Readers"})]
+          (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Collection Readers"}])]
             (mt/with-temp [:model/Collection coll     {:type "library-data"}
                            :model/Database db         {}
                            :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id (u/the-id coll)}
@@ -28,7 +28,7 @@
                   (is (= 2 (count (:fields response))))))))))
       (testing "Published tables in root collection should be accessible with root collection read permission"
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [{group-id :id} (perms-group/create-permissions-group! {:name "Root Collection Readers"})]
+          (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Root Collection Readers"}])]
             (mt/with-temp [:model/Database db         {}
                            :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id nil}
                            :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
@@ -39,7 +39,7 @@
                   (is (= (u/the-id table) (:id response)))))))))
       (testing "Unpublished tables require data permissions"
         (mt/with-model-cleanup [:model/PermissionsGroup]
-          (let [{group-id :id} (perms-group/create-permissions-group! {:name "Unpublished Table Readers"})]
+          (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Unpublished Table Readers"}])]
             (mt/with-temp [:model/Database db         {}
                            :model/Table    table      {:db_id (u/the-id db) :is_published false}
                            :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}

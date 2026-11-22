@@ -19,7 +19,7 @@
   retrieve-alert
   retrieve-alerts-for-cards
   retrieve-pulse
-  update-pulse!]
+  update-pulses!]
  [metabase.pulse.update-alerts
   card-change-invalidates-alerts?
   alerts-of-card-being-changed

@@ -176,7 +176,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (price-definition)}]
-        (perms-group-membership/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -215,7 +215,7 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}]
-        (perms-group-membership/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable

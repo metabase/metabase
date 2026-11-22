@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -108,42 +107,50 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-tenant! :- ::tenants.schema/tenant
-  "Insert `tenant` with a new Collection of its own and return it, publishing the event of the write; the name or slug
-  of an existing Tenant is a 400."
-  [{tenant-name :name :keys [slug] :as tenant} :- ::tenants.schema/tenant.create]
-  (t2/with-transaction [_conn]
-    (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
-      (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
-    (let [collection-id (:id (first (collection/create-collections!
-                                     [{:type      collection/tenant-specific-root-collection-type
-                                       :name      (format "Tenant Collection: %s" tenant-name)
-                                       :namespace :tenant-specific}])))]
-      (u/prog1 (tenants.db/insert-tenant! (assoc tenant :tenant_collection_id collection-id))
-        (events/publish-event! :event/tenant-create (events/create-event [<>]))))))
+(mu/defn create-tenants! :- [:sequential ::tenants.schema/tenant]
+  "Insert the Tenant `rows`, each with a new Collection of its own, and return them in order, publishing the event of
+  the write; the name or slug of an existing Tenant is a 400."
+  [rows :- [:sequential ::tenants.schema/tenant.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (when (tenants.db/tenant-name-or-slug-exists? (mapv :name rows) (mapv :slug rows))
+        (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
+      (let [collections (collection/create-collections!
+                         (for [{tenant-name :name} rows]
+                           {:type      collection/tenant-specific-root-collection-type
+                            :name      (format "Tenant Collection: %s" tenant-name)
+                            :namespace :tenant-specific}))]
+        (u/prog1 (tenants.db/insert-tenants! (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections))
+          (events/publish-event! :event/tenant-create (events/create-event <>)))))))
 
-(mu/defn update-tenant!
-  "Apply `changes` to the Tenant with `tenant-id`, publishing the events of the writes. The name of another Tenant is a
-  400. Deactivating the Tenant deactivates its active Users, and activating it reactivates the Users deactivated with
-  it."
-  [tenant-id :- ms/PositiveInt
-   changes   :- ::tenants.schema/tenant.update]
+(defn- update-tenant!
+  "Apply `row`, an `:id` and its changes, to its Tenant as [[update-tenants!]] does, returning whether it exists."
+  [{tenant-id :id :as row}]
+  (let [changes       (dissoc row :id)
+        stored        (tenants.db/tenant tenant-id)
+        changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))
+        active        (:is_active changes)]
+    (when (and changes-name? (tenants.db/other-tenant-named? (:name changes) tenant-id))
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+    (tenants.db/update-tenant! tenant-id changes)
+    (when stored
+      (events/publish-event! :event/tenant-update (events/update-event {tenant-id stored} [row]))
+      (when (and (some? active) (not= active (:is_active stored)))
+        (if active
+          (user/update-users! (user/deactivated-with-tenant-user-ids tenant-id)
+                              {:is_active true :deactivated_with_tenant nil})
+          (user/update-users! (user/active-user-ids-of-tenant tenant-id)
+                              {:is_active false :deactivated_with_tenant true})))
+      true)))
+
+(mu/defn update-tenants! :- [:sequential ::tenants.schema/tenant.update]
+  "Apply the `rows`, each an `:id` and its changes, to their Tenants and return the rows that exist, publishing the
+  events of the writes; the name of another Tenant is a 400, deactivating a Tenant deactivates its active Users, and
+  activating it reactivates the Users deactivated with it."
+  [rows :- [:sequential ::tenants.schema/tenant.update]]
   (t2/with-transaction [_conn]
-    (let [stored        (tenants.db/tenant tenant-id)
-          changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))
-          active        (:is_active changes)]
-      (when (and changes-name? (tenants.db/other-tenant-named? (:name changes) tenant-id))
-        (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
-      (u/prog1 (tenants.db/update-tenant! tenant-id changes)
-        (when stored
-          (events/publish-event! :event/tenant-update
-                                 (events/update-event {tenant-id stored} [(assoc changes :id tenant-id)]))
-          (when (and (some? active) (not= active (:is_active stored)))
-            (if active
-              (user/update-users! (user/deactivated-with-tenant-user-ids tenant-id)
-                                  {:is_active true :deactivated_with_tenant nil})
-              (user/update-users! (user/active-user-ids-of-tenant tenant-id)
-                                  {:is_active false :deactivated_with_tenant true}))))))))
+    (filterv update-tenant! rows)))
 
 (defenterprise deactivate-tenants!
   "Deactivate every active Tenant and every active tenant User, marking those Users as deactivated with their Tenant,

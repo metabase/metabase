@@ -19,7 +19,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-model-cleanup [:model/Tenant :model/Collection]
-          (let [{tenant-collection-id :tenant_collection_id} (tenants.model/create-tenant! {:name "TestyLilTenant" :slug "test"})]
+          (let [[{tenant-collection-id :tenant_collection_id}] (tenants.model/create-tenants! [{:name "TestyLilTenant" :slug "test"}])]
             (testing "tenant_collection_id is set and references a valid collection"
               (is (some? tenant-collection-id))
               (is (t2/exists? :model/Collection :id tenant-collection-id)))
@@ -38,7 +38,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-model-cleanup [:model/Tenant :model/Collection]
-          (let [{tenant-collection-id :tenant_collection_id} (tenants.model/create-tenant! {:name "My Company Inc" :slug "mycompany"})
+          (let [[{tenant-collection-id :tenant_collection_id}] (tenants.model/create-tenants! [{:name "My Company Inc" :slug "mycompany"}])
                 coll                                         (t2/select-one :model/Collection :id tenant-collection-id)]
             (is (= "Tenant Collection: My Company Inc" (:name coll)))))))))
 
@@ -203,23 +203,23 @@
 
 (deftest tenant-schema-checks-columns-test
   (testing "slug must be lower-case letters, digits, dashes and underscores"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:slug "UPPER"}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :slug "UPPER"}))))
   (testing "name cannot be blank"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:name " "}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :name " "}))))
   (testing "attribute keys cannot start with @"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:attributes {"@tenant.slug" "other"}}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :attributes {"@tenant.slug" "other"}}))))
   (testing "valid columns pass"
-    (is (mr/validate ::tenants.schema/tenant.update {:name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
+    (is (mr/validate ::tenants.schema/tenant {:id 1 :name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
 
 (deftest create-tenant-checks-name-and-slug-uniqueness-test
   (mt/with-temp [:model/Tenant _ {:name "Unique Tenant" :slug "unique-tenant"}]
     (mt/with-model-cleanup [:model/Tenant]
       (testing "name of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (tenants.model/create-tenant! {:name "Unique Tenant" :slug "other-unique-tenant"}))))
+                              (tenants.model/create-tenants! [{:name "Unique Tenant" :slug "other-unique-tenant"}]))))
       (testing "slug of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (tenants.model/create-tenant! {:name "Other Unique Tenant" :slug "unique-tenant"})))))))
+                              (tenants.model/create-tenants! [{:name "Other Unique Tenant" :slug "unique-tenant"}])))))))
 
 (deftest update-checks-tenant-columns-test
   (mt/with-temp [:model/Tenant {id :id} {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
@@ -233,7 +233,7 @@
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                            (tenants.model/update-tenant! id {:name "Taken Tenant"}))))
+                            (tenants.model/update-tenants! [{:id id :name "Taken Tenant"}]))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))
@@ -246,14 +246,14 @@
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
     (user/update-users! [inactive-id] {:is_active false})
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
-      (tenants.model/update-tenant! tenant-id {:is_active false})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
       (testing "active users of tenant are deactivated with it"
         (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
       (testing "users deactivated before tenant are not marked"
         (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
       (testing "users of other tenants stay active"
         (is (=? {:is_active true} (state other-id))))
-      (tenants.model/update-tenant! tenant-id {:is_active true})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active true}])
       (testing "reactivating tenant reactivates only users deactivated with it"
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
@@ -266,7 +266,7 @@
                  :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
                  :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id user-id}
                  :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id other-id}]
-    (tenants.model/update-tenant! tenant-id {:is_active false})
+    (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
     (is (not (t2/exists? :model/PulseChannelRecipient :user_id user-id)))
     (is (t2/exists? :model/PulseChannelRecipient :user_id other-id))))
 
@@ -280,7 +280,7 @@
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
         (finally
-          (run! #(tenants.model/update-tenant! % {:is_active true}) active-ids))))))
+          (run! #(tenants.model/update-tenants! [{:id % :is_active true}]) active-ids))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Tenant Permissions                                               |

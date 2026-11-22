@@ -332,7 +332,7 @@
 
 (deftest no-personal-collection-test
   (mt/with-model-cleanup [:model/User]
-    (let [{user-id :id} (user/create-user! {:email (mt/random-email) :type :api-key})]
+    (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email) :type :api-key}])]
       (mt/with-current-user user-id
         (testing "a user without a personal collection gets instructions for choosing a collection"
           (is (= {:class :recoverable
@@ -502,7 +502,7 @@
 (deftest read-only-destination-without-personal-collection-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-model-cleanup [:model/User]
-      (let [{user-id :id} (user/create-user! {:email (mt/random-email) :type :api-key})]
+      (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email) :type :api-key}])]
         (mt/with-temp [:model/Collection coll {}
                        :model/Dashboard dash {:collection_id (:id coll)}
                        :model/Document doc {:collection_id (:id coll) :document document-ast}]

@@ -45,10 +45,10 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [new-user   (user/create-user! {:email        email
-                                       :first_name   first-name
-                                       :last_name    last-name
-                                       :is_superuser true})
+  (let [[new-user]   (user/create-users! [{:email        email
+                                           :first_name   first-name
+                                           :last_name    last-name
+                                           :is_superuser true}])
         user-id    (u/the-id new-user)]
     (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]

@@ -29,7 +29,7 @@
         (testing "deleting one key"
           (let [{key-id :id user-id :user_id} (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)})
                 access                        (access.tu/give-access! user-id)]
-            (api-key/delete-api-key! key-id)
+            (api-key/delete-api-keys! [key-id])
             (is (= access.tu/revoked (access.tu/access-state access)))
             (is (false? (t2/select-one-fn :is_active :model/User :id user-id)))))
         (testing "deleting every key of a scope"

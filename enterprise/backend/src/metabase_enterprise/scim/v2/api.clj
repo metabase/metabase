@@ -275,7 +275,7 @@
       (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (user/create-user! mb-user)
+                       (user/create-users! [mb-user])
                        (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
@@ -468,7 +468,7 @@
                  group-id (count user-entity-ids))
       (do
         (doseq [user-id (set/difference current-ids desired-ids)]
-          (perms-group-membership/remove-user-from-group! user-id group-id))
+          (perms-group-membership/remove-users-from-groups! [user-id] [group-id]))
         (perms-group-membership/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
                                                        {:group group-id :user user-id}))))))
 
@@ -487,7 +487,7 @@
       (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (permissions-group/create-permissions-group! {:name group-name})]
+        (let [[new-group] (permissions-group/create-permissions-groups! [{:name group-name}])]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -510,7 +510,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (permissions-group/update-permissions-group! (u/the-id group) {:name group-name})
+          (permissions-group/update-permissions-groups! [{:id (u/the-id group) :name group-name}])
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -528,5 +528,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (permissions-group/delete-permissions-group! (u/the-id group))
+      (permissions-group/delete-permissions-groups! [(u/the-id group)])
       (scim-response nil 204))))

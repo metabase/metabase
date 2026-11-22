@@ -330,8 +330,10 @@
    [:forked_from_conversation_id {:optional true} [:maybe :string]]])
 
 (mr/def ::metabot-conversation.create
-  "What creating a MetabotConversation under a given id takes: its user, and the conversation it was forked from."
+  "What creating a MetabotConversation takes: its client-generated id, its user, and the conversation it was forked
+  from."
   [:map {:closed true}
+   [:id                                           :string]
    [:user_id                                      ::lib.schema.id/user]
    [:forked_from_conversation_id {:optional true} [:maybe :string]]])
 
@@ -374,14 +376,8 @@
 
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
-  [:merge
-   ::metabot-message.update
-   [:map {:closed true}
-    [:id                     ms/PositiveInt]]])
-
-(mr/def ::metabot-message.update
-  "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
   [:map {:closed true}
+   [:id                     ms/PositiveInt]
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:profile_id             {:optional true} [:maybe :string]]
    [:role                   {:optional true} [:maybe [:or :keyword :string]]]
@@ -404,6 +400,10 @@
    [:context_tokens         {:optional true} [:maybe :int]]
    [:finish_reason          {:optional true} [:maybe :string]]
    [:context_window_full    {:optional true} [:maybe :boolean]]])
+
+(mr/def ::metabot-message.update
+  "What an update of a MetabotMessage takes: its `:id` and the columns to set."
+  ::metabot-message)
 
 (mr/def ::metabot-message.soft-delete-conditions
   "Which MetabotMessages a soft delete matches: at least one of an id or ids, a channel, a Slack message and a role."
@@ -444,11 +444,13 @@
   [:merge
    ::metabot-prompt.update
    [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+    [:id ms/PositiveInt]]])
 
 (mr/def ::metabot-prompt.update
-  "What an update (or insert) of a MetabotPrompt accepts: every column of `:metabot_prompt` except `id`, all optional."
+  "What an update of a MetabotPrompt takes: its `:id` and the columns to set; the `:id` is optional so that the generic
+  entity writes of `metabase.models.db` can insert with it."
   [:map {:closed true}
+   [:id         {:optional true} ms/PositiveInt]
    [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]
@@ -466,10 +468,6 @@
    [:prompt     :string]
    [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id  {:optional true} [:maybe :string]]])
-
-(mr/def ::metabot-prompt.update-row
-  "A change of a MetabotPrompt: its `:id` and the columns to set."
-  [:merge ::metabot-prompt.update [:map [:id ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."

@@ -235,18 +235,18 @@
   "Insert a turn's in-flight assistant row (`:finished` nil until
   [[finalize-assistant-turn!]] resolves it); returns its pk."
   [conversation-id profile-id external-id ai-proxy? & {:keys [user-id channel-id]}]
-  (metabot-message/create-metabot-message!
-   (cond-> {:conversation_id conversation-id
-            :data            []
-            :data_version    schema.v2/current-data-version
-            :role            :assistant
-            :profile_id      profile-id
-            :external_id     external-id
-            :total_tokens    0
-            :ai_proxied      (boolean ai-proxy?)
-            :finished        nil}
-     user-id    (assoc :user_id user-id)
-     channel-id (assoc :channel_id channel-id))))
+  (:id (first (metabot-message/create-metabot-messages!
+               [(cond-> {:conversation_id conversation-id
+                         :data            []
+                         :data_version    schema.v2/current-data-version
+                         :role            :assistant
+                         :profile_id      profile-id
+                         :external_id     external-id
+                         :total_tokens    0
+                         :ai_proxied      (boolean ai-proxy?)
+                         :finished        nil}
+                  user-id    (assoc :user_id user-id)
+                  channel-id (assoc :channel_id channel-id))]))))
 
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
@@ -441,28 +441,28 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (metabot-message/update-metabot-message! assistant-msg-id
-                                             (cond-> {:data           content
-                                                      :data_version   schema.v2/current-data-version
-                                                      :usage          usage
-                                                      :total_tokens   (->> (vals usage)
-                                                                           (map #(+ (:prompt %) (:completion %)))
-                                                                           (reduce + 0))
-                                                      :context_tokens context-tokens
-                                                      :finished       (boolean finished?)
-                                                      ;; Recorded whatever else the turn did: a turn the client
-                                                      ;; abandoned, or one that also errored, was still truncated
-                                                      ;; or filtered, and support and EE analytics read that back.
-                                                      ;; `row->status` ranks aborted and errored ahead of it, so
-                                                      ;; the status the client sees is unchanged.
-                                                      :finish_reason  finish-reason
-                                                      :error          (safe-encode-error error)}
-                                               turn-state   (assoc :state turn-state)
-                                               slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                                               channel-id   (assoc :channel_id channel-id)
-                                               ;; Set only on a full turn, so every other row keeps NULL.
-                                               (filled-context-window? finish-reason context-tokens context-window-tokens)
-                                               (assoc :context_window_full true)))
+    (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
+                                                        :data           content
+                                                        :data_version   schema.v2/current-data-version
+                                                        :usage          usage
+                                                        :total_tokens   (->> (vals usage)
+                                                                             (map #(+ (:prompt %) (:completion %)))
+                                                                             (reduce + 0))
+                                                        :context_tokens context-tokens
+                                                        :finished       (boolean finished?)
+                                                        ;; Recorded whatever else the turn did: a turn the client
+                                                        ;; abandoned, or one that also errored, was still truncated
+                                                        ;; or filtered, and support and EE analytics read that back.
+                                                        ;; `row->status` ranks aborted and errored ahead of it, so
+                                                        ;; the status the client sees is unchanged.
+                                                        :finish_reason  finish-reason
+                                                        :error          (safe-encode-error error)}
+                                                 turn-state   (assoc :state turn-state)
+                                                 slack-msg-id (assoc :slack_msg_id slack-msg-id)
+                                                 channel-id   (assoc :channel_id channel-id)
+                                                 ;; Set only on a full turn, so every other row keeps NULL.
+                                                 (filled-context-window? finish-reason context-tokens context-window-tokens)
+                                                 (assoc :context_window_full true))])
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -601,7 +601,7 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (metabot-message/update-metabot-message! msg-id {:slack_msg_id slack-msg-id})))
+    (metabot-message/update-metabot-messages! [{:id msg-id :slack_msg_id slack-msg-id}])))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."
@@ -906,8 +906,8 @@
       (let [to-clone            (conj (vec before) target)
             new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
-          (metabot-conversation/create-metabot-conversation! new-conversation-id
-                                                             {:user_id                     user-id
-                                                              :forked_from_conversation_id conversation-id})
+          (metabot-conversation/create-metabot-conversations! [{:id                          new-conversation-id
+                                                                :user_id                     user-id
+                                                                :forked_from_conversation_id conversation-id}])
           (metabot-message/create-metabot-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

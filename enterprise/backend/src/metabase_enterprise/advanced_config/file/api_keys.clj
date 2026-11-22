@@ -77,19 +77,19 @@
         (log/info (u/format-color :green "Creating new API key"))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
-              user  (user/create-user! {:email      email
-                                        :first_name name
-                                        :last_name  ""
-                                        :type       :api-key
-                                        :password   (str (random-uuid))})]
+              [user]  (user/create-users! [{:email      email
+                                            :first_name name
+                                            :last_name  ""
+                                            :type       :api-key
+                                            :password   (str (random-uuid))}])]
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key
-          (api-key/create-api-key! {:user_id               (u/the-id user)
-                                    :name                  name
-                                    ::api-keys/unhashed-key unhashed-key
-                                    :creator_id            (u/the-id creator)
-                                    :updated_by_id         (u/the-id creator)}))))))
+          (first (api-key/create-api-keys! [{:user_id               (u/the-id user)
+                                             :name                  name
+                                             ::api-keys/unhashed-key unhashed-key
+                                             :creator_id            (u/the-id creator)
+                                             :updated_by_id         (u/the-id creator)}])))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]
