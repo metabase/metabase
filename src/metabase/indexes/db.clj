@@ -70,26 +70,36 @@
    statuses     :- [:set Status]]
   (t2/exists? :model/TableIndex :transform_id transform-id :status [:in statuses]))
 
+(def ^:private StatusChanges
+  "The columns a status change of a TableIndex sets."
+  [:map {:closed true}
+   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:last_executed_at {:optional true} [:= :%now]]])
+
+(mu/defn table-index-statuses
+  "The id, status and error message of each of the TableIndexes with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
+
 (mu/defn mark-table-indexes-running!
-  "Set the TableIndexes among `ids` whose status is in `from-statuses` to running."
-  [ids           :- [:set ms/PositiveInt]
-   from-statuses :- [:set Status]]
-  (t2/update! :model/TableIndex {:id [:in ids] :status [:in from-statuses]} {:status :running}))
+  "Apply `changes` to the TableIndexes among `ids` whose status is in `from-statuses`."
+  [ids           :- [:sequential {:min 1} ms/PositiveInt]
+   from-statuses :- [:set Status]
+   changes       :- StatusChanges]
+  (t2/update! :model/TableIndex {:id [:in ids] :status [:in from-statuses]} changes))
 
 (mu/defn mark-running-table-indexes-failed!
-  "Set the running TableIndexes among `ids` to failed with `error-message`."
-  [ids           :- [:set ms/PositiveInt]
-   error-message :- :string]
-  (t2/update! :model/TableIndex
-              {:id [:in ids] :status :running}
-              {:status           :failed
-               :error_message    error-message
-               :last_executed_at :%now}))
+  "Apply `changes` to the running TableIndexes among `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- StatusChanges]
+  (t2/update! :model/TableIndex {:id [:in ids] :status :running} changes))
 
-(mu/defn mark-table-indexes-update-pending!
-  "Set the TableIndexes with `ids` to update-pending and clear their error."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/TableIndex {:id [:in ids]} {:status :update-pending, :error_message nil}))
+(mu/defn update-table-index-statuses!
+  "Apply `changes` to the TableIndexes with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- StatusChanges]
+  (t2/update! :model/TableIndex {:id [:in ids]} changes))
 
 (mu/defn table-index-exists-for-transform?
   "Whether the Transform with `transform-id` has a TableIndex named `index-name`."
@@ -121,11 +131,3 @@
   "Delete the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/TableIndex :id [:in ids]))
-
-(mu/defn mark-table-indexes-executed!
-  "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:status        {:optional true} [:maybe [:or :keyword :string]]]
-               [:error_message {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))

@@ -148,6 +148,13 @@
    error-message :- :string]
   (indexes.db/mark-table-index-failed! transform-id index-name error-message))
 
+(defn- status-change-groups
+  "The `[changes ids]` pairs that apply `changes` to `rows`, the TableIndexes as stored, with one statement each: rows
+  that already hold some of the values get the rest, so that no update is split per row."
+  [rows changes]
+  (mi/group-ids-by-changes (into {} (map (juxt :id identity)) rows)
+                           (mapv #(assoc changes :id (:id %)) rows)))
+
 (mu/defn mark-table-indexes-executed! :- :nil
   "Apply `changes`, a status and an error message, to the TableIndexes with `ids` as the outcome of the run that just
   executed them."
@@ -155,7 +162,10 @@
    changes :- [:map {:closed true}
                [:status        {:optional true} [:maybe [:or :keyword :string]]]
                [:error_message {:optional true} [:maybe :string]]]]
-  (indexes.db/mark-table-indexes-executed! ids changes)
+  (when (seq ids)
+    (doseq [[changes ids] (status-change-groups (indexes.db/table-index-statuses (vec ids))
+                                                (assoc changes :last_executed_at :%now))]
+      (indexes.db/update-table-index-statuses! ids changes)))
   nil)
 
 (defn mark-runnable-indexes-running!
@@ -165,14 +175,20 @@
   [index-request-ids]
   (let [ids (set index-request-ids)]
     (when (seq ids)
-      (indexes.db/mark-table-indexes-running! ids runnable-statuses))
+      (doseq [[changes ids] (status-change-groups (filterv (comp runnable-statuses :status)
+                                                           (indexes.db/table-index-statuses (vec ids)))
+                                                  {:status :running :error_message nil})]
+        (indexes.db/mark-table-indexes-running! ids runnable-statuses changes)))
     ids))
 
 (defn mark-unverified-running-indexes-failed!
   "Mark rows from [[mark-runnable-indexes-running!]] that are still running as failed."
   [ids message]
   (when (seq ids)
-    (indexes.db/mark-running-table-indexes-failed! ids message)))
+    (doseq [[changes ids] (status-change-groups (filterv #(= :running (:status %))
+                                                         (indexes.db/table-index-statuses (vec ids)))
+                                                {:status :failed :error_message message :last_executed_at :%now})]
+      (indexes.db/mark-running-table-indexes-failed! ids changes))))
 
 (defn mark-for-revalidation!
   "Flip the applicable index requests of the Transforms with `transform-ids` to `:update-pending` and clear stale errors,
@@ -181,7 +197,9 @@
   [transform-ids]
   (when-let [transform-ids (not-empty (vec (remove nil? transform-ids)))]
     (when-let [ids (seq (indexes.db/applicable-table-index-ids-for-transforms transform-ids))]
-      (indexes.db/mark-table-indexes-update-pending! (vec ids)))))
+      (doseq [[changes ids] (status-change-groups (indexes.db/table-index-statuses (vec ids))
+                                                  {:status :update-pending :error_message nil})]
+        (indexes.db/update-table-index-statuses! ids changes)))))
 
 ;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
