@@ -2150,6 +2150,32 @@
           (is (= 400 (:status-code (ex-data ex))))
           (is (= "Cannot update properties on a semantic layer collection." (ex-message ex))))))))
 
+(deftest plain-writes-of-fixed-collections-are-refused-test
+  (testing "A plain update is refused by the update hook with the message of the write function"
+    (testing "of the Trash"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot modify the Trash Collection."
+                            (t2/update! :model/Collection :id (collection/trash-collection-id) {:description "Changed"}))))
+    (testing "of the owner of a Personal Collection"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You are not allowed to change the owner of a Personal Collection."
+                            (t2/update! :model/Collection :id (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                                        {:personal_owner_id (mt/user->id :crowberto)}))))
+    (testing "of a Collection moved into its own descendant"
+      (mt/with-temp [:model/Collection parent {}
+                     :model/Collection child  {:location (collection/children-location parent)}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot move a Collection into itself or into one of its descendants."
+                              (t2/update! :model/Collection :id (:id parent) {:location (collection/children-location child)})))))
+    (testing "of a section of the library"
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/Collection section {:type      collection/library-data-collection-type
+                                                  :entity_id "librarylibrarydatadat"}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection."
+                                (t2/update! :model/Collection :id (:id section) {:name "Renamed"})))))))
+  (testing "A plain insert of a Personal Collection outside the default namespace is refused by the insert hook"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Personal Collections must be in the default namespace"
+                          (t2/insert! :model/Collection {:name              "Snippets"
+                                                         :namespace         "snippets"
+                                                         :personal_owner_id (mt/user->id :lucky)})))))
+
 (deftest only-one-library-test
   (mt/with-premium-features #{}
     (mt/with-temp [:model/Collection _library {:type collection/library-collection-type}]

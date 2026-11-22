@@ -44,10 +44,21 @@
   {:in  identity
    :out blob->bytes})
 
+(def ^:private column-normalizers
+  "The function that converts a value of each column of a DataApp that a transform converts on its way in."
+  {:name          #(lib/normalize ::data-apps.schema/name %)
+   :description   #(lib/normalize ::data-apps.schema/description %)
+   :bundle_path   #(lib/normalize ::data-apps.schema/bundle-path %)
+   :allowed_hosts #(lib/normalize ::data-apps.schema/allowed-hosts %)})
+
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
+   :name          {:in (:name column-normalizers) :out identity}
+   :description   {:in (:description column-normalizers) :out identity}
+   :bundle_path   {:in (:bundle_path column-normalizers) :out identity}
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json})
+   :allowed_hosts {:in  (comp mi/json-in (:allowed_hosts column-normalizers))
+                   :out (:out mi/transform-json)}})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -71,14 +82,15 @@
   (cond-> row
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
-(defn- prepare
-  "The DataApp `row` normalized with `schema`, with the bundle hash of its bundle."
-  [schema row]
-  (with-bundle-hash (lib/normalize schema row)))
+(defn- with-derived-columns
+  "The DataApp `row`, or the changes of one, with version 1 for a nil version and the bundle hash of its bundle."
+  [row]
+  (cond-> (with-bundle-hash row)
+    (and (contains? row :version) (nil? (:version row))) (assoc :version 1)))
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (prepare ::data-apps.schema/data-app data-app))
+  (with-derived-columns data-app))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -90,7 +102,7 @@
     (when (contains? changes :bundle_hash)
       (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app)))))
+    (merge data-app (some-> changes with-derived-columns))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
@@ -268,9 +280,9 @@
     []))
 
 (defn- updated-data-app
-  "The DataApp `stored` as the update `changes` leaves it, normalized as the update hook does."
+  "The DataApp `stored` as the update `changes` leaves it, converted as its transforms and its update hook do."
   [stored changes]
-  (merge stored (prepare ::data-apps.schema/data-app changes)))
+  (merge stored (with-derived-columns (reduce-kv (fn [row k f] (cond-> row (contains? row k) (update k f))) changes column-normalizers))))
 
 (defn- without-held-bundles
   "`rows`, the update rows of an import, without the bundle that the stored app of the row already holds."

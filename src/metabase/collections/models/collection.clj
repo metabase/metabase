@@ -1770,7 +1770,7 @@
 
 (defn- before-insert-row
   "`row`, an insert, checked and with the columns it inherits from its parent, which `ancestors` holds."
-  [{collection-name :name, :as row} ancestors]
+  [row ancestors]
   (let [parent (parent-of row ancestors)
         row    (merge row (inherited-columns row parent))]
     (check-namespace-columns row)
@@ -1779,12 +1779,13 @@
     (when parent
       (check-remote-synced-parent row parent))
     (check-placement row parent)
-    (assoc row :slug (slugify collection-name))))
+    row))
 
 (t2/define-before-insert :model/Collection
   [row]
   (when (contains? row :location)
     (check-personal-collection-at-root row))
+  (check-namespace-columns row)
   (assoc row :slug (slugify (:name row))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
@@ -1848,20 +1849,25 @@
                  (if (keyword? v) (name v) (str v)))]
     (apply = (map std-fn namespaces))))
 
+(defn- check-library-root-unchanged
+  "Throws a 400 when `row`, the Collection an update with `changes` leaves, is a locked section of the library whose
+  properties `changes` change."
+  [row changes]
+  (when (and (library-root-collection? row)
+             (seq (set/intersection (set (keys changes))
+                                    #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
+    (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400}))))
+
 (defn- check-library-update
   "Throws a 400 when `row`, the Collection an update with `changes` of `before` leaves, is a locked section of the
   library or leaves it, `parent` being the Collection it is in."
   [row before changes parent]
-  (let [change-keys (set (keys changes))]
-    (when (and (library-root-collection? row)
-               (seq (set/intersection change-keys
-                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
-      (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400})))
-    (when (and (contains? library-collection-types (:type before))
-               (contains? change-keys :location)
-               parent
-               (not= (:type row) (:type parent)))
-      (throw (ex-info (tru "Cannot move a semantic layer collection outside the semantic layer.") {:status-code 400})))))
+  (check-library-root-unchanged row changes)
+  (when (and (contains? library-collection-types (:type before))
+             (contains? changes :location)
+             parent
+             (not= (:type row) (:type parent)))
+    (throw (ex-info (tru "Cannot move a semantic layer collection outside the semantic layer.") {:status-code 400}))))
 
 (defn- check-update-allowed
   "Throws a 400 when `changes` can't be made to `collection-before-updates`: the Trash, a data app's collection, a
@@ -1882,19 +1888,30 @@
                  (= (:type collection-before-updates) tenant-specific-root-collection-type)))
     (check-changes-allowed-for-protected-collection collection-before-updates changes)))
 
-(defn- check-move
-  "Throws a 400 when `row`, with its new location, would be in itself, one of its descendants or the Trash."
+(defn- check-not-moved-into-itself
+  "Throws a 400 when `row`, with its new location, would be in itself or one of its descendants."
   [{:keys [id location]}]
   (when (contains? (set (location-path->ids location)) id)
-    (throw (ex-info (tru "You cannot move a Collection into itself or into one of its descendants.") {:status-code 400})))
+    (throw (ex-info (tru "You cannot move a Collection into itself or into one of its descendants.") {:status-code 400}))))
+
+(defn- check-move
+  "Throws a 400 when `row`, with its new location, would be in itself, one of its descendants or the Trash."
+  [{:keys [location] :as row}]
+  (check-not-moved-into-itself row)
   (when (str/starts-with? location (trash-path))
     (throw (ex-info (tru "You cannot move a Collection into the Trash.") {:status-code 400}))))
 
 (t2/define-before-update :model/Collection
   [row]
-  (let [changes (t2/changes row)]
+  (let [changes (t2/changes row)
+        before  (t2/original row)]
+    (when (seq changes)
+      (check-update-allowed before changes)
+      (check-namespace-columns (merge (select-keys before [:namespace]) changes)))
     (when (contains? changes :location)
+      (check-not-moved-into-itself row)
       (check-personal-collection-at-root row))
+    (check-library-root-unchanged row changes)
     (when (and (contains? changes :namespace)
                (not (namespace-equals? (:namespace (t2/original row)) (:namespace changes))))
       (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]

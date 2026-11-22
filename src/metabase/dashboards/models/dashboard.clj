@@ -29,6 +29,7 @@
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
@@ -75,10 +76,25 @@
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
 
+(def ^:private column-normalizers
+  "The function that converts a value of each column of a Dashboard that a transform converts on its way in."
+  {:parameters       #(lib/normalize ::parameters.schema/parameters %)
+   :embedding_params #(lib/normalize ms/EmbeddingParams %)
+   :embedding_type   lib.schema.common/normalize-string-key})
+
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
    :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
-   :embedding_params mi/transform-json-no-keywordization})
+   :embedding_params {:in  (comp mi/json-in (:embedding_params column-normalizers))
+                      :out mi/json-out-without-keywordization}
+   :embedding_type   {:in  (:embedding_type column-normalizers)
+                      :out identity}})
+
+(defn- normalize-columns
+  "`row`, the columns of a Dashboard, with the value of each column a transform converts converted the same way, so that
+  it compares with a stored row."
+  [row]
+  (reduce-kv (fn [row k f] (m/update-existing row k f)) row column-normalizers))
 
 (defmethod mi/non-internal-filter-clause :model/Dashboard
   [_model alias]
@@ -88,17 +104,15 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
-  (let [defaults  {:parameters []}
-        dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
-                      maybe-populate-initially-published-at)]
-    (public-sharing/add-public-uuid-prefix dashboard)))
+  (-> (merge {:parameters []} dashboard)
+      maybe-populate-initially-published-at
+      public-sharing/add-public-uuid-prefix))
 
 (t2/define-before-update :model/Dashboard
   [row]
-  (let [dashboard (lib/normalize ::dashboards.schema/dashboard row)]
-    (-> dashboard
-        maybe-populate-initially-published-at
-        public-sharing/add-public-uuid-prefix-if-changed)))
+  (-> row
+      maybe-populate-initially-published-at
+      public-sharing/add-public-uuid-prefix-if-changed))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -500,7 +514,7 @@
                                  (when (or (contains? row :tabs) (contains? row :dashcards))
                                    [(:id row) (select-keys row [:tabs :dashcards])])))
                       rows)
-         rows   (mapv #(lib/normalize ::dashboards.schema/dashboard.update (dissoc % :tabs :dashcards)) rows)
+         rows   (mapv #(normalize-columns (dissoc % :tabs :dashcards)) rows)
          stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
          rows   (filterv #(contains? stored (:id %)) rows)]
      (if (empty? rows)

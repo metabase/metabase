@@ -749,3 +749,22 @@
                 (t2/select-one :model/Dashboard :id (:id full))))
         (is (=? {:name "Bare" :description nil :auto_apply_filters true :width "fixed"}
                 (t2/select-one :model/Dashboard :id (:id bare))))))))
+
+(deftest plain-writes-convert-columns-test
+  (testing "The column transforms convert the parameters, the embedding params and the embedding type of plain writes"
+    (mt/with-temp [:model/Dashboard {id :id} {:parameters       [{:id                 "p"
+                                                                  :name               "P"
+                                                                  :slug               "p"
+                                                                  :type               "category"
+                                                                  :values_source_type "static-list"}]
+                                              :embedding_params {:p :enabled}
+                                              :embedding_type   :static-legacy}]
+      (is (=? {:parameters       [{:id "p" :type :category :values_source_type :static-list}]
+               :embedding_params {"p" "enabled"}
+               :embedding_type   "static-legacy"}
+              (t2/select-one :model/Dashboard :id id)))
+      (testing "on update"
+        (t2/update! :model/Dashboard :id id {:embedding_params {:q :locked} :embedding_type :guest})
+        (is (=? {:embedding_params {"q" "locked"}
+                 :embedding_type   "guest"}
+                (t2/select-one :model/Dashboard :id id)))))))
