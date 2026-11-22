@@ -169,7 +169,9 @@ export default class HarnessRunner {
     onFailure: OnTestFailure,
   ): Promise<void> {
     if (this.#globalConfig.collectCoverage) {
-      throw new Error("The node:test runner does not collect coverage");
+      throw new Error(
+        "The node:test runner does not collect coverage. Run bun run test-unit-jest --coverage.",
+      );
     }
     const testsByFile = new Map(tests.map((test) => [test.path, test]));
     const startedAt = new Map<string, number>();
