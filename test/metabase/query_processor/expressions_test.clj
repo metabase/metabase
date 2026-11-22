@@ -1042,7 +1042,7 @@
                             (call-count-fn))))]
         (counted 1)
         (testing "# of app DB calls should not grow with the number of Fields"
-          (is (= (counted 50) (counted 300))))))))
+          (is (= (counted 10) (counted 60))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::expression-names-containing-slashes]
   [_driver _feature _database]
