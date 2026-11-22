@@ -38,14 +38,22 @@ never becomes a query per row.
           (assoc :name (format "DEACTIVATED_%d %s" (:id channel) (:name channel)))))
       ;; (t2/update! :model/Channel :id [:in ids] {:active false}) -> 1 SELECT + one UPDATE per Channel
 
-  The constraint: what the hook adds to the changes is a function of the incoming changes and constants alone (`:%now`,
-  a value computed from a column the changes give), never of the stored row. It breaks in two ways: a value built from
-  the stored row (its id, its name), and a value added only for some rows (`(when-not (:published_at stored) ...)`),
-  where two kinds of rows in one call are enough. A hook may still READ the stored row to refuse a write: a throw
-  adds no statement. A derivation that needs the stored row belongs to the write function, which holds the rows: it
-  groups the rows by the value and writes each group with one statement, or, when the value is different for every
-  row, calls a named `db.clj` function that computes it in one statement (`deactivate-channels!` setting the name
-  with a SQL expression). Test a write function with rows that differ in stored state, not only uniform rows.
+  The change map Toucan compares is each row's DIFF against its stored values, so two rules follow.
+  1. What the hook adds to the changes is a function of the incoming changes and constants alone, never of the stored
+     row. It breaks with a value built from the stored row (its id, its name) and with a value added only for some
+     rows (`(when-not (:published_at stored) ...)`). A hook still READS the stored row to refuse a write (frozen
+     column, invalid combination, state transition): a guard throws or leaves the changes alone, and adds no statement.
+  2. A write function that updates several rows makes each `t2/update!` uniform itself, also without any derivation:
+     an update of two or more columns over rows in mixed state (row A already holds one of the new values) splits
+     too. It computes each row's changes against the stored rows it holds, adds the row-dependent derivations there,
+     and groups the ids: `(mi/group-ids-by-changes stored rows)` gives `[[changes ids] ...]`, one statement each; the
+     groups are bounded by combinations of columns, not by rows. A value that differs for every row is computed in
+     Clojure and written by a named `db.clj` function in one statement with a CASE over the primary key
+     (`channel.db/update-channels-with-names!`), never with SQL string functions, so it is identical on every app DB.
+     Drop a key as unchanged only against the row as STORED: where after-select rewrites columns (Card's schema
+     upgrade), the row the function holds is not the stored one, and the columns written in lockstep stay.
+  In dev and test `mi/install-uniform-update-guard!` throws when the rows of one update end with different changes,
+  before any UPDATE runs. Test a write function with rows that differ in stored state, not only uniform rows.
 - No `after-insert` and no `after-update` hook: Toucan reads the written rows back for a model that has one, and a
   model publishes nothing from a hook; what such a hook did belongs to the write function.
 - Converting a value (legacy query to MBQL 5, string to keyword) is the column transform's job (`t2/deftransforms`,
