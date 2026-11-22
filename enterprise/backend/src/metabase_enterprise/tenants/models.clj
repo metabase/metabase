@@ -140,9 +140,9 @@
                                  (events/update-event {tenant-id stored} [(assoc changes :id tenant-id)]))
           (when (and (some? active) (not= active (:is_active stored)))
             (if active
-              (user/update-users! {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+              (user/update-users! (user/deactivated-with-tenant-user-ids tenant-id)
                                   {:is_active true :deactivated_with_tenant nil})
-              (user/update-users! {:is_active true :tenant_id tenant-id}
+              (user/update-users! (user/active-user-ids-of-tenant tenant-id)
                                   {:is_active false :deactivated_with_tenant true}))))))))
 
 (defenterprise deactivate-tenants!
@@ -157,7 +157,7 @@
       (events/publish-event! :event/tenant-update
                              (events/update-event (u/index-by :id tenants)
                                                   (mapv #(hash-map :id (:id %) :is_active false) tenants)))
-      (user/update-users! {:tenant_id [:not= nil] :is_active true}
+      (user/update-users! (user/active-tenant-user-ids)
                           {:is_active false :deactivated_with_tenant true}))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

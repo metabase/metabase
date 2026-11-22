@@ -45,7 +45,7 @@
       (let [access (access.tu/give-access! user-id)]
         (mt/with-dynamic-fn-redefs [session.models/end-sessions! (fn [& _] (throw (ex-info "revocation failed" {})))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"revocation failed"
-                                (user/update-users! {:id user-id} {:is_active false}))))
+                                (user/update-users! [user-id] {:is_active false}))))
         (is (true? (t2/select-one-fn :is_active :model/User :id user-id))
             "the deactivation is rolled back with the revocation")
         (is (= access.tu/live (access.tu/access-state access)))))))

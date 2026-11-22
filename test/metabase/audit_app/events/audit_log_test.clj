@@ -331,7 +331,7 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/User user {:last_name "Charms"}]
-        (user/update-users! {:id (:id user)} {:last_name "Pigeon"})
+        (user/update-users! [(:id user)] {:last_name "Pigeon"})
         (is (partial=
              {:model_id (:id user)
               :user_id  (mt/user->id :rasta)
@@ -696,10 +696,10 @@
 (deftest user-activation-is-recorded-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
-      (user/update-users! {:id user-id} {:is_active false})
+      (user/update-users! [user-id] {:is_active false})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
              (mt/latest-audit-log-entry :user-deactivated user-id)))
-      (user/update-users! {:id user-id} {:is_active true})
+      (user/update-users! [user-id] {:is_active true})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 

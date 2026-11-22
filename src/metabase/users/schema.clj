@@ -140,15 +140,6 @@
    [:map {:closed true}
     [:email :string]]])
 
-(mr/def ::user.conditions
-  "The Users a bulk write changes, as a map of column to the value it must have, to `[:not= nil]`, or to `[:in ids]`."
-  [:map-of {:min 1}
-   :keyword
-   [:or
-    [:maybe [:or :boolean :int :string :keyword]]
-    [:tuple [:= :not=] :nil]
-    [:tuple [:= :in] [:sequential ::lib.schema.id/user]]]])
-
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
   Users on the caller's behalf).

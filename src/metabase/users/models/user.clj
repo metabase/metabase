@@ -493,10 +493,10 @@
                                (assoc :updated_at (:updated_at user))))))
 
 (defn- write-users!
-  "Apply `changes` to the Users matching `conditions`, whose stored rows are `users`, publishing the update event with
-  `context` and returning the number updated."
-  [conditions users changes context]
-  (u/prog1 (users.db/update-users! conditions changes)
+  "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `context` and returning
+  the number updated."
+  [users changes context]
+  (u/prog1 (users.db/update-users! (mapv :id users) changes)
     (events/publish-event! :event/user-update
                            (events/update-event (u/index-by :id users)
                                                 (mapv #(assoc changes :id (:id %)) users)
@@ -531,33 +531,49 @@
     (t2/resolve-model :model/PulseChannelRecipient)
     (delete-for-users! :model/PulseChannelRecipient user-ids context)))
 
+(def user-ids-of-type
+  "The ids among a sequence of user ids of the Users of a type, see [[users.db/user-ids-of-type]]."
+  users.db/user-ids-of-type)
+
+(def deactivated-with-tenant-user-ids
+  "The ids of the Users of a Tenant that were deactivated with it, see [[users.db/deactivated-with-tenant-user-ids]]."
+  users.db/deactivated-with-tenant-user-ids)
+
+(def active-user-ids-of-tenant
+  "The ids of the active Users of a Tenant, see [[users.db/active-user-ids-of-tenant]]."
+  users.db/active-user-ids-of-tenant)
+
+(def active-tenant-user-ids
+  "The ids of the active Users of every Tenant, see [[users.db/active-tenant-user-ids]]."
+  users.db/active-tenant-user-ids)
+
 (mu/defn update-users! :- :int
-  "Apply `changes` to the Users matching `conditions`, returning the number updated and publishing the events of the
-  writes with `context`. Deactivating or demoting the last admin throws, and a change of `is_superuser` adds or removes
+  "Apply `changes` to the Users with `user-ids`, returning the number updated and publishing the events of the writes
+  with `context`. Deactivating or demoting the last admin throws, and a change of `is_superuser` adds or removes
   the Administrators membership; deactivating a User deletes its subscriptions."
-  ([conditions :- ::users.schema/user.conditions
-    changes    :- ::users.schema/user.update]
-   (update-users! conditions changes nil))
-  ([conditions :- ::users.schema/user.conditions
-    changes    :- ::users.schema/user.update
-    context    :- [:maybe :metabase.events.schema/context]]
+  ([user-ids :- [:sequential ::lib.schema.id/user]
+    changes  :- ::users.schema/user.update]
+   (update-users! user-ids changes nil))
+  ([user-ids :- [:sequential ::lib.schema.id/user]
+    changes  :- ::users.schema/user.update
+    context  :- [:maybe :metabase.events.schema/context]]
    (t2/with-transaction [_conn]
      (let [superuser?   (:is_superuser changes)
            deactivates? (false? (:is_active changes))
-           users        (users.db/users conditions)]
+           users        (users.db/users-by-ids user-ids)]
        (cond
          (empty? users)
          0
 
          (not (or (some? superuser?) deactivates?))
-         (write-users! conditions users changes context)
+         (write-users! users changes context)
 
          :else
          (let [user-ids  (into #{} (map :id) users)
                admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
            (when (or deactivates? (false? superuser?))
              (perms-group-membership/throw-if-last-admins! admin-ids))
-           (u/prog1 (write-users! {:id [:in (vec user-ids)]} users changes context)
+           (u/prog1 (write-users! users changes context)
              (when (some? superuser?)
                (set-admin-memberships! user-ids admin-ids superuser? context))
              (when deactivates?
@@ -597,9 +613,9 @@
 
 (defmethod perms-group-membership/set-member-flags-of! :model/User
   [_model flag-changes context]
-  (let [stored (u/index-by :id (users.db/users {:id [:in (into [] (comp (mapcat first) (distinct)) flag-changes)]}))]
+  (let [stored (u/index-by :id (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes)))]
     (reduce (fn [rows [user-ids changes]]
-              (users.db/update-users! {:id [:in (vec user-ids)]} changes)
+              (users.db/update-users! (vec user-ids) changes)
               (let [event (events/update-event rows
                                                (mapv #(assoc changes :id %) user-ids)
                                                {:objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)

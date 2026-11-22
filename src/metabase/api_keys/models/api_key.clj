@@ -205,7 +205,7 @@
            new-name                      (:name changes)
            new-group-id                  (::api-keys/group-id changes)]
        (when (and stored new-name (not= new-name (:name stored)))
-         (user/update-users! {:id user-id :type :api-key} {:first_name new-name :last_name ""} context))
+         (user/update-users! (user/user-ids-of-type [user-id] :api-key) {:first_name new-name :last_name ""} context))
        (when (and stored new-group-id)
          (assert (= (api-keys.db/user-type user-id) :api-key)
                  "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
@@ -226,7 +226,7 @@
   user, such as SCIM keys, have none."
   [user-ids context]
   (when-let [user-ids (not-empty (vec (distinct (remove nil? user-ids))))]
-    (user/update-users! {:id [:in user-ids] :type :api-key} {:is_active false} context)))
+    (user/update-users! (user/user-ids-of-type user-ids :api-key) {:is_active false} context)))
 
 (mu/defn delete-api-key!
   "Delete the ApiKey with `id`, deactivating the User created for it and publishing the events of the writes with

@@ -546,7 +546,7 @@
                     "email" (tru "Email address already associated to another user.")))
       (t2/with-transaction [_conn]
         (when (seq changes)
-          (user/update-users! {:id id} changes)
+          (user/update-users! [id] changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -567,7 +567,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (user/update-users! {:id (u/the-id existing-user)}
+  (user/update-users! [(u/the-id existing-user)]
                       {:is_active     true
                        :is_superuser  false
                        ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
@@ -686,7 +686,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (when (= :personal (:type (api/check-404 (users-rest.db/user-active-type-and-sso-source id))))
-    (user/update-users! {:id id} {:is_active false}))
+    (user/update-users! [id] {:is_active false}))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -708,5 +708,5 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
     (check-not-internal-user id)
-    (api/check-500 (pos? (user/update-users! {:id id :type :personal} {k false}))))
+    (api/check-500 (pos? (user/update-users! (user/user-ids-of-type [id] :personal) {k false}))))
   {:success true})

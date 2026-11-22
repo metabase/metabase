@@ -449,7 +449,7 @@
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
-      (user/update-users! {:id user-id}
+      (user/update-users! [user-id]
                           (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                             reactivating? (assoc :is_superuser false))))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
