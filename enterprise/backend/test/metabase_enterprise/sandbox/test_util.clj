@@ -35,7 +35,15 @@
   (if-not gtap-def
     (f)
     (let [do-with-card (fn [f]
-                         (if query
+                         (cond
+                           (not query)
+                           (f nil)
+
+                           (= :native (:type query))
+                           (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+                             (f card-id))
+
+                           :else
                            (mt/with-model-cleanup [:model/Card]
                              (let [[{card-id :id}] (card/create-cards! [{:creator_id             (test.users/user->id :rasta)
                                                                          :database_id            (data/id)
@@ -43,8 +51,7 @@
                                                                          :display                :table
                                                                          :name                   (str "Sandbox " (name table-kw))
                                                                          :visualization_settings {}}])]
-                               (f card-id)))
-                           (f nil)))]
+                               (f card-id)))))]
       (do-with-card
        (fn [card-id]
          (mt/with-temp [:model/Sandbox _gtap {:group_id             (u/the-id group)
