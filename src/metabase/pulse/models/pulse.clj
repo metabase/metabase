@@ -93,7 +93,8 @@
 
 (t2/define-before-insert :model/Pulse
   [pulse]
-  (new-pulse pulse))
+  (cond-> (new-pulse pulse)
+    (:dashboard_id pulse) (assoc :collection_id (pulse.db/dashboard-collection-clause (:dashboard_id pulse)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -622,61 +623,36 @@
                   (= (:collection_id pulse) (:collection_id changes)))))
           pulses))
 
-(defn- collection-parents
-  "The Collections of the `rows`, each holding `:collection_id`, as rows by id, read together."
-  [rows]
-  (when-let [ids (not-empty (into [] (comp (keep :collection_id) (distinct)) rows))]
-    (u/index-by :id (pulse.db/collections-for-content-checks ids))))
+(defn- check-pulses
+  "Throw a 400 unless every Pulse with `ids` satisfies these rules:
 
-(defn- check-collection!
-  "Throws unless the Collection of `row`, holding `:collection_id` and `:archived`, which `parents` has by id, can hold a
-  Pulse."
-  [parents {:keys [collection_id archived]}]
-  (when collection_id
-    (let [parent (or (get parents collection_id) (collection/content-parent collection_id))]
-      (collection/check-allowed-content :model/Pulse parent)
-      (collection/check-collection-namespace :model/Pulse parent)
-      (collection/check-collection-not-archived archived parent))))
-
-(defn- check-collections!
-  "Throws unless the Collection of each of `rows`, each holding `:collection_id` and `:archived`, can hold a Pulse, for
-  the first row that cannot, reading the Collections together."
-  [rows]
-  (let [parents (collection-parents rows)]
-    (run! #(check-collection! parents %) (into [] (comp (map #(select-keys % [:collection_id :archived])) (distinct)) rows))))
-
-(defn- check-moved-collections!
-  "Throws unless the Collection each of the `pulses` moves to under its changes, `changes-of` a Pulse, can hold it."
-  [pulses changes-of]
-  (check-collections! (map #(merge % (changes-of %)) (moved-pulses pulses changes-of))))
+  - its Collection, when it has one, is in a namespace a Pulse can go in
+  - its Collection is not a Library Collection other than a Dashboards one
+  - its Collection is not archived unless the Pulse is"
+  [ids]
+  (when (pulse.db/pulses-in-violation? ids)
+    (throw (ex-info (tru "A Pulse can only go in a Collection of a namespace it is allowed in, that is not a Library Collection other than a Dashboards one, and that is not archived unless the Pulse is.")
+                    {:status-code 400}))))
 
 (defn- changed-columns
   "The part of `changes` that differs from the stored columns of `pulse`."
   [pulse changes]
   (into {} (remove (fn [[k v]] (= v (get pulse k)))) changes))
 
-(mu/defn- with-dashboard-collections :- [:sequential ::pulse.schema/pulse.update]
-  "`pulses`, each filed in the Collection of its Dashboard when it is a dashboard subscription."
-  [pulses :- [:sequential ::pulse.schema/pulse.update]]
-  (let [dashboards (when-let [ids (not-empty (into [] (comp (keep :dashboard_id) (distinct)) pulses))]
-                     (u/index-by :id (pulse.db/dashboards-by-id ids)))]
-    (mapv #(assoc % :collection_id (if-let [dashboard-id (:dashboard_id %)]
-                                     (:collection_id (get dashboards dashboard-id))
-                                     (:collection_id %)))
-          pulses)))
-
 (defn- change-pulses!
   "Apply `changes` to the Pulses with `pulse-ids` and enable or disable their PulseChannels when `:archived` changes,
   and return the number of Pulses as `:count` and their update event as `:event`, which the caller publishes. It does
   not publish it itself, so that a caller that changes the parts of a Pulse publishes it after them, as the last step.
   A change of `:archived` also sets `archived_directly`, by the before-update hook, and a change of `:collection_id`
-  checks that the new Collection can hold them."
+  checks, after the statement and in its own transaction, that the new Collection can hold the Pulses it moves."
   [pulse-ids changes opts]
   (if (and (seq pulse-ids) (seq changes))
     (let [pulses           (pulse.db/pulses-with-ids pulse-ids)
           archive-changed? (fn [pulse] (and (contains? changes :archived) (not= (:archived pulse) (:archived changes))))]
-      (check-moved-collections! pulses (constantly changes))
-      (pulse.db/update-pulses! (mapv :id pulses) changes)
+      (t2/with-transaction [_conn]
+        (pulse.db/update-pulses! (mapv :id pulses) changes)
+        (when-let [moved (not-empty (mapv :id (moved-pulses pulses (constantly changes))))]
+          (check-pulses moved)))
       (when-let [archive-changed (seq (filter archive-changed? pulses))]
         (pulse-channel/set-pulse-channels-enabled! (mapv :id archive-changed) (not (:archived changes))))
       {:count (count pulses)
@@ -769,10 +745,11 @@
       (let [pulses     (pulse.db/pulses-for-dashboards (vec (keys changes-by-dashboard)))
             changes-of (fn [pulse] (get changes-by-dashboard (:dashboard_id pulse)))
             changed    (filterv #(seq (changed-columns % (changes-of %))) pulses)]
-        (check-moved-collections! pulses changes-of)
         (when (seq changed)
           (binding [*allow-moving-dashboard-subscriptions* true]
             (pulse.db/update-pulses-for-dashboards! (select-keys changes-by-dashboard (into #{} (map :dashboard_id) changed))))
+          (when-let [moved (not-empty (mapv :id (moved-pulses changed changes-of)))]
+            (check-pulses moved))
           (events/publish-event! :event/pulse-update
                                  (events/update-event (u/index-by :id changed)
                                                       (mapv #(assoc (changes-of %) :id (:id %)) changed)
@@ -983,12 +960,11 @@
   the writes, that of the Pulses last, and return them with the standard hydrations, in order."
   [rows :- [:sequential PulseCreate]]
   (let [ids (t2/with-transaction [_conn]
-              (let [prepared (with-dashboard-collections (mapv #(dissoc % :cards :channels) rows))
-                    parents  (collection-parents prepared)
-                    _        (doseq [[pulse row] (map vector prepared rows)]
-                               (check-collection! parents pulse)
+              (let [prepared (mapv #(dissoc % :cards :channels) rows)
+                    _        (doseq [row rows]
                                (pulse-channel/check-new-pulse-channels! (map #(channel-row 0 %) (:channels row))))
-                    pulses   (if (seq prepared) (pulse.db/insert-pulses! prepared) [])]
+                    pulses   (if (seq prepared) (pulse.db/insert-pulses! prepared) [])
+                    _        (when (seq pulses) (check-pulses (mapv :id pulses)))]
                 (pulse-card/create-pulse-cards! (vec (mapcat (fn [row pulse] (card-rows (:id pulse) (:cards row))) rows pulses)))
                 (pulse-channel/create-pulse-channels! (vec (mapcat (fn [row pulse] (map #(channel-row (:id pulse) %) (:channels row))) rows pulses)))
                 (when (seq pulses)

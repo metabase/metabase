@@ -58,7 +58,7 @@
                               memberships))
                        nil
                        (catch clojure.lang.ExceptionInfo e
-                         [(ex-message e) (ex-data e)]))]
+                         [(ex-message e) (dissoc (ex-data e) :toucan2/context-trace)]))]
           (vreset! result {:refusal   thrown
                            :unchanged (= before (state memberships))
                            :added     (every? #(t2/exists? :model/PermissionsGroupMembership

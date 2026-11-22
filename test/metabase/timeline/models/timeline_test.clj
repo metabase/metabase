@@ -162,8 +162,13 @@
                                {:name (mt/random-name) :creator_id user-id :collection_id live}
                                {:name (mt/random-name) :creator_id user-id :collection_id archived :archived true}))
                            (range n)))
-          fresh!   (fn [n]
-                     (let [timelines (timeline/create-timelines! (rows n))]
+          archived-in-live (fn [n]
+                             (mapv (fn [i]
+                                     (cond-> {:name (mt/random-name) :creator_id user-id :collection_id live}
+                                       (odd? i) (assoc :archived true)))
+                                   (range n)))
+          fresh!   (fn [n & [rows-fn]]
+                     (let [timelines (timeline/create-timelines! ((or rows-fn rows) n))]
                        (timeline-event/create-timeline-events!
                         (mapv (fn [{:keys [id]}]
                                 {:timeline_id id :name (mt/random-name) :timestamp (java.time.Instant/now)
@@ -183,7 +188,7 @@
           (is (= (archive! 2) (archive! 6)))))
       (testing "restoring timelines, some already live"
         (let [restore! (fn [n]
-                         (let [ids (fresh! n)]
+                         (let [ids (fresh! n archived-in-live)]
                            (events.tu/statement-count!
                             #(timeline/update-timelines! ids {:archived false} nil))))]
           (restore! 2)

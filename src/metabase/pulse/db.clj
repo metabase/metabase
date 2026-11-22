@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -243,10 +244,33 @@
   [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.update]]
   (app-db/insert-returning-instances! :model/Pulse pulses))
 
-(mu/defn collections-for-content-checks
-  "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+(mu/defn pulses-in-violation? :- :boolean
+  "Whether one of the Pulses with `pulse-ids` is in a Collection that cannot hold a Pulse, in one statement: one outside
+  the namespaces of a Pulse, one of a Library type other than the Dashboards one, or an archived one that holds a
+  Pulse that is not archived."
+  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
+  (boolean
+   (seq (t2/query {:select [[1 :violation]]
+                   :from   [[(t2/table-name :model/Pulse) :p]]
+                   :where  [:and
+                            [:in :p.id [:auto/param pulse-ids]]
+                            [:not [:and
+                                   (collections/namespace-ok-clause :p :collection_id (collection/allowed-namespaces :model/Pulse))
+                                   (collections/type-not-in-ok-clause :p :collection_id [collection/library-collection-type
+                                                                                         collection/library-data-collection-type
+                                                                                         collection/library-metrics-collection-type])
+                                   [:or
+                                    [:= :p.archived true]
+                                    (collections/not-archived-ok-clause :p :collection_id)]]]]
+                   :limit  1}))))
+
+(mu/defn dashboard-collection-clause
+  "The HoneySQL expression for the Collection of the Dashboard with `dashboard-id`, which the Pulse that subscribes to
+  the Dashboard is in."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  ^:allow-subquery {:select [:d.collection_id]
+                    :from   [[:report_dashboard :d]]
+                    :where  [:= :d.id [:auto/param dashboard-id]]})
 
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
@@ -338,6 +362,20 @@
                        :from     [:pulse_card]
                        :where    [:in :pulse_id pulse-ids]
                        :group-by [:pulse_id]})))
+
+(mu/defn next-pulse-card-position-clause
+  "The HoneySQL expression for the position after the last PulseCard of the Pulse with `pulse-id`, 0 for the first. The
+  largest position is read through a derived table, which MySQL requires of a read of the table a statement writes."
+  [pulse-id :- ::lib.schema.id/pulse]
+  [:+
+   [:coalesce
+    ^:allow-subquery {:select [:last.position]
+                      :from   [[^:allow-subquery {:select [[[:max :pc.position] :position]]
+                                                  :from   [[:pulse_card :pc]]
+                                                  :where  [:= :pc.pulse_id [:auto/param pulse-id]]}
+                                :last]]}
+    [:inline -1]]
+   [:inline 1]])
 
 (mu/defn insert-pulse-cards!
   "Insert the PulseCard `rows`, returning the inserted instances."

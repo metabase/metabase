@@ -307,16 +307,16 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn- check-tabs!
-  "Throws a 400 unless the tab of each of `rows`, holding `:dashboard_id` and `:dashboard_tab_id`, belongs to its
-  Dashboard, reading the tabs once."
-  [rows]
-  (when-let [tab-ids (not-empty (into [] (comp (keep :dashboard_tab_id) (distinct)) rows))]
-    (let [tab-id->dashboard-id (into {} (map (juxt :id :dashboard_id)) (dashboards.db/dashboard-tabs-by-ids tab-ids))]
-      (doseq [{:keys [dashboard_id dashboard_tab_id]} rows
-              :when dashboard_tab_id]
-        (when (not= dashboard_id (get tab-id->dashboard-id dashboard_tab_id))
-          (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400})))))))
+(defn- check-dashcards
+  "Throw a 400 unless every DashboardCard with `ids` satisfies these rules:
+
+  - its tab, if it has one, belongs to its Dashboard
+  - its Card does not belong to a Document"
+  [ids]
+  (when (dashboards.db/dashcards-in-violation? ids)
+    (when (dashboards.db/dashcards-of-document-cards? ids)
+      (throw (ex-info (tru "Cards with ''document_id'' cannot be added to dashboards.") {:status-code 400})))
+    (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
 
 (def ^:private DashboardCardWrite
   [:merge
@@ -359,26 +359,25 @@
 (mu/defn update-dashboard-cards! :- [:sequential ::lib.schema.id/dashcard]
   "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCard, that differ from the stored ones, and
   replace its series by its `:series`, the ids of Cards, when it has one, and return the ids of the DashboardCards that
-  changed. The tab a DashboardCard moves to must belong to its Dashboard, which is read once for all of them, and the
-  DashboardCards with the same changes are one statement."
+  changed. A DashboardCard moved to a tab of another Dashboard throws a 400, and the DashboardCards with the same
+  changes are one statement."
   [rows :- [:sequential DashboardCardWrite]]
-  (let [stored  (m/index-by :id (if (seq rows) (dashboards.db/dashcards-by-ids (mapv :id rows)) []))
-        rows    (filterv #(contains? stored (:id %)) rows)
-        changes (mapv (fn [row]
-                        (assoc (shallow-updates (select-keys row updatable-columns) (get stored (:id row)))
-                               :id (:id row)))
-                      rows)
-        changed (filterv #(seq (dissoc % :id)) changes)]
-    (check-tabs! (for [change changed
-                       :when  (contains? change :dashboard_tab_id)]
-                   {:dashboard_id     (:dashboard_id (get stored (:id change)))
-                    :dashboard_tab_id (:dashboard_tab_id change)}))
-    (doseq [[updates group] (group-by #(dissoc % :id) changed)]
-      (dashboards.db/update-dashcards! (mapv :id group) updates))
-    (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
-          series-changed     (when (seq series-by-dashcard)
-                               (replace-series! series-by-dashcard))]
-      (into [] (distinct) (concat (map :id changed) series-changed)))))
+  (t2/with-transaction [_conn]
+    (let [stored  (m/index-by :id (if (seq rows) (dashboards.db/dashcards-by-ids (mapv :id rows)) []))
+          rows    (filterv #(contains? stored (:id %)) rows)
+          changes (mapv (fn [row]
+                          (assoc (shallow-updates (select-keys row updatable-columns) (get stored (:id row)))
+                                 :id (:id row)))
+                        rows)
+          changed (filterv #(seq (dissoc % :id)) changes)]
+      (doseq [[updates group] (group-by #(dissoc % :id) changed)]
+        (dashboards.db/update-dashcards! (mapv :id group) updates))
+      (when-let [moved (not-empty (into [] (comp (filter #(contains? % :dashboard_tab_id)) (map :id)) changed))]
+        (check-dashcards moved))
+      (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
+            series-changed     (when (seq series-by-dashcard)
+                                 (replace-series! series-by-dashcard))]
+        (into [] (distinct) (concat (map :id changed) series-changed))))))
 
 (def ^:private NewDashboardCard
   [:merge
@@ -403,24 +402,18 @@
 
 (mu/defn create-dashboard-cards! :- [:sequential :map]
   "Insert the DashboardCards `rows` with their series, and return the new DashboardCards, hydrated with their series, or,
-  for an import, as inserted. The tabs of the DashboardCards must belong to their Dashboards, which is read once for all
-  of them."
+  for an import, as inserted. A DashboardCard whose tab belongs to another Dashboard, or whose Card belongs to a
+  Document, throws a 400."
   ([rows :- [:sequential NewDashboardCard]]
    (create-dashboard-cards! rows nil))
   ([rows :- [:sequential NewDashboardCard]
     opts :- [:maybe [:map {:closed true} [:writer {:optional true} [:= :import]]]]]
    (if (empty? rows)
      []
-     (do
-       (when-let [card-ids (not-empty (keep :card_id rows))]
-         (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
-           (when (seq in-report-cards)
-             (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
-                             {:status-code 400
-                              :in-report-card-ids (map :id in-report-cards)})))))
-       (check-tabs! rows)
+     (t2/with-transaction [_conn]
        (let [writer   (:writer opts)
              inserted (dashboards.db/insert-dashcards! (mapv #(insert-row % writer) rows))]
+         (check-dashcards (mapv :id inserted))
          (when-let [series (not-empty (for [[dashcard row] (map vector inserted rows)
                                             [i card-id]    (map-indexed vector (:series row))]
                                         {:dashboardcard_id (:id dashcard), :card_id card-id, :position i}))]

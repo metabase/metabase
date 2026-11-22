@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -46,10 +47,22 @@
      :else true]
     [:inline false]))
 
-(mu/defn collections-for-content-checks
-  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+(mu/defn documents-in-violation? :- :boolean
+  "Whether one of the Documents with `ids` is in a Collection outside `allowed-namespaces`, in the library, its Data or
+  its Metrics collection, or in an archived Collection while it is not archived itself."
+  [ids                :- [:sequential ms/PositiveInt]
+   allowed-namespaces :- [:set [:maybe :keyword]]]
+  (t2/exists? :model/Document
+              {:where [:and
+                       [:in :document.id ids]
+                       [:not [:and
+                              (collections/namespace-ok-clause :document :collection_id allowed-namespaces)
+                              (collections/type-not-in-ok-clause :document :collection_id
+                                                                 [collections/library-collection-type
+                                                                  collections/library-data-collection-type
+                                                                  collections/library-metrics-collection-type])
+                              [:or [:= :document.archived true]
+                               (collections/not-archived-ok-clause :document :collection_id)]]]]}))
 
 (mu/defn synced-documents-clause :- [:fn vector?]
   "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."

@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -103,6 +104,23 @@
   (if (seq dashboard-ids)
     (t2/select :model/Dashboard :id [:in dashboard-ids])
     []))
+
+(mu/defn dashboards-in-violation? :- :boolean
+  "Whether one of the Dashboards with `ids` is in a Collection outside `allowed-namespaces`, in the library, its Data or
+  its Metrics collection, or in an archived Collection while it is not archived itself."
+  [ids                :- [:sequential ::lib.schema.id/dashboard]
+   allowed-namespaces :- [:set [:maybe :keyword]]]
+  (t2/exists? :model/Dashboard
+              {:where [:and
+                       [:in :report_dashboard.id ids]
+                       [:not [:and
+                              (collections/namespace-ok-clause :report_dashboard :collection_id allowed-namespaces)
+                              (collections/type-not-in-ok-clause :report_dashboard :collection_id
+                                                                 [collections/library-collection-type
+                                                                  collections/library-data-collection-type
+                                                                  collections/library-metrics-collection-type])
+                              [:or [:= :report_dashboard.archived true]
+                               (collections/not-archived-ok-clause :report_dashboard :collection_id)]]]]}))
 
 (mu/defn insert-dashboards!
   "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
@@ -260,11 +278,6 @@
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
-
-(mu/defn document-cards-among
-  "The Cards among `card-ids` that belong to a Document."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
 
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
@@ -549,6 +562,39 @@
   (`[[model #{ids}] ...]`) point at."
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
+
+(mu/defn dashcards-in-violation? :- :boolean
+  "Whether one of the DashboardCards with `ids` has a tab that belongs to another Dashboard, or a Card that belongs to a
+  Document."
+  [ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/exists? :model/DashboardCard
+              {:where [:and
+                       [:in :report_dashboardcard.id ids]
+                       [:or
+                        [:and
+                         [:not= :report_dashboardcard.dashboard_tab_id nil]
+                         [:not [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
+                                                          :from   [:dashboard_tab]
+                                                          :where  [:and
+                                                                   [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]
+                                                                   [:= :dashboard_tab.dashboard_id :report_dashboardcard.dashboard_id]]}]]]
+                        [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
+                                                   :from   [:report_card]
+                                                   :where  [:and
+                                                            [:= :report_card.id :report_dashboardcard.card_id]
+                                                            [:not= :report_card.document_id nil]]}]]]}))
+
+(mu/defn dashcards-of-document-cards? :- :boolean
+  "Whether one of the DashboardCards with `ids` has a Card that belongs to a Document."
+  [ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/exists? :model/DashboardCard
+              {:where [:and
+                       [:in :report_dashboardcard.id ids]
+                       [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
+                                                  :from   [:report_card]
+                                                  :where  [:and
+                                                           [:= :report_card.id :report_dashboardcard.card_id]
+                                                           [:not= :report_card.document_id nil]]}]]}))
 
 (mu/defn dashboard-tabs-by-ids
   "The DashboardTabs with `tab-ids`."

@@ -636,6 +636,11 @@
   []
   (t2/select-pks-set :model/PermissionsGroup :is_tenant_group true))
 
+(mu/defn tenant-groups-exist? :- :boolean
+  "Whether one of the PermissionsGroups with `group-ids` is a tenant group, in one statement."
+  [group-ids :- [:set {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/PermissionsGroup :id [:in [:auto/param (vec group-ids)]] :is_tenant_group true))
+
 (mu/defn group-tenant-flags
   "A map of group ID to `:is_tenant_group` for `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
@@ -732,6 +737,16 @@
                :where [:and
                        [:in :permissions_group_membership.id [:auto/param (vec (distinct ids))]]
                        [:or (group-manager-violation-clause) (tenancy-violation-clause)]]}))
+
+(mu/defn group-manager-memberships-in-violation? :- :boolean
+  "Whether one of the PermissionsGroupMemberships with `ids` makes a tenant user or an admin a group manager, as stored,
+  in one statement."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/PermissionsGroupMembership
+              {:join  [[:core_user :u] [:= :u.id :permissions_group_membership.user_id]]
+               :where [:and
+                       [:in :permissions_group_membership.id [:auto/param (vec (distinct ids))]]
+                       (group-manager-violation-clause)]}))
 
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."

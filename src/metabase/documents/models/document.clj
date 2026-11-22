@@ -393,22 +393,16 @@
 
 ;;; ---------- Writes --------------------------------------------------------------------------------------------
 
-(defn- check-collections!
-  "Throws unless the Collection of each of `rows`, each holding `:collection_id` and `:archived`, can hold a Document, in
-  an allowed namespace and not archived unless the Document is, reading the Collections once. A Collection that does
-  not exist is left to the foreign key."
-  [rows]
-  (let [rows        (into [] (comp (map (fn [{:keys [collection_id archived]}] {:collection_id collection_id :archived (boolean archived)}))
-                                   (distinct)
-                                   (filter :collection_id))
-                          rows)
-        collections (when (seq rows) (documents.db/collections-for-content-checks (mapv :collection_id rows)))]
-    (doseq [{:keys [collection_id archived]} rows
-            :let [parent (get collections collection_id)]
-            :when parent]
-      (collection/check-allowed-content :model/Document parent)
-      (collection/check-collection-namespace :model/Document parent)
-      (collection/check-collection-not-archived archived parent))))
+(defn- check-documents
+  "Throw a 400 unless every Document with `ids` satisfies these rules:
+
+  - its Collection is in a namespace that holds Documents
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the Document is"
+  [ids]
+  (when (documents.db/documents-in-violation? ids (collection/allowed-namespaces :model/Document))
+    (throw (ex-info (tru "A Document can only go in a Collection that holds Documents, and only an archived Document in an archived Collection.")
+                    {:status-code 400}))))
 
 (mr/def ::write-opts
   "The options of a write function of Documents: the context of its events."
@@ -422,8 +416,8 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (check-collections! rows)
       (let [documents (documents.db/insert-documents! rows)]
+        (check-documents (map :id documents))
         (events/publish-event! :event/document-create (events/create-event documents))
         documents))))
 
@@ -464,12 +458,11 @@
        (t2/with-transaction [_conn]
          (let [moved            (filterv #(changed? (get stored %) changes :collection_id) ids)
                archived-changed (filterv #(changed? (get stored %) changes :archived) ids)]
-           (check-collections! (for [id moved]
-                                 {:collection_id (:collection_id changes)
-                                  :archived      (if (contains? changes :archived) (:archived changes) (:archived (get stored id)))}))
            (when (seq moved)
              (move-cards! moved (:collection_id changes)))
            (documents.db/update-documents! ids changes)
+           (when (seq moved)
+             (check-documents moved))
            (when (seq archived-changed)
              (set-cards-archived! archived-changed (boolean (:archived changes)) (:context opts)))
            (events/publish-event! :event/document-update

@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -19,6 +18,13 @@
 (doto :model/PulseCard
   (derive :metabase/model)
   (derive :hook/entity-id))
+
+;;; ------------------------------------------------------- Hooks --------------------------------------------------------
+
+(t2/define-before-insert :model/PulseCard
+  [pulse-card]
+  (cond-> pulse-card
+    (nil? (:position pulse-card)) (assoc :position (pulse.db/next-pulse-card-position-clause (:pulse_id pulse-card)))))
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
@@ -43,26 +49,27 @@
     (pulse.db/insert-pulse-cards! rows)
     []))
 
-(mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.create]
-  "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard."
+(mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.update]
+  "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard; one without a position takes the
+  position after the last of its Pulse, which the before-insert hook has the database compute."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (let [max-positions (when-let [pulse-ids (not-empty (into [] (comp (remove :position) (map :pulse_id) (distinct)) new-pulse-cards))]
-                        (pulse.db/max-pulse-card-positions pulse-ids))]
-    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
-      {:card_id           card_id
-       :pulse_id          pulse_id
-       :dashboard_card_id dashboard_card_id
-       :position          (u/or-with some? position (if-let [max-position (get max-positions pulse_id)] (inc max-position) 0))
-       :include_csv       (boolean include_csv)
-       :include_xls       (boolean include_xls)
-       :format_rows       (boolean format_rows)
-       :pivot_results     (boolean pivot_results)})))
+  (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
+    (cond-> {:card_id           card_id
+             :pulse_id          pulse_id
+             :dashboard_card_id dashboard_card_id
+             :include_csv       (boolean include_csv)
+             :include_xls       (boolean include_xls)
+             :format_rows       (boolean format_rows)
+             :pivot_results     (boolean pivot_results)}
+      position (assoc :position position))))
 
 (mu/defn append-pulse-cards! :- [:sequential ::pulse.schema/pulse-card]
   "Create new PulseCards as [[create-pulse-cards!]] does, joining the given card, pulse, and dashboard card and setting
   appropriate defaults for other values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (create-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards))))
+  (if (seq new-pulse-cards)
+    (pulse.db/insert-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards)))
+    []))
 
 (mu/defn delete-pulse-cards-for-pulses! :- :boolean
   "Delete the PulseCards of the Pulses with `pulse-ids` and return whether there were any."

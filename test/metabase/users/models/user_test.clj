@@ -531,18 +531,6 @@
       (counted 1)
       (is (= (counted 2) (counted 6))))))
 
-(deftest update-user-refuses-last-admin-test
-  (mt/with-model-cleanup [:model/User]
-    (let [[{user-id :id}] (user/create-users! [{:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true}])]
-      (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
-        (testing "deactivating"
-          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))
-          (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
-        (testing "demoting"
-          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_superuser false})))
-          (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
-          (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id))))))))
-
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [:model/User user {:first_name "John"

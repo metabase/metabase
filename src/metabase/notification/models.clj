@@ -865,18 +865,13 @@
                    :channel-type  channel-type
                    :template-type template-type})))
 
-(defn- check-handler-templates!
-  "Throws a 400 unless the channel type of each of `handlers`, rows with their `:template_id` and `:channel_type`,
-  matches the type of its ChannelTemplate."
-  [handlers]
-  (when-let [template-ids (not-empty (into #{} (keep :template_id) handlers))]
-    (let [template-types (update-vals (notification.db/channel-templates-by-id (vec template-ids)) :channel_type)]
-      (doseq [{:keys [template_id channel_type]} handlers
-              :when template_id
-              :let  [channel-type  (keyword channel_type)
-                     template-type (some-> (get template-types template_id) keyword)]]
-        (when (not= channel-type template-type)
-          (throw-template-mismatch! channel-type template-type))))))
+(defn- check-handlers
+  "Throw a 400 unless every NotificationHandler with `ids` satisfies these rules:
+
+  - its template, if it has one, is of its channel type"
+  [ids]
+  (when (and (seq ids) (notification.db/handlers-in-violation? ids))
+    (throw (ex-info "Channel type and template type mismatch" {:status-code 400}))))
 
 (defn- update-subscription-triggers!
   "Add, move or remove the Quartz trigger of each of the NotificationSubscriptions `subscriptions` of a Notification
@@ -903,9 +898,7 @@
   instances in the order of the rows."
   [rows :- [:sequential ::notification.schema/notification-handler.create]]
   (if (seq rows)
-    (do
-      (check-handler-templates! rows)
-      (notification.db/insert-handlers! rows))
+    (notification.db/insert-handlers! rows)
     []))
 
 (mu/defn create-notification-recipients! :- :nil
@@ -928,32 +921,28 @@
   checking the parts of each in the order they are inserted: the Notification, its subscriptions, the templates of its
   handlers, its handlers, and their recipients."
   [rows]
-  (let [template-ids   (into [] (comp (mapcat :handlers) (remove :template) (keep :template_id) (distinct)) rows)
-        template-types (if (seq template-ids)
-                         (update-vals (notification.db/channel-templates-by-id template-ids) :channel_type)
-                         {})]
-    (doseq [{:keys [subscriptions handlers] :as row} rows]
-      (validate-notification (-> row
-                                 (dissoc :subscriptions :handlers :payload)
-                                 (assoc :payload_id (when (= :notification/card (:payload_type row)) 1))))
-      (run! #(validate-subscription (assoc % :notification_id 1)) subscriptions)
-      (models.channel/check-channel-templates! (into [] (keep :template) handlers))
-      (doseq [{:keys [template template_id channel_type]} handlers
-              :when (or template template_id)
-              :let  [channel-type  (keyword channel_type)
-                     template-type (some-> (if template (:channel_type template) (get template-types template_id)) keyword)]]
-        (when (not= channel-type template-type)
-          (throw-template-mismatch! channel-type template-type)))
-      (doseq [handler handlers]
-        (validate-notification-handler (-> handler
-                                           (dissoc :recipients :template)
-                                           (assoc :notification_id 1
-                                                  :template_id (if (:template handler) 1 (:template_id handler))))))
-      (doseq [{:keys [recipients]} handlers
-              recipient            recipients
-              :let                 [recipient (assoc recipient :notification_handler_id 1)]]
-        (check-valid-recipient recipient)
-        (validate-raw-value-email-domain! recipient)))))
+  (doseq [{:keys [subscriptions handlers] :as row} rows]
+    (validate-notification (-> row
+                               (dissoc :subscriptions :handlers :payload)
+                               (assoc :payload_id (when (= :notification/card (:payload_type row)) 1))))
+    (run! #(validate-subscription (assoc % :notification_id 1)) subscriptions)
+    (models.channel/check-channel-templates! (into [] (keep :template) handlers))
+    (doseq [{:keys [template channel_type]} handlers
+            :when template
+            :let  [channel-type  (keyword channel_type)
+                   template-type (some-> (:channel_type template) keyword)]]
+      (when (not= channel-type template-type)
+        (throw-template-mismatch! channel-type template-type)))
+    (doseq [handler handlers]
+      (validate-notification-handler (-> handler
+                                         (dissoc :recipients :template)
+                                         (assoc :notification_id 1
+                                                :template_id (if (:template handler) 1 (:template_id handler))))))
+    (doseq [{:keys [recipients]} handlers
+            recipient            recipients
+            :let                 [recipient (assoc recipient :notification_handler_id 1)]]
+      (check-valid-recipient recipient)
+      (validate-raw-value-email-domain! recipient))))
 
 (mr/def ::notification-with-parts.create
   [:merge
@@ -989,10 +978,6 @@
             handlers      (vec (mapcat (fn [row instance]
                                          (map #(assoc % :notification_id (:id instance)) (:handlers row)))
                                        rows instances))
-            _             (create-notification-subscriptions!
-                           (vec (mapcat (fn [row instance]
-                                          (map #(assoc % :notification_id (:id instance)) (:subscriptions row)))
-                                        rows instances)))
             templates     (models.channel/create-channel-templates! (into [] (keep :template) handlers))
             template-ids  (zipmap (keep-indexed (fn [i handler] (when (:template handler) i)) handlers)
                                   (map :id templates))
@@ -1001,7 +986,12 @@
                                                (-> handler
                                                    (dissoc :recipients :template)
                                                    (assoc :template_id (or (get template-ids i) (:template_id handler)))))
-                                             handlers)))]
+                                             handlers)))
+            _             (check-handlers (mapv :id created))
+            _             (create-notification-subscriptions!
+                           (vec (mapcat (fn [row instance]
+                                          (map #(assoc % :notification_id (:id instance)) (:subscriptions row)))
+                                        rows instances)))]
         (create-notification-recipients!
          (vec (mapcat (fn [handler created-handler]
                         (map #(assoc % :notification_handler_id (:id created-handler)) (:recipients handler)))
@@ -1178,36 +1168,37 @@
      (validate-email-handlers! (:handlers new-notification))
      (when existing-notification
        (t2/with-transaction [_conn]
-      (let [notification-before (notification.db/notification notification-id)
-            active-before?      (:active notification-before)
-            parts-before        (parts notification-before)
-            subscriptions-old   (get parts-before :model/NotificationSubscription)
-            handlers-old        (get parts-before :model/NotificationHandler)]
-        (update-parts! existing-notification new-notification)
-        (let [notification-after (notification.db/notification notification-id)
-              parts-after        (parts notification-after)
-              active-after?      (:active notification-after)
-              subscriptions-new  (get parts-after :model/NotificationSubscription)
-              handlers-new       (vals (get parts-after :model/NotificationHandler))
-              handler-key        (juxt :channel_type :channel_id :template_id)]
-          (log-part-changes! parts-before parts-after)
-          (check-handler-templates! (remove #(= (handler-key %) (some-> (get handlers-old (:id %)) handler-key))
-                                            handlers-new))
-          (when (not= (boolean active-before?) (boolean active-after?))
-            (update-subscription-triggers! active-after? (vals subscriptions-old)))
-          (doseq [id (remove subscriptions-new (keys subscriptions-old))]
-            (notification.task.send-trigger/delete-trigger-for-subscription! id))
-          (doseq [[id subscription] subscriptions-new
-                  :when             (not= subscription (get subscriptions-old id))]
-            (notification.task.send-trigger/update-subscription-trigger! subscription))
-          (let [event (events/update-event {notification-id notification-before}
-                                           [{:id notification-id}]
-                                           {:objects {notification-id notification-after}})]
-            (cond
-              (seq (:changes event))              (events/publish-event! :event/notification-row-update event)
-              (not= parts-before parts-after)     (events/publish-event! :event/notification-row-update
-                                                                         (events/touch-event [notification-after])))))))))
-  nil))
+         (let [notification-before (notification.db/notification notification-id)
+               active-before?      (:active notification-before)
+               parts-before        (parts notification-before)
+               subscriptions-old   (get parts-before :model/NotificationSubscription)
+               handlers-old        (get parts-before :model/NotificationHandler)]
+           (update-parts! existing-notification new-notification)
+           (let [notification-after (notification.db/notification notification-id)
+                 parts-after        (parts notification-after)
+                 active-after?      (:active notification-after)
+                 subscriptions-new  (get parts-after :model/NotificationSubscription)
+                 handlers-new       (vals (get parts-after :model/NotificationHandler))
+                 handler-key        (juxt :channel_type :channel_id :template_id)]
+             (log-part-changes! parts-before parts-after)
+             (check-handlers (into [] (comp (remove #(= (handler-key %) (some-> (get handlers-old (:id %)) handler-key)))
+                                            (map :id))
+                                   handlers-new))
+             (when (not= (boolean active-before?) (boolean active-after?))
+               (update-subscription-triggers! active-after? (vals subscriptions-old)))
+             (doseq [id (remove subscriptions-new (keys subscriptions-old))]
+               (notification.task.send-trigger/delete-trigger-for-subscription! id))
+             (doseq [[id subscription] subscriptions-new
+                     :when             (not= subscription (get subscriptions-old id))]
+               (notification.task.send-trigger/update-subscription-trigger! subscription))
+             (let [event (events/update-event {notification-id notification-before}
+                                              [{:id notification-id}]
+                                              {:objects {notification-id notification-after}})]
+               (cond
+                 (seq (:changes event))              (events/publish-event! :event/notification-row-update event)
+                 (not= parts-before parts-after)     (events/publish-event! :event/notification-row-update
+                                                                            (events/touch-event [notification-after])))))))))
+   nil))
 
 (mu/defn update-notifications! :- :int
   "Apply `changes` to the Notifications with `notification-ids`, publishing the events of the writes, and return the

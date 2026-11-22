@@ -518,23 +518,38 @@
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
       ~@body)))
 
-(deftest validate-collection-namespace-test
-  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
-    (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
+(defn- status-of
+  "The status code of the exception `thunk` throws, nil when it throws none."
+  [thunk]
+  (try (thunk) nil
+       (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))
+
+(deftest collection-rules-refuse-pulses-and-write-nothing-test
+  (mt/with-temp [:model/Collection {namespaced-id :id} {:namespace "currency"}
+                 :model/Collection {archived-id :id} {:archived true}]
+    (testing "a Pulse cannot be created in a Collection of another namespace"
       (let [pulse-name (mt/random-name)]
-        (try
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-               (insert-pulse! {:collection_id collection-id, :name pulse-name})))
-          (finally
-            (t2/delete! :model/Pulse :name pulse-name)))))
-    (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
-      (mt/with-temp [:model/Pulse {card-id :id}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
+        (is (= 400 (status-of #(insert-pulse! {:collection_id namespaced-id, :name pulse-name}))))
+        (is (zero? (t2/count :model/Pulse :name pulse-name)))))
+    (testing "a Pulse cannot be created in an archived Collection"
+      (let [pulse-name (mt/random-name)]
+        (is (= 400 (status-of #(insert-pulse! {:collection_id archived-id, :name pulse-name}))))
+        (is (zero? (t2/count :model/Pulse :name pulse-name)))))
+    (testing "a Pulse cannot be moved to a Collection of another namespace or an archived one"
+      (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+        (doseq [collection-id [namespaced-id archived-id]]
+          (is (= 400 (status-of #(models.pulse/update-pulses! [pulse-id] {:collection_id collection-id}))))
+          (is (nil? (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))
+
+(deftest refused-collection-rolls-back-to-savepoint-test
+  (mt/with-temp [:model/Collection {namespaced-id :id} {:namespace "currency"}
+                 :model/Pulse {pulse-id :id} {}
+                 :model/Pulse {other-id :id} {}]
+    (t2/with-transaction [_conn]
+      (is (= 400 (status-of #(models.pulse/update-pulses! [pulse-id] {:collection_id namespaced-id}))))
+      (models.pulse/update-pulses! [other-id] {:name "renamed in the outer transaction"}))
+    (is (nil? (t2/select-one-fn :collection_id :model/Pulse :id pulse-id)))
+    (is (= "renamed in the outer transaction" (t2/select-one-fn :name :model/Pulse :id other-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -807,17 +822,17 @@
        (testing "updating the PulseChannels a Pulse has, whatever number of recipients it gains"
          (let [recipients (fn [users] (mapv (fn [user] {:id (mt/user->id user)}) users))
                counted    (fn [recipients]
-                         (let [[id]    (create! 1)
-                               channel (t2/select-one :model/PulseChannel :pulse_id id :channel_type :email)]
-                           (events.tu/statement-count!
-                            #(models.pulse/update-pulse!
-                              id
-                              {:channels [{:id            (:id channel)
-                                           :channel_type  :email
-                                           :schedule_type :daily
-                                           :schedule_hour 18
-                                           :enabled       true
-                                           :recipients    recipients}]}))))]
+                            (let [[id]    (create! 1)
+                                  channel (t2/select-one :model/PulseChannel :pulse_id id :channel_type :email)]
+                              (events.tu/statement-count!
+                               #(models.pulse/update-pulse!
+                                 id
+                                 {:channels [{:id            (:id channel)
+                                              :channel_type  :email
+                                              :schedule_type :daily
+                                              :schedule_hour 18
+                                              :enabled       true
+                                              :recipients    recipients}]}))))]
            (counted (recipients [:rasta :lucky]))
            (is (= (counted (recipients [:rasta :lucky]))
                   (counted (recipients [:rasta :lucky :crowberto]))))))

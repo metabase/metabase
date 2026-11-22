@@ -128,6 +128,16 @@
    user-ids :- [:set {:min 1} ::lib.schema.id/user]]
   (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
 
+(mu/defn active-admin-exists? :- :boolean
+  "Whether an active superuser is a member of the PermissionsGroup with `admin-group-id`, in one statement."
+  [admin-group-id :- ms/PositiveInt]
+  (t2/exists? :model/PermissionsGroupMembership
+              {:join  [[:core_user :u] [:= :u.id :permissions_group_membership.user_id]]
+               :where [:and
+                       [:= :permissions_group_membership.group_id [:auto/param admin-group-id]]
+                       [:= :u.is_active true]
+                       [:= :u.is_superuser true]]}))
+
 (mu/defn user-group-ids
   "The ids of the PermissionsGroups the User with `user-id` belongs to."
   [user-id :- ::lib.schema.id/user]

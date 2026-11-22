@@ -279,8 +279,9 @@
    namespaces :- [:set [:maybe :keyword]]]
   (collection-ok-clause alias column
                         (into [:or]
-                              (cond-> [[:in :parent.namespace (mapv name (remove nil? namespaces))]]
-                                (contains? namespaces nil) (conj [:= :parent.namespace nil])))))
+                              (cond-> []
+                                (seq (remove nil? namespaces)) (conj [:in :parent.namespace (mapv name (remove nil? namespaces))])
+                                (contains? namespaces nil)     (conj [:= :parent.namespace nil])))))
 
 (mu/defn type-ok-clause :- [:fn vector?]
   "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, has no type

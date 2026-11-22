@@ -207,8 +207,9 @@
   (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
                  :model/Document   document          {}]
     (testing "moving a Document that is not archived into an archived Collection is a 400"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (document/update-documents! [(:id document)] {:collection_id archived-id}))))
+      (is (= 400 (:status-code (ex-data (try (document/update-documents! [(:id document)] {:collection_id archived-id})
+                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (nil? (t2/select-one-fn :collection_id :model/Document :id (:id document)))))
     (testing "a Document that stays where it is, or goes to the root, passes"
       (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
       (is (nil? (document/update-documents! [(:id document)] {:collection_id nil}))))))
@@ -226,10 +227,25 @@
   (testing "a Document goes only in Collections of an allowed namespace"
     (mt/with-temp [:model/Collection {snippets-id :id} {:namespace "snippets"}
                    :model/Document {doc-id :id} {}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (document/create-documents! [{:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id}])))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (document/update-documents! [doc-id] {:collection_id snippets-id}))))))
+      (is (= 400 (:status-code (ex-data (try (document/create-documents! [{:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id}])
+                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (not (t2/exists? :model/Document :collection_id snippets-id)))
+      (is (= 400 (:status-code (ex-data (try (document/update-documents! [doc-id] {:collection_id snippets-id})
+                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (nil? (t2/select-one-fn :collection_id :model/Document :id doc-id))))))
+
+(deftest refused-write-rolls-back-to-its-savepoint-test
+  (mt/with-temp [:model/Collection {snippets-id :id} {:namespace "snippets"}]
+    (mt/with-model-cleanup [:model/Document]
+      (let [row (fn [doc-name collection-id]
+                  {:name doc-name :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror"
+                   :document {:type "doc" :content []} :collection_id collection-id})]
+        (t2/with-transaction [_conn]
+          (is (= 400 (:status-code (ex-data (try (document/create-documents! [(row "Refused" snippets-id)])
+                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (document/create-documents! [(row "Kept" nil)]))
+        (is (not (t2/exists? :model/Document :name "Refused")))
+        (is (t2/exists? :model/Document :name "Kept"))))))
 
 (deftest public-uuid-prefix-is-derived-test
   (testing "the public UUID prefix follows the public UUID and is not written alone"

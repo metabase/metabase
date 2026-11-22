@@ -673,22 +673,34 @@
       (counted 2)
       (is (= (counted 2) (counted 6))))))
 
-(deftest create-transforms-reports-the-first-invalid-row-test
+(deftest create-transforms-refuses-invalid-rows-and-writes-nothing-test
   (mt/with-temp [:model/Collection {regular-id :id} {}
                  :model/Collection {transforms-id :id} {:namespace collection/transforms-ns}]
     (let [missing-id (inc (t2/select-one-fn :id [:model/Collection :id] {:order-by [[:id :desc]]}))
-          message-of (fn [collection-ids]
+          status-of  (fn [collection-ids]
                        (try (transform/create-transforms!
                              (mapv #(assoc %1 :collection_id %2) (transform-rows (count collection-ids)) collection-ids))
                             nil
-                            (catch clojure.lang.ExceptionInfo e (ex-message e))))]
+                            (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))]
       (mt/with-model-cleanup [:model/Transform]
-        (testing "a row in the wrong namespace before a row in a missing Collection"
-          (is (re-find #"namespace" (message-of [transforms-id regular-id missing-id]))))
-        (testing "a row in a missing Collection before a row in the wrong namespace"
-          (is (= "Collection does not exist." (message-of [transforms-id missing-id regular-id]))))
+        (testing "a row in the wrong namespace is refused"
+          (is (= 400 (status-of [transforms-id regular-id]))))
+        (testing "a row in a missing Collection is refused"
+          (is (= 404 (status-of [transforms-id missing-id]))))
         (testing "nothing is written"
           (is (zero? (t2/count :model/Transform :collection_id [:in [regular-id transforms-id missing-id]]))))))))
+
+(deftest refused-transform-rolls-back-to-savepoint-test
+  (mt/with-temp [:model/Collection {regular-id :id} {}]
+    (mt/with-model-cleanup [:model/Transform]
+      (let [[{id :id} {other-id :id}] (transform/create-transforms! (transform-rows 2))]
+        (t2/with-transaction [_conn]
+          (is (= 400 (try (transform/update-transforms! [id] {:collection_id regular-id})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (transform/update-transforms! [other-id] {:name "renamed in the outer transaction"}))
+        (is (nil? (t2/select-one-fn :collection_id :model/Transform :id id)))
+        (is (= "renamed in the outer transaction" (t2/select-one-fn :name :model/Transform :id other-id)))))))
 
 (defn- statements-outside-query-analysis!
   "The number of app-DB statements `thunk` runs, leaving out the reads of group memberships and table remappings that
