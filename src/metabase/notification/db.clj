@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
@@ -226,11 +227,13 @@
 (mu/defn insert-notification-card!
   "Insert `notification-card` and return the inserted instance."
   [notification-card :- NotificationCardRow]
-  (t2/insert-returning-instance! :model/NotificationCard notification-card))
+  (u/prog1 (t2/insert-returning-instance! :model/NotificationCard notification-card)
+    (change-log/log-rows! :model/NotificationCard :insert :id (:id <>))))
 
 (mu/defn delete-notification-cards!
   "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."
   [notification-card-ids :- [:sequential ms/PositiveInt]]
+  (change-log/log-rows! :model/NotificationCard :delete :id [:in notification-card-ids])
   (t2/delete! :model/NotificationCard :id [:in notification-card-ids]))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
@@ -274,7 +277,8 @@
 (mu/defn insert-subscriptions!
   "Insert the NotificationSubscription `subscriptions`, returning the inserted instances."
   [subscriptions :- [:sequential NotificationSubscriptionRow]]
-  (t2/insert-returning-instances! :model/NotificationSubscription subscriptions))
+  (u/prog1 (t2/insert-returning-instances! :model/NotificationSubscription subscriptions)
+    (change-log/log-rows! :model/NotificationSubscription :insert :id [:in (mapv :id <>)])))
 
 ;;; ------------------------------------ NotificationHandler / Recipient ------------------------------------
 
@@ -303,7 +307,8 @@
 (mu/defn insert-handlers!
   "Insert the NotificationHandler `handlers`, returning the inserted instances in their order."
   [handlers :- [:sequential {:min 1} NotificationHandlerRow]]
-  (t2/insert-returning-instances! :model/NotificationHandler handlers))
+  (u/prog1 (t2/insert-returning-instances! :model/NotificationHandler handlers)
+    (change-log/log-rows! :model/NotificationHandler :insert :id [:in (mapv :id <>)])))
 
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
@@ -326,7 +331,8 @@
 (mu/defn insert-recipients!
   "Insert the NotificationRecipient `recipients`, returning the inserted instances."
   [recipients :- [:sequential {:min 1} NotificationRecipientRow]]
-  (t2/insert-returning-instances! :model/NotificationRecipient recipients))
+  (u/prog1 (t2/insert-returning-instances! :model/NotificationRecipient recipients)
+    (change-log/log-rows! :model/NotificationRecipient :insert :id [:in (mapv :id <>)])))
 
 (mu/defn recipient
   "The NotificationRecipient with `recipient-id`, or nil."
@@ -341,6 +347,7 @@
 (mu/defn delete-recipients!
   "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
   [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (change-log/log-rows! :model/NotificationRecipient :delete :id [:in recipient-ids])
   (t2/delete! :model/NotificationRecipient :id [:in recipient-ids]))
 
 (mu/defn recipients-for-user

@@ -17,11 +17,10 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.pulse.models.pulse-card :as pulse-card]
+   [metabase.pulse.models.pulse :as pulse]
    [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -37,17 +36,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(defn- snapshot-series
-  "The `snapshots` of the DashboardCard `rows`, each with the ids of the Cards of its series."
-  [rows snapshots]
-  (let [rows (if (or (empty? rows) (contains? (first rows) :series))
-               rows
-               (t2/hydrate rows :series))]
-    (mapv (fn [row snapshot]
-            (assoc snapshot :series (mapv :id (:series row))))
-          rows
-          snapshots)))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings
@@ -422,7 +410,7 @@
   "Delete the DashboardCards with `dashboard-card-ids`, with their PulseCards and DashboardCardSeries."
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
   (when (seq dashboard-card-ids)
-    (pulse-card/delete-pulse-cards-for-dashcards! dashboard-card-ids)
+    (pulse/delete-pulse-cards-for-dashcards! dashboard-card-ids)
     (dashboards.db/delete-dashcards! (vec dashboard-card-ids)))
   nil)
 
@@ -474,13 +462,6 @@
 (defmethod remote-sync/spec :model/DashboardCard
   [_model]
   {:synced-filter-clause dashboards.db/synced-dashcards-clause})
-
-(defmethod revisions/spec :model/DashboardCard [_model]
-  {:track    [:card_id :action_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y :parameter_mappings
-              :inline_parameters :visualization_settings]
-   :skip     [:entity_id]
-   :parent   {:model :model/Dashboard :key :dashboard_id}
-   :snapshot snapshot-series})
 
 (defmethod eid-translation/spec :model/DashboardCard [_model]
   {:names [:dashboard-card]})

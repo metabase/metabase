@@ -155,10 +155,11 @@
         (audit.spec/audited-models)))
 
 (defn- root-touch?
-  "Whether the `event` is the touch of a row that the writes of other models count as writes of, which records the row as
-  updated."
+  "Whether the `event` is the touch of a row that the writes of other models count as writes of, or of a model whose
+  spec says that its touch records the row, which records the row as updated."
   [roots {:keys [model] :as event}]
-  (and (contains? roots model) (u.events/touch? event)))
+  (and (u.events/touch? event)
+       (or (contains? roots model) (= :row (:touch (audit.spec/spec model))))))
 
 (defn- own-rows
   "The rows of the writes of the models that record them as their own, a row whose parts changed being recorded as

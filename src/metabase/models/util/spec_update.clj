@@ -6,7 +6,6 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.events.core :as events]
    [metabase.models.db :as models.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -58,49 +57,31 @@
                                [:nested-specs {:optional true} [:sequential [:tuple :keyword [:ref ::spec]]]]]}}
    [:ref ::spec]])
 
-(mr/def ::topics
-  "The lifecycle topics to publish the writes of the update under, as a map from a model to its `:create`, `:update` and
-  `:delete` topics, any of which may be left out."
-  [:maybe [:map-of :keyword [:map {:closed true}
-                             [:create {:optional true} qualified-keyword?]
-                             [:update {:optional true} qualified-keyword?]
-                             [:delete {:optional true} qualified-keyword?]]]])
-
 (defn- insert!
-  "Insert the `rows` of `model`, publishing their create event when `topics` has a topic for it, and return the instances."
-  [model rows topics]
-  (let [instances (models.db/insert-entities-returning-instances! {:model model :rows rows})]
-    (when-let [topic (get-in topics [model :create])]
-      (events/publish-event! topic (events/create-event instances)))
-    instances))
+  "Insert the `rows` of `model` and return the instances."
+  [model rows]
+  (models.db/insert-entities-returning-instances! {:model model :rows rows}))
 
 (defn- insert-one!
   "Insert the `row` of `model` as [[insert!]] does, and return its primary key."
-  [model row topics]
-  (get (first (insert! model [row] topics)) (first (t2/primary-keys model))))
+  [model row]
+  (get (first (insert! model [row])) (first (t2/primary-keys model))))
 
 (defn- update!
-  "Write the columns `row` to the row of `model` with `id`, stored as `existing`, publishing its update event when
-  `topics` has a topic for it."
-  [model id existing row topics]
-  (models.db/update-entity! id {:model model :row row})
-  (when-let [topic (get-in topics [model :update])]
-    (events/publish-event! topic (events/update-event {id (t2/instance model existing)} [(assoc row :id id)]))))
+  "Write the columns `row` to the row of `model` with `id`."
+  [model id row]
+  (models.db/update-entity! id {:model model :row row}))
 
 (defn- delete-many!
-  "Delete the stored `rows` of `model`, publishing their delete event first when `topics` has a topic for it."
-  [model id-col rows topics]
+  "Delete the stored `rows` of `model`."
+  [model id-col rows]
   (when (seq rows)
-    (when-let [topic (get-in topics [model :delete])]
-      (events/publish-event! topic (events/delete-event (mapv #(t2/instance model %) rows))))
     (models.db/delete-entities-with-ids! model id-col (map id-col rows))))
 
 (defn- delete-one!
-  "Delete the stored row `existing` of `model` with `id` as [[delete-many!]] does."
-  [model id existing topics]
+  "Delete the stored row `existing` of `model` with `id`."
+  [model id existing]
   (when existing
-    (when-let [topic (get-in topics [model :delete])]
-      (events/publish-event! topic (events/delete-event [(t2/instance model existing)])))
     (models.db/delete-entity! model id)))
 
 (defn decode-spec
@@ -138,13 +119,13 @@
 (declare do-update!*)
 
 (defn- handle-nested-updates!
-  [existing-row new-row nested-specs path topics]
+  [existing-row new-row nested-specs path]
   (doseq [[k spec] nested-specs]
-    (do-update!* (get existing-row k) (get new-row k) spec (conj path k) topics)))
+    (do-update!* (get existing-row k) (get new-row k) spec (conj path k))))
 
 (defn- handle-refs-in-parent!
   "Process nested models with ref-in-parent, returning a map with updated parent foreign keys."
-  [existing-row new-row nested-specs path topics]
+  [existing-row new-row nested-specs path]
   (let [ref-specs (ref-nested-models nested-specs)]
     (when (seq ref-specs)
       (reduce (fn [parent-updates [k {:keys [ref-in-parent] :as spec}]]
@@ -152,7 +133,7 @@
                       new-nested      (get new-row k)
                       path            (conj path k)]
                   (log/tracef "%s processing ref-in-parent for %s" (format-path path) ref-in-parent)
-                  (assoc parent-updates ref-in-parent (handle-map-update! existing-nested new-nested spec path topics))))
+                  (assoc parent-updates ref-in-parent (handle-map-update! existing-nested new-nested spec path))))
               {} ref-specs))))
 
 (defn- with-parent-id
@@ -176,12 +157,12 @@
 (defn- handle-rows-update!
   "Process updates for a single row, handling both parent refs and nested models.
    Returns true if any changes were made."
-  [row existing-rows {:keys [model nested-specs id-col] :as spec} path topics & {:keys [force-update?] :or {force-update? true}}]
+  [row existing-rows {:keys [model nested-specs id-col] :as spec} path & {:keys [force-update?] :or {force-update? true}}]
   (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)
         update-path (if force-update? (conj path (id-col row)) path)
         _ (when force-update? (log/debugf "%s Updating" (format-path update-path)))
         ;; Process any ref-in-parent models first
-        parent-updates (handle-refs-in-parent! existing-row row nested-specs update-path topics)
+        parent-updates (handle-refs-in-parent! existing-row row nested-specs update-path)
         row-with-refs (merge row parent-updates)
         sanitize-row (sanitize-row-fn spec)
         updates-needed? (and parent-updates
@@ -189,7 +170,7 @@
                                    (sanitize-row row)))]
     ;; Update the parent row if needed
     (when (or force-update? updates-needed?)
-      (update! model (id-col row) existing-row (sanitize-row row-with-refs) topics))
+      (update! model (id-col row) (sanitize-row row-with-refs)))
     ;; Handle non-ref nested models
     (when nested-specs
       (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -198,12 +179,11 @@
            existing-row
            (with-parent-id row-with-refs nested-without-refs (id-col row))
            nested-without-refs
-           update-path
-           topics))))
+           update-path))))
     (or force-update? updates-needed?)))
 
 (defn- handle-sequential-updates!
-  [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path topics]
+  [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
   (let [{:keys [to-update
                 to-create
                 to-delete
@@ -216,9 +196,9 @@
           (log/tracef "%s nested spec found, creating rows one by one" (format-path path))
           (doseq [row to-create]
             (let [;; Process any ref-in-parent models first
-                  parent-updates (handle-refs-in-parent! nil row nested-specs path topics)
+                  parent-updates (handle-refs-in-parent! nil row nested-specs path)
                   row-with-refs  (merge row parent-updates)
-                  parent-id (insert-one! model (sanitize-row row-with-refs) topics)]
+                  parent-id (insert-one! model (sanitize-row row-with-refs))]
               (log/debugf "%s created a new entity %s %s" (format-path path) model parent-id)
               ;; Only process non-ref nested models
               (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -227,35 +207,34 @@
                    nil
                    (with-parent-id row-with-refs nested-without-refs parent-id)
                    nested-without-refs
-                   (conj path parent-id)
-                   topics))))))
+                   (conj path parent-id)))))))
         (do
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
-            (insert! model (vec rows) topics)))))
+            (insert! model (vec rows))))))
     (when (seq to-delete)
       ;; TODO: cascade deletes?
       (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
-      (delete-many! model id-col to-delete topics))
+      (delete-many! model id-col to-delete))
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
-        (handle-rows-update! row existing-rows spec path topics)))
+        (handle-rows-update! row existing-rows spec path)))
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
       (log/tracef "%s nested models detected, updating unchanged nested models for %s %s"
                   (format-path path) model (id-col (first to-skip)))
       (doseq [row to-skip]
-        (handle-rows-update! row existing-rows spec path topics :force-update? false)))))
+        (handle-rows-update! row existing-rows spec path :force-update? false)))))
 
 (defn- handle-map-update!
-  [existing-data new-data {:keys [model nested-specs id-col] :as spec} path topics]
+  [existing-data new-data {:keys [model nested-specs id-col] :as spec} path]
   (let [sanitize-row            (sanitize-row-fn spec)
         compare-row             (compare-cols-fn spec)
         existing-id             (when existing-data (id-col existing-data))
         ;; Process any ref-in-parent models first
         parent-updates          (when (and nested-specs new-data)
-                                  (handle-refs-in-parent! existing-data new-data nested-specs path topics))
+                                  (handle-refs-in-parent! existing-data new-data nested-specs path))
         new-data-with-refs      (if parent-updates (merge new-data parent-updates) new-data)
         new-data-sanitized      (when new-data-with-refs (sanitize-row new-data-with-refs))
         existing-data-sanitized (when existing-data (sanitize-row existing-data))
@@ -269,20 +248,19 @@
                                          existing-data
                                          (with-parent-id new-data nested-without-refs parent-id)
                                          nested-without-refs
-                                         (conj path parent-id)
-                                         topics)))))]
+                                         (conj path parent-id))))))]
     (cond
       ;; delete
       (nil? new-data)
       (do
         (log/debugf "%s Deleting" (format-path (conj path existing-id)))
-        (delete-one! model existing-id existing-data topics)
+        (delete-one! model existing-id existing-data)
         (handle-nested! existing-data new-data existing-id)
         nil)
 
       ;; create
       (nil? existing-data)
-      (let [parent-id (insert-one! model new-data-sanitized topics)
+      (let [parent-id (insert-one! model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id)
@@ -293,8 +271,8 @@
       (do
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
-        (delete-one! model existing-id existing-data topics)
-        (let [parent-id (insert-one! model new-data-sanitized topics)
+        (delete-one! model existing-id existing-data)
+        (let [parent-id (insert-one! model new-data-sanitized)
               path      (conj path parent-id)]
           (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
           (handle-nested! nil new-data parent-id)
@@ -304,7 +282,7 @@
       (not= (compare-row new-data-sanitized) (compare-row existing-data-sanitized))
       (do
         (log/debugf "%s Updating" (format-path (conj path existing-id)))
-        (update! model existing-id existing-data new-data-sanitized topics)
+        (update! model existing-id new-data-sanitized)
         (handle-nested! existing-data new-data existing-id)
         existing-id)
 
@@ -315,26 +293,21 @@
         existing-id))))
 
 (defn- do-update!*
-  [existing-data new-data spec path topics]
+  [existing-data new-data spec path]
   (if (:multi-row? spec)
     (do
       (log/tracef "%s multi-row spec found" (format-path path))
-      (handle-sequential-updates! existing-data new-data spec path topics))
+      (handle-sequential-updates! existing-data new-data spec path))
     (do
       (log/tracef "%s single row spec found" (format-path path))
-      (handle-map-update! existing-data new-data spec path topics))))
+      (handle-map-update! existing-data new-data spec path))))
 
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data, in a transaction.
-  `spec` defines the structure of the data and how to compare it. The writes publish their lifecycle events under the
-  `topics` of [[::topics]], when given."
-  ([existing-data :- ::generic-row
-    new-data      :- ::generic-row
-    spec          :- ::Spec]
-   (do-update! existing-data new-data spec nil))
-  ([existing-data :- ::generic-row
-    new-data      :- ::generic-row
-    spec          :- ::Spec
-    topics        :- ::topics]
-   (t2/with-transaction []
-     (do-update!* existing-data new-data spec ["root"] topics))))
+  `spec` defines the structure of the data and how to compare it. The writes publish no event: the caller, the owner of
+  the data, publishes its own."
+  [existing-data :- ::generic-row
+   new-data      :- ::generic-row
+   spec          :- ::Spec]
+  (t2/with-transaction []
+    (do-update!* existing-data new-data spec ["root"])))

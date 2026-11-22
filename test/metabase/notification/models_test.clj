@@ -263,9 +263,13 @@
                                                   :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (models.notification/create-notification-handlers! [{:channel_type :channel/slack
-                                                                                 :channel_id   (:id chn-1)
-                                                                                 :template_id  (:id tmpl-1)}])))))
+                            (models.notification/create-notification!
+                             {:payload_type :notification/testing :active true}
+                             []
+                             [{:channel_type :channel/slack
+                               :channel_id   (:id chn-1)
+                               :template_id  (:id tmpl-1)
+                               :recipients   []}])))))
   (testing "can't update a handler with a template that has different channel type"
     (mt/with-temp [:model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
@@ -346,19 +350,21 @@
                                           :permissions_group_id 1
                                           :details              {:value "ngoc@metabase.com"}}))))))))
 
-(defn- create-cron-subscription!
-  "Create a cron subscription on the notification `noti-id` and return its id."
-  [noti-id cron-schedule]
-  (:id (first (models.notification/create-notification-subscriptions!
-               [{:type            :notification-subscription/cron
-                 :cron_schedule   cron-schedule
-                 :notification_id noti-id}]))))
-
 (defn- set-subscriptions!
   "Replace the subscriptions of the notification `noti-id` with `subscriptions` through its update."
   [noti-id subscriptions]
   (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))]
     (models.notification/update-notification! existing (assoc existing :subscriptions subscriptions))))
+
+(defn- create-cron-subscription!
+  "Add a cron subscription to the notification `noti-id` through its update and return its id."
+  [noti-id cron-schedule]
+  (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))
+        known    (into #{} (map :id) (:subscriptions existing))]
+    (set-subscriptions! noti-id (conj (vec (:subscriptions existing))
+                                      {:type          :notification-subscription/cron
+                                       :cron_schedule cron-schedule}))
+    (first (remove known (t2/select-pks-vec :model/NotificationSubscription :notification_id noti-id)))))
 
 (deftest update-subscription-trigger-test
   (mt/with-temp-scheduler!

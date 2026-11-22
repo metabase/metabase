@@ -7,7 +7,6 @@
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
-   [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.util.events :as u.events]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -71,7 +70,7 @@
                               [dashboard-id {:name          (:name dashboard)
                                              :collection_id (:collection_id dashboard)}])))
                      stale))
-              (pulse-card/append-pulse-cards! new-cards))))))))
+              (models.pulse/append-pulse-cards! new-cards))))))))
 
 (events/derive! :event/dashboard-update ::dashboard-subscriptions)
 

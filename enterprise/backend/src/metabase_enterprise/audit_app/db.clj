@@ -5,7 +5,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse :as pulse]
-   [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -139,7 +138,7 @@
 (mu/defn delete-pulse-channel-recipients-of-user!
   "Delete the PulseChannelRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (pulse-channel-recipient/delete-pulse-channel-recipients-for-user! user-id))
+  (pulse/delete-pulse-channel-recipients-for-user! user-id))
 
 (mu/defn delete-notification-recipients-of-user!
   "Delete the NotificationRecipients of the User with `user-id`."

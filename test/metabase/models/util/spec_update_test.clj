@@ -1,22 +1,28 @@
 (ns metabase.models.util.spec-update-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.db :as models.db]
    [metabase.models.util.spec-update :as spec-update]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn do-track-operations!
-  "Implementation function that tracks Toucan2 operations and returns the tracked operations."
+  "Implementation function that tracks the writes of the models module and returns the tracked operations."
   [f]
   (let [operations (atom [])
         id-counter (atom 1)
         track!     (fn [op args]
                      (swap! operations conj (cons op args))
                      1)]
-    (mt/with-dynamic-fn-redefs [t2/insert!              (fn [& args] (track! :insert! args))
-                                t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
-                                t2/update!              (fn [& args] (track! :update! args))
-                                t2/delete!              (fn [& args] (track! :delete! args))]
+    (mt/with-dynamic-fn-redefs [models.db/insert-entities-returning-instances!
+                                (fn [{:keys [model rows]}]
+                                  (track! :insert! [model (vec rows)])
+                                  (mapv #(assoc % :id (swap! id-counter inc)) rows))
+                                models.db/update-entity!
+                                (fn [id {:keys [model row]}] (track! :update! [model :toucan/pk id row]))
+                                models.db/delete-entities-with-ids!
+                                (fn [model id-col ids] (track! :delete! [model id-col [:in (vec ids)]]))
+                                models.db/delete-entity!
+                                (fn [model id] (track! :delete! [model :toucan/pk id]))]
       (f)
       @operations)))
 
@@ -38,8 +44,8 @@
   (testing "Creating a new record with no existing data"
     (let [new-data {:name "Test"
                     :foo  {:name "Foo 1"}}]
-      (is (= [[:insert-returning-pk! :root {:name "Test"}]
-              [:insert-returning-pk! :foo {:name "Foo 1" :root_id 2}]]
+      (is (= [[:insert! :root [{:name "Test"}]]
+              [:insert! :foo [{:name "Foo 1" :root_id 2}]]]
              (with-tracked-operations!
                (spec-update/do-update! nil new-data basic-spec)))))))
 
@@ -110,7 +116,7 @@
                                                    :name    "New Foo"
                                                    :root_id 1})]
       (is (= [[:delete! :foo :toucan/pk 2]
-              [:insert-returning-pk! :foo {:name "New Foo" :root_id 1}]]
+              [:insert! :foo [{:name "New Foo" :root_id 1}]]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data basic-spec)))))))
 
@@ -157,7 +163,7 @@
                            {:id 3
                             :name "Bar 2"
                             :unrelated "abc"}]}]
-      (is (= [[:insert-returning-pk! :root {:name "Test"}]
+      (is (= [[:insert! :root [{:name "Test"}]]
               [:insert! :bar [{:name "Bar 1" :root_id 2 :unrelated "xyz"}
                               {:name "Bar 2" :root_id 2 :unrelated "abc"}]]]
              (with-tracked-operations!
@@ -329,7 +335,7 @@
                                           (assoc-in [:bar :name] "updated bar")))))]
       (testing "Complex update with additions updates and deletions at multiple levels"
         (is (= [[:update! :foo :toucan/pk "abc-123" {:name "Updated Foo"}]
-                [:insert-returning-pk! :bar {:name "New Bar" :foo_id "abc-123"}]
+                [:insert! :bar [{:name "New Bar" :foo_id "abc-123"}]]
                 [:insert! :bar_qux [{:name "qux4" :bar_id 2}]]
                 [:delete! :bar :id [:in [11]]]
                 [:update! :bar :toucan/pk 10 {:name "Updated Bar 1" :foo_id "abc-123"}]
@@ -359,9 +365,9 @@
     (let [existing-data {:id   1
                          :name "foo"}]
       (is (= [[:update! :foo :toucan/pk 1 {:name "FOO"}]
-              [:insert-returning-pk! :bar {:name "Bar 1" :foo_id 1}]
+              [:insert! :bar [{:name "Bar 1" :foo_id 1}]]
               [:insert! :bar_qux [{:name "qux1" :bar_id 2} {:name "qux2" :bar_id 2}]]
-              [:insert-returning-pk! :bar {:name "Bar 2" :foo_id 1}]]
+              [:insert! :bar [{:name "Bar 2" :foo_id 1}]]]
              (with-tracked-operations!
                (spec-update/do-update!
                 existing-data
@@ -415,8 +421,8 @@
   (testing "Creating parent with referenced child (ref-in-parent)"
     (let [new-data {:name "Parent"
                     :child {:name "Child"}}]
-      (is (= [[:insert-returning-pk! :child {:name "Child"}]
-              [:insert-returning-pk! :parent {:name "Parent" :child_id 2}]]
+      (is (= [[:insert! :child [{:name "Child"}]]
+              [:insert! :parent [{:name "Parent" :child_id 2}]]]
              (with-tracked-operations!
                (spec-update/do-update! nil new-data ref-in-parent-spec)))))))
 
@@ -454,7 +460,7 @@
                                  :name "Child"}}
           new-data (assoc existing-data :child {:name "New Child"})]
       (is (= [[:delete! :child :toucan/pk 1]
-              [:insert-returning-pk! :child {:name "New Child"}]
+              [:insert! :child [{:name "New Child"}]]
               [:update! :parent :toucan/pk 1 {:name "Parent", :child_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
@@ -478,7 +484,7 @@
     (let [existing-data {:id 1
                          :name "Parent"}
           new-data (assoc existing-data :child {:name "Child"})]
-      (is (= [[:insert-returning-pk! :child {:name "Child"}]
+      (is (= [[:insert! :child [{:name "Child"}]]
               [:update! :parent :toucan/pk 1 {:name "Parent", :child_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
@@ -547,11 +553,11 @@
                              :assignee {:name "User 1"}}
                             {:description "Task 2"
                              :assignee {:name "User 2"}}]}]
-      (is (= [[:insert-returning-pk! :project {:name "New Project"}]
-              [:insert-returning-pk! :user {:name "User 1"}]
-              [:insert-returning-pk! :task {:description "Task 1", :project_id 2, :assignee_id 3}]
-              [:insert-returning-pk! :user {:name "User 2"}]
-              [:insert-returning-pk! :task {:description "Task 2", :project_id 2, :assignee_id 5}]]
+      (is (= [[:insert! :project [{:name "New Project"}]]
+              [:insert! :user [{:name "User 1"}]]
+              [:insert! :task [{:description "Task 1", :project_id 2, :assignee_id 3}]]
+              [:insert! :user [{:name "User 2"}]]
+              [:insert! :task [{:description "Task 2", :project_id 2, :assignee_id 5}]]]
              (with-tracked-operations!
                (spec-update/do-update! nil new-data multi-row-with-ref-spec)))))))
 
@@ -591,7 +597,7 @@
                                              :name "User A"}}]}
           new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
       (is (= [[:delete! :user :toucan/pk 100]
-              [:insert-returning-pk! :user {:name "New Assignee"}]
+              [:insert! :user [{:name "New Assignee"}]]
               [:update! :task :toucan/pk 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
@@ -604,7 +610,7 @@
                                   :description "Task 1"
                                   :project_id 1}]}
           new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
-      (is (= [[:insert-returning-pk! :user {:name "New Assignee"}]
+      (is (= [[:insert! :user [{:name "New Assignee"}]]
               [:update! :task :toucan/pk 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))

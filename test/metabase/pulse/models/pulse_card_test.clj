@@ -1,6 +1,7 @@
 (ns metabase.pulse.models.pulse-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.test :as mt]
@@ -41,7 +42,7 @@
                                                               :dashboard_card_id dashcard-id}
                      :model/PulseCard     _                  {:pulse_id other-id :card_id card-id
                                                               :dashboard_card_id other-dc-id}]
-        (pulse-card/delete-pulse-cards-for-dashcards! [dashcard-id])
+        (models.pulse/delete-pulse-cards-for-dashcards! [dashcard-id])
         (testing "the subscription that loses a card is audited once as updated"
           (is (= 1 (count (mt/all-entries-for :subscription-update :model/Pulse pulse-id)))))
         (testing "a subscription that keeps its cards is not audited"

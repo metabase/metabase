@@ -35,8 +35,9 @@
   - `:subject`, a fn of the event returning the `[model id]` under which its row is recorded, the model and the id of
     its row by default.
   - `:context-details?`, true for a model whose rows take the `:details` that the context of the write carries.
-  - `:touch`, `:row` for a model whose row an update that changes none of its columns, the touch of a row whose parts
-    changed, stores with the details of the row whole, as a create does; by default it stores the changes, none."
+  - `:touch`, `:row` for a model whose parts, such as the cards and channels of a Pulse, are written by its own functions
+    that publish one update event of it, the touch of a row that changed none of its columns: the touch records an
+    update that stores the details of the row whole, as a create does."
   (:require
    [toucan2.model :as t2.model]))
 

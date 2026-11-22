@@ -1,10 +1,8 @@
 (ns metabase.pulse.models.pulse-card
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
@@ -33,7 +31,8 @@
       (some-> inc)
       (or 0)))
 
-(def ^:private NewPulseCard
+(def NewPulseCard
+  "What a caller gives to append a PulseCard, which takes the defaults of its other columns."
   [:map {:closed true}
    [:card_id                            ms/PositiveInt]
    [:pulse_id                           ms/PositiveInt]
@@ -47,12 +46,10 @@
 ;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
 (mu/defn create-pulse-cards! :- [:sequential :map]
-  "Insert the PulseCard `rows`, publishing their create event, and return the inserted instances."
+  "Insert the PulseCard `rows` and return the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.create]]
   (if (seq rows)
-    (t2/with-transaction [_conn]
-      (u/prog1 (pulse.db/insert-pulse-cards! rows)
-        (events/publish-event! :event/pulse-card-create (events/create-event <>))))
+    (pulse.db/insert-pulse-cards! rows)
     []))
 
 (mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.create]
@@ -75,26 +72,15 @@
   (create-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards))))
 
 (mu/defn delete-pulse-cards-for-pulse! :- :boolean
-  "Delete the PulseCards of the Pulse with `pulse-id`, publishing their delete event, and return whether there were any."
+  "Delete the PulseCards of the Pulse with `pulse-id` and return whether there were any."
   [pulse-id :- ::lib.schema.id/pulse]
-  (t2/with-transaction [_conn]
-    (let [rows (pulse.db/pulse-cards-for-pulse pulse-id)]
-      (when (seq rows)
-        (events/publish-event! :event/pulse-card-delete (events/delete-event rows))
-        (pulse.db/delete-pulse-cards-for-pulse! pulse-id))
-      (boolean (seq rows)))))
+  (pos? (pulse.db/delete-pulse-cards-for-pulse! pulse-id)))
 
 (mu/defn delete-pulse-cards-for-dashcards! :- :nil
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, publishing their delete event and, last, the touch
-  event of their Pulses, so that the records of each Pulse are made once."
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (when (seq dashcard-ids)
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (pulse.db/pulse-cards-for-dashcards dashcard-ids))]
-        (events/publish-event! :event/pulse-card-delete (events/delete-event rows))
-        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids)
-        (events/publish-event! :event/pulse-update
-                               (events/touch-event (pulse.db/pulses-by-ids (vec (distinct (map :pulse_id rows)))))))))
+    (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))
   nil)
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
@@ -106,13 +92,6 @@
   {:track [:pulse_id :card_id :position :include_csv :include_xls :dashboard_card_id :entity_id :format_rows
            :pivot_results]
    :skip  []})
-
-(defmethod audit/spec :model/PulseCard [_model]
-  {:track          []
-   :track-redacted [:card_id :dashboard_card_id :format_rows :include_csv :include_xls :pivot_results :position
-                    :pulse_id]
-   :skip           [:entity_id]
-   :parent         {:model :model/Pulse, :key :pulse_id}})
 
 (defmethod eid-translation/spec :model/PulseCard [_model]
   {:names [:pulse-card]})

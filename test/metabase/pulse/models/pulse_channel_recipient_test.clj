@@ -1,7 +1,7 @@
 (ns metabase.pulse.models.pulse-channel-recipient-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -32,7 +32,7 @@
   (let [{:keys [user-ids pulse-ids]} (recipient-users! user-count)]
     (try
       (t2/with-call-count [call-count]
-        (pulse-channel-recipient/delete-pulse-channel-recipients-for-users! user-ids)
+        (models.pulse/delete-pulse-channel-recipients-for-users! user-ids)
         (let [statements (call-count)]
           (testing "the recipients and the channels they were the last of are gone, and the pulses are archived"
             (is (not (t2/exists? :model/PulseChannelRecipient :user_id [:in user-ids])))

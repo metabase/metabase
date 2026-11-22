@@ -101,7 +101,7 @@
                                                         (m/dissoc-in [:details :emails])))))
                  mt/derecordize))))))
 
-(deftest update-notification-cards!-test
+(deftest update-pulse-cards-test
   (mt/with-temp [:model/Pulse pulse {}
                  :model/Card  card-1 {:name "card1"}
                  :model/Card  card-2 {:name "card2"}
@@ -112,7 +112,7 @@
                               1 card-1
                               2 card-2
                               3 card-3))]
-                (models.pulse/update-notification-cards! pulse (map models.pulse/card->ref cards)))
+                (models.pulse/update-pulse! {:id (u/the-id pulse) :cards (mapv models.pulse/card->ref cards)}))
               (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, :pulse_id (u/the-id pulse)))]
                 (t2/select-fn-set :name :model/Card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil

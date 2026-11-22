@@ -9,6 +9,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -315,7 +316,8 @@
 (mu/defn insert-pulse-cards!
   "Insert the PulseCard `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.update]]
-  (t2/insert-returning-instances! :model/PulseCard rows))
+  (u/prog1 (t2/insert-returning-instances! :model/PulseCard rows)
+    (change-log/log-rows! :model/PulseCard :insert :id [:in (mapv :id <>)])))
 
 (mu/defn pulse-cards-for-dashcards
   "The PulseCards of the DashboardCards with `dashcard-ids`."
@@ -325,6 +327,7 @@
 (mu/defn delete-pulse-cards-for-dashcards!
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (change-log/log-rows! :model/PulseCard :delete :dashboard_card_id [:in dashcard-ids])
   (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
 
 (mu/defn pulse-cards-for-pulse
@@ -333,8 +336,9 @@
   (t2/select :model/PulseCard :pulse_id pulse-id))
 
 (mu/defn delete-pulse-cards-for-pulse!
-  "Delete the PulseCards of the Pulse with `pulse-id`."
+  "Delete the PulseCards of the Pulse with `pulse-id`, returning the number deleted."
   [pulse-id :- ::lib.schema.id/pulse]
+  (change-log/log-rows! :model/PulseCard :delete :pulse_id pulse-id)
   (t2/delete! :model/PulseCard :pulse_id pulse-id))
 
 (mu/defn pulse-channels-for-pulse
@@ -402,19 +406,22 @@
 (mu/defn insert-pulse-channel!
   "Insert the PulseChannel `row` and return the inserted instance."
   [row :- ::pulse.schema/pulse-channel.update]
-  (t2/insert-returning-instance! :model/PulseChannel row))
+  (u/prog1 (t2/insert-returning-instance! :model/PulseChannel row)
+    (change-log/log-rows! :model/PulseChannel :insert :id (:id <>))))
 
 (mu/defn update-pulse-channel!
   "Apply `changes` to the PulseChannel with `channel-id`."
   [channel-id :- ms/PositiveInt
    changes    :- ::pulse.schema/pulse-channel.update]
+  (change-log/log-rows! :model/PulseChannel :update :id channel-id)
   (t2/update! :model/PulseChannel :id channel-id changes))
 
 (mu/defn set-pulse-channels-enabled!
-  "Set the enabled flag of the PulseChannels of the Pulses with `pulse-ids`."
+  "Set the enabled flag of the PulseChannels of the Pulses with `pulse-ids` that have the other one."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]
    enabled?  :- :boolean]
-  (t2/update! :model/PulseChannel :pulse_id [:in pulse-ids] {:enabled enabled?}))
+  (change-log/log-rows! :model/PulseChannel :update :pulse_id [:in pulse-ids] :enabled (not enabled?))
+  (t2/update! :model/PulseChannel :pulse_id [:in pulse-ids] :enabled (not enabled?) {:enabled enabled?}))
 
 (mu/defn pulse-channel
   "The PulseChannel with `channel-id`, or nil."
@@ -427,8 +434,10 @@
   (t2/select :model/PulseChannel :id [:in channel-ids]))
 
 (mu/defn delete-pulse-channels!
-  "Delete the PulseChannels with `channel-ids`."
+  "Delete the PulseChannels with `channel-ids` and, with them, their PulseChannelRecipients."
   [channel-ids :- [:sequential ms/PositiveInt]]
+  (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id [:in channel-ids])
+  (change-log/log-rows! :model/PulseChannel :delete :id [:in channel-ids])
   (t2/delete! :model/PulseChannel :id [:in channel-ids]))
 
 (mu/defn active-recipients-for-channels
@@ -475,11 +484,13 @@
 (mu/defn insert-pulse-channel-recipients!
   "Insert the PulseChannelRecipient `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.update]]
-  (t2/insert-returning-instances! :model/PulseChannelRecipient rows))
+  (u/prog1 (t2/insert-returning-instances! :model/PulseChannelRecipient rows)
+    (change-log/log-rows! :model/PulseChannelRecipient :insert :id [:in (mapv :id <>)])))
 
 (mu/defn delete-pulse-channel-recipients!
   "Delete the PulseChannelRecipients with `recipient-ids`."
   [recipient-ids :- [:sequential ms/PositiveInt]]
+  (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in recipient-ids])
   (t2/delete! :model/PulseChannelRecipient :id [:in recipient-ids]))
 
 (mu/defn delete-pulse-channel-recipients-raw!

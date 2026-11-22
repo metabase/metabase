@@ -18,7 +18,6 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
-   [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
    [metabase.util :as u]
@@ -425,7 +424,7 @@
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)
                 pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
     (binding [api/*current-user-id* nil]
-      (pulse-channel-recipient/delete-pulse-channel-recipients! [pcr-id])))
+      (models.pulse/delete-pulse-channel-recipients! [pcr-id])))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

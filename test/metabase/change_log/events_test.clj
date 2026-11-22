@@ -102,17 +102,16 @@
                    (set (map second rows))))
             (is (every? #(= ["metabase_field" "insert"] [(first %) (last %)]) rows))))
         (testing "an insert that does not return the key throws in dev and test"
-          (mt/with-temp [:model/Pulse pulse {}
-                         :model/Card  card  {}]
-            (let [insert! #(let [row (t2/insert-returning-instance! [:model/PulseCard :include_csv]
-                                                                    {:pulse_id (:id pulse), :card_id (:id card), :position 0})]
-                             (events/publish-event! :event/pulse-card-create (events/create-event [row])))]
+          (mt/with-model-cleanup [:model/Pulse]
+            (let [insert! #(let [row (t2/insert-returning-instance! [:model/Pulse :name]
+                                                                    (assoc (mt/with-temp-defaults :model/Pulse) :name "keyless"))]
+                             (events/publish-event! :event/pulse-create (events/create-event [row])))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"row key missing" (insert!)))
               (testing "and in production it still inserts, and warns instead of logging"
                 (with-redefs [config/is-prod? true]
                   (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
                     (is (= [] (logged-by insert!)))
-                    (is (t2/exists? :model/PulseCard :pulse_id (:id pulse)))
+                    (is (t2/exists? :model/Pulse :name "keyless"))
                     (is (= 1 (count (messages))))))))))))))
 
 (deftest wake-numbering-test

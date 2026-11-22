@@ -246,9 +246,9 @@
 
 (defmulti delete-for-channels!
   "Deletes the rows of `model` that belong to the Channels with `channel-ids`, which a model that follows its Channels
-  implements with its own write function, publishing its events with `context`."
-  {:arglists '([model channel-ids context])}
-  (fn [model _channel-ids _context] model))
+  implements with its own write function, publishing its events with the `:context` of `opts`."
+  {:arglists '([model channel-ids opts])}
+  (fn [model _channel-ids _opts] model))
 
 (mu/defn update-channels! :- [:sequential ::channel.schema/channel.update-row]
   "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, with one statement per distinct
@@ -268,7 +268,7 @@
                                             changes-by-id))]
          (when active-ids
            (t2/resolve-model :model/PulseChannel)
-           (delete-for-channels! :model/PulseChannel active-ids context))
+           (delete-for-channels! :model/PulseChannel active-ids {:context context}))
          (doseq [[changes pairs] (group-by val changes-by-id)
                  :when           (seq changes)]
            (channel.db/update-channels! (mapv key pairs) changes))
