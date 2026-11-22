@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
    [metabase.events.test-util :as events.tu]
@@ -237,4 +238,4 @@
         (testing (name k)
           (is (= (get small k) (get large k)))))
       (testing "statements of the writes without their consumers"
-        (is (= {:archive 52 :restore 48 :move 6 :delete 35} small))))))
+        (is (= {:archive 52 :restore 48 :move 6 :delete (if config/ee-available? 35 34)} small))))))

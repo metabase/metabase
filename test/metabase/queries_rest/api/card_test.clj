@@ -51,6 +51,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -4507,8 +4508,9 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [{collection-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
           (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
-                         :model/Database {other-db-id :id} {:engine driver/*driver* :dbms_version (:dbms_version (mt/db)) :uploads_enabled true}
+                         :model/Database {other-db-id :id} {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
                          :model/Table {table-id :id} {:db_id db-id, :is_upload true}]
+            (database/update-databases! [{:id other-db-id :uploads_enabled true}])
             (let [card-defaults {:collection_id collection-id
                                  :type          :model
                                  :dataset_query {:type     :query
