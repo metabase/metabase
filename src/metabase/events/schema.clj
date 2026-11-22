@@ -178,6 +178,6 @@
   updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, and the
   `:context` they share."
   [:map {:closed true}
-   [:changes [:sequential {:min 1} ::lifecycle.change]]
+   [:changes [:sequential ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
    [:context {:optional true} ::context]])

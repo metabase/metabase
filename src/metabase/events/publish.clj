@@ -5,7 +5,6 @@
   [[register-capture!]] and [[register-statement-capture!]] to read what a delete removes before it does."
   (:require
    [clojure.set :as set]
-   [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.impl :as events.impl]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
@@ -15,8 +14,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(events.hierarchy/derive! :metabase/lifecycle-event :metabase/event)
 
 (defonce ^:private capturers
   (atom {}))
@@ -57,16 +54,6 @@
                           (when-some [value (capture events)]
                             [consumer-key value]))
                         @capturers)))))
-
-(defn- ensure-topic!
-  "Have `topic` be an event topic with the lifecycle schema that derives `:metabase/lifecycle-event`, the topic that a
-  consumer of the lifecycle events of every model derives its own from."
-  [topic]
-  (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
-    (locking capturers
-      (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
-        (events.hierarchy/derive! topic :metabase/lifecycle-event))))
-  (events.schema/register-lifecycle-topic! topic))
 
 (defn- operation-of
   "The operation of a change: a create has only `:object`, a delete only `:previous-object`."
@@ -136,10 +123,67 @@
      (doseq [topic (distinct (map first events))
              :let [changes (into [] (comp (filter #(= topic (first %))) (mapcat second)) events)]
              :when (seq changes)]
-       (ensure-topic! topic)
        (events.impl/publish-event! topic (cond-> {:changes changes :user-id user-id}
                                            context (assoc :context context)))))
    nil))
+
+(defn- event
+  "The lifecycle event of `changes` by the current user, with `context`."
+  [changes context]
+  (cond-> {:changes changes :user-id (mi/current-user-id)}
+    (seq context) (assoc :context context)))
+
+(mu/defn create-event :- ::events.schema/lifecycle
+  "The lifecycle event of the creation of `rows`, the instances an insert returned, by the current user, to publish
+  after the insert."
+  ([rows] (create-event rows nil))
+  ([rows    :- [:sequential :map]
+    context :- [:maybe ::events.schema/context]]
+   (event (u.events/create-changes rows) context)))
+
+(defn- stamped
+  "The row `previous` with `changes` and, when its model is timestamped and a column that counts changes, a new
+  `:updated_at`, as the timestamp hook sets it in the update."
+  [previous changes]
+  (let [model (t2/model previous)]
+    (cond-> (merge previous changes)
+      (and model
+           (isa? model :hook/timestamped?)
+           (not (contains? changes :updated_at))
+           (some (fn [[k v]] (and (not= v (get previous k))
+                                  (not (contains? (mi/non-timestamped-fields previous) k))))
+                 changes))
+      (assoc :updated_at (java.time.OffsetDateTime/now)))))
+
+(mu/defn update-event :- ::events.schema/lifecycle
+  "The lifecycle event of the update of the rows of `stored`, a map from id to the instance the write function read, by
+  `rows`, each an `:id` and the columns to set, by the current user, to publish after the update. A row that is not
+  stored or changes nothing is left out. `:after` in `options`, a function of the stored row and its columns to set,
+  gives the row after the update when a hook of the model derives a column; `:context` is the context of the event."
+  ([stored rows] (update-event stored rows nil))
+  ([stored                  :- [:map-of :any :map]
+    rows                    :- [:sequential [:map [:id :any]]]
+    {:keys [after context]} :- [:maybe [:map {:closed true}
+                                        [:after {:optional true} ifn?]
+                                        [:context {:optional true} [:maybe ::events.schema/context]]]]]
+   (event (u.events/update-changes stored rows (or after stamped)) context)))
+
+(mu/defn delete-event :- ::events.schema/lifecycle
+  "The lifecycle event of the delete of `rows`, instances as the write function read them, by the current user, to
+  publish right before the statement that deletes them, so that a consumer can still read what the delete cascades to."
+  ([rows] (delete-event rows nil))
+  ([rows    :- [:sequential :map]
+    context :- [:maybe ::events.schema/context]]
+   (event (u.events/delete-changes rows) context)))
+
+(mu/defn touch-event :- ::events.schema/lifecycle
+  "The lifecycle event of an update of `rows`, instances of an owner such as a Dashboard, that changed none of their
+  columns but changed their parts, such as its dashcards, by the current user, to publish as the last step of the
+  write, so that the records of the owner, such as its Revision, are made once."
+  ([rows] (touch-event rows nil))
+  ([rows    :- [:sequential :map]
+    context :- [:maybe ::events.schema/context]]
+   (event (mapv (fn [row] {:previous-object row :object row}) rows) context)))
 
 (mu/defn delete-changes :- [:sequential ::events.schema/lifecycle.change]
   "The changes of a delete of `rows`, instances of `model` as the write function read them, with what the captures of
