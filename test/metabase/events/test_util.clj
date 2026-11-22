@@ -2,6 +2,7 @@
   "Helpers for tests that count the statements of the consumers of the lifecycle events."
   (:require
    [metabase.events.core :as events]
+   [metabase.events.impl :as events.impl]
    [metabase.events.publish :as events.publish]
    [toucan2.core]))
 
@@ -13,11 +14,11 @@
   nil)
 
 (defn do-without-delivery!
-  "Call `thunk` with the lifecycle events of its writes not published, so that a count of its statements leaves out the
+  "Call `thunk` with the events of its writes not delivered, so that a count of its statements leaves out the
   consumers."
   [thunk]
-  (with-redefs-fn {#'events.publish/publish-lifecycle! (fn [& _] nil)
-                   #'events/publish-lifecycle!         (fn [& _] nil)}
+  (with-redefs-fn {#'events.impl/publish-event! (fn [_topic event] event)
+                   #'events/publish-event!      (fn [_topic event] event)}
     thunk))
 
 (defmacro without-delivery
@@ -34,18 +35,18 @@
      (call-count))))
 
 (defn delivery-statement-count!
-  "Call `thunk` and return the number of statements that the consumers of the lifecycle events of its writes ran."
+  "Call `thunk` and return the number of statements that the consumers of the events of its writes ran."
   [thunk]
   (let [total   (atom 0)
-        publish @#'events.publish/publish-lifecycle!
-        counted (fn [& args]
+        publish @#'events.impl/publish-event!
+        counted (fn [topic event]
                   (toucan2.core/with-call-count [call-count]
                     (try
-                      (apply publish args)
+                      (publish topic event)
                       (finally
                         (swap! total + (call-count))))))]
-    (with-redefs-fn {#'events.publish/publish-lifecycle! counted
-                     #'events/publish-lifecycle!         counted}
+    (with-redefs-fn {#'events.impl/publish-event! counted
+                     #'events/publish-event!      counted}
       thunk)
     @total))
 
