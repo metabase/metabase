@@ -15,10 +15,15 @@
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
+(defn- checked-definition
+  "The normalized `definition`, after checking that it fits a Segment, for every caller of this entry point."
+  [definition]
+  (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
+
 (defn create-segment!
   "Create-check and insert a new Segment and return the hydrated Segment."
   [{:keys [name description definition], :as body}]
-  (let [definition (lib-be/normalize-query definition)]
+  (let [definition (checked-definition definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
     (-> (first (segment/create-segments! [{:creator_id  api/*current-user-id*
                                            :name        name
@@ -78,7 +83,7 @@
     (api/update-check existing new-body)
     (when changes
       (segment/update-segments! [(cond-> (assoc changes :id id)
-                                   (:definition changes) (update :definition lib-be/normalize-query))]
+                                   (:definition changes) (update :definition checked-definition))]
                                 {:context {:revision-message revision_message}}))
     (hydrated-segment id)))
 

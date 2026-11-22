@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.models.measure :as measure]
    [metabase.measures.schema :as measures.schema]
@@ -33,10 +34,15 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
+(defn- checked-definition
+  "The normalized `definition`, after checking that it fits a Measure, for every caller of this entry point."
+  [definition]
+  (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
+
 (defn create-measure!
   "Create-check and insert a new Measure and return the hydrated Measure."
   [{:keys [name description definition], :as body}]
-  (let [definition (lib-be/normalize-query definition)]
+  (let [definition (checked-definition definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
     (-> (first (measure/create-measures! [{:creator_id  api/*current-user-id*
                                            :name        name
@@ -102,7 +108,9 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (measure/update-measures! [(assoc changes :id id)] {:context {:revision-message revision_message}}))
+      (measure/update-measures! [(cond-> (assoc changes :id id)
+                                   (:definition changes) (update :definition checked-definition))]
+                                {:context {:revision-message revision_message}}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
