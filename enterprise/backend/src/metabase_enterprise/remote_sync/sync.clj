@@ -13,16 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn state
-  "What a push or pull of `branch` of `repo` compares, with `base-version` the version of the tree the app DB last
-  synced with: the `:tip` version, the `:base`, `:ours` and `:theirs` documents, and whether the remote changed or its
-  history was rewritten."
-  [repo branch base-version]
+(defn- fetch-tip!
+  "Fetches `repo` and returns the version at the tip of `branch`, throwing when the branch is gone."
+  [repo branch]
   (protocol/fetch! repo)
-  (let [tip    (or (protocol/version repo branch)
-                   (throw (ex-info (tru "The branch {0} doesn''t exist in the repository any more. Switch to another branch." branch)
-                                   {:branch branch})))
-        known? (and base-version (protocol/has-version? repo base-version))
+  (or (protocol/version repo branch)
+      (throw (ex-info (tru "The branch {0} doesn''t exist in the repository any more. Switch to another branch." branch)
+                      {:branch branch}))))
+
+(defn- tip-state
+  "What a push or pull compares when `tip` is the version at the tip of the branch, as [[state]] returns it."
+  [repo tip base-version]
+  (let [known? (and base-version (protocol/has-version? repo base-version))
         base   (content/tree-documents repo (when known? base-version))
         theirs (if (= tip base-version) base (content/tree-documents repo tip))
         ours   (content/local-documents)]
@@ -32,6 +34,13 @@
      :theirs             theirs
      :remote-changed?    (not (content/same-documents? base theirs))
      :history-rewritten? (and (some? base-version) (not known?))}))
+
+(defn state
+  "What a push or pull of `branch` of `repo` compares, with `base-version` the version of the tree the app DB last
+  synced with: the `:tip` version, the `:base`, `:ours` and `:theirs` documents, and whether the remote changed or its
+  history was rewritten."
+  [repo branch base-version]
+  (tip-state repo (fetch-tip! repo branch) base-version))
 
 (defn- changed-keys
   "The keys of the entities whose documents differ between `a` and `b`, maps from key to document."
@@ -120,11 +129,10 @@
                     {:kind "pushed" :count (count (changed-keys theirs merged))}
                     {:kind "push-skipped"})}))))
 
-(defn pull!
-  "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
-  and stops when the kept changes depend on content the pull removes."
-  [repo branch base-version {:keys [force? report] :or {report no-report}}]
-  (let [{:keys [tip base ours theirs]} (state repo branch base-version)
+(defn- pull-tip!
+  "Pulls the content of the `tip` version of `repo` into the app DB, as [[pull!]] does."
+  [repo tip base-version {:keys [force? report] :or {report no-report}}]
+  (let [{:keys [base ours theirs]} (tip-state repo tip base-version)
         {:keys [merged conflicts]} (if force?
                                      {:merged theirs}
                                      (remote-sync.merge/merge-documents base ours theirs))
@@ -147,6 +155,18 @@
             {:status  :success
              :version tip
              :outcome (if (pos? changed) {:kind "pulled" :count changed} {:kind "pull-skipped"})})))))
+
+(defn pull!
+  "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
+  and stops when the kept changes depend on content the pull removes; a pull that keeps them reads nothing when the
+  tip of the branch is still `base-version`."
+  [repo branch base-version {:keys [force?] :as options}]
+  (let [tip (fetch-tip! repo branch)]
+    (if (and (= tip base-version) (not force?))
+      {:status  :success
+       :version tip
+       :outcome {:kind "pull-skipped"}}
+      (pull-tip! repo tip base-version options))))
 
 (defn local-changes
   "The `{:key :status :doc}` of each synced entity of the app DB that changed since the `base` documents of the tree it
