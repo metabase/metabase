@@ -4,7 +4,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -30,8 +29,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(events/derive! :event/field-update :metabase/event)
 
 (comment
   ;; idk why condo complains on this not being used when it is, in a keyword down there
@@ -200,10 +197,10 @@
                                       :type                    dimension-type
                                       :name                    dimension-name
                                       :human_readable_field_id human-readable-field-id}])
-      (dimension/create-dimension! {:field_id                id
-                                    :type                    dimension-type
-                                    :name                    dimension-name
-                                    :human_readable_field_id human-readable-field-id})))
+      (first (dimension/create-dimensions! [{:field_id                id
+                                             :type                    dimension-type
+                                             :name                    dimension-name
+                                             :human_readable_field_id human-readable-field-id}]))))
   (warehouse-schema-rest.db/dimension-for-field id))
 
 (api.macros/defendpoint :delete "/:id/dimension" :- ::api/generic-204-no-content

@@ -22,7 +22,6 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -552,12 +551,7 @@
       (check-allowed-contents (map :collection_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders rows)))
         (set-new-permissions! <>)
-        (events/publish-lifecycle! [(events/created :event/table-create <>)])))))
-
-(mu/defn create-table! :- ::warehouse-schema.schema/table
-  "Insert the Table `row` and return it, as [[create-tables!]] does."
-  [row :- ::warehouse-schema.schema/table.create]
-  (first (create-tables! [row])))
+        (events/publish-event! :event/table-create (events/create-event <>))))))
 
 (defn- update-field-positions-for-tables!
   "Set the `:position` of the Fields of each of `tables` to their place in its `:field_order`: one read per distinct
@@ -584,18 +578,18 @@
   (-> (t2.before-update/before-update :model/Table (merge previous changes))
       (assoc :updated_at (:updated_at previous))))
 
-(defn- table-updated
+(defn- table-update-event
   "The `:event/table-update` event of the update of each of `rows`, the id of a Table and its changes, from its `stored`
-  row, `{id row}`, leaving out the rows that change nothing."
-  [stored rows]
-  [:event/table-update (into []
-                             (keep (fn [{:keys [id] :as row}]
-                                     (when-let [previous (stored id)]
-                                       (let [change {:previous-object previous
-                                                     :object          (updated-table previous (dissoc row :id))}]
-                                         (when (seq (u.events/changed-keys change))
-                                           change)))))
-                             rows)])
+  row, `{id row}`, with `context`, leaving out the rows that change nothing."
+  [stored rows context]
+  (events/update-event stored
+                       rows
+                       {:objects (into {}
+                                       (keep (fn [{:keys [id] :as row}]
+                                               (when-let [previous (stored id)]
+                                                 [id (updated-table previous (dissoc row :id))])))
+                                       rows)
+                        :context context}))
 
 (defn- update-tables-by-change!
   "Apply each of `rows`, the id of a Table and the columns to change, with one statement per distinct set of changes,
@@ -607,9 +601,9 @@
 
 (defn- apply-table-updates!
   "Apply each of `rows`, the id of a Table and the columns to change, to the `stored` Tables, `{id row}`, and the
-  changes that follow them, and publish their events, returning the number of Tables updated: a new field order sets
-  the positions of the Table's Fields."
-  [stored rows]
+  changes that follow them, and publish their events with `context`, returning the number of Tables updated: a new
+  field order sets the positions of the Table's Fields."
+  [stored rows context]
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
@@ -623,62 +617,58 @@
                           (contains? stored id)
                           (not= (some-> field_order keyword) (:field_order (stored id))))]
            {:id id :field_order (some-> field_order keyword)}))
-        (events/publish-lifecycle! [(table-updated stored rows)])))))
+        (events/publish-event! :event/table-update (table-update-event stored rows context))))))
+
+(def ^:private write-batch-size
+  "The most rows one statement of a bulk write of Tables carries, so that a write of the Tables of a large Database stays
+  under the parameter limits of the app DB."
+  10000)
 
 (defn- stored-tables
-  "The stored Tables that `rows` update, `{id row}`, read once."
-  [rows]
-  (if-let [ids (not-empty (into #{} (map :id) rows))]
-    (u/index-by :id (warehouse-schema.db/tables ids))
-    {}))
+  "The stored Tables that `rows` update, `{id row}`: those of `stored`, the rows the caller read, and the others read
+  once."
+  [rows stored]
+  (let [missing (into #{} (comp (map :id) (remove #(contains? stored %))) rows)]
+    (cond-> (or stored {})
+      (seq missing) (merge (u/index-by :id (warehouse-schema.db/tables missing))))))
 
 (mu/defn update-tables! :- [:sequential [:map [:id ::lib.schema.id/table]]]
-  "Apply each of `rows`, the id of a Table and the columns to change, and return them, as [[update-table!]] does."
-  [rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
-  (apply-table-updates! (stored-tables rows) rows)
-  (vec rows))
+  "Apply each of `rows`, the id of a Table and the columns to change, and return them; a Collection that cannot hold
+  Tables throws, and a new field order sets the positions of its Fields. The stored rows are read once, unless the
+  caller gives them as `:stored`; `:context` goes into the events."
+  ([rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
+   (update-tables! rows nil))
+  ([rows                     :- [:sequential ::warehouse-schema.schema/table.update-row]
+    {:keys [stored context]} :- ::warehouse-schema.schema/table.write-opts]
+   (doseq [batch (partition-all write-batch-size rows)]
+     (apply-table-updates! (stored-tables batch stored) batch context))
+   (vec rows)))
 
-(mu/defn update-table! :- :int
-  "Apply `changes` to `table`, the Table or its id, and return the number updated; a Collection that cannot hold
-  Tables throws, and a new field order sets the positions of its Fields. A Table the caller gives is the stored row
-  the events publish as the row before the update."
-  [table   :- [:or ::lib.schema.id/table [:fn {:error/message "a Table"} #(t2/instance-of? :model/Table %)]]
-   changes :- ::warehouse-schema.schema/table.update]
-  (let [row (assoc changes :id (u/the-id table))]
-    (apply-table-updates! (if (t2/instance? table) {(:id table) table} (stored-tables [row])) [row])))
+(mu/defn change-case!
+  "Set each of `columns`, such as `:name` and `:schema`, of the Tables with `table-ids` to its value in `kase`, `:lower`
+  or `:upper` case, which the database computes: one read before, one statement and one read after, for the event."
+  [table-ids :- [:sequential ::lib.schema.id/table]
+   kase      :- [:enum :lower :upper]
+   columns   :- [:sequential [:enum :name :schema :display_name]]]
+  (when (seq table-ids)
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (warehouse-schema.db/tables (set table-ids)))]
+        (warehouse-schema.db/change-tables-case! (vec table-ids) kase columns)
+        (events/publish-event! :event/table-update
+                               (events/update-event stored
+                                                    (mapv #(hash-map :id %) (keys stored))
+                                                    {:objects (u/index-by :id (warehouse-schema.db/tables (set (keys stored))))}))))))
 
-(mu/defn update-tables-with-changes! :- :int
-  "Apply the same `changes` to the Tables with `table-ids` and return the number updated, as [[update-table!]] does."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- ::warehouse-schema.schema/table.update]
-  (let [rows (mapv #(assoc changes :id %) table-ids)]
-    (apply-table-updates! (stored-tables rows) rows)))
-
-(mu/defn update-tables-where! :- :int
-  "Apply `changes`, values or HoneySQL expressions, to the Tables matching `conditions` and return the number updated:
-  one statement, unless `changes` set a Collection or a field order, which updates the matching Tables as
-  [[update-table!]] does. The matching Tables are read once; an expression the database evaluates is in the event as
-  given."
-  [conditions :- ::warehouse-schema.schema/conditions
-   changes    :- ::warehouse-schema.schema/sql-changes]
-  (t2/with-transaction [_conn]
-    (let [stored (u/index-by :id (warehouse-schema.db/tables-where conditions))]
-      (cond
-        (empty? stored)
-        0
-
-        (some #(contains? changes %) [:collection_id :field_order])
-        (apply-table-updates! stored (mapv #(assoc changes :id %) (keys stored)))
-
-        :else
-        (u/prog1 (warehouse-schema.db/update-tables-to-sql-changes! (set (keys stored)) changes)
-          (events/publish-lifecycle! [(table-updated stored (mapv #(assoc changes :id %) (keys stored)))]))))))
+(mu/defn ids-of-database :- [:set ::lib.schema.id/table]
+  "The ids of the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/table-ids-of-database database-id))
 
 (mu/defn set-display-name!
   "Set the display name of the Table with `table-id`."
   [table-id     :- ::lib.schema.id/table
    display-name :- :string]
-  (update-table! table-id {:display_name display-name}))
+  (update-tables! [{:id table-id :display_name display-name}]))
 
 (mu/defn delete-tables!
   "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them."
@@ -688,14 +678,8 @@
       (let [tables (warehouse-schema.db/tables (vec ids))]
         (field/delete-fields-for-tables! (vec ids))
         (actions.models/delete-implicit-actions-of-tables! (vec ids))
-        (let [event (events/deleted :event/table-delete :model/Table tables)]
-          (warehouse-schema.db/delete-tables! (vec ids))
-          (events/publish-lifecycle! [event]))))))
-
-(mu/defn delete-table!
-  "Delete the Table with `table-id`, as [[delete-tables!]] does."
-  [table-id :- ::lib.schema.id/table]
-  (delete-tables! [table-id]))
+        (events/publish-event! :event/table-delete (events/delete-event tables))
+        (warehouse-schema.db/delete-tables! (vec ids))))))
 
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain
@@ -704,9 +688,10 @@
   (warehouse-schema.db/increment-table-view-counts! count->ids))
 
 (defmethod collection/archive-in-collections! :model/Table
-  [_model collection-ids _context]
+  [_model collection-ids context]
   (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
-    (update-tables-with-changes! (set table-ids) {:collection_id nil :is_published false})))
+    (update-tables! (mapv (fn [id] {:id id :collection_id nil :is_published false}) (distinct table-ids))
+                    {:context context})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

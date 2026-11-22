@@ -16,7 +16,7 @@
 
 (declare sync-tables-clause)
 
-(mu/defn synced-table-ids-query :- :map
+(mu/defn- synced-table-ids-query :- :map
   "The query of the ids of the Tables of the Database with `database-id` that take part in sync."
   [database-id :- ::lib.schema.id/database]
   ^:allow-subquery {:select [:id]
@@ -441,6 +441,13 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
 
+(mu/defn field-user-settings-for-fields :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "The FieldUserSettings of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (t2/select :model/FieldUserSettings :field_id [:in field-ids])
+    []))
+
 (mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
   "The ID of the Field named `field-name` of the Table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
@@ -554,21 +561,52 @@
    [:not= :data_sensitivity nil]
    [:not (user-set-data-sensitivity-clause)]])
 
-(mu/defn classifier-data-sensitivity-of-table-clause :- vector?
-  "The Honey SQL clause matching the Fields of the Table with `table-id` whose `data_sensitivity` the classifier wrote
-  (see [[classifier-data-sensitivity-clause]])."
+(mu/defn classifier-data-sensitivity-field-ids-of-table :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Table with `table-id` whose `data_sensitivity` the classifier wrote (see
+  [[classifier-data-sensitivity-clause]])."
   [table-id :- ::lib.schema.id/table]
-  [:and [:= :table_id table-id] (classifier-data-sensitivity-clause)])
+  (set (t2/select-pks-set :model/Field {:where [:and [:= :table_id [:auto/param table-id]] (classifier-data-sensitivity-clause)]})))
 
-(mu/defn classifier-data-sensitivity-of-database-clause :- vector?
-  "The Honey SQL clause matching the Fields of every Table of the Database with `database-id` whose
-  `data_sensitivity` the classifier wrote (see [[classifier-data-sensitivity-clause]])."
+(mu/defn classifier-data-sensitivity-field-ids-of-database :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of every Table of the Database with `database-id` whose `data_sensitivity` the classifier
+  wrote (see [[classifier-data-sensitivity-clause]])."
   [database-id :- ::lib.schema.id/database]
-  [:and
-   [:in :table_id ^:allow-subquery {:select [:id]
-                                    :from   [(t2/table-name :model/Table)]
-                                    :where  [:= :db_id database-id]}]
-   (classifier-data-sensitivity-clause)])
+  (set (t2/select-pks-set :model/Field {:where [:and
+                                                [:in :table_id ^:allow-subquery {:select [:id]
+                                                                                 :from   [(t2/table-name :model/Table)]
+                                                                                 :where  [:= :db_id [:auto/param database-id]]}]
+                                                (classifier-data-sensitivity-clause)]})))
+
+(mu/defn analyzed-field-ids-of-table :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Table with `table-id` that have a fingerprint of `fingerprint-version` and no
+  `last_analyzed` yet, which analysis has just finished."
+  [table-id            :- ::lib.schema.id/table
+   fingerprint-version :- :int]
+  (set (t2/select-pks-set :model/Field
+                          :table_id            [:auto/param table-id]
+                          :fingerprint_version [:auto/param fingerprint-version]
+                          :last_analyzed       nil)))
+
+(mu/defn analyzed-field-ids-of-database :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the synced Tables of the Database with `database-id` that have a fingerprint of
+  `fingerprint-version` and no `last_analyzed` yet, which analysis has just finished."
+  [database-id         :- ::lib.schema.id/database
+   fingerprint-version :- :int]
+  (set (t2/select-pks-set :model/Field
+                          :table_id            [:in (synced-table-ids-query database-id)]
+                          :fingerprint_version [:auto/param fingerprint-version]
+                          :last_analyzed       nil)))
+
+(mu/defn field-ids-of-table :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (set (t2/select-pks-set :model/Field :table_id [:auto/param table-id])))
+
+(mu/defn table-ids-with-schema :- [:set ::lib.schema.id/table]
+  "The ids of the Tables of the Database with `database-id` in `schema`."
+  [database-id :- ::lib.schema.id/database
+   schema      :- :string]
+  (set (t2/select-pks-set :model/Table :db_id [:auto/param database-id] :schema [:auto/param schema])))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 

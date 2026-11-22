@@ -706,7 +706,7 @@
   (mt/with-temp [:model/Table table {:name "My Cool Table"}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
-        (table/update-table! (:id table) {:is_published published?})
+        (table/update-tables! [{:id (:id table) :is_published published?}])
         (is (=? {:topic    topic
                  :user_id  (mt/user->id :rasta)
                  :model    "Table"

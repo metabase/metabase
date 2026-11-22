@@ -93,10 +93,9 @@
   the row before them, as one event, as the write functions of Field publish theirs."
   [updates]
   (when (seq updates)
-    (events/publish-lifecycle!
-     [(events/updated :event/field-update
-                      (mapv first (vals updates))
-                      (mapv (fn [[field changes]] (events/updated-row field changes)) (vals updates)))])))
+    (events/publish-event! :event/field-update
+                           (events/update-event (update-vals updates first)
+                                                (mapv (fn [[id [_field changes]]] (assoc changes :id id)) updates)))))
 
 (defn- with-field-update
   "`updates`, as [[publish-field-updates!]] takes them, with `changes` to `field` added."
@@ -265,8 +264,8 @@
                                          (first (t2/insert-returning-instances! :model/Field
                                                                                 (assoc field-row :table_id (:id table))))))}))
         inserted (vec inserted)]
-    (events/publish-lifecycle! [(events/created :event/table-create (mapv :table inserted))
-                                (events/created :event/field-create (into [] (mapcat :fields) inserted))])
+    (events/publish-event! :event/table-create (events/create-event (mapv :table inserted)))
+    (events/publish-event! :event/field-create (events/create-event (into [] (mapcat :fields) inserted)))
     (into {} (map (juxt :table-name :table)) inserted)))
 
 (defn- resolve-fk-relationships!
@@ -351,7 +350,7 @@
                               :connection-details connection-details}
                              e)]
         (log/error e message)
-        (database/delete-database! (u/the-id db))
+        (database/delete-databases! [(u/the-id db)])
         (throw e)))))
 
 (defn set-test-db-permissions!
@@ -465,12 +464,12 @@
   [driver                                           :- :keyword
    {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-        db                 (database/create-database! (merge
-                                                       (toucan2.tools.with-temp/with-temp-defaults :model/Database)
-                                                       {:name     (tx/database-display-name-for-driver driver database-name)
-                                                        :engine   driver
-                                                        :details  connection-details
-                                                        :settings {:database-source-dataset-name database-name}}))]
+        db                 (first (database/create-databases! [(merge
+                                                                (toucan2.tools.with-temp/with-temp-defaults :model/Database)
+                                                                {:name     (tx/database-display-name-for-driver driver database-name)
+                                                                 :engine   driver
+                                                                 :details  connection-details
+                                                                 :settings {:database-source-dataset-name database-name}})]))]
     (sync-newly-created-database! driver database-definition connection-details db)
     (when (not (driver/database-supports? driver :metadata/key-constraints nil))
       (add-foreign-key-relationships! driver database-definition db))
@@ -541,7 +540,7 @@
             (load-dataset-data-if-needed! driver dbdef)
             ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
             ;; need to go thru this again.
-            (database/update-database! (u/the-id existing-database) {:created_at (t/offset-date-time)})))
+            (database/update-databases! [{:id (u/the-id existing-database) :created_at (t/offset-date-time)}])))
         (finally
           (.. lock writeLock unlock))))))
 

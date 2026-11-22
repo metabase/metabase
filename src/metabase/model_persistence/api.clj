@@ -134,8 +134,7 @@
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (database/update-database! db
-                                 {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
+      (database/update-databases! [{:id (:id db) :settings (not-empty (dissoc (:settings db) :persist-models-enabled))}] {:stored {(:id db) db}}))
     (task.persist-refresh/disable-persisting!)))
 
 (api.macros/defendpoint :post "/disable" :- ::api/generic-204-no-content
@@ -236,7 +235,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (database/update-database! database {:settings (assoc (:settings database) :persist-models-enabled true)})
+            (do (database/update-databases! [{:id (:id database) :settings (assoc (:settings database) :persist-models-enabled true)}] {:stored {(:id database) database}})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -252,7 +251,7 @@
   (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (database/update-database! database {:settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (database/update-databases! [{:id (:id database) :settings (dissoc (:settings database) :persist-models-enabled)}] {:stored {(:id database) database}})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

@@ -308,7 +308,7 @@
             (run-jobs!)
             (is (not (deps.test/analysis-finding-pending? :card card-id)))
             (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description nil}
-              (field/update-field! (mt/id :products :title) {:description "Changed"})
+              (field/update-fields! [{:id (mt/id :products :title) :description "Changed"}])
               (is (deps.test/analysis-finding-pending? :table (mt/id :products)))
               (is (some #{card-id} (analyzed-ids! run-jobs!))))))))))
 

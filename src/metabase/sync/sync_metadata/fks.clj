@@ -20,7 +20,7 @@
                                      (:id database)
                                      (:fk-table-schema metadata) (:fk-table-name metadata) (:fk-column-name metadata)
                                      (:pk-table-schema metadata) (:pk-table-name metadata) (:pk-column-name metadata))]
-             (field/update-field! fk-id changes)
+             (count (field/update-fields! [(assoc changes :id fk-id)]))
              0)
     (when (= <> 1)
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"

@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -25,8 +24,7 @@
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
-   [toucan2.core :as t2])
+   [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang ITransientSet)))
 
@@ -126,8 +124,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (database/update-database! (u/the-id database)
-                             {:details (assoc (:details database) :version (:version db-metadata))}))
+  (database/update-databases! [{:id (u/the-id database) :details (assoc (:details database) :version (:version db-metadata))}]))
 
 (mu/defn- cruft-dependent-cols :- :map
   [{table-name :name :as table} :- TableMetadataOrInstance
@@ -157,31 +154,37 @@
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
-(mu/defn- insert-table! :- (ms/InstanceOf :model/Table)
-  "Inserts a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
+(mu/defn- new-table-row :- :map
+  "The row of a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
   [database          :- i/DatabaseInstance
    table             :- TableMetadata
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (table/create-table!
-   (merge (cruft-dependent-cols table database ::create)
-          {:active                  true
-           :db_id                   (:id database)
-           :schema                  (:schema table)
-           :description             (:description table)
-           :database_require_filter (:database_require_filter table)
-           :display_name            (or (:display_name table)
-                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
-           :name                    (:name table)
-           :is_writable             (:is_writable table)}
-          (when (:field_order table)
-            {:field_order (:field_order table)})
-          (when (:data_source table)
-            {:data_source (:data_source table)})
-          (when (:data_authority table)
-            {:data_authority (:data_authority table)})
-          (when sample?
-            {:data_authority :ingested
-             :data_source    :ingested}))))
+  (merge (cruft-dependent-cols table database ::create)
+         {:active                  true
+          :db_id                   (:id database)
+          :schema                  (:schema table)
+          :description             (:description table)
+          :database_require_filter (:database_require_filter table)
+          :display_name            (or (:display_name table)
+                                       (warehouse-schema.humanization/name->human-readable-name (:name table)))
+          :name                    (:name table)
+          :is_writable             (:is_writable table)}
+         (when (:field_order table)
+           {:field_order (:field_order table)})
+         (when (:data_source table)
+           {:data_source (:data_source table)})
+         (when (:data_authority table)
+           {:data_authority (:data_authority table)})
+         (when sample?
+           {:data_authority :ingested
+            :data_source    :ingested})))
+
+(mu/defn- insert-table! :- (ms/InstanceOf :model/Table)
+  "Inserts a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
+  [database :- i/DatabaseInstance
+   table    :- TableMetadata
+   options  :- [:map {:closed true} [:sample? :boolean]]]
+  (first (table/create-tables! [(new-table-row database table options)])))
 
 (mu/defn create-table! :- (ms/InstanceOf :model/Table)
   "Creates a new table in the database, ready to be synced.
@@ -263,17 +266,16 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (t2/with-transaction [_conn]
-      (mapv (fn [table-metadata]
-              (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
-            (sort-by (juxt :schema :name) new-table-metadatas)))))
+    (table/create-tables! (mapv (fn [table-metadata]
+                                  (new-table-row database (m/assoc-some table-metadata :field_order field-order) options))
+                                (sort-by (juxt :schema :name) new-table-metadatas)))))
 
 (mu/defn- retire-tables!
   "Mark the active Tables with `table-ids` as inactive."
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (table/update-tables-where! {:id [:in table-ids] :active true} {:active false})))
+    (table/update-tables! (mapv (fn [id] {:id id :active false}) table-ids))))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -391,7 +393,7 @@
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
-    (table/update-tables-where! {:db_id (:id database) :schema schema} {:schema new-schema})))
+    (table/update-tables! (mapv (fn [id] {:id id :schema new-schema}) (sync.db/table-ids-with-schema (:id database) schema)))))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -424,7 +426,8 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(table/update-tables-where! {:id (:id table) :active false} {:archived_at :%now :name new-name})]
+                  [(count (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}]
+                                                {:stored {(:id table) table}}))]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

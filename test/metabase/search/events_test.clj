@@ -404,7 +404,7 @@
                      :model/Action   {action-id :id} {:name "Db Delete Action", :model_id card-id, :type :query}]
         (is (= 1 (indexed-count "dataset" card-id)))
         (is (= 1 (indexed-count "action" action-id)))
-        (database/delete-database! db-id)
+        (database/delete-databases! [db-id])
         (is (false? (t2/exists? :model/Card :id card-id)))
         (is (= 0 (indexed-count "dataset" card-id)))
         (is (= 0 (indexed-count "action" action-id)))))))
@@ -416,7 +416,7 @@
                      :model/Card     {card-id :id}   {:name "Db Failed Purge Model", :type :model, :database_id db-id}
                      :model/Action   {action-id :id} {:name "Db Failed Purge Action", :model_id card-id, :type :query}]
         (mt/with-dynamic-fn-redefs [search/delete! (fn [_model _ids] (throw (ex-info "purge failed" {})))]
-          (database/delete-database! db-id))
+          (database/delete-databases! [db-id]))
         (is (= 0 (indexed-count "action" action-id)))))))
 
 (deftest database-delete-tombstones-later-chunks-despite-an-earlier-failure-test
@@ -434,7 +434,7 @@
                                                          (if (contains? (set ids) fail-card)
                                                            (throw (ex-info "purge failed" {}))
                                                            (real-delete! model ids)))]
-              (database/delete-database! db-id)))
+              (database/delete-databases! [db-id])))
           (is (= 1 (indexed-count "dataset" fail-card))
               "the chunk whose delete! throws is left for the reindex")
           (is (= 0 (indexed-count "dataset" ok-card))
@@ -446,7 +446,7 @@
       (mt/with-temp [:model/Database {db-id :id}   {}
                      :model/Card     {card-id :id} {:name "Db Enumeration Failure Card", :database_id db-id}]
         (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
-          (database/delete-database! db-id)
+          (database/delete-databases! [db-id])
           (is (false? (t2/exists? :model/Database :id db-id))))
         (is (false? (t2/exists? :model/Card :id card-id)))
         (is (= 0 (indexed-count "card" card-id)))))))
@@ -466,7 +466,7 @@
                                                    :set    {:database_id other-id}
                                                    :where  [:= :id card-id]})
                                         (add-cascading-documents cascading instances))]
-            (database/delete-database! db-id)))
+            (database/delete-databases! [db-id])))
         (is (t2/exists? :model/Card :id card-id))
         (is (= 1 (indexed-count "dataset" card-id)))))))
 

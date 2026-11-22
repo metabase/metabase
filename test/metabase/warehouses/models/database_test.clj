@@ -111,7 +111,7 @@
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
-      (let [db-id (:id (database/create-database! {:name "Tasks Test" :engine :h2 :details {}}))]
+      (let [db-id (:id (first (database/create-databases! [{:name "Tasks Test" :engine :h2 :details {}}])))]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
@@ -121,7 +121,7 @@
                  :data                {"db-id" db-id}}
                 (trigger-for-db db-id)))
         (testing "When deleting a Database, sync tasks should get removed"
-          (database/delete-database! db-id)
+          (database/delete-databases! [db-id])
           (is (= nil
                  (trigger-for-db db-id))))))))
 
@@ -133,7 +133,7 @@
                                                        :dataset_query {:database db-id
                                                                        :type     :native
                                                                        :native   {:query "select 1"}}}]
-      (database/delete-database! db-id)
+      (database/delete-databases! [db-id])
       (is (not (t2/exists? :model/Action :id action-id))))))
 
 (deftest health-check-candidates-test
@@ -547,21 +547,21 @@
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
-      (database/update-database! db-id {:details {:keystore-path "secret-path"}})
+      (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
-      (database/update-database! db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
+      (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
-      (database/update-database! db-id {:details {:keystore-options "local"
-                                                  :keystore-path "prefer-path"
-                                                  :keystore-value "ignore-value"}})
+      (database/update-databases! [{:id db-id :details {:keystore-options "local"
+                                                        :keystore-path "prefer-path"
+                                                        :keystore-value "ignore-value"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
-      (database/update-database! db-id {:details {:keystore-value nil}})
+      (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
       (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? nil
               (secret/latest-for-id secret-id))))))
@@ -703,7 +703,7 @@
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (database/update-database! id {:details (assoc details :password-path "/path/to/my/password-file")})
+                  (database/update-databases! [{:id id :details (assoc details :password-path "/path/to/my/password-file")}])
                   (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
                                                                        :source  :file-path
                                                                        :version 2
@@ -739,7 +739,7 @@
                                        :name    "Secret Test"
                                        :details {:host "localhost"}}]
       (let [db-id (:id db)]
-        (database/update-database! db-id {:write_data_details {:keystore-value "write-secret"}})
+        (database/update-databases! [{:id db-id :write_data_details {:keystore-value "write-secret"}}])
         (let [raw-write-details (t2/select-one-fn
                                  (comp json/decode+kw :write_data_details)
                                  (t2/table-name :model/Database) :id db-id)]
@@ -761,7 +761,7 @@
                                              :updated_at         (t/instant)
                                              :details            (json/encode {:host "localhost"})
                                              :write_data_details (json/encode {:keystore-id write-secret-id})}]
-          (database/delete-database! db-id)
+          (database/delete-databases! [db-id])
           (is (nil? (t2/select-one :model/Secret :id write-secret-id))
               "Secret referenced in write_data_details should be deleted"))))))
 
@@ -1311,10 +1311,10 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"A destination database cannot be the router of another destination database"
-           (database/create-database! {:name               "Nested Destination"
-                                       :engine             :h2
-                                       :details            {}
-                                       :router_database_id dest-id}))))))
+           (first (database/create-databases! [{:name               "Nested Destination"
+                                                :engine             :h2
+                                                :details            {}
+                                                :router_database_id dest-id}])))))))
 
 (deftest provider-name-derived-from-engine-and-host-test
   (testing "provider_name follows the engine and the host, whatever the writer sends"
@@ -1442,7 +1442,7 @@
                       (call-count))
             written (binding [search.ingestion/*disable-updates* true]
                       (t2/with-call-count [call-count]
-                        (database/update-database! db-id {:dbms_version {:version "2"}})
+                        (database/update-databases! [{:id db-id :dbms_version {:version "2"}}])
                         (call-count)))]
         (is (= (inc plain) written))
         (is (= {:version "2"} (t2/select-one-fn :dbms_version :model/Database :id db-id)))))))
@@ -1472,6 +1472,6 @@
           (mt/with-dynamic-fn-redefs [transform/delete-transforms! (fn [ids]
                                                                      (reset! deleted ids)
                                                                      (original ids))]
-            (database/delete-database! db-id)))
+            (database/delete-databases! [db-id])))
         (is (= [transform-id] @deleted))
         (is (not (t2/exists? :model/Transform :id transform-id)))))))

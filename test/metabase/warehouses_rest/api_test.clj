@@ -1455,7 +1455,7 @@
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
-      (let [db (database/create-database! (mt/with-temp-defaults :model/Database))]
+      (let [db (first (database/create-databases! [(mt/with-temp-defaults :model/Database)]))]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)

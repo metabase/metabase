@@ -105,7 +105,7 @@
         (perms/set-database-permission! group-id database-id :perms/create-queries :query-builder-and-native)
         (perms/set-database-permission! group-id database-id :perms/download-results :one-million-rows))
       (mt/with-model-cleanup [:model/Database]
-        (let [database-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
+        (let [database-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
           (is (= {:perms/view-data      :blocked
                   :perms/create-queries :no}
                  (t2/select-fn->fn :perm_type :perm_value :model/DataPermissions

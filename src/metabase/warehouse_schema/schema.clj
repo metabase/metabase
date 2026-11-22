@@ -358,18 +358,23 @@
    [:map {:closed true}
     [:id ::lib.schema.id/table]]])
 
-(mr/def ::sql-value
-  "A column value of a bulk write of Fields or Tables: a plain value or a HoneySQL expression."
-  [:or :nil :boolean number? :string :keyword [:fn {:description "HoneySQL expression"} vector?]])
+(mr/def ::table.write-opts
+  "The options of an update of Tables: `:stored`, the Tables the caller already read, by id, as the rows before it, so
+  that it reads none; `:context` for the events."
+  [:maybe [:map {:closed true}
+           [:stored  {:optional true} [:map-of ::lib.schema.id/table :map]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mr/def ::conditions
-  "The rows a bulk write of a Field or a Table changes, as a map of column to the value or HoneySQL clause it must
-  match."
-  [:map-of {:min 1} :keyword ::sql-value])
+(mr/def ::table-user-settings.write-opts
+  "The options of an update of TableUserSettings: `:context` for the events."
+  [:maybe [:map {:closed true}
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mr/def ::sql-changes
-  "The columns a bulk write of Fields or Tables sets, each to a value or a HoneySQL expression over the row."
-  [:map-of {:min 1} :keyword ::sql-value])
+(mr/def ::field.write-opts
+  "The options of an update of Fields: `:stored`, the Fields the caller already read, by id, as the rows before it, so
+  that it reads none."
+  [:maybe [:map {:closed true}
+           [:stored {:optional true} [:map-of ::lib.schema.id/field :map]]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."

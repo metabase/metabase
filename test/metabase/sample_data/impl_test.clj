@@ -301,12 +301,12 @@
       (api.database-test/with-db-scheduler-setup!
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
-          (let [db (database/create-database! {:name "Sense Check" :engine :h2 :details {}})]
+          (let [db (first (database/create-databases! [{:name "Sense Check" :engine :h2 :details {}}]))]
             (try
               (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                      (task.sync-databases-test/query-all-db-sync-triggers-name db)))
               (finally
-                (database/delete-database! (:id db))))))
+                (database/delete-databases! [(:id db)])))))
         (testing "The sample database should also have sync jobs scheduled"
           (let [sample-db (t2/select-one :model/Database :is_sample true)]
             (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)

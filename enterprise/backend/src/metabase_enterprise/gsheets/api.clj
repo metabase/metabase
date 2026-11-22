@@ -389,11 +389,10 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (database/update-database! 1
-                             {:is_attached_dwh true
-                              :settings
-                              (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                                   "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
+  (database/update-databases! [{:id 1 :is_attached_dwh true
+                                :settings
+                                (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
+                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")}])
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:

@@ -12,7 +12,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -84,24 +83,7 @@
     (t2/with-transaction [_conn]
       (check-human-readable-fields (filter :human_readable_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-dimensions! rows))
-        (events/publish-lifecycle! [(events/created :event/dimension-create <>)])))))
-
-(mu/defn create-dimension! :- ::warehouse-schema.schema/dimension
-  "Insert the Dimension `row` and return it, as [[create-dimensions!]] does."
-  [row :- ::warehouse-schema.schema/dimension.create]
-  (first (create-dimensions! [row])))
-
-(defn- dimension-updated
-  "The `:event/dimension-update` event of the update of each of the Dimensions `previous` by its changes in `changes`,
-  `{id changes}`, leaving out those that change nothing."
-  [previous changes]
-  [:event/dimension-update (into []
-                                 (keep (fn [{:keys [id] :as dimension}]
-                                         (let [change {:previous-object dimension
-                                                       :object          (events/updated-row dimension (changes id))}]
-                                           (when (seq (u.events/changed-keys change))
-                                             change))))
-                                 previous)])
+        (events/publish-event! :event/dimension-create (events/create-event <>))))))
 
 (mu/defn update-dimensions! :- [:sequential [:map [:id ::lib.schema.id/dimension]]]
   "Apply each of `rows`, the id of a Dimension and the columns to change, and return the rows of the Dimensions that
@@ -121,8 +103,7 @@
         (doseq [[changes rows] (group-by #(dissoc % :id) rows)
                 :when (seq changes)]
           (warehouse-schema.db/update-dimensions! (mapv :id rows) changes))
-        (events/publish-lifecycle! [(dimension-updated (keep (comp stored :id) rows)
-                                                       (into {} (map (juxt :id #(dissoc % :id))) rows))])
+        (events/publish-event! :event/dimension-update (events/update-event stored rows))
         rows))))
 
 (defn- delete-dimension-rows!
@@ -130,9 +111,8 @@
   [dimensions]
   (when (seq dimensions)
     (t2/with-transaction [_conn]
-      (let [event (events/deleted :event/dimension-delete :model/Dimension dimensions)]
-        (warehouse-schema.db/delete-dimensions! (mapv :id dimensions))
-        (events/publish-lifecycle! [event])))))
+      (events/publish-event! :event/dimension-delete (events/delete-event (vec dimensions)))
+      (warehouse-schema.db/delete-dimensions! (mapv :id dimensions)))))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`."
@@ -143,19 +123,19 @@
 (mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:field_id field-id})))
+  (delete-dimension-rows! (warehouse-schema.db/dimensions-of-field field-id)))
 
 (mu/defn delete-dimensions-of-type-for-field!
   "Delete the `dimension-type` Dimensions of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-type :- ::warehouse-schema.schema/dimension.type]
-  (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:field_id field-id :type dimension-type})))
+  (delete-dimension-rows! (warehouse-schema.db/dimensions-of-field field-id dimension-type)))
 
 (mu/defn delete-dimensions-reading-fields!
   "Delete the Dimensions whose human-readable values come from the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (when (seq field-ids)
-    (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:human_readable_field_id [:in field-ids]}))))
+    (delete-dimension-rows! (warehouse-schema.db/dimensions-reading-fields (vec field-ids)))))
 
 (mu/defn rename-dimensions-for-fields!
   "Name the Dimension of each Field in `field-id->name` after it, in one statement."
@@ -164,9 +144,10 @@
     (t2/with-transaction [_conn]
       (when-let [dimensions (not-empty (warehouse-schema.db/dimensions-for-fields (set (keys field-id->name))))]
         (warehouse-schema.db/rename-dimensions-for-fields! field-id->name)
-        (events/publish-lifecycle!
-         [(dimension-updated dimensions
-                             (into {} (map (fn [{:keys [id field_id]}] [id {:name (field-id->name field_id)}])) dimensions))])))))
+        (events/publish-event! :event/dimension-update
+                               (events/update-event (u/index-by :id dimensions)
+                                                    (mapv (fn [{:keys [id field_id]}] {:id id :name (field-id->name field_id)})
+                                                          dimensions)))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

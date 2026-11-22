@@ -122,7 +122,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (field/update-fields-where! {:id [:in (map u/the-id fields-to-reactivate)]} {:active true}))
+      (field/update-fields! (mapv (fn [field] {:id (u/the-id field) :active true}) fields-to-reactivate)))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
@@ -176,12 +176,12 @@
 
 (mu/defn- retire-field! :- [:maybe [:= 1]]
   "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
-  nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
+  nested Fields. Returns `1`."
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (field/update-field! (u/the-id metabase-field) {:active false}))
-    1))
+  (field/update-fields! [{:id (u/the-id metabase-field) :active false}])
+  1)
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero
   "Mark inactive any Fields in the application database that are no longer present in the DB being synced. These

@@ -125,6 +125,15 @@
    [:map {:closed true}
     [:id ::lib.schema.id/database]]])
 
+(mr/def ::database.write-opts
+  "The options of a write of Databases: `:writer` `:import` for a SerDes import, which refuses H2 and hosted SQLite and
+  sanitizes connection details; `:stored`, for an update, the Databases the caller already read, by id, as the rows
+  before it, so that it reads none; `:context` for the events."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import]]
+           [:stored  {:optional true} [:map-of ::lib.schema.id/database :map]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}

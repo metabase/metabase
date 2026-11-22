@@ -4,6 +4,7 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
+   [java-time.api :as t]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze.classify :as classify]
@@ -59,18 +60,16 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (field/update-fields-where! {:table_id            (:id table)
-                               :fingerprint_version i/*latest-fingerprint-version*
-                               :last_analyzed       nil}
-                              {:last_analyzed :%now}))
+  (let [now (t/offset-date-time)]
+    (field/update-fields! (mapv (fn [id] {:id id :last_analyzed now})
+                                (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*)))))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (field/update-fields-where! {:table_id            [:in (sync.db/synced-table-ids-query (:id database))]
-                               :fingerprint_version i/*latest-fingerprint-version*
-                               :last_analyzed       nil}
-                              {:last_analyzed :%now}))
+  (let [now (t/offset-date-time)]
+    (field/update-fields! (mapv (fn [id] {:id id :last_analyzed now})
+                                (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*)))))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

@@ -293,21 +293,19 @@
   row before them, as one event, as the write functions of Field publish theirs."
   [pairs]
   (when (seq pairs)
-    (events/publish-lifecycle!
-     [(events/updated :event/field-update
-                      (mapv first pairs)
-                      (mapv (fn [[field changes]] (events/updated-row field changes)) pairs))])))
+    (events/publish-event! :event/field-update
+                           (events/update-event (into {} (map (fn [[field _changes]] [(:id field) field])) pairs)
+                                                (mapv (fn [[field changes]] (assoc changes :id (:id field))) pairs)))))
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (let [old-fields (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
     (when (seq old-fields)
-      (events/publish-lifecycle!
-       [(events/created :event/field-create
-                        (vec (t2/insert-returning-instances! :model/Field
-                                                             (for [field old-fields]
-                                                               (-> field
-                                                                   (dissoc :id :fk_target_field_id)
-                                                                   (assoc :table_id new-table-id))))))]))
+      (events/publish-event! :event/field-create
+                             (events/create-event (vec (t2/insert-returning-instances! :model/Field
+                                                                                       (for [field old-fields]
+                                                                                         (-> field
+                                                                                             (dissoc :id :fk_target_field_id)
+                                                                                             (assoc :table_id new-table-id))))))))
     ;; Remap `:parent_id` on copied nested fields. The insert above leaves them pointing to the *old* parent
     ;; field ids; nested fields would otherwise reference fields in the original DB, which breaks anything that
     ;; walks the parent chain (e.g. resolve-fields → bulk-metadata-or-throw).
@@ -336,19 +334,20 @@
           old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
                                (t2/select :model/FieldValues :field_id [:in (set field-ids)] :type :full))]
       (when (seq old-field-values)
-        (events/publish-lifecycle!
-         [(events/created :event/field-values-create
-                          (vec (t2/insert-returning-instances!
-                                :model/FieldValues
-                                (for [{old-field-id :field_id, :as field-values} old-field-values
-                                      :let                                       [field-name (get old-field-id->name old-field-id)]]
-                                  (-> field-values
-                                      (dissoc :id)
-                                      (assoc :field_id (get new-field-name->id field-name))
-                                      ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
-                                      ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-                                      ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
-                                      (update :human_readable_values not-empty))))))])))))
+        (events/publish-event!
+         :event/field-values-create
+         (events/create-event
+          (vec (t2/insert-returning-instances!
+                :model/FieldValues
+                (for [{old-field-id :field_id, :as field-values} old-field-values
+                      :let                                       [field-name (get old-field-id->name old-field-id)]]
+                  (-> field-values
+                      (dissoc :id)
+                      (assoc :field_id (get new-field-name->id field-name))
+                      ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
+                      ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
+                      ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
+                      (update :human_readable_values not-empty)))))))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select :model/Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
@@ -359,7 +358,7 @@
                                                                    (dissoc :id)
                                                                    (assoc :db_id new-db-id))))))
         _             (when (seq new-tables)
-                        (events/publish-lifecycle! [(events/created :event/table-create new-tables)]))
+                        (events/publish-event! :event/table-create (events/create-event new-tables)))
         new-table-ids (sort (map :id new-tables))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
@@ -430,14 +429,14 @@
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings :dbms_version]))
-        {new-db-id :id, :as new-db} (database/create-database! original-db)]
+        {new-db-id :id, :as new-db} (first (database/create-databases! [original-db]))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (test.data.impl.get-or-create/set-test-db-permissions! new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (database/delete-database! new-db-id)))))
+        (database/delete-databases! [new-db-id])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |

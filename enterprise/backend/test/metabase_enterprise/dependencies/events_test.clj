@@ -68,7 +68,7 @@
         (let [submitted (atom [])]
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(field/update-field! field-id {:last_analyzed (t/offset-date-time)})))
+             #(field/update-fields! [{:id field-id :last_analyzed (t/offset-date-time)}])))
           (is (= [] @submitted)))))))
 
 (deftest output-columns-mark-dependents-test
@@ -92,9 +92,9 @@
           (is (not (marks? card-id #(card/update-cards! [{:id source-id :name "Renamed"}]))))
           (is (marks? card-id #(card/update-cards! [{:id metric-id :name "Renamed"}])))
           (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
-            (is (marks? source-id #(field/update-field! (mt/id :venues :price) {:position 0}))))
+            (is (marks? source-id #(field/update-fields! [{:id (mt/id :venues :price) :position 0}]))))
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}
-            (is (marks? source-id #(table/update-table! (mt/id :venues) {:schema "OTHER"}))))
+            (is (marks? source-id #(table/update-tables! [{:id (mt/id :venues) :schema "OTHER"}]))))
           (mt/with-temp [:model/TableUserSettings {settings-id :id} {:table_id (mt/id :venues)}]
             (is (not (marks? source-id #(table-user-settings/update-table-user-settings-rows!
                                          [{:id settings-id :caveats "Careful"}]))))))))))
@@ -150,7 +150,7 @@
             (testing "changing its human-readable field"
               (processed!)
               (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
-                (field/update-field! (mt/id :products :title) {:display_name "Renamed"})
+                (field/update-fields! [{:id (mt/id :products :title) :display_name "Renamed"}])
                 (is (both-pending?))))
             (testing "a user setting of its human-readable field"
               (processed!)
@@ -275,9 +275,9 @@
                            (write!)
                            (deps.test/result-metadata-pending? card-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
-              (is (changes? #(table/update-table! table-id {:display_name "Places"}))))
+              (is (changes? #(table/update-tables! [{:id table-id :display_name "Places"}]))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
-              (is (changes? #(field/update-field! field-id {:display_name "Cost"}))))
+              (is (changes? #(field/update-fields! [{:id field-id :display_name "Cost"}]))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
               (mt/with-temp [:model/FieldUserSettings {settings-id :id} {:field_id field-id :display_name "Cost"}]
                 (is (changes? #(field-user-settings/update-field-user-settings-rows!
@@ -290,8 +290,7 @@
                                 [{:id @settings-id :display_name "Spots"}])))
                 (is (changes? #(table-user-settings/delete-table-user-settings! [table-id])))))
             (let [dimension-id (atom nil)]
-              (is (changes? #(reset! dimension-id (:id (dimension/create-dimension!
-                                                        {:field_id field-id :name "Price" :type :internal})))))
+              (is (changes? #(reset! dimension-id (:id (first (dimension/create-dimensions! [{:field_id field-id :name "Price" :type :internal}]))))))
               (is (changes? #(dimension/delete-dimensions! [@dimension-id]))))))))))
 
 (deftest card-writes-mark-resource-collection-apps-in-one-statement-test

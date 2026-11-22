@@ -105,9 +105,9 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
       (let [[target-id source-id remapped-id] (field/create-fields! (field-rows table-id 3))]
-        (field/update-field! source-id {:semantic_type :type/FK :fk_target_field_id target-id})
-        (dimension/create-dimension! {:field_id remapped-id :type :external :name "D"
-                                      :human_readable_field_id target-id})
+        (field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id target-id}])
+        (dimension/create-dimensions! [{:field_id remapped-id :type :external :name "D"
+                                        :human_readable_field_id target-id}])
         (field/update-fields! [{:id target-id :active false}])
         (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))
         (is (nil? (t2/select-one :model/Dimension :field_id remapped-id)))))))
@@ -122,26 +122,26 @@
         (field/delete-fields! [parent-id])
         (is (empty? (t2/select :model/Field :id [:in [parent-id child-id leaf-id]])))))))
 
-(defn- where-write-counts!
-  "The calls updating `n` Tables and their Fields by conditions, with values and with expressions, and setting the
-  Fields' positions take."
+(defn- same-value-write-counts!
+  "The calls updating `n` Tables and their Fields to the same values, changing the case of their names, and setting
+  the Fields' positions take."
   [n]
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [tables    (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
           field-ids (into [] (mapcat #(field/create-fields! (field-rows (:id %) 1))) tables)]
       (try
-        [(call-count! #(table/update-tables-where! {:db_id db-id} {:schema "S"}))
-         (call-count! #(table/update-tables-where! {:db_id db-id} {:name [:lower :name]}))
-         (call-count! #(field/update-fields-where! {:id [:in field-ids]} {:database_indexed true}))
-         (call-count! #(field/update-fields-where! {:id [:in field-ids]} {:last_analyzed :%now}))
+        [(call-count! #(table/update-tables! (mapv (fn [{:keys [id]}] {:id id :schema "S"}) tables)))
+         (call-count! #(table/change-case! (mapv :id tables) :lower [:name]))
+         (call-count! #(field/update-fields! (mapv (fn [id] {:id id :database_indexed true}) field-ids)))
+         (call-count! #(field/change-case! field-ids :upper [:name]))
          (call-count! #(field/set-positions! (zipmap field-ids (range))))]
         (finally
           (table/delete-tables! (mapv :id tables)))))))
 
-(deftest where-writes-call-count-test
-  (testing "updating Tables and Fields by conditions and setting positions takes as many statements for 2 rows as for 6"
-    (is (= (where-write-counts! 2)
-           (where-write-counts! 6)))))
+(deftest same-value-writes-call-count-test
+  (testing "updating Tables and Fields to same values, changing case and setting positions takes as many statements for 2 rows as for 6"
+    (is (= (same-value-write-counts! 2)
+           (same-value-write-counts! 6)))))
 
 (def ^:private published (atom []))
 
@@ -169,7 +169,7 @@
           (is (empty? @published)))
         (testing "the deactivation of a Table publishes one event"
           (reset! published [])
-          (table/update-tables-where! {:id table-id} {:active false})
+          (table/update-tables! [{:id table-id :active false}])
           (is (=? [[:event/table-update {:changes [{:object {:active false :deactivated_at some?}
                                                     :previous-object {:active true}}]}]]
                   @published)))

@@ -97,7 +97,7 @@
                  :model/CacheConfig {db-config-id :id}   {:model "database" :model_id db-id}
                  :model/CacheConfig {card-config-id :id} {:model "question" :model_id card-id}
                  :model/CacheConfig {other-config-id :id} {:model "question" :model_id other-card-id}]
-    (database/delete-database! db-id)
+    (database/delete-databases! [db-id])
     (is (not (t2/exists? :model/CacheConfig :id db-config-id)))
     (is (not (t2/exists? :model/CacheConfig :id card-config-id)))
     (is (t2/exists? :model/CacheConfig :id other-config-id))))

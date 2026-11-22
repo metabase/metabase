@@ -210,9 +210,9 @@
         (doseq [{:keys [id settings] :as database} databases
                 :let [schema (get schemas id)]
                 :when (not= schema (database-workspace-schema database))]
-          (database/update-database! database {:settings (if schema
-                                                           (assoc settings :database-workspace-schema schema)
-                                                           (dissoc settings :database-workspace-schema))})
+          (database/update-databases! [{:id (:id database) :settings (if schema
+                                                                       (assoc settings :database-workspace-schema schema)
+                                                                       (dissoc settings :database-workspace-schema))}] {:stored {(:id database) database}})
           ;; Rows pointing at the old schema would keep redirecting reads there.
           (table-remapping/delete-table-remappings-of-database! id))
         (ws.settings/workspaces-enabled! true)))
@@ -271,8 +271,7 @@
                 :let  [database (ws.db/database (parse-long (name database-id)))
                        schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
                 :when (and database schema)]
-          (database/update-database! database
-                                     {:settings (assoc (:settings database) :database-workspace-schema schema)}))
+          (database/update-databases! [{:id (:id database) :settings (assoc (:settings database) :database-workspace-schema schema)}] {:stored {(:id database) database}}))
         (ws.settings/workspaces-enabled! true)))
     (when (setting/db-stored-value :instance-workspace)
       (ws.settings/instance-workspace! nil)))

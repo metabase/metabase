@@ -736,7 +736,7 @@
                  (try
                    (f temp-database)
                    (finally
-                     (database/delete-database! (:id temp-database)))))))
+                     (database/delete-databases! [(:id temp-database)]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
   "Creates a temporary Collection with `create-collections!` and deletes it with `delete-collections!`."
@@ -790,18 +790,17 @@
     (try
       (next-method model explicit-attributes (fn [created]
                                                (vreset! membership created)
-                                               (events/publish-lifecycle!
-                                                (#'perms-group-membership/set-member-flags [created] true))
+                                               (#'perms-group-membership/set-member-flags! [created] true nil)
                                                (f created)))
       (finally
         (when-let [created @membership]
-          (events/publish-lifecycle! (#'perms-group-membership/set-member-flags [created] false)))))))
+          (#'perms-group-membership/set-member-flags! [created] false nil))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
   "Puts a temporary User in its default groups, as `create-user!` does."
   [model explicit-attributes f]
   (next-method model explicit-attributes (fn [temp-user]
-                                           (events/publish-lifecycle! (:events (#'user/add-to-default-groups* [temp-user])))
+                                           (#'user/add-to-default-groups! [temp-user])
                                            (f temp-user))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/NativeQuerySnippet
