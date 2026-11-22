@@ -27,3 +27,22 @@
   (testing "PulseCard position is not negative"
     (is (not (mr/validate ::pulse.schema/pulse-card.update {:position -1})))
     (is (mr/validate ::pulse.schema/pulse-card.update {:position 5}))))
+
+(deftest delete-pulse-cards-for-dashcards-audits-their-pulse-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                     :model/Card          {card-id :id}      {}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id}
+                     :model/DashboardCard {other-dc-id :id}  {:dashboard_id dashboard-id :card_id card-id}
+                     :model/Pulse         {pulse-id :id}     {:dashboard_id dashboard-id}
+                     :model/Pulse         {other-id :id}     {:dashboard_id dashboard-id}
+                     :model/PulseCard     _                  {:pulse_id pulse-id :card_id card-id
+                                                              :dashboard_card_id dashcard-id}
+                     :model/PulseCard     _                  {:pulse_id other-id :card_id card-id
+                                                              :dashboard_card_id other-dc-id}]
+        (pulse-card/delete-pulse-cards-for-dashcards! [dashcard-id])
+        (testing "the subscription that loses a card is audited once as updated"
+          (is (= 1 (count (mt/all-entries-for :subscription-update :model/Pulse pulse-id)))))
+        (testing "a subscription that keeps its cards is not audited"
+          (is (empty? (mt/all-entries-for :subscription-update :model/Pulse other-id))))))))

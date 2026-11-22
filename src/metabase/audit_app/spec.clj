@@ -37,7 +37,9 @@
     default.
   - `:subject`, a fn of the event returning the `[model id]` under which its row is recorded, the model and the id of
     its row by default.
-  - `:context-details?`, true for a model whose rows take the `:details` that the context of the write carries."
+  - `:context-details?`, true for a model whose rows take the `:details` that the context of the write carries.
+  - `:touch`, `:row` for a model whose row an update that changes none of its columns, the touch of a row whose parts
+    changed, stores with the details of the row whole, as a create does; by default it stores the changes, none."
   (:require
    [toucan2.model :as t2.model]))
 
@@ -67,7 +69,8 @@
                                                     [:when    fn?]
                                                     [:details {:optional true} fn?]]]]
    [:subject         {:optional true} fn?]
-   [:context-details? {:optional true} :boolean]])
+   [:context-details? {:optional true} :boolean]
+   [:touch           {:optional true} [:= :row]]])
 
 (defmulti spec
   "The audit spec of `model`, or nil when the Audit Log records no writes of the model."

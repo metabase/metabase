@@ -190,20 +190,22 @@
                            events)]
     (for [{:keys [user-id] :as event} (hydrated candidates)
           :when (or (spec-edit? event) (root-touch? roots event))
-          :let  [event (cond-> event (touch? event) (dissoc :previous-object))]]
+          :let  [event (cond-> event
+                         (and (touch? event) (= :row (:touch (audit.spec/spec (:model event)))))
+                         (dissoc :previous-object))]]
       (event-row event user-id (context-details event)))))
 
-(defn- parent-created?
-  "Whether the write of the `event` says that it is part of the creation of its parent."
+(defn- created-with-parent?
+  "Whether the `event` says through its context that the creation of its parent, or a SerDes import, made its row."
   [{:keys [context]}]
-  (boolean (get-in context [:details :parent-created?])))
+  (or (some? (:created-with context)) (boolean (:importing? context))))
 
 (defn- parent-rows
   "The rows, one per parent and topic, of the writes of the models that record them under a parent with a topic, none for a
   parent that the write says that it creates, the details of the parents of each model loaded together."
   [events]
   (let [groups   (->> events
-                      (filter #(and (:topics (audit.spec/parent (:model %))) (not (parent-created? %))))
+                      (filter #(and (:topics (audit.spec/parent (:model %))) (not (created-with-parent? %))))
                       (group-by (fn [{:keys [model operation] :as event}]
                                   (when-let [topic (get (:topics (audit.spec/parent model)) operation)]
                                     (let [[parent-model parent-id] (parent-ref event)]

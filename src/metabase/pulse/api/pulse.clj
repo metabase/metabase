@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
+   [metabase.collections.models.collection :as collection]
    [metabase.embedding.util :as embed.util]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -128,7 +129,7 @@
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      (collection/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
       ;; ok, now create the Pulse
       (let [pulse (api/check-500
                    (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
@@ -309,7 +310,7 @@
         (t2/with-transaction [_conn]
           ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
           ;; depending on what changed.
-          (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
+          (collection/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
           ;; ok, now update the Pulse
           (models.pulse/update-pulse!
            (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position

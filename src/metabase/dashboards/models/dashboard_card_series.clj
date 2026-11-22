@@ -4,7 +4,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dashboards.write-opts :as write-opts]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.queries.models.card :as card]
@@ -43,7 +42,7 @@
    (t2/with-transaction [_conn]
      (let [series (dashboards.db/insert-dashcard-series! rows)]
        (events/publish-event! :event/dashboard-card-series-create
-                              (events/create-event series (write-opts/event-context opts)))
+                              (events/create-event series (events/context opts)))
        series))))
 
 (mu/defn update-dashboard-card-series! :- [:sequential :map]
@@ -59,7 +58,7 @@
        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
          (dashboards.db/update-dashcard-series! (mapv :id group) changes))
        (events/publish-event! :event/dashboard-card-series-update
-                              (events/update-event stored rows {:context (write-opts/event-context opts)}))
+                              (events/update-event stored rows {:context (events/context opts)}))
        rows))))
 
 (mu/defn delete-dashboard-card-series! :- :nil
@@ -72,7 +71,7 @@
      (t2/with-transaction [_conn]
        (let [series (dashboards.db/dashcard-series-by-ids series-ids)]
          (events/publish-event! :event/dashboard-card-series-delete
-                                (events/delete-event series (write-opts/event-context opts)))
+                                (events/delete-event series (events/context opts)))
          (dashboards.db/delete-dashcard-series! (mapv :id series)))))
    nil))
 

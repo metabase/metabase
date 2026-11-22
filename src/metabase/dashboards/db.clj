@@ -9,6 +9,7 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -716,16 +717,14 @@
   (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
 
 (mu/defn shift-dashboard-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Dashboards in the Collection with
-  `collection-id` whose position matches `position-clause`, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- [:or
-                       [:tuple [:enum :> :>=] ms/PositiveInt]
-                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
-   plus-or-minus   :- [:enum :+ :-]]
+  "Add or subtract one from the `collection_position` of the Dashboards in the Collection with `collection-id` whose position is
+  in `positions`, `{:from n :to m}` with either bound left out, as `direction` says, returning the number updated."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions
+   direction     :- ::collections.schema/position-direction]
   (t2/update! :model/Dashboard {:collection_id       collection-id
-                                :collection_position position-clause}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+                                :collection_position (collection/position-clause positions)}
+              {:collection_position [direction :collection_position 1]}))
 
 (mu/defn dashcards-of-actions
   "The DashboardCards of the Actions with `action-ids`."

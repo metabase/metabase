@@ -842,8 +842,7 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.schema
            metabase.dashboards.settings
-           metabase.dashboards.write
-           metabase.dashboards.write-opts}
+           metabase.dashboards.write}
    :uses #{actions
            activity-feed
            analytics
@@ -901,7 +900,6 @@
    :ns-prefix "metabase.dashboards-rest"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
-           analytics
            api
            api.eid-translation
            app-db
@@ -1923,6 +1921,7 @@
            metabase.models.util.spec-update}
    :uses #{api
            app-db
+           events
            lib
            lib.legacy-mbql
            lib.schema
@@ -4325,7 +4324,6 @@
            api
            app-db
            dependencies
-           events
            lib
            lib.be
            lib.metadata

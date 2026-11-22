@@ -4,11 +4,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -208,7 +208,7 @@
                        :collection_position collection_position}
         new-document (t2/with-transaction [_conn]
                        (when collection_position
-                         (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
+                         (collection/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (:id (first (m.document/create-documents! [document-data])))
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)

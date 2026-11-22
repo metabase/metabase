@@ -44,11 +44,14 @@
 
 (defn- ensure-lifecycle-topic!
   "Have `topic`, that of an event with the `:changes` of rows, derive `:metabase/lifecycle-event`, the topic that a
-  consumer of the lifecycle events of every model derives its own from, and be checked against the lifecycle schema."
+  consumer of the lifecycle events of every model derives its own from, in place of deriving `:metabase/event`
+  directly, and be checked against the lifecycle schema."
   [topic]
   (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
     (locking events.hierarchy/hierarchy
       (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
+        (when (contains? (parents events.hierarchy/hierarchy topic) :metabase/event)
+          (events.hierarchy/underive! topic :metabase/event))
         (events.hierarchy/derive! topic :metabase/lifecycle-event))))
   (events.schema/register-lifecycle-topic! topic))
 

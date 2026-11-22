@@ -840,17 +840,17 @@
 
 (mu/defn update-databases! :- [:sequential [:map [:id ::lib.schema.id/database]]]
   "Apply each of `rows`, the id of a Database and the columns to change, and return them. The stored rows are read
-  once, unless the caller gives them as `:stored`; changes of connection details store their client secrets as
+  once, unless the caller gives them as `:databases`; changes of connection details store their client secrets as
   Secrets, enabling uploads disables them on every other Database, and the sync triggers of the Databases whose
   schedules can have moved are rescheduled, those rows read again, once, for the triggers and the events. An import
   refuses H2 and hosted SQLite and sanitizes the connection details."
   ([rows :- [:sequential ::warehouses.schema/database.update-row]]
    (update-databases! rows nil))
-  ([rows                            :- [:sequential ::warehouses.schema/database.update-row]
-    {:keys [writer stored context]} :- ::warehouses.schema/database.write-opts]
+  ([rows                               :- [:sequential ::warehouses.schema/database.update-row]
+    {:keys [writer databases context]} :- ::warehouses.schema/database.write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
-       (let [stored   (stored-databases rows stored)
+       (let [stored   (stored-databases rows (u/index-by :id databases))
              _        (when (= :import writer)
                         (doseq [row rows]
                           (warehouses.serialization/check-imported-row!

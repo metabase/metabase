@@ -28,7 +28,7 @@
   [field :- i/FieldInstance]
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
     (let [dim-score (interestingness/dimension-interestingness field)]
-      (field/update-fields! [{:id (:id field) :dimension_interestingness dim-score}] {:stored {(:id field) field}}))))
+      (field/update-fields! [{:id (:id field) :dimension_interestingness dim-score}] {:fields [field]}))))
 
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."

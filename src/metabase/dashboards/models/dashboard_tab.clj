@@ -7,7 +7,6 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dashboards.write-opts :as write-opts]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -100,20 +99,19 @@
 
 (mu/defn create-dashboard-tabs! :- [:sequential :map]
   "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows, publishing their create
-  event and the update event of their Dashboards."
+  event."
   ([rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
    (create-dashboard-tabs! rows nil))
   ([rows :- [:sequential ::dashboards.schema/dashboard-tab.create]
     opts :- ::dashboards.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [tabs (dashboards.db/insert-dashboard-tabs! rows)]
-       (events/publish-event! :event/dashboard-tab-create (events/create-event tabs (write-opts/event-context opts)))
-       (write-opts/touch-dashboards! (mapv :dashboard_id tabs) opts)
+       (events/publish-event! :event/dashboard-tab-create (events/create-event tabs (events/context opts)))
        tabs))))
 
 (mu/defn update-dashboard-tabs! :- [:sequential :map]
   "Apply the columns of each of `rows`, each holding the `:id` of its DashboardTab, publishing the update event of the
-  tabs and of their Dashboards, and return the rows of the tabs that exist."
+  tabs, and return the rows of the tabs that exist."
   ([rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]]
    (update-dashboard-tabs! rows nil))
   ([rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]
@@ -124,13 +122,11 @@
        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
          (dashboards.db/update-dashboard-tabs! (mapv :id group) changes))
        (events/publish-event! :event/dashboard-tab-update
-                              (events/update-event stored rows {:context (write-opts/event-context opts)}))
-       (write-opts/touch-dashboards! (mapv #(:dashboard_id (get stored (:id %))) rows) opts)
+                              (events/update-event stored rows {:context (events/context opts)}))
        rows))))
 
 (mu/defn delete-dashboard-tabs! :- :nil
-  "Delete the DashboardTabs with `ids`, publishing their delete event right before the statement and the update event of
-  their Dashboards."
+  "Delete the DashboardTabs with `ids`, publishing their delete event right before the statement."
   ([ids :- [:sequential ms/PositiveInt]]
    (delete-dashboard-tabs! ids nil))
   ([ids  :- [:sequential ms/PositiveInt]
@@ -138,9 +134,8 @@
    (when (seq ids)
      (t2/with-transaction [_conn]
        (let [tabs (dashboards.db/dashboard-tabs-by-ids (vec ids))]
-         (events/publish-event! :event/dashboard-tab-delete (events/delete-event tabs (write-opts/event-context opts)))
-         (dashboards.db/delete-dashboard-tabs! (mapv :id tabs))
-         (write-opts/touch-dashboards! (mapv :dashboard_id tabs) opts))))
+         (events/publish-event! :event/dashboard-tab-delete (events/delete-event tabs (events/context opts)))
+         (dashboards.db/delete-dashboard-tabs! (mapv :id tabs)))))
    nil))
 
 (mu/defn replace-dashboard-tabs! :- [:map

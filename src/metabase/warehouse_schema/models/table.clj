@@ -635,13 +635,14 @@
 (mu/defn update-tables! :- [:sequential [:map [:id ::lib.schema.id/table]]]
   "Apply each of `rows`, the id of a Table and the columns to change, and return them; a Collection that cannot hold
   Tables throws, and a new field order sets the positions of its Fields. The stored rows are read once, unless the
-  caller gives them as `:stored`; `:context` goes into the events."
+  caller gives them as `:tables`; `:context` goes into the events."
   ([rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
    (update-tables! rows nil))
   ([rows                     :- [:sequential ::warehouse-schema.schema/table.update-row]
-    {:keys [stored context]} :- ::warehouse-schema.schema/table.write-opts]
-   (doseq [batch (partition-all write-batch-size rows)]
-     (apply-table-updates! (stored-tables batch stored) batch context))
+    {:keys [tables context]} :- ::warehouse-schema.schema/table.write-opts]
+   (let [stored (u/index-by :id tables)]
+     (doseq [batch (partition-all write-batch-size rows)]
+       (apply-table-updates! (stored-tables batch stored) batch context)))
    (vec rows)))
 
 (mu/defn change-case!

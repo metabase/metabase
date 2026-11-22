@@ -547,10 +547,10 @@
         (reprocess! failing-id other-id)
         (let [store (mt/original-fn #'queries.card/update-cards!)]
           (mt/with-dynamic-fn-redefs [queries.card/update-cards!
-                                      (fn [updates]
+                                      (fn [updates & args]
                                         (if (some #(= failing-id (:id %)) updates)
                                           (throw (ex-info "Store failed" {}))
-                                          (store updates)))]
+                                          (apply store updates args)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column other-id "NAME"))))))))

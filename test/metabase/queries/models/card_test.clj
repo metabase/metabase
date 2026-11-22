@@ -83,8 +83,8 @@
         default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"
-                        :type       "category"}
-        card-params    (fn [card-id] (merge default-params {:values_source_type "card"
+                        :type       :category}
+        card-params    (fn [card-id] (merge default-params {:values_source_type :card
                                                             :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
       (mt/with-temp [:model/Card card]
@@ -136,14 +136,14 @@
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))))
 
 (defn- update-card!
-  "Updates the Card with `id` with `changes` without checking the schema of the changes, returning the number of Cards updated."
+  "Updates the Card with `id` with `changes` through the model, returning the number of Cards updated."
   [id changes]
-  (count (card/update-cards! [(assoc changes :id id)])))
+  (t2/update! :model/Card :id id changes))
 
 (defn- insert-card!
-  "Creates a Card from `row` without checking the schema of the row."
+  "Creates a Card from `row` through the model."
   [row]
-  (first (card/create-cards! [row])))
+  (t2/insert-returning-instance! :model/Card row))
 
 (defn- delete-card!
   "Deletes the Card with `id` through `card/delete-cards!`."
@@ -511,7 +511,7 @@
            #"Invalid output: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
-                                                     :type "id"}]}]
+                                                     :type :id}]}]
         (is (some? card))))))
 
 (deftest validate-parameters-test-2
@@ -523,7 +523,7 @@
              #"Invalid output:.*:parameters"
              (t2/update! :model/Card :id id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card :id id {:parameters [{:id   "new-valid-id"
-                                                                :type "id"}]})))))))
+                                                                :type :id}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
@@ -572,12 +572,12 @@
   (let [default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"
-                        :type       "category"}]
+                        :type       :category}]
     (testing "parameter with source is card create ParameterCard"
       (mt/with-temp [:model/Card  {source-card-id-1 :id} {}
                      :model/Card  {source-card-id-2 :id} {}
                      :model/Card  {card-id :id}          {:parameters [(merge default-params
-                                                                              {:values_source_type    "card"
+                                                                              {:values_source_type    :card
                                                                                :values_source_config {:card_id source-card-id-1}})]}]
         (is (=? [{:card_id                   source-card-id-1
                   :parameterized_object_type :card
@@ -586,7 +586,7 @@
                 (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
         (testing "update values_source_config.card_id will update ParameterCard"
           (update-card! card-id {:parameters [(merge default-params
-                                                     {:values_source_type    "card"
+                                                     {:values_source_type    :card
                                                       :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
                     :parameterized_object_type :card
@@ -602,14 +602,14 @@
   (let [default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"
-                        :type       "category"}]
+                        :type       :category}]
     (testing "Delete a card will delete any ParameterCard that linked to it"
       (mt/with-temp [:model/Card  {source-card-id :id} {}
                      :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
-                                                                            {:values_source_type    "card"
+                                                                            {:values_source_type    :card
                                                                              :values_source_config {:card_id source-card-id}})]}
                      :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
-                                                                            {:values_source_type    "card"
+                                                                            {:values_source_type    :card
                                                                              :values_source_config {:card_id source-card-id}})]}]
         ;; makes sure we have ParameterCard to start with
         (is (=? [{:card_id                   source-card-id
@@ -631,8 +631,8 @@
                    :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
                                                                     :slug       "category_name"
                                                                     :id         "_CATEGORY_NAME_"
-                                                                    :type       "category"
-                                                                    :values_source_type    "card"
+                                                                    :type       :category
+                                                                    :values_source_type    :card
                                                                     :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
         (t2/update! :model/Card :id card-id-1 {:name "new name"})))))
@@ -648,14 +648,14 @@
                                                        :table_id    (mt/id :products)})
        :model/Card        card                 {:parameters [{:name                  "Param 1"
                                                               :id                    "param_1"
-                                                              :type                  "category"
-                                                              :values_source_type    "card"
+                                                              :type                  :category
+                                                              :values_source_type    :card
                                                               :values_source_config {:card_id source-card-id
                                                                                      :value_field (mt/$ids $products.title)}}]}
        :model/Dashboard   dashboard            {:parameters [{:name       "Param 2"
                                                               :id         "param_2"
-                                                              :type       "category"
-                                                              :values_source_type    "card"
+                                                              :type       :category
+                                                              :values_source_type    :card
                                                               :values_source_config {:card_id source-card-id
                                                                                      :value_field (mt/$ids $products.category)}}]}]
       ;; check if we had parametercard to starts with
@@ -796,8 +796,8 @@
     (mt/with-temp [:model/Card card1 {:name "base card"}
                    :model/Card card2 {:name       "derived card"
                                       :parameters [{:id                   "valid-id"
-                                                    :type                 "id"
-                                                    :values_source_type   "card"
+                                                    :type                 :id
+                                                    :values_source_type   :card
                                                     :values_source_config {:card_id (:id card1)}}]}]
       (is (= #{[:model/Card (:id card1)]}
              (content-dependencies card2))))))
@@ -1130,12 +1130,12 @@
   (testing "cards used as parameter sources by multiple dashboards"
     (mt/with-temp [:model/Card {card-id :id} {}
                    :model/Dashboard _ {:parameters [{:id "param-1"
-                                                     :type "category"
-                                                     :values_source_type "card"
+                                                     :type :category
+                                                     :values_source_type :card
                                                      :values_source_config {:card_id card-id}}]}
                    :model/Dashboard _ {:parameters [{:id "param-2"
-                                                     :type "category"
-                                                     :values_source_type "card"
+                                                     :type :category
+                                                     :values_source_type :card
                                                      :values_source_config {:card_id card-id}}]}]
       (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
         (testing "parameter_usage_count is equal to 2"
@@ -1253,7 +1253,7 @@
     (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must hold a query on a database"
                             (insert-card! {:name                   "Empty"
-                                           :display                "table"
+                                           :display                :table
                                            :visualization_settings {}
                                            :creator_id             (mt/user->id :crowberto)
                                            :collection_id          collection-id
@@ -1770,7 +1770,7 @@
            #"(?i)normaliz|MBQL|legacy query"
            (card/create-card!
             {:name                   "Bad card"
-             :display                "table"
+             :display                :table
              :visualization_settings {}
              :dataset_query          (malformed-native-dataset-query)}
             {:id (mt/user->id :rasta)}))))))

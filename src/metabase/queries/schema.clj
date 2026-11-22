@@ -189,7 +189,7 @@
    [:name                                      {:optional true} [:maybe ::card.name]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query.write]]
+   [:dataset_query                             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id                               {:optional true} [:maybe ::lib.schema.id/database]]
@@ -231,8 +231,11 @@
    [:verified-result-metadata?                 {:optional true} :boolean]])
 
 (mr/def ::card.create
-  "What a caller gives to create Cards: the columns of `::card.update`."
-  ::card.update)
+  "What a caller gives to create Cards: the columns of `::card.update`, and the `:id` of a Card a caller assigns."
+  [:merge
+   ::card.update
+   [:map {:closed true}
+    [:id {:optional true} ::lib.schema.id/card]]])
 
 (mr/def ::write-opts
   "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
@@ -241,16 +244,12 @@
            [:writer  {:optional true} [:enum :import :replacement :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mr/def ::card.write
-  "What the write functions of Cards take: the columns of a Card, whatever the request schemas and the SerDes spec have
-  checked, for the write functions check no shape and the hooks of the model check what the database needs."
-  [:map-of :keyword [:fn {:error/message "a column value"} (constantly true)]])
-
-(mr/def ::card.write-row
-  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, as `::card.write`."
-  [:and
-   ::card.write
-   [:map [:id ::lib.schema.id/card]]])
+(mr/def ::card.update-row
+  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, those of `::card.update`."
+  [:merge
+   ::card.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/card]]])
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."

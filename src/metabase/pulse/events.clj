@@ -47,6 +47,17 @@
      :dashboard_card_id dashcard-id
      :position          position}))
 
+(defn- deleted-dashcard-ids
+  "The ids of the DashboardCards that the `changes` of a lifecycle event delete, which is published before their
+  statement, so that they still exist when it is delivered."
+  [changes]
+  (into #{}
+        (keep (fn [{:keys [previous-object] :as change}]
+                (when (and (= :delete (u.events/operation change))
+                           (= :model/DashboardCard (t2/model previous-object)))
+                  (:id previous-object))))
+        changes))
+
 (defn- sync-subscriptions!
   "Update the names and Collection ids of the Pulses of the Dashboards that the changes of the lifecycle `event` change,
   and sync their PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the
@@ -57,8 +68,11 @@
       (let [dashboards    (into {} (map (juxt :id identity))
                                 (pulse.db/dashboards-by-id (vec (distinct (map :dashboard-id subscriptions)))))
             subscriptions (filter #(contains? dashboards (:dashboard-id %)) subscriptions)
+            deleted       (deleted-dashcard-ids changes)
             dashcards     (when (seq subscriptions)
-                            (group-by :dashboard_id (pulse.db/dashcards-with-cards-for-dashboards (vec (keys dashboards)))))
+                            (group-by :dashboard_id
+                                      (remove (comp deleted :id)
+                                              (pulse.db/dashcards-with-cards-for-dashboards (vec (keys dashboards))))))
             pulse-ids     (vec (distinct (map :pulse-id subscriptions)))
             max-positions (when (seq pulse-ids) (pulse.db/max-pulse-card-positions pulse-ids))
             stale         (into []

@@ -1,7 +1,6 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -224,7 +223,7 @@
       (when previous
         (events/publish-event! :event/exploration-update
                                (events/update-event {id previous} [(assoc changes :id id)]
-                                                    {:context {:reverting? true}})))
+                                                    {:context (events/context {:writer :revert})})))
       updated)))
 
 (defmethod collection/archive-in-collections! :model/Exploration

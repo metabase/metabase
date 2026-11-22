@@ -2276,6 +2276,96 @@
 
 (defmethod delete-in-collections! :default [model _collection-ids _context] (not-a-follower model))
 
+(defmulti shift-positions-in-collection!
+  "Adds one to, or subtracts one from, the `collection_position` of the rows of `model` in the Collection with
+  `collection-id` whose position is in `positions`, `{:from n :to m}` with either bound left out, as `direction`, `:+` or
+  `:-`, says, and returns the number updated, which a model that has a position in its Collection implements with its own
+  write function."
+  {:arglists '([model collection-id positions direction])}
+  (fn [model _collection-id _positions _direction] model))
+
+(def ^:private positioned-models
+  "The models whose rows have a position in their Collection."
+  [:model/Card :model/Dashboard :model/Pulse :model/Document])
+
+(defn position-clause
+  "The HoneySQL condition on `collection_position` for `positions`, `{:from n :to m}` with either bound left out, which
+  is any position when both are."
+  [{:keys [from to]}]
+  (cond
+    (and from to) [:between from to]
+    from          [:>= from]
+    to            [:<= to]
+    :else         [:not= nil]))
+
+(defn- shift-positions!
+  "Shifts the positions in `positions` of each of [[positioned-models]] in the Collection with `collection-id` by one."
+  [collection-id positions direction]
+  (doseq [model positioned-models]
+    (t2/resolve-model model)
+    (shift-positions-in-collection! model collection-id positions direction)))
+
+(mu/defn reconcile-position-for-collection!
+  "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
+  for fixing card/dashboard/pulse changes that impact other instances in the collection"
+  [collection-id :- [:maybe ms/PositiveInt]
+   old-position  :- [:maybe ms/PositiveInt]
+   new-position  :- [:maybe ms/PositiveInt]]
+  (when (not= new-position old-position)
+    (cond
+      (and (nil? new-position)
+           old-position)
+      (shift-positions! collection-id {:from (inc old-position)} :-)
+
+      (and new-position (nil? old-position))
+      (shift-positions! collection-id {:from new-position} :+)
+
+      (> new-position old-position)
+      (shift-positions! collection-id {:from old-position :to new-position} :-)
+
+      (< new-position old-position)
+      (shift-positions! collection-id {:from new-position :to old-position} :+))))
+
+(def ^:private ModelWithPosition
+  "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
+  [:map {:closed true}
+   [:collection_id       [:maybe ms/PositiveInt]]
+   [:collection_position [:maybe ms/PositiveInt]]])
+
+(def ^:private ModelWithOptionalPosition
+  "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
+  present, they didn't change. If they are present, they might have changed and we need to compare."
+  [:map {:closed true}
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn maybe-reconcile-collection-position!
+  "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
+  impact to the collection position of that model instance. If so, executes updates to fix the collection position
+  that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
+  updating an existing instance, but creating a new one)."
+  ([new-model-data :- ModelWithOptionalPosition]
+   (maybe-reconcile-collection-position! nil new-model-data))
+  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
+    {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
+   (let [updated-collection? (and (contains? model-updates :collection_id)
+                                  (not= old-collection-id new-collection-id))
+         updated-position?   (and (contains? model-updates :collection_position)
+                                  (not= old-position new-position))]
+     (cond
+       (and (not updated-collection?) updated-position?)
+       (reconcile-position-for-collection! old-collection-id old-position new-position)
+
+       (and updated-collection? (not updated-position?))
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil old-position))
+
+       (and updated-collection? updated-position?)
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil new-position))))))
+
 (defn item-ids-to-archive
   "The ids of the `model` rows in the Collections with `collection-ids` that archiving them archives along with them."
   [model collection-ids]
@@ -2731,11 +2821,10 @@
                                     entries)]
              (when-let [roots (seq (concat archiving restoring))]
                (let [root-id (:id (:before (first roots)))]
-                 (do
-                   (when (seq archiving)
-                     (archive-subtrees! archiving by-id root-id))
-                   (when (seq restoring)
-                     (restore-subtrees! restoring root-id))))))
+                 (when (seq archiving)
+                   (archive-subtrees! archiving by-id root-id))
+                 (when (seq restoring)
+                   (restore-subtrees! restoring root-id)))))
            (when (seq moved)
              (move-descendants! moved by-id)
              (doseq [{:keys [before]} moved]

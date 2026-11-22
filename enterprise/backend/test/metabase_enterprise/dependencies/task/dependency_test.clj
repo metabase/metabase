@@ -878,7 +878,7 @@
            (card/update-cards! [(assoc {:dimension_mappings [{:type         :table
                                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
                                                               :table-id     (mt/id :categories)
-                                                              :target       [:field {} (mt/id :categories :name)]}]} :id card-id)])
+                                                              :target       (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}]} :id card-id)])
            (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id

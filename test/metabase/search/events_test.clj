@@ -66,27 +66,30 @@
   (search/cascading-documents [(t2/select-one :model/Card :id card-id)]))
 
 (defn- update-by-hand!
-  "Applies `changes` to the row of `model` with `id` with one plain statement, publishing its update event `topic` as a
-  write function does."
+  "Applies `changes` to the row of `model` with `id` with one plain statement in a transaction, publishing its update
+  event `topic` as a write function does."
   [model topic id changes]
-  (let [previous (t2/select-one model :id id)]
-    (t2/update! model :id id changes)
-    (events/publish-event! topic (events/update-event {id previous} [(assoc changes :id id)]))))
+  (t2/with-transaction [_conn]
+    (let [previous (t2/select-one model :id id)]
+      (t2/update! model :id id changes)
+      (events/publish-event! topic (events/update-event {id previous} [(assoc changes :id id)])))))
 
 (defn- delete-reviews-by-hand!
   "Deletes the ModerationReviews with `ids` with one plain statement, publishing their delete event as a write function
   does."
   [ids]
-  (events/publish-event! :event/moderation-review-delete
-                         (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
-  (t2/delete! :model/ModerationReview :id [:in ids]))
+  (t2/with-transaction [_conn]
+    (events/publish-event! :event/moderation-review-delete
+                           (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
+    (t2/delete! :model/ModerationReview :id [:in ids])))
 
 (defn- delete-cards-by-hand!
   "Deletes the Cards with `ids` with one plain statement, publishing their delete event as a write function does, so that
   the rows the database cascades to are left for the search capture."
   [ids]
-  (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
-  (t2/delete! :model/Card :id [:in ids]))
+  (t2/with-transaction [_conn]
+    (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
+    (t2/delete! :model/Card :id [:in ids])))
 
 ;;; Capture wiring
 

@@ -85,13 +85,16 @@
       (boolean (seq rows)))))
 
 (mu/defn delete-pulse-cards-for-dashcards! :- :nil
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, publishing their delete event."
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, publishing their delete event and, last, the touch
+  event of their Pulses, so that the records of each Pulse are made once."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (when (seq dashcard-ids)
     (t2/with-transaction [_conn]
       (when-let [rows (not-empty (pulse.db/pulse-cards-for-dashcards dashcard-ids))]
         (events/publish-event! :event/pulse-card-delete (events/delete-event rows))
-        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))))
+        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids)
+        (events/publish-event! :event/pulse-update
+                               (events/touch-event (pulse.db/pulses-by-ids (vec (distinct (map :pulse_id rows)))))))))
   nil)
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------

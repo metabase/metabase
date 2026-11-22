@@ -9,12 +9,12 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dashboards.write-opts :as write-opts]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -28,6 +28,7 @@
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.queries.core :as queries]
    [metabase.queries.models.card :as queries.card]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -95,11 +96,21 @@
    [:auto_apply_filters  {:optional true} [:maybe :boolean]]
    [:dashcards           {:optional true} [:maybe [:sequential ::dashboards.schema/dashboard-card.update]]]])
 
-(def ^:private new-dashboard-parts-opts
-  "The options of the writes of the parts of a Dashboard that the same write creates: its event comes last, and the audit
-  log records the creation of the Dashboard, not the addition of its parts."
-  {:owner-event? false
-   :context      {:details {:parent-created? true}}})
+(defn- new-dashboard-parts-opts
+  "The options of the writes of the parts of the new Dashboard `dashboard`: the audit log records the creation of the
+  Dashboard, not the addition of its parts."
+  [dashboard]
+  {:context {:created-with [:model/Dashboard (:id dashboard)]}})
+
+(defn- insert-dashboard!
+  "Inserts the Dashboard `row` with its ParameterCards and returns it, for a write that publishes its create event as its
+  last step, after the writes of its parts."
+  [row]
+  (collection/check-collection-for :model/Dashboard {:collection_id (:collection_id row)
+                                                     :archived      (boolean (:archived row))})
+  (let [[dashboard] (dashboards.db/insert-dashboards! [row])]
+    (parameter-card/sync-parameter-cards! "dashboard" [[(:id dashboard) (or (:parameters dashboard) [])]])
+    dashboard))
 
 (mu/defn create-dashboard! :- :map
   "Creates a Dashboard owned by the current user after its create check, with the `:dashcards` of `attrs` when it has
@@ -124,13 +135,13 @@
          dash           (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
-                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                          (let [[dash] (dashboard/create-dashboards! [dashboard-data] {:owner-event? false})]
+                          (collection/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                          (let [dash (insert-dashboard! dashboard-data)]
                             (when (seq dashcards)
                               (dashboard-card/create-dashboard-cards! (mapv #(assoc % :dashboard_id (:id dash)) dashcards)
-                                                                      new-dashboard-parts-opts))
+                                                                      (new-dashboard-parts-opts dash)))
                             (events/publish-event! :event/dashboard-create
-                                                   (events/create-event [dash] (write-opts/event-context opts)))
+                                                   (events/create-event [dash] (events/context opts)))
                             dash))]
      (analytics/track-event! :snowplow/dashboard
                              {:event        :dashboard-created
@@ -334,19 +345,19 @@
     (let [{dashcards      :dashcards
            tabs           :tabs
            :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-          [dashboard]
-          (dashboard/create-dashboards!
-           [(->> (-> dashboard
-                     (dissoc :dashcards :tabs :rule :related
-                             :transient_name :transient_filters :param_fields :more
-                             :public_uuid :made_public_by_id
-                             :enable_embedding :embedding_params)
-                     (assoc :description description
-                            :collection_id parent-collection-id
-                            :creator_id api/*current-user-id*))
-                 (lib/normalize ::dashboards.schema/dashboard.create))]
-           {:owner-event? false})
-          {:keys [old->new-tab-id]} (dashboard-tab/replace-dashboard-tabs! (:id dashboard) nil tabs new-dashboard-parts-opts)
+          dashboard
+          (insert-dashboard!
+           (->> (-> dashboard
+                    (dissoc :dashcards :tabs :rule :related
+                            :transient_name :transient_filters :param_fields :more
+                            :public_uuid :made_public_by_id
+                            :enable_embedding :embedding_params)
+                    (assoc :description description
+                           :collection_id parent-collection-id
+                           :creator_id api/*current-user-id*))
+                (lib/normalize ::dashboards.schema/dashboard.create)))
+          parts-opts (new-dashboard-parts-opts dashboard)
+          {:keys [old->new-tab-id]} (dashboard-tab/replace-dashboard-tabs! (:id dashboard) nil tabs parts-opts)
           dashcards  (for [dashcard dashcards]
                        (-> dashcard
                            (update :card #(some-> % (assoc :dashboard_id (:id dashboard)
@@ -370,7 +381,7 @@
                                                 (assoc :card_id (:id card)))]
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
-      (add-dashcards! dashboard dashcards-to-add new-dashboard-parts-opts)
+      (add-dashcards! dashboard dashcards-to-add parts-opts)
       (events/publish-event! :event/dashboard-create (events/create-event [dashboard]))
       dashboard)))
 
@@ -382,13 +393,13 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
-  (api/check-500 (add-dashcards! dashboard dashcards {:owner-event? false})))
+  (api/check-500 (add-dashcards! dashboard dashcards)))
 
 (defn- check-and-update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
   ;; transform the dashcard data to the format of the DashboardCard model
   ;; so update-dashcards! can compare them with existing dashcards
-  (update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards) {:owner-event? false}))
+  (update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards)))
 
 (defn- assert-dashcards-are-not-internal-to-other-dashboards
   "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
@@ -420,7 +431,7 @@
       (check-and-update-dashcards! dashboard to-update))
     (let [deleted (when (seq to-delete)
                     (let [dashboard-cards (dashboards.db/dashcards-by-ids (mapv :id to-delete))]
-                      (dashboard/delete-dashcards! (mapv :id to-delete) {:owner-event? false})
+                      (dashboard-card/delete-dashboard-cards! (mapv :id to-delete))
                       dashboard-cards))
           created (when (seq to-create)
                     (create-dashcards! dashboard to-create))]
@@ -508,24 +519,16 @@
       (api/update-check current-dash dash-updates)
       (check-embedding-enabled current-dash dash-updates)
       (t2/with-transaction [_conn]
-        (let [rows           (volatile! [])
-              parts-changed? (volatile! false)]
+        (let [updates        (u/select-keys-when
+                              dash-updates
+                              :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
+                              :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                         :embedding_params :archived :auto_apply_filters})
+              parts-changed? (volatile! false)
+              deleted        (volatile! [])]
           ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
           ;; adjust the collection position of other dashboards in the collection
-          (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
-          (when-let [updates (not-empty
-                              (u/select-keys-when
-                               dash-updates
-                               :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
-                               :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                          :embedding_params :archived :auto_apply_filters}))]
-            (vreset! rows (dashboard/update-dashboards! [(assoc updates :id id)] {:owner-event? false}))
-            (when (some? (:collection_id updates))
-              (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
-            ;; Handle broken subscriptions, if any, when parameters changed
-            (when parameters
-              (reset! archived (pulse.broken-subscriptions/handle-broken-subscriptions!
-                                id original-params))))
+          (collection/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
           (when update-dashcards-and-tabs?
             (when (not (false? (:archived dash-updates)))
               (api/check-not-archived current-dash))
@@ -546,8 +549,7 @@
                                                                               {:status-code 400})))
                   {:keys [old->new-tab-id
                           deleted-tab-ids]
-                   :as   tabs-changes-stats}                (dashboard-tab/replace-dashboard-tabs! (:id current-dash) current-tabs new-tabs
-                                                                                                   {:owner-event? false})
+                   :as   tabs-changes-stats}                (dashboard-tab/replace-dashboard-tabs! (:id current-dash) current-tabs new-tabs)
                   deleted-tab-ids                           (set deleted-tab-ids)
                   current-dashcards                         (remove (fn [dashcard]
                                                                       (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
@@ -560,6 +562,7 @@
                                                                        (assoc card :dashboard_tab_id real-tab-id)
                                                                        card))))
                   dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
+              (vreset! deleted (vec (:deleted-dashcards dashcards-changes-stats)))
               (vreset! parts-changed? (boolean (or (:changed? dashcards-changes-stats)
                                                    (seq (:created-tab-ids tabs-changes-stats))
                                                    (seq (:updated-tab-ids tabs-changes-stats))
@@ -568,8 +571,25 @@
                       (merge
                        (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-          ;; One event for the whole save, so that the Dashboard, its tabs, dashcards and series are one Revision
-          (write-opts/publish-dashboard-event! {id current-dash} @rows @parts-changed? nil)))
+          ;; The event of the Dashboard comes last, so that the Dashboard, its tabs, dashcards and series are one Revision
+          (let [cleaned    (dashboard/parameters-without-orphans
+                            (if (contains? updates :parameters) (:parameters updates) (:parameters current-dash))
+                            @deleted)
+                updates    (cond-> updates
+                             cleaned (assoc :parameters cleaned))]
+            (cond
+              (seq updates)
+              (do
+                (dashboard/update-dashboards! [(assoc updates :id id)])
+                (when (some? (:collection_id updates))
+                  (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
+                ;; Handle broken subscriptions, if any, when parameters changed
+                (when parameters
+                  (reset! archived (pulse.broken-subscriptions/handle-broken-subscriptions!
+                                    id original-params))))
+
+              @parts-changed?
+              (dashboard/touch-dashboards! [id])))))
       (let [dashboard (dashboards.db/dashboard id)]
         (track-dashcard-and-tab-events! dashboard @changes-stats)
         ;; In metadata, so a caller that returns the row, as the REST API does, can't send them on.
@@ -687,7 +707,7 @@
                 (-> tab
                     (assoc :dashboard_id (:id new-dashboard))
                     (dissoc :id :entity_id :created_at :updated_at)))
-              new-dashboard-parts-opts)]
+              (new-dashboard-parts-opts new-dashboard))]
     (zipmap (map :id existing-tabs) (map :id tabs))))
 
 (defn- update-colvalmap-setting
@@ -795,9 +815,9 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                         (collection/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
-                         (let [[dash] (dashboard/create-dashboards! [dashboard-data] {:owner-event? false})
+                         (let [dash (insert-dashboard! dashboard-data)
                                {id->new-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
@@ -810,7 +830,7 @@
                                                                             id->new-card
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
-                             (api/check-500 (add-dashcards! dash dashcards new-dashboard-parts-opts)))
+                             (api/check-500 (add-dashcards! dash dashcards (new-dashboard-parts-opts dash))))
                            (events/publish-event! :event/dashboard-create (events/create-event [dash]))
                            (cond-> dash
                              (seq uncopied)

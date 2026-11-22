@@ -935,18 +935,9 @@
   (update-notification! (alert->notification alert))
   (retrieve-alert (u/the-id alert)))
 
-(mu/defn shift-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Pulses in the Collection with
-  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
-  position, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- vector?
-   plus-or-minus   :- [:enum :+ :-]]
-  (pulse.db/shift-pulse-positions! collection-id position-clause plus-or-minus))
-
-(defmethod api/shift-collection-positions! :model/Pulse
-  [_model collection-id position-clause plus-or-minus]
-  (shift-positions! collection-id position-clause plus-or-minus))
+(defmethod collection/shift-positions-in-collection! :model/Pulse
+  [_model collection-id positions direction]
+  (pulse.db/shift-pulse-positions! collection-id positions direction))
 
 (defmethod collection/archive-in-collections! :model/Pulse
   [model collection-ids context]
@@ -985,6 +976,7 @@
    :hydrate        pulse.audit/hydrate
    :details        pulse.audit/details
    :state          pulse.audit/state
+   :touch          :row
    :topics         {:create pulse.audit/create-topic
                     :update :subscription-update}})
 

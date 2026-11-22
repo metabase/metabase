@@ -8,6 +8,7 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -304,16 +305,14 @@
   (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
 
 (mu/defn shift-document-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Documents in the Collection with
-  `collection-id` whose position matches `position-clause`, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- [:or
-                       [:tuple [:enum :> :>=] ms/PositiveInt]
-                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
-   plus-or-minus   :- [:enum :+ :-]]
+  "Add or subtract one from the `collection_position` of the Documents in the Collection with `collection-id` whose position is
+  in `positions`, `{:from n :to m}` with either bound left out, as `direction` says, returning the number updated."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions
+   direction     :- ::collections.schema/position-direction]
   (t2/update! :model/Document {:collection_id       collection-id
-                               :collection_position position-clause}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+                               :collection_position (collection/position-clause positions)}
+              {:collection_position [direction :collection_position 1]}))
 
 (mu/defn update-document-columns!
   "Apply `changes` to the Document with `document-id` in one statement through the model, returning the number

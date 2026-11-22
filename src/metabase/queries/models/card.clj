@@ -1534,21 +1534,14 @@
                   [id parameters])))
         cards))
 
-(defn- event-context
-  "The context of the events of a write with `opts`: its `:context`, and `:reverting?` for the writes of a revert."
-  [opts]
-  (let [{:keys [context writer]} opts]
-    (not-empty (cond-> context
-                 (= :revert writer) (assoc :reverting? true)))))
-
 (mu/defn create-cards! :- [:sequential :map]
   "Creates a Card from each of `rows` and returns the new Cards in order, after checking that each can go where it is
   put and that its Field filters are on Fields of its Database. Reads what it checks for all the Cards at once and
   inserts them with one statement for each set of columns they give, so the statements do not grow with their number.
   Publishes the creation of the Cards as the last step."
-  ([rows :- [:sequential ::queries.schema/card.write]]
+  ([rows :- [:sequential ::queries.schema/card.create]]
    (create-cards! rows nil))
-  ([rows :- [:sequential ::queries.schema/card.write]
+  ([rows :- [:sequential ::queries.schema/card.create]
     opts :- ::queries.schema/write-opts]
    (if (empty? rows)
      []
@@ -1565,7 +1558,7 @@
            (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
            (when-let [objects (seq (card-sourced-parameter-objects cards))]
              (parameter-card/sync-parameter-cards! "card" (vec objects)))
-           (events/publish-event! :event/card-create (events/create-event cards (event-context opts)))
+           (events/publish-event! :event/card-create (events/create-event cards (events/context opts)))
            cards))))))
 
 (defn- changing-values
@@ -1732,9 +1725,9 @@
   in step with its change, and writes the Cards that get the same changes with one statement, so the statements do not
   grow with their number. The `:context` of `opts`, such as `{:archived-with [:model/Dashboard 1]}` for the Cards that the
   archive of Dashboard 1 carries, goes to the event of the writes, which is published as the last step."
-  ([updates :- [:sequential ::queries.schema/card.write-row]]
+  ([updates :- [:sequential ::queries.schema/card.update-row]]
    (update-cards! updates nil))
-  ([updates :- [:sequential ::queries.schema/card.write-row]
+  ([updates :- [:sequential ::queries.schema/card.update-row]
     opts    :- ::queries.schema/write-opts]
    (let [updates (vec updates)]
      (if (empty? updates)
@@ -1821,7 +1814,7 @@
                                            (= :updated_at (:updated_at update))
                                            [id (t2/instance :model/Card (merge before changes))])))
                                      changed))
-                :context (event-context opts)})))
+                :context (events/context opts)})))
            (if (= :import (:writer opts)) rows updates)))))))
 
 (mu/defn delete-cards! :- :nil
@@ -1842,7 +1835,7 @@
            (revision/delete-revisions-for-entities! "Card" card-ids)
            (cache-config/delete-target-configs! "question" card-ids)
            (delete-notifications-of-cards! card-ids)
-           (events/publish-event! :event/card-delete (events/delete-event cards (event-context opts)))
+           (events/publish-event! :event/card-delete (events/delete-event cards (events/context opts)))
            (queries.db/delete-cards! card-ids))))
      nil)))
 
@@ -1913,27 +1906,18 @@
    time :- ms/TemporalInstant]
   (queries.db/set-card-last-used-at! id time))
 
-(mu/defn shift-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Cards in the Collection with
-  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
-  position, publishing their updates and returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- vector?
-   plus-or-minus   :- [:enum :+ :-]]
+(defmethod collection/shift-positions-in-collection! :model/Card
+  [_model collection-id positions direction]
   (t2/with-transaction [_conn]
-    (let [previous (vec (queries.db/cards-at-positions collection-id position-clause))]
-      (u/prog1 (queries.db/shift-card-positions! collection-id position-clause plus-or-minus)
+    (let [previous (vec (queries.db/cards-at-positions collection-id positions))]
+      (u/prog1 (queries.db/shift-card-positions! collection-id positions direction)
         (events/publish-event! :event/card-update
                                (events/update-event (u/index-by :id previous)
                                                     (mapv (fn [card]
                                                             {:id                  (:id card)
-                                                             :collection_position (({:+ inc :- dec} plus-or-minus)
+                                                             :collection_position (({:+ inc :- dec} direction)
                                                                                    (:collection_position card))})
                                                           previous)))))))
-
-(defmethod api/shift-collection-positions! :model/Card
-  [_model collection-id position-clause plus-or-minus]
-  (shift-positions! collection-id position-clause plus-or-minus))
 
 (mu/defn invalidate-cached-results! :- :int
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, in one statement through the model, so
@@ -2100,7 +2084,7 @@
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
-                                              (api/maybe-reconcile-collection-position! position-info)
+                                              (collection/maybe-reconcile-collection-position! position-info)
                                               (first
                                                (create-cards!
                                                 [(lib/normalize ::queries.schema/card.update
@@ -2295,7 +2279,7 @@
   [card-before-update card-updates actor delete-old-dashcards?]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
-    (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
+    (collection/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
     (let [updated-fields (u/select-keys-when card-updates
                                              ;; `collection_id` and `description` can be `nil` (in order to unset them).

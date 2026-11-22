@@ -176,23 +176,26 @@
   [user-ids  :- [:sequential ::lib.schema.id/user]
    user-type :- :keyword]
   (if (seq user-ids)
-    (t2/select-pks-vec :model/User :id [:in user-ids] :type [:auto/param user-type])
+    (vec (t2/select-pks-vec :model/User :id [:in user-ids] :type [:auto/param user-type]))
     []))
 
 (mu/defn deactivated-with-tenant-user-ids
   "The ids of the inactive Users of the Tenant with `tenant-id` that were deactivated with it."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/User :is_active false :tenant_id [:auto/param tenant-id] :deactivated_with_tenant true))
+  (vec (t2/select-pks-vec :model/User
+                          :is_active false
+                          :tenant_id [:auto/param tenant-id]
+                          :deactivated_with_tenant true)))
 
 (mu/defn active-user-ids-of-tenant
   "The ids of the active Users of the Tenant with `tenant-id`."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/User :is_active true :tenant_id [:auto/param tenant-id]))
+  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:auto/param tenant-id])))
 
 (mu/defn active-tenant-user-ids
   "The ids of the active Users of every Tenant."
   []
-  (t2/select-pks-vec :model/User :is_active true :tenant_id [:not= nil]))
+  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:not= nil])))
 
 (mu/defn same-groups-user-ids
   "The `:user_id`s of the Users sharing a PermissionsGroup other than the one with `all-users-group-id` with the User

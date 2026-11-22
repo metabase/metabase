@@ -17,6 +17,13 @@
   (cond-> {:changes changes :user-id (mi/current-user-id)}
     (seq context) (assoc :context context)))
 
+(mu/defn context :- [:maybe ::events.schema/context]
+  "The context of the events of a write function called with `opts`: their `:context`, with `:reverting?` when their
+  `:writer` is `:revert`."
+  [opts :- [:maybe :map]]
+  (not-empty (cond-> (:context opts)
+               (= :revert (:writer opts)) (assoc :reverting? true))))
+
 (mu/defn create-event :- ::events.schema/lifecycle
   "The lifecycle event of the creation of `rows`, the instances an insert returned, by the current user, to publish
   after the insert."

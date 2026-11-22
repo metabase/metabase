@@ -309,7 +309,7 @@
                            (documents.db/card-ids-restored-with-documents ids))]
           :when (seq card-ids)]
     (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids)
-                                (or context {:archived-with [:model/Document (first ids)]}))))
+                                {:context (or context {:archived-with [:model/Document (first ids)]})})))
 
 (mu/defn update-documents! :- [:sequential ::documents.schema/document.update-row]
   "Apply the columns of each of `rows` to the Document with its `:id`, and return `rows`, publishing their update event
@@ -526,8 +526,8 @@
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
   (let [created-document (t2/with-transaction [_conn]
                            (when collection_position
-                             (api/maybe-reconcile-collection-position! {:collection_id collection_id
-                                                                        :collection_position collection_position}))
+                             (collection/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                                               :collection_position collection_position}))
                            (let [document-id (:id (first (create-documents! [{:name name
                                                                               :collection_id collection_id
                                                                               :collection_position collection_position
@@ -587,9 +587,9 @@
                                (:collection_id existing-document))]
     (t2/with-transaction [_conn]
       (when collection_position
-        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
-                                                  {:collection_id       target-collection-id
-                                                   :collection_position collection_position}))
+        (collection/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
+                                                         {:collection_id       target-collection-id
+                                                          :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
                            (clone-cards-in-document! (assoc existing-document :document document))
@@ -633,18 +633,9 @@
                                (events/update-event {id previous} [{:id id :last_viewed_at time}])))
       updated)))
 
-(mu/defn shift-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Documents in the Collection with
-  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
-  position, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- vector?
-   plus-or-minus   :- [:enum :+ :-]]
-  (documents.db/shift-document-positions! collection-id position-clause plus-or-minus))
-
-(defmethod api/shift-collection-positions! :model/Document
-  [_model collection-id position-clause plus-or-minus]
-  (shift-positions! collection-id position-clause plus-or-minus))
+(defmethod collection/shift-positions-in-collection! :model/Document
+  [_model collection-id positions direction]
+  (documents.db/shift-document-positions! collection-id positions direction))
 
 (mu/defn revert-document! :- :int
   "Write to the Document with `id` the tracked columns of the revision `snapshot` that its table still has, in one
@@ -659,7 +650,7 @@
       (when previous
         (events/publish-event! :event/document-update
                                (events/update-event {id previous} [(assoc changes :id id)]
-                                                    {:context {:reverting? true}})))
+                                                    {:context (events/context {:writer :revert})})))
       updated)))
 
 (defmethod collection/archive-in-collections! :model/Document

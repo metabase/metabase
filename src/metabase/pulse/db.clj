@@ -5,6 +5,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
    [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -106,6 +108,11 @@
   "The Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one :model/Pulse :id pulse-id))
+
+(mu/defn pulses-by-ids
+  "The Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
+  (t2/select :model/Pulse :id [:in pulse-ids]))
 
 (mu/defn pulses-for-dashboards
   "The Pulses (subscriptions) of the Dashboards with `dashboard-ids`."
@@ -563,13 +570,11 @@
   (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in channel-ids])))
 
 (mu/defn shift-pulse-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Pulses in the Collection with
-  `collection-id` whose position matches `position-clause`, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- [:or
-                       [:tuple [:enum :> :>=] ms/PositiveInt]
-                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
-   plus-or-minus   :- [:enum :+ :-]]
+  "Add or subtract one from the `collection_position` of the Pulses in the Collection with `collection-id` whose position is
+  in `positions`, `{:from n :to m}` with either bound left out, as `direction` says, returning the number updated."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions
+   direction     :- ::collections.schema/position-direction]
   (t2/update! :model/Pulse {:collection_id       collection-id
-                            :collection_position position-clause}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+                            :collection_position (collection/position-clause positions)}
+              {:collection_position [direction :collection_position 1]}))

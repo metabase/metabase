@@ -359,10 +359,10 @@
     [:id ::lib.schema.id/table]]])
 
 (mr/def ::table.write-opts
-  "The options of an update of Tables: `:stored`, the Tables the caller already read, by id, as the rows before it, so
-  that it reads none; `:context` for the events."
+  "The options of an update of Tables: `:tables`, the Tables the caller already read, as the rows before it, so that it
+  reads none; `:context` for the events."
   [:maybe [:map {:closed true}
-           [:stored  {:optional true} [:map-of ::lib.schema.id/table :map]]
+           [:tables  {:optional true} [:sequential :map]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mr/def ::table-user-settings.write-opts
@@ -371,10 +371,10 @@
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mr/def ::field.write-opts
-  "The options of an update of Fields: `:stored`, the Fields the caller already read, by id, as the rows before it, so
-  that it reads none."
+  "The options of an update of Fields: `:fields`, the Fields the caller already read, as the rows before it, so that it
+  reads none."
   [:maybe [:map {:closed true}
-           [:stored {:optional true} [:map-of ::lib.schema.id/field :map]]]])
+           [:fields {:optional true} [:sequential :map]]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."

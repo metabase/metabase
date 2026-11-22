@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.queries.models.card :as card]
@@ -219,10 +220,7 @@
                                                            :location (collection/children-location root)}]))]
         (fill-collection! (u/the-id child))))
     (let [id      (u/the-id root)
-          counted (fn [f]
-                    (t2/with-call-count [call-count]
-                      (f)
-                      (call-count)))]
+          counted events.tu/statement-count!]
       {:archive (counted #(collection/update-collections! [{:id id :archived true}]))
        :restore (counted #(collection/update-collections! [{:id id :archived false}]))
        :move    (counted #(collection/update-collections! [{:id id :location (collection/children-location target)}]))
@@ -236,5 +234,5 @@
       (doseq [k [:archive :restore :move :delete]]
         (testing (name k)
           (is (= (get small k) (get large k)))))
-      (testing "a Timeline that an archive carries is read once for its update event"
-        (is (= {:archive 63 :restore 59 :move 27 :delete 50} small))))))
+      (testing "statements of the writes without their consumers"
+        (is (= {:archive 47 :restore 43 :move 6 :delete 35} small))))))

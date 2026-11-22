@@ -202,3 +202,13 @@
   "The options of a write function of Collections: who writes."
   [:maybe [:map {:closed true}
            [:writer {:optional true} [:enum :import]]]])
+
+(mr/def ::positions
+  "A range of `collection_position` values as plain data: from `:from` up to `:to`, either bound left out for none."
+  [:map {:closed true}
+   [:from {:optional true} ms/PositiveInt]
+   [:to   {:optional true} ms/PositiveInt]])
+
+(mr/def ::position-direction
+  "Which way a shift moves positions: `:+` adds one to each, `:-` subtracts one."
+  [:enum :+ :-])

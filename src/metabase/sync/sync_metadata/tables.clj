@@ -427,7 +427,7 @@
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
                   [(count (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}]
-                                                {:stored {(:id table) table}}))]
+                                                {:tables [table]}))]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

@@ -28,12 +28,10 @@
 
 (mr/def ::write-opts
   "The options of the write functions of a Dashboard and of its parts: `:writer`, who writes when it matters (a revert,
-  a SerDes import or a replacement, the user's own write by default; `:context`, the context of the events; `:owner-event?`, false when
-  the caller publishes the event of the Dashboard itself, as the last step of its own writes."
+  a SerDes import or a replacement), the user's own write by default; `:context`, the context of the events."
   [:maybe [:map {:closed true}
-           [:writer       {:optional true} [:enum :import :replacement :revert]]
-           [:context      {:optional true} [:maybe :metabase.events.schema/context]]
-           [:owner-event? {:optional true} :boolean]]])
+           [:writer  {:optional true} [:enum :import :replacement :revert]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mr/def ::dashboard.width
   [:enum "fixed" "full"])

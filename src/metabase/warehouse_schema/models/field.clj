@@ -593,13 +593,14 @@
   "Apply each of `rows`, the id of a Field and the columns to change, and return them. Deactivating a Field clears
   the foreign keys to it and the remappings that read it, a new display name renames its Dimension, and a change of
   `json_unfolding` sets its nested Fields active or inactive. The stored rows are read once, unless the caller gives
-  them as `:stored`."
+  them as `:fields`."
   ([rows :- [:sequential ::warehouse-schema.schema/field.update-row]]
    (update-fields! rows nil))
   ([rows             :- [:sequential ::warehouse-schema.schema/field.update-row]
-    {:keys [stored]} :- ::warehouse-schema.schema/field.write-opts]
-   (doseq [batch (partition-all write-batch-size rows)]
-     (apply-field-updates! (stored-fields batch stored) batch))
+    {:keys [fields]} :- ::warehouse-schema.schema/field.write-opts]
+   (let [stored (u/index-by :id fields)]
+     (doseq [batch (partition-all write-batch-size rows)]
+       (apply-field-updates! (stored-fields batch stored) batch)))
    (vec rows)))
 
 (mu/defn change-case!

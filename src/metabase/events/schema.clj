@@ -163,11 +163,15 @@
 (mr/def ::context
   "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;
   `:reverting?`, whether they are the writes of a revert; `:archived-with`, the `[model id]` of the entity whose archive
-  or restore carried their rows; and `:details`, a map the audit log records."
+  or restore carried their rows; `:created-with`, the `[model id]` of the entity whose creation made their rows, as the
+  dashcards of a new Dashboard; `:importing?`, whether they are the writes of a SerDes import, whose parts record no row
+  of their own; and `:details`, a map the audit log records."
   [:map {:closed true}
    [:revision-message {:optional true} [:maybe :string]]
    [:reverting? {:optional true} :boolean]
    [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:created-with {:optional true} [:tuple :keyword pos-int?]]
+   [:importing? {:optional true} :boolean]
    [:details {:optional true} [:map]]])
 
 (mr/def ::lifecycle

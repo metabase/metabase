@@ -24,7 +24,6 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.write :as dashboards.write]
-   [metabase.dashboards.write-opts :as write-opts]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -1370,8 +1369,7 @@
                              [(merge position-fields
                                      {:dashboard_id     dashboard-id
                                       :dashboard_tab_id tab-id}
-                                     columns)]
-                             {:owner-event? false}))]
+                                     columns)]))]
     (swap! state #(-> %
                       (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
@@ -1469,14 +1467,13 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (dashboard-card/update-dashboard-cards! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]
-                                                    {:owner-event? false}))
+            (dashboard-card/update-dashboard-cards! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]))
 
           "remove"
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
-            ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
-            (dashboard/delete-dashcards! [dashcard_id] {:owner-event? false})
+            ;; Model-level delete also cleans up pulse cards; the orphaned inline parameters go with the final update.
+            (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1507,10 +1504,8 @@
               (let [shift (:size_y existing)]
                 (dashboard-card/update-dashboard-cards!
                  (for [{:keys [id row]} tab-placed]
-                   {:id id :row (+ row shift)})
-                 {:owner-event? false})))
-            (dashboard-card/update-dashboard-cards! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)]
-                                                    {:owner-event? false})
+                   {:id id :row (+ row shift)}))))
+            (dashboard-card/update-dashboard-cards! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)])
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1588,29 +1583,32 @@
         ;; a dashboard being archived by THIS request — otherwise the post-mutation
         ;; internal-question sync could unarchive dashboard questions on a just-archived dashboard.
         _            (when (seq mutations)
-                       ;; unless THIS request unarchives it first — restore-and-edit is one call,
-                       ;; and the update runs before the mutations inside the transaction
+                       ;; unless THIS request unarchives it first — restore-and-edit is one call
                        (when-not (false? (:archived updates))
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
-        rows         (volatile! [])
         _            (t2/with-transaction [_conn]
-                       (when (seq updates)
-                         (vreset! rows (dashboard/update-dashboards! [(assoc updates :id id)] {:owner-event? false}))
-                         ;; Fire :event/collection-touch with the *target* collection id so the
-                         ;; activity feed records the right collection. Note: the dashboards-rest
-                         ;; PUT-dashboard endpoint passes the dashboard id here instead, which
-                         ;; appears to be a bug - the other collection-touch publishers
-                         ;; (collections_rest, queries_rest, collections/models/collection) all
-                         ;; pass the real collection id. Filed for follow-up.
-                         (when (contains? updates :collection_id)
-                           (events/publish-event! :event/collection-touch
-                                                  {:collection-id (:collection_id updates)
-                                                   :user-id       api/*current-user-id*})))
-                       (when (seq mutations)
-                         (apply-dashcard-mutations! id mutations))
-                       (write-opts/publish-dashboard-event! {id current-dash} @rows (boolean (seq mutations)) nil))
+                       (let [changes (when (seq mutations)
+                                       (apply-dashcard-mutations! id mutations))
+                             cleaned (dashboard/parameters-without-orphans (:parameters current-dash) (:removed changes))
+                             updates (cond-> updates
+                                       cleaned (assoc :parameters cleaned))]
+                         (if (seq updates)
+                           (do
+                             (dashboard/update-dashboards! [(assoc updates :id id)])
+                             ;; Fire :event/collection-touch with the *target* collection id so the
+                             ;; activity feed records the right collection. Note: the dashboards-rest
+                             ;; PUT-dashboard endpoint passes the dashboard id here instead, which
+                             ;; appears to be a bug - the other collection-touch publishers
+                             ;; (collections_rest, queries_rest, collections/models/collection) all
+                             ;; pass the real collection id. Filed for follow-up.
+                             (when (contains? updates :collection_id)
+                               (events/publish-event! :event/collection-touch
+                                                      {:collection-id (:collection_id updates)
+                                                       :user-id       api/*current-user-id*})))
+                           (when (seq mutations)
+                             (dashboard/touch-dashboards! [id])))))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)
      :name            (:name updated)

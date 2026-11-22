@@ -687,7 +687,7 @@
       (map (fn [idx {:keys [collection_id collection_position] :as moved-card}]
              ;; We are removing this card from `collection_id` so we need to reconcile any
              ;; `collection_position` entries left behind by this move
-             (api/reconcile-position-for-collection! collection_id collection_position nil)
+             (collection/reconcile-position-for-collection! collection_id collection_position nil)
              ;; Now we can update the card with the new collection and a new calculated position
              ;; that appended to the end
              {:id                  (u/the-id moved-card)

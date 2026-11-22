@@ -43,8 +43,10 @@
       (let [before (count (revisions-of "Dashboard" dashboard-id))]
         (dashboard-card/create-dashboard-cards!
          (for [i (range 2)]
-           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4})
-         {:context {:revision-message "add two"}})
+           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))
+        (testing "the writes of the parts record no Revision of the Dashboard"
+          (is (= before (count (revisions-of "Dashboard" dashboard-id)))))
+        (dashboard/touch-dashboards! [dashboard-id] {:context {:revision-message "add two"}})
         (is (= (inc before) (count (revisions-of "Dashboard" dashboard-id))))
         (is (=? {:message "add two" :object {:cards [{} {}]}}
                 (last (revisions-of "Dashboard" dashboard-id))))))))
@@ -89,7 +91,7 @@
         (finally
           (dashboard/delete-dashboards! [dashboard-id]))))))
 
-(deftest dashboard-part-writes-record-revisions-test
+(deftest dashboard-touch-after-part-writes-records-revision-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}
@@ -99,6 +101,8 @@
                         (let [before (revisions)]
                           (write)
                           (testing what
+                            (is (= before (revisions)))
+                            (dashboard/touch-dashboards! [dashboard-id])
                             (is (= (inc before) (revisions))))))
             tab-id    (atom nil)
             dashcard  (atom nil)]
@@ -129,8 +133,8 @@
         (is (=? {:tabs []} (last-object "Dashboard" dashboard-id)))))))
 
 (defn- revision-statement-count!
-  "The statements that the revisions consumer runs for a user's update of a dashcard of each of `n` new Dashboards in
-  one batch, which records a Revision of each Dashboard."
+  "The statements that the revisions consumer runs for the touch of each of `n` new Dashboards after a user's write of a
+  dashcard of each, which records a Revision of each Dashboard."
   [card-id n]
   (let [dashboard-ids (atom nil)]
     (events.tu/consumer-statement-count! :model/Dashboard
@@ -140,7 +144,8 @@
                                            (dashboard-card/create-dashboard-cards!
                                             (for [id ids]
                                               (assoc (mt/with-temp-defaults :model/DashboardCard)
-                                                     :dashboard_id id :card_id card-id))))
+                                                     :dashboard_id id :card_id card-id)))
+                                           (dashboard/touch-dashboards! ids))
                                          #(mt/with-current-user (mt/user->id :crowberto)
                                             (u/prog1 (%)
                                               (is (= (count @dashboard-ids)
@@ -149,7 +154,7 @@
                                          #(mt/with-current-user nil (%)))))
 
 (deftest batch-of-part-writes-records-with-fixed-statements-test
-  (testing "dashcard writes on 2 or 6 Dashboards in one batch record a Revision each with the same number of statements"
+  (testing "the touch of 2 or 6 Dashboards after dashcard writes records a Revision each with the same number of statements"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (= (revision-statement-count! card-id 2) (revision-statement-count! card-id 6)))))))

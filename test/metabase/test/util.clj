@@ -39,7 +39,6 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
-   [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -711,18 +710,6 @@
                                              (f temp-field)
                                              (finally
                                                (field/delete-fields! [(:id temp-field)]))))))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :model/Card
-  "Creates a temporary Card as `create-cards!` does, without checking its attributes against the schema of a write, and
-  deletes it with `delete-cards!`."
-  [model explicit-attributes f]
-  (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
-        temp-card  (first (card/create-cards! [attributes]))]
-    (try
-      (testing "\nwith temporary :model/Card\n"
-        (f temp-card))
-      (finally
-        (card/delete-cards! [(:id temp-card)])))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Database
   "Stores the client secrets of a temporary Database as `create-databases!` does, and deletes it with

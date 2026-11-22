@@ -17,6 +17,7 @@
   isa?
   underive!]
  [metabase.events.publish
+  context
   create-event
   delete-event
   touch-event

@@ -22,7 +22,6 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.dashboards.staleness :as dashboards.staleness]
-   [metabase.dashboards.write-opts :as write-opts]
    [metabase.dashboards.xrays :as dashboards.xrays]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
@@ -295,9 +294,8 @@
          (parameter-card/sync-parameter-cards!
           "dashboard"
           (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) dashboards))
-         (when-not (false? (:owner-event? opts))
-           (events/publish-event! :event/dashboard-create
-                                  (events/create-event dashboards (write-opts/event-context opts))))
+         (events/publish-event! :event/dashboard-create
+                                (events/create-event dashboards (events/context opts)))
          dashboards)))))
 
 (defn- changed?
@@ -374,10 +372,23 @@
            (doseq [[changes group] (group-by #(dissoc % :id) rows)]
              (dashboards.db/update-dashboards! (mapv :id group) changes))
            (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
-           (when-not (false? (:owner-event? opts))
-             (events/publish-event! :event/dashboard-update
-                                    (events/update-event stored rows {:context (write-opts/event-context opts)})))
+           (events/publish-event! :event/dashboard-update
+                                  (events/update-event stored rows {:context (events/context opts)}))
            rows))))))
+
+(mu/defn touch-dashboards! :- :nil
+  "Publish, as the last step of a write of the parts of the Dashboards with `dashboard-ids`, the update event of each, so
+  that its records, as its Revision, are made once for the whole write; a Dashboard whose own columns the write changed
+  is written by [[update-dashboards!]], which publishes it instead."
+  ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+   (touch-dashboards! dashboard-ids nil))
+  ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+    opts          :- ::dashboards.schema/write-opts]
+   (when (seq dashboard-ids)
+     (events/publish-event! :event/dashboard-update
+                            (events/touch-event (dashboards.db/dashboards (vec (distinct dashboard-ids)))
+                                                (events/context opts))))
+   nil))
 
 (mu/defn delete-dashboards! :- :nil
   "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses,
@@ -394,31 +405,38 @@
          (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
          (cache-config/delete-target-configs! "dashboard" dashboard-ids)
          (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards (write-opts/event-context opts)))
+         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards (events/context opts)))
          (dashboards.db/delete-dashboards! dashboard-ids))))
    nil))
 
+(mu/defn parameters-without-orphans :- [:maybe [:sequential :map]]
+  "The `parameters` of a Dashboard without the inline parameters that `dashcards` of it, which are being deleted, held,
+  nil when none is left out."
+  [parameters :- [:maybe [:sequential :map]]
+   dashcards  :- [:maybe [:sequential :map]]]
+  (let [orphaned-ids (set (mapcat :inline_parameters dashcards))
+        cleaned      (filterv #(not (contains? orphaned-ids (:id %))) parameters)]
+    (when (and (seq orphaned-ids) (not= (count parameters) (count cleaned)))
+      cleaned)))
+
 (mu/defn delete-dashcards! :- :nil
   "Delete the DashboardCards with `dashboard-card-ids` of a Dashboard, and the inline parameters they held from its
-  parameters, publishing the events of the writes and the update event of the Dashboard."
+  parameters, publishing the events of the writes and, as the last step, the update event of the Dashboard."
   ([dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
    (delete-dashcards! dashboard-card-ids nil))
   ([dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]
     opts               :- ::dashboards.schema/write-opts]
    (when (seq dashboard-card-ids)
      (t2/with-transaction [_conn]
-       (let [cards-being-deleted (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))
-             orphaned-param-ids  (set (mapcat :inline_parameters cards-being-deleted))
-             dashboard-ids       (set (map :dashboard_id cards-being-deleted))
-             dashboard           (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
-                                   (dashboards.db/dashboard (first dashboard-ids)))
-             cleaned-params      (when dashboard
-                                   (filterv #(not (contains? orphaned-param-ids (:id %))) (:parameters dashboard)))
-             cleanup?            (and dashboard (not= (count (:parameters dashboard)) (count cleaned-params)))]
-         (dashboard-card/delete-dashboard-cards! dashboard-card-ids (assoc opts :owner-event? (and (not cleanup?)
-                                                                                                   (not (false? (:owner-event? opts))))))
-         (when cleanup?
-           (update-dashboards! [{:id (:id dashboard) :parameters cleaned-params}] (select-keys opts [:context :writer :owner-event?]))))))
+       (let [dashcards     (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))
+             dashboard-ids (into #{} (map :dashboard_id) dashcards)
+             cleaned       (when (= 1 (count dashboard-ids))
+                             (parameters-without-orphans (:parameters (dashboards.db/dashboard (first dashboard-ids)))
+                                                         dashcards))]
+         (dashboard-card/delete-dashboard-cards! dashboard-card-ids opts)
+         (if cleaned
+           (update-dashboards! [{:id (first dashboard-ids) :parameters cleaned}] opts)
+           (touch-dashboards! (vec dashboard-ids) opts)))))
    nil))
 
 (mu/defn revert-dashboard! :- :map
@@ -430,7 +448,7 @@
   (let [cleaned-parameters   (dashboards.revisions/clean-invalid-parameter-card-references
                               (or (:parameters serialized-dashboard) []))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)
-        opts                 {:writer :revert :owner-event? false}]
+        opts                 {:writer :revert}]
     (parameter-card/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
     (update-dashboards! [(assoc (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard)))
                                 :id dashboard-id)]
@@ -454,7 +472,12 @@
           {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-dashcards)]
       (queries/check-newly-exposed-dashcards-timeline-permissions!
        (dashboards.db/dashboard dashboard-id) current-cards (concat to-create to-update))
-      (delete-dashcards! (mapv :id to-delete) opts)
+      (when (seq to-delete)
+        (let [deleted (dashboards.db/dashcards-by-ids (mapv :id to-delete))
+              cleaned (parameters-without-orphans (:parameters (dashboards.db/dashboard dashboard-id)) deleted)]
+          (dashboard-card/delete-dashboard-cards! (mapv :id to-delete) opts)
+          (when cleaned
+            (update-dashboards! [{:id dashboard-id :parameters cleaned}] opts))))
       (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create) opts)
       (dashboard-card/update-dashboard-cards! (vec to-update) opts))
     serialized-dashboard))
@@ -479,18 +502,9 @@
    time :- ms/TemporalInstant]
   (dashboards.db/set-dashboard-last-viewed-at! id time))
 
-(mu/defn shift-positions! :- :int
-  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Dashboards in the Collection with
-  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
-  position, returning the number updated."
-  [collection-id   :- [:maybe ::lib.schema.id/collection]
-   position-clause :- vector?
-   plus-or-minus   :- [:enum :+ :-]]
-  (dashboards.db/shift-dashboard-positions! collection-id position-clause plus-or-minus))
-
-(defmethod api/shift-collection-positions! :model/Dashboard
-  [_model collection-id position-clause plus-or-minus]
-  (shift-positions! collection-id position-clause plus-or-minus))
+(defmethod collection/shift-positions-in-collection! :model/Dashboard
+  [_model collection-id positions direction]
+  (dashboards.db/shift-dashboard-positions! collection-id positions direction))
 
 (defmethod card/update-followers! :model/Dashboard
   [_model rows]
