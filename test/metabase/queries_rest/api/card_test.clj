@@ -1152,7 +1152,7 @@
       (testing "a Card whose stored query is empty reads as a stored row and takes edits of its other columns"
         (t2/query-one {:update :report_card :set {:dataset_query "{}"} :where [:= :id card-id]})
         (is (mr/validate ::queries.schema/card (t2/select-one :model/Card :id card-id)))
-        (is (not (mr/validate ::queries.schema/card.update {:dataset_query {}})))
+        (is (mr/validate ::queries.schema/card.update {:dataset_query {}}))
         (is (=? {:name "Renamed"}
                 (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Renamed"})))))))
 

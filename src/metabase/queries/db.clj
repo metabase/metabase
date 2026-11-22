@@ -166,7 +166,7 @@
 (mu/defn update-cards!
   "Apply `changes` to the Cards with `card-ids` in one statement, returning the number updated."
   [card-ids :- [:sequential ::lib.schema.id/card]
-   changes  :- ::queries.schema/card.update.stored]
+   changes  :- ::queries.schema/card.update]
   (t2/update! :model/Card :id [:in card-ids] changes))
 
 (mu/defn delete-cards!
