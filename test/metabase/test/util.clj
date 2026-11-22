@@ -547,25 +547,11 @@
    :model/Dashboard             {:create :event/dashboard-create}
    :model/Pulse                 {:create :event/pulse-create
                                  :delete :event/pulse-delete}
-   :model/PulseCard             {:create :event/pulse-card-create
-                                 :delete :event/pulse-card-delete}
-   :model/PulseChannel          {:create :event/pulse-channel-create
-                                 :delete :event/pulse-channel-delete}
-   :model/PulseChannelRecipient {:create :event/pulse-channel-recipient-create
-                                 :delete :event/pulse-channel-recipient-delete}
    :model/Channel               {:create :event/channel-create
                                  :delete :event/channel-delete}
    :model/ChannelTemplate       {:create :event/channel-template-create
                                  :delete :event/channel-template-delete}
    :model/Notification          {:create :event/notification-row-create}
-   :model/NotificationCard      {:create :event/notification-card-create
-                                 :delete :event/notification-card-delete}
-   :model/NotificationSubscription {:create :event/notification-subscription-create
-                                    :delete :event/notification-subscription-delete}
-   :model/NotificationHandler   {:create :event/notification-handler-create
-                                 :delete :event/notification-handler-delete}
-   :model/NotificationRecipient {:create :event/notification-recipient-create
-                                 :delete :event/notification-recipient-delete}
    :model/User                  {:create :event/user-create
                                  :delete :event/user-delete}
    :model/PermissionsGroup      {:create :event/group-create
@@ -606,8 +592,6 @@
                                  :delete :event/segment-test-delete}
    :model/TestSuite             {:create :event/test-suite-create
                                  :delete :event/test-suite-delete}
-   :model/TestSuiteMember       {:create :event/test-suite-member-create
-                                 :delete :event/test-suite-member-delete}
    :model/Database              {:create :event/database-create}
    :model/Table                 {:create :event/table-create}
    :model/Field                 {:create :event/field-create}
@@ -638,11 +622,7 @@
    :model/Comment               {:create :event/comment-create
                                  :delete :event/comment-delete}
    :model/Action                {:create :event/action-create
-                                 :delete :event/action-delete}
-   :model/QueryAction           {:create :event/query-action-create
-                                 :delete :event/query-action-delete}
-   :model/ImplicitAction        {:create :event/implicit-action-create
-                                 :delete :event/implicit-action-delete}})
+                                 :delete :event/action-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."

@@ -162,7 +162,7 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (update-segment-tests! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
+  (update-segment-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -197,6 +197,7 @@
 (defmethod revisions/spec :model/SegmentTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/segment-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-segment-test!})

@@ -346,22 +346,19 @@
 
 (defn- revert-transform-test!
   [id _user-id snapshot]
-  (update-transform-tests! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
+  (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
-  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
-  refused."
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
   [id _user-id snapshot]
   (check-revert-available)
-  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (let [snapshot (merge {:now nil} snapshot)]
-    (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
-      (data-testing.errors/refusing
-       "transform-test"
-       #(data-testing.runner/validate-test :transform
-                                           (data-testing.db/transform (:transform_id snapshot))
-                                           (data-testing.runner/test-definition snapshot))))
-    snapshot))
+  (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
+    (data-testing.errors/refusing
+     "transform-test"
+     #(data-testing.runner/validate-test :transform
+                                         (data-testing.db/transform (:transform_id snapshot))
+                                         (data-testing.runner/test-definition snapshot))))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -388,6 +385,7 @@
 (defmethod revisions/spec :model/TransformTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/transform-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-transform-test!})

@@ -159,19 +159,16 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (update-card-tests! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
+  (update-card-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
-  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
-  refused."
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (let [snapshot (merge {:now nil} snapshot)]
-    (data-testing.errors/refusing
-     "card-test"
-     #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/card-test id) snapshot)))
-    snapshot))
+  (data-testing.errors/refusing
+   "card-test"
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/card-test id) snapshot)))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -198,6 +195,7 @@
 (defmethod revisions/spec :model/CardTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/card-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-card-test!})

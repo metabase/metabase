@@ -204,8 +204,8 @@
                                                                    :table_id  (mt/id :venues)})
                                 action-id)
              :model-id        model-id
-             :model-action-id (actions.models/create-action! {:name "Create venue" :type :implicit :kind :row/create
-                                                              :model_id model-id})}))))))
+             :model-action-id (:id (first (actions.models/create-actions! [{:name "Create venue" :type :implicit :kind :row/create
+                                                              :model_id model-id}])))}))))))
 
 (defn venues-query
   "A query of the VENUES table, which a card in a data app's collection may read once it is published."

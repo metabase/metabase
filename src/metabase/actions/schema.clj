@@ -397,7 +397,8 @@
 
 (mr/def ::write-opts
   "The options of a write function of Actions: `:writer :cascade` for the write that the archive or restore of a
-  Collection carries, which skips the checks of a user's write, and the context of its events."
+  Collection carries, which skips the checks of a user's write, `:writer :import` for a SerDes import, and the context of
+  its events."
   [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :cascade]]
+           [:writer {:optional true} [:enum :cascade :import]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

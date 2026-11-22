@@ -310,12 +310,31 @@
   "What a client sends to update a segment test. Omitted fields are left unchanged."
   (test-update :segment_id ::lib.schema.id/segment))
 
+(defn- without-now
+  "`snapshot`, a snapshot of a saved test, with a nil `:now` when it has none: a Revision written before tests had `now`
+  has none, and the test then read the real clock."
+  [snapshot]
+  (cond->> snapshot
+    (map? snapshot) (merge {:now nil})))
+
+(mr/def ::transform-test.revision
+  "A transform test as a Revision stores it: its tracked columns."
+  [:schema {:decode/normalize without-now} ::transform-test.update])
+
+(mr/def ::card-test.revision
+  "A card test as a Revision stores it: its tracked columns."
+  [:schema {:decode/normalize without-now} ::card-test.update])
+
+(mr/def ::segment-test.revision
+  "A segment test as a Revision stores it: its tracked columns."
+  ::segment-test.update)
+
 (mr/def ::write-opts
   "The options of the write functions of tests, suites and members: who writes when it matters, and the context of the
   events."
   [:maybe
    [:map {:closed true}
-    [:writer  {:optional true} [:enum :revert]]
+    [:writer  {:optional true} [:enum :revert :import]]
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (def ^:private row-now
@@ -497,41 +516,19 @@
    [:test_type      ::test-type]
    [:test_entity_id :string]])
 
-(mr/def ::test-suite.row.create
-  "A test suite as it is stored, without its members: its name, description, creator and the entity id of an import."
+(mr/def ::test-suite.create
+  "What creating a test suite takes, without its members: its name, description, creator and the entity id of an import."
   [:map {:closed true}
    [:name        ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]
    [:creator_id  ::lib.schema.id/user]
    [:entity_id   {:optional true} [:maybe :string]]])
 
-(mr/def ::test-suite.create
-  "What creating a test suite takes: its stored columns, and the members, in the order the suite runs them, when it has
-  any."
-  [:merge
-   ::test-suite.row.create
-   [:map {:closed true}
-    [:members {:optional true} [:sequential ::test-suite-member.create]]]])
-
-(mr/def ::test-suite.row.update
-  "The stored columns an update of a test suite changes."
-  [:map {:closed true}
-   [:name        {:optional true} :string]
-   [:description {:optional true} [:maybe :string]]])
-
 (mr/def ::test-suite.update
-  "What an update of a test suite takes. Omitted keys are left unchanged; `:members` replaces every member."
+  "The columns an update of a test suite changes. Omitted keys are left unchanged."
   [:map {:closed true}
    [:name        {:optional true} ::lib.schema.common/non-blank-string]
-   [:description {:optional true} [:maybe :string]]
-   [:members     {:optional true} [:sequential ::test-suite-member.create]]])
-
-(mr/def ::test-suite.update-row
-  "One row of an update of test suites: the `:id` of a suite and the columns to change."
-  [:merge
-   ::test-suite.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+   [:description {:optional true} [:maybe :string]]])
 
 (mr/def ::test-suite-member.row.create
   "A member of a test suite as it is stored: its suite, its test, by type and entity id, and its position."

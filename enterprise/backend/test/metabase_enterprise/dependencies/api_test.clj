@@ -966,7 +966,7 @@
                                   set))]
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :venues) action-id))
-            (action/update-implicit-actions! [{:action_id action-id :table_id (mt/id :categories)}])
+            (action/update-actions! [{:id action-id :table_id (mt/id :categories)}])
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :categories) action-id))
             (is (not (contains? (dependents :venues) action-id)))))))))

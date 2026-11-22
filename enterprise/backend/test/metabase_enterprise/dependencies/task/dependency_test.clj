@@ -1146,7 +1146,7 @@
            (is (= #{[:table (mt/id :venues)]}
                   (action-deps action-id))))
          (testing "updating an action's query recalculates its dependencies"
-           (action/update-query-actions! [{:action_id action-id :dataset_query (sql-query "checkins")}])
+           (action/update-actions! [{:id action-id :dataset_query (sql-query "checkins")}])
            (assert-pending :action action-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :checkins)]}

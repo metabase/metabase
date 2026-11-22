@@ -2081,13 +2081,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/create-action! (lib/normalize ::actions.schema/action.for-insert
+                _action-id (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert
                                                                  {:entity_id     eid
                                                                   :name          "the action"
                                                                   :model_id      (:id card)
                                                                   :type          :query
                                                                   :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
-                                                                  :database_id   (:id db)}))]
+                                                                  :database_id   (:id db)})])))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true})))
             (let [action-serialized (first (filter (fn [entity] (= [:model/Action eid] (serialization/key-of entity)))
                                                    @serialized))]
@@ -2231,14 +2231,14 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/create-action! {:entity_id     eid
+                _action-id (:id (first (action/create-actions! [{:entity_id     eid
                                                    :name          "the action"
                                                    :model_id      (:id card)
                                                    :type          :query
                                                    :dataset_query (lib/native-query
                                                                    (lib-be/application-database-metadata-provider (:id db))
                                                                    "SELECT 1")
-                                                   :database_id   (:id db)})]
+                                                   :database_id   (:id db)}])))]
             (reset! serialized
                     (->> (serdes.extract/extract {:include-h2? true})
                          ;; add an extra key to *every serialized model*

@@ -356,10 +356,13 @@
           (let [world (assoc world :action [:action action-id])]
             (testing "a query action's query change marks the action's dependency"
               (is (= (marked {:dependency [:action]})
-                     (marks! world #(action/update-query-actions! [{:action_id     action-id
-                                                                    :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                                     "UPDATE venues SET id = 2")}])))))
-            (testing "an action rename marks nothing"
+                     (marks! world #(action/update-actions! [{:id            action-id
+                                                              :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                               "UPDATE venues SET id = 2")}])))))
+            (testing "an action write marks the action's dependency, as the action is written with its details"
+              (is (= (marked {:dependency [:action]})
+                     (marks! world #(action/update-actions! [{:id action-id :name "Renamed"}])))))
+            (testing "a write that changes nothing marks nothing"
               (is (= (marked {:triggers? false})
                      (marks! world #(action/update-actions! [{:id action-id :name "Renamed"}])))))))))))
 

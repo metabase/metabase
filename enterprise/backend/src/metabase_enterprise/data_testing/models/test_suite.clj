@@ -76,15 +76,11 @@
 
 (defn- replace-suite-members!
   "Replace the members of the suites of `rows`, each a suite `:id` and its `:members`, with the new ones, positioned in
-  their order, publishing the events of the members that go and of those that come."
+  their order."
   [rows]
-  (let [suite-ids (mapv :id rows)
-        previous  (data-testing.db/suite-members suite-ids)]
-    (events/publish-event! :event/test-suite-member-delete (events/delete-event previous))
-    (data-testing.db/delete-members-of-suites! suite-ids)
-    (when-let [new-members (not-empty (member-rows (map (juxt :id :members) rows)))]
-      (events/publish-event! :event/test-suite-member-create
-                             (events/create-event (data-testing.db/insert-suite-members! new-members))))))
+  (data-testing.db/delete-members-of-suites! (mapv :id rows))
+  (when-let [new-members (not-empty (member-rows (map (juxt :id :members) rows)))]
+    (data-testing.db/insert-suite-members! new-members)))
 
 (defn- event-context
   "The context of the events of a write with `opts`."
@@ -92,39 +88,65 @@
   (cond-> context
     (= :revert writer) (assoc :reverting? true)))
 
+(def ^:private NewTestSuite
+  [:merge
+   ::data-testing.schema/test-suite.create
+   [:map {:closed true}
+    [:members {:optional true} [:sequential ::data-testing.schema/test-suite-member.create]]]])
+
 (mu/defn create-test-suites! :- [:sequential ::data-testing.schema/test-suite]
-  "Insert the TestSuite `rows` with their members, positioned in their order, in one transaction, publishing the create
-  events of the members and then of the suites, and return the inserted suites."
-  ([rows :- [:sequential ::data-testing.schema/test-suite.create]]
+  "Insert the TestSuite `rows` with their members, positioned in their order, in one transaction, publishing their create
+  event last, and return the inserted suites."
+  ([rows :- [:sequential NewTestSuite]]
    (create-test-suites! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/test-suite.create]
+  ([rows :- [:sequential NewTestSuite]
     opts :- ::data-testing.schema/write-opts]
    (if (seq rows)
      (t2/with-transaction [_conn]
        (let [suites  (data-testing.db/insert-test-suites! (mapv #(dissoc % :members) rows))
              members (member-rows (map (fn [suite row] [(:id suite) (:members row)]) suites rows))]
          (when (seq members)
-           (events/publish-event! :event/test-suite-member-create
-                                  (events/create-event (data-testing.db/insert-suite-members! members))))
+           (data-testing.db/insert-suite-members! members))
          (events/publish-event! :event/test-suite-create (events/create-event suites (event-context opts)))
          suites))
      [])))
 
-(mu/defn update-test-suites! :- [:sequential ::data-testing.schema/test-suite.update-row]
+(def ^:private UpdateTestSuite
+  [:merge
+   ::data-testing.schema/test-suite.update
+   [:map {:closed true}
+    [:id      ms/PositiveInt]
+    [:members {:optional true} [:sequential ::data-testing.schema/test-suite-member.create]]]])
+
+(defn- publish-update!
+  "Publish, as the last step of a write, the update event of the suites that the `rows` change, as `fresh` holds them
+  after it, and the touch event of the suites of `touched-ids` that the rows leave unchanged, whose members the write
+  changed, so that their records are made once; `stored` holds the suites as read before."
+  [stored fresh rows touched-ids opts]
+  (let [context (event-context opts)
+        event   (events/update-event stored rows {:objects (select-keys fresh (map :id rows)) :context context})
+        updated (into #{} (map (comp :id :object)) (:changes event))
+        touched (into [] (comp (remove updated) (distinct) (keep stored)) touched-ids)
+        event   (update event :changes into (:changes (events/touch-event touched)))]
+    (when (seq (:changes event))
+      (events/publish-event! :event/test-suite-update event))))
+
+(mu/defn update-test-suites! :- [:sequential UpdateTestSuite]
   "Apply the changes in each of `rows`, the id of a TestSuite and the columns to change, replacing its members when the
-  row has `:members`, in one transaction with one statement per distinct change set, publishing the events of the
-  members and then of the suites. A change of members alone also sets the suite's update time. The suite rows are
+  row has `:members`, in one transaction with one statement per distinct change set, publishing, last, the update event
+  of the suites whose columns or members change, and for an import, which sends a suite whose members it wrote, a touch
+  of each suite it leaves unchanged. A change of members alone also sets the suite's update time. The suite rows are
   locked first, so a concurrent update of the same suite waits until this one commits and then replaces the members this
   one wrote. Returns `rows`."
-  ([rows :- [:sequential ::data-testing.schema/test-suite.update-row]]
+  ([rows :- [:sequential UpdateTestSuite]]
    (update-test-suites! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/test-suite.update-row]
+  ([rows :- [:sequential UpdateTestSuite]
     opts :- ::data-testing.schema/write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
-       (let [stored      (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))
-             rows*       (filterv (comp stored :id) rows)
-             columns     (fn [row] (dissoc row :id :members))
+       (let [stored       (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))
+             rows*        (filterv (comp stored :id) rows)
+             columns      (fn [row] (dissoc row :id :members))
              with-members (filterv #(contains? % :members) rows*)]
          (doseq [[updates group] (group-by columns rows*)
                  :when           (seq updates)]
@@ -132,20 +154,18 @@
          (when (seq with-members)
            (data-testing.db/touch-test-suites! (mapv :id with-members))
            (replace-suite-members! with-members))
-         (let [fresh       (u/index-by :id (data-testing.db/test-suites-by-ids (mapv :id rows*)))
-               column-rows (filterv (comp seq columns) rows*)
-               parts-rows  (filterv (comp empty? columns) with-members)]
-           (events/publish-event! :event/test-suite-update
-                                  (events/update-event stored
-                                                       (mapv #(select-keys % [:id]) column-rows)
-                                                       {:objects (into {} (map (fn [{:keys [id]}] [id (fresh id)])) column-rows)
-                                                        :context (event-context opts)}))
-           (events/publish-event! :event/test-suite-update
-                                  (events/touch-event (mapv (comp stored :id) parts-rows) (event-context opts)))))))
+         (let [fresh (u/index-by :id (data-testing.db/test-suites-by-ids (mapv :id rows*)))]
+           (publish-update! stored
+                            fresh
+                            (mapv #(select-keys % [:id]) (filter (comp seq columns) rows*))
+                            (into (if (= :import (:writer opts)) (mapv :id rows*) [])
+                                  (map :id)
+                                  with-members)
+                            opts)))))
    (vec rows)))
 
 (mu/defn delete-test-suites!
-  "Delete the TestSuites with `ids`, and their members, publishing their delete event."
+  "Delete the TestSuites with `ids`, and their members, publishing their delete event right before the statement."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
@@ -154,48 +174,39 @@
       (data-testing.db/delete-test-suites! (vec ids))))
   nil)
 
-(mu/defn create-test-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
-  "Insert the TestSuiteMember `rows`, publishing their create event, and return the inserted members."
+(mu/defn- create-test-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
+  "Insert the TestSuiteMember `rows` in a plain write that publishes nothing, and return the inserted members."
   [rows :- [:sequential ::data-testing.schema/test-suite-member.row.create]]
   (if (seq rows)
-    (t2/with-transaction [_conn]
-      (let [members (data-testing.db/insert-suite-members! rows)]
-        (events/publish-event! :event/test-suite-member-create (events/create-event members))
-        members))
+    (data-testing.db/insert-suite-members! rows)
     []))
 
-(mu/defn update-test-suite-members! :- [:sequential ::data-testing.schema/test-suite-member.update-row]
+(mu/defn- update-test-suite-members! :- [:sequential ::data-testing.schema/test-suite-member.update-row]
   "Apply the changes in each of `rows`, the id of a TestSuiteMember and the columns to change, with one statement per
-  distinct change set, publishing their update event. Returns `rows`."
+  distinct change set, in a plain write that publishes nothing. Returns `rows`."
   [rows :- [:sequential ::data-testing.schema/test-suite-member.update-row]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (data-testing.db/suite-members-by-ids (mapv :id rows)))]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)
-                :when           (seq changes)]
-          (data-testing.db/update-suite-members! (mapv :id group) changes))
-        (events/publish-event! :event/test-suite-member-update (events/update-event stored rows)))))
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)
+          :when           (seq changes)]
+    (data-testing.db/update-suite-members! (mapv :id group) changes))
   (vec rows))
 
-(mu/defn delete-test-suite-members!
-  "Delete the TestSuiteMembers with `ids`, publishing their delete event."
+(mu/defn- delete-test-suite-members!
+  "Delete the TestSuiteMembers with `ids` in a plain write that publishes nothing."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/test-suite-member-delete
-                             (events/delete-event (data-testing.db/suite-members-by-ids (vec ids))))
-      (data-testing.db/delete-suite-members! (vec ids))))
+    (data-testing.db/delete-suite-members! (vec ids)))
   nil)
 
 (mu/defn delete-members-of-tests! :- :nil
-  "Delete the members of every TestSuite that name the `test-type` tests with `entity-ids`, publishing their delete
-  event."
+  "Delete the members of every TestSuite that name the `test-type` tests with `entity-ids`, publishing the update event
+  of their suites as a touch."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential :string]]
-  (let [members (data-testing.db/suite-members-of-tests test-type entity-ids)]
-    (when (seq members)
-      (events/publish-event! :event/test-suite-member-delete (events/delete-event members))
-      (data-testing.db/delete-suite-members-of-tests! test-type entity-ids)))
+  (t2/with-transaction [_conn]
+    (when-let [members (not-empty (data-testing.db/suite-members-of-tests test-type entity-ids))]
+      (let [stored (u/index-by :id (data-testing.db/test-suites-by-ids (vec (distinct (map :suite_id members)))))]
+        (data-testing.db/delete-suite-members-of-tests! test-type entity-ids)
+        (events/publish-event! :event/test-suite-update (events/touch-event (vec (vals stored)))))))
   nil)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
@@ -223,8 +234,8 @@
    :copy          [:entity_id :name :description]
    :transform     {:creator_id serialization/user-transform}
    :children      {:members :model/TestSuiteMember}
-   :insert!       create-test-suites!
-   :update!       update-test-suites!
+   :insert!       #(create-test-suites! % {:writer :import})
+   :update!       #(update-test-suites! % {:writer :import})
    :delete!       delete-test-suites!
    :storage-paths data-testing.serialization/test-suite-storage-paths})
 

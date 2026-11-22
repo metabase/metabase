@@ -182,7 +182,7 @@
 (defn- insert-action!
   "Normalizes `action` the way the REST API decodes one and inserts it, returning its id."
   [action]
-  (action/create-action! (lib/normalize ::actions.schema/action.for-insert action)))
+  (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert action)]))))
 
 (defmulti ^:private create-action*!
   {:arglists '([options-map model-id])}

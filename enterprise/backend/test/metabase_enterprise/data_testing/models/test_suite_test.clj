@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
@@ -243,18 +244,33 @@
   (mt/with-temp [:model/Card      {card-id :id} {}
                  :model/TestSuite {suite-id :id} {}]
     (let [make-tests! (fn [n]
-                        (let [tests (data-testing.models.card-test/create-card-tests!
-                                     (vec (repeatedly n (fn [] {:card_id      card-id
-                                                                :creator_id   (mt/user->id :rasta)
-                                                                :name         (str (random-uuid))
-                                                                :inputs       []
-                                                                :expectations []}))))]
-                          (test-suite/create-test-suite-members!
-                           (vec (map-indexed (fn [i {:keys [entity_id]}]
-                                               {:suite_id suite-id :test_type :card :test_entity_id entity_id :position i})
-                                             tests)))
-                          (mapv :id tests)))
+                        (data-testing.models.card-test/create-card-tests!
+                         (vec (repeatedly n (fn [] {:card_id      card-id
+                                                    :creator_id   (mt/user->id :rasta)
+                                                    :name         (str (random-uuid))
+                                                    :inputs       []
+                                                    :expectations []})))))
           small       (make-tests! 2)
           large       (make-tests! 6)]
-      (is (= (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest small))
-             (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest large)))))))
+      (test-suite/update-test-suites! [{:id      suite-id
+                                        :members (mapv (fn [{:keys [entity_id]}] {:test_type :card :test_entity_id entity_id})
+                                                       (concat small large))}])
+      (is (= (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest (mapv :id small)))
+             (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest (mapv :id large))))))))
+
+(deftest suite-writes-publish-one-suite-event-test
+  (mt/with-temp [:model/TestSuite {suite-id :id} {}]
+    (let [published (atom [])]
+      (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
+        (testing "a change of the members alone is one update of the suite"
+          (test-suite/update-test-suites! [{:id suite-id :members (member-rows 2)}])
+          (is (= [:event/test-suite-update] @published)))
+        (testing "a change of the columns and the members is one update of the suite"
+          (test-suite/update-test-suites! [{:id suite-id :name "Renamed" :members (member-rows 1)}])
+          (is (= [:event/test-suite-update :event/test-suite-update] @published)))
+        (testing "an import that wrote the members on their own touches the suite"
+          (test-suite/update-test-suites! [{:id suite-id}] {:writer :import})
+          (is (= [:event/test-suite-update :event/test-suite-update :event/test-suite-update] @published)))
+        (testing "a change of nothing publishes nothing"
+          (test-suite/update-test-suites! [{:id suite-id}])
+          (is (= 3 (count @published))))))))

@@ -64,7 +64,7 @@
 
 (mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
   "Insert the TestSuite `suites` and return the inserted instances."
-  [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.row.create]]
+  [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.create]]
   (t2/insert-returning-instances! :model/TestSuite suites))
 
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
@@ -80,7 +80,7 @@
 (mu/defn update-test-suites!
   "Apply `updates` to the TestSuites with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   updates :- ::data-testing.schema/test-suite.row.update]
+   updates :- ::data-testing.schema/test-suite.update]
   (t2/update! :model/TestSuite :id [:in [:auto/param ids]] updates))
 
 (mu/defn touch-test-suites!
