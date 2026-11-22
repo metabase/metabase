@@ -27,6 +27,25 @@ never becomes a query per row.
 - A combination check stays in the hook for every writer. Card has two: `check-model-query` (the type with the
   query: a model's native query has no variable or field filter) and `check-not-native-audit-db-query` (the database
   with the query type: no native query on the audit database).
+- **A `before-update` hook returns the same changes for every row of one update.** Toucan runs an update of a model
+  with such a hook in three steps: one SELECT of the matching rows; the hook once per row, in memory; then one UPDATE
+  only if every row ended with the same change map, and otherwise one `UPDATE ... WHERE id = ?` per row, for all
+  rows, even those that share a change map. So a hook that runs no statement can still multiply statements:
+
+      (t2/define-before-update :model/Channel [channel]          ; WRONG: the name differs per row
+        (cond-> channel
+          (false? (:active (t2/changes channel)))
+          (assoc :name (format "DEACTIVATED_%d %s" (:id channel) (:name channel)))))
+      ;; (t2/update! :model/Channel :id [:in ids] {:active false}) -> 1 SELECT + one UPDATE per Channel
+
+  The constraint: what the hook adds to the changes is a function of the incoming changes and constants alone (`:%now`,
+  a value computed from a column the changes give), never of the stored row. It breaks in two ways: a value built from
+  the stored row (its id, its name), and a value added only for some rows (`(when-not (:published_at stored) ...)`),
+  where two kinds of rows in one call are enough. A hook may still READ the stored row to refuse a write: a throw
+  adds no statement. A derivation that needs the stored row belongs to the write function, which holds the rows: it
+  groups the rows by the value and writes each group with one statement, or, when the value is different for every
+  row, calls a named `db.clj` function that computes it in one statement (`deactivate-channels!` setting the name
+  with a SQL expression). Test a write function with rows that differ in stored state, not only uniform rows.
 - No `after-insert` and no `after-update` hook: Toucan reads the written rows back for a model that has one, and a
   model publishes nothing from a hook; what such a hook did belongs to the write function.
 - Converting a value (legacy query to MBQL 5, string to keyword) is the column transform's job (`t2/deftransforms`,
