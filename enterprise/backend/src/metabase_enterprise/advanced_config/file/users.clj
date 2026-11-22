@@ -49,7 +49,7 @@
                        (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
                        (let [new-user (update user :login_attributes
                                               #(merge % (:login_attributes existing-user)))]
-                         (user/update-user! (:id existing-user) new-user))
+                         (user/update-users! {:id (:id existing-user)} new-user))
                        (:id existing-user))
                      ;; create a new user. If they are the first non-internal User, force them to be an admin.
                      (let [user (cond-> user

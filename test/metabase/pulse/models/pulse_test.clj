@@ -324,7 +324,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (pos? (user/update-user! user-id {:is_active false}))))
+             (is (pos? (user/update-users! {:id user-id} {:is_active false}))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -336,10 +336,10 @@
                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (pos? (user/update-user! user-id {:is_active false})))
+               (is (pos? (user/update-users! {:id user-id} {:is_active false})))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (user/update-user! user-2-id {:is_active false}))
+               (is (user/update-users! {:id user-2-id} {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
@@ -352,7 +352,7 @@
                           :model/PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
                           :model/PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
-               (is (user/update-user! user-id {:is_active false})))
+               (is (user/update-users! {:id user-id} {:is_active false})))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -362,7 +362,7 @@
                                                  :details      {:channel "#general"}
                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (pos? (user/update-user! user-id {:is_active false}))))
+               (is (pos? (user/update-users! {:id user-id} {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
@@ -371,7 +371,7 @@
            (fn [{:keys [archived? user-id pulse-channel-id]}]
              (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (pos? (user/update-user! user-id {:is_active false}))))
+               (is (pos? (user/update-users! {:id user-id} {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -381,7 +381,7 @@
                                                    :details      {:emails ["foo@bar.com"]}
                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (pos? (user/update-user! user-id {:is_active false}))))
+                 (is (pos? (user/update-users! {:id user-id} {:is_active false}))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
 

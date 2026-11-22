@@ -134,6 +134,15 @@
   #{:email/handlebars-text
     :email/handlebars-resource})
 
+(mr/def ::write-opts
+  "The options of the write functions of the models of the module: the context of the events they publish."
+  [:maybe [:map {:closed true}
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(mr/def ::channel.update-row
+  "A change of a Channel: its `:id` and the columns to set."
+  [:merge ::channel.update [:map [:id ms/PositiveInt]]])
+
 (mr/def ::channel-template.email-details
   "The `:details` of a `:channel/email` ChannelTemplate."
   [:merge

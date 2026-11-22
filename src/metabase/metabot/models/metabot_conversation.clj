@@ -70,7 +70,7 @@
    row             :- ::metabot.schema/metabot-conversation.create]
   (t2/with-transaction [_conn]
     (u/prog1 (metabot.db/insert-conversation! conversation-id row)
-      (events/publish-lifecycle! [(events/created :event/metabot-conversation-create [<>])]))))
+      (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
 
 (mu/defn upsert-metabot-conversation!
   "Insert or update the MetabotConversation with `conversation-id`; `update-fn` receives the existing row, or nil, and
@@ -82,12 +82,10 @@
       (if-let [existing (metabot.db/conversation conversation-id)]
         (when-let [changes (update-fn existing)]
           (metabot.db/update-conversation! conversation-id changes)
-          (events/publish-lifecycle!
-           [(events/updated :event/metabot-conversation-update
-                            [existing]
-                            [(events/updated-row existing changes)])]))
+          (events/publish-event! :event/metabot-conversation-update
+                                 (events/update-event {(:id existing) existing} [(assoc changes :id (:id existing))])))
         (let [created (metabot.db/insert-upserted-conversation! conversation-id (update-fn nil))]
-          (events/publish-lifecycle! [(events/created :event/metabot-conversation-create [created])])))
+          (events/publish-event! :event/metabot-conversation-create (events/create-event [created]))))
       conversation-id)))
 
 (mu/defn set-metabot-conversation-title-if-missing! :- :int
@@ -99,10 +97,8 @@
     (if-let [previous (metabot.db/titleless-conversation conversation-id)]
       (let [changes {:title title}]
         (metabot.db/update-conversation! conversation-id changes)
-        (events/publish-lifecycle!
-         [(events/updated :event/metabot-conversation-update
-                          [previous]
-                          [(events/updated-row previous changes)])])
+        (events/publish-event! :event/metabot-conversation-update
+                               (events/update-event {(:id previous) previous} [(assoc changes :id (:id previous))]))
         1)
       0)))
 
@@ -110,9 +106,8 @@
   "Delete the MetabotConversation `rows`, publish their delete, and return how many there were."
   [rows]
   (when (seq rows)
-    (let [event (events/deleted :event/metabot-conversation-delete :model/MetabotConversation rows)]
-      (metabot.db/delete-conversations! (mapv :id rows))
-      (events/publish-lifecycle! [event])))
+    (events/publish-event! :event/metabot-conversation-delete (events/delete-event rows))
+    (metabot.db/delete-conversations! (mapv :id rows)))
   (count rows))
 
 (mu/defn delete-metabot-conversations-created-before!
@@ -126,7 +121,7 @@
   [row :- ::metabot.schema/metabot-conversation]
   (t2/with-transaction [_conn]
     (u/prog1 (metabot.db/insert-conversation-row! row)
-      (events/publish-lifecycle! [(events/created :event/metabot-conversation-create [<>])]))))
+      (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
 
 (mu/defn delete-metabot-conversations!
   "Delete the MetabotConversations with `conversation-ids`."

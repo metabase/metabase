@@ -403,10 +403,9 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-        (let [removed (perms-group-membership/remove-user-from-groups* user-id (vec to-remove))
-              added   (perms-group-membership/add-users-to-groups* (for [group-id to-add]
-                                                                     {:user user-id :group group-id}))]
-          (events/publish-lifecycle! (into (:events removed) (:events added))))))
+        (perms-group-membership/remove-user-from-groups! user-id (vec to-remove))
+        (perms-group-membership/add-users-to-groups! (for [group-id to-add]
+                                                       {:user user-id :group group-id}))))
     true))
 
 (mu/defn add-attributes
@@ -455,13 +454,13 @@
   (cond-> [(:id (if tenant-id (perms/all-external-users-group) (perms/all-users-group)))]
     superuser? (conj (:id (perms/admin-group)))))
 
-(defn- add-to-default-groups*
-  "Add each of the new `users` to its default groups, returning the events of the writes as `:events`."
+(defn- add-to-default-groups!
+  "Add each of the new `users` to its default groups, publishing the events of the writes."
   [users]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
      (perms/without-is-superuser-sync-on-add-to-admin-group
-      (perms-group-membership/add-users-to-groups* (for [user     users
+      (perms-group-membership/add-users-to-groups! (for [user     users
                                                          group-id (default-group-ids user)]
                                                      {:user (:id user) :group group-id}))))))
 
@@ -475,8 +474,8 @@
       (check-sso-setup rows)
       (check-user-limit rows)
       (let [users (vec (sort-by :id (users.db/insert-users! rows)))]
-        (events/publish-lifecycle! (into [(events/created :event/user-create users)]
-                                         (:events (add-to-default-groups* users))))
+        (events/publish-event! :event/user-create (events/create-event users))
+        (add-to-default-groups! users)
         users))))
 
 (mu/defn create-user! :- ::users.schema/user
@@ -484,123 +483,95 @@
   [row :- ::users.schema/user.create]
   (first (create-users! [row])))
 
-(defn- updated-rows
-  "Each of the stored `users` whose row applying `changes` changes, paired with the row as the hooks of the model leave
-  it, which they run here again in memory, with the `updated_at` that a timestamp hook sets as SQL taken from the stored
-  row."
-  [users changes]
-  (into []
-        (keep (fn [user]
-                (let [row (t2.before-update/before-update :model/User (merge user changes))]
-                  (when (seq (t2/changes row))
-                    [user (t2/instance :model/User (cond-> (into {} row)
-                                                     (not (instance? java.time.temporal.Temporal (:updated_at row)))
-                                                     (assoc :updated_at (:updated_at user))))]))))
-        users))
+(defn- user-after
+  "The row of the stored `user` as the hooks of the model leave it after an update of `changes`, which they run here
+  again in memory, with the `updated_at` that a timestamp hook sets as SQL taken from the stored row."
+  [user changes]
+  (let [row (t2.before-update/before-update :model/User (merge user changes))]
+    (t2/instance :model/User (cond-> (into {} row)
+                               (not (instance? java.time.temporal.Temporal (:updated_at row)))
+                               (assoc :updated_at (:updated_at user))))))
 
-(defn- user-update-events
-  "The update event of `pairs`, rows before and after as [[updated-rows]] gives them, or none when it is empty."
-  [pairs]
-  (if (seq pairs)
-    [(events/updated :event/user-update (mapv first pairs) (mapv second pairs))]
-    []))
+(defn- write-users!
+  "Apply `changes` to the Users matching `conditions`, whose stored rows are `users`, publishing the update event with
+  `context` and returning the number updated."
+  [conditions users changes context]
+  (u/prog1 (users.db/update-users! conditions changes)
+    (events/publish-event! :event/user-update
+                           (events/update-event (u/index-by :id users)
+                                                (mapv #(assoc changes :id (:id %)) users)
+                                                {:objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users)
+                                                 :context context}))))
 
-(defn- write-users*
-  "Apply `changes` to the Users matching `conditions`, whose stored rows are `users`, returning the number updated as
-  `:count` and the update event as `:events`."
-  [conditions users changes]
-  {:count  (users.db/update-users! conditions changes)
-   :events (user-update-events (updated-rows users changes))})
-
-(defn- set-admin-memberships*
+(defn- set-admin-memberships!
   "Add the Users with `user-ids` to Administrators when `superuser?`, else remove them, leaving their `is_superuser`
-  flag alone; `admin-ids` holds those already in it. Returns the events of the writes as `:events`."
-  [user-ids admin-ids superuser?]
+  flag alone; `admin-ids` holds those already in it. Publishes the events of the writes with `context`."
+  [user-ids admin-ids superuser? context]
   (let [admin-group-id (:id (perms/admin-group))]
     (perms/without-is-superuser-sync-on-add-to-admin-group
      (if superuser?
-       (perms-group-membership/add-users-to-groups* (for [user-id user-ids
+       (perms-group-membership/add-users-to-groups! (for [user-id user-ids
                                                           :when   (not (contains? admin-ids user-id))]
-                                                      {:user user-id :group admin-group-id}))
-       (perms-group-membership/remove-users-from-group* (filterv #(contains? admin-ids %) user-ids)
-                                                        admin-group-id)))))
+                                                      {:user user-id :group admin-group-id})
+                                                    context)
+       (perms-group-membership/remove-users-from-group! (filterv #(contains? admin-ids %) user-ids)
+                                                        admin-group-id
+                                                        context)))))
 
 (defmulti delete-for-users!
   "Deletes the rows of `model` that belong to the deactivated Users with `user-ids`, which a model that follows its
-  Users implements with its own write function."
-  {:arglists '([model user-ids])}
-  (fn [model _user-ids] model))
+  Users implements with its own write function, publishing its events with `context`."
+  {:arglists '([model user-ids context])}
+  (fn [model _user-ids _context] model))
 
 (defn- delete-subscriptions!
   "Delete the dashboard subscription recipients of the deactivated Users with `user-ids`."
-  [user-ids]
+  [user-ids context]
   (binding [api/*current-user-id* nil]
     (t2/resolve-model :model/PulseChannelRecipient)
-    (delete-for-users! :model/PulseChannelRecipient user-ids)))
-
-(mu/defn update-users* :- [:map {:closed true} [:count :int] [:events events/Events]]
-  "Apply `changes` to the Users matching `conditions`, returning the number updated as `:count` and the events of the
-  writes as `:events`, which the caller publishes inside a batch of events, since deactivating a User deletes its
-  subscriptions. Deactivating or demoting the last admin throws, and a change of `is_superuser` adds or removes the
-  Administrators membership."
-  [conditions :- ::users.schema/user.conditions
-   changes    :- ::users.schema/user.update]
-  (let [superuser?   (:is_superuser changes)
-        deactivates? (false? (:is_active changes))
-        users        (users.db/users conditions)]
-    (cond
-      (empty? users)
-      {:count 0 :events []}
-
-      (not (or (some? superuser?) deactivates?))
-      (write-users* conditions users changes)
-
-      :else
-      (let [user-ids  (into #{} (map :id) users)
-            admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
-        (when (or deactivates? (false? superuser?))
-          (perms-group-membership/throw-if-last-admins! admin-ids))
-        (let [written     (write-users* {:id [:in (vec user-ids)]} users changes)
-              memberships (when (some? superuser?)
-                            (set-admin-memberships* user-ids admin-ids superuser?))]
-          (when deactivates?
-            (delete-subscriptions! user-ids))
-          {:count  (:count written)
-           :events (into (:events written) (:events memberships))})))))
-
-(defn- update-and-publish!
-  "Apply `changes` to the Users matching `conditions` as [[update-users*]] does, publishing the events of the writes with
-  `context`, and return the number updated."
-  [conditions changes context]
-  (t2/with-transaction [_conn]
-    (let [{:keys [count events]} (update-users* conditions changes)]
-      (events/publish-lifecycle! events {:context context})
-      count)))
+    (delete-for-users! :model/PulseChannelRecipient user-ids context)))
 
 (mu/defn update-users! :- :int
-  "Apply `changes` to the Users matching `conditions` as [[update-users*]] does, publishing the events of the writes with
-  `context`, and return the number updated."
+  "Apply `changes` to the Users matching `conditions`, returning the number updated and publishing the events of the
+  writes with `context`. Deactivating or demoting the last admin throws, and a change of `is_superuser` adds or removes
+  the Administrators membership; deactivating a User deletes its subscriptions."
   ([conditions :- ::users.schema/user.conditions
     changes    :- ::users.schema/user.update]
-   (update-and-publish! conditions changes nil))
+   (update-users! conditions changes nil))
   ([conditions :- ::users.schema/user.conditions
     changes    :- ::users.schema/user.update
     context    :- [:maybe :metabase.events.schema/context]]
-   (update-and-publish! conditions changes context)))
+   (t2/with-transaction [_conn]
+     (let [superuser?   (:is_superuser changes)
+           deactivates? (false? (:is_active changes))
+           users        (users.db/users conditions)]
+       (cond
+         (empty? users)
+         0
 
-(mu/defn update-user! :- :int
-  "Apply `changes` to the User with `user-id` and return the number updated, as [[update-users!]] does."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (update-and-publish! {:id user-id} changes nil))
+         (not (or (some? superuser?) deactivates?))
+         (write-users! conditions users changes context)
+
+         :else
+         (let [user-ids  (into #{} (map :id) users)
+               admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
+           (when (or deactivates? (false? superuser?))
+             (perms-group-membership/throw-if-last-admins! admin-ids))
+           (u/prog1 (write-users! {:id [:in (vec user-ids)]} users changes context)
+             (when (some? superuser?)
+               (set-admin-memberships! user-ids admin-ids superuser? context))
+             (when deactivates?
+               (delete-subscriptions! user-ids context)))))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only
   the change log records, with the id and the written columns as the rows before and after, so that it reads nothing."
   [user-id columns]
-  (events/publish-lifecycle! [(events/updated :event/user-update
-                                              [(t2/instance :model/User {:id user-id})]
-                                              [(t2/instance :model/User (assoc columns :id user-id))])]))
+  (let [stored (t2/instance :model/User {:id user-id})]
+    (events/publish-event! :event/user-update
+                           (events/update-event {user-id stored}
+                                                [(assoc columns :id user-id)]
+                                                {:objects {user-id (merge stored columns)}}))))
 
 (mu/defn set-last-login-now!
   "Set the `last_login` of the User with `user-id` to now, publishing the update event."
@@ -625,16 +596,19 @@
   (set-settings! user-id settings-json))
 
 (defmethod perms-group-membership/set-member-flags-of! :model/User
-  [_model flag-changes]
+  [_model flag-changes context]
   (let [stored (u/index-by :id (users.db/users {:id [:in (into [] (comp (mapcat first) (distinct)) flag-changes)]}))]
-    (:events
-     (reduce (fn [{:keys [rows events]} [user-ids changes]]
-               (users.db/update-users! {:id [:in (vec user-ids)]} changes)
-               (let [pairs (updated-rows (keep rows user-ids) changes)]
-                 {:rows   (into rows (map (fn [[_ row]] [(:id row) row])) pairs)
-                  :events (into events (user-update-events pairs))}))
-             {:rows stored :events []}
-             flag-changes))))
+    (reduce (fn [rows [user-ids changes]]
+              (users.db/update-users! {:id [:in (vec user-ids)]} changes)
+              (let [event (events/update-event rows
+                                               (mapv #(assoc changes :id %) user-ids)
+                                               {:objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)
+                                                :context context})]
+                (events/publish-event! :event/user-update event)
+                (into rows (map (juxt (comp :id :object) :object)) (:changes event))))
+            stored
+            flag-changes)
+    nil))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -50,10 +50,10 @@
                      :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (user/update-user! user-id {:is_active false})
+        (user/update-users! {:id user-id} {:is_active false})
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (user/update-user! user-id {:is_active true})
+        (user/update-users! {:id user-id} {:is_active true})
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 

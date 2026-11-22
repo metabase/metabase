@@ -31,16 +31,13 @@
       (t2/insert! :model/Pulse
                   (vec (for [{:keys [id name]} dashboards]
                          (assoc (mt/with-temp-defaults :model/Pulse) :dashboard_id id :name name))))
-      (let [events (vec (for [{:keys [id] :as before} dashboards]
-                          (do
-                            (t2/update! :model/Dashboard :id id {:name (str "After " id)})
-                            {:model           :model/Dashboard
-                             :operation       :update
-                             :id              id
-                             :previous-object before
-                             :object          (t2/select-one :model/Dashboard :id id)})))]
+      (let [changes (vec (for [{:keys [id] :as before} dashboards]
+                           (do
+                             (t2/update! :model/Dashboard :id id {:name (str "After " id)})
+                             {:previous-object before
+                              :object          (t2/select-one :model/Dashboard :id id)})))]
         (u/prog1 (t2/with-call-count [call-count]
-                   (#'pulse.events/sync-subscriptions! ::pulse.events/subscriptions events events)
+                   (#'pulse.events/sync-subscriptions! {:changes changes :user-id nil})
                    (call-count))
           (is (= (sort (map #(str "After " (:id %)) dashboards))
                  (sort (t2/select-fn-vec :name :model/Pulse :dashboard_id [:in (map :id dashboards)]))))))

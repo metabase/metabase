@@ -27,7 +27,7 @@
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (user/update-user! victim {:is_active false}))
+          (user/update-users! {:id victim} {:is_active false}))
         (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
                (ending victim-session))
             "victim's session is ended, attributed to the deactivating admin, and its key destroyed")
@@ -41,9 +41,9 @@
       (let [session-id (insert-session! user-id)]
         (is (nil? (:ended_at (t2/select-one :model/Session :id session-id)))
             "session is live while the user is active")
-        (user/update-user! user-id {:is_active false})
+        (user/update-users! {:id user-id} {:is_active false})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "deactivation outside a request ends the session with no actor")
-        (user/update-user! user-id {:is_active true})
+        (user/update-users! {:id user-id} {:is_active true})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))

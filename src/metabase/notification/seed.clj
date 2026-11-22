@@ -202,7 +202,7 @@
                    (if-let [template (:template handler)]
                      (-> handler
                          (dissoc :template)
-                         (assoc :template_id (models.channel/create-channel-template! template)))
+                         (assoc :template_id (:id (first (models.channel/create-channel-templates! [template])))))
                      handler))]
     (models.notification/create-notification!
      (dissoc notification :handlers :subscriptions)

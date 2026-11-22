@@ -263,9 +263,9 @@
                                                   :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (models.notification/create-notification-handler! {:channel_type :channel/slack
-                                                                               :channel_id   (:id chn-1)
-                                                                               :template_id  (:id tmpl-1)})))))
+                            (models.notification/create-notification-handlers! [{:channel_type :channel/slack
+                                                                                 :channel_id   (:id chn-1)
+                                                                                 :template_id  (:id tmpl-1)}])))))
   (testing "can't update a handler with a template that has different channel type"
     (mt/with-temp [:model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}

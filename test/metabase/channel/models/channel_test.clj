@@ -55,11 +55,11 @@
                                          :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (models.channel/update-channels! {id {:name "New name"}})
-      (models.channel/update-channels! {id {:active true}})
+      (models.channel/update-channels! [{:id id :name "New name"}])
+      (models.channel/update-channels! [{:id id :active true}])
       (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (models.channel/update-channels! {id {:active false}})
+      (models.channel/update-channels! [{:id id :active false}])
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
@@ -248,7 +248,7 @@
       (testing "deactivating channels costs one statement more per channel, its new name being its own"
         (let [ids        @created
               statements (fn [ids]
-                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (zipmap ids (repeat {:active false}))))))]
+                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (mapv (fn [id] {:id id :active false}) ids)))))]
           (is (= (+ (statements (take 2 ids)) 4) (statements (take 6 (drop 2 ids)))))))
       (finally
         (t2/delete! :model/Channel :id [:in @created])))))

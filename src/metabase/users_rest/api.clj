@@ -546,7 +546,7 @@
                     "email" (tru "Email address already associated to another user.")))
       (t2/with-transaction [_conn]
         (when (seq changes)
-          (user/update-user! id changes)
+          (user/update-users! {:id id} changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -567,15 +567,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (user/update-user! (u/the-id existing-user)
-                     {:is_active     true
-                      :is_superuser  false
-                      ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-                      ;; (see metabase#3323)
-                      :sso_source   (case (:sso_source existing-user)
-                                      :google (when (sso/google-auth-enabled) :google)
-                                      :ldap   (when (sso/ldap-enabled) :ldap)
-                                      (:sso_source existing-user))})
+  (user/update-users! {:id (u/the-id existing-user)}
+                      {:is_active     true
+                       :is_superuser  false
+                       ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                       ;; (see metabase#3323)
+                       :sso_source   (case (:sso_source existing-user)
+                                       :google (when (sso/google-auth-enabled) :google)
+                                       :ldap   (when (sso/ldap-enabled) :ldap)
+                                       (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -686,7 +686,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (when (= :personal (:type (api/check-404 (users-rest.db/user-active-type-and-sso-source id))))
-    (user/update-user! id {:is_active false}))
+    (user/update-users! {:id id} {:is_active false}))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

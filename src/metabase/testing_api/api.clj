@@ -482,9 +482,9 @@
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
      (when tenant-id
-       (user/update-user! user-id {:tenant_id tenant-id}))
+       (user/update-users! {:id user-id} {:tenant_id tenant-id}))
      (when second-tenant-id
-       (user/update-user! second-user-id {:tenant_id second-tenant-id}))
+       (user/update-users! {:id second-user-id} {:tenant_id second-tenant-id}))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id

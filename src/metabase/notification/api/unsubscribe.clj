@@ -54,7 +54,7 @@
     (let [recipients (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
-        (models.notification/delete-notification-recipient! (:id matching-recipient))
+        (models.notification/delete-notification-recipients! [(:id matching-recipient)])
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
                                                              :object {:id notification-handler-id}})
@@ -78,9 +78,9 @@
     (let [recipients         (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
-        (models.notification/create-notification-recipients! {:type                    :notification-recipient/raw-value
-                                                              :details                 {:value email}
-                                                              :notification_handler_id notification-handler-id})
+        (models.notification/create-notification-recipients! [{:type                    :notification-recipient/raw-value
+                                                               :details                 {:value email}
+                                                               :notification_handler_id notification-handler-id}])
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
                                                                   :object {:id notification-handler-id}})

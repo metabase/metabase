@@ -333,6 +333,11 @@
   [recipient-id :- ms/PositiveInt]
   (t2/select-one :model/NotificationRecipient :id recipient-id))
 
+(mu/defn recipients-by-ids
+  "The NotificationRecipients with `recipient-ids`."
+  [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/NotificationRecipient :id [:in recipient-ids]))
+
 (mu/defn delete-recipients!
   "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
   [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
