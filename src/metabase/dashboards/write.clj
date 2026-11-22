@@ -456,7 +456,7 @@
             (let [{current-dashcards :dashcards
                    current-tabs      :tabs
                    :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                  new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
+                  new-tabs                                  (map-indexed (fn [idx tab] (assoc (select-keys tab [:id :name :entity_id]) :position idx)) tabs)
                   dashcards                                 (if (= 1 (count new-tabs))
                                                               (let [single-tab-id (-> new-tabs first :id)]
                                                                 (mapv #(if (nil? (:dashboard_tab_id %))

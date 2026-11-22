@@ -12,6 +12,7 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -522,14 +523,23 @@
   (testing "a metric defined on a model names the model by its numeric id, which `fields` can pick"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card {model-id :id}  {:type          :model
-                                                      :name          "mcpcardmetric model"
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                         :model/Card {metric-id :id} {:type          :metric
-                                                      :name          "mcpcardmetric count"
-                                                      :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
-                                                                         (lib/aggregate (lib/count)))}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [mp                (mt/metadata-provider)
+                [{model-id :id}]  (card/create-cards! [{:name                   "mcpcardmetric model"
+                                                        :type                   :model
+                                                        :creator_id             (mt/user->id :rasta)
+                                                        :database_id            (mt/id)
+                                                        :display                :table
+                                                        :visualization_settings {}
+                                                        :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}])
+                [{metric-id :id}] (card/create-cards! [{:name                   "mcpcardmetric count"
+                                                        :type                   :metric
+                                                        :creator_id             (mt/user->id :rasta)
+                                                        :database_id            (mt/id)
+                                                        :display                :table
+                                                        :visualization_settings {}
+                                                        :dataset_query          (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                                                    (lib/aggregate (lib/count)))}])]
             (mt/with-current-user (mt/user->id :crowberto)
               (let [search (fn [args]
                              (->> (tools.search/search-tool (merge {:term_queries ["mcpcardmetric"] :type ["metric"]} args)
