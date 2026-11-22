@@ -151,7 +151,7 @@
   "The Fields of the Table with `table-id` whose `nfc_path` is `LIKE` `pattern`."
   [table-id :- ::lib.schema.id/table
    pattern  :- :string]
-  (t2/select :model/Field :table_id [:auto/param table-id] :nfc_path [:like [:auto/param pattern]]))
+  (t2/select :model/Field {:where [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]}))
 
 (mu/defn field-ids-of-database :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables of the Database with `database-id`."

@@ -1947,12 +1947,12 @@
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table :id other-id)
                 mp          (lib-be/application-database-metadata-provider (:db_id table))]
-            (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
-                           :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
-                           :model/Card {complex-model-id   :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
-                           :model/Card {archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
-                           :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
-                           :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
+            (mt/with-temp [:model/Card {question-id        :id} (mt/card-with-metadata {:table_id table-id, :dataset_query (mbql mp table)})
+                           :model/Card {model-id           :id} (mt/card-with-metadata {:table_id table-id, :type :model, :dataset_query (mbql mp table)})
+                           :model/Card {complex-model-id   :id} (mt/card-with-metadata {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)})
+                           :model/Card {archived-model-id  :id} (mt/card-with-metadata {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)})
+                           :model/Card {unrelated-model-id :id} (mt/card-with-metadata {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)})
+                           :model/Card {joined-model-id    :id} (mt/card-with-metadata {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)})]
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
               (mt/with-persistence-enabled! [persist-models!]

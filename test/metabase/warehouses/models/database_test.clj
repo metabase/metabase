@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
@@ -1415,14 +1416,13 @@
                                                   router-id (assoc :router_database_id router-id))))))))
 
 (deftest create-databases-call-count-test
-  (testing "creating the destinations of a router runs the same number of statements for 2 and 6 rows"
+  (testing "creating the destinations of a router runs the same number of statements for 2 and 6 rows, consumers aside"
     (mt/with-temp [:model/Database {router-id :id} {}]
       (let [counts (for [n [2 6]]
                      (let [ids (atom [])]
                        (try
-                         (t2/with-call-count [call-count]
-                           (reset! ids (create-test-databases! (str "Create Count " n) n router-id))
-                           (call-count))
+                         (events.tu/statement-count!
+                          #(reset! ids (create-test-databases! (str "Create Count " n) n router-id)))
                          (finally
                            (database/delete-databases! @ids)))))]
         (is (apply = counts))))))

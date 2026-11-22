@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -258,7 +260,7 @@
 ;;; ---------------------------------------- hook statement guard ----------------------------------------
 
 (doseq [model [::clean-hooks ::reading-before-insert ::reading-before-update ::reading-before-delete
-               ::reading-after-insert]]
+               ::reading-after-insert ::setting-reading-before-insert]]
   (derive model :metabase/model)
   (methodical/add-primary-method! #'t2/table-name model (fn [_next-method _model] :setting))
   (methodical/add-primary-method! #'t2/primary-keys model (fn [_next-method _model] [:key])))
@@ -294,6 +296,17 @@
   [row]
   (t2/count :model/User)
   row)
+
+(defn- expire-settings-cache!
+  "Empties the settings cache and makes its next read check the app DB, as when a refresh is due."
+  []
+  (reset! (#'setting.cache/cache*) nil)
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check (setting.cache/current-state)) 0))
+
+(t2/define-before-insert ::setting-reading-before-insert
+  [row]
+  (expire-settings-cache!)
+  (assoc row :value (str (setting/get :site-locale))))
 
 (def ^:private guard-test-key
   "The setting key the hook guard tests write."
@@ -331,5 +344,15 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"after-insert hook of .*reading-after-insert"
                             (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))
+
+(deftest hook-reading-setting-while-cache-refreshes-passes-statement-guard-test
+  (try
+    (t2/insert! ::setting-reading-before-insert {:key guard-test-key, :value "v"})
+    (testing "hook read its setting from refreshed cache"
+      (is (some? (setting.cache/cache)))
+      (is (= (str (setting/get :site-locale))
+             (t2/select-one-fn :value :setting :key guard-test-key))))
     (finally
       (t2/delete! :setting :key guard-test-key))))
