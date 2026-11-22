@@ -136,7 +136,8 @@
 (mu/defn create-event :- ::events.schema/lifecycle
   "The lifecycle event of the creation of `rows`, the instances an insert returned, by the current user, to publish
   after the insert."
-  ([rows] (create-event rows nil))
+  ([rows :- [:sequential :map]]
+   (create-event rows nil))
   ([rows    :- [:sequential :map]
     context :- [:maybe ::events.schema/context]]
    (event (u.events/create-changes rows) context)))
@@ -160,11 +161,13 @@
   `rows`, each an `:id` and the columns to set, by the current user, to publish after the update. A row that is not
   stored or changes nothing is left out. `:objects` in `options`, a map from id to the row after the update, gives the
   rows whose columns a hook of the model derives or the database sets; `:context` is the context of the event."
-  ([stored rows] (update-event stored rows nil))
-  ([stored                    :- [:map-of :any :map]
-    rows                      :- [:sequential [:map [:id :any]]]
+  ([stored :- [:map-of [:or :int :string] :map]
+    rows   :- [:sequential [:map [:id [:or :int :string]]]]]
+   (update-event stored rows nil))
+  ([stored                    :- [:map-of [:or :int :string] :map]
+    rows                      :- [:sequential [:map [:id [:or :int :string]]]]
     {:keys [objects context]} :- [:maybe [:map {:closed true}
-                                          [:objects {:optional true} [:maybe [:map-of :any :map]]]
+                                          [:objects {:optional true} [:maybe [:map-of [:or :int :string] :map]]]
                                           [:context {:optional true} [:maybe ::events.schema/context]]]]]
    (event (u.events/update-changes stored
                                    rows
@@ -175,7 +178,8 @@
 (mu/defn delete-event :- ::events.schema/lifecycle
   "The lifecycle event of the delete of `rows`, instances as the write function read them, by the current user, to
   publish right before the statement that deletes them, so that a consumer can still read what the delete cascades to."
-  ([rows] (delete-event rows nil))
+  ([rows :- [:sequential :map]]
+   (delete-event rows nil))
   ([rows    :- [:sequential :map]
     context :- [:maybe ::events.schema/context]]
    (event (u.events/delete-changes rows) context)))
@@ -184,7 +188,8 @@
   "The lifecycle event of an update of `rows`, instances of an owner such as a Dashboard, that changed none of their
   columns but changed their parts, such as its dashcards, by the current user, to publish as the last step of the
   write, so that the records of the owner, such as its Revision, are made once."
-  ([rows] (touch-event rows nil))
+  ([rows :- [:sequential :map]]
+   (touch-event rows nil))
   ([rows    :- [:sequential :map]
     context :- [:maybe ::events.schema/context]]
    (event (mapv (fn [row] {:previous-object row :object row}) rows) context)))
