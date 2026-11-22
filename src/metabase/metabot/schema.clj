@@ -458,13 +458,18 @@
    [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::metabot-prompt.create
-  "What creating a MetabotPrompt takes: its Metabot, its Card and its text, and for an import its entity id. Its model
-  follows the type of its Card."
+  "What creating a MetabotPrompt takes: its Metabot, its Card and its text, and for an import its entity id and model. Its
+  model follows the type of its Card."
   [:map {:closed true}
    [:metabot_id ms/PositiveInt]
    [:card_id    ::lib.schema.id/card]
    [:prompt     :string]
+   [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id  {:optional true} [:maybe :string]]])
+
+(mr/def ::metabot-prompt.update-row
+  "A change of a MetabotPrompt: its `:id` and the columns to set."
+  [:merge ::metabot-prompt.update [:map [:id ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."

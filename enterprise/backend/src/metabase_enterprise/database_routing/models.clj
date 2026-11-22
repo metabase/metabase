@@ -73,7 +73,7 @@
   (check-not-destination database_id)
   (t2/with-transaction [_conn]
     (let [routers (database-routing.db/insert-router! database_id user_attribute)]
-      (events/publish-lifecycle! [(events/created :event/database-router-create routers)])
+      (events/publish-event! :event/database-router-create (events/create-event routers))
       (count routers))))
 
 (mu/defn update-database-router!
@@ -83,20 +83,18 @@
   (t2/with-transaction [_conn]
     (let [stored (database-routing.db/router-for-database database-id)]
       (u/prog1 (database-routing.db/update-router! database-id changes)
-        (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
-          (when (and stored (seq changed))
-            (events/publish-lifecycle! [(events/updated :event/database-router-update
-                                                        [stored]
-                                                        [(events/updated-row stored changed)])])))))))
+        (when stored
+          (events/publish-event! :event/database-router-update
+                                 (events/update-event {(:id stored) stored} [(assoc changes :id (:id stored))])))))))
 
 (mu/defn delete-database-router!
   "Delete the DatabaseRouter of the Database with `database-id`, publishing the event of the write."
   [database-id :- ::lib.schema.id/database]
   (t2/with-transaction [_conn]
     (if-let [stored (database-routing.db/router-for-database database-id)]
-      (let [event (events/deleted :event/database-router-delete :model/DatabaseRouter [stored])]
-        (u/prog1 (database-routing.db/delete-router! database-id)
-          (events/publish-lifecycle! [event])))
+      (do
+        (events/publish-event! :event/database-router-delete (events/delete-event [stored]))
+        (database-routing.db/delete-router! database-id))
       0)))
 
 (defenterprise delete-associated-database-router!

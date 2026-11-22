@@ -306,7 +306,7 @@
     (check-columns-match-table sandbox)
     (remove-native-access! sandbox)
     (u/prog1 (sandbox.db/insert-sandbox! sandbox)
-      (events/publish-lifecycle! [(events/created :event/sandbox-create [<>])]))))
+      (events/publish-event! :event/sandbox-create (events/create-event [<>])))))
 
 (mu/defn update-sandbox! :- [:maybe ::sandbox.schema/sandbox]
   "Apply `changes` to the Sandbox with `sandbox-id` and return it, or nil when no Sandbox has `sandbox-id`, publishing
@@ -319,8 +319,10 @@
         (check-columns-match-table (merge stored changes)))
       (sandbox.db/update-sandbox! sandbox-id changes)
       (u/prog1 (sandbox.db/sandbox sandbox-id)
-        (when (some (fn [[k v]] (not= v (get stored k))) changes)
-          (events/publish-lifecycle! [(events/updated :event/sandbox-update [stored] [<>])]))))))
+        (events/publish-event! :event/sandbox-update
+                               (events/update-event {sandbox-id stored}
+                                                    [(assoc changes :id sandbox-id)]
+                                                    {:objects {sandbox-id <>}}))))))
 
 (mu/defn delete-sandboxes!
   "Delete the Sandboxes with `sandbox-ids`, returning the number deleted and publishing the event of the write."
@@ -331,9 +333,9 @@
       (let [sandboxes (sandbox.db/sandboxes-by-ids sandbox-ids)]
         (if (empty? sandboxes)
           0
-          (let [event (events/deleted :event/sandbox-delete :model/Sandbox sandboxes)]
-            (u/prog1 (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes))
-              (events/publish-lifecycle! [event]))))))))
+          (do
+            (events/publish-event! :event/sandbox-delete (events/delete-event (vec sandboxes)))
+            (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes))))))))
 
 (mu/defn delete-sandbox!
   "Delete the Sandbox with `sandbox-id`, returning the number deleted, as [[delete-sandboxes!]] does."

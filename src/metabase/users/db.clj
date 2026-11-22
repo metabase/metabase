@@ -158,16 +158,41 @@
   [rows :- [:sequential ::users.schema/user.create]]
   (t2/insert-returning-instances! :model/User rows))
 
-(mu/defn users
-  "The Users matching `conditions`, with every column of `:core_user`."
-  [conditions :- ::users.schema/user.conditions]
-  (apply t2/select [:model/User :*] (mapcat identity conditions)))
+(mu/defn users-by-ids
+  "The Users with `user-ids`, with every column of `:core_user`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (if (seq user-ids)
+    (t2/select [:model/User :*] :id [:in user-ids])
+    []))
 
 (mu/defn update-users!
-  "Apply `changes` to the Users matching `conditions`, returning the number updated."
-  [conditions :- ::users.schema/user.conditions
-   changes    :- ::users.schema/user.update]
-  (apply t2/update! :model/User (concat (mapcat identity conditions) [changes])))
+  "Apply `changes` to the Users with `user-ids`, returning the number updated."
+  [user-ids :- [:sequential ::lib.schema.id/user]
+   changes  :- ::users.schema/user.update]
+  (t2/update! :model/User :id [:in user-ids] changes))
+
+(mu/defn user-ids-of-type
+  "The ids among `user-ids` of the Users of `user-type`."
+  [user-ids  :- [:sequential ::lib.schema.id/user]
+   user-type :- :keyword]
+  (if (seq user-ids)
+    (t2/select-pks-vec :model/User :id [:in user-ids] :type [:auto/param user-type])
+    []))
+
+(mu/defn deactivated-with-tenant-user-ids
+  "The ids of the inactive Users of the Tenant with `tenant-id` that were deactivated with it."
+  [tenant-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/User :is_active false :tenant_id [:auto/param tenant-id] :deactivated_with_tenant true))
+
+(mu/defn active-user-ids-of-tenant
+  "The ids of the active Users of the Tenant with `tenant-id`."
+  [tenant-id :- ms/PositiveInt]
+  (t2/select-pks-vec :model/User :is_active true :tenant_id [:auto/param tenant-id]))
+
+(mu/defn active-tenant-user-ids
+  "The ids of the active Users of every Tenant."
+  []
+  (t2/select-pks-vec :model/User :is_active true :tenant_id [:not= nil]))
 
 (mu/defn same-groups-user-ids
   "The `:user_id`s of the Users sharing a PermissionsGroup other than the one with `all-users-group-id` with the User

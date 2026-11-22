@@ -256,7 +256,7 @@
     (check-name-not-already-taken group-name)
     (u/prog1 (permissions.db/insert-permissions-group! row)
       (set-default-permission-values! <>)
-      (events/publish-lifecycle! [(events/created :event/group-create [<>])]))))
+      (events/publish-event! :event/group-create (events/create-event [<>])))))
 
 (mu/defn update-permissions-group!
   "Apply `changes` to the PermissionsGroup with `id`, returning the number updated and publishing the event of the
@@ -271,11 +271,7 @@
           (when-let [group-name (:name changes)]
             (check-name-not-already-taken group-name)))
         (u/prog1 (permissions.db/update-permissions-group! id changes)
-          (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
-            (when (seq changed)
-              (events/publish-lifecycle! [(events/updated :event/group-update
-                                                          [stored]
-                                                          [(events/updated-row stored changed)])])))))
+          (events/publish-event! :event/group-update (events/update-event {id stored} [(assoc changes :id id)]))))
       0)))
 
 (mu/defn delete-permissions-group!
@@ -286,9 +282,8 @@
     (when-let [stored (permissions.db/permissions-group id)]
       (check-not-magic-group stored)
       (remove-from-ldap-group-mappings! id)
-      (let [event (events/deleted :event/group-delete :model/PermissionsGroup [stored])]
-        (u/prog1 (permissions.db/delete-permissions-group! id)
-          (events/publish-lifecycle! [event]))))))
+      (events/publish-event! :event/group-delete (events/delete-event [stored]))
+      (permissions.db/delete-permissions-group! id))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

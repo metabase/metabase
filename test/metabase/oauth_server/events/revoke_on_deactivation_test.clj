@@ -49,7 +49,7 @@
             victim-code      (insert-auth-code! victim)
             bystander-access (insert-access-token! bystander)
             bystander-code   (insert-auth-code! bystander)]
-        (user/update-user! victim {:is_active false})
+        (user/update-users! [victim] {:is_active false})
         (is (revoked? :model/OAuthAccessToken victim-access)
             "victim's access token is revoked")
         (is (revoked? :model/OAuthRefreshToken victim-refresh)
@@ -69,12 +69,12 @@
             auth-code    (insert-auth-code! user-id)]
         (is (not (revoked? :model/OAuthAccessToken access-token))
             "token is live while the user is active")
-        (user/update-user! user-id {:is_active false})
+        (user/update-users! [user-id] {:is_active false})
         (is (revoked? :model/OAuthAccessToken access-token)
             "deactivation revokes the token")
         (is (not (t2/exists? :model/OAuthAuthorizationCode :code auth-code))
             "deactivation deletes the pending authorization code")
         (let [revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token)]
-          (user/update-user! user-id {:is_active true})
+          (user/update-users! [user-id] {:is_active true})
           (is (= revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token))
               "reactivation does not un-revoke the pre-deactivation token"))))))

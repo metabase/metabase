@@ -120,7 +120,7 @@
                                        :name      (format "Tenant Collection: %s" tenant-name)
                                        :namespace :tenant-specific}])))]
       (u/prog1 (tenants.db/insert-tenant! (assoc tenant :tenant_collection_id collection-id))
-        (events/publish-lifecycle! [(events/created :event/tenant-create [<>])])))))
+        (events/publish-event! :event/tenant-create (events/create-event [<>]))))))
 
 (mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`, publishing the events of the writes. The name of another Tenant is a
@@ -136,17 +136,14 @@
         (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
       (u/prog1 (tenants.db/update-tenant! tenant-id changes)
         (when stored
-          (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)
-                users   (when (and (some? active) (not= active (:is_active stored)))
-                          (if active
-                            (user/update-users* {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-                                                {:is_active true :deactivated_with_tenant nil})
-                            (user/update-users* {:is_active true :tenant_id tenant-id}
-                                                {:is_active false :deactivated_with_tenant true})))]
-            (events/publish-lifecycle!
-             (cond-> []
-               (seq changed) (conj (events/updated :event/tenant-update [stored] [(events/updated-row stored changed)]))
-               users         (into (:events users))))))))))
+          (events/publish-event! :event/tenant-update
+                                 (events/update-event {tenant-id stored} [(assoc changes :id tenant-id)]))
+          (when (and (some? active) (not= active (:is_active stored)))
+            (if active
+              (user/update-users! (user/deactivated-with-tenant-user-ids tenant-id)
+                                  {:is_active true :deactivated_with_tenant nil})
+              (user/update-users! (user/active-user-ids-of-tenant tenant-id)
+                                  {:is_active false :deactivated_with_tenant true}))))))))
 
 (defenterprise deactivate-tenants!
   "Deactivate every active Tenant and every active tenant User, marking those Users as deactivated with their Tenant,
@@ -157,15 +154,11 @@
     (let [tenants (tenants.db/active-tenants)]
       (when (seq tenants)
         (tenants.db/deactivate-tenants! (mapv :id tenants)))
-      (let [users (user/update-users* {:tenant_id [:not= nil] :is_active true}
-                                      {:is_active false :deactivated_with_tenant true})]
-        (events/publish-lifecycle!
-         (cond-> []
-           (seq tenants) (conj (events/updated :event/tenant-update
-                                               tenants
-                                               (mapv #(events/updated-row % {:is_active false}) tenants)))
-           true          (into (:events users))))
-        (:count users)))))
+      (events/publish-event! :event/tenant-update
+                             (events/update-event (u/index-by :id tenants)
+                                                  (mapv #(hash-map :id (:id %) :is_active false) tenants)))
+      (user/update-users! (user/active-tenant-user-ids)
+                          {:is_active false :deactivated_with_tenant true}))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

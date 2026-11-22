@@ -34,41 +34,38 @@
           details     (when (seq candidates) (pulse.db/pulse-channel-details-by-ids candidates))]
       (filterv #(empty? (:emails (get details %))) candidates))))
 
-(defn- delete-recipients*
-  "Delete the PulseChannelRecipients `recipients`, and the PulseChannels they were the last recipients of, returning
-  the events of the writes as `:events`."
-  [recipients]
-  (if (seq recipients)
-    (let [emptied   (vec (emptied-channel-ids recipients))
-          removed   (pulse/remove-pulse-channels* emptied)
-          emptied?  (set emptied)
-          remaining (vec (remove (comp emptied? :pulse_channel_id) recipients))
-          event     (when (seq remaining)
-                      (events/deleted :event/pulse-channel-recipient-delete :model/PulseChannelRecipient remaining))]
-      (when (seq remaining)
-        (pulse.db/delete-pulse-channel-recipients! (mapv :id remaining)))
-      {:events (cond-> (vec (:events removed)) event (conj event))})
-    {:events []}))
+(defn- delete-recipients!
+  "Delete the PulseChannelRecipients `recipients`, and the PulseChannels they were the last recipients of, publishing the
+  events of the writes with `context`."
+  [recipients context]
+  (when (seq recipients)
+    (t2/with-transaction [_conn]
+      (let [emptied   (vec (emptied-channel-ids recipients))
+            emptied?  (set emptied)
+            remaining (vec (remove (comp emptied? :pulse_channel_id) recipients))]
+        (pulse/remove-pulse-channels! emptied context)
+        (when (seq remaining)
+          (events/publish-event! :event/pulse-channel-recipient-delete (events/delete-event remaining context))
+          (pulse.db/delete-pulse-channel-recipients! (mapv :id remaining)))))))
 
 (mu/defn delete-pulse-channel-recipients! :- :nil
   "Delete the PulseChannelRecipients with `recipient-ids`. A PulseChannel that loses its last recipient, and has no raw
   email addresses, is deleted with them, and its Pulse is archived when it was the last PulseChannel of the Pulse."
   [recipient-ids :- [:sequential ms/PositiveInt]]
   (when (seq recipient-ids)
-    (t2/with-transaction [_conn]
-      (events/publish-lifecycle!
-       (:events (delete-recipients* (pulse.db/pulse-channel-recipients-by-ids recipient-ids))))))
+    (delete-recipients! (pulse.db/pulse-channel-recipients-by-ids recipient-ids) nil))
   nil)
 
 (mu/defn delete-pulse-channel-recipients-for-users! :- :nil
   "Delete every PulseChannelRecipient of the Users with `user-ids`, and the PulseChannels they were the last recipients
-  of, as [[delete-pulse-channel-recipients!]] does."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (when (seq user-ids)
-    (t2/with-transaction [_conn]
-      (events/publish-lifecycle!
-       (:events (delete-recipients* (pulse.db/pulse-channel-recipients-for-users user-ids))))))
-  nil)
+  of, as [[delete-pulse-channel-recipients!]] does, publishing the events of the writes with `context`."
+  ([user-ids :- [:sequential ::lib.schema.id/user]]
+   (delete-pulse-channel-recipients-for-users! user-ids nil))
+  ([user-ids :- [:sequential ::lib.schema.id/user]
+    context  :- [:maybe :metabase.events.schema/context]]
+   (when (seq user-ids)
+     (delete-recipients! (pulse.db/pulse-channel-recipients-for-users user-ids) context))
+   nil))
 
 (mu/defn delete-pulse-channel-recipients-for-user! :- :nil
   "Delete every PulseChannelRecipient of the User with `user-id`, as [[delete-pulse-channel-recipients-for-users!]]
@@ -77,8 +74,8 @@
   (delete-pulse-channel-recipients-for-users! [user-id]))
 
 (defmethod user/delete-for-users! :model/PulseChannelRecipient
-  [_model user-ids]
-  (delete-pulse-channel-recipients-for-users! (vec user-ids)))
+  [_model user-ids context]
+  (delete-pulse-channel-recipients-for-users! (vec user-ids) context))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

@@ -16,11 +16,11 @@
                               [{:metabot_id metabot-id :card_id metric-id :prompt "How many?"}])))]
           (is (= :metric (t2/select-one-fn :model :model/MetabotPrompt :id id)))
           (testing "update of the Card recomputes the model"
-            (metabot-prompt/update-metabot-prompts! {id {:card_id model-id}})
+            (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}])
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id))))
           (testing "update of the model alone is a 400"
             (is (=? {:status-code 400}
-                    (try (metabot-prompt/update-metabot-prompts! {id {:model :metric}})
+                    (try (metabot-prompt/update-metabot-prompts! [{:id id :model :metric}])
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id)))))))))
 
@@ -36,8 +36,8 @@
           (is (= (create! 2) (create! 6))))
         (testing "updating and deleting prompts"
           (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (zipmap (take 2 ids) (repeat {:prompt "same"})))))
-                   (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (zipmap (take 6 (drop 2 ids)) (repeat {:prompt "same"})))))))
+            (is (= (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) (take 2 ids)))))
+                   (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) (take 6 (drop 2 ids))))))))
             (is (= (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! (take 2 ids))))
                    (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! (take 6 (drop 2 ids)))))))))
         (finally

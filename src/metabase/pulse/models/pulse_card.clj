@@ -46,15 +46,14 @@
 
 ;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
-(mu/defn create-pulse-cards* :- [:map [:pulse-cards [:sequential :map]] [:events events/Events]]
-  "Insert the PulseCard `rows`, returning the inserted instances as `:pulse-cards` and their create event as `:events`,
-  which the caller publishes."
+(mu/defn create-pulse-cards! :- [:sequential :map]
+  "Insert the PulseCard `rows`, publishing their create event, and return the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.create]]
   (if (seq rows)
-    (let [pulse-cards (pulse.db/insert-pulse-cards! rows)]
-      {:pulse-cards pulse-cards
-       :events      [(events/created :event/pulse-card-create pulse-cards)]})
-    {:pulse-cards [] :events []}))
+    (t2/with-transaction [_conn]
+      (u/prog1 (pulse.db/insert-pulse-cards! rows)
+        (events/publish-event! :event/pulse-card-create (events/create-event <>))))
+    []))
 
 (mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.create]
   "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard."
@@ -69,33 +68,31 @@
      :format_rows       (boolean format_rows)
      :pivot_results     (boolean pivot_results)}))
 
-(mu/defn append-pulse-cards* :- [:map [:pulse-cards [:sequential :map]] [:events events/Events]]
-  "Create new PulseCards as [[create-pulse-cards*]] does, joining the given card, pulse, and dashboard card and setting
+(mu/defn append-pulse-cards! :- [:sequential :map]
+  "Create new PulseCards as [[create-pulse-cards!]] does, joining the given card, pulse, and dashboard card and setting
   appropriate defaults for other values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (create-pulse-cards* (vec (pulse-cards-to-append new-pulse-cards))))
+  (create-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards))))
 
-(mu/defn delete-pulse-cards-for-pulse* :- [:map {:closed true} [:events events/Events]]
-  "Delete the PulseCards of the Pulse with `pulse-id`, returning their delete event as `:events`, which the caller
-  publishes."
+(mu/defn delete-pulse-cards-for-pulse! :- :boolean
+  "Delete the PulseCards of the Pulse with `pulse-id`, publishing their delete event, and return whether there were any."
   [pulse-id :- ::lib.schema.id/pulse]
-  (let [rows (pulse.db/pulse-cards-for-pulse pulse-id)]
-    (if (seq rows)
-      (let [event (events/deleted :event/pulse-card-delete :model/PulseCard rows)]
-        (pulse.db/delete-pulse-cards-for-pulse! pulse-id)
-        {:events [event]})
-      {:events []})))
+  (t2/with-transaction [_conn]
+    (let [rows (pulse.db/pulse-cards-for-pulse pulse-id)]
+      (when (seq rows)
+        (events/publish-event! :event/pulse-card-delete (events/delete-event rows))
+        (pulse.db/delete-pulse-cards-for-pulse! pulse-id))
+      (boolean (seq rows)))))
 
-(mu/defn delete-pulse-cards-for-dashcards* :- [:map {:closed true} [:events events/Events]]
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning their delete event as `:events`, which
-  the caller publishes."
+(mu/defn delete-pulse-cards-for-dashcards! :- :nil
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, publishing their delete event."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (let [rows (if (seq dashcard-ids) (pulse.db/pulse-cards-for-dashcards dashcard-ids) [])]
-    (if (seq rows)
-      (let [event (events/deleted :event/pulse-card-delete :model/PulseCard rows)]
-        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids)
-        {:events [event]})
-      {:events []})))
+  (when (seq dashcard-ids)
+    (t2/with-transaction [_conn]
+      (when-let [rows (not-empty (pulse.db/pulse-cards-for-dashcards dashcard-ids))]
+        (events/publish-event! :event/pulse-card-delete (events/delete-event rows))
+        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))))
+  nil)
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

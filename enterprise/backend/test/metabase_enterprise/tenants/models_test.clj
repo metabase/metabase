@@ -242,7 +242,7 @@
                  :model/User   {user-id :id}         {:tenant_id tenant-id}
                  :model/User   {inactive-id :id}     {:tenant_id tenant-id}
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
-    (user/update-user! inactive-id {:is_active false})
+    (user/update-users! [inactive-id] {:is_active false})
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
       (tenants.model/update-tenant! tenant-id {:is_active false})
       (testing "active users of tenant are deactivated with it"

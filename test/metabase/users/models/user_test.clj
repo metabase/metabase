@@ -433,10 +433,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (user/update-user! user-id {:is_active true :first_name "New name"})))
+          (is (pos? (user/update-users! [user-id] {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (user/update-user! user-id {:is_active false}))))
+          (is (pos? (user/update-users! [user-id] {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -509,7 +509,7 @@
 (deftest update-user-of-unguarded-columns-runs-no-membership-query-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (t2/with-call-count [call-count]
-      (user/update-user! user-id {:first_name "Renamed"})
+      (user/update-users! [user-id] {:first_name "Renamed"})
       (is (= 3 (call-count))))
     (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
 
@@ -517,10 +517,10 @@
   (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
     (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
       (testing "deactivating"
-        (is (thrown-with-msg? Exception #"last admin" (user/update-user! user-id {:is_active false})))
+        (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))
         (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
       (testing "demoting"
-        (is (thrown-with-msg? Exception #"last admin" (user/update-user! user-id {:is_superuser false})))
+        (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_superuser false})))
         (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
         (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))))
 
@@ -855,10 +855,10 @@
             count (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))
             ids   (atom nil)]
         {:create     (count #(reset! ids (mapv :id (user/create-users! rows))))
-         :rename     (count #(user/update-users! {:id [:in @ids]} {:first_name "Renamed"}))
+         :rename     (count #(user/update-users! @ids {:first_name "Renamed"}))
          :join       (count #(perms-group-membership/add-users-to-groups! (for [id @ids] {:user id :group group-id})))
-         :promote    (count #(user/update-users! {:id [:in @ids]} {:is_superuser true}))
-         :demote     (count #(user/update-users! {:id [:in @ids]} {:is_superuser false}))}))))
+         :promote    (count #(user/update-users! @ids {:is_superuser true}))
+         :demote     (count #(user/update-users! @ids {:is_superuser false}))}))))
 
 (deftest bulk-user-writes-run-fixed-statement-counts-test
   (testing "after a first run that fills the caches"
