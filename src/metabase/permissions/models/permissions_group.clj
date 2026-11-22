@@ -139,9 +139,19 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
+(defn- check-not-magic-group
+  "Throws a 400 when `group`, a stored PermissionsGroup, is one of the built-in groups, which its row says through its
+  `:magic_group_type`."
+  [{:keys [magic_group_type name]}]
+  (when magic_group_type
+    (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" name)
+                    {:status-code 400}))))
+
 (t2/define-before-update :model/PermissionsGroup
   [group]
   (let [changes (t2/changes group)]
+    (when (contains? changes :name)
+      (check-not-magic-group (t2/original group)))
     (when (contains? changes :is_tenant_group)
       (throw (ex-info (tru "You cannot change whether a group is a tenant group.") {:status-code 400})))
     (when (contains? changes :magic_group_type)
@@ -220,18 +230,6 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
-(defn- check-not-magic-group
-  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
-
 (defn- set-default-permission-values!
   [group]
   (data-perms/with-global-permissions-lock
@@ -273,7 +271,6 @@
               :let [changes (dissoc row :id)
                     before  (stored id)]]
         (when (and (contains? changes :name) (not= (:name changes) (:name before)))
-          (check-not-magic-group before)
           (when-let [group-name (:name changes)]
             (check-name-not-already-taken group-name)))
         (permissions.db/update-permissions-group! id changes))
