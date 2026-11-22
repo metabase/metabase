@@ -158,15 +158,19 @@
 (mu/defn update-event :- ::events.schema/lifecycle
   "The lifecycle event of the update of the rows of `stored`, a map from id to the instance the write function read, by
   `rows`, each an `:id` and the columns to set, by the current user, to publish after the update. A row that is not
-  stored or changes nothing is left out. `:after` in `options`, a function of the stored row and its columns to set,
-  gives the row after the update when a hook of the model derives a column; `:context` is the context of the event."
+  stored or changes nothing is left out. `:objects` in `options`, a map from id to the row after the update, gives the
+  rows whose columns a hook of the model derives or the database sets; `:context` is the context of the event."
   ([stored rows] (update-event stored rows nil))
-  ([stored                  :- [:map-of :any :map]
-    rows                    :- [:sequential [:map [:id :any]]]
-    {:keys [after context]} :- [:maybe [:map {:closed true}
-                                        [:after {:optional true} ifn?]
-                                        [:context {:optional true} [:maybe ::events.schema/context]]]]]
-   (event (u.events/update-changes stored rows (or after stamped)) context)))
+  ([stored                    :- [:map-of :any :map]
+    rows                      :- [:sequential [:map [:id :any]]]
+    {:keys [objects context]} :- [:maybe [:map {:closed true}
+                                          [:objects {:optional true} [:maybe [:map-of :any :map]]]
+                                          [:context {:optional true} [:maybe ::events.schema/context]]]]]
+   (event (u.events/update-changes stored
+                                   rows
+                                   (fn [previous changes]
+                                     (or (get objects (:id previous)) (stamped previous changes))))
+          context)))
 
 (mu/defn delete-event :- ::events.schema/lifecycle
   "The lifecycle event of the delete of `rows`, instances as the write function read them, by the current user, to
