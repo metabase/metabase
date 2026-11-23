@@ -70,7 +70,11 @@
   "The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one.
   Port of `_effective_name`."
   [identifier dialect]
-  (ast/node-name (NormalizeIdentifiers/normalizeIdentifiers ^Expr (ast/copy identifier) ^String dialect false)))
+  ;; Only H2 reaches here with no dialect, and it folds unquoted names up where sqlglot's default folds them down.
+  (if (nil? dialect)
+    (cond-> (ast/node-name identifier)
+      (not (ast/quoted? identifier)) u/upper-case-en)
+    (ast/node-name (NormalizeIdentifiers/normalizeIdentifiers ^Expr (ast/copy identifier) ^String dialect false))))
 
 (defn- step-source
   "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.

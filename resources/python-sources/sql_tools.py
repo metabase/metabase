@@ -471,6 +471,9 @@ def _set_args(node):
 
 def _effective_name(identifier, dialect):
     """The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one."""
+    # Only H2 reaches here with no dialect, and it folds unquoted names up where sqlglot's default folds them down.
+    if dialect is None:
+        return identifier.name if identifier.quoted else identifier.name.upper()
     return normalize_identifiers(identifier.copy(), dialect=dialect).name
 
 

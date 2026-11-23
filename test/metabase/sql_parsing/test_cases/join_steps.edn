@@ -334,4 +334,30 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(b.mb_matched) AS m FROM a LEFT JOIN (SELECT b.*, 1 AS mb_matched FROM s.b) AS b ON a.id = b.id"}]}}]}
+      "SELECT COUNT(*) AS n, COUNT(b.mb_matched) AS m FROM a LEFT JOIN (SELECT b.*, 1 AS mb_matched FROM s.b) AS b ON a.id = b.id"}]}}
+  {:name "with no dialect, as for H2, a quoted upper-case name is the CTE",
+   :dialect nil,
+   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "cte", :table nil, :alias "FOO"},
+    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\"",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
+  {:name "with no dialect, as for H2, a quoted lower-case name is a table, not the CTE",
+   :dialect nil,
+   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"foo\" JOIN b ON \"foo\".id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "foo"], :alias "foo"},
+    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\"",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\" JOIN b ON \"foo\".id = b.id"}]}}]}
