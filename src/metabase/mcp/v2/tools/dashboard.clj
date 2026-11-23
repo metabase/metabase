@@ -160,8 +160,8 @@
   add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,
   set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter,
   update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first
-  add_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded — parameter types,
-  target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
+  add_parameter, remove_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded —
+  parameter types, target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes

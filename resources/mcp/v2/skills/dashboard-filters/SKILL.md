@@ -1,6 +1,6 @@
 ---
 name: dashboard-filters
-description: Dashboard parameters via dashboard_write — add_parameter types and value sources, the wire_parameter target grammar (target_field vs target_tag vs raw target), autowire, linked filters, inline parameters, tab visibility. Read before your first add_parameter or wire_parameter. Triggers — "add a filter to this dashboard", "wire a filter to these cards", "make a filter cascade", "filter dropdown values", "why isn't my filter showing / doing anything".
+description: Dashboard parameters via dashboard_write — add_parameter types and value sources, the wire_parameter target grammar (target_field vs target_tag vs raw target), autowire, linked filters, inline parameters, tab visibility. Read before your first add_parameter, remove_parameter or wire_parameter. Triggers — "add a filter to this dashboard", "wire a filter to these cards", "make a filter cascade", "filter dropdown values", "why isn't my filter showing / doing anything".
 ---
 
 # Dashboard filters
