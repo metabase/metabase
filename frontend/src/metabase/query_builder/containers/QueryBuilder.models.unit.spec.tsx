@@ -11,8 +11,12 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
-import type { TableId, TestJoinSpec } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Field,
+  TableId,
+  TestJoinSpec,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -33,6 +37,10 @@ import { getIsRunning } from "../store/selectors";
 import { TEST_COLLECTION, TEST_DB, setup } from "./test-utils";
 
 registerVisualizations();
+
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
 
 const ORDERS_TOTAL_DATASET = createMockDataset({
   data: {
@@ -118,7 +126,6 @@ describe("QueryBuilder - models", () => {
       id: 1,
       name: "46221",
       type: "model",
-      query_type: "native",
       display: "scalar",
       collection_id: collection.id,
       collection,
@@ -166,7 +173,7 @@ describe("QueryBuilder - models", () => {
       name: "Empty model",
       type: "model",
       display: "table",
-      result_metadata: PRODUCTS_COLUMNS,
+      result_metadata: toResultMetadata(PRODUCTS_COLUMNS),
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
         stages: [
           {
@@ -209,7 +216,7 @@ describe("QueryBuilder - models", () => {
       name: "Orders model",
       type: "model",
       display: "table",
-      result_metadata: ORDERS_COLUMNS,
+      result_metadata: toResultMetadata(ORDERS_COLUMNS),
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
         stages: [{ source: { type: "table", id: ORDERS_ID } }],
       }),
@@ -296,7 +303,7 @@ describe("QueryBuilder - models", () => {
       name: "Model 56775",
       type: "model",
       display: "table",
-      result_metadata: PRODUCTS_COLUMNS,
+      result_metadata: toResultMetadata(PRODUCTS_COLUMNS),
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
         stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
       }),
@@ -357,7 +364,9 @@ describe("QueryBuilder - models", () => {
   });
 
   it("does not crash the editor when ordering a new model by a column of a table with joins (metabase#30712)", async () => {
-    const newModel = Question.create({
+    const newModelUrl = Urls.newQuestion({
+      mode: "query",
+      creationType: "custom_question",
       metadata: createMockMetadata({ databases: [TEST_DB] }),
       cardType: "model",
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
@@ -382,10 +391,7 @@ describe("QueryBuilder - models", () => {
     });
     const { store } = await setup({
       card: null,
-      initialRoute: Urls.newQuestion(newModel, {
-        mode: "query",
-        creationType: "custom_question",
-      }),
+      initialRoute: newModelUrl,
     });
     const sortedByOrdersTotal = expect.objectContaining({
       database: SAMPLE_DB_ID,
@@ -457,7 +463,6 @@ describe("QueryBuilder - models", () => {
       id: 1,
       name: "Native question",
       type: "question",
-      query_type: "native",
       dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
         query: "select {{ x }}",
         templateTags: { x: { "display-name": "X", type: "text" } },
