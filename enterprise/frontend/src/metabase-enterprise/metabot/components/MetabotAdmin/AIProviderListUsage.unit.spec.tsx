@@ -112,7 +112,7 @@ describe("AIProviderList managed provider usage", () => {
 
     const row = await screen.findByTestId("provider-metabase");
     expect(await within(row).findByText("Current billing cycle")).toBeVisible();
-    expect(within(row).getByText("4,000,000")).toBeInTheDocument();
+    expect(await within(row).findByText("4,000,000")).toBeInTheDocument();
     expect(
       await within(row).findByText("$3.00 per 1M tokens"),
     ).toBeInTheDocument();
@@ -124,8 +124,12 @@ describe("AIProviderList managed provider usage", () => {
 
     const row = await screen.findByTestId("provider-metabase");
     expect(await within(row).findByText("Included use")).toBeVisible();
-    expect(within(row).getByText("Free trial tokens")).toBeInTheDocument();
-    expect(within(row).getByText("250,000 / 1,000,000")).toBeInTheDocument();
+    expect(
+      await within(row).findByText("Free trial tokens"),
+    ).toBeInTheDocument();
+    expect(
+      await within(row).findByText("250,000 / 1,000,000"),
+    ).toBeInTheDocument();
   });
 
   it("collapses the usage details on demand", async () => {

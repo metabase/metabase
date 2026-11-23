@@ -73,10 +73,10 @@ describe("SecurityCenterLayout", () => {
     });
 
     expect(
-      within(getNavLink(/Advisories/)).getByTestId("issue-dot"),
+      await within(getNavLink(/Advisories/)).findByTestId("issue-dot"),
     ).toBeInTheDocument();
     expect(
-      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+      await within(getNavLink(/Health checks/)).findByTestId("issue-dot"),
     ).toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe("SecurityCenterLayout", () => {
     });
 
     expect(
-      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+      await within(getNavLink(/Health checks/)).findByTestId("issue-dot"),
     ).toBeInTheDocument();
     expect(
       within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
@@ -103,7 +103,7 @@ describe("SecurityCenterLayout", () => {
     });
 
     expect(
-      within(screen.getByTestId("admin-layout-content")).getByText(
+      await within(screen.getByTestId("admin-layout-content")).findByText(
         "Something went wrong loading security advisories.",
       ),
     ).toBeInTheDocument();
