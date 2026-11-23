@@ -128,7 +128,7 @@
   (t2/select-pks-set :model/DataTestRun :test_type "card"))
 
 (deftest native-card-expectations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (testing "expectations of a native card read its result set as `{{output}}`"
       (let [result (run-card-test! (people-card)
                                    [(people-input one-person)]
@@ -148,7 +148,7 @@
                                       [{:type :empty :name "only the input row" :sql "SELECT * FROM {{output}} WHERE id <> 1"}])))))))
 
 (deftest equals-sql-expectations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [run! (fn [& expectations]
                  (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
           sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
@@ -179,7 +179,7 @@
                (:error-type (data-testing.test-util/refusal #(run! (sql "real table" (str "SELECT id FROM " (qualified :orders))))))))))))
 
 (deftest equals-sql-matches-columns-across-case-and-reports-the-expected-spelling-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (let [run! (fn [& expectations]
                  (outcomes (run-card-test! (people-card) [(people-input one-person)] expectations)))
           sql  (fn [expectation-name sql] {:type :equals :name expectation-name :format :sql :sql sql})]
@@ -196,7 +196,7 @@
                    (update :columns (partial mapv :name)))))))))
 
 (deftest equals-sql-column-errors-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (let [error-of (fn [card sql]
                      (-> (run-card-test! card [(people-input one-person)]
                                          [{:type :equals :name "e" :format :sql :sql sql}])
@@ -221,7 +221,7 @@
           (is (re-find #"\bAS\b" message) message))))))
 
 (deftest card-with-a-repeated-column-name-is-refused-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [run!   (fn [sql]
                    (data-testing.test-util/refusal #(run-card-test! (native-card (str sql " FROM " (qualified :people)))
                                                                     [(people-input one-person)]
@@ -235,7 +235,7 @@
         (is (nil? (run! "SELECT id, name")))))))
 
 (deftest card-with-column-names-that-differ-only-in-case-runs-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (testing "a database that keeps the case of quoted names stores both columns, so the test runs"
       (is (= :passed
              (:status (run-card-test! (native-card (str "SELECT id AS \"id\", name AS \"ID\" FROM "
@@ -244,7 +244,7 @@
                                       [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))))))
 
 (deftest model-and-metric-cards-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type]  (data-testing.test-util/cast-types)
           orders      (table-query :orders)
           two-orders  (orders-rows [:id :user_id] [[1 7] [2 8]])
@@ -306,7 +306,7 @@
        " 4.5 AS rating, '2024-01-02' AS created_at"))
 
 (deftest implicit-join-card-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[_ text-type] (data-testing.test-util/cast-types)
           orders-input  (two-orders-of-product-1)
           ;; The alias of the joined column comes from the joined table's name, which some test datasets prefix
@@ -348,7 +348,7 @@
           (is (re-find #"(?i)\bcount\b" (get-in expectation [:error :message]))))))))
 
 (deftest card-guards-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (testing "Guard A: a card reading a table with no input is refused, naming that table, and no run is recorded"
       (let [runs-before                  (card-run-ids)
             {:keys [error-type message]} (data-testing.test-util/refusal #(run-card-test! (category-count-card)
@@ -366,7 +366,7 @@
                                                                                         " r ON o.id = r.id")}]))))))))
 
 (deftest date-column-under-a-report-timezone-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (mt/with-report-timezone-id! "Asia/Tokyo"
       (let [orders    (table-query :orders)
             card      {:dataset_query (lib/with-fields orders [(column orders :orders :id)
@@ -391,7 +391,7 @@
     (t2/select-one :model/DataTestRun :id run-id)))
 
 (deftest card-run-is-persisted-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (mt/with-temp [:model/Card {card-id :id} (people-card)]
       (let [card (t2/select-one :model/Card :id card-id)
             run-saved (fn [inputs expectations]
@@ -426,7 +426,7 @@
                     run))))))))
 
 (deftest temp-tables-are-dropped-after-the-card-fails-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [created (atom #{})
           dropped (atom #{})
           create! (mt/original-fn #'data-testing.executor/create-temp-table!)

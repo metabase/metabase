@@ -54,12 +54,12 @@
   "The test drivers that resolve an unqualified table reference to the schema the test data lives in. Redshift reports
   no default schema, so a read of `people` cannot be matched to the input declared for `sha__….people`."
   []
-  (disj (mt/normal-drivers-with-feature :transforms/testing) :redshift))
+  (disj (data-testing.test-util/data-test-drivers) :redshift))
 
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
 
 (deftest run-transform-test-rows-input-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (let [mp                   (mt/metadata-provider)
@@ -102,7 +102,7 @@
            (mapv #(select-keys % [:name :type :status]) (:expectations result))))))
 
 (deftest run-transform-test-empty-expectation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "passes when the query returns no rows"
@@ -114,7 +114,7 @@
 
 (deftest run-transform-test-input-the-check-rewrites-test
   (testing "an input whose SQL the statement check rewrites fills its table with the rows that SQL returns"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (with-people-transform
         (fn [schema table transform]
           (let [input  "select 1 as id, 'abc' as name -- the fixture row"
@@ -133,7 +133,7 @@
               (is (= :failed (status "id = 1"))))))))))
 
 (deftest run-transform-test-equals-sql-expectation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "the expected rows read the target table, which the run rewrites to the output"
@@ -145,7 +145,7 @@
 (deftest run-transform-test-expectation-after-a-warehouse-error-test
   (testing "an expectation whose query fails at the warehouse does not change the result of the next one"
     ;; Redshift rejects SAVEPOINT, so there a failed statement still aborts the rest of the run.
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/testing) :redshift)
+    (mt/test-drivers (disj (data-testing.test-util/data-test-drivers) :redshift)
       (with-people-transform
         (fn [schema table transform]
           (let [output   (str schema ".people_summary")
@@ -178,19 +178,19 @@
       (is (some? (:end_time run))))))
 
 (deftest run-transform-test-persists-passed-run-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (check-persisted-run! schema table transform "name IS NULL" :passed)))))
 
 (deftest run-transform-test-persists-failed-run-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (check-persisted-run! schema table transform "id = 1" :failed)))))
 
 (deftest run-transform-test-persists-post-validation-error-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (mt/with-temp [:model/TransformTest {transform-test-id :id :as transform-test}
@@ -208,7 +208,7 @@
             (is (some? (:end_time run)))))))))
 
 (deftest run-transform-test-equals-passes-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "passes when the output matches the expected rows"
@@ -220,7 +220,7 @@
             (is (= [:passed] (mapv :status (:expectations result))))))))))
 
 (deftest run-transform-test-equals-cell-mismatch-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "a single differing cell is reported by column name"
@@ -236,7 +236,7 @@
                    (:cell-mismatches expect)))))))))
 
 (deftest run-transform-test-equals-ignores-undeclared-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "a column the expectation does not declare is not compared"
@@ -247,7 +247,7 @@
             (is (= :passed (:status result)))))))))
 
 (deftest run-transform-test-equals-is-multiset-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "a duplicated output row fails against a single expected row"
@@ -264,7 +264,7 @@
             (is (= [] (:missing-rows expect)))))))))
 
 (deftest run-transform-test-equals-matches-null-cells-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (with-people-transform
       (fn [schema table transform]
         (testing "a NULL cell in the output cancels against a nil in the expectation"
@@ -279,7 +279,7 @@
 
 (deftest run-transform-test-rejects-undeclared-input-test
   (testing "Guard A: a transform reading a table with no declared input is refused,"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       ;; the transform reads people, but the test declares no input for it — running would leave
       ;; people pointing at the real table (read production, false-green). Must reject before running.
       (let [mp                            (mt/metadata-provider)
@@ -307,7 +307,7 @@
 
 (deftest run-transform-test-rejects-partially-declared-inputs-test
   (testing "Guard A: a join declaring only some of its input tables is rejected, naming the gap,"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       ;; reads orders and people; declares only orders → people would fall through to the real table.
       (let [mp                              (mt/metadata-provider)
             {pschema :schema, people :name} (table-ref :people)
@@ -334,7 +334,7 @@
 
 (deftest run-transform-test-rejects-unused-input-test
   (testing "Guard A: a declared input for a table the transform does not read is refused,"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       ;; reads only people, but declares an input for orders too — a stale/mistyped fake.
       (let [mp                            (mt/metadata-provider)
             {schema :schema, people :name} (lib.metadata/table mp (mt/id :people))
@@ -360,7 +360,7 @@
 
 (deftest run-transform-test-rejects-duplicate-input-table-test
   (testing "two inputs targeting the same table (even with different fixture SQL) are rejected 400,"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       ;; both inputs fixture `people`, differing only in SQL — they would collide on one temp table
       ;; and silently drop a fixture. Reject on :table, not on the whole (distinct) input map.
       (let [mp                            (mt/metadata-provider)
@@ -383,7 +383,7 @@
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
     (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      (mt/test-drivers (data-testing.test-util/data-test-drivers)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform
                          {:source {:type :query
@@ -420,7 +420,7 @@
                   (data-testing.test-util/run-as-admin! :transform transform transform-test))))))))
 
 (deftest transform-with-a-repeated-column-name-is-refused-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [mp                            (mt/metadata-provider)
           {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
       (mt/with-temp [:model/Transform transform
@@ -437,7 +437,7 @@
 
 (deftest validate-test-blank-target-name-gets-typed-refusal-test
   (testing "a test missing an input is refused missing-inputs whatever the target is named"
-    (mt/test-driver :h2
+    (mt/test-driver :postgres
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             refusal                       (fn [target-name]
@@ -543,3 +543,28 @@
       (is (= #{} (read "SELECT id FROM \"public\".\"events\", generate_series(1, 2) AS g"))))
     (testing "a column that only a table function gives is left out"
       (is (= #{} (read "SELECT id FROM generate_series(1, 2) AS g"))))))
+
+(deftest h2-databases-are-refused-test
+  (testing "card, transform and segment tests on an H2 database are refused, when saved and when run"
+    (mt/test-driver :h2
+      (let [definition {:inputs       [(data-testing.test-util/people-rows-input "ID")]
+                        :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE WHERE 1 = 0"}]}
+            refusal    (fn [thunk] (data-testing.test-util/refusal (fn [] (mt/with-test-user :crowberto (thunk)))))
+            expected   {:error-type ::data-testing.errors/unsupported-h2
+                        :message    "Data tests do not support H2 databases yet."}]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [mp (mt/metadata-provider)]
+                                                                   (lib/query mp (lib.metadata/table mp (mt/id :people))))}
+                       :model/Transform transform (data-testing.test-util/id-transform :people)
+                       :model/Segment segment (data-testing.test-util/from-google-segment)
+                       :model/CardTest card-test {:card_id card-id
+                                                  :inputs (:inputs definition)
+                                                  :expectations (:expectations definition)}]
+          (let [card (t2/select-one :model/Card :id card-id)]
+            (testing "saving a card test"
+              (is (= expected (refusal #(data-testing.runner/validate-test :card card definition)))))
+            (testing "running a card test"
+              (is (= expected (refusal #(data-testing.runner/run-test! :card card card-test)))))
+            (testing "saving a transform test"
+              (is (= expected (refusal #(data-testing.runner/validate-test :transform transform definition)))))
+            (testing "saving a segment test"
+              (is (= expected (refusal #(data-testing.runner/validate-test :segment segment definition)))))))))))

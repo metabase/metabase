@@ -5,8 +5,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (defn cast-types
   "An integer and a text `cast_type` the current driver accepts as a `CAST` target.
@@ -20,6 +19,12 @@
     :clickhouse         ["Nullable(Int32)" "Nullable(String)"]
     :bigquery-cloud-sdk ["INT64" "STRING"]
     ["INTEGER" "VARCHAR(50)"]))
+
+(defn data-test-drivers
+  "The test drivers that run data tests: every driver with `:transforms/testing` but H2, which data tests refuse until
+  VER-182."
+  []
+  (disj (mt/normal-drivers-with-feature :transforms/testing) :h2))
 
 (def data-analyst-features
   "The premium features with which a data analyst can open transform tests."
@@ -39,9 +44,9 @@
              (select-keys (ex-data e) data-keys)))))
 
 (defn people-rows-input
-  "A rows input standing in for `PUBLIC.PEOPLE`, declaring `column-names` as text, with no rows."
+  "A rows input standing in for Postgres's `public.people`, declaring `column-names` as text, with no rows."
   [& column-names]
-  {:table   {:schema "PUBLIC" :name "PEOPLE"}
+  {:table   {:schema "public" :name "people"}
    :format  :rows
    :columns (mapv (fn [column-name] {:name column-name :cast_type "VARCHAR"}) column-names)
    :rows    []})
@@ -71,15 +76,15 @@
        ~@body)))
 
 (defn id-transform
-  "An MBQL transform selecting `ID` from the test table `table` into `PUBLIC.<TABLE>_SUMMARY`."
+  "An MBQL transform selecting `id` from the test table `table` into Postgres's `public.<table>_summary`."
   [table]
   (let [mp (mt/metadata-provider)]
     {:source {:type  :query
               :query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                          (lib/with-fields [(lib.metadata/field mp (mt/id table :id))]))}
      :target {:type     "table"
-              :schema   "PUBLIC"
-              :name     (str (u/upper-case-en (name table)) "_SUMMARY")
+              :schema   "public"
+              :name     (str (name table) "_summary")
               :database (mt/id)}}))
 
 (defn run-as-admin!

@@ -33,7 +33,7 @@
 
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
         (with-people-transform
           (fn [schema table transform-id]
@@ -97,7 +97,7 @@
 
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}

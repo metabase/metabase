@@ -189,29 +189,21 @@
     (tru "it holds something the check refuses")))
 
 (mu/defn ensure-single-select :- :string
-  "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect, or, for a driver with
-  no SQLGlot dialect, `sql` as written (checked in SQLGlot's generic dialect). `sql` must be one SELECT that passes the
-  read-only statement check, which refuses anything that writes or locks (a data-modifying CTE, `SELECT ... INTO`,
-  `FOR UPDATE`). With a dialect, the rebuild must pass the check too and rebuild to itself, and on Postgres read as
+  "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect. `sql` must be one
+  SELECT that passes the read-only statement check, which refuses anything that writes or locks (a data-modifying CTE,
+  `SELECT ... INTO`, `FOR UPDATE`). The rebuild must pass the check too and rebuild to itself, and on Postgres read as
   one statement whatever `standard_conforming_strings` is.
 
   Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
   `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-sql` when
-  it holds a list of values too long to parse whole, or, for a driver with no dialect, is too long to check. Each
-  refusal names `source`."
+  it holds a list of values too long to parse whole, or `driver` has no SQLGlot dialect. Each refusal names `source`."
   [driver :- :keyword
    sql    :- :string
    source :- ::sql-source]
-  (let [checked     (sql-tools/validate-executable-stmt driver sql "read-only")
-        no-dialect? (= "unknown-dialect" (:reason checked))
-        {:keys [verdict error reason detail] rebuilt :sql}
-        (if no-dialect?
-          (sql-tools/classify-stmt driver sql "read-only")
-          checked)]
+  (let [{:keys [verdict error reason detail] rebuilt :sql} (sql-tools/validate-executable-stmt driver sql "read-only")]
     (case verdict
       :allowed
-      ;; Without a dialect, the rebuild is SQLGlot's generic SQL, which the driver's database may read differently.
-      (if no-dialect? sql rebuilt)
+      rebuilt
 
       :disallowed
       (throw (data-testing.errors/ex
@@ -232,7 +224,8 @@
         (throw (data-testing.errors/ex
                 ::data-testing.errors/uncheckable-sql
                 (case reason
-                  "too-long" (tru "The SQL of {0} is too long for the SQL check to read." (sql-source-label source))
+                  "unknown-dialect" (tru "The SQL of {0} cannot be checked: the SQL check cannot read this database''s SQL."
+                                         (sql-source-label source))
                   (tru "The SQL of {0} holds a list of values too long for the SQL check to parse."
                        (sql-source-label source)))
                 {:reason reason}))))))

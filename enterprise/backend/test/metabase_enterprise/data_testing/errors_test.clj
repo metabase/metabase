@@ -47,6 +47,7 @@
    ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
+   ::errors/unsupported-h2             422
    ::errors/uncompilable-subject       422
    ::errors/query-failed               422
    ::errors/duplicate-output-columns   422
@@ -89,6 +90,7 @@
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
+             ::errors/unsupported-h2
              ::errors/uncompilable-subject
              ::errors/query-failed
              ::errors/duplicate-output-columns
@@ -131,6 +133,7 @@
    ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
+   ::errors/unsupported-h2             "transform-test.unsupported-h2"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
    ::errors/query-failed               "transform-test.query-failed"
    ::errors/duplicate-output-columns   "transform-test.duplicate-output-columns"

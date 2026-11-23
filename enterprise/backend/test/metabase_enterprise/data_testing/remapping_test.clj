@@ -21,7 +21,7 @@
 
 ;; The Database's synced `default_schema` decides whether a bare table key is registered. Identifier normalization
 ;; still dispatches on an initialized driver; these tests parse and rewrite SQL only, so no connection is needed.
-(use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (f)))
+(use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (driver/the-initialized-driver :postgres) (f)))
 
 ;;; -------------------------------------------- Harness --------------------------------------------
 
@@ -180,7 +180,7 @@
   [inputs expectations sql]
   (let [replacements (replacements-for inputs)]
     (data-testing.validator/validate
-     :h2
+     :postgres
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   (declared-refs sql)
@@ -322,7 +322,7 @@
 
 (deftest case-mismatched-run-must-not-report-on-real-data-test
   (testing "a run whose rewrite misses must refuse rather than report a result read from real tables"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_case_mismatch"]
@@ -354,7 +354,7 @@
 
 (deftest target-table-is-never-created-test
   (testing "a run leaves no trace in the warehouse: the transform's target is never materialized"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_target"]

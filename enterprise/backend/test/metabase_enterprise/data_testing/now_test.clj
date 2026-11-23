@@ -104,7 +104,7 @@
     {:pinned (run-test {:now now}) :unpinned (run-test {})}))
 
 (deftest relative-filters-read-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [orders (orders-query)]
       (testing "a filter in days: Redshift computes it from the JVM clock, the other drivers from the database's"
         (is (= {:pinned :passed :unpinned :failed}
@@ -128,7 +128,7 @@
                                      [1])))))))
 
 (deftest card-on-a-segment-reads-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
                                                       :name       "Last 30 days"
@@ -195,7 +195,7 @@
       (outcome! :transform transform :model/TransformTest test-id))))
 
 (deftest transform-reads-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [query  (lib/filter (orders-query) (lib/time-interval (created-at) -30 :day))
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
           run-test #(run-transform-test! query % inputs (constantly (selects [1])))]
@@ -204,7 +204,7 @@
                {:pinned (run-test {:now now}) :unpinned (run-test {})}))))))
 
 (deftest native-subject-with-now-is-refused-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (let [mp      (mt/metadata-provider)
           {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
           native  (lib/native-query mp (str "SELECT id, created_at FROM " schema "." table-name
@@ -227,7 +227,7 @@
                 :unpinned (run-transform-test! native {} inputs (constantly (selects [1])))}))))))
 
 (deftest validate-test-refuses-now-on-native-sql-test
-  (mt/test-drivers #{:h2}
+  (mt/test-drivers #{:postgres}
     (let [mp     (mt/metadata-provider)
           {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
           native (lib/native-query mp (str "SELECT id FROM " schema "." table-name))

@@ -59,7 +59,7 @@
   (into {} (map (juxt :name :status)) (:expectations result)))
 
 (deftest segment-expectations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           id                   (field-name :id)
           source               (field-name :source)
@@ -84,7 +84,7 @@
         (is (= :failed (:status result)))))))
 
 (deftest segment-output-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [run! (fn [input]
                  (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
                                                                      [input]
@@ -144,7 +144,7 @@
                                            "Gizmo"))}))
 
 (deftest a-segment-test-through-a-foreign-key-runs-once-accepted-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           mp                   (mt/metadata-provider)
           column               (fn [table-key field-key]
@@ -176,7 +176,7 @@
           (is (runs-once-accepted? outcome) (pr-str outcome)))))))
 
 (deftest a-segment-test-validation-accepts-runs-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           input                (fn [& names+types]
                                  (let [columns (mapv (fn [[n t]] {:name n :cast_type t}) (partition 2 names+types))]
@@ -204,7 +204,7 @@
           (is (runs-once-accepted? outcome) (pr-str outcome)))))))
 
 (deftest segment-guards-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (testing "Guard A: a segment test without an input for the segment's table is refused, naming it"
       (let [{:keys [error-type message]} (data-testing.test-util/refusal #(run-segment-test!
                                                                            (data-testing.test-util/from-google-segment)
@@ -222,7 +222,7 @@
                                                                 :sql  (str "SELECT * FROM {{output}} o JOIN " schema "." table " r ON 1 = 1")}])))))))))
 
 (deftest segment-run-is-persisted-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    {:segment_id   segment-id
                                                         :inputs       [(people-rows three-people)]

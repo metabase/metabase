@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.subject.segment-test
-  "The `:segment` subject plan: the database, the compiled SQL and the output names of a segment. H2 only."
+  "The `:segment` subject plan: the database, the compiled SQL and the output names of a segment. Postgres only: data tests refuse H2 until VER-182."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
@@ -45,16 +45,16 @@
   (data-testing.subject/subject-plan :segment (t2/select-one :model/Segment :id segment-id) inputs))
 
 (deftest segment-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                     :name       "From Google"
                                                     :definition (:definition (data-testing.test-util/from-google-segment))}]
-      (let [plan (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])]
+      (let [plan (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "source")])]
         (testing "a segment runs on its table's database"
           (is (= (mt/id) (get-in plan [:database :id]))))
         (testing "its compiled SQL reads its table and keeps its filter"
-          (is (= #{{:schema "PUBLIC" :name "PEOPLE"}}
-                 (data-testing.compile/referenced-tables :h2 (get-in plan [:compiled :query]))))
+          (is (= #{{:schema "public" :name "people"}}
+                 (data-testing.compile/referenced-tables :postgres (get-in plan [:compiled :query]))))
           (is (= ["Google"] (vec (get-in plan [:compiled :params])))))
         (testing "expectation SQL names the output with `{{output}}`, and messages name it by the segment's name"
           (is (= "{{output}}" (:output-token plan)))
@@ -62,42 +62,42 @@
           (is (= "From Google" (:output-label plan))))))))
 
 (deftest segment-output-has-the-declared-columns-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                     :name       "From Google"
                                                     :definition (:definition (data-testing.test-util/from-google-segment))}]
       (testing "premise: the people table has more columns than the input declares"
         (is (< 2 (count (people-columns)))))
       (testing "the output has the columns the input declares for the segment's table"
-        (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])))))
-      (testing "on a database that keeps case, such as H2, a declared name that differs only in case selects no column"
-        (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "Source")])))))
+        (is (= #{"id" "source"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "source")])))))
+      (testing "on a database that keeps case, such as Postgres, a declared name that differs only in case selects no column"
+        (is (= #{"id"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")])))))
       (testing "on a database that ignores case, a declared name that differs only in case selects the column"
         (with-redefs [data-testing.u/column-names-ignore-case? (constantly true)]
-          (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")]))))))
+          (is (= #{"id" "source"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "Source")]))))))
       (testing "the case rule is the one of the driver of the segment's database"
-        (with-redefs [data-testing.u/column-names-ignore-case? #(= :h2 %)]
-          (is (= #{"ID" "SOURCE"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "Source")]))))))
+        (with-redefs [data-testing.u/column-names-ignore-case? #(= :postgres %)]
+          (is (= #{"id" "source"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "Source")]))))))
       (testing "a declared column the table lacks adds nothing"
-        (is (= #{"ID"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "ID" "NOT_A_COLUMN")]))))))))
+        (is (= #{"id"} (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "id" "not_a_column")]))))))))
 
 (deftest segment-output-has-every-column-without-declared-columns-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                     :name       "From Google"
                                                     :definition (:definition (data-testing.test-util/from-google-segment))}]
       (testing "an input given as SQL declares no columns, so the output has every column of the table"
         (is (= (people-columns)
-               (selected-columns (plan-of segment-id [{:table  {:schema "PUBLIC" :name "PEOPLE"}
+               (selected-columns (plan-of segment-id [{:table  {:schema "public" :name "people"}
                                                        :format :sql
-                                                       :sql    "SELECT 1 AS ID"}])))))
+                                                       :sql    "SELECT 1 AS id"}])))))
       (testing "an input that declares no column of the table leaves every column"
-        (is (= (people-columns) (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "NOT_A_COLUMN")])))))
+        (is (= (people-columns) (selected-columns (plan-of segment-id [(data-testing.test-util/people-rows-input "not_a_column")])))))
       (testing "with no input for the table, every column"
         (is (= (people-columns) (selected-columns (plan-of segment-id []))))))))
 
 (deftest segment-using-a-segment-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Segment {inner-id :id} {:table_id   (mt/id :people)
                                                   :name       "From Google"
                                                   :definition (:definition (data-testing.test-util/from-google-segment))}]
@@ -108,16 +108,16 @@
                                                       :definition (-> query
                                                                       (lib/filter (lib.metadata/segment mp inner-id))
                                                                       (lib/filter (lib/> (people-column query :id) 10)))}]
-          (let [{{sql :query params :params} :compiled} (plan-of outer-id [(data-testing.test-util/people-rows-input "ID" "SOURCE")])]
+          (let [{{sql :query params :params} :compiled} (plan-of outer-id [(data-testing.test-util/people-rows-input "id" "source")])]
             (testing "the inner segment's filter is expanded into the compiled SQL, beside the outer one's"
               (is (= ["Google"] (vec params)))
-              (is (re-find #"\"SOURCE\" = \?" sql) sql)
-              (is (re-find #"\"ID\" > 10" sql) sql))))))))
+              (is (re-find #"\"source\" = \?" sql) sql)
+              (is (re-find #"\"id\" > 10" sql) sql))))))))
 
 (defn- table-rows-input
-  "An input standing in for the `PUBLIC` table `table-name`, declaring `column-names`, with no rows."
+  "An input standing in for the `public` table `table-name`, declaring `column-names`, with no rows."
   [table-name & column-names]
-  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "PUBLIC" :name table-name}))
+  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "public" :name table-name}))
 
 (defn- outer-selected-columns
   "The column aliases the outermost SELECT list of the compiled SQL of `plan` selects."
@@ -126,7 +126,7 @@
     (set (map second (re-seq #"AS \"([^\"]+)\"" select-list)))))
 
 (deftest segment-output-has-the-columns-of-the-input-for-its-own-table-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [mp     (mt/metadata-provider)
           orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
@@ -136,18 +136,18 @@
                                                                    (lib/= (some #(when (= (mt/id :products :category) (:id %)) %)
                                                                                 (lib/filterable-columns orders))
                                                                           "Gizmo"))}]
-        (let [orders-input   (table-rows-input "ORDERS" "ID" "PRODUCT_ID")
-              products-input (table-rows-input "PRODUCTS" "ID" "CATEGORY")]
+        (let [orders-input   (table-rows-input "orders" "id" "product_id")
+              products-input (table-rows-input "products" "id" "category")]
           (testing "premise: the compiled SQL reads both the segment's table and the table its filter goes through"
-            (is (= #{{:schema "PUBLIC" :name "ORDERS"} {:schema "PUBLIC" :name "PRODUCTS"}}
+            (is (= #{{:schema "public" :name "orders"} {:schema "public" :name "products"}}
                    (data-testing.compile/referenced-tables
-                    :h2 (get-in (plan-of segment-id [orders-input products-input]) [:compiled :query])))))
+                    :postgres (get-in (plan-of segment-id [orders-input products-input]) [:compiled :query])))))
           (testing "the output has the columns the input for the segment's own table declares, whatever the order of the inputs"
-            (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [orders-input products-input]))))
-            (is (= #{"ID" "PRODUCT_ID"} (outer-selected-columns (plan-of segment-id [products-input orders-input]))))))))))
+            (is (= #{"id" "product_id"} (outer-selected-columns (plan-of segment-id [orders-input products-input]))))
+            (is (= #{"id" "product_id"} (outer-selected-columns (plan-of segment-id [products-input orders-input]))))))))))
 
 (deftest segment-whose-definition-cannot-compile-is-refused-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [query (people-query)]
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                       :name       "Missing field"
@@ -167,7 +167,7 @@
             (is (re-find #"^The query under test could not be compiled to SQL: " (str message)) message)))))))
 
 (deftest segment-on-a-database-without-testing-is-refused-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :people)
                                                     :definition (:definition (data-testing.test-util/from-google-segment))}]
       (let [supports? driver/database-supports?]

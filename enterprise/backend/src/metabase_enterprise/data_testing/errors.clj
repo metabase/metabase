@@ -30,7 +30,7 @@
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-select        400  ; SQL the run executes is not one SELECT, or holds something the statement check refuses.
-   ::uncheckable-sql            400  ; SQL the run executes is too long for the statement check, or holds a list too long to parse.
+   ::uncheckable-sql            400  ; SQL the run executes holds a list too long to parse, or its database has no dialect the check reads.
 
    ;; 403 — the current user
    ::impersonated-user          403  ; The user's connection to the subject's database is impersonated.
@@ -38,6 +38,7 @@
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
    ::unsupported-driver         422  ; The database does not support testing.
+   ::unsupported-h2             422  ; The database is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.

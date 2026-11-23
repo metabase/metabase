@@ -92,11 +92,11 @@
            (#'validator/missing-inputs [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "ORDERS"}} "PUBLIC")))))
 
 (defn- refusal
-  "The `:error-type` that [[validator/validate]] throws for `args` on H2, or nil when it accepts them."
+  "The `:error-type` that [[validator/validate]] throws for `args` on Postgres, or nil when it accepts them."
   [args]
-  (driver/the-initialized-driver :h2)
+  (driver/the-initialized-driver :postgres)
   (try
-    (validator/validate :h2 args)
+    (validator/validate :postgres args)
     nil
     (catch ExceptionInfo e
       (:error-type (ex-data e)))))
@@ -139,11 +139,11 @@
         with-sql  (fn [args sql] (assoc args :expectations [{:type :empty :name "check" :sql sql}]))
         refused   (fn [args]
                     (try
-                      (validator/validate :h2 args)
+                      (validator/validate :postgres args)
                       nil
                       (catch ExceptionInfo e
                         {:error-type (:error-type (ex-data e)) :message (ex-message e)})))]
-    (driver/the-initialized-driver :h2)
+    (driver/the-initialized-driver :postgres)
     (testing "control: the output token, with or without spaces inside its braces, is accepted"
       (is (nil? (refused (with-sql card-test "SELECT * FROM {{output}} JOIN {{ output }} o2 ON 1 = 1")))))
     (testing "any other placeholder is refused, naming it and the expectation"
@@ -165,12 +165,15 @@
          :ignore-case? false))
 
 (defn- validation-refusal
-  "The refusal of `validator/validate` on H2 with `args`, with its `:columns`, or nil."
+  "The refusal of `validator/validate` on Postgres with `args`, with its `:columns`, or nil."
   [args]
-  (driver/the-initialized-driver :h2)
-  (data-testing.test-util/refusal #(validator/validate :h2 args) :columns))
+  (driver/the-initialized-driver :postgres)
+  (data-testing.test-util/refusal #(validator/validate :postgres args) :columns))
 
-(def ^:private people-rows-input data-testing.test-util/people-rows-input)
+(defn- people-rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, the table `people-test` reads, declaring `column-names`."
+  [& column-names]
+  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "PUBLIC" :name "PEOPLE"}))
 
 (deftest missing-input-columns-test
   (testing "control: a rows input declaring every column the query reads is accepted"
@@ -298,17 +301,10 @@
                            nil)))))
 
 (deftest ensure-single-select-without-a-dialect-test
-  (testing "a driver with no SQLGlot dialect"
-    (testing "runs a single SELECT as written"
-      (is (= "SELECT 1 AS id -- one"
-             (single-select :h2 "SELECT 1 AS id -- one" nil))))
-    (testing "is refused a second statement"
-      (is (=? {:error-type ::errors/not-a-single-select}
-              (single-select :h2 "SELECT 1 AS id; DROP TABLE orders" nil))))
-    (testing "is refused SQL too long to check"
-      (is (=? {:error-type ::errors/uncheckable-sql
-               :message    "The SQL of the query under test is too long for the SQL check to read."}
-              (single-select :h2 (str "SELECT 1 AS id" (str/join (repeat 17000 " "))) nil))))))
+  (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"
+    (is (=? {:error-type ::errors/uncheckable-sql
+             :message    "The SQL of the query under test cannot be checked: the SQL check cannot read this database's SQL."}
+            (single-select :h2 "SELECT 1 AS id" nil)))))
 
 (defn- parser-internals
   "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."
