@@ -197,7 +197,7 @@
   inside a transaction."
   []
   (case (mdb/db-type)
-    :postgres [:raw "statement_timestamp()"]
+    :postgres :%statement_timestamp
     (h2x/current-datetime-honeysql-form (mdb/db-type))))
 
 (defn- duration-clause
