@@ -212,11 +212,15 @@ import {
 
 import type { IconName } from "metabase-types/api";
 
+import { CUSTOM_ICONS } from "./customIcons";
+
 export type LucideIconMatch = {
   icon: LucideIcon;
   lucideName: string;
   /** Fill the shape to stand in for one of our solid icons. */
   filled?: boolean;
+  /** Drawn by us in Lucide's style, from an SVG file in ./custom-svg. */
+  isCustom?: boolean;
 };
 
 /**
@@ -571,3 +575,14 @@ export const LUCIDE_ICON_MATCHES: Record<IconName, LucideIconMatch | null> = {
   test_tube: { icon: TestTubeIcon, lucideName: "test-tube" },
   eye_filled: { icon: EyeIcon, lucideName: "eye" },
 };
+
+/**
+ * The replacement for a Metabase icon: our own drawing when there is one,
+ * otherwise the Lucide match, or `null` when neither exists yet.
+ */
+export function getIconMatch(name: IconName): LucideIconMatch | null {
+  const customIcon = CUSTOM_ICONS[name];
+  return customIcon
+    ? { icon: customIcon, lucideName: name, isCustom: true }
+    : LUCIDE_ICON_MATCHES[name];
+}
