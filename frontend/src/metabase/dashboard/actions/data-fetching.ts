@@ -686,11 +686,12 @@ function getDashcardGoalCard(
   }
 
   if (!isVisualizerDashboardCard(dashcard)) {
-    // a scalar with series draws bars, without its goals
+    // adding multiple series to a scalar makes it not a scalar anymore, so resolving a goal does not make sense
     const isMultiSeriesScalar =
       card.display === "scalar" &&
       "series" in dashcard &&
       (dashcard.series?.length ?? 0) > 0;
+
     if (isMultiSeriesScalar) {
       return null;
     }
