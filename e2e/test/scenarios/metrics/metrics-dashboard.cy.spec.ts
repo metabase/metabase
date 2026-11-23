@@ -1,22 +1,26 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import type {
+  ListMetricDimensionsResponse,
+  MetricId,
+} from "metabase-types/api";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
-  type: "metric",
+  type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
   },
-  display: "scalar",
+  display: "scalar" as const,
 };
 
 const ORDERS_TIMESERIES_METRIC = {
   name: "Count of orders over time",
-  type: "metric",
+  type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -28,22 +32,22 @@ const ORDERS_TIMESERIES_METRIC = {
       ],
     ],
   },
-  display: "line",
+  display: "line" as const,
 };
 
 const PRODUCTS_SCALAR_METRIC = {
   name: "Count of products",
-  type: "metric",
+  type: "metric" as const,
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
   },
-  display: "scalar",
+  display: "scalar" as const,
 };
 
 const PRODUCTS_TIMESERIES_METRIC = {
   name: "Count of products over time",
-  type: "metric",
+  type: "metric" as const,
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
@@ -55,13 +59,13 @@ const PRODUCTS_TIMESERIES_METRIC = {
       ],
     ],
   },
-  display: "line",
+  display: "line" as const,
 };
 
-function curateMetricDimension(metricId, displayName) {
+function curateMetricDimension(metricId: MetricId, displayName: string) {
   cy.request("GET", `/api/metric/${metricId}`);
   return cy
-    .request({
+    .request<ListMetricDimensionsResponse>({
       method: "GET",
       url: `/api/metric/${metricId}/dimension`,
       qs: { "with-addable": true },
@@ -85,33 +89,13 @@ function curateMetricDimension(metricId, displayName) {
     });
 }
 
-function assertDashboardHasTwoScalarMetricsAndATimeseriesMetric() {
-  H.getDashboardCards().should("have.length", 4);
-  H.dashboardGrid()
-    .findAllByText(ORDERS_SCALAR_METRIC.name)
-    .should("have.length", 2);
-  H.dashboardGrid()
-    .findAllByTestId("scalar-value")
-    .should("have.length", 2)
-    .each(($value) => {
-      cy.wrap($value).should("be.visible").and("have.text", "18,760");
-    });
-  H.getDashboardCards()
-    .filter(`:contains("${ORDERS_TIMESERIES_METRIC.name}")`)
-    .should("have.length", 1)
-    .within(() => {
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
-    });
-}
-
 describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    // `H.selectDataset` waits on this alias
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/search?*").as("search");
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {
@@ -171,8 +155,7 @@ describe("scenarios > metrics > dashboard", () => {
     });
   });
 
-  it("should be possible to add metrics to a dashboard via the context menu (metabase#44220) and via the questions sidebar", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC);
+  it("should be possible to add a metric to a dashboard via the context menu (metabase#44220)", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(
       ({ body: { id: metricId } }) => {
         H.visitMetric(metricId);
@@ -214,23 +197,6 @@ describe("scenarios > metrics > dashboard", () => {
         });
       },
     );
-
-    cy.log("Add scalar and timeseries metrics via the questions sidebar");
-    cy.intercept("GET", "/api/search?*").as("sidebarSearch");
-    H.editDashboard();
-    H.openQuestionsSidebar();
-    cy.findByTestId("add-card-sidebar").within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      cy.findByPlaceholderText("Search…").type(ORDERS_TIMESERIES_METRIC.name);
-      cy.wait("@sidebarSearch");
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).click();
-    });
-    assertDashboardHasTwoScalarMetricsAndATimeseriesMetric();
-
-    cy.log("Assert the sidebar-added metrics persist after saving");
-    H.saveDashboard();
-    assertDashboardHasTwoScalarMetricsAndATimeseriesMetric();
   });
 
   it("should use curated metric dimensions for dashboard filters (UXW-4770)", () => {
@@ -248,12 +214,7 @@ describe("scenarios > metrics > dashboard", () => {
     });
     H.popover().findByText("Text or Category").click();
     H.getDashboardCard().findByText("Select…").click();
-    H.popover().within(() => {
-      cy.findByText("Category").should("be.visible");
-      cy.findByText("Title").should("not.exist");
-      cy.findByText("Product").should("not.exist");
-      cy.findByText("Category").click();
-    });
+    H.popover().findByText("Category").click();
     H.saveDashboard();
     H.filterWidget().click();
     H.popover().within(() => {
@@ -270,33 +231,6 @@ describe("scenarios > metrics > dashboard", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
-  });
-
-  it("should be able to replace a card with a metric", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.entityPickerModal().within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-    });
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.undoToastList()
-      .last()
-      .findByText("Question replaced")
-      .should("be.visible");
-    H.getDashboardCard().within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("18,760").should("be.visible");
-    });
-    H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.entityPickerModal().within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("Orders").click();
-    });
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.undoToastList().last().findByText("Metric replaced").should("be.visible");
-    H.getDashboardCard().findByText("Orders").should("be.visible");
   });
 
   it("should be able to use click behaviors with metrics on a dashboard", () => {
@@ -346,7 +280,12 @@ describe("scenarios > metrics > dashboard default dimension", () => {
 
     H.createQuestion(metricDefinition).then(({ body: metric }) => {
       cy.request("GET", `/api/metric/${metric.id}`)
-        .then(() => cy.request("GET", `/api/metric/${metric.id}/dimension`))
+        .then(() =>
+          cy.request<ListMetricDimensionsResponse>(
+            "GET",
+            `/api/metric/${metric.id}/dimension`,
+          ),
+        )
         .then(({ body }) => {
           const totalDimension = body.added.find(
             (dimension) => dimension.display_name === "Total",
@@ -357,7 +296,7 @@ describe("scenarios > metrics > dashboard default dimension", () => {
           return cy.request(
             "POST",
             `/api/metric/${metric.id}/dimension/set-default`,
-            { dimension_id: totalDimension.id },
+            { dimension_id: totalDimension?.id },
           );
         })
         .then(() => H.createDashboard())

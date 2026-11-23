@@ -16,6 +16,8 @@ import {
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -525,6 +527,119 @@ describe("DashboardClickAction with a question link", () => {
         (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
       ),
     ).toEqual(["Boolean column is false"]);
+  });
+});
+
+describe("DashboardClickAction with a question link from a metric", () => {
+  it("opens the target question filtered by the clicked metric value of a chart point", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const provider = createMetadataProvider({ metadata });
+    const targetCard = createMockCard({
+      id: 5,
+      name: "Orders",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
+    });
+    const target = getTargetsForQuestion(
+      new Question(targetCard, metadata),
+    ).find(({ name }) => name === "User ID");
+    if (target == null) {
+      throw new Error("User ID target not found");
+    }
+    const metricCard = createMockCard({
+      id: 1,
+      type: "metric",
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+    const createdAtColumn = createMockColumn({
+      id: ORDERS.CREATED_AT,
+      name: "CREATED_AT",
+      display_name: "Created At: Month",
+      base_type: "type/DateTime",
+      effective_type: "type/DateTime",
+      source: "breakout",
+    });
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      source: "aggregation",
+    });
+
+    const actions = DashboardClickAction({
+      question: new Question(metricCard, metadata),
+      clicked: {
+        column: countColumn,
+        value: 92,
+        dimensions: [
+          { column: createdAtColumn, value: "2025-02-01T00:00:00Z" },
+        ],
+        data: [
+          { col: createdAtColumn, value: "2025-02-01T00:00:00Z" },
+          { col: countColumn, value: 92 },
+        ],
+        settings: buildSettings({
+          root: {
+            type: "link",
+            linkType: "question",
+            targetId: targetCard.id,
+            parameterMapping: {
+              [target.id]: {
+                id: target.id,
+                source: { type: "column", id: "count", name: "Count" },
+                target: target.target,
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: metricCard.id,
+            card: metricCard,
+          }),
+          questions: { [targetCard.id]: targetCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuestion = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    );
+    const drilledQuery = drilledQuestion.query();
+    expect(drilledQuestion.card().original_card_id).toBe(targetCard.id);
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["User ID is 92"]);
   });
 });
 

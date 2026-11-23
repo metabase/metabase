@@ -350,6 +350,45 @@ describe("DashCardCardParameterMapper", () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Product category");
     expect(options[1]).toHaveTextContent("Product title");
+    // Curated dimensions drop the table sections and the fields left out of the curation
+    expect(screen.queryByText("Product")).not.toBeInTheDocument();
+    expect(screen.queryByText("User")).not.toBeInTheDocument();
+    expect(screen.queryByText("Email")).not.toBeInTheDocument();
+  });
+
+  it("shows every mapping option under its table section for a question", async () => {
+    setup({
+      card: createMockCard({
+        type: "question",
+        dataset_query: createMockStructuredDatasetQuery({
+          query: {
+            "source-table": 1,
+          },
+        }),
+      }),
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 2, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Category",
+        },
+        {
+          target: ["dimension", ["field", 3, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "User",
+          name: "Email",
+        },
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Select…"));
+
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("User")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Email/ })).toBeInTheDocument();
   });
 
   describe("Auto-connected hint", () => {
