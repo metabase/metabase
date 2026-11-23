@@ -3,7 +3,6 @@
   (:require
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references]
-   [metabase.sql-parsing.sqlglot-java.statements :as statements]
    [metabase.util :as u])
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Parameter Expressions$Placeholder
@@ -173,6 +172,17 @@
       (ast/set-arg! inner "kind" nil))
     inner))
 
+(defn- whole-query
+  "`stmt` without brackets around the whole of it.
+  Throws a `not-a-select` refusal for brackets with a clause of their own, such as an outer WITH or ORDER BY.
+  Port of `_whole_query`."
+  [stmt]
+  (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
+    (if (only-args? #{"this"} stmt)
+      (recur (ast/this stmt))
+      (throw (unsupported "not-a-select")))
+    stmt))
+
 (defn- parse-statement
   "The one statement in `sql`, without brackets around the whole of it.
   Throws an `unparseable` or `multiple-statements` refusal otherwise."
@@ -183,7 +193,7 @@
                   (throw (unsupported "unparseable"))))]
     (case (count stmts)
       0 (throw (unsupported "unparseable"))
-      1 (statements/unbracketed (first stmts))
+      1 (whole-query (first stmts))
       (throw (unsupported "multiple-statements")))))
 
 (defn- statement-refusal

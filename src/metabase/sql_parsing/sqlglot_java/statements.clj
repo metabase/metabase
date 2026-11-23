@@ -272,7 +272,7 @@
           (re-find #"--(?![ \t\n\r\f\x0B]|\z)" sql)                   ["bare-dash-comment" nil]
           (re-find #"\\['\"`]" sql)                                  ["backslash-quote" nil]))))
 
-(defn unbracketed
+(defn- unbracketed
   "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias.
   Port of `_unbracketed`."
   [stmt]

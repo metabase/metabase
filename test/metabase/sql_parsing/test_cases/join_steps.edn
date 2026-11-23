@@ -241,4 +241,12 @@
   {:name "empty SQL is refused",
    :dialect "postgres",
    :sql "",
+   :expected {:status "unsupported", :reason "not-a-select"}}
+  {:name "brackets with an outer WITH are refused, since the steps would lose the CTE",
+   :dialect "postgres",
+   :sql "WITH c AS (SELECT 1 AS id) (SELECT * FROM a JOIN c ON a.id = c.id) ORDER BY 1",
+   :expected {:status "unsupported", :reason "not-a-select"}}
+  {:name "brackets with a trailing clause of their own are refused",
+   :dialect "postgres",
+   :sql "(SELECT * FROM a JOIN b ON a.id = b.id) LIMIT 5",
    :expected {:status "unsupported", :reason "not-a-select"}}]}

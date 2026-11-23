@@ -516,6 +516,18 @@ def _join_step_strategy(join):
     return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
 
 
+def _whole_query(stmt):
+    """`stmt` without brackets around the whole of it.
+
+    Raises `_JoinStepsUnsupported` for brackets with a clause of their own, such as an outer WITH or ORDER BY.
+    """
+    while isinstance(stmt, exp.Subquery) and not stmt.alias:
+        if _set_args(stmt) - {"this"}:
+            raise _JoinStepsUnsupported("not-a-select")
+        stmt = stmt.this
+    return stmt
+
+
 def _count_select(from_, joins, with_=None):
     """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
     select = exp.Select(
@@ -579,7 +591,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
             raise _JoinStepsUnsupported("unparseable")
         if len(stmts) != 1:
             raise _JoinStepsUnsupported("multiple-statements" if stmts else "unparseable")
-        stmt = _unbracketed(stmts[0])
+        stmt = _whole_query(stmts[0])
         if isinstance(stmt, exp.SetOperation):
             raise _JoinStepsUnsupported("set-operation")
         if not isinstance(stmt, exp.Select):
