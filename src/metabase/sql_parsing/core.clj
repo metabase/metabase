@@ -633,7 +633,7 @@
    The `:base_sql` counts the rows of the FROM source alone.
    A step's `:sql` counts the rows of the FROM source joined with every join up to and including that step.
    Both keep any WITH clause and leave out the WHERE clause and everything else outside FROM and JOIN.
-   For an outer join the step query returns a second count in the same row, of the same chain with that join made INNER.
+   For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
 
    Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
    SQL that is not a read-only SELECT is refused as `\"not-read-only\"`, and SQL whose literal lists are too large to

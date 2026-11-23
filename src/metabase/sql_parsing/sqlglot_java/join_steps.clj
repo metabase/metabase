@@ -5,7 +5,7 @@
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Parameter Expressions$Placeholder
+   (com.metabase.sqlglot.ast Expr Expressions$Column Expressions$Identifier Expressions$Parameter Expressions$Placeholder
                              Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
@@ -178,6 +178,56 @@
       (ast/set-arg! inner "kind" nil))
     inner))
 
+(defn- source-identifier
+  "The identifier a join's ON clause calls the source `node` by, or nil for a source with no name.
+  Port of `_source_identifier`."
+  [node]
+  (or (some-> (ast/arg node "alias") ast/this)
+      (when (instance? Expressions$Table node)
+        (ast/this node))))
+
+(defn- schema-qualified-column?
+  "Whether `on`, a join condition or nil, references a column through its schema or catalog."
+  [on]
+  (and on
+       (some #(or (seq (ast/text % "db")) (seq (ast/text % "catalog")))
+             (ast/find-all on Expressions$Column))))
+
+(defn- left-join-counts
+  "The output and matched counts of a chain ending in a LEFT join, from one evaluation of it, or nil.
+  The joined source is wrapped to carry a marker column, which is NULL on a row that found no match.
+  Port of `_left_join_counts`."
+  [from-node chain with-node dialect]
+  (let [join (peek chain)
+        node (ast/this join)
+        id   (source-identifier node)]
+    ;; ClickHouse fills unmatched columns with defaults by default, so its marker would not be NULL.
+    ;; A wrapped source no longer answers to a schema-qualified column reference.
+    (when-not (or (= "clickhouse" dialect)
+                  (nil? id)
+                  (schema-qualified-column? (ast/arg join "on")))
+      (let [column (fn [this] (ast/create "Column" {"this" this, "table" (ast/copy id)}))
+            marked (ast/create "Select"
+                               {"expressions" [(column (ast/create "Star"))
+                                               (ast/create "Alias" {"this"  (ast/create "Literal" {"this"      "1"
+                                                                                                   "is_string" false})
+                                                                    "alias" (ast/to-identifier "mb_matched")})]
+                                "from_"       (ast/create "From" {"this" (ast/copy node)})})
+            last'  (doto (ast/copy join)
+                     (ast/set-arg! "this" (ast/create "Subquery"
+                                                      {"this"  marked
+                                                       "alias" (ast/create "TableAlias" {"this" (ast/copy id)})})))]
+        (with-clause
+          (ast/create "Select"
+                      {"expressions" [(count-star-as-n)
+                                      (ast/create "Alias"
+                                                  {"this"  (ast/create "Count"
+                                                                       {"this" (column (ast/to-identifier "mb_matched"))})
+                                                   "alias" (ast/to-identifier "m")})]
+                       "from_"       (ast/copy from-node)
+                       "joins"       (conj (mapv ast/copy (pop chain)) last')})
+          with-node)))))
+
 (defn- whole-query
   "`stmt` without brackets around the whole of it.
   Throws a `not-a-select` refusal for brackets with a clause of their own, such as an outer WITH or ORDER BY.
@@ -244,9 +294,11 @@
                                strategy (step-strategy join)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
-                                          (two-counts (count-select from-node chain)
-                                                      (count-select from-node (conj (pop chain) (inner-variant join)))
-                                                      with-node)
+                                          (or (when (= "left" strategy)
+                                                (left-join-counts from-node chain with-node dialect))
+                                              (two-counts (count-select from-node chain)
+                                                          (count-select from-node (conj (pop chain) (inner-variant join)))
+                                                          with-node))
                                           (count-select from-node chain with-node))]
                            (assoc source :strategy strategy :sql (ast/sql query dialect))))
                        joins))})))

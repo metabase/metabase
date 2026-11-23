@@ -319,7 +319,7 @@
   Each of `:steps` describes one join, in query order.
   A step's `:sql` counts the rows of the FROM source joined with every join up to and including it.
   The WHERE clause and everything else outside FROM and JOIN are left out, and a WITH clause is kept.
-  For an outer join the `:sql` returns a second count in the same row: the rows of the chain with that join made INNER.
+  For an outer join the `:sql` returns a second count in the same row: the rows where that join found a match.
 
   A source's `:source` is `:table`, `:cte` or `:derived`.
   Its `:table-id` is the id of the Table a `:table` source names in the query's database, nil when none matches.
