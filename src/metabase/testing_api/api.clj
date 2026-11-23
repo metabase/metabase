@@ -22,9 +22,11 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.models.metabot-message :as metabot-message]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.permissions.models.permissions-group :as permissions-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -615,6 +617,27 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
+  "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
+  Admins only, because the testing routes are not behind the authentication middleware.
+  Answers 502 when the tool call fails, so a caller can tell a failed search from one that found nothing."
+  [_route-params
+   _query-params
+   {:keys [retriever arguments]} :- [:map {:closed true}
+                                     [:retriever (into [:enum] metabot.tools/retriever-names)]
+                                     [:arguments [:map {:closed true}
+                                                  [:database_id {:optional true} :int]
+                                                  [:entity_types {:optional true} [:sequential :string]]
+                                                  [:keyword_queries {:optional true} [:sequential :string]]
+                                                  [:limit {:optional true} :int]
+                                                  [:semantic_queries {:optional true} [:sequential :string]]
+                                                  [:user_search_prompt {:optional true} :string]]]]]
+  (api/check-superuser)
+  (let [{:keys [output error]} (metabot.tools/run-retriever retriever arguments (metabot.config/resolve-metabot nil))]
+    (when error
+      (throw (ex-info output {:status-code 502, :retrieval-error (select-keys error [:class :code])})))
+    {:output output}))
 
 (api.macros/defendpoint :post "/mcp/seed-tool-call"
   :- [:map

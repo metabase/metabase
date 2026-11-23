@@ -8,8 +8,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.global-system.mutable-component :as mc]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.tools.search :as metabot.search]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
@@ -201,3 +203,37 @@
     (testing "a nil value unsets it"
       (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
       (is (nil? (server.settings/isolated-origin))))))
+
+(deftest ^:parallel metabot-retrieve-is-for-admins-test
+  (is (= "You don't have permissions to do that."
+         (mt/user-http-request :rasta :post 403 "testing/metabot/retrieve"
+                               {:retriever "general", :arguments {:keyword_queries ["orders"]}})))
+  (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                            {:retriever "run_sql", :arguments {}})))))
+
+(deftest metabot-retrieve-runs-the-named-tool-test
+  (doseq [[retriever types arguments] [["general"
+                                        ["dashboard" "document" "measure" "metric" "model" "question" "segment" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["nlq"
+                                        ["metric" "measure" "segment" "model" "question" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["sql"
+                                        ["model" "table"]
+                                        {:keyword_queries ["orders"], :database_id (mt/id)}]]]
+    (testing retriever
+      (let [opts (atom nil)]
+        (with-redefs [metabot.search/search (fn [search-opts] (reset! opts search-opts) [])]
+          (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                      {:retriever retriever, :arguments arguments})))))
+        (is (= types (vec (:entity-types @opts))))
+        (is (= ["orders"] (:term-queries @opts)))))))
+
+(deftest metabot-retrieve-reports-a-failed-call-test
+  (with-redefs [#_{:clj-kondo/ignore [:discouraged-var]}
+                entity-retrieval/search-unfiltered (constantly :unavailable)]
+    (is (= "Library search is unavailable."
+           (re-find #"Library search is unavailable\."
+                    (str (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                               {:retriever "library"
+                                                :arguments {:user_search_prompt "Where are the orders?"}})))))))

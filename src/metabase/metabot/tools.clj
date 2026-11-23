@@ -173,3 +173,30 @@
           :runs-alone?         (:metabot/runs-alone? declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))
+
+(def ^:private retrievers
+  "The read-only retrieval tools [[run-retriever]] can run, each with a profile that offers it."
+  {"general" {:tool search-tool, :profile-id :internal}
+   "library" {:tool retrieve-library-entities-tool, :profile-id :nlq}
+   "nlq"     {:tool nlq-search-tool, :profile-id :nlq}
+   "sql"     {:tool sql-search-tool, :profile-id :sql}})
+
+(def retriever-names
+  "The names [[run-retriever]] accepts."
+  (sort (keys retrievers)))
+
+(defn run-retriever
+  "Run the named retrieval tool once with `args`, as `metabot` and the current user, with no model.
+  Returns the `metabase.metabot.tools.runtime/invoke` outcome, which carries `:error` when the call failed."
+  [retriever args metabot]
+  (let [{:keys [tool profile-id]} (get retrievers retriever)
+        entries                   (tools.core/entries (tools.legacy/adapt-all [tool]))
+        [tool-name]               (keys entries)]
+    (tools.runtime/invoke entries
+                          {:profile-id  profile-id
+                           :metabot     metabot
+                           :user-scope  #{scope/agent-search}
+                           :tool-names  #{tool-name}
+                           :memory-atom (atom {})}
+                          tool-name
+                          args)))
