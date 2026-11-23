@@ -67,14 +67,18 @@
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/delete! :model/ConnectionImpersonation :id [:in [:auto/param (vec ids)]]))
 
-(mu/defn delete-impersonations-for-groups-and-databases!
-  "Delete the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`."
-  [pairs :- [:sequential {:min 1} [:tuple ms/PositiveInt ::lib.schema.id/database]]]
-  (t2/delete! :model/ConnectionImpersonation
-              {:where (into [:or]
-                            (map (fn [[group-id database-id]]
-                                   [:and [:= :group_id [:auto/param group-id]] [:= :db_id [:auto/param database-id]]]))
-                            (distinct pairs))}))
+(mu/defn impersonation-ids-for-groups-and-databases :- [:sequential ms/PositiveInt]
+  "The ids of the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`, read
+  `app-db/update-partition-size` pairs at a time."
+  [pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/database]]]
+  (into []
+        (mapcat (fn [batch]
+                  (t2/select-pks-vec :model/ConnectionImpersonation
+                                     {:where (into [:or]
+                                                   (map (fn [[group-id database-id]]
+                                                          [:and [:= :group_id [:auto/param group-id]] [:= :db_id [:auto/param database-id]]]))
+                                                   batch)})))
+        (partition-all app-db/update-partition-size (distinct pairs))))
 
 (mu/defn view-data-permission-values
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
@@ -110,11 +114,15 @@
    row    :- ::impersonation.schema/impersonation-query-cache.update]
   (app-db/update-or-insert! :model/ImpersonationQueryCache lookup (constantly row)))
 
-(mu/defn delete-outdated-query-caches! :- :int
-  "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
-  returning the number deleted."
+(mu/defn outdated-query-cache-ids :- [:sequential ms/PositiveInt]
+  "The ids of the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`."
   [version :- :string
    cutoff  :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (t2/delete! :model/ImpersonationQueryCache {:where [:or
-                                                      [:not= :input_version version]
-                                                      [:< :created_at cutoff]]}))
+  (vec (t2/select-pks-vec :model/ImpersonationQueryCache {:where [:or
+                                                                  [:not= :input_version version]
+                                                                  [:< :created_at cutoff]]})))
+
+(mu/defn delete-query-caches! :- :int
+  "Delete the ImpersonationQueryCaches with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/ImpersonationQueryCache :id [:in ids]))

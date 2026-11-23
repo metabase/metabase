@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.test-util :as events.tu]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.pulse.schema :as pulse.schema]
@@ -47,7 +48,7 @@
           (let [counted (fn [n]
                           (let [ids (pulses! n)]
                             (pulse-card/create-pulse-cards! (rows ids))
-                            (events.tu/statement-count! #(pulse-card/delete-pulse-cards-for-pulses! ids))))]
+                            (events.tu/statement-count! #(pulse-card/delete-pulse-cards! (pulse.db/pulse-card-ids-for-pulses ids)))))]
             (counted 2)
             (is (= (counted 2) (counted 6)))))
         (testing "deleting the PulseCards of DashboardCards"
@@ -56,7 +57,7 @@
                                                                     (vec (repeat n {:dashboard_id dashboard :card_id card-id :size_x 1 :size_y 1 :row 0 :col 0})))
                                 ids       (pulses! n)]
                             (pulse-card/create-pulse-cards! (vec (map (fn [id dashcard] {:pulse_id id :card_id card-id :position 0 :dashboard_card_id dashcard}) ids dashcards)))
-                            (events.tu/statement-count! #(pulse-card/delete-pulse-cards-for-dashcards! dashcards))))]
+                            (events.tu/statement-count! #(pulse-card/delete-pulse-cards! (pulse.db/pulse-card-ids-for-dashcards dashcards)))))]
             (counted 2)
             (is (= (counted 2) (counted 6)))))))))
 

@@ -91,8 +91,12 @@
                                          [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]]
   (app-db/insert-returning-instances! :model/ModerationReview rows))
 
-(mu/defn delete-card-reviews!
-  "Delete the ModerationReviews of the Cards with `card-ids`, returning the number deleted. By table name, so search's
-  delete capture skips it: these reviews only feed the Cards being deleted."
+(mu/defn moderation-review-ids-of-cards :- [:vector ms/PositiveInt]
+  "The ids of the ModerationReviews of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id [:in card-ids]))
+  (vec (t2/select-pks-vec :model/ModerationReview :moderated_item_type "card" :moderated_item_id [:in card-ids])))
+
+(mu/defn moderation-reviews-by-ids
+  "The ModerationReviews with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (vec (t2/select :model/ModerationReview :id [:in ids])))

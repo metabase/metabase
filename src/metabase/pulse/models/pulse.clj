@@ -850,9 +850,9 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (when (seq dashcard-ids)
     (t2/with-transaction [_conn]
-      (when-let [pulse-ids (not-empty (map :pulse_id (pulse.db/pulse-cards-for-dashcards dashcard-ids)))]
-        (pulse-card/delete-pulse-cards-for-dashcards! dashcard-ids)
-        (publish-touch! pulse-ids))))
+      (when-let [cards (not-empty (pulse.db/pulse-cards-for-dashcards dashcard-ids))]
+        (pulse-card/delete-pulse-cards! (mapv :id cards))
+        (publish-touch! (map :pulse_id cards)))))
   nil)
 
 (mu/defn update-pulse-channel-details! :- :nil
@@ -977,7 +977,7 @@
   [card-refs-by-pulse :- [:map-of ::lib.schema.id/pulse [:sequential CardRef]]
    existing           :- [:map-of ::lib.schema.id/pulse [:sequential CardRef]]]
   (when (seq card-refs-by-pulse)
-    (pulse-card/delete-pulse-cards-for-pulses! (filterv #(seq (get existing %)) (keys card-refs-by-pulse)))
+    (pulse-card/delete-pulse-cards! (pulse.db/pulse-card-ids-for-pulses (filterv #(seq (get existing %)) (keys card-refs-by-pulse))))
     (pulse-card/create-pulse-cards! (into [] (mapcat (fn [[pulse-id card-refs]] (card-rows pulse-id card-refs))) card-refs-by-pulse)))
   (into #{}
         (filter (fn [pulse-id] (or (seq (get existing pulse-id)) (seq (get card-refs-by-pulse pulse-id)))))

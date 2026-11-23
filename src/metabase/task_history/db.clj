@@ -140,7 +140,7 @@
 (mu/defn task-history-ids-ended-before :- [:sequential ms/PositiveInt]
   "The ids of the TaskHistory rows that ended at or before `ended-before`."
   [ended-before :- ms/TemporalInstant]
-  (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before]))
+  (vec (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before])))
 
 (mu/defn delete-task-histories!
   "Delete the TaskHistory rows with `ids`, returning the number deleted."

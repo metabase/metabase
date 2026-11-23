@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.collection-permission-graph-revision
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
@@ -45,24 +46,42 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-collection-permission-graph-revisions!
-  "Insert the CollectionPermissionGraphRevision `rows` and return them in order."
+  "Insert the CollectionPermissionGraphRevision `rows` in one transaction and return them in order."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
   (if (empty? rows)
     []
-    (permissions.db/insert-collection-permission-graph-revisions! rows)))
+    (t2/with-transaction [_conn]
+      (into [] (mapcat (comp permissions.db/insert-collection-permission-graph-revisions! vec))
+            (partition-all app-db/create-partition-size rows)))))
+
+(defn- check-revision-updates
+  "Throws unless every row of `updates`, whose stored revisions `stored` holds, satisfies these rules:
+
+  - the hooks of the revision accept the row merged into its stored row"
+  [stored updates]
+  (doseq [{id :id :as row} updates]
+    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge (stored id) (dissoc row :id)))))
+
+(defn- write-revision-updates!
+  "Write `updates` over the `stored` revisions, one statement per distinct change."
+  [stored updates]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
+    (permissions.db/update-collection-permission-graph-revisions! ids changes)))
+
+(defn- update-revision-batch!
+  "Check and apply the `batch` of updates whose revisions exist."
+  [batch]
+  (let [stored  (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id batch)))
+        updates (filterv (comp stored :id) batch)]
+    (check-revision-updates stored updates)
+    (write-revision-updates! stored updates)))
 
 (mu/defn update-collection-permission-graph-revisions! :- :nil
-  "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions."
+  "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions in one transaction."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
   (when (seq rows)
     (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id rows)))]
-        (doseq [{id :id :as row} rows
-                :let [before (stored id)]
-                :when before]
-          (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge before (dissoc row :id))))
-        (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-          (permissions.db/update-collection-permission-graph-revisions! ids changes)))))
+      (run! update-revision-batch! (partition-all app-db/update-partition-size rows))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

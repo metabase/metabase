@@ -3,7 +3,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.malli :as mu]
@@ -71,17 +70,11 @@
     (pulse.db/insert-pulse-cards! (vec (pulse-cards-to-append new-pulse-cards)))
     []))
 
-(mu/defn delete-pulse-cards-for-pulses! :- :boolean
-  "Delete the PulseCards of the Pulses with `pulse-ids` and return whether there were any."
-  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (boolean (when (seq pulse-ids)
-             (pos? (pulse.db/delete-pulse-cards-for-pulses! pulse-ids)))))
-
-(mu/defn delete-pulse-cards-for-dashcards! :- :nil
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (when (seq dashcard-ids)
-    (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))
+(mu/defn delete-pulse-cards! :- :nil
+  "Delete the PulseCards with `ids`, a plain write that publishes nothing."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (pulse.db/delete-pulse-cards! ids))
   nil)
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------

@@ -147,11 +147,9 @@
   (mt/with-model-cleanup [:model/TransformTag]
     (let [ids      (mapv :id (transform-tag/create-transform-tags! (mapv #(hash-map :name %) (tag-names 10))))
           update!  (fn [ids]
-                     (let [published (atom [])]
-                       (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
-                         {:statements (events.tu/statement-count!
-                                       (fn [] (transform-tag/update-transform-tags! (mapv #(hash-map :id % :name (str "Renamed " % " " (mt/random-name))) ids))))
-                          :events     @published})))
+                     (let [write! (fn [] (transform-tag/update-transform-tags! (mapv #(hash-map :id % :name (str "Renamed " % " " (mt/random-name))) ids)))]
+                       {:statements (events.tu/statement-count! write!)
+                        :events     (events.tu/published-topics! write!)}))
           _warm    (update! (take 1 ids))
           small    (update! (take 2 (drop 1 ids)))
           large    (update! (take 6 (drop 3 ids)))]

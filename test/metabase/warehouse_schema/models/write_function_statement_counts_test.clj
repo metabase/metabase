@@ -3,7 +3,6 @@
   call, also when the rows differ in stored state."
   (:require
    [clojure.test :refer :all]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -442,14 +441,6 @@
       (counted 1)
       (is (<= (- (counted 6) (counted 2)) (* per-row 4))))))
 
-(defn- published-count!
-  "The number of events `thunk` publishes."
-  [thunk]
-  (let [published (atom 0)]
-    (mt/with-dynamic-fn-redefs [events/publish-event! (fn [_topic event] (swap! published inc) event)]
-      (thunk))
-    @published))
-
 (deftest update-functions-publish-same-events-at-two-and-six-rows-test
   (testing "the update functions of Fields, Tables and Databases publish as many events for 2 rows as for 6"
     (let [published! (fn [n]
@@ -457,10 +448,11 @@
                                       :model/Table {table-id :id} {:db_id db-id}]
                          (let [field-ids (insert-fields! table-id "E" n {})
                                table-ids (insert-tables! db-id n)]
-                           (published-count!
-                            (fn []
-                              (field/update-fields! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) field-ids)))
-                              (table/update-tables! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) table-ids)))
-                              (database/update-databases! [{:id db-id :description (str "e" n)}])
-                              (field/delete-fields! field-ids))))))]
+                           (count
+                            (events.tu/published-topics!
+                             (fn []
+                               (field/update-fields! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) field-ids)))
+                               (table/update-tables! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) table-ids)))
+                               (database/update-databases! [{:id db-id :description (str "e" n)}])
+                               (field/delete-fields! field-ids)))))))]
       (is (= (published! 2) (published! 6))))))

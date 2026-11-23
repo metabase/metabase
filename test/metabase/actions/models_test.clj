@@ -881,7 +881,7 @@
           (counted (fn [n]
                      (let [ids       (fresh! n)
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
-                       (events.tu/statement-count! #(action/delete-actions-for-models! model-ids))))))
+                       (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-models model-ids)))))))
         (testing "moving the actions of models"
           (counted (fn [n]
                      (let [ids       (fresh! n)
@@ -895,7 +895,7 @@
                         (mapv (fn [table] {:name (mt/random-name) :type :implicit :kind :row/create :table_id table
                                            :creator_id (mt/user->id :rasta)})
                               tables))
-                       (events.tu/statement-count! #(action/delete-actions-for-tables! tables))))))
+                       (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-tables tables)))))))
         (testing "deleting the actions on databases"
           (counted (fn [n]
                      (let [databases (mapv (fn [_] (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))) (range n))]
@@ -903,7 +903,7 @@
                         (mapv (fn [database] {:name (mt/random-name) :type :implicit :kind :row/create :table_id (table-id database)
                                               :creator_id (mt/user->id :rasta)})
                               databases))
-                       (events.tu/statement-count! #(action/delete-actions-for-databases! databases))))))))))
+                       (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-databases databases)))))))))))
 
 (deftest archived-directly-follows-collection-in-the-statement-test
   (mt/with-temp [:model/Collection {live :id}     {}

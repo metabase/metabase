@@ -88,20 +88,14 @@
           writes
           rows))
 
-(defn- publish-deletes!
-  "Publish, right before the statement that deletes the settings `rows`, as they were read, the delete of those that
-  existed before the call, as they were then, and return `writes` with their deletes."
+(defn- add-deleted
+  "`writes` with the delete of the settings `rows`, as they were read, which [[publish-writes!]] publishes."
   [writes rows]
-  (if (empty? rows)
-    writes
-    (let [writes (reduce (fn [writes row]
-                           (let [write (get writes (:id row))]
-                             (assoc writes (:id row) {:before (if write (:before write) row) :after ::deleted})))
-                         writes
-                         rows)]
-      (events/publish-event! :event/field-user-settings-delete
-                             (events/delete-event (into [] (keep #(:before (get writes (:id %)))) rows)))
-      writes)))
+  (reduce (fn [writes row]
+            (let [write (get writes (:id row))]
+              (assoc writes (:id row) {:before (if write (:before write) row) :after ::deleted})))
+          writes
+          rows))
 
 (defn- delete-empty!
   "Delete the settings, among those of the Fields with `field-ids`, that hold no user value and no true flag, in batches
@@ -110,18 +104,24 @@
   (reduce (fn [writes batch]
             (let [field-ids (vec batch)
                   rows      (warehouse-schema.db/empty-field-user-settings field-ids)]
-              (u/prog1 (publish-deletes! writes rows)
+              (u/prog1 (add-deleted writes rows)
                 (when (seq rows)
                   (warehouse-schema.db/delete-empty-field-user-settings! field-ids)))))
           writes
           (partition-all mdb/delete-partition-size (distinct field-ids))))
 
+(defn- deleted-rows
+  "The rows, as they were before the call, of the settings that `writes` deletes and that existed before the call."
+  [writes]
+  (into [] (keep (fn [{:keys [before after]}] (when (and before (= ::deleted after)) before))) (vals writes)))
+
 (defn- publish-writes!
-  "Publish the creates and the updates that change something of `writes`, whose deletes were published as they were
-  made."
+  "Publish the deletes, the creates and the updates that change something of `writes`, one event each for the call."
   [writes]
   (let [live    (into {} (remove #(= ::deleted (:after (val %)))) writes)
         updated (into {} (filter (comp :before val)) live)]
+    (when-let [deleted (not-empty (deleted-rows writes))]
+      (events/publish-event! :event/field-user-settings-delete (events/delete-event deleted)))
     (events/publish-event! :event/field-user-settings-create
                            (events/create-event (into [] (keep (fn [{:keys [before after]}] (when-not before after))) (vals live))))
     (events/publish-event! :event/field-user-settings-update

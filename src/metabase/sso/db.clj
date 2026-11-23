@@ -52,7 +52,7 @@
   "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider [:auto/param provider]))
+  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider [:auto/param provider])))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."

@@ -2452,15 +2452,15 @@
         (with-redefs [app-db/create-partition-size 2
                       app-db/update-partition-size 2
                       app-db/delete-partition-size 2]
-          (let [published (atom [])]
-            (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
-              (let [ids (mapv :id (card/create-cards! (cards-with-metadata 5 coll-id)))]
-                (card/update-cards! (mapv (fn [id] {:id id :description "partitioned"}) ids) {:writer :import})
-                (is (= #{"partitioned"} (set (t2/select-fn-vec :description :model/Card :id [:in ids]))))
-                (card/delete-cards! ids)
-                (is (zero? (t2/count :model/Card :id [:in ids])))))
+          (let [ids    (atom [])
+                topics (events.tu/published-topics!
+                        (fn []
+                          (reset! ids (mapv :id (card/create-cards! (cards-with-metadata 5 coll-id))))
+                          (card/update-cards! (mapv (fn [id] {:id id :description "partitioned"}) @ids) {:writer :import})
+                          (card/delete-cards! @ids)))]
             (is (= [:event/card-create :event/card-update :event/card-delete]
-                   (filterv #{:event/card-create :event/card-update :event/card-delete} @published)))))))))
+                   (filterv #{:event/card-create :event/card-update :event/card-delete} topics)))
+            (is (zero? (t2/count :model/Card :id [:in @ids])))))))))
 
 (deftest update-cards-for-replacement-test
   (testing "each row is applied to its own Card"

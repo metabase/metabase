@@ -139,8 +139,6 @@
       (throw (ex-info (tru "Cannot grant permissions on a destination database.")
                       {:status-code 400 :destination-db-ids dest-ids})))))
 
-(def ^:private permission-batch-size 1000)
-
 (mu/defn create-data-permissions!
   "Insert the DataPermissions `rows` in batches that stay under the database limit on the parameters of a prepared
   statement, the transforms rows last so that the create-queries rows they are checked against are stored. A row on a
@@ -150,17 +148,17 @@
   (let [{transforms true, others false} (group-by #(= :perms/transforms (keyword (:perm_type %))) rows)]
     (t2/with-transaction [_conn]
       (doseq [rows  [others transforms]
-              batch (partition-all permission-batch-size rows)]
+              batch (partition-all mdb/create-partition-size rows)]
         (check-transforms-need-native batch)
         (assert-no-destination-db-permissions! batch)
         (permissions.db/insert-data-permissions! batch)))))
 
 (mu/defn delete-data-permissions!
-  "Delete the DataPermissions with `ids`, in batches that stay under the database limit on the parameters of a
-  prepared statement."
+  "Delete the DataPermissions with `ids` in one transaction, `mdb/delete-partition-size` per statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (doseq [batch (partition-all permission-batch-size ids)]
-    (permissions.db/delete-data-permissions! batch)))
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (run! (comp permissions.db/delete-data-permissions! vec) (partition-all mdb/delete-partition-size ids)))))
 
 (mu/defn update-data-permissions-for-database! :- :nil
   "Set the `schema_name` of the table-level DataPermissions of the Database with `database-id`, which follows its

@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -882,17 +881,13 @@
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
                  :model/PermissionsGroup {group-2 :id} {}]
     (mt/with-model-cleanup [:model/Sandbox]
-      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
-            published (fn [write!]
-                        (let [events (atom [])]
-                          (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic (count (:changes event))]) event)]
-                            (write!))
-                          @events))]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])]
         (doseq [[group-id n] [[group-1 2] [group-2 6]]]
           (let [ids (t2/insert-returning-pks! :model/Sandbox (mapv #(hash-map :group_id group-id :table_id %) (take n table-ids)))]
-            (testing "an update of n sandboxes publishes one update event with a change for each"
-              (is (= [[:event/sandbox-update n]]
-                     (published #(sandboxes/update-sandboxes! (mapv (fn [id] {:id id :attribute_remappings {"cat" "CATEGORY_ID"}}) ids))))))
-            (testing "a delete of n sandboxes publishes one delete event with a change for each"
-              (is (= [[:event/sandbox-delete n]]
-                     (published #(sandboxes/delete-sandboxes! ids)))))))))))
+            (testing (str "update of " n " sandboxes publishes one update event")
+              (is (= [:event/sandbox-update]
+                     (events.tu/published-topics!
+                      #(sandboxes/update-sandboxes! (mapv (fn [id] {:id id :attribute_remappings {"cat" "CATEGORY_ID"}}) ids))))))
+            (testing (str "delete of " n " sandboxes publishes one delete event")
+              (is (= [:event/sandbox-delete]
+                     (events.tu/published-topics! #(sandboxes/delete-sandboxes! ids)))))))))))

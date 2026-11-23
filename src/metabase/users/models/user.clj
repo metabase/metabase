@@ -467,16 +467,14 @@
     superuser? (conj (:id (perms/admin-group)))))
 
 (defn- add-to-default-groups!
-  "Add each of the new `users` to its default groups, one partition of them at a time, publishing the events of the
-  writes."
+  "Add each of the new `users` to its default groups in one write, publishing the events of the writes."
   [users]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
      (perms/without-is-superuser-sync-on-add-to-admin-group
-      (doseq [batch (partition-all app-db/create-partition-size users)]
-        (perms-group-membership/add-users-to-groups! (for [user     batch
-                                                           group-id (default-group-ids user)]
-                                                       {:user (:id user) :group group-id})))))))
+      (perms-group-membership/add-users-to-groups! (for [user     users
+                                                         group-id (default-group-ids user)]
+                                                     {:user (:id user) :group group-id}))))))
 
 (mu/defn create-users! :- [:sequential ::users.schema/user]
   "Insert the User `rows` in one transaction and return them in order, each in its default groups, publishing their
@@ -613,13 +611,13 @@
                              (events/update-event stored updates (assoc opts :objects (users-after stored updates)))))))
 
 (defn- cascade-user-updates!
-  "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one partition at a
-  time, with `admin-ids` the Administrators members among them, publishing the events of the writes with `opts`."
+  "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one write per kind
+  for the whole call, with `admin-ids` the Administrators members among them, publishing the events of the writes with
+  `opts`."
   [updates admin-ids opts]
-  (doseq [batch (partition-all app-db/update-partition-size updates)]
-    (set-admin-memberships! batch admin-ids opts)
-    (when-let [deactivated (not-empty (ids-of-rows #(false? (:is_active %)) batch))]
-      (delete-subscriptions! deactivated opts))))
+  (set-admin-memberships! updates admin-ids opts)
+  (when-let [deactivated (not-empty (ids-of-rows #(false? (:is_active %)) updates))]
+    (delete-subscriptions! deactivated opts)))
 
 (mu/defn update-users! :- :int
   "Apply `updates`, each the id of a User and the columns to set, in one transaction and return the number updated,

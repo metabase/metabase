@@ -758,30 +758,30 @@
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (apply t2/select-pks-vec :model/FieldValues (field-values-of-fields-kvs field-ids)))
+  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-fields-kvs field-ids))))
 
 (mu/defn field-values-ids-of-types :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]
    types     :- [:set :keyword]]
-  (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-kvs field-ids types)))
+  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-kvs field-ids types))))
 
 (mu/defn field-values-ids-of-tables :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (apply t2/select-pks-vec :model/FieldValues (field-values-of-tables-kvs table-ids)))
+  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-tables-kvs table-ids))))
 
 (mu/defn field-values-ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of every Field of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (apply t2/select-pks-vec :model/FieldValues (field-values-of-database-kvs database-id)))
+  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-database-kvs database-id))))
 
 (mu/defn field-values-ids-of-types-before :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
+  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days))))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -1068,12 +1068,34 @@
   [database-ids]
   ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:in :db_id database-ids]})
 
-(mu/defn field-ids-of-databases :- [:set ::lib.schema.id/field]
-  "The ids of the Fields of the Tables of the Databases with `database-ids`."
+(mu/defn fields-exist-for-databases?
+  "Whether any Field belongs to a Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (if (seq database-ids)
-    (set (t2/select-pks-set :model/Field :table_id [:in (table-ids-of-databases-query database-ids)]))
-    #{}))
+  (t2/exists? :model/Field :table_id [:in (table-ids-of-databases-query database-ids)]))
+
+(mu/defn delete-childless-fields-for-databases!
+  "Delete the childless Fields of the Tables of the Databases with `database-ids`, returning the number deleted."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (let [table-ids-query (table-ids-of-databases-query database-ids)
+        extra-clause    (if (= (app-db/db-type) :mysql)
+                          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
+                          ;; DELETE target
+                          [:not-in :id ^:allow-subquery {:select [:parent_id]
+                                                         :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                     :from   [(t2/table-name :model/Field)]
+                                                                                     :where  [:and
+                                                                                              [:not= :parent_id nil]
+                                                                                              [:in :table_id table-ids-query]]}
+                                                                   :parent_fields]]}]
+                          [:not [:exists ^:allow-subquery {:select [1]
+                                                           :from   [[(t2/table-name :model/Field) :child_field]]
+                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+    (t2/query-one {:delete-from (t2/table-name :model/Field)
+                   :where       [:and
+                                 [:in :table_id table-ids-query]
+                                 extra-clause]})))
 
 (mu/defn increment-table-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one raw

@@ -1065,11 +1065,14 @@
   [cards changes]
   (let [doc->exploration (when-let [ids (and (some #(mi/changes-only-archived? % changes) cards)
                                              (seq (into [] (comp (keep :document_id) (distinct)) cards)))]
-                           (into {} (keep (fn [{:keys [id exploration_id]}] (when exploration_id [id exploration_id])))
-                                 (queries.db/documents-collection-and-exploration (vec ids))))
+                           (into {} (comp (mapcat #(queries.db/documents-collection-and-exploration (vec %)))
+                                          (keep (fn [{:keys [id exploration_id]}] (when exploration_id [id exploration_id]))))
+                                 (partition-all mdb/update-partition-size ids)))
         writable         (when (seq doc->exploration)
-                           (into #{} (comp (filter mi/can-write?) (map :id))
-                                 (t2/hydrate (queries.db/explorations (vec (distinct (vals doc->exploration)))) :can_write)))]
+                           (into #{} (comp (mapcat #(t2/hydrate (queries.db/explorations (vec %)) :can_write))
+                                           (filter mi/can-write?)
+                                           (map :id))
+                                 (partition-all mdb/update-partition-size (distinct (vals doc->exploration)))))]
     (fn [card]
       (when-let [exploration-id (get doc->exploration (:document_id card))]
         (contains? writable exploration-id)))))
@@ -1694,7 +1697,7 @@
       (when-let [action-ids (seq (queries.db/implicit-action-ids-for-models implicit))]
         (actions.models/delete-actions! (vec action-ids))))
     (when (seq all)
-      (actions.models/delete-actions-for-models! all))))
+      (actions.models/delete-actions! (actions.models/action-ids-of-models all)))))
 
 (defn- delete-alerts-of-changed-cards!
   "Deletes the alerts of the Cards among `updates` that their change from `before` to `after` invalidates."
@@ -1757,7 +1760,7 @@
                          archiving)]
       (when (seq directly)
         (delete-notifications-of-cards! directly))
-      (actions.models/delete-actions-for-models! ids)
+      (actions.models/delete-actions! (actions.models/action-ids-of-models ids))
       (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
                              (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
@@ -2227,11 +2230,11 @@
   [batch]
   (let [card-ids (vec batch)]
     (delete-card-tests-for-cards! card-ids)
-    (actions.models/delete-actions-for-models! card-ids)
+    (actions.models/delete-actions! (actions.models/action-ids-of-models card-ids))
     (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
-    (moderation-review/delete-moderation-reviews-for-cards! card-ids)
+    (moderation-review/delete-moderation-reviews! (moderation-review/moderation-review-ids-of-cards card-ids))
     (revision/delete-revisions-for-entities! "Card" card-ids)
-    (cache-config/delete-cache-configs-for-deleted-targets! "question" card-ids)
+    (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" card-ids))
     (delete-notifications-of-cards! card-ids)
     (queries.db/delete-cards! card-ids)))
 
@@ -2283,7 +2286,7 @@
                  (partition-all 1000)
                  (queries.db/card-ids-for-databases-reducible database-ids)))]
     (doseq [card-ids (partition-all tombstone-chunk-size gone)]
-      (cache-config/delete-cache-configs-for-deleted-targets! "question" card-ids))
+      (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" (vec card-ids))))
     ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))

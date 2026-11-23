@@ -6,7 +6,6 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.write :as dashboards.write]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
@@ -33,15 +32,16 @@
     (with-redefs [app-db/create-partition-size 2
                   app-db/update-partition-size 2
                   app-db/delete-partition-size 2]
-      (let [published (atom [])]
-        (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
-          (let [ids (mapv :id (dashboard/create-dashboards! (mapv (fn [i] {:name (str "Partitioned " i) :creator_id (mt/user->id :rasta)}) (range 5))))]
-            (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "partitioned"}) ids))
-            (is (= #{"partitioned"} (set (t2/select-fn-vec :description :model/Dashboard :id [:in ids]))))
-            (dashboard/delete-dashboards! ids)
-            (is (zero? (t2/count :model/Dashboard :id [:in ids])))))
+      (let [ids    (atom [])
+            topics (events.tu/published-topics!
+                    (fn []
+                      (reset! ids (mapv :id (dashboard/create-dashboards!
+                                             (mapv (fn [i] {:name (str "Partitioned " i) :creator_id (mt/user->id :rasta)}) (range 5)))))
+                      (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "partitioned"}) @ids))
+                      (dashboard/delete-dashboards! @ids)))]
         (is (= [:event/dashboard-create :event/dashboard-update :event/dashboard-delete]
-               (filterv #{:event/dashboard-create :event/dashboard-update :event/dashboard-delete} @published)))))))
+               (filterv #{:event/dashboard-create :event/dashboard-update :event/dashboard-delete} topics)))
+        (is (zero? (t2/count :model/Dashboard :id [:in @ids])))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."

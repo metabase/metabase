@@ -4,6 +4,7 @@
   one operation on a Dashboard and its dashcards and tabs is one Revision. The parts have no spec, so their events make
   none, and nothing is recorded without a user."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
@@ -54,18 +55,25 @@
 
 (events/derive! :metabase/lifecycle-event ::revisions)
 
+(defn- record-revisions!
+  "Records the Revisions of the entities of `infos`, one batch of an event, and publishes their creation, a failure of
+  either being logged."
+  [infos]
+  (let [rows (revision-rows infos)]
+    (when (and (seq rows)
+               (try
+                 (revision/create-revisions! rows)
+                 true
+                 (catch Throwable e
+                   (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))
+                   false)))
+      (try
+        (revision/publish-created! rows)
+        (catch Throwable e
+          (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e)))))))
+
 (methodical/defmethod events/publish-event! ::revisions
   [topic event]
-  (when-let [infos (not-empty (into [] (comp (filter recorded?) (map revision-info)) (u.events/row-events topic event)))]
-    (let [rows (revision-rows infos)]
-      (when (and (seq rows)
-                 (try
-                   (revision/create-revisions! rows)
-                   true
-                   (catch Throwable e
-                     (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))
-                     false)))
-        (try
-          (revision/publish-created! rows)
-          (catch Throwable e
-            (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e))))))))
+  (run! record-revisions!
+        (partition-all app-db/create-partition-size
+                       (into [] (comp (filter recorded?) (map revision-info)) (u.events/row-events topic event)))))

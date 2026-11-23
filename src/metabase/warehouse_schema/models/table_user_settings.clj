@@ -143,45 +143,43 @@
           writes
           rows))
 
-(defn- publish-deletes!
-  "Publish, right before the statement that deletes the settings `rows`, as they were read, the delete of those that
-  existed before the call, as they were then, with the `:context` and `:writer` of `opts`, and return `writes` with
-  their deletes."
-  [writes rows opts]
-  (if (empty? rows)
-    writes
-    (let [writes (reduce (fn [writes row]
-                           (let [write (get writes (:id row))]
-                             (assoc writes (:id row) {:before (if write (:before write) row) :after ::deleted})))
-                         writes
-                         rows)]
-      (events/publish-event! :event/table-user-settings-delete
-                             (events/delete-event (into [] (keep #(:before (get writes (:id %)))) rows) opts))
-      writes)))
+(defn- add-deleted
+  "`writes` with the delete of the settings `rows`, as they were read, which [[publish-writes!]] publishes."
+  [writes rows]
+  (reduce (fn [writes row]
+            (let [write (get writes (:id row))]
+              (assoc writes (:id row) {:before (if write (:before write) row) :after ::deleted})))
+          writes
+          rows))
 
 (defn- delete-empty!
-  "Delete the settings, among those of the Tables with `table-ids`, that hold no user value and no true flag,
-  returning `writes` with their deletes, published with the `:context` and `:writer` of `opts`."
-  ([writes table-ids]
-   (delete-empty! writes table-ids nil))
-  ([writes table-ids opts]
-   (reduce (fn [writes batch]
-             (let [table-ids (vec batch)
-                   rows      (warehouse-schema.db/empty-table-user-settings table-ids)]
-               (u/prog1 (publish-deletes! writes rows opts)
-                 (when (seq rows)
-                   (warehouse-schema.db/delete-empty-table-user-settings! table-ids)))))
-           writes
-           (partition-all mdb/delete-partition-size (distinct table-ids)))))
+  "Delete the settings, among those of the Tables with `table-ids`, that hold no user value and no true flag, in batches
+  of [[mdb/delete-partition-size]] Tables, returning `writes` with their deletes."
+  [writes table-ids]
+  (reduce (fn [writes batch]
+            (let [table-ids (vec batch)
+                  rows      (warehouse-schema.db/empty-table-user-settings table-ids)]
+              (u/prog1 (add-deleted writes rows)
+                (when (seq rows)
+                  (warehouse-schema.db/delete-empty-table-user-settings! table-ids)))))
+          writes
+          (partition-all mdb/delete-partition-size (distinct table-ids))))
+
+(defn- deleted-rows
+  "The rows, as they were before the call, of the settings that `writes` deletes and that existed before the call."
+  [writes]
+  (into [] (keep (fn [{:keys [before after]}] (when (and before (= ::deleted after)) before))) (vals writes)))
 
 (defn- publish-writes!
-  "Publish, with the `:context` and `:writer` of `opts`, the creates and the updates that change something of `writes`,
-  whose deletes were published as they were made."
+  "Publish, with the `:context` and `:writer` of `opts`, the deletes, the creates and the updates that change something
+  of `writes`, one event each for the call."
   ([writes]
    (publish-writes! writes nil))
   ([writes opts]
    (let [live    (into {} (remove #(= ::deleted (:after (val %)))) writes)
          updated (into {} (filter (comp :before val)) live)]
+     (when-let [deleted (not-empty (deleted-rows writes))]
+       (events/publish-event! :event/table-user-settings-delete (events/delete-event deleted opts)))
      (events/publish-event! :event/table-user-settings-create
                             (events/create-event (into [] (keep (fn [{:keys [before after]}] (when-not before after))) (vals live))
                                                  opts))
@@ -259,12 +257,12 @@
 (defn- write-settings-updates!
   "Write each of `rows`, the id of one of the `stored` TableUserSettings, `{id row}`, and the columns to change, with its
   two-column pairs completed from its Table, and delete the settings it leaves without a user value, returning
-  `writes` with these writes; `opts` go into the delete event."
-  [writes stored rows opts]
+  `writes` with these writes."
+  [writes stored rows]
   (let [tables (tables-for (map #(merge (dissoc % :table_id) (select-keys (stored (:id %)) [:table_id])) rows))]
     (-> writes
         (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows) tables)
-        (delete-empty! (map (comp :table_id stored :id) rows) opts))))
+        (delete-empty! (map (comp :table_id stored :id) rows)))))
 
 (mu/defn update-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings.update]
   "Apply each of `rows`, the id of a TableUserSettings and the columns to change, in one transaction and batches of
@@ -279,7 +277,7 @@
      (t2/with-transaction [_conn]
        (let [stored  (settings-by-id (map :id rows))
              written (filterv #(contains? stored (:id %)) rows)
-             writes  (reduce #(write-settings-updates! %1 stored (vec %2) opts)
+             writes  (reduce #(write-settings-updates! %1 stored (vec %2))
                              {}
                              (partition-all mdb/update-partition-size written))]
          (mirror-onto-tables! (map #(merge (stored (:id %)) %) written) opts)

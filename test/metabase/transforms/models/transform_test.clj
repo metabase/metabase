@@ -611,11 +611,9 @@
     (try
       (reset! created (mapv :id (transform/create-transforms! (transform-rows 10))))
       (let [update! (fn [ids]
-                      (let [published (atom [])]
-                        (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
-                          {:statements (events.tu/statement-count!
-                                        (fn [] (transform/update-transforms! (map-indexed (fn [i id] {:id id :description (str "described " i " " (mt/random-name))}) ids))))
-                           :events     @published})))
+                      (let [write! (fn [] (transform/update-transforms! (map-indexed (fn [i id] {:id id :description (str "described " i " " (mt/random-name))}) ids)))]
+                        {:statements (events.tu/statement-count! write!)
+                         :events     (events.tu/published-topics! write!)}))
             ids     @created
             _warm   (update! (take 1 ids))
             small   (update! (take 2 (drop 1 ids)))

@@ -82,7 +82,7 @@
 (mu/defn authorization-code-ids-of-users :- [:sequential ms/PositiveInt]
   "The ids of every OAuthAuthorizationCode of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (t2/select-pks-vec :model/OAuthAuthorizationCode :user_id [:in user-ids]))
+  (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :user_id [:in user-ids])))
 
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."
@@ -133,7 +133,7 @@
 (mu/defn authorization-code-ids-with-code :- [:sequential ms/PositiveInt]
   "The ids of every OAuthAuthorizationCode `code`."
   [code :- :string]
-  (t2/select-pks-vec :model/OAuthAuthorizationCode :code code))
+  (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :code code)))
 
 (mu/defn delete-authorization-codes!
   "Delete the OAuthAuthorizationCodes with `ids`, returning the number deleted."
@@ -173,17 +173,17 @@
 (mu/defn authorization-code-ids-expired-before :- [:sequential ms/PositiveInt]
   "The ids of the OAuthAuthorizationCodes that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/select-pks-vec :model/OAuthAuthorizationCode :expiry [:< now]))
+  (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :expiry [:< now])))
 
 (mu/defn access-token-ids-expired-before :- [:sequential ms/PositiveInt]
   "The ids of the OAuthAccessTokens that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/select-pks-vec :model/OAuthAccessToken :expiry [:< now]))
+  (vec (t2/select-pks-vec :model/OAuthAccessToken :expiry [:< now])))
 
 (mu/defn revoked-access-token-ids :- [:sequential ms/PositiveInt]
   "The ids of the revoked OAuthAccessTokens."
   []
-  (t2/select-pks-vec :model/OAuthAccessToken :revoked_at [:not= nil]))
+  (vec (t2/select-pks-vec :model/OAuthAccessToken :revoked_at [:not= nil])))
 
 (mu/defn delete-access-tokens!
   "Delete the OAuthAccessTokens with `ids`, returning the number deleted."
@@ -193,12 +193,12 @@
 (mu/defn refresh-token-ids-expired-before :- [:sequential ms/PositiveInt]
   "The ids of the OAuthRefreshTokens that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/select-pks-vec :model/OAuthRefreshToken :expiry [:< now]))
+  (vec (t2/select-pks-vec :model/OAuthRefreshToken :expiry [:< now])))
 
 (mu/defn revoked-refresh-token-ids :- [:sequential ms/PositiveInt]
   "The ids of the revoked OAuthRefreshTokens."
   []
-  (t2/select-pks-vec :model/OAuthRefreshToken :revoked_at [:not= nil]))
+  (vec (t2/select-pks-vec :model/OAuthRefreshToken :revoked_at [:not= nil])))
 
 (mu/defn delete-refresh-tokens!
   "Delete the OAuthRefreshTokens with `ids`, returning the number deleted."

@@ -70,7 +70,7 @@
   "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-pks-vec :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
+  (vec (t2/select-pks-vec :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider])))
 
 (mu/defn delete-auth-identities!
   "Delete the AuthIdentities with `ids`, returning the number deleted."

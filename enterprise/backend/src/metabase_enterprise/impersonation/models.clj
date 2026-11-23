@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -58,10 +59,11 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn delete-connection-impersonations! :- :nil
-  "Delete the ConnectionImpersonations with `ids`."
+  "Delete the ConnectionImpersonations with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (impersonation.db/delete-impersonations! ids))
+    (t2/with-transaction [_conn]
+      (run! (comp impersonation.db/delete-impersonations! vec) (partition-all app-db/delete-partition-size ids))))
   nil)
 
 (def ^:private impersonation-pair
@@ -86,8 +88,9 @@
   [impersonations]
   (->> (impersonation-rounds impersonations)
        (into [] (mapcat (fn [round]
-                          (impersonation.db/delete-impersonations-for-groups-and-databases!
-                           (mapv (comp impersonation-pair second) round))
+                          (delete-connection-impersonations!
+                           (impersonation.db/impersonation-ids-for-groups-and-databases
+                            (mapv (comp impersonation-pair second) round)))
                           (map vector (map first round) (impersonation.db/insert-impersonations! (mapv second round))))))
        (sort-by first)
        (mapv second)))
@@ -127,7 +130,7 @@
                                 :let        [pair (unneeded-impersonation-pair group-id database-id data-perm-changes)]
                                 :when       pair]
                             pair)))]
-    (impersonation.db/delete-impersonations-for-groups-and-databases! pairs))
+    (delete-connection-impersonations! (impersonation.db/impersonation-ids-for-groups-and-databases pairs)))
   (log/debug "Done deleting unneeded Connection Impersonations."))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

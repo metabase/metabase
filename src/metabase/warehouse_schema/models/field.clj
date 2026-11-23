@@ -809,9 +809,20 @@
         (run! delete-level! (deepest-first fields)))))
   nil)
 
+(mu/defn delete-fields-for-databases! :- :nil
+  "Delete the Fields of the Tables of the Databases with `database-ids`, as those Databases are deleted, without reading
+  them or publishing events: the childless ones first, one statement per level of nesting, and none at all when the
+  Databases have no Fields, checked without a lock that would recreate the contention on MySQL."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when (warehouse-schema.db/fields-exist-for-databases? database-ids)
+    (loop []
+      (when (pos? (warehouse-schema.db/delete-childless-fields-for-databases! database-ids))
+        (recur))))
+  nil)
+
 (defmethod database/delete-for-databases! :model/Field
   [_model databases]
-  (delete-fields! (vec (warehouse-schema.db/field-ids-of-databases (mapv :id databases)))))
+  (delete-fields-for-databases! (mapv :id databases)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

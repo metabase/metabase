@@ -1010,13 +1010,6 @@
       (run! #(actions.db/delete-actions! (vec %)) batches)))
   nil)
 
-(mu/defn delete-actions-for-models!
-  "Delete the Actions of the model Cards with `model-ids`, in one statement."
-  [model-ids :- [:sequential ::lib.schema.id/card]]
-  (when (seq model-ids)
-    (when-let [ids (not-empty (actions.db/action-ids-of-models model-ids))]
-      (delete-actions! (vec ids)))))
-
 (mu/defn update-actions-for-models!
   "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for
   the root, in one pass over all of them with one statement for each Collection."
@@ -1027,23 +1020,25 @@
                          nil)
     nil))
 
-(mu/defn delete-actions-for-tables!
-  "Delete the Actions that write to the Tables with `table-ids`, in one statement."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (when (seq table-ids)
-    (when-let [ids (not-empty (actions.db/implicit-action-ids-of-tables table-ids))]
-      (delete-actions! (vec ids)))))
+(mu/defn action-ids-of-models :- [:sequential ::lib.schema.id/action]
+  "The ids of the Actions of the model Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (actions.db/action-ids-of-models model-ids))
 
-(mu/defn delete-actions-for-databases!
-  "Delete the query Actions whose query runs against one of the Databases with `database-ids` and the implicit Actions
-  that write to one of their Tables, in one statement."
+(mu/defn action-ids-of-tables :- [:sequential ::lib.schema.id/action]
+  "The ids of the Actions that write to the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (actions.db/implicit-action-ids-of-tables table-ids))
+
+(mu/defn action-ids-of-databases :- [:sequential ::lib.schema.id/action]
+  "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
+  Actions that write to one of their Tables."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (when-let [ids (not-empty (actions.db/action-ids-of-databases database-ids))]
-    (delete-actions! (vec ids))))
+  (actions.db/action-ids-of-databases database-ids))
 
 (defmethod database/delete-for-databases! :model/Action
   [_model databases]
-  (delete-actions-for-databases! (mapv :id databases)))
+  (delete-actions! (action-ids-of-databases (mapv :id databases))))
 
 (defmethod collection/archive-in-collections! :model/Action
   [_model collection-ids opts]

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -121,12 +121,10 @@
                       (mt/with-model-cleanup [:model/PermissionsGroup]
                         (mt/with-temp [:model/User user {}]
                           (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
-                                                                    (for [_ (range n)] {:name (mt/random-name)}))
-                                topics    (atom [])]
-                            (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj topic) event)]
-                              (mt/with-test-user :crowberto
-                                (gm/set-user-group-memberships! user (for [group-id group-ids]
-                                                                       {:id group-id :is_group_manager false}))))
-                            (frequencies @topics)))))]
+                                                                    (for [_ (range n)] {:name (mt/random-name)}))]
+                            (frequencies (events.tu/published-topics!
+                                          #(mt/with-test-user :crowberto
+                                             (gm/set-user-group-memberships! user (for [group-id group-ids]
+                                                                                    {:id group-id :is_group_manager false})))))))))]
       (is (= {:event/group-membership-create 1} (published 2)))
       (is (= (published 2) (published 6))))))

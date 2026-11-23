@@ -7,7 +7,6 @@
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.cache.schema :as cache.schema]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -214,18 +213,19 @@
         (let [counted (fn [n]
                         (let [model-ids (mapv :model_id (configs (create! n)))]
                           (events.tu/statement-count!
-                           #(cache-config/delete-cache-configs-for-targets! "question" (into model-ids (map (partial * 10)) model-ids)))))]
+                           #(cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" (into model-ids (map (partial * 10)) model-ids))
+                                                 {:context {:details {}}}))))]
           (counted 1)
           (is (= (counted 2) (counted 6)))))
       (testing "deleting the configs of deleted questions"
         (let [counted (fn [n]
                         (let [model-ids (mapv :model_id (configs (create! n)))]
-                          (events.tu/statement-count! #(cache-config/delete-cache-configs-for-deleted-targets! "question" model-ids))))]
+                          (events.tu/statement-count! #(cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" model-ids)))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
 
-(deftest delete-cache-configs-for-targets-publishes-one-event-test
-  (testing "deleting the configs of n questions publishes one delete event with a row for each, at 2 and at 6"
+(deftest delete-cache-configs-publishes-one-event-test
+  (testing "deleting the configs of n questions publishes one delete event, at 2 and at 6"
     (mt/with-model-cleanup [:model/CacheConfig]
       (let [next-id   (atom 2000000)
             published (fn [n]
@@ -235,15 +235,13 @@
                                                                                    :model_id model-id
                                                                                    :strategy {:type :ttl :multiplier 1 :min_duration_ms 1}})
                                                  model-id)))
-                              events    (atom [])]
-                          (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic event]) event)]
-                            (cache-config/delete-cache-configs-for-targets! "question" model-ids))
-                          (is (= n (count (:changes (second (first @events))))))
-                          (mapv first @events)))]
+                              ids       (cache-config/cache-config-ids-for-targets "question" model-ids)]
+                          (is (= n (count ids)))
+                          (events.tu/published-topics! #(cache-config/delete-cache-configs! ids {:context {:details {}}}))))]
         (is (= [:event/cache-config-delete] (published 2)))
         (is (= (published 2) (published 6)))))))
 
-(deftest delete-cache-configs-for-targets-records-the-deleted-config-in-the-audit-log-test
+(deftest delete-cache-configs-records-deleted-config-in-audit-log-test
   (testing "each deleted config gets an audit row with the change from it to none, as when one event was published per config"
     (mt/with-premium-features #{:audit-app}
       (mt/with-model-cleanup [:model/CacheConfig :model/AuditLog]
@@ -251,7 +249,8 @@
           (cache-config/save-cache-config! {:model "question" :model_id model-id
                                             :strategy {:type :ttl :multiplier 2 :min_duration_ms 3}})
           (mt/with-test-user :crowberto
-            (cache-config/delete-cache-configs-for-targets! "question" [model-id]))
+            (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" [model-id])
+                                               {:context {:details {}}}))
           (is (=? {:model-id  model-id
                    :new-value {}}
                   (:details (t2/select-one :model/AuditLog :topic "cache-config-update"

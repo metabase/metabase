@@ -159,6 +159,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -435,13 +436,22 @@
   (run! assert-not-admin-group rows)
   (permissions.db/insert-permissions! rows))
 
+(defn- check-permissions-deletable
+  "Throws a 400 unless every one of the Permissions `rows` satisfies these rules:
+
+  - it is not a row of the Admin group"
+  [rows]
+  (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) rows)))
+
 (mu/defn delete-permissions! :- :nil
-  "Delete the Permissions rows with `ids`; a row of the Admin group among them is a 400 and deletes nothing."
+  "Delete the Permissions rows with `ids` in one transaction; a row of the Admin group among them is a 400 and deletes
+  nothing."
   [ids :- [:maybe [:sequential ms/PositiveInt]]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) (permissions.db/permissions-by-ids ids)))
-      (permissions.db/delete-permissions! ids)))
+      (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))]
+        (check-permissions-deletable (into [] (mapcat permissions.db/permissions-by-ids) batches))
+        (run! permissions.db/delete-permissions! batches))))
   nil)
 
 (def collection-permission-ids

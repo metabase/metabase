@@ -7,6 +7,7 @@
    [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -56,12 +57,14 @@
   [row :- ::impersonation.schema/impersonation-query-cache.update]
   (impersonation.db/update-or-insert-query-cache! (lookup row) row))
 
-(mu/defn delete-impersonation-query-caches-for-cleanup! :- :int
-  "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
-  returning the number deleted."
-  [version :- :string
-   cutoff  :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (impersonation.db/delete-outdated-query-caches! version cutoff))
+(mu/defn delete-impersonation-query-caches! :- :int
+  "Delete the ImpersonationQueryCaches with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp impersonation.db/delete-query-caches! vec)) + 0
+                 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

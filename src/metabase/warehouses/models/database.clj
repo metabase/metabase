@@ -790,8 +790,6 @@
         rows (mapv #(models.secret/handle-incoming-client-secrets! % nil) rows)]
     (u/prog1 (vec (warehouses.db/insert-databases! rows))
       (set-new-databases-permissions! <>)
-      ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
-      ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
       (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) <>))))
 
 (mu/defn create-databases! :- [:sequential ::warehouses.schema/database]
@@ -913,8 +911,6 @@
                                 (distinct))
                           rows)]
     (u/prog1 (databases-by-id trigger-ids)
-      ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
-      ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
       (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) (vals <>)))))
 
 (defn- database-changes

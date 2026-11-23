@@ -685,7 +685,7 @@
   "Delete the Tables with `ids`, after their Fields and the implicit Actions that write to them."
   [ids]
   (field/delete-fields! (vec (warehouse-schema.db/field-ids-for-tables ids)))
-  (actions.models/delete-actions-for-tables! ids)
+  (actions.models/delete-actions! (actions.models/action-ids-of-tables ids))
   (warehouse-schema.db/delete-tables! ids))
 
 (mu/defn delete-tables! :- :nil

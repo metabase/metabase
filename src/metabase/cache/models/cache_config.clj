@@ -265,38 +265,47 @@
                         (:id row))))))]
     (mdb/with-conflict-retry (save!))))
 
-(defn delete-cache-configs-for-targets!
-  "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
-  [model model-ids]
-  (t2/with-transaction [_conn]
-    (when-let [items (not-empty (cache.db/cache-configs-for model model-ids))]
-      (events/publish-event! :event/cache-config-delete
-                             (events/delete-event (vec items) {:context {:details {}}}))
-      (cache.db/delete-cache-configs! model (mapv :model_id items)))))
+(def cache-config-ids-for-targets
+  "The ids of the CacheConfigs of the `model` entities with `model-ids`, see [[cache.db/cache-config-ids-for-targets]]."
+  cache.db/cache-config-ids-for-targets)
 
-(defn delete-cache-configs-for-deleted-targets!
-  "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
-  [model model-ids]
-  (when (seq model-ids)
-    (t2/with-transaction [_conn]
-      (let [items (cache.db/cache-configs-for model (vec model-ids))]
-        (events/publish-event! :event/cache-config-delete (events/delete-event items))
-        (cache.db/delete-cache-configs! model (vec model-ids))))))
+(mu/defn delete-cache-configs! :- :nil
+  "Delete the CacheConfigs with `ids` in one transaction, publishing their delete event with `opts`; the REST API passes
+  `{:context {:details {}}}` so that the audit log records each deleted config."
+  ([ids :- [:sequential ms/PositiveInt]]
+   (delete-cache-configs! ids nil))
+  ([ids  :- [:sequential ms/PositiveInt]
+    opts :- [:maybe [:map {:closed true} [:context {:optional true} :map]]]]
+   (when (seq ids)
+     (t2/with-transaction [_conn]
+       (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))
+             configs (into [] (mapcat cache.db/cache-configs-by-ids) batches)]
+         (when (seq configs)
+           (events/publish-event! :event/cache-config-delete (events/delete-event configs opts))
+           (run! cache.db/delete-cache-configs! batches)))))
+   nil))
 
 (defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]
-  (delete-cache-configs-for-deleted-targets! "database" (mapv :id databases)))
+  (delete-cache-configs! (cache-config-ids-for-targets "database" (mapv :id databases))))
+
+(defn- write-cache-config-batch!
+  "Write the `batch` of rows over their stored CacheConfigs, one statement per distinct change."
+  [batch]
+  (let [stored (u/index-by :id (cache.db/cache-configs-by-ids (mapv :id batch)))]
+    (doseq [[changes ids] (mi/group-ids-by-changes stored batch)]
+      (cache.db/update-cache-configs! ids changes))))
 
 (mu/defn update-cache-configs!
-  "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig."
+  "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig, in one
+  transaction."
   [rows :- [:sequential [:map {:closed true}
                          [:id             ms/PositiveInt]
                          [:next_run_at    {:optional true} ::cache.schema/temporal]
                          [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
   (when (seq rows)
-    (let [stored (u/index-by :id (cache.db/cache-configs-by-ids (mapv :id rows)))]
-      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-        (cache.db/update-cache-configs! ids changes)))))
+    (t2/with-transaction [_conn]
+      (run! write-cache-config-batch! (partition-all mdb/update-partition-size rows)))))
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

@@ -129,7 +129,8 @@
                                 [:model_id (ms/QueryVectorOf ::cache.schema/cache-config.model-id)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (api/write-check (target-config model id)))
-  (cache-config/delete-cache-configs-for-targets! model model_id)
+  (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets model model_id)
+                                      {:context {:details {}}})
   nil)
 
 (defn- write-check-all

@@ -86,7 +86,7 @@
   []
   (mapv (fn [[topic event]] [topic (count (:changes event))]) @published))
 
-(deftest writes-across-partitions-publish-one-event-test
+(deftest ^:synchronized writes-across-partitions-publish-one-event-test
   (testing "Fields and Tables written in batches of two publish one event per call, carrying every row"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]

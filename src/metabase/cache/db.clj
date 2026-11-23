@@ -172,11 +172,18 @@
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
 
-(mu/defn delete-cache-configs!
-  "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
+(mu/defn cache-config-ids-for-targets :- [:sequential ms/PositiveInt]
+  "The ids of the CacheConfigs for `model` and `model-ids`, read `app-db/delete-partition-size` targets at a time."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
+  (into []
+        (mapcat #(t2/select-pks-vec :model/CacheConfig :model model :model_id [:in (vec %)]))
+        (partition-all app-db/delete-partition-size model-ids)))
+
+(mu/defn delete-cache-configs!
+  "Delete the CacheConfigs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/CacheConfig :id [:in [:auto/param (vec ids)]]))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."

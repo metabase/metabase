@@ -2,6 +2,7 @@
   "Application database queries for the audit app module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -36,23 +37,24 @@
   (t2/select-one-fn :db_id :model/Table, :id table-id))
 
 (mu/defn insert-audit-logs!
-  "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
+  "Insert the AuditLog `rows` in their order, one statement per `app-db/create-partition-size` rows, returning the
+  number inserted."
   [rows :- [:sequential [:map {:closed true}
                          [:topic    :keyword]
                          [:details  [:maybe ::audit-app.schema/audit-log.details]]
                          [:model    [:maybe :string]]
                          [:model_id [:maybe ms/PositiveInt]]
                          [:user_id  [:maybe ::lib.schema.id/user]]]]]
-  (t2/insert! :model/AuditLog rows))
+  (transduce (map #(t2/insert! :model/AuditLog (vec %))) + 0 (partition-all app-db/create-partition-size rows)))
 
 (mu/defn audit-log-ids-before :- [:sequential ms/PositiveInt]
   "The ids of up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, lowest first."
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
-                                    :order-by [[:id :asc]]
-                                    :limit    batch-size}))
+  (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
+                                         :order-by [[:id :asc]]
+                                         :limit    batch-size})))
 
 (mu/defn delete-audit-logs!
   "Delete the AuditLogs with `ids`, returning the number deleted."

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
-   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -585,14 +585,13 @@
                                 _         (t2/insert! :model/PermissionsGroupMembership
                                                       (for [user-id user-ids] {:user_id user-id :group_id (:id group)}))
                                 entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
-                                topics    (atom [])]
-                            (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj topic) event)]
-                              (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id)
-                                           {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
-                                            :id          entity-id
-                                            :displayName (:name group)
-                                            :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}))
+                                body      {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                                           :id          entity-id
+                                           :displayName (:name group)
+                                           :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}
+                                topics    (events.tu/published-topics!
+                                           #(scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) body))]
                             (is (empty? (t2/select :model/PermissionsGroupMembership :group_id (:id group) :user_id [:in user-ids])))
-                            (get (frequencies @topics) :event/group-membership-delete)))))]
+                            (get (frequencies topics) :event/group-membership-delete)))))]
         (is (= 1 (published 2)))
         (is (= (published 2) (published 6)))))))

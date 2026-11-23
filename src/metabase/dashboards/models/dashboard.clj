@@ -674,7 +674,7 @@
   (let [ids (vec batch)]
     (parameter-card/delete-parameter-cards-for-objects! "dashboard" ids [])
     (revision/delete-revisions-for-entities! "Dashboard" ids)
-    (cache-config/delete-cache-configs-for-deleted-targets! "dashboard" ids)
+    (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "dashboard" ids))
     (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards ids))
     (dashboards.db/delete-dashboards! ids)))
 

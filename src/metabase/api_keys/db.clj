@@ -51,7 +51,7 @@
 (mu/defn api-key-ids-with-scope :- [:sequential ms/PositiveInt]
   "The ids of the ApiKeys with `scope`."
   [scope :- ::api-keys.schema/scope]
-  (t2/select-pks-vec :model/ApiKey :scope scope))
+  (vec (t2/select-pks-vec :model/ApiKey :scope scope)))
 
 (mu/defn delete-api-keys!
   "Delete the ApiKeys with `ids`, returning the number deleted."
@@ -97,7 +97,7 @@
 (mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
   "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]})))
 
 (mu/defn delete-api-key-usage-logs!
   "Delete the ApiKeyUsageLogs with `ids`, returning the number deleted."

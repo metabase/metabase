@@ -5,7 +5,6 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
@@ -382,11 +381,10 @@
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-model-cleanup [:model/Tenant :model/Collection]
         (doseq [n [2 6]]
-          (let [ids    (mapv :id (tenants.model/create-tenants!
-                                  (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
-                                                              {:name tenant-name :slug (u/lower-case-en tenant-name)}))))))
-                events (atom [])]
-            (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic (count (:changes event))]) event)]
-              (tenants.model/update-tenants! (mapv (fn [id] {:id id :name (mt/random-name)}) ids)))
-            (testing "an update of n tenants with distinct names publishes one update event with a change for each"
-              (is (= [[:event/tenant-update n]] @events)))))))))
+          (let [ids (mapv :id (tenants.model/create-tenants!
+                               (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                           {:name tenant-name :slug (u/lower-case-en tenant-name)}))))))]
+            (testing (str "update of " n " tenants with distinct names publishes one update event")
+              (is (= [:event/tenant-update]
+                     (events.tu/published-topics!
+                      #(tenants.model/update-tenants! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))))))))))

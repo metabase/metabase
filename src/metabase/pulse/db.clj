@@ -370,22 +370,26 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
 
-(mu/defn delete-pulse-cards-for-dashcards!
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
+(mu/defn pulse-card-ids-for-dashcards :- [:sequential ms/PositiveInt]
+  "The ids of the PulseCards of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (change-log/log-rows! :model/PulseCard :delete :dashboard_card_id [:in dashcard-ids])
-  (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+  (vec (t2/select-pks-vec :model/PulseCard :dashboard_card_id [:in dashcard-ids])))
+
+(mu/defn pulse-card-ids-for-pulses :- [:sequential ms/PositiveInt]
+  "The ids of the PulseCards of the Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (vec (t2/select-pks-vec :model/PulseCard :pulse_id [:in pulse-ids])))
 
 (mu/defn pulse-cards-for-pulse
   "The PulseCards of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select :model/PulseCard :pulse_id pulse-id))
 
-(mu/defn delete-pulse-cards-for-pulses!
-  "Delete the PulseCards of the Pulses with `pulse-ids`, returning the number deleted."
-  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
-  (change-log/log-rows! :model/PulseCard :delete :pulse_id [:in pulse-ids])
-  (t2/delete! :model/PulseCard :pulse_id [:in pulse-ids]))
+(mu/defn delete-pulse-cards!
+  "Delete the PulseCards with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (change-log/log-rows! :model/PulseCard :delete :id [:in ids])
+  (t2/delete! :model/PulseCard :id [:in ids]))
 
 (mu/defn pulse-channels-for-pulse
   "The PulseChannels of the Pulse with `pulse-id`."

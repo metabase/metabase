@@ -597,7 +597,7 @@
   and one answer for all of them. False when one does not exist, which that function answers with a 404."
   [collection-ids {:keys [root-namespace]}]
   (let [ids    (into [] (comp (remove nil?) (distinct)) collection-ids)
-        stored (if (seq ids) (collections.db/collections-by-id ids) {})]
+        stored (into {} (mapcat #(collections.db/collections-by-id (vec %))) (partition-all mdb/update-partition-size ids))]
     (and (= (count stored) (count ids))
          (every? mi/can-write? (t2/hydrate (vec (vals stored)) :can_write))
          (or (not-any? nil? collection-ids)
@@ -2606,7 +2606,6 @@
   "Throw unless every one of `rows`, new Collections with the `ancestors` they read, satisfies these rules:
 
   - a Collection with a location goes to a valid location whose ancestors exist
-  - at most one Collection is the library
   - a personal Collection is not owned by an API key"
   [rows ancestors opts]
   (when (= :import (:writer opts))
@@ -2614,7 +2613,6 @@
   (let [located (filterv #(contains? % :location) rows)]
     (run! check-valid-location located)
     (run! #(check-ancestors-exist % ancestors) located))
-  (check-single-library-rows rows)
   (check-owners-not-api-keys rows))
 
 (defn- insert-collections!
@@ -2640,6 +2638,7 @@
   ([rows :- [:sequential ::collections.schema/collection.create]
     opts :- ::write-opts]
    (t2/with-transaction [_conn]
+     (check-single-library-rows rows)
      (let [created (into [] (mapcat #(create-collection-batch! % opts))
                          (partition-all mdb/create-partition-size rows))]
        (when (seq created)
@@ -2696,15 +2695,11 @@
                       (some-> location location-path->parent-id vector)))))
         entries))
 
-(defn- check-single-library-update
-  "Throws a 400 when the update `entries` make a Collection of the library type a second one."
-  [entries]
-  (when-let [becoming (not-empty (into #{} (comp (filter #(and (contains? (:changes %) :type)
-                                                               (= library-collection-type (:type (merged %)))))
-                                                 (map (comp :id :before)))
-                                       entries))]
-    (let [existing (set (collections.db/collection-ids-with-type library-collection-type))
-          all      (into existing becoming)]
+(defn- check-single-library-updates
+  "Throws a 400 when the `updates` make a Collection of the library type a second one."
+  [updates]
+  (when-let [becoming (not-empty (into #{} (comp (filter #(= library-collection-type (:type %))) (map :id)) updates))]
+    (let [all (into (set (collections.db/collection-ids-with-type library-collection-type)) becoming)]
       (when (some #(seq (disj all %)) becoming)
         (throw (ex-info (tru "Semantic layer already exists") {:status-code 400}))))))
 
@@ -2880,13 +2875,11 @@
   "Throw unless every one of `entries`, updates of the stored Collections with the `ancestors` they read, satisfies these
   rules:
 
-  - a Collection that moves goes to a valid location whose ancestors exist
-  - at most one Collection becomes the library"
+  - a Collection that moves goes to a valid location whose ancestors exist"
   [entries ancestors]
   (let [moved (filterv #(contains? (:changes %) :location) entries)]
     (run! #(check-valid-location (merged %)) moved)
-    (run! #(check-ancestors-exist (merged %) ancestors) moved)
-    (check-single-library-update entries)))
+    (run! #(check-ancestors-exist (merged %) ancestors) moved)))
 
 (defn- write-collection-updates!
   "Writes `entries`, updates of the stored Collections, with the `ancestors` they read: their permissions, their columns,
@@ -2947,6 +2940,7 @@
   ([updates :- [:sequential ::collections.schema/collection.update]
     opts    :- ::write-opts]
    (t2/with-transaction [_conn]
+     (check-single-library-updates updates)
      (let [batches (mapv #(update-collection-batch! % opts) (partition-all mdb/update-partition-size updates))
            entries (into [] (mapcat :entries) batches)]
        (when (seq entries)

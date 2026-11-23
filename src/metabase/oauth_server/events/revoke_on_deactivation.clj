@@ -2,6 +2,7 @@
   "Revoke a user's OAuth access and refresh tokens when they are deactivated, so a later reactivation
    can't revive a pre-deactivation token. (SEC-863)"
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
@@ -20,7 +21,9 @@
                                                            (u.events/changed? % :is_active)))
                                              (map (comp :id :object)))
                                        changes))]
-    (oauth-access-token/revoke-oauth-access-tokens-for-users! user-ids)
-    (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! user-ids)
-    (oauth-authorization-code/delete-oauth-authorization-codes!
-     (oauth-server.db/authorization-code-ids-of-users user-ids))))
+    (doseq [batch (partition-all app-db/delete-partition-size user-ids)
+            :let  [user-ids (vec batch)]]
+      (oauth-access-token/revoke-oauth-access-tokens-for-users! user-ids)
+      (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! user-ids)
+      (oauth-authorization-code/delete-oauth-authorization-codes!
+       (oauth-server.db/authorization-code-ids-of-users user-ids)))))

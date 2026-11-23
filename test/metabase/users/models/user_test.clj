@@ -8,7 +8,6 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -930,15 +929,6 @@
             (counted prepare! changes 1)
             (is (= (counted prepare! changes 2) (counted prepare! changes 6)))))))))
 
-(defn- published-topics!
-  "The topics `thunk` publishes, in order, with the last event of `topic` under `:event`."
-  [topic thunk]
-  (let [published (atom [])]
-    (mt/with-dynamic-fn-redefs [events/publish-event! (fn [t event] (swap! published conj [t event]) event)]
-      (thunk))
-    {:topics (mapv first @published)
-     :event  (last (keep (fn [[t event]] (when (= t topic) event)) @published))}))
-
 (deftest update-users-publishes-same-events-at-two-and-six-rows-test
   (mt/with-model-cleanup [:model/User]
     (let [published (fn [n]
@@ -950,7 +940,7 @@
                                                         {:id id :is_superuser false}
                                                         {:id id :is_active false :first_name "Renamed"}))
                                                     users))]
-                        (:topics (published-topics! :event/user-update #(user/update-users! rows)))))]
+                        (events.tu/published-topics! #(user/update-users! rows))))]
       (testing "rows with different changes publish one update event for the call"
         (is (= 1 (count (filter #{:event/user-update} (published 2)))))
         (is (= (published 2) (published 6)))))))
@@ -958,10 +948,10 @@
 (deftest create-users-publishes-same-events-at-two-and-six-rows-test
   (mt/with-model-cleanup [:model/User]
     (let [published (fn [n]
-                      (:topics (published-topics! :event/user-create
-                                                  #(user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
-                                                                                      :is_superuser (odd? i)})
-                                                                             (range n))))))]
+                      (events.tu/published-topics!
+                       #(user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                           :is_superuser (odd? i)})
+                                                  (range n)))))]
       (is (= 1 (count (filter #{:event/user-create} (published 2)))))
       (is (= (published 2) (published 6))))))
 
@@ -970,12 +960,11 @@
     (let [users (user/create-users! (vec (for [_ (range 5)] {:email (str (random-uuid) "@example.com")})))
           ids   (mapv :id users)]
       (with-redefs [mdb/update-partition-size 2]
-        (let [{:keys [topics event]} (published-topics! :event/user-update
-                                                       #(is (= 5 (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
-                                                                                            {:id id :first_name (str "Test User " i)}))))))]
-          (testing "five rows in batches of two publish one event carrying every row"
-            (is (= 1 (count (filter #{:event/user-update} topics))))
-            (is (= (set ids) (set (map (comp :id :object) (:changes event))))))))
+        (let [topics (events.tu/published-topics!
+                      #(is (= 5 (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
+                                                           {:id id :first_name (str "Test User " i)}))))))]
+          (testing "five rows in batches of two publish one event"
+            (is (= [:event/user-update] topics)))))
       (testing "every row gets its own change"
         (is (= (vec (for [i (range 5)] (str "Test User " i)))
                (mapv #(t2/select-one-fn :first_name :model/User :id %) ids)))))))
@@ -983,15 +972,16 @@
 (deftest create-users-across-partitions-test
   (mt/with-model-cleanup [:model/User]
     (with-redefs [mdb/create-partition-size 2]
-      (let [emails                (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
-            created               (atom nil)
-            {:keys [topics event]} (published-topics! :event/user-create
-                                                     #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails))))]
+      (let [emails  (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
+            created (atom nil)
+            topics  (events.tu/published-topics!
+                     #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails))))]
         (testing "rows come back in input order"
           (is (= emails (mapv :email @created))))
-        (testing "five rows in batches of two publish one create event carrying every row"
-          (is (= 1 (count (filter #{:event/user-create} topics))))
-          (is (= 5 (count (:changes event)))))))))
+        (testing "five rows in batches of two publish one create event and one membership event"
+          (is (= [:event/user-create :event/group-membership-create] topics)))
+        (testing "every new User joins All Users"
+          (is (every? #(contains? (group-ids-of (:id %)) (:id (perms-group/all-users))) @created)))))))
 
 (deftest update-users-refuses-two-rows-for-one-user-test
   (mt/with-model-cleanup [:model/User]

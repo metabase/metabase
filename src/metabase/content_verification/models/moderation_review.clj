@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.content-verification.schema :as content-verification.schema]
@@ -11,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -108,11 +110,22 @@
           (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
         reviews))))
 
-(mu/defn delete-moderation-reviews-for-cards! :- :int
-  "Delete the ModerationReviews of the Cards with `card-ids`, which are being deleted, in one statement that bypasses
-  delete capture, so their search documents are not re-derived; returns the number deleted."
+(mu/defn moderation-review-ids-of-cards :- [:vector ms/PositiveInt]
+  "The ids of the ModerationReviews of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (content-verification.db/delete-card-reviews! card-ids))
+  (content-verification.db/moderation-review-ids-of-cards card-ids))
+
+(mu/defn delete-moderation-reviews! :- :nil
+  "Delete the ModerationReviews with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size (distinct ids))]
+      (when (seq batches)
+        (events/publish-event! :event/moderation-review-delete
+                               (events/delete-event (into [] (mapcat #(content-verification.db/moderation-reviews-by-ids (vec %))) batches))))
+      (run! #(content-verification.db/delete-moderation-reviews! (vec %)) batches)))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
