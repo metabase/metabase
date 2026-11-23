@@ -602,24 +602,24 @@ export function getDashcardGoalSourcesScope(
   return match(getDashboardType(dashboardId))
     .returnType<GoalSourcesScope>()
     .with("public", () =>
-      cardId != null
-        ? {
+      cardId == null
+        ? { type: "signed-in" }
+        : {
             type: "public-dashcard",
             uuid: String(dashboardId),
             dashcardId,
             cardId,
-          }
-        : { type: "signed-in" },
+          },
     )
     .with("embed", () =>
-      cardId != null
-        ? {
+      cardId == null
+        ? { type: "signed-in" }
+        : {
             type: "embed-dashcard",
             token: String(dashboardId),
             dashcardId,
             cardId,
-          }
-        : { type: "signed-in" },
+          },
     )
     .with("normal", () =>
       typeof dashboardId === "number"
