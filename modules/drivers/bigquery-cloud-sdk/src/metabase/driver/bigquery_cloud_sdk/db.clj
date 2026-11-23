@@ -4,16 +4,9 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
-   ;; the driver persists dataset-filter and project-id migrations of its Database details back to the app DB
+   ;; the driver migrates the schema of the Tables of its Databases in the app DB
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
-
-(mu/defn update-database-details!
-  "Set the details of the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database :id database-id {:details details}))
 
 (mu/defn set-table-schemas!
   "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any

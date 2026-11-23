@@ -13,7 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/UserParameterValue [_model] :user_parameter_value)
 
@@ -35,9 +35,36 @@
   {:value {:in  mi/json-in
            :out json-out}})
 
-(defn batched-upsert!
-  "Delete param with nil value and upsert the rest."
-  [parameters]
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
+  "Hydrate a map of parameter-id->last-used-value for the dashboards."
+  [_model _k dashboards]
+  (if-let [user-id (and (setting/get :dashboards-save-last-used-parameters) api/*current-user-id*)]
+    (mi/instances-with-hydrated-data
+     dashboards
+     :last_used_param_values
+     (fn [] ;; return a map of {dashboard-id {parameter-id value}}
+       (let [upvs (users.db/user-parameter-values-for-dashboards user-id (map :id dashboards))]
+         (as-> upvs result
+           (group-by :dashboard_id result)
+           (update-vals result (fn [upvs]
+                                 (into {}
+                                       (map (juxt :parameter_id :value) upvs)))))))
+     :id
+     {:default {}})
+    dashboards))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn upsert-user-parameter-values!
+  "Delete the stored values of `parameters` and store again those with a value or a default."
+  [parameters :- [:sequential [:map {:closed true}
+                               [:user_id      pos-int?]
+                               [:dashboard_id pos-int?]
+                               [:parameter_id :string]
+                               [:value        [:maybe [:ref :metabase.lib.schema.parameter/parameter.value]]]
+                               [:default      [:maybe [:ref :metabase.lib.schema.parameter/parameter.value]]]]]]
   (when (setting/get :dashboards-save-last-used-parameters)
     (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
       (t2/with-transaction [_conn]
@@ -48,7 +75,7 @@
 
 (defn- update-user-parameter-values* [inputs]
   (try
-    (batched-upsert!
+    (upsert-user-parameter-values!
      (->> (for [input     inputs
                 parameter (:parameters input)]
             {:user_id      (:user-id input)
@@ -76,26 +103,6 @@
     (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                   :dashboard-id dashboard-id
                                                   :parameters   parameters})))
-
-;; hydration
-
-(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
-  "Hydrate a map of parameter-id->last-used-value for the dashboards."
-  [_model _k dashboards]
-  (if-let [user-id (and (setting/get :dashboards-save-last-used-parameters) api/*current-user-id*)]
-    (mi/instances-with-hydrated-data
-     dashboards
-     :last_used_param_values
-     (fn [] ;; return a map of {dashboard-id {parameter-id value}}
-       (let [upvs (users.db/user-parameter-values-for-dashboards user-id (map :id dashboards))]
-         (as-> upvs result
-           (group-by :dashboard_id result)
-           (update-vals result (fn [upvs]
-                                 (into {}
-                                       (map (juxt :parameter_id :value) upvs)))))))
-     :id
-     {:default {}})
-    dashboards))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

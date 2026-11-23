@@ -10,6 +10,7 @@
    [metabase.session.core :as session]
    [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -73,13 +74,12 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (u/prog1 (t2/insert-returning-instance! :model/User
-                                                    {:email        email
-                                                     :first_name   first-name
-                                                     :last_name    last-name
-                                                     :is_superuser superuser
-                                                     :is_qbnewb    true
-                                                     :is_active    active})
+            (u/prog1 (first (user/create-users! [{:email        email
+                                                  :first_name   first-name
+                                                  :last_name    last-name
+                                                  :is_superuser superuser
+                                                  :is_qbnewb    true
+                                                  :is_active    active}]))
               (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
@@ -240,10 +240,6 @@
       ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
       ;; the Session explicitly instead.
-      ;;
-      ;; Write the row rather than the model. `:model/Session`'s after-insert hook publishes `:event/user-login`,
-      ;; which stamps `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the
-      ;; Session does not undo either, so they leak into whatever runs next.
       (t2/insert! :core_session {:id         session-id
                                  :key_hashed (session/hash-session-key session-key)
                                  :user_id    user-id

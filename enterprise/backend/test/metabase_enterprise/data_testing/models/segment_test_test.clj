@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -73,7 +74,7 @@
                  :model/DataTestRun {other-run :id}  {:test_type :card, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :segment test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/SegmentTest :id test-id)
+      (data-testing.models.segment-test/delete-segment-tests! [test-id])
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a card test with the same id keeps its test id"
@@ -91,11 +92,11 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/segment-test-delete topic)
-                                                (swap! published conj (:id (:previous-object event)))))]
-          (t2/delete! :model/Segment :id segment-id))
+                                                (swap! published into (map (comp :id :previous-object) (:changes event)))))]
+          (segment/delete-segments! [segment-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/SegmentTest :segment_id segment-id))))
-        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+        (testing "runs of deleted tests stay with no test id"
           (is (=? [{:test_id nil :status :passed} {:test_id nil :status :passed}]
                   (mapv #(t2/select-one :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"

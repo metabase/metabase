@@ -29,6 +29,7 @@
   with-metadata-provider-cache]
  [metabase.lib-be.models.transforms
   normalize-query
+  query-first-stage
   transform-query
   transform-visualization-settings]
  [metabase.lib-be.settings

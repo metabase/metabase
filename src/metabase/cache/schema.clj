@@ -128,16 +128,14 @@
 
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."
-  [:merge
-   ::cache-config.update
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
+  ::cache-config.update)
 
 (mr/def ::cache-config.update
-  "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional, its
-  `model_id` fitting its `model` and its strategy columns forming a valid strategy when it holds them."
+  "What an update of a CacheConfig takes: its `:id` and the columns to change, each optional, its `model_id` fitting its
+  `model` and its strategy columns forming a valid strategy when it holds them."
   [:map {:closed           true
          :decode/normalize {:leave check-row}}
+   [:id                    ms/PositiveInt]
    [:model                 {:optional true} [:maybe ::cache-config.model]]
    [:model_id              {:optional true} [:maybe ::cache-config.model-id]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
@@ -162,3 +160,7 @@
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:results            {:optional true} [:maybe [:or bytes? :string]]]
    [:refresh_started_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::temporal
+  "A `java.time` instant, date, or date-time."
+  [:fn #(instance? java.time.temporal.Temporal %)])

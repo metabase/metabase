@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.mcp.permissions]
    [metabase-enterprise.mcp.test-util :as mcp.tu]
+   [metabase.mcp.models.mcp-group-permission :as mcp-group-permission]
    [metabase.mcp.v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -315,7 +316,7 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
       (let [all-users-id (u/the-id (perms/all-users-group))
             admin-id     (u/the-id (perms/admin-group))
-            insert!      #(t2/insert! :model/McpGroupPermission {:group_id % :mcp_enabled true :tool_access {}})]
+            insert!      #(mcp-group-permission/upsert-mcp-group-permissions! [{:group_id % :mcp_enabled true :tool_access {}}])]
         (testing "while All Users has a row, no other group but Administrators gets one"
           (insert! all-users-id)
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"while All Users has one" (insert! group-id)))

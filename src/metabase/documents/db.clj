@@ -3,15 +3,14 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.revisions.sql :as revisions.sql]
@@ -22,6 +21,27 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- parent-archived-clause
+  "The subquery for whether the row of `table` that the column `k` of the updated Document names is archived, the value of
+  `k` in `changes` when it gives one."
+  [changes table k]
+  ^:allow-subquery {:select [:parent.archived]
+                    :from   [[table :parent]]
+                    :where  [:= :parent.id (if (contains? changes k)
+                                             [:auto/param (get changes k)]
+                                             (keyword (str "document." (name k))))]})
+
+(mu/defn archived-directly-clause :- :any
+  "The expression for the `archived_directly` of a Document that `changes` archives or restores: true when it is
+  archived and neither its Collection nor its Exploration is, false when it is restored."
+  [changes :- :map]
+  (if (:archived changes)
+    [:case [:or [:= (parent-archived-clause changes :collection :collection_id) true]
+            [:= (parent-archived-clause changes :exploration :exploration_id) true]]
+     false
+     :else true]
+    [:inline false]))
 
 (mu/defn synced-documents-clause :- [:fn vector?]
   "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
@@ -37,11 +57,6 @@
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
-
-(mu/defn exploration-archived?
-  "Whether the Exploration with `exploration-id` is archived."
-  [exploration-id :- ms/PositiveInt]
-  (t2/exists? :model/Exploration :id exploration-id :archived true))
 
 (mu/defn explorations
   "The Explorations with `exploration-ids`."
@@ -61,21 +76,12 @@
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
-(mu/defn insert-document!
-  "Insert the Document `row` and return its id."
-  [row :- ::documents.schema/document.update]
-  (t2/insert-returning-pk! :model/Document row))
-
-(mu/defn update-document!
-  "Apply `changes` to the Document with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- ::documents.schema/document.update]
-  (t2/update! :model/Document :id id changes))
-
-(mu/defn delete-document!
-  "Delete the Document with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Document :id id))
+(mu/defn documents
+  "The Documents with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Document :id [:in ids])
+    []))
 
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."
@@ -96,6 +102,11 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id [:auto/param card-id]))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids]))
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
@@ -121,47 +132,31 @@
    document-id :- ms/PositiveInt]
   (t2/exists? :model/Card :id card-id :document_id document-id :archived false))
 
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
-  (t2/update! :model/Card :id card-id changes))
-
-(defn- archivable-card-conditions
-  "The key-value conditions of the Cards in the Document with `document-id` that archiving it archives."
-  [document-id]
-  [:document_id document-id :archived false])
-
-(defn- restorable-card-conditions
-  "The key-value conditions of the Cards in the Document with `document-id` that restoring it restores."
-  [document-id]
-  [:document_id document-id :archived true :archived_directly false])
-
 (mu/defn cards-archived-with-document
   "The unarchived Cards in the Document with `document-id`, which archiving it archives along with it."
   [document-id :- ms/PositiveInt]
-  (apply t2/select :model/Card (archivable-card-conditions document-id)))
+  (t2/select :model/Card :document_id document-id :archived false))
 
 (mu/defn cards-restored-with-document
   "The Cards in the Document with `document-id` that were archived along with it, which restoring it restores."
   [document-id :- ms/PositiveInt]
-  (apply t2/select :model/Card (restorable-card-conditions document-id)))
+  (t2/select :model/Card :document_id document-id :archived true :archived_directly false))
 
-(mu/defn archive-document-cards!
-  "Archive, through their model, the rows of [[cards-archived-with-document]], returning the number updated."
-  [document-id :- ms/PositiveInt]
-  (apply t2/update! :model/Card (concat (archivable-card-conditions document-id) [{:archived true}])))
+(mu/defn card-ids-archived-with-documents
+  "The IDs of the unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived false))
 
-(mu/defn restore-document-cards!
-  "Restore, through their model, the rows of [[cards-restored-with-document]], returning the number updated."
-  [document-id :- ms/PositiveInt]
-  (apply t2/update! :model/Card (concat (restorable-card-conditions document-id) [{:archived false}])))
+(mu/defn card-ids-restored-with-documents
+  "The IDs of the Cards in the Documents with `document-ids` that were archived along with them, which restoring them
+  restores."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived true :archived_directly false))
 
-(mu/defn update-cards-for-document!
-  "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."
-  [document-id :- ms/PositiveInt
-   changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
-  (t2/update! :model/Card :document_id document-id changes))
+(mu/defn card-ids-of-documents
+  "The IDs of the Cards in the Documents with `document-ids`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids]))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."
@@ -298,3 +293,26 @@
                              [:and
                               [:= :c.id :d.collection_id]
                               [:= :c.archived false]]]}) :can_read :can_write)))
+
+(mu/defn set-document-last-viewed-at!
+  "Set `last_viewed_at` of the Document with `document-id`, returning the number updated."
+  [document-id    :- ms/PositiveInt
+   last-viewed-at :- ms/TemporalInstant]
+  (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
+
+(mu/defn shift-document-positions! :- :int
+  "Add or subtract one from the `collection_position` of the Documents in the Collection with `collection-id` whose position is
+  in `positions`, `{:from n :to m}` with either bound left out, as `direction` says, returning the number updated."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions
+   direction     :- ::collections.schema/position-direction]
+  (t2/update! :model/Document {:collection_id       collection-id
+                               :collection_position (collection/position-clause positions)}
+              {:collection_position [direction :collection_position 1]}))
+
+(mu/defn update-document-columns!
+  "Apply `changes` to the Document with `document-id` in one statement through the model, returning the number
+  updated."
+  [document-id :- ms/PositiveInt
+   changes     :- :map]
+  (t2/update! :model/Document :id document-id changes))

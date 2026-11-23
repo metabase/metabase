@@ -102,9 +102,13 @@ liability it usually is.
 
 See the `backend-model-rules` skill.
 
-- [ ] A rule every writer must obey is in a hook, so a writer that calls no endpoint still obeys it
-- [ ] Hooks read no current user and do not depend on who the writer is
-- [ ] Derived columns are computed in hooks and absent from request schemas
+- [ ] Hooks run no app-DB statement: only defaults, derived columns, and checks on the row and its stored version
+- [ ] A rule that needs another row is in the model's write function (`Writes` section), which every writer calls
+- [ ] Write functions are bulk: no statement count grows with the number of rows, shown by a call-count test at two sizes
+- [ ] No Toucan write on a model of another module; callers use that model's write functions
+- [ ] Write functions publish their events by hand, inside their transaction, after their last statement
+- [ ] Hooks and write functions read no current user and do not depend on who the writer is
+- [ ] Derived columns are absent from request schemas
 - [ ] Per-user rules are in `:can_read` / `:can_write` hydrations, `mi/can-create?` or `mi/can-update?`
 - [ ] Uniqueness rules have a unique index
 

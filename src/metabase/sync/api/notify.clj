@@ -10,7 +10,7 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli.schema :as ms]))
 
@@ -58,7 +58,7 @@
       (let [created (sync-tables/create-or-reactivate-table! database table)]
         (doto created
           sync/sync-table!
-          sync-util/set-initial-table-sync-complete!))
+          sync.updates/set-initial-table-sync-complete!))
       (throw (without-stacktrace
               (ex-info (trs "Unable to identify table ''{0}.{1}''"
                             schema-name table-name)

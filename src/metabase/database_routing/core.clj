@@ -31,10 +31,10 @@
   [_db :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise delete-associated-database-router!
+(defenterprise delete-database-routers-for-databases!
   "OSS version, does nothing"
   metabase-enterprise.database-routing.models
-  [_db-id]
+  [_database-ids]
   nil)
 
 (defenterprise-schema db-routing-enabled? :- :boolean

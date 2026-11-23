@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor.card :as qp.card]
@@ -135,55 +136,56 @@
 (deftest cache-config-permissions-test
   (mt/with-model-cleanup [:model/CacheConfig]
     (mt/with-premium-features #{:cache-granular-controls :audit-app}
-      (mt/with-temp [:model/Database      {db-id :id}         {}
-                     :model/Collection    {collection-id :id} {:name "col1"}
-                     :model/Dashboard     {dashboard-id :id}  {:name          "dash1"
-                                                               :collection_id collection-id}
-                     :model/Card          {card-id :id}       {:name          "card1"
-                                                               :database_id   db-id
-                                                               :collection_id collection-id}]
-        (testing "Non-admins have no general access to cache config"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "cache/"))))
-        (testing "Non-admins can access cache config only if they have write access to the model"
-          (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
-            (doseq [[model id] [["question" card-id]
-                                ["database" db-id]
-                                ["dashboard" dashboard-id]]]
-              (testing (format "\nTesting cache config for %s %d" model id)
-                (is (= {:data []}
-                       (mt/user-http-request :rasta :get 200 "cache/"
-                                             :model model
-                                             :id id)))
-                (is (mt/user-http-request :rasta :put 200 "cache/"
-                                          {:model    model
-                                           :model_id id
-                                           :strategy {:type "nocache" :name "card1"}}))
-                (is (=? {:count 1}
-                        (mt/user-http-request :rasta :post 200 "cache/invalidate"
-                                              (keyword model) [id])))
-                (is (nil? (mt/user-http-request :rasta :delete 204 "cache/"
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[{collection-id :id}] (collection/create-collections! [{:name "col1"}])]
+            (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name          "dash1"
+                                                                :collection_id collection-id}
+                           :model/Card      {card-id :id}      {:name          "card1"
+                                                                :database_id   db-id
+                                                                :collection_id collection-id}]
+              (testing "Non-admins have no general access to cache config"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 "cache/"))))
+              (testing "Non-admins can access cache config only if they have write access to the model"
+                (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+                  (doseq [[model id] [["question" card-id]
+                                      ["database" db-id]
+                                      ["dashboard" dashboard-id]]]
+                    (testing (format "\nTesting cache config for %s %d" model id)
+                      (is (= {:data []}
+                             (mt/user-http-request :rasta :get 200 "cache/"
+                                                   :model model
+                                                   :id id)))
+                      (is (mt/user-http-request :rasta :put 200 "cache/"
                                                 {:model    model
-                                                 :model_id id})))))))
-        (testing "Non-admins cannot access cache config if they do not have write access to the model"
-          (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
-            (mt/with-non-admin-groups-no-collection-perms collection-id
-              (doseq [[model id] [["question" card-id]
-                                  ["database" db-id]
-                                  ["dashboard" dashboard-id]]]
-                (testing (format "\nTesting cache config for %s %d" model id)
-                  (mt/user-http-request :rasta :get 403 "cache/"
-                                        :model model
-                                        :id id)
-                  (mt/user-http-request :rasta :put 403 "cache/"
-                                        {:model    model
-                                         :model_id id
-                                         :strategy {:type "nocache" :name "card1"}})
-                  (mt/user-http-request :rasta :post 403 "cache/invalidate"
-                                        (keyword model) [id])
-                  (mt/user-http-request :rasta :delete 403 "cache/"
-                                        {:model    model
-                                         :model_id id}))))))))))
+                                                 :model_id id
+                                                 :strategy {:type "nocache" :name "card1"}}))
+                      (is (=? {:count 1}
+                              (mt/user-http-request :rasta :post 200 "cache/invalidate"
+                                                    (keyword model) [id])))
+                      (is (nil? (mt/user-http-request :rasta :delete 204 "cache/"
+                                                      {:model    model
+                                                       :model_id id})))))))
+              (testing "Non-admins cannot access cache config if they do not have write access to the model"
+                (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
+                  (mt/with-non-admin-groups-no-collection-perms collection-id
+                    (doseq [[model id] [["question" card-id]
+                                        ["database" db-id]
+                                        ["dashboard" dashboard-id]]]
+                      (testing (format "\nTesting cache config for %s %d" model id)
+                        (mt/user-http-request :rasta :get 403 "cache/"
+                                              :model model
+                                              :id id)
+                        (mt/user-http-request :rasta :put 403 "cache/"
+                                              {:model    model
+                                               :model_id id
+                                               :strategy {:type "nocache" :name "card1"}})
+                        (mt/user-http-request :rasta :post 403 "cache/invalidate"
+                                              (keyword model) [id])
+                        (mt/user-http-request :rasta :delete 403 "cache/"
+                                              {:model    model
+                                               :model_id id})))))))))))))
 
 (deftest invalidation-test
   (mt/with-model-cleanup [:model/CacheConfig

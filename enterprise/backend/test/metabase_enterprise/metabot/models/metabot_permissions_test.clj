@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot.models.metabot-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot.models.metabot-permissions]
+   [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
    [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
@@ -10,13 +10,19 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defn- set-status!
+  "The status code setting the MetabotPermissions `row` throws, or `:set`."
+  [{:keys [group_id perm_type perm_value]}]
+  (try (metabot-perms/set-metabot-permission! group_id perm_type perm_value)
+       :set
+       (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))
+
 (defn- insert-status!
-  "The status code a MetabotPermissions insert of `row` throws, or `:inserted`."
+  "The status code setting the MetabotPermissions `row` of a group without one throws, or `:inserted`."
   [row]
   (mt/with-model-cleanup [:model/MetabotPermissions]
-    (try (t2/insert! :model/MetabotPermissions row)
-         :inserted
-         (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+    (let [status (set-status! row)]
+      (get {:set :inserted} status status))))
 
 (defn- update-status
   "The status code an update of the MetabotPermissions with `id` to `changes` throws, or `:updated`."
@@ -60,29 +66,34 @@
 (deftest rows-are-written-only-for-groups-current-mode-shows-test
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
-      (let [row          (fn [gid] {:group_id gid :perm_type :permission/metabot-nlq :perm_value :yes})
-            admin-row-id (t2/select-one-pk :model/MetabotPermissions
-                                           :group_id  (u/the-id (perms/admin-group))
-                                           :perm_type :permission/metabot-nlq)
-            all-users-id (u/the-id (perms/all-users-group))]
+      (let [row       (fn [gid] {:group_id gid :perm_type :permission/metabot-nlq :perm_value :yes})
+            admin-row (fn [value] {:group_id   (u/the-id (perms/admin-group))
+                                   :perm_type  :permission/metabot-nlq
+                                   :perm_value value})
+            all-users-id (u/the-id (perms/all-users-group))
+            changed-row  (fn [gid]
+                           (let [stored (t2/select-one-fn :perm_value :model/MetabotPermissions
+                                                          :group_id gid :perm_type :permission/metabot-nlq)]
+                             (assoc (row gid) :perm_value (if (= stored :yes) :no :yes))))]
         (testing "simple mode"
           (mt/with-temporary-setting-values [metabot-advanced-permissions false]
             (is (= 400 (insert-status! (row group-id))))
-            (is (= :updated (update-status admin-row-id {:perm_value :no})))
-            (is (= :updated (update-status admin-row-id {:perm_value :yes})))))
+            (is (= :set (set-status! (admin-row :no))))
+            (is (= :set (set-status! (admin-row :yes))))))
         (testing "group-level mode"
           (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-            (is (= 400 (insert-status! (row all-users-id))))
+            (is (= 400 (set-status! (changed-row all-users-id))))
             (is (= :inserted (insert-status! (row group-id))))
-            (is (= :updated (update-status admin-row-id {:perm_value :no})))
-            (is (= :updated (update-status admin-row-id {:perm_value :yes})))))
-        (testing "a row of a group the mode hides since a switch is not updated"
+            (is (= :set (set-status! (admin-row :no))))
+            (is (= :set (set-status! (admin-row :yes))))))
+        (testing "row of group mode hides since switch is not updated"
           (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-            (mt/with-temp [:model/MetabotPermissions {id :id} (row group-id)]
+            (mt/with-temp [:model/MetabotPermissions _ (row group-id)]
               (mt/with-temporary-setting-values [metabot-advanced-permissions false]
-                (is (= 400 (update-status id {:perm_value :no})))))))
-        (testing "the stored mode holds without the premium feature"
+                (is (= 400 (set-status! (assoc (row group-id) :perm_value :no))))
+                (is (= :set (set-status! (row group-id))))))))
+        (testing "stored mode holds without premium feature"
           (mt/with-temporary-setting-values [metabot-advanced-permissions true]
             (mt/with-premium-features #{}
-              (is (= 400 (insert-status! (row all-users-id))))
+              (is (= 400 (set-status! (changed-row all-users-id))))
               (is (= :inserted (insert-status! (row group-id)))))))))))

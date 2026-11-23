@@ -5,11 +5,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
-   [metabase.usage-metadata.models.source-dimension-daily]
-   [metabase.usage-metadata.models.source-dimension-profile-daily]
-   [metabase.usage-metadata.models.source-metric-daily]
-   [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.models.source-dimension-daily :as source-dimension-daily]
+   [metabase.usage-metadata.models.source-dimension-profile-daily :as source-dimension-profile-daily]
+   [metabase.usage-metadata.models.source-metric-daily :as source-metric-daily]
+   [metabase.usage-metadata.models.source-segment-composite-daily :as source-segment-composite-daily]
+   [metabase.usage-metadata.models.source-segment-daily :as source-segment-daily]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.usage-metadata.store :as usage-metadata.store]
    [metabase.util.json :as json]
@@ -25,11 +25,11 @@
   (t/zone-offset "Z"))
 
 (def ^:private delete-rollups-before-fns
-  [usage-metadata.db/delete-segment-rollups-before!
-   usage-metadata.db/delete-segment-composite-rollups-before!
-   usage-metadata.db/delete-metric-rollups-before!
-   usage-metadata.db/delete-dimension-rollups-before!
-   usage-metadata.db/delete-dimension-profile-rollups-before!])
+  [source-segment-daily/delete-segment-rollups-for-cleanup!
+   source-segment-composite-daily/delete-segment-composite-rollups-for-cleanup!
+   source-metric-daily/delete-metric-rollups-for-cleanup!
+   source-dimension-daily/delete-dimension-rollups-for-cleanup!
+   source-dimension-profile-daily/delete-dimension-profile-rollups-for-cleanup!])
 
 (def ^:private low-cardinality-threshold
   30)
