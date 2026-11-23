@@ -607,12 +607,13 @@
     (api/update-check dashboard {:public_uuid new-uuid, :made_public_by_id api/*current-user-id*})
     (public-sharing.validation/check-public-sharing-enabled)
     (api/check-not-archived dashboard)
-    (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
-          uuid (or existing-public-uuid
-                   (u/prog1 new-uuid
-                     (dashboard/update-dashboards! [{:id dashboard-id :public_uuid       <>
-                                                     :made_public_by_id api/*current-user-id*}])))]
-      {:uuid uuid})))
+    (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)]
+      (when-not existing-public-uuid
+        (public-sharing.validation/check-public-link-allowed! :model/Dashboard dashboard-id))
+      {:uuid (or existing-public-uuid
+                 (u/prog1 new-uuid
+                   (dashboard/update-dashboards! [{:id dashboard-id :public_uuid       <>
+                                                   :made_public_by_id api/*current-user-id*}])))})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

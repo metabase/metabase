@@ -1,5 +1,6 @@
 (ns metabase.documents.models.document
   (:require
+   [clojure.set :as set]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -704,6 +705,21 @@
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
+
+(defmethod public-sharing/shown-card-ids :model/Document
+  [_model document-ids]
+  ;; An anonymous user who can open a document runs the query of each question that the document's content embeds
+  ;; inline and that belongs to the document. A document has no filters of its own, so it implements nothing else.
+  (let [owned-card-ids (->> (documents.db/card-ids-owned-by-documents document-ids)
+                            (reduce (fn [acc {:keys [id document_id]}]
+                                      (update acc document_id (fnil conj #{}) id))
+                                    {}))]
+    (->> (documents.db/contents-for-documents document-ids)
+         ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
+         (map (fn [{document-id :id, :as document}]
+                [document-id (set/intersection (set (prose-mirror/card-ids document))
+                                               (get owned-card-ids document-id #{}))]))
+         (into {}))))
 
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one

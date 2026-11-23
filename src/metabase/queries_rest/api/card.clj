@@ -886,12 +886,13 @@
     (api/update-check card {:public_uuid new-uuid, :made_public_by_id api/*current-user-id*})
     (public-sharing.validation/check-public-sharing-enabled)
     (api/check-not-archived card)
-    (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
-          uuid (or existing-public-uuid
-                   (u/prog1 new-uuid
-                     (queries.card/update-cards! [{:id card-id :public_uuid       <>
-                                                   :made_public_by_id api/*current-user-id*}])))]
-      {:uuid uuid})))
+    (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)]
+      (when-not existing-public-uuid
+        (public-sharing.validation/check-public-link-allowed! :model/Card card-id))
+      {:uuid (or existing-public-uuid
+                 (u/prog1 new-uuid
+                   (queries.card/update-cards! [{:id card-id :public_uuid       <>
+                                                 :made_public_by_id api/*current-user-id*}])))})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

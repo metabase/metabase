@@ -13,16 +13,18 @@
 (mr/def ::database-router
   "A DatabaseRouter as selected from the app DB: every column of `:db_router`."
   [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
-   [:user_attribute {:optional true} ::database-router.user-attribute]])
+   [:id                       ms/PositiveInt]
+   [:database_id              {:optional true} ::lib.schema.id/database]
+   [:user_attribute           {:optional true} ::database-router.user-attribute]
+   [:anonymous_access_granted {:optional true} :boolean]])
 
 (mr/def ::database-router.update
   "What an update of a DatabaseRouter takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
-   [:user_attribute {:optional true} ::database-router.user-attribute]])
+   [:id                       ms/PositiveInt]
+   [:database_id              {:optional true} ::lib.schema.id/database]
+   [:user_attribute           {:optional true} ::database-router.user-attribute]
+   [:anonymous_access_granted {:optional true} :boolean]])
 
 (mr/def ::database-router.create
   "What creating a DatabaseRouter takes: the columns of an update without the `:id`, and the Database it routes and

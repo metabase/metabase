@@ -2567,6 +2567,25 @@
   (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
   snapshot)
 
+(defmethod public-sharing/shown-card-ids :model/Card
+  [_model card-ids]
+  (zipmap card-ids (map hash-set card-ids)))
+
+(defmethod public-sharing/value-list-sources :model/Card
+  [_model card-ids]
+  ;; A question's anonymous reach includes the questions its filters draw value lists from.
+  (->> (queries.db/card-parameters-for-cards card-ids)
+       (map (fn [{:keys [id parameters]}]
+              [id (vec (for [parameter parameters
+                             :let  [card-id (parameter-card/values-source-card-id parameter)]
+                             :when card-id]
+                         {:parameter parameter, :card-id card-id}))]))
+       (into {})))
+
+(defmethod public-sharing/embedding-params :model/Card
+  [_model card-ids]
+  (into {} (map (juxt :id :embedding_params)) (queries.db/card-parameters-for-cards card-ids)))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Card [_model]

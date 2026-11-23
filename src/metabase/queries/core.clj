@@ -71,6 +71,7 @@
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions
   parameter-source-cards-readable?
+  values-source-card-id
   values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms
