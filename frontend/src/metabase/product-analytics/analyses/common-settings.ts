@@ -1,33 +1,14 @@
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { isOneOf } from "metabase-types/guards";
+
+import { parseDateRange } from "../date-range";
 
 import type {
   AnalysisSettingDefinitions,
   CommonSettings,
-  Grain,
-  Granularity,
+  CommonSettingsOptions,
 } from "./types";
 
 const DEFAULT_DATE_RANGE = "past90days";
-
-/**
- * Whether a value is a relative or specific date range, in the format
- * dashboard date filters use.
- */
-const isDateRange = (value: unknown): boolean => {
-  if (typeof value !== "string") {
-    return false;
-  }
-  const type = deserializeDateParameterValue(value)?.type;
-  return type === "relative" || type === "specific";
-};
-
-type CommonSettingsOptions = {
-  /** What the analysis can count. The first is the default. */
-  grains: readonly [Grain, ...Grain[]];
-  /** The time units the analysis can bucket by. The first is the default. */
-  granularities: readonly [Granularity, ...Granularity[]];
-};
 
 /** The settings every analysis has, with the options its kind allows. */
 export const getCommonSettings = ({
@@ -36,7 +17,8 @@ export const getCommonSettings = ({
 }: CommonSettingsOptions): AnalysisSettingDefinitions<CommonSettings> => ({
   date_range: {
     getDefault: () => DEFAULT_DATE_RANGE,
-    isValid: (_context, settings) => isDateRange(settings.date_range),
+    isValid: (_context, settings) =>
+      parseDateRange(settings.date_range) !== undefined,
   },
   counting: {
     getDefault: () => grains[0],

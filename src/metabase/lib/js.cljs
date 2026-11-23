@@ -66,6 +66,7 @@
    ;; the FE still hands this entry point legacy MBQL; it must normalize before converting to MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.analysis :as lib.analysis]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
@@ -2888,3 +2889,8 @@
   "Generates an expression name that's unique in the query."
   [the-query stage-number suggested-name]
   (lib.expression/unique-expression-name the-query stage-number suggested-name))
+
+(defn ^:export analysis-state-to-mbql
+  "Convert an analysis state to an MBQL query."
+  [analysis-state]
+  (lib.analysis/->mbql (js->clj analysis-state :keywordize-keys true)))

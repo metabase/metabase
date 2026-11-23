@@ -1,8 +1,10 @@
 import type { CompleteSettingDefinitions } from "metabase/viz-core";
 import type {
+  CardDisplayType,
   DateTimeAbsoluteUnit,
   ProductAnalyticsKind,
   Table,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 /** What an analysis counts. */
@@ -27,6 +29,12 @@ export type CommonSettings = {
   granularity: Granularity;
 };
 
+/** What a kind of analysis can count and bucket by. The first of each is the default. */
+export type CommonSettingsOptions = {
+  grains: readonly [Grain, ...Grain[]];
+  granularities: readonly [Granularity, ...Granularity[]];
+};
+
 export type HabitSettings = CommonSettings;
 
 export type AnalysisSettingsByKind = {
@@ -39,5 +47,11 @@ export type AnalysisSettingDefinitions<TSettings> = CompleteSettingDefinitions<
 >;
 
 export type AnalysisConfig<K extends ProductAnalyticsKind> = {
+  options: CommonSettingsOptions;
   settings: AnalysisSettingDefinitions<AnalysisSettingsByKind[K]>;
+  getTitle: (settings: AnalysisSettingsByKind[K]) => string;
+  getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
+  getVizSettings: (
+    settings: AnalysisSettingsByKind[K],
+  ) => VisualizationSettings;
 };
