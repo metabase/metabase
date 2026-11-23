@@ -9,6 +9,7 @@
    [metabase-enterprise.test :as met]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.models.measure :as measure]
@@ -672,8 +673,8 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [card (mt/original-fn #'dependencies.db/card)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/card (fn [id] (assoc (card id) :result_metadata nil))]
+        (let [cards (mt/original-fn #'dependencies.db/cards)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/cards (fn [ids] (update-vals (cards ids) #(assoc % :result_metadata nil)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column card-id "NAME"))))
@@ -802,3 +803,28 @@
             (is (nil? (column source-id "PRICE")))
             (is (=? [{:id "price" :values_source_type nil}]
                     (t2/select-one-fn :parameters :model/Card :id card-id)))))))))
+
+(deftest rederive-statement-count-test
+  (testing "re-deriving the result metadata of 10 cards runs as many statements as re-deriving that of 40, leaving out
+            the write of the cards, which the Card model's own bulk update owns"
+    (with-dependencies-feature
+      (let [run! (fn [n]
+                   (let [ids (t2/insert-returning-pks!
+                              :model/Card
+                              (for [_ (range n)]
+                                (merge (mt/with-temp-defaults :model/Card) {:dataset_query (table-query :orders)})))]
+                     (try
+                       (run-jobs!)
+                       (apply reprocess! ids)
+                       (let [updated (atom 0)
+                             counted (do-with-inference (fn [_ _ card] (rename-column (:result_metadata card) "TOTAL" "Changed"))
+                                                        #(mt/with-dynamic-fn-redefs [queries.card/update-cards! (fn [updates & _] (swap! updated + (count updates)) nil)]
+                                                           (events.tu/real-statement-count! rederive!)))]
+                         {:count counted :updated @updated})
+                       (finally
+                         (t2/delete! :model/Card :id [:in ids])))))]
+        (run! 2)
+        (let [small (run! 10)
+              large (run! 40)]
+          (is (= (:count small) (:count large)))
+          (is (= [10 40] [(:updated small) (:updated large)])))))))

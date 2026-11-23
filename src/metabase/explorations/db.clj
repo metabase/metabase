@@ -653,13 +653,6 @@
     [:archived false]
     [:archived true :archived_directly false]))
 
-(mu/defn summary-documents-following
-  "The Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a restore
-  of it archives or restores along with it."
-  [exploration-id :- ms/PositiveInt
-   archive?       :- :boolean]
-  (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
-
 (mu/defn summary-documents-following-explorations
   "The Summary Documents of the Explorations with `exploration-ids` that an archive of them, when `archive?`, or a
   restore of them archives or restores along with them."

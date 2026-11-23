@@ -41,10 +41,12 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::source-models
-  "The source Databases and Tables of some transforms by ID, as [[prefetch-source-models]] loads them."
+  "The source Databases and Tables of some transforms by ID, as [[prefetch-source-models]] loads them, and a delay of
+  [[source-query-permissions-ok?]] for each distinct source query by [[source-query-key]]."
   [:map {:closed true}
    [:model/Database [:maybe [:map-of ::lib.schema.id/database :metabase.warehouses.schema/database]]]
-   [:model/Table    [:maybe [:map-of ::lib.schema.id/table :metabase.warehouse-schema.schema/table]]]])
+   [:model/Table    [:maybe [:map-of ::lib.schema.id/table :metabase.warehouse-schema.schema/table]]]
+   [:source-query-permissions {:optional true} [:map-of :string [:fn delay?]]]])
 
 (mr/def ::create-body
   "What creates a Transform: the columns of a new one and the `:tag_ids` to link."
@@ -89,6 +91,11 @@
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))
 
+(defn- source-query-key
+  "What identifies the source `query` of a transform for its permission answer: the query without its metadata, printed."
+  [query]
+  (pr-str (dissoc query :lib/metadata)))
+
 (mu/defn source-tables-readable? :- :boolean
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
@@ -110,7 +117,9 @@
        (if-let [db-id (get-in source [:query :database])]
          (if-let [db (resolve* :model/Database db-id)]
            (and (boolean (mi/can-query? (t2/hydrate db :can_query)))
-                (source-query-permissions-ok? (:query source)))
+                (if-let [answer (get-in models-cache [:source-query-permissions (source-query-key (:query source))])]
+                  @answer
+                  (source-query-permissions-ok? (:query source))))
            false)
          false)
 
@@ -145,7 +154,12 @@
   [transforms :- [:sequential [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]]
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
-    {:model/Database (when (seq db-ids)
+    {:source-query-permissions (into {}
+                                     (keep (fn [transform]
+                                             (when-let [query (get-in transform [:source :query])]
+                                               [(source-query-key query) (delay (source-query-permissions-ok? query))])))
+                                     transforms)
+     :model/Database (when (seq db-ids)
                        (u/index-by :id (t2/hydrate (transforms.db/databases db-ids) :can_query)))
      :model/Table    (when (seq table-ids)
                        (u/index-by :id (t2/hydrate (transforms.db/tables table-ids) :can_query)))}))
@@ -153,13 +167,17 @@
 (mu/defn add-source-readable :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
   "Add :source_readable field to a transform or collection of transforms.
   The field indicates whether the current user can read the source tables/database
-  referenced by the transform."
-  [transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
-  (if (sequential? transform-or-transforms)
-    (let [models-cache (prefetch-source-models transform-or-transforms)]
-      (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
-            transform-or-transforms))
-    (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms)))))
+  referenced by the transform. A collection reads its sources from `models-cache` when given, else loads them once."
+  ([transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
+   (add-source-readable transform-or-transforms
+                        (when (sequential? transform-or-transforms)
+                          (prefetch-source-models transform-or-transforms))))
+  ([transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
+    models-cache            :- [:maybe ::source-models]]
+   (if (sequential? transform-or-transforms)
+     (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
+           transform-or-transforms)
+     (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms))))))
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 

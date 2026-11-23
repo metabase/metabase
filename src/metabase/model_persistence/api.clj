@@ -48,12 +48,11 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (perms/check-has-application-permission :monitoring)
-  (let [db-ids (model-persistence.db/persisted-database-ids)
+  (let [db-ids (vec (model-persistence.db/persisted-database-ids))
         writable-db-ids (when (seq db-ids)
                           (->> (model-persistence.db/databases db-ids)
                                mi/writable
-                               (map :id)
-                               set))
+                               (mapv :id)))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)

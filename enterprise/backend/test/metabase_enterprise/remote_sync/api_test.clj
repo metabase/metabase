@@ -281,6 +281,32 @@
       (t2/delete! :model/RemoteSyncTask)
       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
 
+(deftest dirty-statement-count-test
+  (testing "GET /api/ee/remote-sync/dirty costs as many statements for 10 cards as for 40, each in its own synced collection"
+    (let [statements (fn [n]
+                       (remote-sync.tu/with-repository [url]
+                         (remote-sync.tu/with-remote-sync [url :read-write]
+                           (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}]
+                             (mt/with-model-cleanup [:model/Card :model/Collection]
+                               (let [mp             (mt/metadata-provider)
+                                     collection-ids (t2/insert-returning-pks! :model/Collection
+                                                                              (for [i (range n)]
+                                                                                {:name             (str "Synced " i)
+                                                                                 :is_remote_synced true
+                                                                                 :location         (str "/" (:id synced) "/")}))]
+                                 (t2/insert! :model/Card (map-indexed (fn [i collection-id]
+                                                                        (assoc (mt/with-temp-defaults :model/Card)
+                                                                               :name          (str "Synced card " i)
+                                                                               :collection_id collection-id
+                                                                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                                      collection-ids))
+                                 (is (= n (count (filter (comp #{"card"} :model)
+                                                         (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+                                 (t2/with-call-count [call-count]
+                                   (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                                   (call-count))))))))]
+      (is (= (statements 10) (statements 40))))))
+
 (deftest dirty-with-unknown-base-version-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]

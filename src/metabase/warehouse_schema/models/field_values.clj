@@ -726,12 +726,22 @@
         (mapcat #(warehouse-schema.db/field-values-ids-of-types (vec %) advanced-field-values-types))
         (partition-all mdb/delete-partition-size field-ids)))
 
-(mu/defn ids-older-than :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of `types` of the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
-   types        :- [:set :keyword]
-   max-age-days :- :int]
-  (warehouse-schema.db/field-values-ids-of-types-before field-id types max-age-days))
+(mu/defn ids-by-field :- [:map-of ::lib.schema.id/field [:sequential ms/PositiveInt]]
+  "The ids of the FieldValues of each of the Fields with `field-ids` that has any, by Field id, read in batches of
+  [[mdb/delete-partition-size]]."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (-> (group-by :field_id (into []
+                                (mapcat #(warehouse-schema.db/field-values-ids-and-field-ids (vec %)))
+                                (partition-all mdb/delete-partition-size field-ids)))
+      (update-vals #(mapv :id %))))
+
+(mu/defn expired-advanced-ids-of-database :- [:sequential ms/PositiveInt]
+  "The ids of the advanced FieldValues older than [[advanced-field-values-max-age]] of the active, normal-visibility
+  Fields of the synced Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/expired-field-values-ids-of-database database-id
+                                                            advanced-field-values-types
+                                                            (t/as advanced-field-values-max-age :days)))
 
 (defn- clear-advanced-field-values-for-fields!
   "Delete the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."

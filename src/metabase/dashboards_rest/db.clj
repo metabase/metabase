@@ -90,10 +90,12 @@
     (t2/select :model/Field :id [:in ids])
     []))
 
-(mu/defn card-query
-  "The query of the Card with `card-id`, or nil (also nil for virtual dashcards, which have no Card id)."
-  [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one-fn :dataset_query :model/Card :id card-id))
+(mu/defn card-queries
+  "A map of the id of each Card with `card-ids` to its query."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids])
+    {}))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

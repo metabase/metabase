@@ -137,6 +137,18 @@
              :%lower.schema lower-schema
              :active true))
 
+(mu/defn active-tables-by-lower-names
+  "The active Tables of the Database with `database-id` whose lower-cased name is one of `lower-names`, hidden ones
+  included, each with its lower-cased name and schema as the database computes them under `:lower_name` and
+  `:lower_schema`."
+  [database-id :- ::lib.schema.id/database
+   lower-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :metabase_table.* [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
+             {:where [:and
+                      [:= :db_id [:auto/param database-id]]
+                      [:in [:lower :name] [:auto/param lower-names]]
+                      [:= :active true]]}))
+
 (mu/defn tables-by-name
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."
   [columns      :- [:sequential :keyword]
@@ -321,6 +333,18 @@
              :active true
              {:order-by [[:position :asc] [:%lower.name :asc]]}))
 
+(mu/defn active-fields-metadata-for-tables
+  "The sync metadata columns of the active Fields of the Tables with `table-ids`, with their `:table_id`."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (t2/select [:model/Field :table_id :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+              :parent_id :id :description :database_position :nfc_path
+              :database_is_auto_increment :database_required
+              :database_default :database_is_generated :database_is_nullable :database_is_pk
+              :database_partitioned :json_unfolding :position :preview_display]
+             {:where [:and
+                      [:in :table_id [:auto/param table-ids]]
+                      [:= :active true]]}))
+
 (mu/defn normal-fields-for-table
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
   [table-id :- ::lib.schema.id/table
@@ -341,6 +365,18 @@
              :%lower.name [:in lower-names]
              :parent_id parent-id
              :active false))
+
+(mu/defn inactive-top-level-fields-by-lower-name-for-tables
+  "The inactive top-level Fields of the Tables with `table-ids` whose lower-cased name is one of `lower-names`, each
+  with its lower-cased name as the database computes it under `:lower_name`."
+  [table-ids   :- [:sequential {:min 1} ::lib.schema.id/table]
+   lower-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Field :metabase_field.* [:%lower.name :lower_name]]
+             {:where [:and
+                      [:in :table_id [:auto/param table-ids]]
+                      [:in [:lower :name] [:auto/param lower-names]]
+                      [:= :parent_id nil]
+                      [:= :active false]]}))
 
 (mu/defn incomplete-analysis-fields-for-table
   "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
@@ -574,6 +610,12 @@
                                 [:not= :metabase_field.visibility_type "retired"]
                                 (data-sensitivity-to-scan-clause rescan-public?)]
                      :group-by [:metabase_field.table_id]}))
+
+(mu/defn tables-by-schema-and-name
+  "The Tables with `table-ids`, ordered by schema and name."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (t2/select :model/Table {:where    [:in :id [:auto/param table-ids]]
+                           :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."

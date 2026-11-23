@@ -13,7 +13,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -273,7 +274,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
             path [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
-        (mt/throw-if-called! graph/update-group-permissions!
+        (mt/throw-if-called! perms/update-collection-accesses!
           (graph/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
         (testing "double-check that the graph is unchanged"
           (is (= {:revision 0
@@ -608,3 +609,66 @@
 (deftest issue-70596-large-collection-ids-test
   (testing "graph/graph doesn't throw when called with more collection IDs than the bind parameter limit (#70596)"
     (is (map? (graph/graph nil (set (range 1 70001)) nil)))))
+
+(defn- graph-update-call-count!
+  "The statements that a superuser's update of the graph takes, giving each of `group-ids` write on half of `n` new
+  Collections and read on the other half."
+  [group-ids n]
+  (let [collection-ids (t2/insert-returning-pks! :model/Collection
+                                                 (repeatedly n #(t2.with-temp/with-temp-defaults :model/Collection)))
+        new-graph      {:revision 0
+                        :groups   (into {} (for [group-id group-ids]
+                                             [group-id (into {} (map-indexed (fn [i id] [id (if (even? i) :write :read)]))
+                                                             collection-ids)]))}]
+    (binding [*current-user-id* (mt/user->id :crowberto)]
+      (t2/with-call-count [call-count]
+        @(graph/update-graph! nil new-graph true)
+        (call-count)))))
+
+(deftest update-graph-call-count-test
+  (testing "updating the graph takes as many statements for 40 Collections as for 10"
+    (mt/with-model-cleanup [:model/Collection :model/PermissionsGroup :model/CollectionPermissionGraphRevision]
+      (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                (for [i (range 3)] {:name (str "Graph call count group " i)}))]
+        (graph-update-call-count! group-ids 2)
+        (is (= (graph-update-call-count! group-ids 10)
+               (graph-update-call-count! group-ids 40)))))))
+
+(deftest update-graph-refuses-tenant-group-write-test
+  (testing "a graph that gives a tenant group write on one of several Collections is refused and writes nothing"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}  {}
+                   :model/PermissionsGroup {tenant-id :id} {:is_tenant_group true}
+                   :model/Collection       {coll-1 :id}    {}
+                   :model/Collection       {coll-2 :id}    {}
+                   :model/Collection       {coll-3 :id}    {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."
+                            (graph/update-graph! nil
+                                                 {:revision 0
+                                                  :groups   {group-id  {coll-1 :write, coll-2 :write, coll-3 :read}
+                                                             tenant-id {coll-2 :write}}}
+                                                 true)))
+      (is (not (t2/exists? :model/Permissions :group_id [:in [group-id tenant-id]]))))))
+
+(deftest update-collection-accesses-refuses-personal-collection-test
+  (testing "changes that touch a Personal Collection among others are refused before anything is written"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Collection       {coll-1 :id}   {}
+                   :model/Collection       {coll-2 :id}   {}]
+      (let [personal-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"You cannot edit permissions for a Personal Collection or its descendants\."
+                              (perms/update-collection-accesses! [[group-id coll-1 :write]
+                                                                  [group-id personal-id :read]
+                                                                  [group-id coll-2 :read]])))
+        (is (not (t2/exists? :model/Permissions :group_id group-id)))))))
+
+(deftest update-collection-accesses-test
+  (testing "each change replaces the access of its group, and :none removes it"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Collection       {coll-1 :id}   {}
+                   :model/Collection       {coll-2 :id}   {}
+                   :model/Collection       {coll-3 :id}   {}]
+      (perms/update-collection-accesses! [[group-id coll-1 :read] [group-id coll-2 :write] [group-id coll-3 :write]])
+      (perms/update-collection-accesses! [[group-id coll-1 :write] [group-id coll-2 :read] [group-id coll-3 :none]])
+      (is (= #{(format "/collection/%d/" coll-1) (format "/collection/%d/read/" coll-2)}
+             (t2/select-fn-set :object :model/Permissions :group_id group-id))))))

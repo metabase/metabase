@@ -221,30 +221,50 @@
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-(defn- effective-collection-id
-  "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
-  [{model-id :model_id, collection-id :collection_id}]
-  (if model-id
-    (:collection_id (api/check-404 (actions.db/card-scope-columns model-id)))
-    (u/prog1 collection-id
-      (when collection-id
-        (api/check-404 (actions.db/collection-exists? collection-id))))))
-
 (defn- model-less-root?
   "Whether `action` has neither a model nor a Collection, which puts it in the root of the data actions namespace."
   [{model-id :model_id, collection-id :collection_id}]
   (and (nil? model-id) (nil? collection-id)))
 
+(defn- collection-writable-fn
+  "A function from one of `actions` to whether the current user can write the Collection it goes in: its own or its
+  model's, the default root for an Action of a model outside one, and otherwise the data actions root, whose Actions
+  remote sync keeps read-only on a read-only instance; the models and Collections of `actions` are read once, when
+  first asked, and a missing one is a 404."
+  [actions]
+  (let [loaded       (delay
+                       (let [model-ids   (into [] (comp (keep :model_id) (distinct)) actions)
+                             models      (if (seq model-ids) (actions.db/card-collection-ids model-ids) {})
+                             ids         (into [] (comp (keep #(if-let [model-id (:model_id %)]
+                                                                 (get models model-id)
+                                                                 (:collection_id %)))
+                                                        (distinct))
+                                               actions)
+                             collections (if (seq ids) (actions.db/collections-by-id ids) {})]
+                         {:models      models
+                          :collections collections
+                          :writable    (into #{} (comp (filter mi/can-write?) (map :id))
+                                             (t2/hydrate (vec (vals collections)) :can_write))}))
+        default-root (delay (collection/can-write-collection-or-root? nil {:root-namespace nil}))
+        actions-root (delay (and (collection/can-write-collection-or-root? nil {:root-namespace collection/data-actions-ns})
+                                 (not (remote-sync/read-only?))))]
+    (fn [{model-id :model_id, own-collection-id :collection_id}]
+      (let [{:keys [models collections writable]} @loaded
+            collection-id (if model-id
+                            (do (api/check-404 (contains? models model-id))
+                                (get models model-id))
+                            own-collection-id)]
+        (when collection-id
+          (api/check-404 (contains? collections collection-id)))
+        (cond
+          collection-id (contains? writable collection-id)
+          model-id      @default-root
+          :else         @actions-root)))))
+
 (defn- collection-writable?
-  "Whether the current user can write the Collection `action` goes in: its own or its model's, the default root for
-  an Action of a model outside one, and otherwise the data actions root, whose Actions remote sync keeps read-only on
-  a read-only instance."
-  [{model-id :model_id, :as action}]
-  (let [collection-id (effective-collection-id action)]
-    (if (or model-id collection-id)
-      (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
-      (and (collection/can-write-collection-or-root? nil {:root-namespace collection/data-actions-ns})
-           (not (remote-sync/read-only?))))))
+  "Whether the current user can write the Collection `action` goes in, as [[collection-writable-fn]] answers."
+  [action]
+  ((collection-writable-fn [action]) action))
 
 (defn- check-can-read-keys
   "Throws unless `action` has the columns its `:can_read` and `:can_write` hydrations read."
@@ -298,8 +318,13 @@
 
 (defmethod mi/can-update? :model/Action
   [action changes]
-  (and (mi/can-write? (t2/hydrate action :can_write))
-       (collection-writable? (merge action changes))))
+  (mi/can-update-all? :model/Action [action] changes))
+
+(defmethod mi/can-update-all? :model/Action
+  [_model actions changes]
+  (let [actions   (t2/hydrate (vec actions) :can_write)
+        writable? (collection-writable-fn (mapv #(merge % changes) actions))]
+    (every? #(and (mi/can-write? %) (writable? (merge % changes))) actions)))
 ;;; ------------------------------------------- Request checks and CRUD fns ------------------------------------------
 
 (defn check-implicit-actions-supported

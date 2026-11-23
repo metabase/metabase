@@ -13,6 +13,8 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -448,6 +450,15 @@
       (warehouse-schema.db/unarchived-measures-for-tables table-ids))
     tables))
 
+(defn- warm-table-metadata!
+  "Loads `tables` into the metadata provider of their Database, one query per Database, so that the metric Cards on
+  them compute their descriptions without reading their Table one at a time."
+  [tables]
+  (doseq [[db-id tables] (group-by :db_id (filter :db_id tables))]
+    (lib.metadata/bulk-metadata (lib-be/application-database-metadata-provider db-id)
+                                :metadata/table
+                                (into #{} (map :id) tables))))
+
 (mi/define-batched-hydration-method with-metrics
   :metrics
   "Efficiently hydrate the Metrics for a collection of `tables`.
@@ -458,6 +469,7 @@
   which is minutes of CPU and enough garbage to exhaust the heap on a wide table with many old metrics (#83937).
   Every other `card_schema` upgrade still runs."
   [tables]
+  (warm-table-metadata! tables)
   (with-objects :metrics
     (fn [table-ids]
       (->> (binding [card-schema/*skip-dimension-backfill?* true]

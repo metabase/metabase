@@ -16,7 +16,8 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -278,3 +279,33 @@
       (testing "an archived Exploration may go into an archived Collection"
         (exploration/update-explorations! [{:id id :archived true :collection_id archived-id}])
         (is (= archived-id (stored)))))))
+
+(defn- archive-call-count
+  "The statements that rasta's question whether he may archive `explorations` takes, which must be allowed."
+  [explorations]
+  (mt/with-current-user (mt/user->id :rasta)
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Exploration explorations {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-archive-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-model-cleanup [:model/Collection :model/Exploration]
+      (let [coll-ids        (t2/insert-returning-pks! :model/Collection
+                                                      (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+            _               (doseq [coll-id (butlast coll-ids)]
+                              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id))
+            exploration-ids (t2/insert-returning-pks! :model/Exploration
+                                                      (for [coll-id coll-ids]
+                                                        (assoc (t2.with-temp/with-temp-defaults :model/Exploration)
+                                                               :collection_id coll-id)))
+            explorations    (t2/select :model/Exploration :id [:in exploration-ids] {:order-by [[:id :asc]]})
+            writable        (vec (butlast explorations))]
+        (testing "a batch with one Exploration rasta cannot write is refused"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-update-each? :model/Exploration (conj (subvec writable 0 3) (last explorations))
+                                             {:archived true})))))
+        (testing "the question takes as many statements for 40 Explorations as for 10"
+          (archive-call-count (subvec writable 0 2))
+          (is (= (archive-call-count (subvec writable 0 10))
+                 (archive-call-count writable))))))))

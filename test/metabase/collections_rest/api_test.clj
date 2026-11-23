@@ -2679,6 +2679,36 @@
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
         (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
+(deftest move-dashboard-question-candidates-statement-count-test
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [insert-dashboard! #(t2/insert-returning-pk! :model/Dashboard
+                                                          (merge (mt/with-temp-defaults :model/Dashboard)
+                                                                 {:collection_id coll-id}))
+              move!             (fn [n]
+                                  (let [dashboard-ids (repeatedly 2 insert-dashboard!)
+                                        card-ids      (mapv (fn [i]
+                                                              (let [card-id (t2/insert-returning-pk! :model/Card
+                                                                                                     (merge (mt/with-temp-defaults :model/Card)
+                                                                                                            {:name (str "candidate " i) :collection_id coll-id}))]
+                                                                (t2/insert! :model/DashboardCard
+                                                                            (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                                   {:card_id card-id :dashboard_id (nth dashboard-ids (mod i 2))}))
+                                                                card-id))
+                                                            (range n))]
+                                    (t2/with-call-count [call-count]
+                                      (let [{:keys [moved]} (mt/user-http-request :crowberto :post 200
+                                                                                  (format "collection/%d/move-dashboard-question-candidates" coll-id)
+                                                                                  {:card_ids card-ids})]
+                                        (is (= (set card-ids) (set moved)))
+                                        (is (every? some? (t2/select-fn-vec :dashboard_id :model/Card :id [:in card-ids]))))
+                                      (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
+
 (deftest ^:parallel post-move-dashboard-question-candidates-root-collection
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Move card from root collection"

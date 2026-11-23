@@ -220,22 +220,38 @@
            (boolean (mi/superuser?)))))
 
 (defn- following-questions
-  "The Cards internal to the Dashboard with `dashboard-id` that archiving it, when `archive?`, or restoring it takes
-  along."
-  [dashboard-id archive?]
+  "The Cards internal to the Dashboards with `dashboard-ids` that archiving them, when `archive?`, or restoring them
+  takes along."
+  [dashboard-ids archive?]
   (if archive?
-    (dashboards.db/questions-archived-with-dashboard dashboard-id)
-    (dashboards.db/questions-restored-with-dashboard dashboard-id)))
+    (dashboards.db/questions-archived-with-dashboards dashboard-ids)
+    (dashboards.db/questions-restored-with-dashboards dashboard-ids)))
+
+(defn- writable-for?
+  "Whether the current user writes `dashboard` as far as `changes` need: a change of its public link alone needs no
+  write access."
+  [dashboard changes]
+  (or (changes-only-public-link? dashboard changes)
+      (mi/can-write? dashboard)))
+
+(defn- can-move-and-share?
+  "Whether the current user may do what `changes` do to the Collection, the embedding and the public link of
+  `dashboard`."
+  [dashboard changes]
+  (and (collection/can-move? dashboard changes)
+       (can-change-embedding? dashboard changes)
+       (can-change-public-link? dashboard changes)))
 
 (defmethod mi/can-update? :model/Dashboard
   [dashboard changes]
+  (mi/can-update-all? :model/Dashboard [dashboard] changes))
+
+(defmethod mi/can-update-all? :model/Dashboard
+  [_model dashboards changes]
   (boolean
-   (and (or (changes-only-public-link? dashboard changes)
-            (mi/can-write? dashboard))
-        (mi/archive-followers-updatable? dashboard changes :model/Card (partial following-questions (:id dashboard)))
-        (collection/can-move? dashboard changes)
-        (can-change-embedding? dashboard changes)
-        (can-change-public-link? dashboard changes))))
+   (and (every? #(writable-for? % changes) dashboards)
+        (mi/archive-followers-updatable? dashboards changes :model/Card following-questions)
+        (every? #(can-move-and-share? % changes) dashboards))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

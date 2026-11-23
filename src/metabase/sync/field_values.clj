@@ -2,10 +2,12 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
+   [metabase.analyze.core :as analyze]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
@@ -17,15 +19,6 @@
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
-(mu/defn- clear-field-values-for-field!
-  [field :- i/FieldInstance]
-  (when (sync.db/field-values-exist? (u/the-id field))
-    (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
-                       (sync-util/name-for-logging field))
-               "Deleting FieldValues...")
-    (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
-    ::field-values/fv-deleted))
-
 (defn- result->delta [result]
   (cond
     (instance? Exception result)        {:errors 1}
@@ -33,12 +26,12 @@
     (= ::field-values/fv-updated result) {:updated 1}
     (= ::field-values/fv-deleted result) {:deleted 1}))
 
-(defn- table->fields-to-scan
-  "Up to `limit` active, normal-visibility Fields of `table`, ordered by id so the selection is stable across syncs.
-  Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
-  into memory and issuing a warehouse request per field."
-  [table limit]
-  (sync.db/normal-fields-for-table (u/the-id table) limit))
+(defn- fields-to-scan
+  "Up to `limit` active, normal-visibility Fields of each of `tables`, by Table id, ordered by id so the selection is
+  stable across syncs. Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from
+  loading every Field into memory and issuing a warehouse request per field."
+  [tables limit]
+  (group-by :table_id (analyze/normal-fields (mapv :id tables) limit)))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
@@ -173,6 +166,68 @@
                    empty-counts
                    by-table)))))
 
+(defn- clear-field-values!
+  "Delete the FieldValues of `fields`, which should no longer have any, returning the counts of the Fields that had
+  some."
+  [fields]
+  (let [field-id->ids (when (seq fields)
+                        (field-values/ids-by-field (mapv :id fields)))]
+    (if (empty? field-id->ids)
+      empty-counts
+      (let [_      (doseq [field fields
+                           :when (contains? field-id->ids (:id field))]
+                     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
+                                        (sync-util/name-for-logging field))
+                                "Deleting FieldValues..."))
+            result (sync-util/with-error-handling "Error clearing field values"
+                     (field-values/delete-field-values! (into [] cat (vals field-id->ids))))]
+        (assoc empty-counts (if (instance? Exception result) :errors :deleted) (count field-id->ids))))))
+
+(defn- syncable?
+  "Whether the FieldValues `fv` of `field` are there and in use, so sync should update them."
+  [field fv]
+  (cond
+    (not fv)
+    (do (log/tracef "%s does not have FieldValues. Skipping..." (sync-util/name-for-logging field))
+        false)
+
+    (field-values/inactive? fv)
+    (do (log/infof "%s has not been used since %s. Skipping..."
+                   (sync-util/name-for-logging field)
+                   (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at fv))))
+        false)
+
+    :else
+    true))
+
+(mu/defn- update-field-values-for-tables!
+  "Update the FieldValues for all Fields (as needed) of `tables`, reading their Fields and FieldValues at once.
+  SQL drivers use a single UNION ALL query per Table covering every list-eligible field with an active
+  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
+  [database :- i/DatabaseInstance
+   tables   :- [:sequential i/TableInstance]]
+  (let [limit             (sync.settings/scan-max-fields-per-table)
+        table-id->scanned (fields-to-scan tables (inc limit))
+        table-id->fields  (into {}
+                                (map (fn [table]
+                                       (let [scanned (table-id->scanned (:id table))]
+                                         (when (> (count scanned) limit)
+                                           (warn-too-many-fields! table limit))
+                                         [(:id table) (take limit scanned)])))
+                                tables)
+        {to-sync  true
+         to-clear false}  (group-by #(boolean (field-values/field-should-have-field-values? %))
+                                    (mapcat val table-id->fields))
+        clear-counts      (clear-field-values! to-clear)
+        fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
+        table-id->to-sync (group-by :table_id (filter #(syncable? % (get fvs-map (u/the-id %))) to-sync))]
+    (reduce (fn [counts table]
+              (let [sync-counts (database-routing/with-anonymous-router-access
+                                  (sync-fields-for-table! database table (table-id->to-sync (:id table)) fvs-map))]
+                (merge-with + counts (or sync-counts empty-counts))))
+            clear-counts
+            tables)))
+
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
@@ -182,50 +237,15 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (let [limit            (sync.settings/scan-max-fields-per-table)
-         scanned          (table->fields-to-scan table (inc limit))
-         _                (when (> (count scanned) limit)
-                            (warn-too-many-fields! table limit))
-         all-fields       (take limit scanned)
-         {to-sync  true
-          to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %))
-                                    all-fields)
-         clear-counts     (reduce (fn [counts field]
-                                    (let [result (sync-util/with-error-handling
-                                                  (format "Error clearing field values for %s"
-                                                          (sync-util/name-for-logging field))
-                                                   (clear-field-values-for-field! field))]
-                                      (merge-with + counts (result->delta result))))
-                                  empty-counts
-                                  to-clear)
-         fvs-map          (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
-         fields-to-sync   (filterv (fn [field]
-                                     (let [fv (get fvs-map (u/the-id field))]
-                                       (cond
-                                         (not fv)
-                                         (do (log/tracef "%s does not have FieldValues. Skipping..."
-                                                         (sync-util/name-for-logging field))
-                                             false)
-
-                                         (field-values/inactive? fv)
-                                         (do (log/infof "%s has not been used since %s. Skipping..."
-                                                        (sync-util/name-for-logging field)
-                                                        (t/format "yyyy-MM-dd"
-                                                                  (t/local-date-time (:last_used_at fv))))
-                                             false)
-
-                                         :else
-                                         true)))
-                                   to-sync)
-         sync-counts      (database-routing/with-anonymous-router-access
-                            (sync-fields-for-table! database table fields-to-sync fvs-map))]
-     (merge-with + clear-counts (or sync-counts empty-counts)))))
+   (update-field-values-for-tables! database [table])))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
   (tracing/with-span :sync "field-values.update" {:db/id (:id database)}
-    (let [tables (sync-util/reducible-sync-tables database)]
-      (transduce (map (partial update-field-values-for-table! database)) (partial merge-with +) tables))))
+    (let [groups (table-chunks/groups (sync-util/reducible-sync-tables database)
+                                      analyze/normal-field-counts
+                                      (inc (sync.settings/scan-max-fields-per-table)))]
+      (transduce (map (partial update-field-values-for-tables! database)) (partial merge-with +) groups))))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
@@ -271,36 +291,13 @@
       (database-routing/with-anonymous-router-access
         (sync-fields-grouped-by-table! on-demand-fields)))))
 
-(defn- delete-expired-advanced-field-values-for-field!
-  [field]
-  (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [types        field-values/advanced-field-values-types
-          max-age-days (t/as field-values/advanced-field-values-max-age :days)
-          rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
-      (field-values/delete-field-values! (field-values/ids-older-than (:id field) types max-age-days))
-      rows-count)))
-
-(mu/defn delete-expired-advanced-field-values-for-table!
-  "Delete all expired advanced FieldValues for a table and returns the number of deleted rows.
-  For more info about advanced FieldValues, check the docs
-  in [[metabase.warehouse-schema.models.field-values/field-values-types]]"
-  [table :- i/TableInstance]
-  (->> (table->fields-to-scan table (sync.settings/scan-max-fields-per-table))
-       (map delete-expired-advanced-field-values-for-field!)
-       (reduce +)))
-
 (mu/defn- delete-expired-advanced-field-values-for-database!
   [database :- i/DatabaseInstance]
   (tracing/with-span :sync "field-values.delete-expired-advanced" {:db/id (:id database)}
-    (let [tables (sync-util/reducible-sync-tables database)]
-      {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
-                                 (map (fn [result]
-                                        (if (instance? Throwable result)
-                                          (throw result)
-                                          result))))
-                           +
-                           0
-                           tables)})))
+    (let [ids (field-values/expired-advanced-ids-of-database (u/the-id database))]
+      (when (seq ids)
+        (field-values/delete-field-values! ids))
+      {:deleted (count ids)})))
 
 (def ^:private sync-field-values-steps
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"

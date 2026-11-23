@@ -4,6 +4,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.test :as met]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -87,3 +88,39 @@
       (is (has-segmented-perms-when-segmented-db-exists?! :rasta)))
     (testing "Admin"
       (is (not (has-segmented-perms-when-segmented-db-exists?! :crowberto))))))
+
+(defn- insert-sandboxed-tables!
+  "Inserts a Database with `n` Tables, gives All Users no view-data access to it, sandboxes every Table for the group
+  with `sandboxed-group-id`, and gives the group with `other-group-id` unrestricted view-data access to the Tables at
+  even positions only; returns the Table ids."
+  [n sandboxed-group-id other-group-id]
+  (let [db-id     (first (t2/insert-returning-pks! :model/Database [(mt/with-temp-defaults :model/Database)]))
+        table-ids (vec (t2/insert-returning-pks! :model/Table
+                                                 (repeatedly n #(merge (mt/with-temp-defaults :model/Table)
+                                                                       {:db_id db-id :active true}))))]
+    (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+    (data-perms/set-database-permission! sandboxed-group-id db-id :perms/view-data :unrestricted)
+    (data-perms/set-table-permissions! other-group-id :perms/view-data
+                                       (into {} (map-indexed (fn [i id] [id (if (even? i) :unrestricted :blocked)]))
+                                             table-ids))
+    (t2/insert! :model/Sandbox (for [table-id table-ids]
+                                 {:group_id sandboxed-group-id :table_id table-id :card_id nil :attribute_remappings {}}))
+    table-ids))
+
+(deftest enforced-sandboxes-for-user-in-bulk-test
+  (testing "A sandbox is enforced exactly where no other group of the user gives unrestricted access, in as many statements for 8 Tables as for 2"
+    (mt/with-temp [:model/PermissionsGroup           {sandboxed :id} {}
+                   :model/PermissionsGroup           {other :id}     {}
+                   :model/PermissionsGroupMembership _               {:group_id sandboxed :user_id (mt/user->id :rasta)}
+                   :model/PermissionsGroupMembership _               {:group_id other :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Sandbox :model/Database]
+        (let [enforced (fn [n]
+                         (let [table-ids (insert-sandboxed-tables! n sandboxed other)
+                               _         (sandbox.api.util/enforced-sandboxes-for-user (mt/user->id :rasta))
+                               [result c] (t2/with-call-count [call-count]
+                                            [(set (keep (comp (set table-ids) :table_id)
+                                                        (sandbox.api.util/enforced-sandboxes-for-user (mt/user->id :rasta))))
+                                             (call-count)])]
+                           (is (= (set (take-nth 2 (rest table-ids))) result))
+                           c))]
+          (is (= (enforced 2) (enforced 8))))))))

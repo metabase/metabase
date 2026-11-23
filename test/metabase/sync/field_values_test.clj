@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.core :as sync]
    [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
@@ -13,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -322,17 +324,17 @@
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (:id (data/db)))))))))
 
-;;; ---------------------------------- table->fields-to-scan ----------------------------------
+;;; ---------------------------------- fields-to-scan ----------------------------------
 
-(deftest table->fields-to-scan-respects-limit-test
+(deftest fields-to-scan-respects-limit-test
   (testing "returns at most `limit` active, normal-visibility fields so very wide tables don't load every field"
     (mt/with-temp [:model/Table {table-id :id} {}
                    :model/Field _ {:table_id table-id :active true :visibility_type :normal}
                    :model/Field _ {:table_id table-id :active true :visibility_type :normal}
                    :model/Field _ {:table_id table-id :active true :visibility_type :normal}]
       (let [table (t2/select-one :model/Table :id table-id)]
-        (is (= 2 (count (#'sync.field-values/table->fields-to-scan table 2))))
-        (is (= 3 (count (#'sync.field-values/table->fields-to-scan table 100))))))))
+        (is (= 2 (count (get (#'sync.field-values/fields-to-scan [table] 2) table-id))))
+        (is (= 3 (count (get (#'sync.field-values/fields-to-scan [table] 100) table-id))))))))
 
 ;;; ---------------------------------- can-batch-distinct? ----------------------------------
 
@@ -441,3 +443,77 @@
               "Every FV-eligible field is reported as probed; sync-fields-grouped-by-table! drops the rest")
           (is (>= (:queries counts) 2)
               "More fields than *batch-size* should produce more than one query"))))))
+
+;;; ---------------------------------- statement counts ----------------------------------
+
+(defn- list-or-plain-field
+  "Every other Field a list Field, the others plain text Fields that should have no FieldValues."
+  [j]
+  {:has_field_values (when (even? j) :auto-list)})
+
+(defn- add-field-values!
+  "Give every Field of `database` full FieldValues `[\"a\" \"b\"]` in use, and an advanced FieldValues past its max
+  age."
+  [database]
+  (let [field-ids (t2/select-pks-vec :model/Field :table_id [:in (t2/select-pks-vec :model/Table :db_id (:id database))])
+        expired   (t/minus (t/offset-date-time) (t/plus field-values/advanced-field-values-max-age (t/days 1)))]
+    (t2/insert! :model/FieldValues (for [field-id field-ids]
+                                     {:field_id field-id :type :full :values ["a" "b"] :has_more_values false
+                                      :last_used_at (t/offset-date-time)}))
+    (t2/insert! (t2/table-name :model/FieldValues) (for [field-id field-ids]
+                                                     {:field_id field-id :type "advanced" :hash_key "hash"
+                                                      :created_at expired :updated_at expired}))))
+
+(defn- distinct-values-a-and-b
+  "Distinct values `a` and `b` of each of `fields`, as [[distinct-batch/run-distinct-batch]] gives them."
+  [_table fields]
+  (into {} (map (fn [field] [(:id field) {:values ["a" "b"] :raw-count 2}])) fields))
+
+(defn- update-field-values!
+  "Run both steps of field values sync over `database`, returning the result of each."
+  [database]
+  {:expired (#'sync.field-values/delete-expired-advanced-field-values-for-database! database)
+   :updated (#'sync.field-values/update-field-values-for-database! database)})
+
+(deftest update-field-values-statement-count-test
+  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (testing "field values sync issues as many statements for 16 Tables as for 4"
+      (testing "when FieldValues are cleared and expired ones deleted"
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field add-field-values! update-field-values!)]
+          (is (= small large))))
+      (testing "when nothing changed"
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field
+                                                                   (fn [database]
+                                                                     (add-field-values! database)
+                                                                     (update-field-values! database))
+                                                                   update-field-values!)]
+          (is (= small large)))))
+    (testing "field values sync issues as many statements for 20 Fields per Table as for 5"
+      (testing "when FieldValues are cleared and expired ones deleted"
+        (let [[small large] (analyze.tu/statement-counts-by-fields list-or-plain-field add-field-values! update-field-values!)]
+          (is (= small large))))
+      (testing "when nothing changed"
+        (let [[small large] (analyze.tu/statement-counts-by-fields list-or-plain-field
+                                                                   (fn [database]
+                                                                     (add-field-values! database)
+                                                                     (update-field-values! database))
+                                                                   update-field-values!)]
+          (is (= small large)))))))
+
+(deftest update-field-values-clears-and-expires-field-values-test
+  (testing "field values sync deletes FieldValues of Fields that should have none and expired advanced ones"
+    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    table-1 {:db_id (u/the-id db) :active true}
+                     :model/Table    table-2 {:db_id (u/the-id db) :active true}
+                     :model/Field    listed  {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values :auto-list}
+                     :model/Field    plain-1 {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values nil}
+                     :model/Field    plain-2 {:table_id (u/the-id table-2) :base_type :type/Text :has_field_values nil}]
+        (let [database (driver.u/lib-database (u/the-id db))]
+          (add-field-values! database)
+          (is (=? {:expired {:deleted 3}
+                   :updated {:deleted 2 :errors 0}}
+                  (update-field-values! database)))
+          (is (= [(u/the-id listed)]
+                 (t2/select-fn-vec :field_id :model/FieldValues
+                                   :field_id [:in (map u/the-id [listed plain-1 plain-2])]))))))))

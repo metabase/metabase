@@ -93,6 +93,13 @@
   [id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_id :model/Document :id id))
 
+(mu/defn exploration-ids-by-document-id
+  "A map of the id of each Document with `ids` to its Exploration id, nil for one outside an Exploration."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (into {} (map (juxt :id :exploration_id)) (t2/select [:model/Document :id :exploration_id] :id [:in ids]))
+    {}))
+
 (mu/defn public-documents
   "The name, id, and public uuid of the unarchived Documents that are publicly shared."
   []
@@ -132,15 +139,15 @@
    document-id :- ms/PositiveInt]
   (t2/exists? :model/Card :id card-id :document_id document-id :archived false))
 
-(mu/defn cards-archived-with-document
-  "The unarchived Cards in the Document with `document-id`, which archiving it archives along with it."
-  [document-id :- ms/PositiveInt]
-  (t2/select :model/Card :document_id document-id :archived false))
+(mu/defn cards-archived-with-documents
+  "The unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
+  [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Card :document_id [:in [:auto/param document-ids]] :archived false))
 
-(mu/defn cards-restored-with-document
-  "The Cards in the Document with `document-id` that were archived along with it, which restoring it restores."
-  [document-id :- ms/PositiveInt]
-  (t2/select :model/Card :document_id document-id :archived true :archived_directly false))
+(mu/defn cards-restored-with-documents
+  "The Cards in the Documents with `document-ids` that were archived along with them, which restoring them restores."
+  [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Card :document_id [:in [:auto/param document-ids]] :archived true :archived_directly false))
 
 (mu/defn card-ids-archived-with-documents
   "The IDs of the unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."

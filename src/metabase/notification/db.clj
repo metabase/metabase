@@ -189,6 +189,18 @@
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id card-id]}]))
 
+(mu/defn active-card-notifications-for-cards
+  "The active card Notifications attached to the Cards with `card-ids`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Notification
+             :active true
+             :payload_type :notification/card
+             {:where [:exists ^:allow-subquery {:select [1]
+                                                :from   [[:notification_card :nc]]
+                                                :where  [:and
+                                                         [:= :nc.id :notification.payload_id]
+                                                         [:in :nc.card_id [:auto/param card-ids]]]}]}))
+
 (mu/defn active-system-event-notifications
   "The active Notifications subscribed to the system event named `event-name`."
   [event-name :- :string]

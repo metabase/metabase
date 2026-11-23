@@ -1071,23 +1071,35 @@
            (descendant-ids {:location "/", :id personal-collection-id})
            personal-collection-id))))
 
+(defn- personal-collection-ids-creating-missing
+  "A map from each of the Users with `user-ids` to the id of its Personal Collection, creating the missing ones in one
+  batch and reading back any that another request created at the same time."
+  [user-ids]
+  (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
+        missing (into [] (remove #(contains? owned %)) user-ids)]
+    (if (empty? missing)
+      owned
+      (let [failure (try
+                      (create-personal-collections! missing)
+                      nil
+                      (catch Throwable e e))
+            owned   (collections.db/personal-collection-ids-by-owner user-ids)]
+        (when (and failure (not-every? #(contains? owned %) missing))
+          (throw failure))
+        owned))))
+
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id
-  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
-  their Personal Collection.)"
+  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users, creating the Personal Collections
+  that are missing, so that this property never comes back as `nil` for a User who is not an API key."
   [users]
   (when (seq users)
-    ;; efficiently create a map of user ID -> personal collection ID
-    (let [non-api-user-ids (collections.db/non-api-key-user-ids (set (map u/the-id users)))
+    (let [non-api-user-ids       (collections.db/non-api-key-user-ids (set (map u/the-id users)))
           user-id->collection-id (when (seq non-api-user-ids)
-                                   (collections.db/personal-collection-ids-by-owner non-api-user-ids))]
-      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
-      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
-      ;; as a side-effect. This will ensure this property never comes back as `nil`
+                                   (personal-collection-ids-creating-missing non-api-user-ids))]
       (for [user users]
         (assoc user :personal_collection_id (when (contains? non-api-user-ids (u/the-id user))
-                                              (or (get user-id->collection-id (u/the-id user))
-                                                  (user->personal-collection-id (u/the-id user)))))))))
+                                              (get user-id->collection-id (u/the-id user))))))))
 
 (mi/define-simple-hydration-method is-shared-tenant-collection
   :is_shared_tenant_collection
@@ -1261,21 +1273,16 @@
   (ancestors* collection))
 
 (defn- effective-ancestors*
-  "Given a collection, return the effective ancestors of that collection, from `collection-id->collection`, whose
-  Collections are hydrated with `:can_read` and `:can_write`, each ancestor keeping its `:can_write`."
-  [collection collection-id->collection]
-  (if (or (nil? collection)
-          (collection.root/is-root-collection? collection))
-    []
-    (some->> (effective-location-path collection)
-             location-path->ids
-             (keep collection-id->collection)
-             (filter mi/can-read?)
-             (map #(t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type :can_write])))
-             (concat (let [root (t2/hydrate (root-collection-with-ui-details (:namespace collection)) :can_read :can_write)]
-                       (when (mi/can-read? root)
-                         [root])))
-             doall)))
+  "The effective ancestors at `effective-location`: `root` when the current user can read it, then the readable
+  Collections of `collection-id->collection` on that location, each keeping its `:can_write`."
+  [effective-location root collection-id->collection]
+  (->> (location-path->ids effective-location)
+       (keep collection-id->collection)
+       (filter mi/can-read?)
+       (map #(t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type :can_write])))
+       (concat (when (mi/can-read? root)
+                 [root]))
+       doall))
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
@@ -1296,15 +1303,25 @@
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
   [collections]
-  (let [all-ids (mapcat #(some-> % effective-location-path location-path->ids) collections)
+  (let [rows                      (filterv #(and (some? %) (not (collection.root/is-root-collection? %))) collections)
+        row->location             (zipmap rows (map :effective_location (t2/hydrate rows :effective_location)))
+        all-ids                   (mapcat location-path->ids (vals row->location))
         collection-id->collection (if (seq all-ids)
                                     (u/index-by :id (t2/hydrate (vals (collections.db/collections-by-ids all-ids))
                                                                 :can_read :can_write))
-                                    {})]
+                                    {})
+        namespace->root           (into {}
+                                        (map (fn [collection-namespace]
+                                               [collection-namespace
+                                                (t2/hydrate (root-collection-with-ui-details collection-namespace)
+                                                            :can_read :can_write)]))
+                                        (distinct (map :namespace rows)))]
     (map (fn [collection]
            (assoc collection
                   :effective_ancestors
-                  (effective-ancestors* collection collection-id->collection)))
+                  (if-let [location (row->location collection)]
+                    (effective-ancestors* location (namespace->root (:namespace collection)) collection-id->collection)
+                    [])))
          collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]

@@ -382,22 +382,19 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
-(def ^{:arglists '([db-id])
-       :private  true} db-id->router-db-id
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
+(defn- router-database-ids
+  "`{database-id router-id}` of the destinations among `databases`, read from the rows when they all have the column."
+  [databases]
+  (if (every? #(contains? % :router_database_id) databases)
+    (into {}
+          (keep (fn [{:keys [id router_database_id]}] (when router_database_id [id router_database_id])))
+          databases)
+    (warehouses.db/router-database-ids (into [] (comp (map :id) (distinct)) databases))))
 
 (defn- check-permission-keys
   "Throws unless `database` has the `:id` its permission hydrations read."
   [database]
   (api/check-500 (some? (:id database)) "No :id is set for a Database."))
-
-(defn- permission-database-id
-  "The id of the Database whose permissions answer for the Database with `database-id`: its router's for a
-  destination Database, and its own otherwise."
-  [database-id]
-  (or (db-id->router-db-id database-id) database-id))
 
 (defn- queryable-database-ids
   "The ids among `database-ids` of the Databases the current user can query: those with query builder access on some
@@ -429,17 +426,19 @@
   "Sets the flag `k` on each of `databases`: whether its permission Database, never the audit Database while the audit
   app is off, is among the ids `allowed-ids`, a function of the candidate ids, returns."
   [k databases allowed-ids]
-  (let [rows       (into [] (remove nil?) databases)
-        _          (run! check-permission-keys rows)
-        candidates (into #{}
-                         (comp (map :id) (remove should-read-audit-db?) (map permission-database-id)
-                               (remove should-read-audit-db?))
-                         rows)
-        allowed    (if (seq candidates) (allowed-ids candidates) #{})]
+  (let [rows          (into [] (remove nil?) databases)
+        _             (run! check-permission-keys rows)
+        routers       (when (seq rows) (router-database-ids rows))
+        permission-id (fn [database-id] (get routers database-id database-id))
+        candidates    (into #{}
+                            (comp (map :id) (remove should-read-audit-db?) (map permission-id)
+                                  (remove should-read-audit-db?))
+                            rows)
+        allowed       (if (seq candidates) (allowed-ids candidates) #{})]
     (for [database databases]
       (when database
         (let [answer (boolean (and (not (should-read-audit-db? (:id database)))
-                                   (contains? allowed (permission-database-id (:id database)))))]
+                                   (contains? allowed (permission-id (:id database)))))]
           (if (= k :can_read)
             (vary-meta database assoc k answer)
             (assoc database k answer)))))))
@@ -486,7 +485,7 @@
                    (check-permission-keys database)
                    (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database."))
         ids      (into [] (comp (map :id) (distinct)) rows)
-        writable (writable-database-ids ids (warehouses.db/router-database-ids ids))]
+        writable (writable-database-ids ids (if (seq rows) (router-database-ids rows) {}))]
     (for [database databases]
       (when database
         (assoc database k (database-writable? writable database))))))
@@ -555,12 +554,36 @@
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
+(defn- json-access
+  "What the JSON encoding of each of `databases` reads about the current user, answered once for all of them: whether
+  they can change it, and a delay of the setting visibilities they read."
+  [databases]
+  (let [rows         (into [] (remove nil?) databases)
+        ids          (into [] (comp (map u/the-id) (distinct)) rows)
+        writable     (if (seq rows) (writable-database-ids ids (router-database-ids rows)) #{})
+        visibilities (delay (setting/current-user-readable-visibilities))]
+    (for [database databases]
+      (when database
+        {:writable?    (database-writable? writable database)
+         :visibilities visibilities}))))
+
+(defn add-json-access
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, answered once
+  for all of them."
+  [databases]
+  (map (fn [database access]
+         (cond-> database
+           database (vary-meta assoc ::json-access access)))
+       databases
+       (json-access databases)))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
-  Also remove settings that the User doesn't have read perms for."
+  Also remove settings that the User doesn't have read perms for. Reads what [[add-json-access]] stored on `db`, and
+  otherwise answers for `db` alone."
   [db json-generator]
   (letfn [(redact-sensitive-fields [details]
             (reduce
@@ -568,8 +591,8 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db-id (u/the-id db)
-           db    (if (not (database-writable? (writable-database-ids [db-id] {db-id (db-id->router-db-id db-id)}) db))
+     (let [{:keys [writable? visibilities]} (or (::json-access (meta db)) (first (json-access [db])))
+           db    (if (not writable?)
                    (do (log/debug "Fully redacting database details during json encoding.")
                        (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                    (do (log/debug "Redacting sensitive fields within database details during json encoding.")
@@ -585,8 +608,7 @@
                      (m/filter-keys
                       (fn [setting-name]
                         (try
-                          (setting/can-read-setting? setting-name
-                                                     (setting/current-user-readable-visibilities))
+                          (setting/can-read-setting? setting-name @visibilities)
                           (catch Throwable e
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.

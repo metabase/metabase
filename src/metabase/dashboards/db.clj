@@ -182,16 +182,16 @@
    archived? :- :boolean]
   (t2/select :model/Card :id [:in card-ids] :archived (not archived?)))
 
-(mu/defn questions-archived-with-dashboard
-  "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Card :dashboard_id dashboard-id :archived false))
+(mu/defn questions-archived-with-dashboards
+  "The unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along with them."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (t2/select :model/Card :dashboard_id [:in [:auto/param dashboard-ids]] :archived false))
 
-(mu/defn questions-restored-with-dashboard
-  "The Cards internal to the Dashboard with `dashboard-id` that were archived along with it, which restoring it
+(mu/defn questions-restored-with-dashboards
+  "The Cards internal to the Dashboards with `dashboard-ids` that were archived along with them, which restoring them
   restores."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Card :dashboard_id dashboard-id :archived true :archived_directly false))
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (t2/select :model/Card :dashboard_id [:in [:auto/param dashboard-ids]] :archived true :archived_directly false))
 
 (mu/defn question-ids-archived-with-dashboards
   "The IDs of the unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along

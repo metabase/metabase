@@ -141,38 +141,21 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :document_id :model/Card :id card-id))
 
-(mu/defn recent-views-for-user-context
-  "The RecentViews of the User with `user-id` in `context`, newest first."
-  [user-id :- ::lib.schema.id/user
-   context :- [:or :keyword :string]]
-  (t2/select :model/RecentViews :user_id user-id :context context {:order-by [[:timestamp :desc]]}))
-
-(mu/defn recent-view-ids-to-prune
-  "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
-  them, restricted to the Cards of `card-type` when non-nil."
-  [db-model  :- :string
-   user-id   :- ::lib.schema.id/user
-   context   :- :string
-   card-type :- [:maybe :string]
-   keep      :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select-fn-set :id
-                    :model/RecentViews
-                    {:select [:rv.id]
-                     :from [[:recent_views :rv]]
-                     :where [:and
-                             [:= :rv.model db-model]
-                             [:= :rv.user_id user-id]
-                             [:= :rv.context (h2x/literal context)]
-                             (when card-type
-                               [:= :rc.type (h2x/literal card-type)])]
-                     :left-join [[:report_card :rc]
-                                 [:and
-                                  [:= :rc.id :rv.model_id]
-                                  [:= :rv.model (h2x/literal "card")]]]
-                     :order-by [[:rv.timestamp :desc]]
-                     ;; mysql doesn't support offset without limit :derp:
-                     :limit 100000
-                     :offset keep}))
+(mu/defn recent-views-for-users-contexts
+  "The RecentViews of the Users with `user-ids` in `contexts`, newest first, with the type of the viewed Card."
+  [user-ids :- [:sequential ::lib.schema.id/user]
+   contexts :- [:sequential :string]]
+  (t2/select :model/RecentViews
+             {:select    [:rv.id :rv.user_id :rv.context :rv.model :rv.model_id [:rc.type :card_type]]
+              :from      [[:recent_views :rv]]
+              :where     [:and
+                          [:in :rv.user_id [:auto/param user-ids]]
+                          [:in :rv.context (mapv h2x/literal contexts)]]
+              :left-join [[:report_card :rc]
+                          [:and
+                           [:= :rv.model (h2x/literal "card")]
+                           [:= :rc.id :rv.model_id]]]
+              :order-by  [[:rv.timestamp :desc]]}))
 
 (mu/defn insert-recent-views!
   "Insert the RecentViews `rows`."

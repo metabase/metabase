@@ -351,39 +351,16 @@
     (t2/select :model/DashboardCard :card_id [:in card-ids])
     []))
 
-(mu/defn dashcard-ids-for-card-on-dashboard
-  "The IDs of the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`."
-  [card-id      :- ::lib.schema.id/card
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
-
-(mu/defn dashcard-ids-for-card-off-dashboard
-  "The IDs of the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
-  [card-id      :- ::lib.schema.id/card
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
-
-(mu/defn dashcard-series-for-card-on-dashboard
-  "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
-  [card-id      :- ::lib.schema.id/card
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/query {:select [[:dcs.id]]
-             :from   [[:dashboardcard_series :dcs]]
-             :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-             :where  [:and
-                      [:= :dc.dashboard_id dashboard-id]
-                      [:= :dcs.card_id card-id]]}))
-
-(mu/defn dashcard-series-for-card-off-dashboard
-  "The IDs of the DashboardCardSeries showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
-  [card-id      :- ::lib.schema.id/card
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/query {:select [[:dcs.id]]
-             :from   [[:dashboardcard_series :dcs]]
-             :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-             :where  [:and
-                      [:= :dcs.card_id card-id]
-                      [:not= :dc.dashboard_id dashboard-id]]}))
+(mu/defn dashcard-series-for-cards
+  "The `:id`, `:card_id` and `:dashboard_id` of each DashboardCardSeries showing one of the Cards with `card-ids`, with
+  the Dashboard of the DashboardCard it belongs to."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/query {:select [[:dcs.id :id] [:dcs.card_id :card_id] [:dc.dashboard_id :dashboard_id]]
+               :from   [[:dashboardcard_series :dcs]]
+               :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
+               :where  [:in :dcs.card_id [:auto/param card-ids]]})
+    []))
 
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."

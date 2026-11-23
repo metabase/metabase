@@ -264,16 +264,15 @@
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
-(mu/defn- publish-timeout-event! :- :nil
-  "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
+(mu/defn- publish-timeout-events! :- :nil
+  "Publish one `:event/transform-run-timeout` for `runs`. Wrapped so that audit-log handler
   failures don't bubble into the caller's timeout flow."
-  [run :- ::transforms.schema/transform-run]
-  (try
-    (events/publish-event! :event/transform-run-timeout
-                           (cond-> {:object run}
-                             (:user_id run) (assoc :user-id (:user_id run))))
-    (catch Throwable t
-      (log/warnf "Failed to publish transform-run-timeout event for run %s: %s" (pr-str (:id run)) (ex-message t))))
+  [runs :- [:sequential ::transforms.schema/transform-run]]
+  (when (seq runs)
+    (try
+      (events/publish-event! :event/transform-run-timeout {:objects runs})
+      (catch Throwable t
+        (log/warnf "Failed to publish transform-run-timeout event for runs %s: %s" (pr-str (mapv :id runs)) (ex-message t)))))
   nil)
 
 (mu/defn timeout-run! :- :int
@@ -291,11 +290,11 @@
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
        (when-let [run (transforms.db/run run-id)]
-         (publish-timeout-event! run))))))
+         (publish-timeout-events! [run]))))))
 
 (mu/defn- reap-transform-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
-  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing one timeout
+  event for all of them. See [[metabase.run-tracking.core/reap-orphaned!]]."
   [stale-column :- [:enum :start_time :last_heartbeat]
    age          :- ms/PositiveInt
    unit         :- :keyword
@@ -312,12 +311,12 @@
                               :tags           {:type "transform"}
                               :latency-column stale-column
                               :timeout-ms     (rt/unit->ms age unit)}})]
-    (doseq [run reaped]
-      (publish-timeout-event! (assoc run
-                                     :status    :timeout
-                                     :is_active nil
-                                     :end_time  end-time
-                                     :message   message)))
+    (publish-timeout-events! (mapv #(assoc %
+                                           :status    :timeout
+                                           :is_active nil
+                                           :end_time  end-time
+                                           :message   message)
+                                   reaped))
     (cancel/delete-old-canceling-runs!)
     reaped))
 

@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,12 +49,12 @@
   "The IDs of the cards `thunk` analyzes, in order."
   [thunk]
   (let [analyzed (atom [])
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
-    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
-                                (fn [entity-type entity-id & args]
+        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
+    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analyses!
+                                (fn [entity-type id->analysis]
                                   (when (= :card entity-type)
-                                    (swap! analyzed conj entity-id))
-                                  (apply upsert! entity-type entity-id args))]
+                                    (swap! analyzed into (keys id->analysis)))
+                                  (upsert! entity-type id->analysis))]
       (thunk))
     @analyzed))
 
@@ -206,7 +207,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (with-redefs-fn {#'deps.analysis-finding/upsert-analysis! (fn [_] (throw (ex-info "Broken" {})))}
+            (with-redefs-fn {#'deps.analysis-finding/analyze-entity (fn [_] (throw (ex-info "Broken" {})))}
               run-jobs!)
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :card :entity_id card-id)))
@@ -271,7 +272,7 @@
                          :model/Card {good-id :id} {:dataset_query (lib/query mp products)}]
             (deps.test/synchronously-run-dependency-job!)
             (let [analysis         (mt/original-fn #'queries.dependencies/analysis)
-                  upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)
+                  analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)
                   fail-bad-check   (fn [card]
                                      (when (= bad-id (:id card))
                                        (throw (ex-info "connection lost" {})))
@@ -279,19 +280,19 @@
                   fail-bad-outside (fn [entity]
                                      (when (= bad-id (:id entity))
                                        (throw (ex-info "connection lost" {})))
-                                     (upsert-analysis! entity))]
+                                     (analyze-entity entity))]
               (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
                 (testing "when checking the entity fails"
                   (mt/with-dynamic-fn-redefs [queries.dependencies/analysis fail-bad-check]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000)))))
                 (testing "when the analysis fails outside the check"
-                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000))))))
               (is (nil? (finding bad-id)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card bad-id)))
               (is (=? {:fail_count 0 :terminal false} (status :card bad-id)))
               (testing "and records and counts it while the app DB answers, without blocking the rest"
-                (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
                   (deps.analysis-finding/analyze-batch! 1000))
                 (is (=? {:result false} (finding bad-id)))
                 (is (=? {:fail_count 1} (status :card bad-id)))
@@ -416,12 +417,12 @@
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (let [wanted #{card1-id card2-id}
-                upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)]
-            (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis!
+                analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)]
+            (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity
                                         (fn [entity & args]
                                           (when (wanted (:id entity))
                                             (swap! providers conj (:lib/metadata (:dataset_query entity))))
-                                          (apply upsert-analysis! entity args))]
+                                          (apply analyze-entity entity args))]
               (run-jobs!)))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))
@@ -436,11 +437,11 @@
   []
   (deps.test/synchronously-run-dependency-job!)
   (let [analyzed (atom #{})
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
-    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
-                                (fn [entity-type entity-id & args]
-                                  (swap! analyzed conj [entity-type entity-id])
-                                  (apply upsert! entity-type entity-id args))]
+        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
+    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analyses!
+                                (fn [entity-type id->analysis]
+                                  (swap! analyzed into (map (fn [id] [entity-type id])) (keys id->analysis))
+                                  (upsert! entity-type id->analysis))]
       (deps.test/run-analysis-finding-job!))
     @analyzed))
 
@@ -704,3 +705,59 @@
                                              :to_entity_type :table :to_entity_id products-id}]
            (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
              (assert-has-analyses {:card {card-id nil}}))))))))
+
+(deftest ^:synchronized analyze-batch-stores-mixed-findings-test
+  (testing "a batch stores the finding of each entity, with and without errors, and one failing entity does not block the others"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {clean-id :id}   {:dataset_query (lib/query mp products)}
+                         :model/Card {errors-id :id}  {:dataset_query (lib/query mp products)}
+                         :model/Card {failing-id :id} {:dataset_query (lib/query mp products)}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)]
+              (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity
+                                          (fn [entity]
+                                            (condp = (:id entity)
+                                              failing-id (throw (ex-info "connection lost" {}))
+                                              errors-id  {:entity-type :card
+                                                          :entity-id   errors-id
+                                                          :analysis    {:result          false
+                                                                        :finding-details #{(lib/validation-exception-error "Broken")}}}
+                                              (analyze-entity entity)))]
+                (deps.analysis-finding/analyze-batch! 1000)))
+            (is (=? {:result true} (finding clean-id)))
+            (is (empty? (models.analysis-finding-error/errors-for-entity :card clean-id)))
+            (is (=? {:result false} (finding errors-id)))
+            (is (=? [{:error_type :validation-exception-error :error_detail "Broken"}]
+                    (models.analysis-finding-error/errors-for-entity :card errors-id)))
+            (is (=? {:stale 0} (status :card clean-id)))
+            (is (=? {:stale 0} (status :card errors-id)))
+            (is (=? {:result false} (finding failing-id)))
+            (is (=? {:fail_count 1} (status :card failing-id)))))))))
+
+(deftest ^:synchronized analyze-batch-statement-count-test
+  (testing "analyzing 10 pending cards runs as many statements as analyzing 40"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (let [run! (fn [n]
+                     (let [ids (t2/insert-returning-pks!
+                                :model/Card
+                                (for [_ (range n)]
+                                  (merge (mt/with-temp-defaults :model/Card) {:dataset_query (lib/query mp products)})))]
+                       (try
+                         (deps.test/synchronously-run-dependency-job!)
+                         {:count (events.tu/real-statement-count! #(deps.analysis-finding/analyze-batch! 1000))
+                          :found (t2/count :model/AnalysisFinding :entity_type :card :entity_id [:in ids])}
+                         (finally
+                           (t2/delete! :model/AnalysisFinding :entity_type :card :entity_id [:in ids])
+                           (t2/delete! :model/Card :id [:in ids])))))]
+          (run! 2)
+          (let [small (run! 10)
+                large (run! 40)]
+            (is (= (:count small) (:count large)))
+            (is (= [10 40] [(:found small) (:found large)]))))))))

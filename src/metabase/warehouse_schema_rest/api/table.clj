@@ -37,6 +37,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -124,7 +125,8 @@
         (mi/readable tables))
       (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
-            (cond-> tables can-query (t2/hydrate :can_query))))))
+            (cond-> tables can-query (t2/hydrate :can_query)))
+      (mapv (fn [table db] (assoc table :db db)) tables (database/add-json-access (map :db tables))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -323,16 +325,24 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
-          :when (and (-> origin-field :table :active)
-                     (mi/can-read? origin-field))
-          :let [origin-field (update origin-field :table schema.table/present-table)]]
-      ;; it's silly to be hydrating some of these tables/dbs
-      {:relationship   :Mt1
-       :origin_id      (:id origin-field)
-       :origin         origin-field
-       :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+    (let [origin-fields (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
+          origin-fields (map (fn [field db] (cond-> field (:table field) (assoc-in [:table :db] db)))
+                             origin-fields
+                             (database/add-json-access (map (comp :db :table) origin-fields)))
+          destinations  (when (seq origin-fields)
+                          (u/index-by :id (t2/hydrate (warehouse-schema-rest.db/fields-by-ids
+                                                       (into [] (comp (map :fk_target_field_id) (distinct))
+                                                             origin-fields))
+                                                      :table)))]
+      (for [origin-field origin-fields
+            :when (and (-> origin-field :table :active)
+                       (mi/can-read? origin-field))
+            :let [origin-field (update origin-field :table schema.table/present-table)]]
+        {:relationship   :Mt1
+         :origin_id      (:id origin-field)
+         :origin         origin-field
+         :destination_id (:fk_target_field_id origin-field)
+         :destination    (get destinations (:fk_target_field_id origin-field))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

@@ -1615,3 +1615,82 @@
         (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
                                                :from   [:report_card]
                                                :where  [:= :id metric-id]}))))))))
+
+(defn- insert-fk-star!
+  "Inserts a Database with a center Table and `n` other Tables, each other Table with an FK Field to the center's PK
+  and the center with an FK Field to each other Table's PK, gives All Users nothing on it and the group with
+  `group-id` full query access; returns `{:db-id :center-id :pk-id}`."
+  [n group-id]
+  (let [db-id    (first (t2/insert-returning-pks! :model/Database
+                                                  [(merge (mt/with-temp-defaults :model/Database)
+                                                          {:engine :h2 :details {:db "mem:statement-count-test"}})]))
+        table!   (fn [] (first (t2/insert-returning-pks! :model/Table [(merge (mt/with-temp-defaults :model/Table)
+                                                                              {:db_id db-id :active true})])))
+        pk!      (fn [table-id] (first (t2/insert-returning-pks! :model/Field
+                                                                 [(merge (mt/with-temp-defaults :model/Field)
+                                                                         {:table_id table-id :name "ID"
+                                                                          :semantic_type :type/PK})])))
+        fk!      (fn [table-id target-id name]
+                   (t2/insert! :model/Field (merge (mt/with-temp-defaults :model/Field)
+                                                   {:table_id table-id :name name :semantic_type :type/FK
+                                                    :fk_target_field_id target-id})))
+        center   (table!)
+        pk-id    (pk! center)]
+    (doseq [i (range n)]
+      (let [other    (table!)
+            other-pk (pk! other)]
+        (fk! other pk-id "CENTER_ID")
+        (fk! center other-pk (str "OTHER_" i))))
+    (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+    (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+    (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+    {:db-id db-id :center-id center :pk-id pk-id}))
+
+(defn- request-statement-count
+  "The number of statements the request `args` of rasta costs."
+  [& args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request :rasta args)
+    (call-count)))
+
+(deftest fks-statement-count-test
+  (testing "GET /api/table/:id/fks costs as many statements for 8 FKs as for 2, and loads each destination with its Table"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [n]
+                       (let [{:keys [center-id pk-id]} (insert-fk-star! n group-id)
+                             path                      (format "table/%d/fks" center-id)
+                             fks                       (mt/user-http-request :rasta :get 200 path)]
+                         (is (= n (count fks)))
+                         (is (every? #(and (= pk-id (get-in % [:destination :id]))
+                                           (= center-id (get-in % [:destination :table :id])))
+                                     fks))
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts 2) (counts 8))))))))
+
+(deftest related-statement-count-test
+  (testing "GET /api/table/:id/related costs as many statements for 28 linked Tables as for 14"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [n]
+                       (let [{:keys [center-id]} (insert-fk-star! n group-id)
+                             path                (format "table/%d/related" center-id)
+                             related             (mt/user-http-request :rasta :get 200 path)]
+                         (is (= (min n 5) (count (:linked-from related)) (count (:linking-to related))))
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts 14) (counts 28))))))))
+
+;; Not ^:parallel: `GET /api/table` lists every Table in the app DB.
+(deftest ^:synchronized table-list-statement-count-test
+  (testing "GET /api/table costs as many statements for Tables in 6 Databases as in 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (dotimes [_ 2] (insert-fk-star! 0 group-id))
+        (mt/user-http-request :rasta :get 200 "table")
+        (let [small (request-statement-count :get 200 "table")]
+          (dotimes [_ 4] (insert-fk-star! 0 group-id))
+          (is (= small (request-statement-count :get 200 "table"))))))))

@@ -59,6 +59,7 @@
   download-perms-level
   every-table-in-database-permissions-for-user
   every-table-in-schema-permission-for-user
+  group-table-permissions
   index-database-permissions
   is-superuser?
   is-data-analyst?
@@ -68,8 +69,10 @@
   with-sandboxes-for-user
   some-table-in-database-permissions-for-user
   some-table-in-schema-permission-for-user
+  some-table-in-schemas-permissions-for-user
   some-table-permission-for-user
   set-database-permission!
+  set-database-permissions!
   set-table-permission!
   set-table-permissions!
   table-level-value

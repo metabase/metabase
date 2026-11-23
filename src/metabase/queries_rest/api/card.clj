@@ -589,18 +589,25 @@
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- populate-collection-id
+  "`card-updates` with the `collection-id` that [[queries/actual-collection-id]] gives them when they change the
+  Dashboard or Collection of `card-before-update`."
+  [card-before-update card-updates collection-id]
+  (cond-> card-updates
+    (or (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
+        (api/column-will-change? (:collection_id card-before-update) (get card-updates :collection_id ::api/not-provided)))
+    (assoc :collection_id collection-id)))
+
 (defn- maybe-populate-collection-id
-  "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
-  If either one is set, let's validate that they match using `actual-collection-id` and make sure that the
-  `card-updates` contains the updated `collection_id`."
+  "`card-updates`, which may contain either or both of a `collection_id` and a `dashboard_id`. If either one is set,
+  let's validate that they match using `actual-collection-id` and make sure that the `card-updates` contains the
+  updated `collection_id`."
   [card-before-update card-updates]
-  (let [collection-id (when (or (contains? card-updates :collection_id)
-                                (contains? card-updates :dashboard_id))
-                        (queries/actual-collection-id card-updates))]
-    (cond-> card-updates
-      (or (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
-          (api/column-will-change? (:collection_id card-before-update) (get card-updates :collection_id ::api/not-provided)))
-      (assoc :collection_id collection-id))))
+  (populate-collection-id card-before-update
+                          card-updates
+                          (when (or (contains? card-updates :collection_id)
+                                    (contains? card-updates :dashboard_id))
+                            (queries/actual-collection-id card-updates))))
 
 (mu/defn update-card!
   "Updates a card - impl"
@@ -650,6 +657,36 @@
                                  [search-model [:= :this.id id]])))
         card))))
 
+(defn move-cards!
+  "Moves the Cards with `card-ids` to the Collection or Dashboard that `card-updates`, a `:collection_id` and a
+  `:dashboard_id`, name, as [[update-card!]] does for each of them, taking their DashboardCards off the Dashboards they
+  leave, but checking all of them together and writing the Cards that have no position in their Collection with one
+  call, those that have one being moved one by one as their positions are reconciled in order."
+  [card-ids card-updates]
+  (let [cards            (t2/hydrate (let [id->card (queries-rest.db/cards-by-id (vec (distinct card-ids)))]
+                                       (mapv #(api/check-404 (id->card %)) (distinct card-ids)))
+                                     :can_write :in_dashboards)
+        {pinned true, others false} (group-by (comp some? :collection_position) cards)]
+    (doseq [card pinned]
+      (update-card! (:id card) card-updates true))
+    (when (seq others)
+      (run! api/write-check others)
+      (let [collection-id (when (or (contains? card-updates :collection_id)
+                                    (contains? card-updates :dashboard_id))
+                            (queries/actual-collection-id card-updates))
+            card-changes  (mapv #(vector % (populate-collection-id % card-updates collection-id)) others)]
+        (queries/check-allowed-to-update-cards! card-changes)
+        (let [card-changes (mapv (fn [[card changes]]
+                                   [card (merge changes
+                                                (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
+                                                           (:dashboard_id changes))
+                                                  (api/check-400 (not (:archived changes)))
+                                                  {:archived false}))])
+                                 card-changes)]
+          (queries.card/place-updated-dashboard-questions! card-changes true)
+          (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
+                                            card-changes)))))))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -695,33 +732,20 @@
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
-(defn- update-collection-positions!
-  "For cards that have a position in the previous collection, add them to the end of the new collection, trying to
-  preserve the order from the original collections. Note it's possible for there to be multiple collections
+(defn- collection-position-updates
+  "For cards that have a position in the previous collection, the updates that add them to the end of the new collection,
+  trying to preserve the order from the original collections. Note it's possible for there to be multiple collections
   (and thus duplicate collection positions) merged into this new collection. No special tie breaker logic for when
   that's the case, just use the order the DB returned it in"
-  [new-collection-id-or-nil cards]
-  ;; Sorting by `:collection_position` to ensure lower position cards are appended first
-  (let [sorted-cards        (sort-by :collection_position cards)
-        max-position-result (queries-rest.db/max-collection-position new-collection-id-or-nil)
+  [new-collection-id-or-nil sorted-cards]
+  (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection
-        starting-position   (inc (get max-position-result :max_position 0))]
-    ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
-    ;; to be lazy and we're just going to discard the results
-    (doall
-     (map (fn [idx {:keys [collection_id collection_position] :as moved-card}]
-            ;; We are removing this card from `collection_id` so we need to reconcile any
-            ;; `collection_position` entries left behind by this move
-            (collection/reconcile-position-for-collection! collection_id collection_position nil)
-            ;; Now we can update the card with the new collection and a new calculated position
-            ;; that appended to the end
-            (queries.card/update-cards! [{:id (u/the-id moved-card) :collection_position idx
-                                          :collection_id       new-collection-id-or-nil}]))
-          ;; These are reversed because of the classic issue when removing an item from array. If we remove an
-          ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
-          ;; can avoid changing the index of cards we haven't yet updated
-          (reverse (range starting-position (+ (count sorted-cards) starting-position)))
-          (reverse sorted-cards)))))
+        starting-position (inc (or max-position 0))]
+    (into []
+          (map-indexed (fn [idx moved-card]
+                         {:id (u/the-id moved-card) :collection_position (+ starting-position idx)
+                          :collection_id new-collection-id-or-nil}))
+          sorted-cards)))
 
 (defn- write-check-collection-or-root [collection-id-or-nil]
   (if collection-id-or-nil
@@ -733,17 +757,10 @@
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
-      ;; ...check that we have write permissions for it...
+      ;; ...check that we have write permissions for it and for the old collections, root included
       (let [cards   (t2/hydrate (vec cards) :can_write)
             changes {:collection_id new-collection-id-or-nil}]
-        (when-not (mi/can-update-all? :model/Card cards changes)
-          (events/publish-event! :event/update-permission-failure
-                                 {:user-id api/*current-user-id*
-                                  :object  (or (first (remove #(mi/can-update? % changes) cards)) (first cards))})
-          (api/check-403 false)))
-      ;; ...and check that we have write permissions for the old collections, root included
-      (doseq [old-collection-id (set (map :collection_id cards))]
-        (write-check-collection-or-root old-collection-id))
+        (queries/check-allowed-to-update-cards! (mapv #(vector % changes) cards)))
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -752,9 +769,16 @@
         (t2/with-transaction [_conn]
           ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
           ;; are gone and update the position in the new collection
-          (when-let [cards-with-position (seq (filter :collection_position cards))]
-            (update-collection-positions! new-collection-id-or-nil cards-with-position))
-          (queries.card/update-cards! (mapv (fn [id] {:id id :collection_id new-collection-id-or-nil}) (into [] (comp (remove :collection_position) (map u/the-id)) cards)))))
+          (let [with-position (sort-by :collection_position (filter :collection_position cards))]
+            (queries.card/update-cards! (into (collection-position-updates new-collection-id-or-nil with-position)
+                                              (comp (remove :collection_position)
+                                                    (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))
+                                              cards))
+            ;; We are removing these cards from their `collection_id` so we need to reconcile any `collection_position`
+            ;; entries left behind by this move. These are reversed because of the classic issue when removing an item
+            ;; from array. If we remove an item at index 1, everything above index 1 will get decremented.
+            (doseq [{:keys [collection_id collection_position]} (reverse with-position)]
+              (collection/reconcile-position-for-collection! collection_id collection_position nil)))))
       nil))
 
   (when new-collection-id-or-nil

@@ -572,11 +572,16 @@
   (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
 
 (mu/defn set-table-dependencies!
-  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, returning the
-  number updated, with a statement against its table that publishes no event."
-  [transform-id      :- ::lib.schema.id/transform
-   dependencies-json :- :string]
-  (t2/update! (t2/table-name :model/Transform) :id transform-id {:table_dependencies dependencies-json}))
+  "Store each JSON string of `id->dependencies-json` as the cached table dependencies of the Transforms it is the value
+  of, returning the number updated, with one statement against their table for each distinct string that publishes no
+  event."
+  [id->dependencies-json :- [:map-of ::lib.schema.id/transform :string]]
+  (transduce (map (fn [[dependencies-json ids]]
+                    (t2/update! (t2/table-name :model/Transform) :id [:in [:auto/param ids]]
+                                {:table_dependencies dependencies-json})))
+             +
+             0
+             (u/group-by val key id->dependencies-json)))
 
 (mu/defn cancel-active-runs!
   "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."

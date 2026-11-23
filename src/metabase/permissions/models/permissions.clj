@@ -360,6 +360,21 @@
     collection-or-id
     (permissions.db/collection (u/the-id collection-or-id))))
 
+(defn- check-modifiable
+  "Throws unless `collection` can have its permissions modified, where `personal?` answers whether a Collection is a
+  Personal Collection or a descendant of one."
+  [collection personal?]
+  ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
+  ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
+  (when (is-trash-or-descendant? collection)
+    (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
+  ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
+  ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
+  ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
+  ;; see them,but a whole group should never be given some sort of access.
+  (when (personal? collection)
+    (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))
+
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
@@ -367,17 +382,22 @@
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
-    (let [collection (collection-or-id->collection collection-or-id)]
-      ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
-      ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
-      (when (is-trash-or-descendant? collection)
-        (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
-      ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
-      ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
-      ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
-      ;; see them,but a whole group should never be given some sort of access.
-      (when (is-personal-collection-or-descendant-of-one? collection)
-        (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))))
+    (check-modifiable (collection-or-id->collection collection-or-id) is-personal-collection-or-descendant-of-one?)))
+
+(defn- check-tenant-group-collection-grant
+  "Throws when a group, a tenant group when `tenant?`, may not receive `access`, `:read` or `:write`, on `collection`."
+  [tenant? collection access]
+  (when tenant?
+    (case access
+      :write
+      (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {}))
+
+      :read
+      (when-not (or (shared-tenant-collection? collection)
+                    ;; Tenant groups access data apps through read grants on its resource collection.
+                    (and (pos-int? (:id collection))
+                         (data-perms/collection-owned-by-data-app? (:id collection))))
+        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))))
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
@@ -389,22 +409,83 @@
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
+  (check-tenant-group-collection-grant (perms-group/is-tenant-group? group-or-id) nil :write)
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
-  (let [collection (collection-or-id->collection collection-or-id)]
-    (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (or (shared-tenant-collection? collection)
-                    ;; Tenant groups access data apps through read grants on its resource collection.
-                    (and (pos-int? (:id collection))
-                         (data-perms/collection-owned-by-data-app? (:id collection))))
-        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
+  (check-tenant-group-collection-grant (perms-group/is-tenant-group? group-or-id)
+                                       (collection-or-id->collection collection-or-id)
+                                       :read)
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
+
+(defn- collection-access-path
+  "The permissions path that grants `access`, `:write` or `:read`, on `collection-or-id`."
+  [collection-or-id access]
+  (case access
+    :write (permissions.path/collection-readwrite-path collection-or-id)
+    :read  (permissions.path/collection-read-path collection-or-id)))
+
+(defn- check-collection-access-changes
+  "Throws as [[revoke-collection-permissions!]] and the grant functions would for the first of `changes`, `[group-id
+  collection-or-id access]` triples, that they refuse, with the Collections and groups read once."
+  [changes]
+  (let [ids        (into [] (comp (map second) (remove :metabase.collections.models.collection.root/is-root?)
+                                  (map u/the-id) (distinct))
+                         changes)
+        chunks     (partition-all app-db/update-partition-size ids)
+        collection (into {} (mapcat #(permissions.db/collections-by-id (vec %))) chunks)
+        personal   (into #{} (mapcat #(permissions.db/personal-or-descendant-collection-ids (set %))) chunks)
+        tenant?    (permissions.db/group-tenant-flags (into #{} (map first) changes))]
+    (doseq [[group-id collection-or-id access] changes
+            :let [root?    (:metabase.collections.models.collection.root/is-root? collection-or-id)
+                  resolved (if root? collection-or-id (get collection (u/the-id collection-or-id)))]]
+      (when-not root?
+        (check-modifiable resolved #(contains? personal (:id %))))
+      (when (#{:read :write} access)
+        (check-tenant-group-collection-grant (get tenant? group-id) resolved access)))))
+
+(defn- revoke-collection-accesses!
+  "Deletes the Permissions rows related to the read-write path of each of `changes`, as [[revoke-collection-permissions!]]
+  does for one, with one read of them."
+  [changes]
+  (when-let [related (seq (for [[group-id collection-or-id] changes
+                                :let [path (permissions.path/collection-readwrite-path collection-or-id)]]
+                            [group-id path (conj (perms.u/->v2-path path) path)]))]
+    (let [rows (into [] (mapcat #(permissions.db/related-permission-rows (vec %)))
+                     (partition-all app-db/update-partition-size related))]
+      (doseq [[group-id group-rows] (group-by :group_id rows)]
+        (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
+      (when (seq rows)
+        (delete-permissions! (mapv :id rows))))))
+
+(defn- grant-collection-accesses!
+  "Grants each of `changes` whose access is `:write` or `:read`, in one insert, or one at a time as
+  [[grant-permissions!]] does when that insert fails."
+  [changes]
+  (let [grants (for [[group-id collection-or-id access] changes
+                     :when (#{:read :write} access)]
+                 [group-id (collection-access-path collection-or-id access)])]
+    (when (seq grants)
+      (try
+        (create-permissions! (for [[group-id path] grants
+                                   object (distinct (conj (perms.u/->v2-path path) path))]
+                               {:group_id group-id :object object}))
+        (catch Throwable _
+          (doseq [[group-id path] grants]
+            (grant-permissions! group-id path)))))))
+
+(mu/defn update-collection-accesses!
+  "Replaces the access of each group to each Collection of `changes`, `[group-id collection-or-id access]` triples where
+  `access` is `:write`, `:read` or `:none`, as [[revoke-collection-permissions!]] and then the matching grant would one
+  triple at a time, with the same refusals, before any write."
+  [changes :- [:sequential [:tuple ms/PositiveInt permissions.path/CollectionOrID [:enum :write :read :none]]]]
+  (when (seq changes)
+    (check-collection-access-changes changes)
+    (revoke-collection-accesses! changes)
+    (grant-collection-accesses! changes)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.

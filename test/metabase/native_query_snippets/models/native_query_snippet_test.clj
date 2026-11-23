@@ -3,10 +3,12 @@
    [clojure.test :refer :all]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -347,3 +349,28 @@
                               #(native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived false}) ids) nil))))]
             (restore! 2)
             (is (= (restore! 2) (restore! 6)))))))))
+
+(defn- archive-call-count
+  "The statements that rasta's question whether he may archive `snippets` takes, which must be allowed."
+  [snippets]
+  (mt/with-test-user :rasta
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/NativeQuerySnippet snippets {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-test
+  (mt/with-premium-features #{}
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [snippets (vec (t2/select :model/NativeQuerySnippet
+                                     :id [:in (t2/insert-returning-pks! :model/NativeQuerySnippet
+                                                                        (repeatedly 40 #(t2.with-temp/with-temp-defaults
+                                                                                          :model/NativeQuerySnippet)))]
+                                     {:order-by [[:id :asc]]}))]
+        (testing "a user without native query permissions is refused on a batch"
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (false? (mi/can-update-each? :model/NativeQuerySnippet (subvec snippets 0 3) {:archived true}))))))
+        (testing "the question takes as many statements for 40 Snippets as for 10"
+          (archive-call-count (subvec snippets 0 2))
+          (is (= (archive-call-count (subvec snippets 0 10))
+                 (archive-call-count snippets))))))))

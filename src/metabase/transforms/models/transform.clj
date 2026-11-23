@@ -175,40 +175,70 @@
     models-cache :- [:maybe ::transforms.u/source-models]]
    (transforms.u/source-readable? (transforms.u/->definition instance) models-cache)))
 
+(mr/def ::database-permissions
+  "What the current user may do on the source and target Databases of some transforms, as
+  [[prefetch-database-permissions]] answers it: whether they hold the transforms permission, and their level of
+  `:perms/create-queries` on every table, for each Database."
+  [:map {:closed true}
+   [:transforms     [:map-of ::lib.schema.id/database :boolean]]
+   [:create-queries [:map-of ::lib.schema.id/database [:or :keyword :string]]]])
+
+(mu/defn- database-ids :- [:sequential ::lib.schema.id/database]
+  "The ids of the source and target Databases of `instance`, as the permission checks read them."
+  [instance :- ::instance]
+  (into [] (distinct) (keep identity [(or (transforms-base.i/source-db-id instance) (:source_database_id instance))
+                                      (transforms-base.i/target-db-id instance)])))
+
+(mu/defn- prefetch-database-permissions :- ::database-permissions
+  "What the current user may do on the Databases of `transforms`, each read once for all of them."
+  [transforms :- [:sequential ::instance]]
+  (let [db-ids (into [] (comp (mapcat database-ids) (distinct)) transforms)
+        user   (perms/user-info api/*current-user-id*)]
+    {:transforms     (into {} (map (fn [db-id] [db-id (perms/user-has-transforms-permission-for-database? user db-id)])) db-ids)
+     :create-queries (if (seq db-ids)
+                       (perms/every-table-in-database-permissions-for-user user :perms/create-queries db-ids)
+                       {})}))
+
 (mu/defn- native-transform-write-allowed? :- [:maybe :boolean]
   [instance     :- ::instance
-   source-db-id :- [:maybe ::lib.schema.id/database]]
+   source-db-id :- [:maybe ::lib.schema.id/database]
+   db-perms     :- [:maybe ::database-permissions]]
   (or (not (transforms-base.u/native-query-transform? instance))
       (and source-db-id
            (= :query-builder-and-native
-              (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [source-db-id]) source-db-id)))))
+              (get (or (:create-queries db-perms)
+                       (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [source-db-id]))
+                   source-db-id)))))
 
 (mu/defn- transform-database-permissions? :- :boolean
-  [instance :- ::instance]
-  (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
-        target-db-id (transforms-base.i/target-db-id instance)]
-    (every? #(perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) %)
-            (distinct (keep identity [source-db-id target-db-id])))))
+  [instance :- ::instance
+   db-perms :- [:maybe ::database-permissions]]
+  (every? #(if-some [answer (get-in db-perms [:transforms %])]
+             answer
+             (perms/user-has-transforms-permission-for-database? (perms/user-info api/*current-user-id*) %))
+          (database-ids instance)))
 
 (mu/defn- transform-writable? :- [:maybe :boolean]
-  "Whether the current user can write `instance`, with its source looked up in `models-cache` when given."
+  "Whether the current user can write `instance`, with its source looked up in `models-cache` and the permissions on
+  its Databases in `db-perms` when given."
   ([instance :- ::instance]
-   (transform-writable? instance nil))
+   (transform-writable? instance nil nil))
   ([instance     :- ::instance
-    models-cache :- [:maybe ::transforms.u/source-models]]
+    models-cache :- [:maybe ::transforms.u/source-models]
+    db-perms     :- [:maybe ::database-permissions]]
    (and (transforms.u/check-feature-enabled (transforms.u/->definition instance))
         (or api/*is-superuser?*
             (and (transform-readable? instance models-cache)
-                 (transform-database-permissions? instance)
-                 (native-transform-write-allowed? instance (:source_database_id instance)))))))
+                 (transform-database-permissions? instance db-perms)
+                 (native-transform-write-allowed? instance (:source_database_id instance) db-perms))))))
 
 (defn- transform-deletable?
   "Whether the current user can write `instance` as a whole, which nobody can when a read-only instance syncs it."
   ([instance]
-   (transform-deletable? instance nil))
-  ([instance models-cache]
+   (transform-deletable? instance nil nil))
+  ([instance models-cache db-perms]
    (and (not (remote-sync/read-only?))
-        (transform-writable? instance models-cache))))
+        (transform-writable? instance models-cache db-perms))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_query]
   "Whether the current user can query each of `transforms`, which is whether they can read it."
@@ -241,39 +271,66 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and (api/entitled-data-analyst?)
                   (transforms.u/source-tables-readable? (transforms.u/->definition instance))
-                  (transform-database-permissions? instance)
-                  (native-transform-write-allowed? instance source-db-id))))))
+                  (transform-database-permissions? instance nil)
+                  (native-transform-write-allowed? instance source-db-id nil))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mu/defn- hydrate-permission
-  "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
-   (`transform-readable?`/`transform-writable?`) with a `models-cache` prefetched once for the whole
-   list, so checking N transforms doesn't issue a query per transform."
-  [k          :- :keyword
-   transforms :- [:sequential ::instance]
-   pred       :- [:=> [:cat ::instance ::transforms.u/source-models] [:maybe :boolean]]]
-  (let [models-cache (transforms.u/prefetch-source-models (into [] (remove nil?) transforms))]
-    (for [transform transforms]
-      (when transform
-        (assoc transform k (boolean (pred transform models-cache)))))))
+  "Attach a permission under `k` to each of `transforms` by calling `pred` with `models-cache` and `db-perms`, both
+  prefetched once for the whole list, so checking N transforms doesn't issue a query per transform."
+  [k            :- :keyword
+   transforms   :- [:sequential [:maybe ::instance]]
+   models-cache :- ::transforms.u/source-models
+   db-perms     :- ::database-permissions
+   pred         :- [:=> [:cat ::instance ::transforms.u/source-models ::database-permissions] [:maybe :boolean]]]
+  (mapv (fn [transform]
+          (when transform
+            (assoc transform k (boolean (pred transform models-cache db-perms)))))
+        transforms))
+
+(def ^:private permission-preds
+  "The predicate each permission key of a transform is answered with."
+  {:can_read    (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))
+   :can_write   transform-deletable?
+   :can_execute transform-writable?})
+
+(mu/defn assoc-permissions :- [:sequential [:maybe ::instance]]
+  "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_execute`) to each of `transforms`, all
+  answered from the source models of `models-cache`, as [[transforms.u/prefetch-source-models]] loads them, and the
+  permissions on their Databases, read once."
+  [transforms   :- [:sequential [:maybe ::instance]]
+   models-cache :- ::transforms.u/source-models
+   ks           :- [:sequential [:enum :can_read :can_write :can_execute]]]
+  (let [db-perms (if (or api/*is-superuser?* (= [:can_read] ks))
+                   {:transforms {} :create-queries {}}
+                   (prefetch-database-permissions (into [] (remove nil?) transforms)))]
+    (reduce (fn [acc k]
+              (cond->> (hydrate-permission k acc models-cache db-perms (permission-preds k))
+                (= k :can_read) (mapv #(when % (vary-meta % assoc k (boolean (get % k)))))))
+            (vec transforms)
+            ks)))
+
+(mu/defn- hydrate-permissions :- [:sequential [:maybe ::instance]]
+  "`transforms` with the permissions `ks` attached, the source models loaded once."
+  [transforms :- [:sequential [:maybe ::instance]]
+   ks         :- [:sequential [:enum :can_read :can_write :can_execute]]]
+  (assoc-permissions transforms (transforms.u/prefetch-source-models (into [] (remove nil?) transforms)) ks))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
-  [_model k transforms]
-  (for [transform (hydrate-permission k transforms transform-readable?)]
-    (when transform
-      (vary-meta transform assoc k (boolean (get transform k))))))
+  [_model _k transforms]
+  (hydrate-permissions transforms [:can_read]))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
-  [_model k transforms]
-  (hydrate-permission k transforms transform-deletable?))
+  [_model _k transforms]
+  (hydrate-permissions transforms [:can_write]))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
-  [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  [_model _k transforms]
+  (hydrate-permissions transforms [:can_execute]))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -680,11 +737,10 @@
   nil)
 
 (mu/defn set-table-dependencies! :- :int
-  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, a cache no rule
-  reads and no event reports, in one plain statement."
-  [transform-id      :- ::lib.schema.id/transform
-   dependencies-json :- :string]
-  (transforms.db/set-table-dependencies! transform-id dependencies-json))
+  "Store each JSON string of `id->dependencies-json` as the cached table dependencies of the Transforms it is the value
+  of, a cache no rule reads and no event reports."
+  [id->dependencies-json :- [:map-of ::lib.schema.id/transform :string]]
+  (transforms.db/set-table-dependencies! id->dependencies-json))
 
 (defmethod database/delete-for-databases! :model/Transform
   [_model databases]

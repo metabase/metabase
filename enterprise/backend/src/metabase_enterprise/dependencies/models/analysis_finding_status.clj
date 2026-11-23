@@ -50,6 +50,14 @@
    max-failures :- ms/PositiveInt]
   (dependencies.db/record-analysis-finding-failure! entity-type entity-id max-failures))
 
+(mu/defn clear-analysis-finding-statuses!
+  "Record that the analysis job analyzed the entities `entity-type` whose ids are the keys of `id->stale` with the
+  analysis of `current-version`, clearing each `stale` count unless a write raised it."
+  [entity-type     :- ::dependencies.schema/entity-type
+   id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (dependencies.db/clear-analysis-finding-statuses! entity-type id->stale current-version))
+
 (mu/defn clear-analysis-finding-status! :- :boolean
   "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
   clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."

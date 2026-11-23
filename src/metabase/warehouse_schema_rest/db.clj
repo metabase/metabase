@@ -15,6 +15,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
+(mu/defn fields-by-ids
+  "The Fields with `field-ids`."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids]))
+
 (mu/defn nested-fields-exist? :- :boolean
   "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
   [table-id         :- ::lib.schema.id/table

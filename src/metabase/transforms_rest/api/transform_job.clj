@@ -247,10 +247,11 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
   (api/check-404 (transforms-rest.db/job-pk job-id))
-  (-> (transforms.core/job-transforms job-id)
-      (#(do (api/check-403 (every? mi/can-read? (t2/hydrate % :can_read))) %))
-      (t2/hydrate :creator)
-      transforms.u/add-source-readable))
+  (let [transforms   (transforms.core/job-transforms job-id)
+        models-cache (transforms.u/prefetch-source-models transforms)]
+    (api/check-403 (every? mi/can-read? (transforms.core/assoc-permissions transforms models-cache [:can_read])))
+    (-> (t2/hydrate transforms :creator)
+        (transforms.u/add-source-readable models-cache))))
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
   "Get all transform jobs."

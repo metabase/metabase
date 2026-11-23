@@ -79,6 +79,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "A map from each of the Fields with `field-ids` to the id of its Table."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select-fn->fn :id :table_id :model/Field :id [:in field-ids]))
+
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
@@ -146,6 +151,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids]))
+
 (mu/defn model-card
   "The model Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -162,6 +172,17 @@
   [table-id   :- [:maybe ::lib.schema.id/table]
    card-types :- [:sequential :keyword]]
   (t2/select :model/Card :table_id table-id :type [:in card-types] :archived false))
+
+(mu/defn unarchived-cards-for-tables-of-types
+  "The unarchived Cards of the Tables with `table-ids` whose type is one of `card-types`. A nil among `table-ids`
+  stands for the Cards without a resolved table id."
+  [table-ids  :- [:sequential [:maybe ::lib.schema.id/table]]
+   card-types :- [:sequential :keyword]]
+  (let [ids (into [] (comp (remove nil?) (distinct)) table-ids)]
+    (concat (when (seq ids)
+              (t2/select :model/Card :table_id [:in ids] :type [:in card-types] :archived false))
+            (when (some nil? table-ids)
+              (t2/select :model/Card :table_id nil :type [:in card-types] :archived false)))))
 
 (mu/defn unarchived-metrics-for-table
   "The unarchived metric Cards of the Table with `table-id`. `table-id` may be nil (the caller's Table is

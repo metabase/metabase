@@ -38,6 +38,13 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
+(mu/defn sandboxes-using-cards
+  "A map of Card id to the `:id` and `:table_id` of the Sandboxes built on it, for the Cards with `card-ids` that have some."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (group-by :card_id (t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in [:auto/param card-ids]]))
+    {}))
+
 (mu/defn user-sandboxes-with-group-ids
   "The Sandboxes of the groups of the User with `user-id`, each with the `:group_id` of the membership."
   [user-id :- ::lib.schema.id/user]
@@ -135,6 +142,11 @@
                       [:= :db_id db-id]
                       (when schema-only?
                         [:= :schema schema])]}))
+
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each Table with an id among `table-ids`, by Table id."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param (vec (distinct table-ids))]]))
 
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."

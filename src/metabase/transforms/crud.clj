@@ -142,13 +142,15 @@
                [:database-id         {:optional true} [:maybe ms/PositiveInt]]]]]
   (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
-           (into []
-                 (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                       (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
-                       (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map transforms.u/add-source-readable)))))))
+    (let [transforms   (transforms.db/transforms-of-source-types enabled-types database-id)
+          filtered     (into []
+                             (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                                   (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
+                                   (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids))
+                             (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))
+          models-cache (transforms.u/prefetch-source-models filtered)]
+      (-> (transform.model/assoc-permissions filtered models-cache [:can_read :can_write :can_execute])
+          (transforms.u/add-source-readable models-cache)))))
 
 (mu/defn requestable-indexes :- [:maybe ::transforms.schema/requestable-indexes]
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."

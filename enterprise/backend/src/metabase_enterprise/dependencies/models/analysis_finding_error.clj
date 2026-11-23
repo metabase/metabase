@@ -56,6 +56,24 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(mu/defn replace-errors-for-entities!
+  "Delete the existing errors of the entities of `entity-type` that `id->errors` maps to their new `errors`, in the
+  form of [[replace-errors-for-entity!]], and insert those, with one delete and one insert."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   id->errors  :- [:map-of ms/PositiveInt [:sequential ::error-input]]]
+  (t2/with-transaction [_conn]
+    (dependencies.db/delete-finding-errors-for-entities! entity-type (keys id->errors))
+    (when-let [rows (not-empty
+                     (vec (for [[entity-id errors] id->errors
+                                {:keys [error-type error-detail source-entity-type source-entity-id]} errors]
+                            {:analyzed_entity_type (name entity-type)
+                             :analyzed_entity_id   entity-id
+                             :error_type           error-type
+                             :error_detail         error-detail
+                             :source_entity_type   (some-> source-entity-type name)
+                             :source_entity_id     source-entity-id})))]
+      (dependencies.db/insert-finding-errors! rows))))
+
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
    `errors` is a sequence of maps with keys:
@@ -66,18 +84,7 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt
    errors      :- [:sequential ::error-input]]
-  (t2/with-transaction [_conn]
-    (dependencies.db/delete-finding-errors-for-entity! entity-type entity-id)
-    (when (seq errors)
-      (dependencies.db/insert-finding-errors!
-       (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
-               {:analyzed_entity_type (name entity-type)
-                :analyzed_entity_id entity-id
-                :error_type error-type
-                :error_detail error-detail
-                :source_entity_type (some-> source-entity-type name)
-                :source_entity_id source-entity-id})
-             errors)))))
+  (replace-errors-for-entities! entity-type {entity-id errors}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

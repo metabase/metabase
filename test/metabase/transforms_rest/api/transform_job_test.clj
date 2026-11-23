@@ -1,15 +1,16 @@
 (ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
-   [metabase.transforms.test-util :refer [parse-instant
-                                          utc-timestamp
-                                          with-transforms-api-users!]]
+   [metabase.transforms.test-util :as transforms.tu :refer [parse-instant
+                                                            utc-timestamp
+                                                            with-transforms-api-users!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -619,3 +620,21 @@
         (is (seq (:schedule job)) (str job-name " should carry a schedule"))
         (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
             (str job-name " should be linked to the " tag-name " tag"))))))
+
+(mt/when-ee-evailable
+ (deftest job-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+     (mt/with-temporary-setting-values [transforms-enabled true]
+       (mt/with-model-cleanup [:model/Transform :model/TransformJob]
+         (with-transforms-api-users! [user]
+           (mt/with-temp [:model/TransformTag {tag-id :id} {:name "job transforms count tag"}
+                          :model/TransformJob {job-id :id} {:name "job transforms count job" :schedule "0 0 0 * * ?"}
+                          :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 1}]
+             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                           :perms/create-queries :query-builder-and-native}
+               (let [[few many] (transforms.tu/statements-at-two-sizes
+                                 (fn [n]
+                                   (transforms.tu/create-count-test-transforms! n {:tag_ids [tag-id] :source {:type :python :source-tables [] :body "pass"}})
+                                   #(mt/user-http-request user :get 200 (format "transform-job/%d/transforms" job-id)))
+                                 #(t2/update! (t2/table-name :model/Transform) {:table_dependencies nil}))]
+                 (is (= few many)))))))))))

@@ -18,11 +18,11 @@
   `transform.table_dependencies` column, keyed by transform id."
   :feature :none
   [id->raw-deps]
-  (doseq [[id raw-deps] id->raw-deps]
+  (when (seq id->raw-deps)
     (try
-      (transform/set-table-dependencies! id (json/encode (vec raw-deps)))
+      (transform/set-table-dependencies! (update-vals id->raw-deps #(json/encode (vec %))))
       (catch Throwable e
-        (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
+        (log/warnf "Failed to cache table-dependencies for %d transforms: %s" (count id->raw-deps) (ex-message e))))))
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,

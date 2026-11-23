@@ -118,3 +118,101 @@
       (counted [c1])
       (is (= (counted [c1])
              (counted [c1 c2 c3 c4 c5 c6 c7 c8 c9 c10]))))))
+
+(defn- insert-cards!
+  "The ids of `n` new Cards in the Collection `collection-id`."
+  [n collection-id]
+  (mapv (fn [i]
+          (t2/insert-returning-pk! :model/Card
+                                   (merge (mt/with-temp-defaults :model/Card)
+                                          {:name (str "moving " i) :collection_id collection-id})))
+        (range n)))
+
+(defn- insert-dashboard!
+  "The id of a new Dashboard in the Collection `collection-id`."
+  [collection-id]
+  (t2/insert-returning-pk! :model/Dashboard
+                           (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id collection-id})))
+
+(deftest move-cards-to-collection-statement-count-test
+  (testing "POST /api/cards/move to a collection takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card]
+        (let [move! (fn [n]
+                      (let [ids (insert-cards! n from-id)]
+                        (t2/with-call-count [call-count]
+                          (mt/user-http-request :rasta :post 200 "cards/move" {:card_ids ids :collection_id to-id})
+                          (is (= #{to-id} (t2/select-fn-set :collection_id :model/Card :id [:in ids])))
+                          (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
+
+(deftest move-cards-to-dashboard-statement-count-test
+  (testing "POST /api/cards/move to a dashboard takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [move! (fn [n]
+                      (let [ids          (insert-cards! n from-id)
+                            dashboard-id (insert-dashboard! to-id)
+                            count-before (t2/count :model/DashboardCard :dashboard_id dashboard-id)]
+                        (t2/with-call-count [call-count]
+                          (mt/user-http-request :rasta :post 200 "cards/move" {:card_ids ids :dashboard_id dashboard-id})
+                          (is (= #{dashboard-id} (t2/select-fn-set :dashboard_id :model/Card :id [:in ids])))
+                          (is (= (+ count-before n) (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
+                          (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
+
+(deftest move-cards-leaving-dashboards-statement-count-test
+  (testing "POST /api/cards/move takes the Cards off the Dashboards they leave with as many statements for many as for few"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [move! (fn [n]
+                      (let [ids          (insert-cards! n from-id)
+                            dashboard-id (insert-dashboard! from-id)
+                            _            (t2/insert! :model/DashboardCard
+                                                     (mapv #(merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                   {:card_id % :dashboard_id dashboard-id})
+                                                           ids))
+                            dest-id      (insert-dashboard! to-id)]
+                        (t2/with-call-count [call-count]
+                          (mt/user-http-request :rasta :post 200 "cards/move" {:card_ids ids :dashboard_id dest-id})
+                          (is (= #{dest-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id [:in ids])))
+                          (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
+
+(deftest dashboards-of-cards-statement-count-test
+  (testing "POST /api/cards/dashboards takes as many statements for Cards on many Dashboards as for few"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [counted (fn [n]
+                        (let [ids (insert-cards! n coll-id)]
+                          (doseq [id ids]
+                            (t2/insert! :model/DashboardCard
+                                        (merge (mt/with-temp-defaults :model/DashboardCard)
+                                               {:card_id id :dashboard_id (insert-dashboard! coll-id)})))
+                          (t2/with-call-count [call-count]
+                            (let [response (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids ids})]
+                              (is (= (repeat n 1) (map (comp count :dashboards) response))))
+                            (call-count))))]
+          (counted 2)
+          (let [few  (counted 10)
+                many (counted 40)]
+            (is (= few many))))))))

@@ -19,17 +19,13 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.sync.db :as sync.db]
+   [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.interface :as i]
    [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -68,90 +64,110 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     values-to-set))
 
-(mu/defn- save-table-updates!
-  "Save the updates in `updated-table` to the Table `table`."
-  [table         :- i/TableInstance
-   updated-table :- i/TableInstance]
-  (when-let [values-to-set (model-updates table updated-table)]
-    (sync.updates/update-table-unless-user-set! table values-to-set)
-    true))
-
 (def ^:private ClassifyOpts
   [:map {:closed true}
-   [:fields-failed :int]
    [:exists-name :boolean]])
 
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, returning the updated `field`, with the values to save as
   `::updates` in its metadata."
-  ([field :- i/FieldInstance
-    opts  :- ClassifyOpts]
-   (classify! field opts
-              (or (:fingerprint field)
-                  (when (qp.store/initialized?)
-                    (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (sync.db/field-fingerprint (u/the-id field)))))
-
-  ([field       :- i/FieldInstance
-    {:keys [exists-name]} :- ClassifyOpts
-    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
-   (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [classified (analyze/run-classifiers field fingerprint)
-           would-be-name? (= (:semantic_type classified) :type/Name)
-           ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
-           updated-field (if (and would-be-name? exists-name)
-                           (assoc classified :semantic_type (:semantic_type field))
-                           classified)]
-       (cond-> updated-field
-         (not= field updated-field) (vary-meta assoc ::updates (model-updates field updated-field)))))))
+  [field                 :- i/FieldInstance
+   {:keys [exists-name]} :- ClassifyOpts
+   fingerprint           :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
+  (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
+    (let [classified (analyze/run-classifiers field fingerprint)
+          would-be-name? (= (:semantic_type classified) :type/Name)
+          ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
+          updated-field (if (and would-be-name? exists-name)
+                          (assoc classified :semantic_type (:semantic_type field))
+                          classified)]
+      (cond-> updated-field
+        (not= field updated-field) (vary-meta assoc ::updates (model-updates field updated-field))))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
-  "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
-  should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
-  [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
+(defn- classify-field
+  "`state` with `field` classified: its Table's stats counted, its updates added, and its Table marked as having a name
+  Field when it becomes one."
+  [{:keys [tables-with-name] :as state} field]
+  (let [table-id (:table_id field)
+        result   (classify! field {:exists-name (contains? tables-with-name table-id)} (:fingerprint field))]
+    (cond-> (update state :fields-classified inc)
+      (instance? Exception result)           (update :fields-failed inc)
+      (seq (::updates (meta result)))        (update :updates conj [field (::updates (meta result))])
+      (= :type/Name (:semantic_type result)) (update :tables-with-name conj table-id))))
+
+(defn- save-field-updates!
+  "Save `updates`, pairs of a Field of one of `tables` and the values classification sets on it, in one update, or Table
+  by Table when that fails."
+  [tables updates]
+  (let [id->table   (into {} (map (juxt :id identity)) tables)
+        by-table    (group-by (comp :table_id first) updates)
+        save-table! (fn [[table-id table-updates]]
+                      (sync-util/with-error-handling (format "Error saving the classification of the Fields of %s"
+                                                             (sync-util/name-for-logging (id->table table-id)))
+                        (sync.updates/update-fields-unless-user-set! table-updates)))]
+    (when (or (next by-table)
+              (instance? Exception (sync-util/with-error-handling "Error saving the classification of Fields"
+                                     (sync.updates/update-fields-unless-user-set! updates))))
+      (run! save-table! by-table))))
+
+(mu/defn- classify-fields-of-tables! :- [:map {:closed true} [:fields-classified :int] [:fields-failed :int]]
+  "Run various classifiers on the Fields of `tables` that have not been previously analyzed, reading and saving them a
+  page at a time, and return how many were classified and how many failed."
+  [tables :- [:sequential i/TableInstance]]
+  (tracing/with-span :sync "sync.classify.fields" {:sync/table-count (count tables)}
+    (let [table-ids (mapv :id tables)]
+      (loop [after-id 0
+             state    {:fields-classified 0
+                       :fields-failed     0
+                       :tables-with-name  (set (keys (analyze/name-field-counts table-ids)))}]
+        (if-let [fields (not-empty (analyze/incomplete-analysis-fields table-ids i/*latest-fingerprint-version*
+                                                                       after-id table-chunks/fields-per-read))]
+          (let [state (reduce classify-field (assoc state :updates []) fields)]
+            (when (seq (:updates state))
+              (save-field-updates! tables (:updates state)))
+            (recur (:id (last fields)) (dissoc state :updates)))
+          (select-keys state [:fields-classified :fields-failed]))))))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
   [table :- i/TableInstance]
-  (tracing/with-span :sync "sync.classify.fields" {:sync/table (:name table)}
-    (let [table-id (:id table)]
-      (when-let [fields (fields-to-classify table)]
-        (let [existing-name-field (sync.db/name-field-count-for-table table-id)
-              {:keys [fields-failed updates]}
-              (reduce (fn [state field]
-                        (let [result (classify! field (select-keys state [:fields-failed :exists-name]))]
-                          (cond-> state
-                            (instance? Exception result)
-                            (update :fields-failed inc)
+  (let [stats (classify-fields-of-tables! [table])]
+    (when (pos? (:fields-classified stats))
+      stats)))
 
-                            (seq (::updates (meta result)))
-                            (update :updates conj [field (::updates (meta result))])
-
-                            (= :type/Name (:semantic_type result))
-                            (assoc :exists-name true))))
-                      {:fields-failed 0 :exists-name (pos? existing-name-field) :updates []}
-                      fields)]
-          (sync-util/with-error-handling (format "Error saving the classification of the Fields of %s"
-                                                 (sync-util/name-for-logging table))
-            (sync.updates/update-fields-unless-user-set! updates))
-          {:fields-classified (count fields)
-           :fields-failed fields-failed})))))
-
-(mu/defn ^:always-validate classify-table!
-  "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
+(mu/defn- table-classification
+  "The values classifiers set on `table`, nil when they set none, or `::failed` when they throw."
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
                         (analyze/infer-entity-type-by-name table))]
     (if (instance? Exception updated-table)
-      table
-      (save-table-updates! table updated-table))))
+      ::failed
+      (model-updates table updated-table))))
+
+(mu/defn ^:always-validate classify-table!
+  "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
+  [table :- i/TableInstance]
+  (let [values (table-classification table)]
+    (cond
+      (= ::failed values) table
+      values              (do (sync.updates/update-table-unless-user-set! table values)
+                              true))))
+
+(mu/defn- classify-tables-of-chunk! :- :int
+  "Run various classifiers on `tables` and save the values they set in one update, returning the number of Tables they
+  set values on or failed on."
+  [tables :- [:sequential i/TableInstance]]
+  (let [outcomes (mapv (juxt identity table-classification) tables)
+        updates  (filterv (comp map? second) outcomes)]
+    (when (seq updates)
+      (sync.updates/update-tables-unless-user-set! updates))
+    (count (filter second outcomes))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :nil])
@@ -160,25 +176,22 @@
   "Classify all tables found in a given database"
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    (reduce (fn [acc table]
-              (let [result (classify-table! table)]
-                (log-progress-fn "classify-tables" table)
-                (-> acc
-                    (update :total-tables inc)
-                    (cond-> result (update :tables-classified inc)))))
-            {:tables-classified 0, :total-tables 0}
-            tables)))
+  (reduce (fn [acc tables]
+            (let [classified (classify-tables-of-chunk! tables)]
+              (run! #(log-progress-fn "classify-tables" %) tables)
+              (-> acc
+                  (update :total-tables + (count tables))
+                  (update :tables-classified + classified))))
+          {:tables-classified 0, :total-tables 0}
+          (table-chunks/chunks (sync-util/reducible-sync-tables database))))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    (transduce (map (fn [table]
-                      (let [result (classify-fields! table)]
-                        (log-progress-fn "classify-fields" table)
-                        result)))
-               (partial merge-with +)
-               {:fields-classified 0, :fields-failed 0}
-               tables)))
+  (reduce (fn [acc tables]
+            (let [stats (classify-fields-of-tables! tables)]
+              (run! #(log-progress-fn "classify-fields" %) tables)
+              (merge-with + acc stats)))
+          {:fields-classified 0, :fields-failed 0}
+          (table-chunks/chunks (sync-util/reducible-sync-tables database))))

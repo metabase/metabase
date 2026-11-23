@@ -275,6 +275,14 @@
                         changes (conj changes))))))
         our-metadata))
 
+(mu/defn- write-field-changes! :- ms/IntGreaterThanOrEqualToZero
+  "Write the [[field-changes]] `collected`: one drop of the user values that no longer apply per distinct set of them
+  and one update. Returns the number of Fields updated."
+  [collected :- [:sequential :map]]
+  (doseq [[unset changes] (group-by :unset (filter :unset collected))]
+    (field-user-settings/unset-field-user-settings-for-fields! (mapv :id changes) unset))
+  (sync.updates/update-fields-by-id-unless-user-set! (into {} (map (juxt :id :updates)) collected)))
+
 (mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. The changes of every Field of the Table are collected first, then written together: one bulk drop of
@@ -284,7 +292,17 @@
    table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
-  (let [collected (collect-field-changes database table db-metadata our-metadata)]
-    (doseq [[unset changes] (group-by :unset (filter :unset collected))]
-      (field-user-settings/unset-field-user-settings-for-fields! (mapv :id changes) unset))
-    (sync.updates/update-fields-by-id-unless-user-set! (into {} (map (juxt :id :updates)) collected))))
+  (write-field-changes! (collect-field-changes database table db-metadata our-metadata)))
+
+(mu/defn update-metadata-of-tables! :- ms/IntGreaterThanOrEqualToZero
+  "[[update-metadata!]] of each of `entries`, a Table with its `:db-metadata` and `:our-metadata`, the changes of all
+  their Fields written together. Returns total number of Fields updated."
+  [database :- i/DatabaseInstance
+   entries  :- [:sequential [:map
+                             [:table        i/TableInstance]
+                             [:db-metadata  [:set i/TableMetadataField]]
+                             [:our-metadata [:set common/TableMetadataFieldWithID]]]]]
+  (write-field-changes! (into []
+                              (mapcat (fn [{:keys [table db-metadata our-metadata]}]
+                                        (collect-field-changes database table db-metadata our-metadata)))
+                              entries)))

@@ -65,10 +65,11 @@
   20)
 
 (defn- duplicate-model-ids
-  "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
-   shows up more than once. This returns the ids for the copies that are not the most recent entry."
-  [user-id context]
-  (->> (activity-feed.db/recent-views-for-user-context user-id context)
+  "Returns a set of IDs of duplicate models among the RecentViews `rows` of one user and context, newest first.
+   Duplicate means that the same model and model_id shows up more than once. This returns the ids for the copies that
+   are not the most recent entry."
+  [rows]
+  (->> rows
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -118,25 +119,34 @@
     (or (get names [model card_type])
         model)))
 
-(defn- ids-to-prune-for-user+model [user-id rv-model context]
-  (let [[model {card-type :type}] (entry rv-model)]
-    (activity-feed.db/recent-view-ids-to-prune (db-model model)
-                                               user-id
-                                               (name context)
-                                               card-type
-                                               *recent-views-stored-per-user-per-model*)))
-
-(defn- overflowing-model-buckets [user-id context]
-  (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
+(defn- overflowing-model-buckets
+  "The ids of the RecentViews `rows` of one user and context, newest first, beyond the newest
+  [[*recent-views-stored-per-user-per-model*]] of each type of recent view."
+  [rows]
+  (into #{}
+        (mapcat (fn [rv-model]
+                  (let [[model {card-type :type}] (entry rv-model)]
+                    (->> rows
+                         (filter (fn [{row-model :model row-card-type :card_type}]
+                                   (and (= row-model (db-model model))
+                                        (or (nil? card-type) (= row-card-type card-type)))))
+                         (drop *recent-views-stored-per-user-per-model*)
+                         (map :id)))))
+        rv-models))
 
 (defn ids-to-prune
-  "Returns IDs to prune, which includes 2 things:
+  "Returns IDs to prune for the `[user-id context]` pairs `user-contexts`, which includes 2 things:
   1. duplicated views for (user-id, model, model_id, context), this will return the IDs of all duplicates except the newest.
   2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
-  [user-id context]
-  (set/union
-   (duplicate-model-ids user-id context)
-   (overflowing-model-buckets user-id context)))
+  [user-contexts]
+  (let [wanted (into #{} (map (fn [[user-id context]] [user-id (name context)])) user-contexts)]
+    (->> (activity-feed.db/recent-views-for-users-contexts (into [] (comp (map first) (distinct)) wanted)
+                                                           (into [] (comp (map second) (distinct)) wanted))
+         (group-by (fn [{:keys [user_id context]}] [user_id (name context)]))
+         (filter (comp wanted key))
+         (into {})
+         vals
+         (into #{} (mapcat (fn [rows] (set/union (duplicate-model-ids rows) (overflowing-model-buckets rows))))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
@@ -309,13 +319,7 @@
             :model_id model-id
             :context (name context)
             :timestamp timestamp}))
-        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
-        ;; pairs first: N views by one user become one set of prune queries instead of N.
-        (let [prune-ids (into #{}
-                              (comp (map (juxt :user-id :context))
-                                    (distinct)
-                                    (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
-                              views)]
+        (let [prune-ids (ids-to-prune (into #{} (map (juxt :user-id :context)) views))]
           (when (seq prune-ids)
             (activity-feed.db/delete-recent-views! prune-ids))))
       (catch Exception e

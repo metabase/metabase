@@ -39,10 +39,12 @@
   "The `[card notifications]` pairs of the Cards in the Collection with `collection-id` that have alerts, which archiving
   the Collection deletes."
   [collection-id]
-  (vec (for [card          (collections.db/cards-in-collection collection-id)
-             :let          [notifications (seq (notification.card/card-notifications card))]
-             :when         notifications]
-         [card notifications])))
+  (let [cards   (collections.db/cards-in-collection collection-id)
+        by-card (notification.card/card-notifications cards)]
+    (vec (for [card  cards
+               :let  [notifications (seq (get by-card (:id card)))]
+               :when notifications]
+           [card notifications]))))
 
 (defn- delete-stopped-alerts!
   "Deletes the alerts of `stopped`, which archiving a Collection stops: the Cards in it follow its archive, so their

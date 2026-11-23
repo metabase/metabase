@@ -11,6 +11,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
@@ -639,6 +640,62 @@
     (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
       (is (= [[] []]
              (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors)))))))
+
+(deftest effective-ancestors-batch-matches-single-test
+  (testing "hydrating a mix of collections together gives each one the ancestors it gets alone"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection a  {:name "A"}
+                     :model/Collection b  {:name "B" :location (collection/location-path a)}
+                     :model/Collection c  {:name "C" :location (collection/location-path a b)}
+                     :model/Collection d  {:name "D" :location (collection/location-path a b c)}
+                     :model/Collection sa {:name "SA" :namespace "snippets"}
+                     :model/Collection sb {:name "SB" :namespace "snippets" :location (collection/location-path sa)}
+                     :model/Collection sc {:name "SC" :namespace "snippets" :location (collection/location-path sa sb)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) c)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) sb)
+        (let [collections [d c b a sc sb nil collection/root-collection]
+              ancestors   (fn [hydrated]
+                            (for [collection hydrated]
+                              (for [ancestor (:effective_ancestors collection)]
+                                [(:name ancestor) (:can_write ancestor) (mi/can-read? ancestor)])))]
+          (doseq [user [:rasta :crowberto]]
+            (testing user
+              (mt/with-test-user user
+                (is (= (ancestors (map #(when % (t2/hydrate % :effective_ancestors)) collections))
+                       (ancestors (t2/hydrate collections :effective_ancestors))))))))
+        (testing "a non-superuser sees only the ancestors it can read, each with its own write access"
+          (mt/with-test-user :rasta
+            (is (= [["A" false] ["C" true]]
+                   (map (juxt :name :can_write) (:effective_ancestors (t2/hydrate d :effective_ancestors)))))))))))
+
+(deftest effective-ancestors-statement-count-test
+  (testing "hydrating ancestors costs as many statements for 10 collections as for 40, each in its own parent"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (doseq [collection-namespace [nil "snippets"]
+              user                 [:crowberto :rasta]]
+        (testing [collection-namespace user]
+          (let [statements (fn [n]
+                             (mt/with-model-cleanup [:model/Collection]
+                               (let [parent-ids (t2/insert-returning-pks! :model/Collection
+                                                                          (for [i (range n)]
+                                                                            {:name      (str "Parent " i)
+                                                                             :namespace collection-namespace}))
+                                     child-ids  (t2/insert-returning-pks! :model/Collection
+                                                                          (for [[i parent-id] (map-indexed vector parent-ids)]
+                                                                            {:name      (str "Child " i)
+                                                                             :namespace collection-namespace
+                                                                             :location  (collection/location-path parent-id)}))
+                                     hydrate!   #(mt/with-test-user user
+                                                   (doall (t2/hydrate (t2/select :model/Collection :id [:in child-ids])
+                                                                      :effective_ancestors)))]
+                                 (doseq [parent-id (take-nth 2 parent-ids)]
+                                   (perms/grant-collection-read-permissions! (perms/all-users-group) parent-id))
+                                 (hydrate!)
+                                 (t2/with-call-count [call-count]
+                                   (hydrate!)
+                                   (call-count)))))]
+            (is (= (statements 10) (statements 40)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
@@ -1374,6 +1431,23 @@
     (mt/with-temp [:model/User temp-user]
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
+
+(deftest personal-collection-id-backfill-statement-count-test
+  (testing "Hydrating `:personal_collection_id` creates the missing Personal Collections of 8 Users in as many statements as of 2"
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (let [counts (fn [n]
+                       (let [users (t2/select :model/User :id [:in (t2/insert-returning-pks!
+                                                                    :model/User
+                                                                    (repeatedly n #(mt/with-temp-defaults :model/User)))])]
+                         (is (not-any? (collections.db/personal-collection-ids-by-owner (set (map :id users)))
+                                       (map :id users)))
+                         (t2/with-call-count [call-count]
+                           (is (every? (comp pos-int? :personal_collection_id)
+                                       (t2/hydrate users :personal_collection_id)))
+                           (call-count))))]
+          (counts 1)
+          (is (= (counts 2) (counts 8))))))))
 
 (deftest hydrate-is-personal-test
   (binding [collection/*allow-deleting-personal-collections* true]

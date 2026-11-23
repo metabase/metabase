@@ -73,10 +73,14 @@
 
 (defmethod mi/can-update? :model/Exploration
   [exploration changes]
+  (mi/can-update-all? :model/Exploration [exploration] changes))
+
+(defmethod mi/can-update-all? :model/Exploration
+  [_model explorations changes]
   (boolean
-   (and (mi/can-write? exploration)
-        (mi/archive-followers-updatable? exploration changes :model/Document
-                                         (partial explorations.db/summary-documents-following (:id exploration))))))
+   (and (every? mi/can-write? explorations)
+        (mi/archive-followers-updatable? explorations changes :model/Document
+                                         explorations.db/summary-documents-following-explorations))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

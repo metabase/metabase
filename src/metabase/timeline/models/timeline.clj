@@ -82,9 +82,10 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
-  (cond-> (t2/hydrate (timeline.db/timelines-for-collection collection-id (boolean archived?)) :creator [:collection :can_write])
-    (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
-    events? (timeline-event/include-events options)))
+  (let [root (when (nil? collection-id) (collection.root/hydrated-root-collection))]
+    (cond-> (t2/hydrate (timeline.db/timelines-for-collection collection-id (boolean archived?)) :creator [:collection :can_write])
+      (nil? collection-id) (->> (map #(collection.root/hydrate-root-collection % root)))
+      events? (timeline-event/include-events options))))
 
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 

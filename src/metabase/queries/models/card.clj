@@ -405,11 +405,16 @@
        (map (juxt :id :name))
        (into {})))
 
+(defn- moves-into-dashboard?
+  "Whether `changes` move `card` into a Dashboard it is not in."
+  [card changes]
+  (boolean (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
+                (:dashboard_id changes))))
+
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   ;; Clients re-send the current `dashboard_id` on every save, so only a genuine move into a dashboard is checked
   ;; (#82237).
-  (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
-             (:dashboard_id changes))
+  (when (moves-into-dashboard? card changes)
     (let [dashboard-id->name (other-dashboard-id->name card changes)]
       (when (seq dashboard-id->name)
         (throw (ex-info
@@ -441,6 +446,12 @@
   does."
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
+
+(defenterprise pre-update-check-sandboxes-constraints
+  "Throws when a change of the result metadata of a Card of `card-changes`, `[stored-card changes]` pairs, stops it matching the
+  Tables of its sandboxes, which OSS never does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
 
 (defenterprise sandboxes-allow-card-delete?
   "Whether sandboxing lets the current user delete `card`, which only an admin may when a sandbox is built out of it,
@@ -879,13 +890,16 @@
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
 
-(defn- shared-dashboard-timelines-readable?
-  "Whether the current user reads the timelines of `cards` that a public or embedded `dashboard` shows to anyone."
-  [dashboard cards]
-  (or (not (and api/*current-user-id*
-                (or (:public_uuid dashboard) (:enable_embedding dashboard))))
-      (every? mi/can-read?
-              (t2/hydrate (queries.db/timelines (into #{} (mapcat card-exposed-timeline-ids) cards)) :can_read))))
+(defn- shared-dashboards-timelines-readable?
+  "Whether the current user reads the timelines that the public or embedded Dashboards of `dashboard-cards`, `[dashboard
+  cards]` pairs, show to anyone for their `cards`, from one read of the timelines."
+  [dashboard-cards]
+  (or (not api/*current-user-id*)
+      (timelines-readable? (into #{}
+                                 (comp (filter (fn [[dashboard _]] (or (:public_uuid dashboard) (:enable_embedding dashboard))))
+                                       (mapcat second)
+                                       (mapcat card-exposed-timeline-ids))
+                                 dashboard-cards))))
 
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
@@ -1048,23 +1062,30 @@
   (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
        (timeline-selection-readable? card *copy-source-card*)))
 
-(defn- dashboard-move-permitted?
-  "Whether the current user may do what `changes` do to the Dashboard of `card`: write the Dashboards it appears in,
-  and read the timelines it shows on the Dashboard it moves into when that is shared."
-  [card changes]
-  (or (not (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
-      (and (every? mi/can-write? (t2/hydrate (queries.db/card-dashboards card) :can_write))
-           (or (nil? (:dashboard_id changes))
-               (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
-                                                     [(merge card changes)])))))
+(defn- dashboards-move-permitted?
+  "Whether the current user may do what the changes of each of `card-changes`, `[card changes]` pairs, do to the
+  Dashboard of the Card: write the Dashboards it appears in, and read the timelines it shows on the Dashboard it moves
+  into when that is shared, from one read of the Dashboards each way and of the timelines."
+  [card-changes]
+  (let [moving (filterv (fn [[card changes]]
+                          (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
+                        card-changes)]
+    (or (empty? moving)
+        (let [in-dashboards (t2/hydrate (mapv first moving) :in_dashboards)
+              targets       (u/index-by :id (queries.db/dashboards (into #{} (keep (comp :dashboard_id second)) moving)))]
+          (and (every? mi/can-write? (t2/hydrate (vec (vals (u/index-by :id (mapcat :in_dashboards in-dashboards)))) :can_write))
+               (shared-dashboards-timelines-readable?
+                (mapv (fn [[card changes]]
+                        [(get targets (:dashboard_id changes)) [(merge card changes)]])
+                      moving)))))))
 
 (defn- summary-owner-writable
-  "A function from one of `cards` to whether the current user writes the Exploration whose Summary holds it, or nil
-  for a Card of no Summary, with the Documents and Explorations loaded once, and only when `changes` archive or
-  restore one of `cards` alone."
-  [cards changes]
-  (let [doc->exploration (when-let [ids (and (some #(mi/changes-only-archived? % changes) cards)
-                                             (seq (into [] (comp (keep :document_id) (distinct)) cards)))]
+  "A function from one of the cards of `card-changes`, `[card changes]` pairs, to whether the current user writes the
+  Exploration whose Summary holds it, or nil for a Card of no Summary, with the Documents and Explorations loaded once,
+  and only when the changes archive or restore one of them alone."
+  [card-changes]
+  (let [doc->exploration (when-let [ids (and (some (fn [[card changes]] (mi/changes-only-archived? card changes)) card-changes)
+                                             (seq (into [] (comp (map first) (keep :document_id) (distinct)) card-changes)))]
                            (into {} (comp (mapcat #(queries.db/documents-collection-and-exploration (vec %)))
                                           (keep (fn [{:keys [id exploration_id]}] (when exploration_id [id exploration_id]))))
                                  (partition-all mdb/update-partition-size ids)))
@@ -1080,29 +1101,44 @@
 (defn- can-update-apart-from-collection-and-sandboxes?
   "Whether the current user may apply `changes` to `card` as far as every rule but where its Collection changes and
   sandboxing go, where `summary-owner-writable` answers an archive or restore of a Summary Card, which no user writes,
-  at its Exploration."
-  [card changes summary-owner-writable]
+  at its Exploration, and `dashboard-move-permitted` is whether they may do what `changes` do to its Dashboard."
+  [card changes summary-owner-writable dashboard-move-permitted]
   (and (let [owner-writable (when (mi/changes-only-archived? card changes) (summary-owner-writable card))]
          (if (some? owner-writable)
            owner-writable
            (or (changes-only-public-link? card changes) (mi/can-write? card))))
        (can-change-public-link? card changes)
-       (dashboard-move-permitted? card changes)
+       dashboard-move-permitted
        (can-change-embedding? card changes)
        (timeline-selection-readable? (merge card changes) card)))
 
 (defmethod mi/can-update? :model/Card
   [card changes]
-  (and (can-update-apart-from-collection-and-sandboxes? card changes (summary-owner-writable [card] changes))
+  (and (can-update-apart-from-collection-and-sandboxes? card changes
+                                                        (summary-owner-writable [[card changes]])
+                                                        (dashboards-move-permitted? [[card changes]]))
        (collection/can-move? card changes)
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
+(defn can-update-cards?
+  "Whether the current user may apply to each Card of `card-changes`, `[card changes]` pairs of Cards hydrated with
+  `:can_write`, its own changes, as [[mi/can-update?]] answers for one, from one read of what the Cards depend on."
+  [card-changes]
+  (and (let [owner-writable        (summary-owner-writable card-changes)
+             dashboard-move-permitted (dashboards-move-permitted? card-changes)]
+         (every? (fn [[card changes]]
+                   (can-update-apart-from-collection-and-sandboxes? card changes owner-writable dashboard-move-permitted))
+                 card-changes))
+       (every? (fn [[_ group]] (collection/can-move-all? (mapv first group) (second (first group))))
+               (group-by (comp #(select-keys % [:collection_id]) second) card-changes))
+       (sandboxes-allow-cards-update? (into []
+                                            (comp (filter (fn [[card changes]] (seq (changing-columns card changes sandbox-guarded-columns))))
+                                                  (map first))
+                                            card-changes))))
+
 (defmethod mi/can-update-all? :model/Card
   [_model cards changes]
-  (and (let [owner-writable (summary-owner-writable cards changes)]
-         (every? #(can-update-apart-from-collection-and-sandboxes? % changes owner-writable) cards))
-       (collection/can-move-all? cards changes)
-       (sandboxes-allow-cards-update? (filterv #(seq (changing-columns % changes sandbox-guarded-columns)) cards))))
+  (can-update-cards? (mapv #(vector % changes) cards)))
 
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
@@ -2092,9 +2128,8 @@
       (params/assert-valid-parameter-mappings changes)))
   (check-field-filter-fields-are-from-correct-database
    (into [] (keep #(when-let [query (:dataset_query (:changes %))] {:dataset_query query})) entries))
-  (doseq [{:keys [before changes]} entries
-          :when                    (contains? changes :result_metadata)]
-    (pre-update-check-sandbox-constraints (merge before changes) changes)))
+  (pre-update-check-sandboxes-constraints
+   (into [] (keep (fn [{:keys [before changes]}] (when (contains? changes :result_metadata) [before changes]))) entries)))
 
 (defn- write-card-changes!
   "Writes the changes of `entries`, after what a Card that `writer` changes needs: the verification of the Cards whose
@@ -2424,29 +2459,36 @@
     (when (seq rows)
       (write-followers! create-followers! :model/DashboardCard rows))))
 
-(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (autoplace-dashcards-for-cards! (hydrated-dashboards [dashboard-id])
-                                  [{:dashboard-id dashboard-id :dashboard-tab-id maybe-dashboard-tab-id :card card :size size}]))
-
 (defn- delete-dashcards!
   "Deletes the DashboardCards with `dashcard-ids` through their model, whose namespace requires this one."
   [dashcard-ids]
   (when (seq dashcard-ids)
     (write-followers! delete-followers! :model/DashboardCard (vec dashcard-ids))))
 
-(defn- autoremove-dashcard-for-card!
-  [card-id dashboard-id]
-  (delete-dashcards! (queries.db/dashcard-ids-for-card-on-dashboard card-id dashboard-id))
-  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (write-followers! delete-followers! :model/DashboardCardSeries (vec dashcard-ids))))
+(defn- remove-dashcards!
+  "Deletes the DashboardCards and DashboardCardSeries that show a Card of `leaving`, `[card-id dashboard-id]` pairs, on
+  that Dashboard, and a Card of `leaving-others`, such pairs too, on any other Dashboard, with one read of each."
+  [leaving leaving-others]
+  (when (or (seq leaving) (seq leaving-others))
+    (let [card-ids   (vec (into #{} (map first) (concat leaving leaving-others)))
+          leaving    (set leaving)
+          keep-only  (into {} leaving-others)
+          removed?   (fn [{:keys [card_id dashboard_id]}]
+                       (or (contains? leaving [card_id dashboard_id])
+                           (when-let [dashboard-id (get keep-only card_id)]
+                             (not= dashboard-id dashboard_id))))]
+      (delete-dashcards! (into [] (comp (filter removed?) (map :id)) (queries.db/dashcards-for-cards card-ids)))
+      (when-let [series-ids (seq (into [] (comp (filter removed?) (map :id)) (queries.db/dashcard-series-for-cards card-ids)))]
+        (write-followers! delete-followers! :model/DashboardCardSeries (vec series-ids))))))
 
-(defn- autoplace-or-remove-dashcards-for-card!
-  "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
-  DashboardQuestions."
+(defn- dashboard-placement
+  "What the update `card-updates` of `card-before-update` does to its DashboardCards, a map of `:place`, the entry for
+  [[autoplace-dashcards-for-cards!]] that puts it on its Dashboard, `:leave`, the Dashboard it leaves, and
+  `:leave-others`, the Dashboard it moves into when `delete-old-dashcards?` takes it off all the others, each nil when
+  the update does not."
   [{:as card-before-update
-    card-id :id
-    old-archived :archived
-    old-dashboard-id :dashboard_id}
+    old-dashboard-id :dashboard_id
+    old-archived :archived}
    {:as card-updates
     dashboard-id-update :dashboard_id
     dashboard-tab-id :dashboard_tab_id
@@ -2467,33 +2509,31 @@
     (api/check-400
      (not (and dashboard-tab-id
                (not new-dashboard-id))))
-    ;; we'll end up unarchived and a dashboard card => make sure we autoplace
-    (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
-    (when (and
-           ;; we start out as a DQ, and
-           on-dashboard-before?
-           (or
-            ;; we're moving to a *different* dashboard,
-            (and on-dashboard-after?
-                 dashboard-changes?)
-            ;; we're archiving the DQ, or
-            (and archived-after?
-                 on-dashboard-after?)
-            ;; we're moving the DQ to a collection, AND the user has told us to delete
-            (and (not on-dashboard-after?)
-                 delete-old-dashcards?)))
-      (autoremove-dashcard-for-card! card-id old-dashboard-id))
-    ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
-    ;; dashboards
-    (when (and on-dashboard-after?
-               (not on-dashboard-before?)
-               delete-old-dashcards?)
-      ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
-      ;; removed from the dashboard" since you can't restore to the previous state...
-      (delete-dashcards! (queries.db/dashcard-ids-for-card-off-dashboard card-id new-dashboard-id))
-      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (write-followers! delete-followers! :model/DashboardCardSeries (vec ids))))))
+    {;; we'll end up unarchived and a dashboard card => make sure we autoplace
+     :place (when (and on-dashboard-after? (not archived-after?))
+              {:dashboard-id new-dashboard-id :dashboard-tab-id dashboard-tab-id :card card-before-update :size nil})
+     :leave (when (and
+                   ;; we start out as a DQ, and
+                   on-dashboard-before?
+                   (or
+                    ;; we're moving to a *different* dashboard,
+                    (and on-dashboard-after?
+                         dashboard-changes?)
+                    ;; we're archiving the DQ, or
+                    (and archived-after?
+                         on-dashboard-after?)
+                    ;; we're moving the DQ to a collection, AND the user has told us to delete
+                    (and (not on-dashboard-after?)
+                         delete-old-dashcards?)))
+              old-dashboard-id)
+     ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
+     ;; dashboards
+     ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
+     ;; removed from the dashboard" since you can't restore to the previous state...
+     :leave-others (when (and on-dashboard-after?
+                              (not on-dashboard-before?)
+                              delete-old-dashcards?)
+                     new-dashboard-id)}))
 
 (defn new-card-row
   "The row for [[create-cards!]] that a new Card of `creator-id` takes from `card`: the columns of `card` a user sets
@@ -2520,14 +2560,32 @@
                                                :card card :size (:size row)})
                                             placed)))))
 
+(defn place-updated-dashboard-questions!
+  "Puts each Card `before` of `card-updates`, `[before updates]` pairs of a Card and the columns of an update with its
+  `:dashboard_tab_id`, on the Dashboard that its `updates` move it to and takes its DashboardCards off the Dashboard it
+  leaves, or all the others when `delete-old-dashcards?`, throwing a 400 for a tab with no Dashboard, for a Card on
+  other Dashboards moved into one, and for a change a dashboard question does not allow, with one read of the
+  Dashboards and one write of each kind of row."
+  [card-updates delete-old-dashcards?]
+  (let [placements (mapv (fn [[before updates]] (dashboard-placement before updates delete-old-dashcards?)) card-updates)
+        entries    (into [] (keep :place) placements)]
+    (when (seq entries)
+      (autoplace-dashcards-for-cards! (hydrated-dashboards (map :dashboard-id entries)) entries))
+    (remove-dashcards! (into [] (keep (fn [[[before _] {:keys [leave]}]] (when leave [(:id before) leave])))
+                             (map vector card-updates placements))
+                       (into [] (keep (fn [[[before _] {:keys [leave-others]}]] (when leave-others [(:id before) leave-others])))
+                             (map vector card-updates placements)))
+    (let [moving   (filterv (fn [[before updates]] (moves-into-dashboard? before updates)) card-updates)
+          id->card (zipmap (map (comp :id first) moving)
+                           (t2/hydrate (mapv (comp #(dissoc % :in_dashboards) first) moving) :in_dashboards))]
+      (run! (fn [[before updates]] (assert-is-valid-dashboard-internal-update updates (get id->card (:id before) before)))
+            card-updates))))
+
 (defn place-updated-dashboard-question!
   "Puts the Card `before` on the Dashboard that `updates`, the columns of an update and its `:dashboard_tab_id`, move
-  it to and takes its DashboardCards off the Dashboard it leaves, or all the others when `delete-old-dashcards?`,
-  throwing a 400 for a tab with no Dashboard, for a Card on other Dashboards moved into one, and for a change a
-  dashboard question does not allow."
+  it to, as [[place-updated-dashboard-questions!]] does for one Card."
   [before updates delete-old-dashcards?]
-  (autoplace-or-remove-dashcards-for-card! before updates delete-old-dashcards?)
-  (assert-is-valid-dashboard-internal-update updates before))
+  (place-updated-dashboard-questions! [[before updates]] delete-old-dashcards?))
 
 (defn card-changes
   "The changes for [[update-cards!]] that the request `changes` make: the columns of `changes` that an update writes,

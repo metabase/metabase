@@ -55,6 +55,13 @@
    max-failures :- ms/PositiveInt]
   (dependencies.db/record-result-metadata-failure! card-id max-failures))
 
+(mu/defn clear-result-metadata-statuses!
+  "Record that the result metadata job re-derived the Cards whose ids are the keys of `id->stale` with the logic of
+  `current-version`, clearing each `stale` count unless a write raised it."
+  [id->stale       :- [:map-of ::lib.schema.id/card ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (dependencies.db/clear-result-metadata-statuses! id->stale current-version))
+
 (mu/defn clear-result-metadata-status! :- :boolean
   "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
   its count of `stale` writes unless a write raised it, returning whether it cleared it."

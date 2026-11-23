@@ -79,10 +79,15 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(mu/defn collection-exists?
-  "Whether the Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id))
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each of the Cards with `card-ids` that exists, nil for the root, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :collection_id [:model/Card :id :collection_id] :id [:in [:auto/param card-ids]]))
+
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection :map]
+  "The Collections with `collection-ids` that exist, by id."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn action
   "The Action with `action-id`, or nil."

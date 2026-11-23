@@ -50,6 +50,13 @@
   (dependencies.db/clear-dependency-status!
    entity-type entity-id stale models.dependency/current-dependency-analysis-version))
 
+(mu/defn clear-statuses!
+  "Record that the dependency job computed the dependencies of the entities `entity-type` whose ids are the keys of
+  `id->stale`, clearing each `stale` count unless a write raised it."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   id->stale   :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]]
+  (dependencies.db/clear-dependency-statuses! entity-type id->stale models.dependency/current-dependency-analysis-version))
+
 (mu/defn mark-dependency-statuses-stale!
   "Mark the DependencyStatuses of the entities `type->ids` stale, so the dependency job computes their dependencies
   again."

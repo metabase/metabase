@@ -9,8 +9,10 @@
    attempts any active field whose persisted score is still `NULL` (initial backfill, tables
    outside the normal sync sweep, or scores null'ed to force a recompute)."
   (:require
+   [metabase.analyze.core :as analyze]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
@@ -38,20 +40,27 @@
       (field/update-fields! rows {:fields (vec fields)}))
     (into [] (keep (fn [[field s]] (when (instance? Exception s) field))) scored)))
 
-(mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
-  "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."
-  [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
+(mu/defn- score-fields-of-tables! :- [:map {:closed true} [:fields-scored :int] [:fields-failed :int]]
+  "Score interestingness for the Fields of `tables` with fresh fingerprints that haven't completed analysis yet, reading
+  and saving them a page at a time."
+  [tables :- [:sequential i/TableInstance]]
+  (let [table-ids (mapv :id tables)]
+    (loop [after-id 0
+           stats    {:fields-scored 0 :fields-failed 0}]
+      (if-let [fields (not-empty (analyze/incomplete-analysis-fields table-ids i/*latest-fingerprint-version*
+                                                                     after-id table-chunks/fields-per-read))]
+        (let [failed (score-and-save! fields)]
+          (log/debugf "Scored interestingness for %d fields" (count fields))
+          (recur (:id (last fields))
+                 (-> stats
+                     (update :fields-scored + (- (count fields) (count failed)))
+                     (update :fields-failed + (count failed)))))
+        stats))))
 
 (mu/defn score-fields!
   "Score interestingness for all qualifying Fields in `table`."
   [table :- i/TableInstance]
-  (if-let [fields (fields-to-score table)]
-    (do
-      (log/debugf "Scoring interestingness for %d fields in %s" (count fields) (sync-util/name-for-logging table))
-      (let [failed (score-and-save! (vec fields))]
-        {:fields-scored (- (count fields) (count failed)) :fields-failed (count failed)}))
-    {:fields-scored 0 :fields-failed 0}))
+  (score-fields-of-tables! [table]))
 
 (mr/def ::leftover-stats
   "Stats the leftovers pass accumulates. `:fields-remaining` appears only when the per-sync limit truncated the run."
@@ -145,12 +154,10 @@
   "Score interestingness for all qualifying Fields in `database`."
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
-  (let [tables (sync-util/reducible-sync-tables database)
-        per-table-stats (transduce (map (fn [table]
-                                          (let [result (score-fields! table)]
-                                            (log-progress-fn "score-interestingness" table)
-                                            result)))
-                                   (partial merge-with +)
-                                   {:fields-scored 0 :fields-failed 0}
-                                   tables)]
+  (let [per-table-stats (reduce (fn [acc tables]
+                                  (let [stats (score-fields-of-tables! tables)]
+                                    (run! #(log-progress-fn "score-interestingness" %) tables)
+                                    (merge-with + acc stats)))
+                                {:fields-scored 0 :fields-failed 0}
+                                (table-chunks/chunks (sync-util/reducible-sync-tables database)))]
     (merge-with + per-table-stats (score-missing-leftovers! database))))

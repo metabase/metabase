@@ -103,10 +103,12 @@
   [schema]
   (if api/*is-superuser?*
     schema
-    (filter
-     (fn [{db-id :db_id schema :schema}]
-       (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema) :yes))
-     schema)))
+    (let [values (perms/some-table-in-schemas-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                   :perms/manage-table-metadata
+                                                                   (mapv (juxt :db_id :schema) schema))]
+      (filter (fn [{db-id :db_id schema :schema}]
+                (perms/at-least-as-permissive? :perms/manage-table-metadata (get values [db-id schema]) :yes))
+              schema))))
 
 (defenterprise filter-databases-by-data-model-perms
   "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.

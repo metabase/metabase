@@ -315,7 +315,6 @@
     {}))
 
 (events/derive! ::notification-event ::event)
-(events/derive! :event/notification-create ::notification-event)
 (events/derive! :event/notification-update ::notification-event)
 (events/derive! :event/notification-unsubscribe ::notification-event)
 
@@ -332,6 +331,24 @@
               :model    :model/Notification
               :model-id (:id object)
               :user-id  user-id})))
+
+(events/derive! ::notification-create-event ::event)
+(events/derive! :event/notification-create ::notification-create-event)
+
+(methodical/defmethod events/publish-event! ::notification-create-event
+  "Record one row for each Notification that `:objects` (or `:object`) holds, in one insert."
+  [topic {:keys [object objects user-id]}]
+  (when (premium-features/log-enabled?)
+    (audit-log/create-audit-logs!
+     (into []
+           (keep (fn [notification]
+                   (audit-log/audit-row topic
+                                        {:details  (notification-details notification)
+                                         :object   notification
+                                         :model    :model/Notification
+                                         :model-id (:id notification)
+                                         :user-id  user-id})))
+           (or objects [object])))))
 
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
@@ -494,7 +511,6 @@
 (events/derive! ::transform-event ::event)
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)
-(events/derive! :event/transform-run-timeout ::transform-event)
 (events/derive! :event/transform-test-run-start ::transform-event)
 (events/derive! :event/transform-test-run-timeout ::transform-event)
 (events/derive! :event/transform-inspect-discover ::transform-event)
@@ -503,6 +519,22 @@
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]
   (record-manual! topic event))
+
+(events/derive! ::transform-run-timeout-event ::event)
+(events/derive! :event/transform-run-timeout ::transform-run-timeout-event)
+
+(methodical/defmethod events/publish-event! ::transform-run-timeout-event
+  "Record one row for each run that `:objects` (or `:object`) holds, in one insert."
+  [topic {:keys [object objects user-id]}]
+  (when (premium-features/log-enabled?)
+    (audit-log/create-audit-logs!
+     (into []
+           (keep (fn [run]
+                   (audit-log/audit-row topic
+                                        {:details (manual-details topic run)
+                                         :object  run
+                                         :user-id (or user-id (:user_id run))})))
+           (or objects [object])))))
 
 (events/derive! ::card-test-event ::event)
 (events/derive! :event/card-test-run-start ::card-test-event)

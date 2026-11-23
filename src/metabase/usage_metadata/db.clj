@@ -20,10 +20,10 @@
                          [:<  :started_at [:auto/param started-before]]]
               :group-by [:hash]}))
 
-(mu/defn raw-field-fingerprint
-  "The stored fingerprint of the Field with `field-id`, as it sits in the table, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :metabase_field :id field-id))
+(mu/defn raw-field-fingerprints
+  "The stored fingerprints of the Fields with `field-ids`, as they sit in the table, by Field id."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (t2/select-fn->fn :id :fingerprint :metabase_field :id [:in [:auto/param field-ids]]))
 
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."

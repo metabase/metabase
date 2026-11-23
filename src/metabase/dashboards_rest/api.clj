@@ -300,20 +300,23 @@
   [dashboard]
   (update dashboard :dashcards
           (fn [dashcards]
-            (vec (for [dashcard dashcards]
-                   (update dashcard :card
-                           (fn [card]
-                             (when card
-                               (let [dataset-query (or (:dataset_query card)
-                                                       (dashboards-rest.db/card-query (:id card)))
-                                     download-level (when (seq dataset-query)
-                                                      (perms/download-perms-level dataset-query api/*current-user-id*))]
-                                 (assoc card :download_perms (case download-level
-                                                               :no :none
-                                                               :ten-thousand-rows :limited
-                                                               :one-million-rows :full
-                                                               :full :full
-                                                               :none)))))))))))
+            (let [id->query (->> dashcards
+                                 (into [] (comp (keep :card) (remove :dataset_query) (keep :id) (distinct)))
+                                 dashboards-rest.db/card-queries)]
+              (vec (for [dashcard dashcards]
+                     (update dashcard :card
+                             (fn [card]
+                               (when card
+                                 (let [dataset-query (or (:dataset_query card)
+                                                         (get id->query (:id card)))
+                                       download-level (when (seq dataset-query)
+                                                        (perms/download-perms-level dataset-query api/*current-user-id*))]
+                                   (assoc card :download_perms (case download-level
+                                                                 :no :none
+                                                                 :ten-thousand-rows :limited
+                                                                 :one-million-rows :full
+                                                                 :full :full
+                                                                 :none))))))))))))
 
 (defn- apply-card-permission-filters
   "Apply collection-permission-aware filtering to dashboard cards. Hides details of

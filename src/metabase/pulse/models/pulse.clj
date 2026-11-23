@@ -158,14 +158,6 @@
             (filter #(perms/collection-permission-at-least? (get permissions %) permission))
             (keys permissions)))))
 
-(defn- collection-permits?
-  "Whether the current user has `permission` on the Collection of `notification`: its Card's for an Alert, its own
-  otherwise."
-  [notification permission]
-  (let [owner (if (is-alert? notification) (get (alert-cards [notification]) (:id notification)) notification)]
-    (check-collection-key owner)
-    (contains? (collection-ids-permitting [(:collection_id owner)] permission) (:collection_id owner))))
-
 (defn- current-user-is-creator?
   [notification]
   (= api/*current-user-id* (:creator_id notification)))
@@ -475,11 +467,10 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}} :- RetrievePulsesOpts]
-  (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
-    (-> pulse
-        (dissoc :lower-name)
-        hydrate-notification
-        notification->pulse)))
+  (->> (pulse.db/pulses archived? dashboard-id user-id)
+       (mapv #(dissoc % :lower-name))
+       hydrate-notifications
+       (map notification->pulse)))
 
 (defn- tenant-scoped-caller?
   "True when the current user's recipient visibility is narrowed to their own tenant: every non-superuser
@@ -563,16 +554,33 @@
   [pulse]
   (first (maybe-filter-pulses-recipients [pulse])))
 
+(defn- strip-sensitive-metadata
+  "`pulse` without its cards and the recipients of its channels."
+  [pulse]
+  (-> (dissoc pulse :cards)
+      (update :channels
+              (fn [channels]
+                (map #(dissoc % :recipients) channels)))))
+
+(defn maybe-strip-pulses-sensitive-metadata
+  "[[maybe-strip-sensitive-metadata]] for `pulses`, with the Collections they are in read from one permission query."
+  [pulses]
+  (let [alert-cards (alert-cards (filter is-alert? pulses))
+        owners      (map #(if (is-alert? %) (get alert-cards (:id %)) %) pulses)
+        _           (run! check-collection-key owners)
+        permitted   (collection-ids-permitting (map :collection_id owners) :read)]
+    (map (fn [pulse owner]
+           (if (contains? permitted (:collection_id owner))
+             pulse
+             (strip-sensitive-metadata pulse)))
+         pulses
+         owners)))
+
 (defn maybe-strip-sensitive-metadata
   "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
   being the creator or a recipient, we return it with some metadata removed."
   [pulse]
-  (if (collection-permits? pulse :read)
-    pulse
-    (-> (dissoc pulse :cards)
-        (update :channels
-                (fn [channels]
-                  (map #(dissoc % :recipients) channels))))))
+  (first (maybe-strip-pulses-sensitive-metadata [pulse])))
 
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"

@@ -11,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (def ^:private inputs
@@ -494,3 +495,21 @@
               (is (= "No inputs" (t2/select-one-fn :name :model/TransformTest :id test-id)))))
           (finally
             (t2/delete! :model/TransformTest :id test-id)))))))
+
+(deftest list-transform-tests-statement-count-test
+  (mt/with-premium-features #{:transforms-testing :transforms :transforms-basic :advanced-permissions}
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-model-cleanup [:model/Transform :model/TransformTest]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                        :perms/create-queries :query-builder-and-native}
+            (doseq [user [:crowberto :lucky]]
+              (testing (str "as " (name user))
+                (let [[few many] (transforms.tu/statements-at-two-sizes
+                                  (fn [n]
+                                    (doseq [transform-id (transforms.tu/create-count-test-transforms! n)]
+                                      (t2/insert! :model/TransformTest
+                                                  (merge (mt/with-temp-defaults :model/TransformTest)
+                                                         {:transform_id transform-id})))
+                                    #(mt/user-http-request user :get 200 "ee/transform-test")))]
+                  (is (= few many)))))))))))

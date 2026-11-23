@@ -679,12 +679,6 @@
                                     :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                     :where      [:= :t.db_id [:auto/param database-id]]}]])
 
-(defn- field-values-of-types-before-kvs
-  "The conditions on FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id types max-age-days]
-  [:field_id field-id :type [:in types]
-   :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]])
-
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -706,12 +700,33 @@
   [database-id :- ::lib.schema.id/database]
   (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-database-kvs database-id))))
 
-(mu/defn field-values-ids-of-types-before :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
+(mu/defn field-values-ids-and-field-ids :- [:sequential [:map [:id ms/PositiveInt] [:field_id ::lib.schema.id/field]]]
+  "The id and Field id of every FieldValues of the Fields with `field-ids`."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (t2/select [:model/FieldValues :id :field_id] :field_id [:in [:auto/param field-ids]]))
+
+(mu/defn expired-field-values-ids-of-database :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of `types` of the active, normal-visibility Fields of the synced Tables of the Database
+  with `database-id` created more than `max-age-days` days ago."
+  [database-id  :- ::lib.schema.id/database
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days))))
+  (vec (t2/select-pks-vec :model/FieldValues
+                          :type [:in types]
+                          {:where [:and
+                                   [:< :metabase_fieldvalues.created_at
+                                    (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]
+                                   [:exists ^:allow-subquery
+                                    {:select [[[:inline 1] :one]]
+                                     :from   [[(t2/table-name :model/Field) :f]]
+                                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                     :where  [:and
+                                              [:= :f.id :metabase_fieldvalues.field_id]
+                                              [:= :f.active true]
+                                              [:= :f.visibility_type "normal"]
+                                              [:= :t.db_id [:auto/param database-id]]
+                                              [:= :t.active true]
+                                              [:= :t.visibility_type nil]]}]]})))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 

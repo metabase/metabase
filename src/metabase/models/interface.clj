@@ -859,11 +859,13 @@
   (can-update-each? model rows changes))
 
 (defn archive-followers-updatable?
-  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring `row` takes along, which
-  `followers` selects given whether `changes` archive."
-  [row changes model followers]
-  (or (not (changes-archived? row changes))
-      (can-update-followers? model (followers (boolean (:archived changes))) changes)))
+  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring any of `rows` takes
+  along, which `followers` selects, all at once, given the ids of the rows `changes` archive or restore and whether
+  they archive."
+  [rows changes model followers]
+  (let [ids (into [] (comp (filter #(changes-archived? % changes)) (map :id)) rows)]
+    (or (empty? ids)
+        (can-update-followers? model (followers ids (boolean (:archived changes))) changes))))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation

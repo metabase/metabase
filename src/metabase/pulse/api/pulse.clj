@@ -60,30 +60,32 @@
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
-  (let [creator-or-recipient creator-or-recipient
-        archived?            archived
-        pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
-                                                                 :dashboard-id dashboard-id
-                                                                 :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                  (#(if creator-or-recipient
-                                      (mi/readable %)
-                                      (mi/writable %)))
-                                  models.pulse/maybe-filter-pulses-recipients)
-        pulses               (if creator-or-recipient
-                               (map models.pulse/maybe-strip-sensitive-metadata pulses)
-                               pulses)]
+  (let [pulses  (->> (models.pulse/retrieve-pulses {:archived?    archived
+                                                    :dashboard-id dashboard-id
+                                                    :user-id      (when creator-or-recipient api/*current-user-id*)})
+                     (#(if creator-or-recipient
+                         (mi/readable %)
+                         (mi/writable %)))
+                     models.pulse/maybe-filter-pulses-recipients)
+        pulses  (if creator-or-recipient
+                  (models.pulse/maybe-strip-pulses-sensitive-metadata pulses)
+                  pulses)
+        pulses  (t2/hydrate pulses :can_write)
+        queries (pulse.db/card-queries (into #{}
+                                             (comp (mapcat :cards) (remove :dataset_query) (map :id))
+                                             pulses))]
     (mapv
      (fn [pulse]
        (update pulse :cards
                (fn [cards]
                  (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (pulse.db/card-query (:id card)))
+                                                                     (or (:dataset_query card) (get queries (:id card)))
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
                                                                 :one-million-rows :full
                                                                 :full :full))) cards))))
-     (t2/hydrate pulses :can_write))))
+     pulses)))
 
 (defn- without-collection-for-dashboard-subscription
   "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.

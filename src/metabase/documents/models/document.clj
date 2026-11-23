@@ -156,15 +156,25 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
+(defn- content-visible-fn
+  "A predicate like [[content-visible?]] that reads the Exploration ids of `documents` lacking one in a single query."
+  [documents]
+  (let [ids (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+        id->exploration-id (documents.db/exploration-ids-by-document-id ids)]
+    (fn [document]
+      (content-visible? (cond-> document
+                          (contains? id->exploration-id (:id document))
+                          (assoc :exploration_id (get id->exploration-id (:id document))))))))
+
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
   "Whether the current user reads each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
   "Whether the current user writes each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (defn- collection-writable?
   "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
@@ -176,16 +186,11 @@
   (collection-writable? collection-id))
 
 (defn- following-cards
-  "The Cards of the Document with `document-id` that archiving it, when `archive?`, or restoring it takes along."
-  [document-id archive?]
+  "The Cards of the Documents with `document-ids` that archiving them, when `archive?`, or restoring them takes along."
+  [document-ids archive?]
   (if archive?
-    (documents.db/cards-archived-with-document document-id)
-    (documents.db/cards-restored-with-document document-id)))
-
-(defn- archive-followers-updatable?
-  "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
-  [document changes]
-  (mi/archive-followers-updatable? document changes :model/Card (partial following-cards (:id document))))
+    (documents.db/cards-archived-with-documents document-ids)
+    (documents.db/cards-restored-with-documents document-ids)))
 
 (defn- summary-owner-writable
   "A function from one of `documents` to whether the current user writes the Exploration whose Summary it is, or nil
@@ -201,28 +206,33 @@
       (when-let [exploration-id (:exploration_id document)]
         (contains? writable exploration-id)))))
 
-(defn- can-update-with?
-  "Whether the current user may apply `changes` to `document`, where `summary-owner-writable` answers an archive or
-  restore of a Summary, whose content its Exploration's data decides, at its Exploration."
+(defn- writable-for?
+  "Whether the current user writes `document` as far as `changes` need, where `summary-owner-writable` answers an
+  archive or restore of a Summary, whose content its Exploration's data decides, at its Exploration."
   [document changes summary-owner-writable]
-  (boolean
-   (and (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
-          (if (some? owner-writable)
-            owner-writable
-            (mi/can-write? document)))
-        (archive-followers-updatable? document changes)
-        (collection/can-move? document changes)
-        (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
-            (mi/superuser?)))))
+  (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
+    (if (some? owner-writable)
+      owner-writable
+      (mi/can-write? document))))
+
+(defn- can-move-and-share?
+  "Whether the current user may do what `changes` do to the Collection and the public link of `document`."
+  [document changes]
+  (and (collection/can-move? document changes)
+       (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+           (mi/superuser?))))
 
 (defmethod mi/can-update? :model/Document
   [document changes]
-  (can-update-with? document changes (summary-owner-writable [document] changes)))
+  (mi/can-update-all? :model/Document [document] changes))
 
 (defmethod mi/can-update-all? :model/Document
   [_model documents changes]
   (let [owner-writable (summary-owner-writable documents changes)]
-    (every? #(can-update-with? % changes owner-writable) documents)))
+    (boolean
+     (and (every? #(writable-for? % changes owner-writable) documents)
+          (mi/archive-followers-updatable? documents changes :model/Card following-cards)
+          (every? #(can-move-and-share? % changes) documents)))))
 
 (defn- check-new-card
   "The checks a new Card of a Document goes through, those `POST /api/card` runs before saving: create access to the

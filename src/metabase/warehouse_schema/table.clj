@@ -169,6 +169,21 @@
               (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries database-id schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
+(defn readable-schemas
+  "The `[database-id schema-name]` pairs among `schemas` of the schemas the current user can know exist, as
+  [[can-read-schema?]] answers for each, in a fixed number of queries."
+  [schemas]
+  (let [schemas   (vec (distinct schemas))
+        values    (perms/some-table-in-schemas-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                    :perms/create-queries schemas)
+        queryable (into #{} (filter #(contains? #{:query-builder :query-builder-and-native} (get values %))) schemas)]
+    (into queryable
+          (map (juxt :db_id :schema))
+          (filter-schema-by-data-model-perms (into []
+                                                   (comp (remove queryable)
+                                                         (map (fn [[db-id schema]] {:db_id db-id :schema schema})))
+                                                   schemas)))))
+
 (defn browsable-databases-honeysql-filter
   "The `:where` predicate selecting the databases a user may browse: excludes stubs (placeholder
    rows for in-progress database creation) and — unless `:include-analytics?` — the audit
@@ -199,7 +214,8 @@
                                 (map (fn [s] {:db_id id :schema s}))
                                 filter-schema-by-data-model-perms
                                 (map :schema))
-                           (filter (partial can-read-schema? id) schemas)))
+                           (let [readable (readable-schemas (map (fn [schema] [id schema]) schemas))]
+                             (filter #(contains? readable [id %]) schemas))))
         filter-schemas-by-tables (fn [schemas]
                                    (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)

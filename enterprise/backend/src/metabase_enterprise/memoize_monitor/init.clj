@@ -35,7 +35,6 @@
   function (see the namespace docstring)."
   [#'schema.field/field-id->table-id
    #'database/table-id->database-id
-   #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*
    #'driver.u/memoized-supports?*
    #'driver.u/memoized-features*

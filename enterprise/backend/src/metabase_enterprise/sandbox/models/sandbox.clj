@@ -180,6 +180,27 @@
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables card-id new-result-metadata)))
 
+(defenterprise pre-update-check-sandboxes-constraints
+  "Throws when a change of the result metadata of any of `card-changes`, `[stored-card changes]` pairs, gives a Card result
+  metadata that no longer matches the Tables of the sandboxes that use it, with one read of the sandboxes."
+  :feature :sandboxes
+  [card-changes]
+  (let [checked       (filterv (fn [[_ changes]] (contains? changes :result_metadata)) card-changes)
+        id->sandboxes (sandbox.db/sandboxes-using-cards (mapv (comp :id first) checked))]
+    (doseq [[{card-id :id original-result-metadata :result_metadata} {new-result-metadata :result_metadata}] checked
+            :let [gtaps-using-this-card (not-empty (get id->sandboxes card-id))]
+            :when gtaps-using-this-card
+            :when (not= original-result-metadata new-result-metadata)
+            {table-id :table_id} gtaps-using-this-card]
+      (try
+        (check-columns-match-table table-id new-result-metadata)
+        (catch clojure.lang.ExceptionInfo e
+          (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
+                               " "
+                               (.getMessage e))
+                          (ex-data e)
+                          e)))))))
+
 (defenterprise sandboxes-allow-result-metadata-write?
   "Whether sandboxing lets the current user store result metadata for the Card with `card-id`: only an admin may for one
   in the sandbox dependency set."
@@ -291,15 +312,6 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn- remove-native-access!
-  "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
-  the group has native access to that Table."
-  [{:keys [table_id group_id]}]
-  (let [db-id (database/table-id->database-id table_id)]
-    (when (= :query-builder-and-native
-             (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
-      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
-
 (defn- check-new-sandboxes
   "Throws a 400 unless every row of `rows` satisfies these rules, with the refusal of the first row that breaks one:
 
@@ -309,9 +321,18 @@
 
 (defn- remove-native-access-of-groups!
   "Take native query access away from the group of each of `rows` on the Database of its Table where it has it, and
-  return the rows."
+  return the rows, with the Databases and permissions of all rows read once and written in one batch."
   [rows]
-  (run! remove-native-access! rows)
+  (when-let [pairs (not-empty (into [] (comp (map (juxt :group_id :table_id)) (distinct)) rows))]
+    (let [table-id->db-id (sandbox.db/table-database-ids (mapv second pairs))
+          pairs           (filterv (comp table-id->db-id second) pairs)
+          pair->value     (perms/group-table-permissions pairs :perms/create-queries table-id->db-id)]
+      (perms/set-database-permissions! (into []
+                                             (comp (filter #(= :query-builder-and-native (pair->value %)))
+                                                   (map (fn [[group-id table-id]] [group-id (table-id->db-id table-id)])))
+                                             pairs)
+                                       :perms/create-queries
+                                       :query-builder)))
   rows)
 
 (mu/defn create-sandboxes! :- [:sequential ::sandbox.schema/sandbox]

@@ -4,9 +4,9 @@
    [metabase.notification.models :as models.notification]))
 
 (defn card-notifications
-  "The notifications of the alerts on `card`."
-  [card]
-  (models.notification/notifications-for-card (:id card)))
+  "The notifications of the alerts on `cards`, by the id of their Card."
+  [cards]
+  (models.notification/notifications-for-cards (mapv :id cards)))
 
 (defn notify-card-notifications-deleted!
   "Announces that the alerts of `card`, whose `notifications` were deleted, stopped, because the Card was archived when

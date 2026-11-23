@@ -121,20 +121,27 @@
 (defn add-dataset-collection-hierarchy
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
-  (let [annotate     (fn [result]
-                       (cond-> result
-                         (= (:model result) "dataset")
-                         (assoc :collection_effective_ancestors
-                                (->> (t2/hydrate (if (nil? (:collection_id result))
-                                                   collection/root-collection
-                                                   {:location (:collection_location result)}) :effective_ancestors)
-                                     :effective_ancestors
-                                     ;; two pieces for backwards compatibility:
-                                     ;; - remove the root collection
-                                     ;; - remove the `personal_owner_id` and the `can_write` hydrated with the ancestors
-                                     (remove collection.root/is-root-collection?)
-                                     (map #(dissoc % :personal_owner_id :can_write))))))]
-    (map annotate search-results)))
+  (let [dataset?     #(= (:model %) "dataset")
+        datasets     (filter dataset? search-results)
+        ancestors    (->> (t2/hydrate (mapv #(if (nil? (:collection_id %))
+                                               collection/root-collection
+                                               {:location (:collection_location %)})
+                                            datasets)
+                                      :effective_ancestors)
+                          (map (fn [collection]
+                                 (->> (:effective_ancestors collection)
+                                      ;; two pieces for backwards compatibility:
+                                      ;; - remove the root collection
+                                      ;; - remove the `personal_owner_id` and the `can_write` hydrated with the ancestors
+                                      (remove collection.root/is-root-collection?)
+                                      (map #(dissoc % :personal_owner_id :can_write)))))
+                          vec)]
+    (first (reduce (fn [[results i] result]
+                     (if (dataset? result)
+                       [(conj results (assoc result :collection_effective_ancestors (nth ancestors i))) (inc i)]
+                       [(conj results result) i]))
+                   [[] 0]
+                   search-results))))
 
 (defn- add-collection-effective-location
   "Batch-hydrates `:effective_location` and `:effective_parent` on collection search results.

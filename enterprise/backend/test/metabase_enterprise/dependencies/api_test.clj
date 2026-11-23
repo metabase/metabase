@@ -3288,3 +3288,96 @@
           (testing endpoint
             (is (= [] (deps.test/data-app-bundle-reads
                        #(mt/user-http-request :crowberto :get 200 endpoint :id app-id :type "data-app"))))))))))
+
+(defn- cards-in-own-collections!
+  "Inserts `n` Cards named after `card-name`, each in its own Collection, that All Users can read when `readable?`, and
+  returns their ids."
+  [n card-name readable?]
+  (let [collection-ids (t2/insert-returning-pks! :model/Collection
+                                                 (for [i (range n)]
+                                                   (assoc (mt/with-temp-defaults :model/Collection)
+                                                          :name (str card-name " collection " i))))]
+    (when readable?
+      (doseq [collection-id collection-ids]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)))
+    (vec (t2/insert-returning-pks! :model/Card
+                                   (map-indexed (fn [i collection-id]
+                                                  (assoc (basic-card (str card-name " " i) :venues)
+                                                         :collection_id collection-id
+                                                         :creator_id    (mt/user->id :crowberto)))
+                                                collection-ids)))))
+
+(defn- card-dependencies!
+  "Inserts a Dependency of the Card `from-id` on the Card `to-id` for each pair of `pairs`."
+  [pairs]
+  (t2/insert! :model/Dependency (for [[from-id to-id] pairs]
+                                  {:from_entity_type :card :from_entity_id from-id
+                                   :to_entity_type   :card :to_entity_id   to-id})))
+
+(defn- warm-statement-count
+  "The number of app DB statements of a second GET of `url` with `params` as `user`."
+  [user url & params]
+  (apply mt/user-http-request user :get 200 url params)
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request user :get 200 url params)
+    (call-count)))
+
+(deftest ^:synchronized graph-endpoints-statement-count-test
+  (testing "the graph endpoints cost as many statements for 10 cards as for 40, each in its own collection"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (doseq [user [:crowberto :rasta]]
+          (testing user
+            (let [counts (fn [n]
+                           (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+                             (let [card-name (str "depstmt" n)
+                                   [x & others] (cards-in-own-collections! (inc n) card-name true)
+                                   unreferenced (warm-statement-count user "ee/dependencies/graph/unreferenced"
+                                                                      :types "card" :query card-name :limit 50)
+                                   _            (card-dependencies! (for [other others] [x other]))
+                                   graph        (warm-statement-count user "ee/dependencies/graph" :type "card" :id x)
+                                   y            (first (cards-in-own-collections! 1 (str card-name " target") true))
+                                   _            (card-dependencies! (for [other others] [other y]))
+                                   dependents   (warm-statement-count user "ee/dependencies/graph/dependents"
+                                                                      :type "card" :id y)]
+                               {:unreferenced unreferenced :graph graph :dependents dependents})))]
+              (is (= (counts 10) (counts 40))))))))))
+
+(deftest ^:synchronized graph-breaking-statement-count-test
+  (testing "GET /api/ee/dependencies/graph/breaking costs as many statements for 10 sources as for 40"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [breaking! (fn [n card-name readable?]
+                          (let [sources    (cards-in-own-collections! n (str card-name " source") readable?)
+                                dependents (cards-in-own-collections! n (str card-name " dependent") true)]
+                            (card-dependencies! (map vector dependents sources))
+                            (t2/insert! :model/AnalysisFindingError
+                                        (map (fn [dependent source]
+                                               {:analyzed_entity_type "card" :analyzed_entity_id dependent
+                                                :source_entity_type   "card" :source_entity_id   source
+                                                :error_type           "missing-column" :error_detail "total"})
+                                             dependents sources))
+                            sources))]
+          (doseq [user [:crowberto :rasta]]
+            (testing user
+              (let [counts (fn [n]
+                             (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+                               (let [card-name (str "depbreaking" n)
+                                     sources   (breaking! n card-name true)
+                                     response  (mt/user-http-request user :get 200 "ee/dependencies/graph/breaking"
+                                                                     :types "card" :query card-name :limit 50)]
+                                 (is (= (set sources) (set (map :id (:data response)))))
+                                 (warm-statement-count user "ee/dependencies/graph/breaking"
+                                                       :types "card" :query card-name :limit 50))))]
+                (is (= (counts 10) (counts 40))))))
+          (testing "a source in a collection the user cannot read is left out of a page with readable ones"
+            (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+              (let [readable   (breaking! 3 "depbreakingmix" true)
+                    unreadable (breaking! 1 "depbreakingmix hidden" false)
+                    ids        (fn [user]
+                                 (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/breaking"
+                                                            :types "card" :query "depbreakingmix" :limit 50)
+                                      :data
+                                      (into #{} (map :id))))]
+                (is (= (set readable) (ids :rasta)))
+                (is (= (into (set readable) unreadable) (ids :crowberto)))))))))))

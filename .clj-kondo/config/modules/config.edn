@@ -3058,7 +3058,6 @@
            events
            interestingness
            lib
-           lib.metadata
            lib.schema
            models
            premium-features
@@ -3084,7 +3083,8 @@
   {:team "Querying"
    :ns-prefix "metabase.analyze"
    :api #{metabase.analyze.core}
-   :uses #{lib.schema
+   :uses #{app-db
+           lib.schema
            models
            query-processor
            sync
@@ -3710,6 +3710,7 @@
            sync
            upload
            util
+           warehouses
            warehouses.schema
            xrays}
    :model-imports #{:model/Collection

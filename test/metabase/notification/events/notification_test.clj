@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.events.core :as events]
    [metabase.events.schema :as events.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
@@ -131,3 +132,31 @@
                  (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
                    (group-by :task th)
                    (update-vals th count)))))))))
+
+(deftest create-notifications-statement-count-test
+  (testing "creating 10 notifications runs as many statements as creating 40, with one audit row for each"
+    (mt/with-model-cleanup [:model/Notification :model/NotificationCard :model/AuditLog]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (mt/with-test-user :crowberto
+            (let [create! (fn [n]
+                            (let [rows (vec (for [_ (range n)]
+                                              {:payload_type  :notification/card
+                                               :active        true
+                                               :payload       {:card_id card-id}
+                                               :subscriptions [{:type          :notification-subscription/cron
+                                                                :cron_schedule "0 0 0 * * ?"}]
+                                               :handlers      [{:channel_type :channel/email
+                                                                :recipients   [{:type    :notification-recipient/user
+                                                                                :user_id (mt/user->id :rasta)}]}]}))
+                                  result (atom nil)
+                                  stmts  (events.tu/real-statement-count!
+                                          #(reset! result (models.notification/create-notifications! rows)))]
+                              {:count  stmts
+                               :audits (t2/count :model/AuditLog :topic "notification-create" :model "Notification"
+                                                 :model_id [:in (map :id @result)])}))]
+              (create! 2)
+              (let [small (create! 10)
+                    large (create! 40)]
+                (is (= (:count small) (:count large)))
+                (is (= [10 40] [(:audits small) (:audits large)]))))))))))

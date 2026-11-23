@@ -178,6 +178,23 @@
                                [:in :p.table_id table-ids]
                                [:in :p.group_id (user-group-ids-query user-id)]]}))
 
+(mu/defn user-schema-level-values :- [:sequential [:map {:closed true}
+                                                   [:db_id       ::lib.schema.id/database]
+                                                   [:schema_name [:maybe :string]]
+                                                   [:perm_value  :string]]]
+  "The distinct Database, schema and value of the `perm-type` rows of the User with `user-id`'s groups on the active
+  Tables of the Databases with `db-ids`."
+  [user-id   :- [:maybe ::lib.schema.id/user]
+   perm-type :- ::permissions.schema/data-permission-type
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (t2/query {:select-distinct [:p.db_id :p.schema_name :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
+             :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
+                               [:in :p.db_id db-ids]
+                               [:in :p.group_id (user-group-ids-query user-id)]]}))
+
 (mu/defn groups-table-level-values :- [:sequential [:map [:table_id :int] [:db_id :int] [:perm_value :string]]]
   "The distinct Table, Database and value of the `perm-type` rows of the groups with `group-ids` on the Tables among
   `table-ids`, active or not."
@@ -190,6 +207,23 @@
                                [:= :p.perm_type (u/qualified-name perm-type)]
                                [:in :p.table_id table-ids]
                                [:in :p.group_id group-ids]]}))
+
+(mu/defn table-level-values-of-groups :- [:sequential [:map {:closed true}
+                                                       [:group_id   ms/PositiveInt]
+                                                       [:table_id   ::lib.schema.id/table]
+                                                       [:db_id      ::lib.schema.id/database]
+                                                       [:perm_value :string]]]
+  "The distinct group, Table, Database and value of the `perm-type` rows of the groups with `group-ids` on the Tables
+  among `table-ids`, active or not."
+  [group-ids :- [:sequential {:min 1} ms/PositiveInt]
+   perm-type :- ::permissions.schema/data-permission-type
+   table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (t2/query {:select-distinct [:p.group_id :p.table_id :p.db_id :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
+                               [:in :p.table_id [:auto/param (vec (distinct table-ids))]]
+                               [:in :p.group_id [:auto/param (vec (distinct group-ids))]]]}))
 
 (mu/defn user-data-permissions
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
@@ -511,6 +545,13 @@
    also-under-paths :- [:sequential :string]]
   (t2/select-pks-vec :model/Permissions {:where (related-permissions-where group-id path also-under-paths)}))
 
+(mu/defn related-permission-rows :- [:sequential [:map [:id ms/PositiveInt] [:group_id ms/PositiveInt] [:object :string]]]
+  "The `:id`, `:group_id` and `:object` of the Permissions rows related, as [[related-permission-ids]] matches them, to
+  any of `related`, `[group-id path also-under-paths]` triples."
+  [related :- [:sequential {:min 1} [:tuple ms/PositiveInt :string [:sequential :string]]]]
+  (t2/select [:model/Permissions :id :group_id :object]
+             {:where (into [:or] (map #(apply related-permissions-where %)) related)}))
+
 (mu/defn collection-permission-ids
   "The ids of the Permissions rows of the Collection with `collection-id`."
   [collection-id :- ms/PositiveInt]
@@ -725,6 +766,11 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
+
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection :map]
+  "The Collections with `collection-ids`, by id."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."

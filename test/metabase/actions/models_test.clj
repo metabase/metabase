@@ -25,7 +25,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -945,3 +946,45 @@
                               #(action/update-actions! (mapv (fn [id] {:id id :archived false}) ids) cascade))))]
             (restore! 2)
             (is (= (restore! 2) (restore! 6)))))))))
+
+(defn- archive-call-count
+  "The statements that a superuser's question whether he may archive `actions` takes, which must be allowed."
+  [actions]
+  (mt/with-test-user :crowberto
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Action actions {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-archive-test
+  (mt/with-model-cleanup [:model/Collection :model/Card :model/Action]
+    (let [mp        (mt/metadata-provider)
+          coll-ids  (t2/insert-returning-pks! :model/Collection
+                                              (repeatedly 40 #(t2.with-temp/with-temp-defaults :model/Collection)))
+          model-ids (t2/insert-returning-pks! :model/Card
+                                              (for [coll-id coll-ids]
+                                                (merge (t2.with-temp/with-temp-defaults :model/Card)
+                                                       {:type          :model
+                                                        :collection_id coll-id
+                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+          created   (action/create-actions! (for [model-id model-ids]
+                                              {:type          :query
+                                               :name          "Archive call count"
+                                               :creator_id    (mt/user->id :crowberto)
+                                               :database_id   (mt/id)
+                                               :model_id      model-id
+                                               :dataset_query (lib/native-query mp "SELECT 1")}))
+          actions   (vec (t2/select :model/Action :id [:in (map :id created)] {:order-by [[:id :asc]]}))]
+      (testing "rasta, who writes no Action, is refused on a batch"
+        (mt/with-test-user :rasta
+          (is (false? (mi/can-update-each? :model/Action (subvec actions 0 3) {:archived true})))))
+      (testing "a batch moved to a Collection that does not exist is a 404"
+        (mt/with-test-user :crowberto
+          (is (=? {:status-code 404}
+                  (try
+                    (mi/can-update-each? :model/Action (subvec actions 0 3) {:collection_id Integer/MAX_VALUE :model_id nil})
+                    (catch clojure.lang.ExceptionInfo e
+                      (ex-data e)))))))
+      (testing "the question takes as many statements for 40 Actions of models in 40 Collections as for 10"
+        (archive-call-count (subvec actions 0 2))
+        (is (= (archive-call-count (subvec actions 0 10))
+               (archive-call-count actions)))))))

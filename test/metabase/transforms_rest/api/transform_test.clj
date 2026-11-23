@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -19,15 +20,15 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :refer [get-test-schema
-                                          parse-instant
-                                          seconds-from-now-ns
-                                          table-rows
-                                          transform-run-timeout-seconds
-                                          utc-timestamp
-                                          wait-for-table
-                                          with-transform-cleanup!
-                                          with-transforms-api-users!]]
+   [metabase.transforms.test-util :as transforms.tu :refer [get-test-schema
+                                                            parse-instant
+                                                            seconds-from-now-ns
+                                                            table-rows
+                                                            transform-run-timeout-seconds
+                                                            utc-timestamp
+                                                            wait-for-table
+                                                            with-transform-cleanup!
+                                                            with-transforms-api-users!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -2425,3 +2426,60 @@
                                     {:entity "transform" :id id :revision_id legacy-id})
               (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
                       (t2/select-one :model/Transform :id id))))))))))
+
+;;; ------------------------------------------------------------
+;;; Statement counts of the read endpoints
+;;; ------------------------------------------------------------
+
+(deftest list-transforms-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-model-cleanup [:model/Transform]
+        (with-transforms-api-users! [user]
+          (with-transform-db-perms!
+            (let [[few many] (transforms.tu/statements-at-two-sizes
+                              (fn [n]
+                                (transforms.tu/create-count-test-transforms! n)
+                                #(mt/user-http-request user :get 200 "transform")))]
+              (is (= few many)))))))))
+
+(deftest list-transforms-source-readable-matches-single-answer-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-model-cleanup [:model/Transform]
+        (with-transforms-api-users! [user]
+          (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2}]
+            (with-transform-db-perms!
+              (mt/with-db-perms-for-group! (perms-group/all-users) other-db-id {:perms/view-data      :blocked
+                                                                                :perms/create-queries :no}
+                (let [readable-query  (lib/native-query (mt/metadata-provider) "SELECT 1 AS num")
+                      forbidden-query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider other-db-id)
+                                                        "SELECT 1 AS num")
+                      [readable-ids forbidden-ids]
+                      (mt/with-current-user (mt/user->id :crowberto)
+                        (let [created (transform.model/create-transforms!
+                                       (vec (concat (transforms.tu/count-test-transform-rows 2 readable-query nil)
+                                                    (map #(update-in % [:target :name] str "_other")
+                                                         (transforms.tu/count-test-transform-rows 1 forbidden-query nil)))))]
+                          [(into #{} (map :id) (take 2 created)) (into #{} (map :id) (drop 2 created))]))
+                      listed          (into {} (map (juxt :id :source_readable))
+                                            (mt/user-http-request user :get 200 "transform"))]
+                  (is (every? #(true? (get listed %)) readable-ids))
+                  (is (every? #(= (= user :crowberto) (get listed %)) forbidden-ids)
+                      "a superuser reads every source and a data analyst without access to the database does not"))))))))))
+
+(mt/when-ee-evailable
+ (deftest dag-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+     (mt/with-temporary-setting-values [transforms-enabled true]
+       (mt/with-model-cleanup [:model/Transform]
+         (with-transforms-api-users! [user]
+           (with-transform-db-perms!
+             (let [[few many] (transforms.tu/statements-at-two-sizes
+                               (fn [n]
+                                 (let [seed-id (first (transforms.tu/create-count-test-transforms!
+                                                       n {:source {:type :python :source-tables [] :body "pass"}}))]
+                                   #(mt/user-http-request user :get 200 (format "transform/%d/dag-transforms" seed-id)
+                                                          :direction "downstream")))
+                               #(t2/update! (t2/table-name :model/Transform) {:table_dependencies nil}))]
+               (is (= few many))))))))))

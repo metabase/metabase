@@ -44,6 +44,16 @@
                      :result_metadata :dimensions :dimension_mappings]
                     :id [:auto/param card-id]))
 
+(mu/defn card-queries
+  "The queries of the Cards with `card-ids`, by Card id."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-pk->fn :dataset_query
+                      [:model/Card :id :dataset_query :card_schema :type :entity_id
+                       :result_metadata :dimensions :dimension_mappings]
+                      :id [:in [:auto/param (vec card-ids)]])
+    {}))
+
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."

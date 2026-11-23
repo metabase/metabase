@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
@@ -125,3 +126,33 @@
                                       {:type "job"})]
             (is (= 1 (long (:count hist))))
             (is (pos? (:sum hist)))))))))
+
+(deftest timeout-old-runs-statement-count-test
+  (testing "timing out 10 stale runs runs as many statements as timing out 40, with one audit row for each run"
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (let [reap! (fn [n]
+                    (let [transform-ids (t2/insert-returning-pks! :model/Transform
+                                                                  (for [_ (range n)]
+                                                                    (mt/with-temp-defaults :model/Transform)))
+                          run-ids       (t2/insert-returning-pks!
+                                         :model/TransformRun
+                                         (for [transform-id transform-ids]
+                                           {:transform_id   transform-id
+                                            :status         :started
+                                            :is_active      true
+                                            :run_method     :manual
+                                            :start_time     (minutes-ago 30)
+                                            :last_heartbeat (minutes-ago 30)}))]
+                      (try
+                        {:count  (events.tu/real-statement-count! #(transform-run/timeout-old-runs! 5 :minute))
+                         :audits (t2/count :model/AuditLog :topic "transform-run-timeout" :model "TransformRun"
+                                           :model_id [:in run-ids])}
+                        (finally
+                          (t2/delete! :model/AuditLog :topic "transform-run-timeout" :model_id [:in run-ids])
+                          (t2/delete! :model/TransformRun :id [:in run-ids])
+                          (t2/delete! :model/Transform :id [:in transform-ids])))))]
+        (reap! 2)
+        (let [small (reap! 10)
+              large (reap! 40)]
+          (is (= (:count small) (:count large)))
+          (is (= [10 40] [(:audits small) (:audits large)])))))))

@@ -388,6 +388,12 @@
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
 
+(defn- hydrate-root-collections
+  "`entities` with the root collection of `collection-namespace`, hydrated once, as the `:collection` of those at the root."
+  [entities collection-namespace]
+  (let [root (collection.root/hydrated-root-collection collection-namespace)]
+    (map #(collection.root/hydrate-root-collection % root) entities)))
+
 (mu/defn- hydrate-entities :- [:sequential Entity]
   "`entities` of the entity type `entity-type`, hydrated with what the dependency graph responses show."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -395,23 +401,23 @@
   (case entity-type
     :card (-> entities
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
-              (->> (map collection.root/hydrate-root-collection))
+              (hydrate-root-collections nil)
               (revisions/with-last-edit-info :card))
     :table (t2/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
-                   (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
+                   (hydrate-root-collections :transforms))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
-                   (->> (map collection.root/hydrate-root-collection))
+                   (hydrate-root-collections nil)
                    (revisions/with-last-edit-info :dashboard))
     :document (-> entities
                   (t2/hydrate :creator [:collection :is_personal])
-                  (->> (map collection.root/hydrate-root-collection)))
+                  (hydrate-root-collections nil))
     :sandbox (t2/hydrate entities [:table :db :fields])
     :snippet (-> entities
                  (t2/hydrate :creator :collection)
-                 (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
+                 (hydrate-root-collections :snippets))
     (:segment :measure) (t2/hydrate entities :creator [:table :db])
     :action (->> (t2/hydrate entities :creator [:collection :is_personal])
                  (map #(collection.root/hydrate-root-collection
@@ -790,14 +796,11 @@
         downstream-errors (node-downstream-errors nodes-by-type)
         total (dependencies.db/dependency-item-count item-params)
         usages (node-usages downstream-graph all-ids)
-        fetch-entity (fn [entity-type entity-id]
-                       (let [fields (entity-select-fields entity-type)]
-                         (dependencies.db/entity-with-columns entity-type fields entity-id)))
+        node->entity (fetch-and-hydrate-nodes nodes-by-type)
         data (into []
-                   (keep (fn [[entity-type entity-id]]
-                           (when-let [entity (fetch-entity entity-type entity-id)]
-                             (let [hydrated (first (hydrate-entities entity-type [entity]))]
-                               (entity-value entity-type hydrated usages downstream-errors)))))
+                   (keep (fn [[entity-type :as node]]
+                           (when-let [entity (node->entity node)]
+                             (entity-value entity-type entity usages downstream-errors))))
                    all-ids)]
     {:data   data
      :offset offset

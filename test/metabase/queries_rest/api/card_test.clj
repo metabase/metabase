@@ -3624,6 +3624,62 @@
                            @calls)))]
       (is (= 1 (hydrations 2) (hydrations 8))))))
 
+(deftest bulk-move-from-many-collections-refuses-one-unwritable-collection-test
+  (testing "POST /api/card/collections moves nothing when one of the collections the cards leave is not writable"
+    (mt/with-temp [:model/Collection {dest-id :id}     {:name "Destination Collection"}
+                   :model/Collection {writable-1 :id}  {:name "Writable Collection 1"}
+                   :model/Collection {writable-2 :id}  {:name "Writable Collection 2"}
+                   :model/Collection {read-only :id}   {:name "Read Only Collection"}
+                   :model/Card       card-1            {:collection_id writable-1}
+                   :model/Card       card-2            {:collection_id writable-2}
+                   :model/Card       card-3            {:collection_id read-only}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-1)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-2)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+      (is (= {:response    "You don't have permissions to do that."
+              :collections ["Writable Collection 1" "Writable Collection 2" "Read Only Collection"]}
+             (POST-card-collections! :rasta 403 dest-id [card-1 card-2 card-3])))
+      (is (= {:response    {:status "ok"}
+              :collections ["Destination Collection" "Destination Collection"]}
+             (POST-card-collections! :rasta 200 dest-id [card-1 card-2]))))))
+
+(deftest bulk-move-pinned-cards-to-collection-without-pinned-cards-test
+  (testing "POST /api/card/collections puts pinned cards first in a collection that has none"
+    (mt/with-temp [:model/Collection {from-id :id} {:name "Old Collection"}
+                   :model/Collection {to-id :id}   {:name "New Collection"}
+                   :model/Card       card-a        {:name "a" :collection_id from-id :collection_position 1}
+                   :model/Card       _             {:name "b" :collection_id from-id :collection_position 2}
+                   :model/Card       card-c        {:name "c" :collection_id from-id :collection_position 3}
+                   :model/Card       _             {:name "d" :collection_id from-id :collection_position 4}
+                   :model/Card       _             {:name "e" :collection_id to-id}]
+      (is (= {:status "ok"}
+             (:response (POST-card-collections! :crowberto 200 to-id [card-c card-a]))))
+      (is (= {"a" 1 "c" 2 "e" nil}
+             (t2/select-fn->fn :name :collection_position :model/Card :collection_id to-id)))
+      (is (= {"b" 1 "d" 2}
+             (t2/select-fn->fn :name :collection_position :model/Card :collection_id from-id))))))
+
+(deftest bulk-move-from-many-collections-statement-count-test
+  (testing "POST /api/card/collections takes as many statements for cards of many collections as for few, permission checks included"
+    (mt/with-temp [:model/Collection {to-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [move! (fn [n]
+                      (let [ids (mapv (fn [i]
+                                        (let [{from-id :id} (first (collection/create-collections! [{:name (str "source " i " " (random-uuid)) :location "/"}]))]
+                                          (t2/insert-returning-pk! :model/Card
+                                                                   (merge (mt/with-temp-defaults :model/Card)
+                                                                          {:name (str "moving " i) :collection_id from-id}))))
+                                      (range n))]
+                        (t2/with-call-count [call-count]
+                          (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
+                          (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
+
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}
                  :model/Collection  {coll-id-2 :id
