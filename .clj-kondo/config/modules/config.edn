@@ -935,7 +935,9 @@
            metabase.geojson.init}
    :uses #{api
            permissions
+           premium-features
            settings
+           startup
            util}}
 
   glossary

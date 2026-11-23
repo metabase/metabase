@@ -1,7 +1,9 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -10,6 +12,31 @@
    (java.net URL)))
 
 (set! *warn-on-reflection* true)
+
+(defsetting geojson-allowed-networks
+  (str "Controls which networks Metabase may connect to for custom map GeoJSON files.\n"
+       "Options:\n"
+       "- external-only (only globally reachable public addresses)\n"
+       "- allow-private (external + private networks but NOT loopback or link-local)\n"
+       "- allow-all (no restrictions).\n"
+       "Defaults to external-only on Metabase Cloud and allow-private when self-hosted.")
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :doc        (str "Set this when custom maps must load GeoJSON from a server on this machine (allow-all), or to "
+                   "restrict them to public hosts (external-only). Defaults to external-only on Metabase Cloud "
+                   "and allow-private when self-hosted. Metabase refuses to start if this is set to anything but "
+                   "one of the three policies.")
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :geojson-allowed-networks)]
+                  (or (http/env-network-policy env-var-name raw-value)
+                      (if (premium-features/is-hosted?)
+                        :external-only
+                        :allow-private)))))
+
+(defmethod startup/def-startup-validation! ::geojson-allowed-networks [_]
+  (geojson-allowed-networks))
 
 (defsetting custom-geojson-enabled
   (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")
@@ -64,23 +91,24 @@
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
 
-(defn- external-host?
-  "True only when `url`'s host resolves and *every* resolved address is a public, externally-routable
-  unicast address (see [[metabase.util.http/address-allowed-for-network-policy?]]). Unlike
-  [[metabase.util.http/host-allowed-for-network-policy?]] this rejects a host that does not resolve,
-  matching geojson's stricter set-time validation -- a bad URL should fail to save.
-  The fetch itself will still re-check the security at each request to handle changes in settings."
+(defn- allowed-host?
+  "True when `url`'s host is allowed by [[geojson-allowed-networks]]. Except under `:allow-all`, the host must
+  resolve and *every* resolved address must be allowed. Unlike [[metabase.util.http/host-allowed-for-network-policy?]]
+  this rejects a host that does not resolve, so a bad URL fails to save (an obfuscated literal like `0xa9fea9fe`
+  presents as an unresolvable host on a modern JDK). The fetch re-checks the policy on every request."
   [^URL url]
-  (boolean
-   (when-let [addrs (http/host->inet-addresses (.getHost url))]
-     (every? #(http/address-allowed-for-network-policy? :external-only %) addrs))))
+  (let [policy (geojson-allowed-networks)]
+    (or (= policy :allow-all)
+        (boolean
+         (when-let [addrs (http/host->inet-addresses (.getHost url))]
+           (every? #(http/address-allowed-for-network-policy? policy %) addrs))))))
 
 (defn- valid-url?
   [url-string]
   (try
     (let [url (URL. url-string)]
       (and (valid-protocol? url)
-           (external-host? url)))
+           (allowed-host? url)))
     (catch Throwable e
       (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
 
