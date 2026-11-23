@@ -243,7 +243,7 @@ describe("MetricsViewerPage > dimension picker sidebar", () => {
       await waitFor(() => expect(getChartDisplays()).toEqual(["bar"]));
 
       await click(
-        within(getMetricControls()).getByRole("radio", { name: "Line" }),
+        within(getMetricControls()).getByRole("button", { name: "line" }),
       );
       await waitFor(() => expect(getChartDisplays()).toEqual(["line"]));
     });
