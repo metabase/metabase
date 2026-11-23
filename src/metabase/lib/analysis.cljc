@@ -47,4 +47,3 @@
         [periods-col] (filter #(= "periods" (:lib/original-name %))
                               (lib/breakoutable-columns query -1))]
     (lib/breakout query periods-col)))
-q

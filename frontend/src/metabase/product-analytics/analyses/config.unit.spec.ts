@@ -1,13 +1,41 @@
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { createMockTable } from "metabase-types/api/mocks";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID, createOrdersTable } from "metabase-types/api/mocks/presets";
+
+import { getTableQuery } from "../base-query";
 
 import { computeAnalysisSettings } from "./config";
 import type { AnalysisContext } from "./types";
 
-const CONTEXT: AnalysisContext = { table: createMockTable() };
+const CONTEXT: AnalysisContext = {
+  table: createOrdersTable(),
+  metadataProvider: SAMPLE_PROVIDER,
+};
+
+const TABLE_QUERY = getTableQuery(SAMPLE_PROVIDER, ORDERS_ID);
+
+const FILTERED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      filters: [
+        {
+          type: "operator",
+          operator: ">",
+          args: [
+            { type: "column", name: "TOTAL" },
+            { type: "literal", value: 100 },
+          ],
+        },
+      ],
+    },
+  ],
+});
 
 const HABIT_DEFAULTS = {
+  base_query: Lib.toJsQuery(TABLE_QUERY),
   date_range: "past90days",
   counting: "person",
   granularity: "day",
@@ -23,11 +51,13 @@ describe("computeAnalysisSettings", () => {
   it("keeps stored values that are valid for the kind", () => {
     expect(
       computeAnalysisSettings("habit", CONTEXT, {
+        base_query: Lib.toJsQuery(FILTERED_QUERY),
         date_range: "2026-01-01~2026-03-31",
         counting: "person",
         granularity: "week",
       }),
     ).toEqual({
+      base_query: Lib.toJsQuery(FILTERED_QUERY),
       date_range: "2026-01-01~2026-03-31",
       counting: "person",
       granularity: "week",
@@ -106,6 +136,11 @@ describe("computeAnalysisSettings", () => {
       { date_range: "Q1-2026" },
     ],
     ["a date range that isn't a string", { date_range: 90 }],
+    ["a base query that isn't an object", { base_query: "query" }],
+    [
+      "a base query with more than one stage",
+      { base_query: Lib.toJsQuery(Lib.appendStage(FILTERED_QUERY)) },
+    ],
   ])("falls back to the default for %s", (_description, stored) => {
     expect(computeAnalysisSettings("habit", CONTEXT, stored)).toEqual(
       HABIT_DEFAULTS,

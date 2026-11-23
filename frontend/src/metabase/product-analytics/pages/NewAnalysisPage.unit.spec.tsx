@@ -1,18 +1,24 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupAdhocQueryEndpoint,
+  setupTableEndpoints,
   setupTableQueryMetadataEndpointError,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { act, renderRoutes, screen, waitFor } from "__support__/ui";
+import { act, renderRoutes, screen, waitFor, within } from "__support__/ui";
 import { toRouteObjects } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Table } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import type { Field, Table } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockDataset,
   createMockField,
   createMockTable,
@@ -20,15 +26,45 @@ import {
 } from "metabase-types/api/mocks";
 
 import { getRoutes } from "../routes";
-import { encodeSettings } from "../url-state";
+import { decodeSettings, encodeSettings } from "../url-state";
 
 registerVisualizations();
 
-const createFields = (tableId: number) => [
+const PEOPLE_ID_FIELD = createMockField({
+  id: 31,
+  table_id: 3,
+  name: "id",
+  display_name: "ID",
+  base_type: "type/Text",
+  effective_type: "type/Text",
+  semantic_type: "type/PK",
+});
+
+const PEOPLE_TABLE = createMockTable({
+  id: 3,
+  db_id: 1,
+  schema: "public",
+  name: "people",
+  display_name: "People",
+  fields: [
+    PEOPLE_ID_FIELD,
+    createMockField({
+      id: 32,
+      table_id: 3,
+      name: "plan",
+      display_name: "Plan",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    }),
+  ],
+});
+
+const createFields = (tableId: number, userIdOpts?: Partial<Field>) => [
   createMockField({
     id: tableId * 10 + 1,
     table_id: tableId,
     name: "created_at",
+    display_name: "Created At",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
   }),
@@ -36,8 +72,10 @@ const createFields = (tableId: number) => [
     id: tableId * 10 + 2,
     table_id: tableId,
     name: "user_id",
+    display_name: "User ID",
     base_type: "type/Text",
     effective_type: "type/Text",
+    ...userIdOpts,
   }),
 ];
 
@@ -52,7 +90,11 @@ const SET_UP_TABLE = createMockTable({
     "columns.timestamp": "created_at",
     "columns.person": "user_id",
   },
-  fields: createFields(1),
+  fields: createFields(1, {
+    semantic_type: "type/FK",
+    fk_target_field_id: PEOPLE_ID_FIELD.id,
+    target: PEOPLE_ID_FIELD,
+  }),
 });
 
 const UNFINISHED_TABLE = createMockTable({
@@ -66,6 +108,38 @@ const UNFINISHED_TABLE = createMockTable({
   fields: createFields(2),
 });
 
+const USER_ID_FIELD_ID = checkNotNull(
+  SET_UP_TABLE.fields?.find((field) => field.name === "user_id"),
+).id;
+
+const getBaseQuery = (filterValues: string[]) => {
+  const metadataProvider = createMetadataProvider({
+    databaseId: SET_UP_TABLE.db_id,
+    metadata: createMockMetadata({
+      databases: [
+        createMockDatabase({ id: SET_UP_TABLE.db_id, tables: [SET_UP_TABLE] }),
+      ],
+    }),
+  });
+  return Lib.toJsQuery(
+    Lib.createTestQuery(metadataProvider, {
+      stages: [
+        {
+          source: { type: "table", id: SET_UP_TABLE.id },
+          filters: filterValues.map((value) => ({
+            type: "operator",
+            operator: "=",
+            args: [
+              { type: "column", name: "user_id" },
+              { type: "literal", value },
+            ],
+          })),
+        },
+      ],
+    }),
+  );
+};
+
 type SetupOpts = {
   initialRoute: string;
   isAdmin?: boolean;
@@ -78,6 +152,7 @@ const setup = ({
   tables = [SET_UP_TABLE, UNFINISHED_TABLE],
 }: SetupOpts) => {
   setupTablesEndpoints(tables);
+  setupTableEndpoints(PEOPLE_TABLE);
   setupAdhocQueryEndpoint(createMockDataset());
   const { router } = renderRoutes(toRouteObjects(getRoutes()), {
     initialRoute,
@@ -336,6 +411,123 @@ describe("NewAnalysisPage", () => {
         await screen.findByRole("button", { name: "by day" }),
       ).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("adds the first filter from the Filters button, and then shows the filters", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      const filtersButton = await screen.findByRole("button", {
+        name: "Filters",
+      });
+      await waitFor(() => expect(filtersButton).toBeEnabled());
+      expect(screen.queryByTestId("filters-count")).not.toBeInTheDocument();
+
+      await userEvent.click(filtersButton);
+      await userEvent.click(await screen.findByText("Created At"));
+      await userEvent.click(await screen.findByText("Today"));
+
+      expect(
+        await screen.findByRole("button", { name: "1 filter" }),
+      ).toHaveAttribute("aria-pressed", "true");
+      expect(
+        within(screen.getByTestId("analysis-filters"))
+          .getAllByTestId("filter-pill")
+          .map((pill) => pill.textContent),
+      ).toEqual(["Created At is today"]);
+    });
+
+    it("hides the filters when the last one is removed", async () => {
+      setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ base_query: getBaseQuery(["u1"]) })}`,
+      });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "1 filter" }),
+      );
+
+      await userEvent.click(
+        within(screen.getByTestId("filter-pill")).getByLabelText("Remove"),
+      );
+
+      expect(
+        await screen.findByRole("button", { name: "Filters" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("analysis-filters")).not.toBeInTheDocument();
+    });
+
+    it("offers the columns of a table the event table links to", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      const filtersButton = await screen.findByRole("button", {
+        name: "Filters",
+      });
+      await waitFor(() => expect(filtersButton).toBeEnabled());
+
+      await userEvent.click(filtersButton);
+
+      await userEvent.click(await screen.findByText("User"));
+
+      expect(await screen.findByText("Plan")).toBeInTheDocument();
+    });
+
+    it("counts the filters in the URL, and shows them on the Filters button", async () => {
+      setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ base_query: getBaseQuery(["u1", "u2"]) })}`,
+      });
+
+      expect(await screen.findByTestId("filters-count")).toHaveTextContent("2");
+      expect(screen.queryByTestId("analysis-filters")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "2 filters" }));
+
+      expect(
+        within(screen.getByTestId("analysis-filters"))
+          .getAllByTestId("filter-pill")
+          .map((pill) => pill.textContent),
+      ).toEqual(["User ID is u1", "User ID is u2"]);
+
+      await userEvent.click(screen.getByRole("button", { name: "2 filters" }));
+
+      expect(screen.queryByTestId("analysis-filters")).not.toBeInTheDocument();
+    });
+
+    it("reruns the analysis without a removed filter, and keeps it in the URL", async () => {
+      const { router } = setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ base_query: getBaseQuery(["u1", "u2"]) })}`,
+      });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "2 filters" }),
+      );
+
+      const [firstPill] = screen.getAllByTestId("filter-pill");
+      await userEvent.click(within(firstPill).getByLabelText("Remove"));
+
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+      // The remaining filter, then the date range's.
+      expect(await getRunRequests()[1].request?.json()).toMatchObject({
+        stages: [
+          {
+            filters: [
+              ["=", {}, ["field", {}, USER_ID_FIELD_ID], "u2"],
+              expect.anything(),
+            ],
+          },
+          {},
+        ],
+      });
+      expect(
+        screen.getByRole("button", { name: "1 filter" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByTestId("filter-pill").map((pill) => pill.textContent),
+      ).toEqual(["User ID is u2"]);
+      expect(
+        decodeSettings(router?.location.hash.replace(/^#/, "") ?? ""),
+      ).toMatchObject({
+        base_query: {
+          stages: [
+            { filters: [["=", {}, ["field", {}, USER_ID_FIELD_ID], "u2"]] },
+          ],
+        },
+      });
     });
 
     it("undoes a change with browser back, and redoes it with forward", async () => {

@@ -26,6 +26,7 @@ type Analysis = {
 type AnalysisBuild<K extends ProductAnalyticsKind> =
   | {
       settings: AnalysisSettingsByKind[K];
+      baseQuery: Lib.Query;
       analysis: Analysis;
       query: Lib.Query;
       error?: never;
@@ -33,6 +34,7 @@ type AnalysisBuild<K extends ProductAnalyticsKind> =
   | {
       /** Missing when the settings can't be computed. */
       settings?: AnalysisSettingsByKind[K];
+      baseQuery?: Lib.Query;
       analysis?: never;
       query?: never;
       error: unknown;
@@ -45,8 +47,14 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
   metadataProvider: Lib.MetadataProvider,
 ): AnalysisBuild<K> {
   let settings: AnalysisSettingsByKind[K];
+  let baseQuery: Lib.Query;
   try {
-    settings = computeAnalysisSettings(kind, { table }, storedSettings);
+    settings = computeAnalysisSettings(
+      kind,
+      { table, metadataProvider },
+      storedSettings,
+    );
+    baseQuery = Lib.fromJsQuery(metadataProvider, settings.base_query);
   } catch (error) {
     return { error };
   }
@@ -56,10 +64,11 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
       kind,
       settings,
       table,
-      metadataProvider,
+      baseQuery,
     });
     return {
       settings,
+      baseQuery,
       analysis: {
         title: config.getTitle(settings),
         display: config.getDisplay(settings),
@@ -68,7 +77,7 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
       query: Lib.buildProductAnalyticsQuery(analysisState),
     };
   } catch (error) {
-    return { settings, error };
+    return { settings, baseQuery, error };
   }
 }
 
@@ -83,6 +92,8 @@ type UseAnalysisOptions<K extends ProductAnalyticsKind> = {
 type UseAnalysisResult<K extends ProductAnalyticsKind> = {
   /** Undefined without a table, and when they can't be computed. */
   settings: AnalysisSettingsByKind[K] | undefined;
+  /** The `base_query` setting as a query. Undefined along with `settings`. */
+  baseQuery: Lib.Query | undefined;
   /** Undefined without a table, and when the query can't be built. */
   analysis: Analysis | undefined;
   /** The query that runs. It keeps its identity while it's unchanged. */
@@ -145,6 +156,7 @@ export const useAnalysis = <K extends ProductAnalyticsKind>({
   const error = build?.error ?? requestError ?? dataset?.error;
   return {
     settings: build?.settings,
+    baseQuery: build?.baseQuery,
     analysis,
     query,
     rawSeries,

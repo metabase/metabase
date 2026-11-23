@@ -1,7 +1,11 @@
 import type { EventTableSettings, Field } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
-import { getColumnRoleValue, isEventTableSetUp } from "./event-tables";
+import {
+  getColumnRoleFields,
+  getColumnRoleValue,
+  isEventTableSetUp,
+} from "./event-tables";
 
 const CREATED_AT = createMockField({
   id: 1,
@@ -22,6 +26,20 @@ const PROPERTIES_USER_ID = createMockField({
   effective_type: "type/Text",
   parent_id: 4,
 });
+const EMAIL = createMockField({
+  id: 5,
+  name: "email",
+  base_type: "type/Text",
+  effective_type: "type/Text",
+  visibility_type: "sensitive",
+});
+const LEGACY_ID = createMockField({
+  id: 6,
+  name: "legacy_id",
+  base_type: "type/Text",
+  effective_type: "type/Text",
+  visibility_type: "retired",
+});
 
 type CreateTableOpts = {
   entityType?: string;
@@ -31,7 +49,7 @@ type CreateTableOpts = {
 
 const createTable = ({
   entityType = "entity/EventTable",
-  fields = [CREATED_AT, USER_ID, PROPERTIES_USER_ID],
+  fields = [CREATED_AT, USER_ID, PROPERTIES_USER_ID, EMAIL, LEGACY_ID],
   eventSettings = null,
 }: CreateTableOpts = {}) =>
   createMockTable({
@@ -72,6 +90,22 @@ describe("getColumnRoleValue", () => {
     });
     expect(getColumnRoleValue(table, "person")).toBeNull();
   });
+
+  it("returns null for a sensitive column", () => {
+    const table = createTable({
+      eventSettings: { "columns.person": "email" },
+    });
+    expect(getColumnRoleValue(table, "person")).toBeNull();
+  });
+});
+
+describe("getColumnRoleFields", () => {
+  it("leaves out sensitive, retired and nested columns", () => {
+    const fieldNames = getColumnRoleFields(createTable(), "person").map(
+      (field) => field.name,
+    );
+    expect(fieldNames).toEqual(["created_at", "user_id"]);
+  });
 });
 
 describe("isEventTableSetUp", () => {
@@ -105,6 +139,13 @@ describe("isEventTableSetUp", () => {
     const table = createTable({
       fields: [CREATED_AT],
       eventSettings: SET_UP_SETTINGS,
+    });
+    expect(isEventTableSetUp(table)).toBe(false);
+  });
+
+  it("isn't set up when a required column is sensitive", () => {
+    const table = createTable({
+      eventSettings: { ...SET_UP_SETTINGS, "columns.person": "email" },
     });
     expect(isEventTableSetUp(table)).toBe(false);
   });

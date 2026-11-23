@@ -4,6 +4,8 @@ import { setupAdhocQueryEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Dataset, Table } from "metabase-types/api";
 import {
   createMockColumn,
@@ -11,6 +13,7 @@ import {
   createMockField,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   createOrdersTable,
   createSampleDatabase,
@@ -85,6 +88,7 @@ describe("useAnalysis", () => {
     });
 
     expect(result.current.settings).toEqual({
+      base_query: expect.anything(),
       date_range: "past90days",
       counting: "person",
       granularity: "week",
@@ -95,6 +99,54 @@ describe("useAnalysis", () => {
     );
     const request: unknown = await getRunRequests()[0].request?.json();
     expect(JSON.stringify(request)).toContain('"temporal-unit":"week"');
+  });
+
+  it("runs with the stored base query's filters, and gives it as a query", async () => {
+    const baseQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 100 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const { result } = setup({
+      storedSettings: { base_query: Lib.toJsQuery(baseQuery) },
+    });
+
+    expect(result.current.settings?.base_query).toEqual(
+      Lib.toJsQuery(baseQuery),
+    );
+    const resultBaseQuery = result.current.baseQuery;
+    expect(
+      resultBaseQuery &&
+        Lib.filters(resultBaseQuery, -1).map(
+          (filter) => Lib.displayInfo(resultBaseQuery, -1, filter).displayName,
+        ),
+    ).toEqual(["Total is greater than 100"]);
+    await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+    const request: unknown = await getRunRequests()[0].request?.json();
+    // The stored filter, then the date range's.
+    expect(request).toMatchObject({
+      stages: [
+        {
+          filters: [
+            [">", {}, ["field", {}, ORDERS.TOTAL], 100],
+            expect.anything(),
+          ],
+        },
+        {},
+      ],
+    });
   });
 
   it("gives the error a run failed with", async () => {
@@ -126,6 +178,7 @@ describe("useAnalysis", () => {
 
     expect(result.current.analysis).toBeUndefined();
     expect(result.current.settings).toEqual({
+      base_query: expect.anything(),
       date_range: "past90days",
       counting: "person",
       granularity: "day",

@@ -1,4 +1,4 @@
-import { Group } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Table, TableId } from "metabase-types/api";
 
@@ -8,6 +8,7 @@ import { EventTablePicker } from "./EventTablePicker";
 import { ViewSqlButton } from "./ViewSqlButton";
 import { CountingMenu } from "./toolbar/CountingMenu";
 import { DateRangeButton } from "./toolbar/DateRangeButton";
+import { FiltersButton } from "./toolbar/FiltersButton";
 import { GranularityButton } from "./toolbar/GranularityButton";
 import { HabitValuesMenu } from "./toolbar/HabitValuesMenu";
 
@@ -20,8 +21,13 @@ type AnalysisToolbarProps = {
   options: CommonSettingsOptions;
   /** Undefined until the analysis's query is built. */
   query: Lib.Query | undefined;
+  /** The query the analysis's filters are on. Undefined until it's known. */
+  baseQuery: Lib.Query | undefined;
+  areFiltersExpanded: boolean;
   onTableChange: (tableId: TableId) => void;
   onChangeSettings: (changes: Partial<HabitSettings>) => void;
+  onToggleFilters: () => void;
+  onAddFirstFilter: (baseQuery: Lib.Query) => void;
 };
 
 /** The controls every analysis shares. */
@@ -32,17 +38,29 @@ export const AnalysisToolbar = ({
   settings,
   options,
   query,
+  baseQuery,
+  areFiltersExpanded,
   onTableChange,
   onChangeSettings,
+  onToggleFilters,
+  onAddFirstFilter,
 }: AnalysisToolbarProps) => (
   <Group justify="space-between" gap="sm">
     <Group gap="sm">
-      <EventTablePicker
-        table={table}
-        isLoading={isTableLoading}
-        isInitiallyOpened={isTablePickerInitiallyOpened}
-        onChange={onTableChange}
-      />
+      <Button.Group>
+        <EventTablePicker
+          table={table}
+          isLoading={isTableLoading}
+          isInitiallyOpened={isTablePickerInitiallyOpened}
+          onChange={onTableChange}
+        />
+        <FiltersButton
+          query={baseQuery}
+          isExpanded={areFiltersExpanded}
+          onToggle={onToggleFilters}
+          onAdd={onAddFirstFilter}
+        />
+      </Button.Group>
       {settings !== undefined && <CountingMenu value={settings.counting} />}
       {settings !== undefined && (
         <HabitValuesMenu
