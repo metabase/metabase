@@ -94,7 +94,7 @@
 
    The pipeline's own agent-facing failures become a teaching error about the `definition`
    argument, ending in `hint` (server text naming the shapes the calling tool accepts); permission
-   failures and anything unrecognized pass through."
+   failures (403), a source card that cannot run, and anything unrecognized pass through."
   [external-query hint]
   (try
     ;; Through the v2 entry point, not the raw pipeline: a `definition` gets the same numeric-id
@@ -103,7 +103,10 @@
         (get-in [:structured-output :query])
         lib/prepare-for-serialization)
     (catch clojure.lang.ExceptionInfo e
-      (if (:agent-error? (ex-data e))
+      ;; No other `definition` shape helps with these, so each keeps its own recovery sentence.
+      (if (and (:agent-error? (ex-data e))
+               (not= 403 (:status-code (ex-data e)))
+               (not= :card-source-preprocessing-failed (:error (ex-data e))))
         (common/throw-teaching-error
          (if-let [text (common/exception-message e)]
            (message/msg ["\"definition\" could not be resolved: %s %s"] (common/ellipsize text 300) hint)

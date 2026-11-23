@@ -7,6 +7,7 @@
   resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [clojure.walk :as walk]
@@ -45,6 +46,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -112,10 +114,12 @@
   ([entity id & _conditions] {:model entity :id id}))
 
 (defn- with-mp-and-stubs! [f]
+  ;; the mock fields are not in the app DB, so the column permission filter is stubbed like the read checks
   (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
                               construct/resolve-database-id-from-first-stage (fn [_] 1)
                               api/read-check                                  allow-read-check
-                              api/query-check                                 allow-read-check]
+                              api/query-check                                 allow-read-check
+                              entity-details/permission-filter-columns       vec]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
@@ -4466,3 +4470,344 @@
                        (get-in result [:structured-output :repairs]))))
               (testing "the text the model reads does not hold it"
                 (is (not (str/includes? (tools/render-text (:output result)) "rewrite-operator-name-aliases")))))))))))
+
+;;; ----- a saved question on tables the user cannot view ----------------------------------
+
+(defn- venues-model-dataset-query
+  "A query on VENUES with the custom column `Double`, for a model."
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :venues)
+              :expressions  {"Double" [:* [:field (mt/id :venues :price) nil] 2]}}})
+
+(defn- card-source-data
+  "The portable query on the card with entity id `card-eid`, with `stage` merged into its stage."
+  ([card-eid]
+   (card-source-data card-eid nil))
+  ([card-eid stage]
+   (query-data {"lib/type" "mbql/query"
+                "stages"   [(merge {"lib/type" "mbql.stage/mbql" "source-card" card-eid} stage)]})))
+
+(defn- build-outcome
+  "What `construct_notebook_query` gives for `query`: `{:output <text>}` when it builds, or the failure as
+  [[test-util/tool-failure]] gives it."
+  [query]
+  (try
+    {:output (pr-str (test-util/call-tool construct/construct-notebook-query-tool {:query query}))}
+    (catch Throwable e
+      (let [{:keys [class code] :as error} (tools.error/classify e)]
+        (cond-> {:class class :code code}
+          (= :recoverable class) (assoc :text (tools.error/recoverable-text error #{"search"})))))))
+
+(defn- build-error-data
+  "The `ex-data` of the error that [[construct/execute-representations-query]] throws for `query`, or nil when it
+  builds."
+  [query]
+  (try
+    (construct/execute-representations-query query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (ex-data e))))
+
+(defn- qp-refusal
+  "The message of the error that the query processor throws for `query`, or nil when the query runs."
+  [query]
+  (try
+    (qp/process-query query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(defn- rasta-has-view-data?
+  [table-key]
+  (perms/user-has-permission-for-tables? (perms/user-info (mt/user->id :rasta)) :perms/view-data :unrestricted
+                                         {(mt/id table-key) (mt/id)}))
+
+(defn- can-query-table?
+  "Whether the current user can build queries on the table `table-key`."
+  [table-key]
+  (mi/can-query? (t2/hydrate (t2/select-one :model/Table :id (mt/id table-key)) :can_query)))
+
+(defn- result-column-names
+  [query]
+  (into #{} (map :name) (get-in (construct/execute-representations-query query)
+                                [:structured-output :result-columns])))
+
+(defn- check-not-runnable
+  "Assert that the build of `query` is refused with a sentence that names `card-name` and none of `column-names`."
+  [query card-name column-names]
+  (let [outcome (build-outcome query)]
+    (is (=? {:class :recoverable
+             :code  :metabase.metabot.tools.recoverable.pipeline/card-source-not-runnable}
+            outcome))
+    (is (str/includes? (str (:text outcome)) card-name))
+    (doseq [column-name column-names]
+      (is (not (str/includes? (pr-str outcome) column-name)) column-name)))
+  (is (=? {:agent-error? true :error :card-source-not-runnable :status-code 403}
+          (build-error-data query))))
+
+(deftest source-card-without-data-access-is-refused-test
+  (testing "a user who can read a model but has no view-data access to its table cannot build a query on it"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {model-id :id model-eid :entity_id} {:name          "Venues model"
+                                                                      :type          :model
+                                                                      :database_id   (mt/id)
+                                                                      :table_id      (mt/id :venues)
+                                                                      :dataset_query (venues-model-dataset-query)}]
+        (doseq [view-data [:blocked :legacy-no-self-service]]
+          (testing (str "view-data " view-data)
+            (mt/with-no-data-perms-for-all-users!
+              (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data view-data)
+              (mt/with-test-user :rasta
+                (is (not (rasta-has-view-data? :venues)) "precondition")
+                (is (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id model-id) :can_read))
+                    "precondition: the model is readable")
+                (check-not-runnable (card-source-data model-eid {"aggregation" [["max" {} ["field" {} "Double"]]]})
+                                    "Venues model"
+                                    ["Double" "PRICE"])
+                (testing "the query processor refuses a query on the model too"
+                  (is (re-find #"You do not have permissions to run this query\."
+                               (str (qp-refusal {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table (str "card__" model-id)}})))))))))))))
+
+(deftest source-card-on-an-unreadable-question-is-refused-test
+  (testing "a user who can read a model but not the question under it cannot build a query on the model"
+    (mt/with-temp [:model/Collection {coll-id :id}     {:name "Private"}
+                   :model/Card       {question-id :id} {:collection_id coll-id
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :venues)}}}
+                   :model/Card       {model-id :id model-eid :entity_id}
+                   {:name          "Model on a private question"
+                    :type          :model
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-test-user :rasta
+        (is (rasta-has-view-data? :venues) "precondition: the user has view-data on the table")
+        (is (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id model-id) :can_read))
+            "precondition: the model is readable")
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id question-id) :can_read)))
+            "precondition: the question under it is not")
+        (testing "the query processor refuses a query on the model"
+          (is (re-find (re-pattern (str "You do not have permissions to view Card " question-id "\\."))
+                       (str (qp-refusal {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (str "card__" model-id)}})))))
+        (check-not-runnable (card-source-data model-eid {"aggregation" [["count" {}]]})
+                            "Model on a private question"
+                            ["NAME" "PRICE"])))))
+
+(deftest table-query-joining-a-blocked-card-is-refused-test
+  (testing "a table query that joins a model on a blocked table is refused, though the outer table is queryable"
+    (mt/with-temp [:model/Card {model-id :id model-eid :entity_id}
+                   {:name          "Categories model"
+                    :type          :model
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :categories)}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-test-user :rasta
+          (is (can-query-table? :venues) "precondition: the outer table is queryable")
+          (is (not (rasta-has-view-data? :categories)) "precondition")
+          (let [venues (table-source-table-fk (mt/id :venues))]
+            (check-not-runnable (query-data
+                                 {"lib/type" "mbql/query"
+                                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                               "source-table" venues
+                                               "joins"        [{"lib/type"   "mbql/join"
+                                                                "alias"      "c"
+                                                                "stages"     [{"lib/type"    "mbql.stage/mbql"
+                                                                               "source-card" model-eid}]
+                                                                "conditions" [["=" {}
+                                                                               ["field" {} (conj venues "CATEGORY_ID")]
+                                                                               ["field" {"join-alias" "c"} "ID"]]]}]
+                                               "aggregation"  [["count" {}]]}]})
+                                "Categories model"
+                                ["NAME"]))
+          (testing "the query processor refuses the same join"
+            (let [condition [:=
+                             [:field (mt/id :venues :category_id) nil]
+                             [:field "ID" {:base-type :type/BigInteger :join-alias "c"}]]]
+              (is (re-find #"permission"
+                           (str (qp-refusal {:database (mt/id)
+                                             :type     :query
+                                             :query    {:source-table (mt/id :venues)
+                                                        :joins        [{:source-table (str "card__" model-id)
+                                                                        :alias        "c"
+                                                                        :fields       :all
+                                                                        :condition    condition}]}})))))))))))
+
+(deftest source-card-with-data-access-builds-test
+  (mt/with-temp [:model/Card {model-eid :entity_id} {:name          "Venues model"
+                                                     :type          :model
+                                                     :database_id   (mt/id)
+                                                     :table_id      (mt/id :venues)
+                                                     :dataset_query (venues-model-dataset-query)}]
+    (let [query (card-source-data model-eid)]
+      (testing "an admin builds the query, and the build preprocesses no card source for the check"
+        (mt/with-test-user :crowberto
+          (let [calls (atom 0)]
+            (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
+                                        (fn [& args]
+                                          (swap! calls inc)
+                                          (apply (mt/original-fn #'qp.perms/check-query-permissions*) args))]
+              (is (contains? (result-column-names query) "Double")))
+            (is (= 0 @calls)))))
+      (testing "a user with view-data but no create-queries access builds the query, since the card read authorizes it"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (mt/with-test-user :rasta
+            (is (rasta-has-view-data? :venues) "precondition")
+            (is (not (can-query-table? :venues)) "precondition")
+            (let [calls (atom 0)]
+              (mt/with-dynamic-fn-redefs [qp.perms/check-query-permissions*
+                                          (fn [& args]
+                                            (swap! calls inc)
+                                            (apply (mt/original-fn #'qp.perms/check-query-permissions*) args))]
+                (is (= #{} (set/difference #{"Double" "NAME"} (result-column-names query)))))
+              (is (= 1 @calls) "the card source check ran once"))))))))
+
+(defn- no-fields-model-card
+  "A model on the table `table-id`, for a table with no fields, so that the query processor cannot prepare it."
+  [table-id]
+  {:name          "Empty \"model\""
+   :type          :model
+   :database_id   (mt/id)
+   :table_id      table-id
+   :dataset_query {:database (mt/id) :type :query :query {:source-table table-id}}})
+
+(deftest source-card-that-cannot-be-prepared-is-refused-test
+  (testing "a non-admin gets a final, declared error for a model whose query cannot be prepared"
+    (mt/with-temp [:model/Table {table-id :id}         {:db_id (mt/id) :name "NO_FIELDS_TABLE" :active true}
+                   :model/Card  {model-eid :entity_id} (no-fields-model-card table-id)]
+      (let [query (card-source-data model-eid)]
+        (mt/with-test-user :rasta
+          (let [outcome (build-outcome query)]
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/card-source-preprocessing-failed}
+                    outcome))
+            (testing "the sentence quotes the card name, says not to retry, and names no table"
+              (is (str/includes? (str (:text outcome)) "\"Empty \\\"model\\\"\""))
+              (is (str/includes? (str (:text outcome)) "Do not retry"))
+              (is (not (str/includes? (pr-str outcome) "NO_FIELDS_TABLE")))))
+          (is (=? {:agent-error? true :error :card-source-preprocessing-failed :status-code 400}
+                  (build-error-data query))))
+        (testing "an admin is not checked, so the build does not change"
+          (mt/with-test-user :crowberto
+            (is (some? (get-in (construct/execute-representations-query query) [:structured-output :query])))))))))
+
+(deftest source-card-on-an-inactive-table-is-refused-test
+  (testing "a non-admin gets a final, declared error for a model on an inactive table, which the query processor refuses"
+    (mt/with-temp [:model/Card {model-id :id model-eid :entity_id} {:name          "Venues model"
+                                                                    :type          :model
+                                                                    :database_id   (mt/id)
+                                                                    :table_id      (mt/id :venues)
+                                                                    :dataset_query (venues-model-dataset-query)}]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+        (mt/with-test-user :rasta
+          (is (re-find #"is inactive"
+                       (try
+                         (qp/process-query {:database (mt/id)
+                                            :type     :query
+                                            :query    {:source-table (str "card__" model-id)}})
+                         ""
+                         (catch Exception e
+                           (ex-message e))))
+              "precondition: the query processor refuses a query on the model")
+          (let [query (card-source-data model-eid)]
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/card-source-preprocessing-failed}
+                    (build-outcome query)))
+            (is (=? {:agent-error? true :error :card-source-preprocessing-failed :status-code 400}
+                    (build-error-data query)))))))))
+
+(deftest card-source-check-keeps-other-failures-test
+  (testing "a failure of the card check that is not the query processor's own refusal is not made a declared error"
+    (mt/with-temp [:model/Card {model-eid :entity_id} {:name          "Venues model"
+                                                       :type          :model
+                                                       :database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query (venues-model-dataset-query)}]
+      (doseq [[label e] {"an app-DB failure under a query processor error"
+                         (ex-info "Error preprocessing query" {:type :qp} (java.sql.SQLException. "Connection lost"))
+                         "an error that is not the query processor's"
+                         (ex-info "Unexpected" {})}]
+        (testing label
+          (mt/with-test-user :rasta
+            (mt/with-dynamic-fn-redefs [shared.content-store/card-sources-accessible? (fn [_] (throw e))]
+              (is (identical? e (try
+                                  (construct/execute-representations-query (card-source-data model-eid))
+                                  nil
+                                  (catch Exception thrown
+                                    thrown)))))))))))
+
+(deftest card-source-check-permission-failure-is-a-refusal-test
+  (testing "a permission failure under a query processor error in the card check is the refusal, not a 500"
+    (mt/with-temp [:model/Card {model-eid :entity_id} {:name          "Venues \"model\""
+                                                       :type          :model
+                                                       :database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query (venues-model-dataset-query)}]
+      (mt/with-test-user :rasta
+        (mt/with-dynamic-fn-redefs [shared.content-store/card-sources-accessible?
+                                    (fn [_]
+                                      (throw (ex-info "Error preprocessing query" {:type :qp}
+                                                      (ex-info "Denied" {:status-code 403}))))]
+          (is (=? {:agent-error? true :error :card-source-not-runnable :status-code 403}
+                  (build-error-data (card-source-data model-eid))))
+          (testing "the sentence quotes the card name"
+            (is (str/includes? (str (:text (build-outcome (card-source-data model-eid))))
+                               "You can open \"Venues \\\"model\\\"\", but"))))))))
+
+(deftest table-source-skips-the-card-source-check-test
+  (testing "a table-sourced build checks no card source"
+    (mt/with-test-user :rasta
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [shared.content-store/card-sources-accessible?
+                                    (fn [& args]
+                                      (swap! calls inc)
+                                      (apply (mt/original-fn #'shared.content-store/card-sources-accessible?) args))]
+          (is (some? (get-in (construct/execute-representations-query
+                              (query-data {"lib/type" "mbql/query"
+                                           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                        "source-table" (table-source-table-fk (mt/id :venues))
+                                                        "aggregation"  [["count" {}]]}]}))
+                             [:structured-output :query]))))
+        (is (= 0 @calls))))))
+
+(deftest metric-with-data-access-builds-test
+  (testing "a user with data access builds a query that aggregates a metric"
+    (mt/with-temp [:model/Card {metric-eid :entity_id} {:name          "Venues count"
+                                                        :type          :metric
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :venues)
+                                                                                   :aggregation  [[:count]]}}}]
+      (mt/with-test-user :rasta
+        (is (some? (get-in (construct/execute-representations-query
+                            (metric-query-data {"source-table" (table-source-table-fk (mt/id :venues))} metric-eid))
+                           [:structured-output :query])))))))
+
+(deftest metric-without-data-access-is-refused-test
+  (testing "a metric on a blocked table is refused, though the query's source table is queryable"
+    (mt/with-temp [:model/Card {metric-eid :entity_id} {:name          "Products count"
+                                                        :type          :metric
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :products)
+                                                                                   :aggregation  [[:count]]}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+        (mt/with-test-user :rasta
+          (is (can-query-table? :orders) "precondition: the source table is queryable")
+          (is (not (rasta-has-view-data? :products)) "precondition")
+          (check-not-runnable (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid)
+                              "Products count"
+                              ["PRODUCTS" "CATEGORY"]))))))
