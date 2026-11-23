@@ -935,6 +935,18 @@
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
     ;;
+    ;; Test-only acknowledgements of how a Python transform replaces an existing target on this driver. Without
+    ;; `:atomic-renames`, the replacement isn't atomic, and a test fails unless the driver's test extensions support
+    ;; exactly the one of these that matches.
+    ;;
+    ;; With `:rename` but not `:atomic-renames`: the transform loads a new table, drops the target, then renames the
+    ;; new table into place. Between the drop and the rename, readers find no table.
+    :test/python-transforms-without-atomic-renames
+    ;;
+    ;; With neither: the transform drops the target, then creates and fills it again. Readers find the table missing,
+    ;; then partly filled, and a failed run loses the old data.
+    :test/python-transforms-without-renames
+    ;;
     ;; Does the driver support CREATE OR REPLACE TABLE syntax
     :create-or-replace-table
     ;;

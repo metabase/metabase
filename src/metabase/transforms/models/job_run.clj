@@ -1,5 +1,6 @@
 (ns metabase.transforms.models.job-run
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.db :as transforms.db]
@@ -92,3 +93,8 @@
   "Return transform runs that were part of the given job run, ordered by start time."
   [job-run-id :- ms/PositiveInt]
   (transforms.db/runs-for-job-run job-run-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformJobRun [_model]
+  {:skip? false})

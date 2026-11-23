@@ -28,7 +28,8 @@
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [empty? mapv select-keys some]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [empty? mapv select-keys some]]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,17 +121,9 @@
                              ::add-remaps/new-field-dimension-id]
             rewrite-refs
             (fn [form]
-              (perf/postwalk
-               (fn [x]
-                 (if-not (lib.util/ref-clause? x)
-                   x
-                   (case (first x)
-                     :field      (if (pos-int? (last x))
-                                   (outer-ref (id->col (last x)) x field-keep-opts)
-                                   x)
-                     :expression (outer-ref (alias->col (last x)) x [])
-                     x)))
-               form))
+              (match/replace-all form
+                [:field {:lib/uuid _} (:and ref #'pos-int?)] (outer-ref (id->col ref) &match field-keep-opts)
+                [:expression {:lib/uuid _} ref]              (outer-ref (alias->col ref) &match [])))
             ;; Nested-field breakouts need explicit handling: the inner stage's original column (still
             ;; `:nfc-path`-tagged, propagated through the previous stage) and the synthetic expression both
             ;; appear in `outer-cols` and share the same source-table id. We point the outer breakout at

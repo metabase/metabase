@@ -42,13 +42,16 @@
 
 (def ^:private CollectedEvent
   "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
-  update or a delete."
+  update or a delete.
+  An update also carries `:changed`, the columns it set. It holds `:updated_at` when a timestamp hook set it in this
+  write, and `:object` then shows the old value."
   [:map
    [:model     :keyword]
    [:operation Operation]
    [:id        [:maybe [:or :int :string]]]
    [:object    {:optional true} [:maybe [:map]]]
    [:previous-object {:optional true} [:maybe [:map]]]
+   [:changed   {:optional true} [:set :keyword]]
    [:user-id   [:maybe :int]]
    [:context   {:optional true} [:maybe [:map]]]
    [:captures  {:optional true} [:maybe [:map]]]])
@@ -240,9 +243,11 @@
   (events.schema/register-lifecycle-topic! topic))
 
 (defn- merge-events
-  "The one event that the `events` of one row amount to, or nil when the batch both created and deleted the row."
+  "The one event that the `events` of one row amount to, a deletion whenever the batch deleted the row, or nil when the
+  batch both created and deleted it."
   [events]
   (let [create (first (filter #(= :create (:operation %)) events))
+        delete (peek (filterv #(= :delete (:operation %)) events))
         fst    (first events)
         lst    (peek events)
         shared {:user-id  (some :user-id (rseq events))
@@ -252,19 +257,20 @@
                  (:object (or (peek (filterv #(= :update (:operation %)) events)) create))
                  (:object (peek (filterv :object events))))]
     (cond
-      (and create (some #(= :delete (:operation %)) events))
+      (and create delete)
       nil
 
       create
       (merge create shared {:object object})
 
-      (= :delete (:operation lst))
-      (merge (dissoc lst :object) shared {:previous-object (:previous-object fst)})
+      delete
+      (merge (dissoc delete :object) shared {:previous-object (:previous-object fst)})
 
       :else
       (merge lst shared {:operation       :update
                          :object          object
-                         :previous-object (:previous-object fst)}))))
+                         :previous-object (:previous-object fst)
+                         :changed         (into #{} (mapcat :changed) events)}))))
 
 (defn- compact
   "One event per row, in the order of the first write of the row."

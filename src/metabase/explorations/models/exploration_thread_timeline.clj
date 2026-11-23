@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread-timeline
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.timeline.core :as timeline]
@@ -63,3 +64,8 @@
                                             :timestamp   (u.date/format (:event_timestamp r))
                                             :icon        (:event_icon r)})))
                                  vec)}))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationThreadTimeline [_model]
+  {:skip? false})

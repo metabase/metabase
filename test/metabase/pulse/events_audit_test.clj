@@ -44,27 +44,34 @@
                       :details {:archived false :name "Subscription" :dashboard_id dashboard-id :parameters []
                                 :channel ["email"] :schedule ["daily"] :recipients [[]]}}]
                     (rows-since before))))
-          (testing "changing the pulse, its channels and their recipients stores one row"
+          (testing "changing the name and the recipients stores one row with both"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
                                     {:name "Renamed"
-                                     :channels [(assoc email-channel :schedule_hour 8
-                                                       :recipients [{:id (mt/user->id :crowberto)}])]})
+                                     :channels [(assoc email-channel :recipients [{:id (mt/user->id :crowberto)}])]})
               (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id rasta
-                        :details {:name "Renamed" :channel ["email"] :schedule ["daily"]}}]
+                        :details {:previous   {:name "Subscription"}
+                                  :new        {:name "Renamed"}
+                                  :channel    ["email"]
+                                  :schedule   ["daily"]
+                                  :recipients [[{:id (mt/user->id :crowberto)}]]}}]
                       (rows-since before)))))
-          (testing "changing only the channels stores one row"
+          (testing "changing only the schedule of a channel stores one row that shows it"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
-                                    {:channels [(assoc email-channel :schedule_hour 9
+                                    {:channels [(assoc email-channel :schedule_type "hourly"
                                                        :recipients [{:id (mt/user->id :crowberto)}])]})
-              (is (= [:subscription-update] (map :topic (rows-since before))))))
-          (testing "changing only the recipients stores one row"
+              (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id
+                        :details {:channel ["email"] :schedule ["hourly"]}}]
+                      (rows-since before)))))
+          (testing "changing only the recipients stores one row that shows them"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
-                                    {:channels [(assoc email-channel :schedule_hour 9
+                                    {:channels [(assoc email-channel :schedule_type "hourly"
                                                        :recipients [{:id (mt/user->id :rasta)}])]})
-              (is (= [:subscription-update] (map :topic (rows-since before))))))
+              (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id
+                        :details {:recipients [[{:id (mt/user->id :rasta)}]]}}]
+                      (rows-since before)))))
           (testing "archiving stores one row"
             (let [before (max-id)]
               (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:archived true})
@@ -82,17 +89,17 @@
           (is (=? [{:topic :pulse-create :model "Pulse" :model_id (:id pulse) :user_id (mt/user->id :rasta)}]
                   (rows-since before))))))))
 
-(deftest updating-alert-records-alert-update-test
+(deftest updating-subscription-records-subscription-update-test
   (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/Card {card-id :id} {:name "Alerted card"}
-                   :model/Pulse {alert-id :id} {:name "Alert" :alert_condition "rows" :skip_if_empty true}
-                   :model/PulseCard _ {:pulse_id alert-id :card_id card-id :position 0}
-                   :model/PulseChannel _ {:pulse_id alert-id :channel_type :email :schedule_type :daily :schedule_hour 1}]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Subscribed card"}
+                   :model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Pulse {pulse-id :id} {:dashboard_id dashboard-id :name "Dashboard" :creator_id (mt/user->id :rasta)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id :position 0}
+                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email :schedule_type :daily :schedule_hour 1}]
       (let [before (max-id)]
-        (mt/with-current-user (mt/user->id :rasta)
-          (t2/update! :model/Pulse :id alert-id {:alert_first_only true}))
-        (is (=? [{:topic :alert-update :model "Card" :model_id alert-id :user_id (mt/user->id :rasta)
-                  :details {:name "Alerted card" :card_id card-id :channel ["email"]}}]
+        (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id) {:name "Renamed"})
+        (is (=? [{:topic :subscription-update :model "Pulse" :model_id pulse-id :user_id (mt/user->id :rasta)
+                  :details {:previous {:name "Dashboard"} :new {:name "Renamed"}}}]
                 (rows-since before)))))))
 
 (deftest renaming-or-moving-dashboard-records-no-subscription-update-test
@@ -129,3 +136,19 @@
         (let [before (max-id)]
           (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
           (is (= [[:user-deactivated "User" user-id]] (topics-since before))))))))
+
+(deftest deleting-dashboard-with-subscription-records-dashboard-delete-only-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/Pulse {pulse-id :id} {:dashboard_id dashboard-id :name "Dashboard" :creator_id (mt/user->id :rasta)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id :position 0}
+                   :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type :email
+                                                         :schedule_type :daily :schedule_hour 8}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+      (let [before (max-id)]
+        (mt/user-http-request :crowberto :delete 204 (str "dashboard/" dashboard-id))
+        (testing "the subscription is deleted with the dashboard"
+          (is (false? (t2/exists? :model/Pulse :id pulse-id))))
+        (testing "only the deletion of the dashboard is recorded"
+          (is (= [[:dashboard-delete "Dashboard" dashboard-id]] (topics-since before))))))))

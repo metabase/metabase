@@ -36,7 +36,7 @@ EE code lives in `enterprise/backend/src/metabase_enterprise/<module>/`. OSS shi
   - EE: `metabase-enterprise.premium-features.airgap` (offline token decoding).
   - EE routes mount under `/api/ee` in `metabase-enterprise.api-routes.routes`, gated per feature by `premium-handler`.
 - **Content translation**: OSS `metabase.content-translation.{models,schema,db}`. EE `metabase-enterprise.content-translation.{dictionary,routes,db}` (CSV dictionary upload).
-- **Stale content**: OSS contract `metabase.staleness.core` (per-model `find-stale-query`). EE `metabase-enterprise.stale.{impl,api,settings,db}`.
+- **Stale content**: OSS contract `metabase.staleness.core` (per-model `staleness/spec`: `:candidates`, `:load`, `:render`). EE `metabase-enterprise.stale.{impl,api,settings,db}`.
 - **Support access grants**: `metabase-enterprise.support-access-grants.{core,provider,api,events,schema,settings,db}`, `support-access-grants.models.support-access-grant-log`, `support-access-grants.task.expire-grants`.
 - Related EE modules: `database-replication`, `billing`, `gsheets`.
 

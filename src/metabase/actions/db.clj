@@ -3,6 +3,8 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.actions.schema :as actions.schema]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
@@ -10,6 +12,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -286,3 +289,60 @@
         (->> (mapv (fn [action]
                      (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
                          (update :model #(some-> % (collection.root/hydrate-root-collection root))))))))))
+
+(mu/defn query-action-queries :- [:map-of ::lib.schema.id/action :map]
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
+(mu/defn implicit-action-table-ids :- [:map-of ::lib.schema.id/action [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
+
+(mu/defn dependency-action-items :- :map
+  "The query of the Actions the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of a
+  model in the collections the user reads, and those without one in the data actions collections the user reads,
+  without those in personal collections unless `:include-personal-collections?`, located by their collection or the
+  root they sit in."
+  [{:keys [include-archived include-personal-collections?] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location [:coalesce
+                  :collection.name
+                  [:case
+                   [:= :action.model_id nil]
+                   (:name (collection.root/root-collection-with-ui-details :data-actions))
+                   :else
+                   (:name (collection.root/root-collection-with-ui-details nil))]]]
+    {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
+     :from      [:action]
+     :left-join [:collection [:= :action.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [[:or
+                        [:and
+                         [:not= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived nil)]
+                        [:and
+                         [:= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived :data-actions)]]
+                       (collections.listing/archived-clause :action include-archived)
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :action :collection))])}))
+
+(mu/defn collection-action-items :- [:maybe :map]
+  "The query of the actions without a model in `collection` that the collection items listing of `opts` holds, nil when
+  `collection` is not in the namespace of data actions or data apps or `opts` restrict the items to those created by a user,
+  which actions do not record, and none of them when `opts` restrict the items to the pinned ones, which no action is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
+             (nil? created-by-id))
+    {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+              :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+     :from   [[:action :action]]
+     :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              [:= :action.collection_id (:id collection)]
+              [:= :action.model_id nil]
+              [:= :action.archived (boolean archived?)]]}))

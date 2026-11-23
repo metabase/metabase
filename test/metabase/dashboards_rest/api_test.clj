@@ -536,9 +536,7 @@
                      :model/Revision            _                  {:user_id  user-id
                                                                     :model    "Dashboard"
                                                                     :model_id dashboard-id
-                                                                    :object   (revision/serialize-instance dashboard
-                                                                                                           dashboard-id
-                                                                                                           dashboard)}]
+                                                                    :object   (revision/snapshot :model/Dashboard dashboard)}]
         (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (=? {:name                       "Test Dashboard"
@@ -5064,6 +5062,20 @@
      {:disable-links?            true
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
+
+(deftest update-response-leaves-out-archived-subscriptions-test
+  (testing "a REST save that archives a subscription doesn't return what the archive reports"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard {dash-id :id}  {:parameters [{:id   "gone"
+                                                                    :name "Gone"
+                                                                    :slug "gone"
+                                                                    :type "category"}]}
+                     :model/Pulse     {pulse-id :id} {:dashboard_id dash-id
+                                                      :creator_id   (mt/user->id :rasta)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:parameters []})]
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+          (is (not-any? #(re-find #"archived.subscriptions" (name %)) (keys response))))))))
 
 (deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"

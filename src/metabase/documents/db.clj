@@ -5,6 +5,8 @@
    [java-time.api :as t]
    [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -12,7 +14,11 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.revisions.sql :as revisions.sql]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -192,3 +198,103 @@
     (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-document-candidates :- ::staleness/query
+  "The query of the Documents that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`:
+  those not viewed since the cutoff, or never viewed and created before it, in regular collections. `last_viewed_at`
+  is never null, so the recency is null for a Document that was never viewed."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery
+  {:select [:document.id
+            [(h2x/literal "Document") :model]
+            [:document.name :name]
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
+            :document.collection_id]
+   :from :document
+   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :where [:and
+           [:= :document.archived false]
+           [:or
+            [:<= :document.last_viewed_at (:cutoff-date opts)]
+            [:and
+             [:= :document.view_count 0]
+             [:<= :document.created_at (:cutoff-date opts)]]]
+           [:= :collection.type nil]
+           (when (setting/get :enable-public-sharing)
+             [:= :document.public_uuid nil])
+           (staleness/collection-filter :document.collection_id opts)]})
+
+(mu/defn dependency-document-items :- :map
+  "The query of the Documents the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
+  collections the user reads, without those in personal collections unless `:include-personal-collections?`, located
+  by their collection."
+  [{:keys [include-archived include-personal-collections?] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location (collections.listing/collection-location :collection nil)]
+    {:select    [[:document.id :entity_id] [:document.name :name] [location :location]]
+     :from      [:document]
+     :left-join [:collection [:= :document.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [(collections.listing/visible-in-collections-clause :document opts include-archived nil)
+                       (collections.listing/archived-clause :document include-archived)
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :document :collection))])}))
+
+(mu/defn collection-document-items :- :map
+  "The query of the Documents in `collection` that the collection items listing of `opts` holds. The Documents of an Exploration are only listed when `:show-exploration-documents?`."
+  [collection :- :map
+   {:keys [archived? pinned-state created-by-id show-exploration-documents?]} :- :map]
+  {:select [:document.id
+            :document.name
+            :document.collection_id
+            :document.collection_position
+            :document.archived
+            :document.archived_directly
+            :document.exploration_id
+            [:u.id :last_edit_user]
+            [:u.email :last_edit_email]
+            [:u.first_name :last_edit_first_name]
+            [:u.last_name :last_edit_last_name]
+            [:r.timestamp :last_edit_timestamp]
+            [(h2x/literal "document") :model]]
+   :from [[:document :document]]
+   :left-join [[:revision :r] [:and
+                               [:= :r.model_id :document.id]
+                               [:= :r.model (h2x/literal "Document")]
+                               (revisions.sql/newest-revision-clause :r "Document" :document.id)]
+               [:core_user :u] [:= :u.id :r.user_id]]
+   :where [:and
+           (collections.listing/visible-items-clause :document.collection_id archived? {:root-namespace nil})
+           (if (collection/is-trash? collection)
+             [:= :document.archived_directly true]
+             [:and
+              [:= :document.collection_id (:id collection)]
+              [:= :document.archived_directly false]])
+           (when created-by-id
+             [:= :document.creator_id created-by-id])
+           [:= :document.archived (boolean archived?)]
+           (when-not show-exploration-documents?
+             [:= :document.exploration_id nil])
+           (collections.listing/pinned-state->clause pinned-state :document.collection_position)]})
+
+(mu/defn recent-view-documents
+  "The Documents with `document-ids` with their Collection, none for no ids."
+  [document-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (if (empty? document-ids)
+    []
+    (t2/hydrate
+     (t2/select :model/Document
+                {:select [:d.id
+                          :d.name
+                          :d.archived
+                          [:d.collection_id :entity-coll-id]
+                          [:c.id :collection_id]
+                          [:c.name :collection_name]
+                          [:c.authority_level :collection_authority_level]]
+                 :from [[:document :d]]
+                 :where [:in :d.id document-ids]
+                 :left-join [[:collection :c]
+                             [:and
+                              [:= :c.id :d.collection_id]
+                              [:= :c.archived false]]]}) :can_read :can_write)))

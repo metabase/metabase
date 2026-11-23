@@ -113,7 +113,7 @@ export function getTableUrlForPristineQuestion(
     .setDefaultDisplay()
     .card();
   const isPristine =
-    Lib.areLegacyQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
+    Lib.areQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
     card.display === defaultCard.display &&
     _.isEmpty(card.visualization_settings) &&
     question.parameters().length === 0;

@@ -646,22 +646,32 @@
                                       :edits [(edit "quick" "swift")]}))))
             (let [before (stored)]
               (testing "enough of them in a single call is refused, naming the call as the unit"
-                (let [timer   (u/start-timer)
-                      err     (write-error {:method "update" :id doc-id
-                                            :edits (mapv edit
-                                                         ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
-                                                         ["red" "leapt" "above" "idle" "dozing" "fox"])})
-                      elapsed (u/since-ms timer)]
+                ;; Counts splices × document-KB, the unit `max-edit-work` prices in, rather than timing
+                ;; the call: the work is fixed, and the time depends on the machine.
+                (let [work    (atom 0.0)
+                      splice  (mt/original-fn #'documents/splice)
+                      err     (mt/with-dynamic-fn-redefs [documents/splice
+                                                          (fn [ast ser start end replacement]
+                                                            (swap! work + (/ (count (:markdown ser)) 1024.0))
+                                                            (splice ast ser start end replacement))]
+                                (write-error {:method "update" :id doc-id
+                                              :edits (mapv edit
+                                                           ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
+                                                           ["red" "leapt" "above" "idle" "dozing" "fox"])}))
+                      ceiling @#'v2.document/max-edit-work]
                   (is (some? err) "should be refused, not carried out")
                   (when err
                     (is (re-find #"(?i)every edit in the call" err)
                         "should say the ceiling is per call, so the agent splits rather than retries")
                     (is (re-find #"content_markdown" err)
                         "should point at the single-pass alternative"))
-                  ;; The budget caps work performed: the sweep stops once it is spent, so an
-                  ;; over-budget call costs about the ceiling (~600ms), never the whole request.
-                  (is (< elapsed 5000)
-                      (format "refusal should stop at the ceiling (took %.0fms)" (double elapsed)))))
+                  ;; An edit that would take the call's total past the ceiling is refused before it
+                  ;; runs, so a refused call splices less than the ceiling, not the whole request. The
+                  ;; lower bound fails if `splice` stops being intercepted, or if the call is refused
+                  ;; before most of the budget is spent.
+                  (is (< (* 0.75 ceiling) @work ceiling)
+                      (format "refused call should splice between 0.75× and 1× the ceiling (%.0f of %d splice·KB)"
+                              @work ceiling))))
               (testing "a refused call leaves the stored body untouched — the reduce builds a new AST
                        and the throw lands before update-document!, so no prefix of the edits persists"
                 (is (= before (stored)))))))))))

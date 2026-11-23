@@ -16,31 +16,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti before-load
+(defn before-load
   "The load `items` of `model`, each `{:entity entity :row row :local local}`: the entity, the row it deserializes to,
   and the row of the store it updates, or nil when it is new. Returns the items to load, so a model can leave items
   out, adjust their `:row` against their `:local` row, adjust the `:entity` whose after-insert columns it imports, or
-  throw to refuse them, much like a t2 `before-update`. By default, the items."
-  {:arglists '([model items])}
-  (fn [model _items] model))
+  throw to refuse them, much like a t2 `before-update`, by the `:before-load` of the spec of `model`. By default, the
+  items."
+  [model items]
+  (if-let [f (:before-load (serialization.spec/spec model))]
+    (f items)
+    items))
 
-(defmethod before-load :default [_ items] items)
-
-(defmulti loaded-entities
+(defn loaded-entities
   "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so that a model
-  can leave out the shapes of older exports it no longer loads, by default all of them."
-  {:arglists '([model entities])}
-  (fn [model _entities] model))
+  can leave out the shapes of older exports it no longer loads, by the `:loaded-entities` of the spec of `model`, by
+  default all of them."
+  [model entities]
+  (if-let [f (:loaded-entities (serialization.spec/spec model))]
+    (f entities)
+    entities))
 
-(defmethod loaded-entities :default [_ entities] entities)
-
-(defmulti after-load
+(defn after-load
   "Runs the side effects of loading `items` of `model`, each a load item (see [[before-load]]) with the loaded
-  `:instance`. By default, none."
-  {:arglists '([model items])}
-  (fn [model _items] model))
-
-(defmethod after-load :default [_ _items] nil)
+  `:instance`, by the `:after-load` of the spec of `model`. By default, none."
+  [model items]
+  (when-let [f (:after-load (serialization.spec/spec model))]
+    (f items)))
 
 (def ^:private import-opts
   "The options of an import into the app DB, which creates the Users, Databases, Tables and Fields it lacks."

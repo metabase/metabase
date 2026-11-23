@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadataFromState } from "__support__/metadata";
 import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -18,6 +22,8 @@ import type { Card, VirtualCard } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
+  createMockColumn,
+  createMockDashboard,
   createMockDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
@@ -27,9 +33,14 @@ import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  PRODUCTS,
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
+import { DashCardParameterMapper } from "./DashCardParameterMapper";
 
 const QUESTION_ID = 1;
 
@@ -672,5 +683,123 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("DashCardParameterMapper connected to the dashboard store", () => {
+  const DASHBOARD_ID = 10;
+  const DASHCARD_ID = 20;
+  const MODEL_ID = 30;
+  const TEXT_PARAMETER = createMockParameter({
+    id: "text-param",
+    name: "Text",
+    slug: "text",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  // The model metadata maps CATEGORY to the Products.Category field, so its
+  // results metadata offers a column that a text filter could map to.
+  const MODEL_RESULT_METADATA = [
+    createMockColumn({
+      name: "ID",
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      field_ref: ["field", "ID", { "base-type": "type/BigInteger" }],
+    }),
+    createMockColumn({
+      id: PRODUCTS.CATEGORY,
+      name: "CATEGORY",
+      display_name: "Category",
+      base_type: "type/Text",
+      semantic_type: "type/Category",
+      field_ref: ["field", "CATEGORY", { "base-type": "type/Text" }],
+    }),
+  ];
+
+  const NATIVE_MODEL = createMockCard({
+    id: MODEL_ID,
+    name: "Native model",
+    type: "model",
+    query_type: "native",
+    display: "table",
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: "select *\nfrom products limit 5",
+      }),
+    ),
+    result_metadata: MODEL_RESULT_METADATA,
+  });
+
+  const STRUCTURED_MODEL = createMockCard({
+    ...NATIVE_MODEL,
+    name: "Structured model",
+    query_type: "query",
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      }),
+    ),
+  });
+
+  const setupConnected = (card: Card) => {
+    const dashcard = createMockDashboardCard({
+      id: DASHCARD_ID,
+      dashboard_id: DASHBOARD_ID,
+      card_id: card.id,
+      card,
+      size_x: 6,
+      size_y: 4,
+    });
+    const dashboard = createMockDashboard({
+      id: DASHBOARD_ID,
+      parameters: [TEXT_PARAMETER],
+    });
+
+    renderWithProviders(
+      <DashCardParameterMapper dashcard={dashcard} isMobile={false} />,
+      {
+        storeInitialState: createMockState({
+          entities: createMockEntitiesState({
+            databases: [createSampleDatabase()],
+            questions: [card],
+          }),
+          dashboard: createMockDashboardState({
+            dashboardId: DASHBOARD_ID,
+            dashboards: {
+              [DASHBOARD_ID]: createMockStoreDashboard({
+                ...dashboard,
+                dashcards: [DASHCARD_ID],
+              }),
+            },
+            dashcards: { [DASHCARD_ID]: dashcard },
+            editingDashboard: dashboard,
+            sidebar: {
+              name: "editParameter",
+              props: { parameterId: TEXT_PARAMETER.id },
+            },
+          }),
+        }),
+      },
+    );
+  };
+
+  it("should not let a dashboard filter map to a native model with columns mapped to database fields (metabase#23024)", () => {
+    setupConnected(NATIVE_MODEL);
+
+    expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
+    expect(screen.queryByText("Select…")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Column to filter on/)).not.toBeInTheDocument();
+  });
+
+  it("should let the same dashboard filter map to a structured model", async () => {
+    setupConnected(STRUCTURED_MODEL);
+
+    expect(screen.getByText(/Column to filter on/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Models are data sources/),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText("Select…"));
+    expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 });

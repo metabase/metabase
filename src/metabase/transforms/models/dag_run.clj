@@ -5,6 +5,7 @@
   job — so it has its own table rather than overloading `transform_job_run`. Member runs link back
   via `transform_run.dag_run_id`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.transforms.db :as transforms.db]
@@ -66,3 +67,8 @@
   "Return the transform runs that were part of the given DAG run, ordered by start time."
   [dag-run-id :- ms/PositiveInt]
   (transforms.db/runs-for-dag-run dag-run-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformDagRun [_model]
+  {:skip? false})

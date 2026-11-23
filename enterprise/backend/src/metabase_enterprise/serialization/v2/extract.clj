@@ -27,7 +27,7 @@
     (not (:no-data-model opts))        (into serdes.models/data-model)
     (not (:no-settings opts))          (conj :model/Setting)
     (not (:no-transforms opts))        (conj :model/Transform :model/TransformTag :model/TransformJob :model/TransformTest
-                                             :model/PythonLibrary)
+                                             :model/PythonLibrary :model/TestSuite)
     (not (:no-embedding-themes opts))  (conj :model/EmbeddingTheme)
     (not (:no-custom-viz-plugins opts)) (conj :model/CustomVizPlugin)
     (not (:no-data-apps opts))         (conj :model/DataApp)))

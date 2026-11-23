@@ -169,7 +169,7 @@ describe("scenarios > dashboard > filters > boolean", () => {
             cy.findByPlaceholderText(
               "e.g. http://acme.com/id/{{user_id}}",
             ).type(
-              `http://localhost:4000/question/${questionId}?boolean={{${FIELD_NAME}}}`,
+              `${Cypress.config("baseUrl")}/question/${questionId}?boolean={{${FIELD_NAME}}}`,
               { parseSpecialCharSequences: false },
             );
             cy.button("Done").click();

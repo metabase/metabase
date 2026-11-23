@@ -2,7 +2,11 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -10,14 +14,22 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.segments.audit :as segments.audit]
    [metabase.segments.db :as segments.db]
+   [metabase.segments.dependencies :as segments.dependencies]
+   [metabase.segments.replacement :as segments.replacement]
    [metabase.segments.schema :as segments.schema]
+   [metabase.segments.serialization :as segments.serialization]
+   [metabase.segments.xrays :as segments.xrays]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -35,12 +47,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/Segment
-  [_model]
-  {:create :event/segment-create
-   :update :event/segment-update
-   :delete :event/segment-delete})
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."
@@ -145,63 +151,94 @@
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Segment
+  [_model]
+  {:create :event/segment-create
+   :update :event/segment-update
+   :delete :event/segment-delete})
+
+(defmethod app-db-copy/spec :model/Segment [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Segment [_]
-  {:schema    ::segments.schema/external-segment
-   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [:table_id]
-   :transform {:creator_id serialization/user-transform
-               :definition serialization/mbql-transform}
-   :defaults  {:archived false :show_in_getting_started false}})
-
-(defmethod serialization/import-dependencies :model/Segment [_ entities]
-  (mapv (fn [{:keys [definition]}]
-          (serialization/import-mbql-dependencies definition))
-        entities))
-
-(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
-  (mapv (fn [segment]
-          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-        entities))
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+  {:schema              ::segments.schema/external-segment
+   :copy                [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip                [:table_id]
+   :transform           {:creator_id serialization/user-transform
+                         :definition serialization/mbql-transform}
+   :defaults            {:archived false :show_in_getting_started false}
+   :import-dependencies segments.serialization/import-dependencies
+   :storage-paths       segments.serialization/storage-paths})
 
 (defmethod remote-sync/spec :model/Segment
   [_model]
   {:synced-items         segments.db/synced-segment-items
    :synced-filter-clause segments.db/synced-segments-clause})
 
-;;; ----------------------------------------------------- Search -----------------------------------------------------
+(defmethod revisions/spec :model/Segment [_model]
+  {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest
+                  :show_in_getting_started]
+   :skip         [:entity_id :creator_id]
+   :same?        {:definition revisions/same-definition?}
+   :diff-columns [:name :description :definition]})
 
-(search/define-spec "segment"
-  {:model :model/Segment
-   :attrs {:archived true
-           :collection-id false
-           :creator-id false
-           :database-id :table.db_id
-           ;; should probably change this, but will break legacy search tests
-           :created-at false
-           :updated-at true
-           ;; A segment on a Library table inherits the table's library ranking boost and curated status.
-           :root-collection-type {:fn collection/table-root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:table-id                  :table_id
-                  :table_description         :table.description
-                  :table_name                :table.name
-                  :table_display_name        :table.display_name
-                  :table_schema              :table.schema
-                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
-                  :table-collection-id       :table.collection_id
-                  :table-is-published        :table.is_published
-                  :table-collection-location :collection.location
-                  :table-collection-type     :collection.type}
-   ;; Only published tables count as library content, matching the table spec's own collection join.
-   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :collection [:model/Collection
-                        [:and
-                         [:= :table.is_published true]
-                         [:= :collection.id :table.collection_id]]]}})
+(defmethod audit/spec :model/Segment [_model]
+  {:track          [:name :description :table_id]
+   :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
+   :skip           [:entity_id]
+   :details        segments.audit/details})
+
+(defmethod search/spec :model/Segment
+  [_model]
+  {"segment"
+   {:attrs {:archived true
+            :collection-id false
+            :creator-id false
+            :database-id :table.db_id
+            ;; should probably change this, but will break legacy search tests
+            :created-at false
+            :updated-at true
+            ;; A segment on a Library table inherits the table's library ranking boost and curated status.
+            :root-collection-type {:fn collection/table-root-collection-type}}
+    :search-terms [:name :description]
+    :render-terms {:table-id                  :table_id
+                   :table_description         :table.description
+                   :table_name                :table.name
+                   :table_display_name        :table.display_name
+                   :table_schema              :table.schema
+                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                   ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
+                   :table-collection-id       :table.collection_id
+                   :table-is-published        :table.is_published
+                   :table-collection-location :collection.location
+                   :table-collection-type     :collection.type}
+    ;; Only published tables count as library content, matching the table spec's own collection join.
+    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
+            :collection [:model/Collection
+                         [:and
+                          [:= :table.is_published true]
+                          [:= :collection.id :table.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Segment [_model]
+  {:type  :segment
+   :items segments.db/dependency-segment-items
+
+   :dependencies segments.dependencies/dependencies
+   :analysis     segments.dependencies/analysis
+
+   :dependency-columns #{:definition :table_id}
+   :analysis-columns   #{:definition :table_id}
+   :output-columns     #{:definition :table_id}})
+
+(defmethod replacement/spec :model/Segment [_model]
+  {:upgrade-field-refs segments.replacement/upgrade-field-refs
+   :swap-source        segments.replacement/swap-source})
+
+(defmethod eid-translation/spec :model/Segment [_model]
+  {:names [:segment]})
+
+(defmethod xrays/spec :model/Segment [_model]
+  {:related    segments.xrays/related
+   :definition segments.xrays/definition})

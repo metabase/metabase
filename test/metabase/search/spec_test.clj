@@ -1,6 +1,7 @@
 (ns metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.resolution :as models.resolution]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
@@ -94,7 +95,7 @@
                  #_#_:DashboardCard    #{{:search-model "card"
                                           :fields       nil
                                           :where        [:= :updated.card_id :this.id]}}}
-         (#'search.spec/search-model-hooks (search.spec/spec "card")))))
+         (#'search.spec/search-model-hooks (search.spec/search-model-spec "card")))))
 
 (deftest ^:parallel search-model-hooks-test-2
   ;; TODO replace real specs with frozen test ones once things have stabilized
@@ -124,9 +125,9 @@
                                 :fields       #{:location :type}
                                 :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
          (#'search.spec/merge-hooks
-          [(#'search.spec/search-model-hooks (search.spec/spec "table"))
-           (#'search.spec/search-model-hooks (search.spec/spec "segment"))
-           (#'search.spec/search-model-hooks (search.spec/spec "collection"))]))))
+          [(#'search.spec/search-model-hooks (search.spec/search-model-spec "table"))
+           (#'search.spec/search-model-hooks (search.spec/search-model-spec "segment"))
+           (#'search.spec/search-model-hooks (search.spec/search-model-spec "collection"))]))))
 
 (deftest ^:parallel measure-parent-table-hooks-test
   (testing "a measure is reindexed when its parent table or its collection changes"
@@ -142,7 +143,7 @@
                    :Collection #{{:search-model "measure"
                                   :fields       #{:location :type}
                                   :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
-           (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
+           (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/search-model-spec "measure"))])
                         [:model/Table :model/Collection :model/TableUserSettings])))))
 
 (deftest ^:parallel search-models-to-update-test
@@ -157,12 +158,15 @@
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
 
 (deftest ^:parallel search-index-model-test
-  (testing "All the required models, but Revision, which publishes no lifecycle event, descend from :search/indexed\n"
+  (testing "All the required models, but Revision, which publishes no lifecycle event, have a search spec or derive :search/indexed\n"
     ;; TODO restore hooks to ModelIndex when toucan issue is resolved
     (let [expected-models (keys (dissoc (#'search.spec/model-hooks) :model/ModelIndex :model/ModelIndexValue :model/Revision))
           ;; Some models have submodels, so absorb those too
           expected-models (into (set expected-models) (mapcat descendants) expected-models)
-          actual-models   (set (descendants :search/indexed))]
+          spec-models     (keys (methods search.spec/spec))
+          actual-models   (-> (set (descendants :search/indexed))
+                              (into (mapcat #(cons % (descendants %))) spec-models)
+                              (disj :model/ModelIndexValue))]
       (doseq [em (sort-by name expected-models)]
         (testing (str "- " em)
           (is (actual-models em))))
@@ -176,28 +180,36 @@
 
 (deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
   (testing "replacing a spec method invalidates the cached model-hooks"
-    ;; Registering a throwaway spec would derive a fake model into :search/indexed and break
-    ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
-    (let [spec-multifn search.spec/spec*
-          ;; The first call resolves lazily loaded models, registering spec methods as it goes, so it caches
-          ;; under a key that is stale by the time it returns. The second call warms the settled method table.
+    (let [spec-multifn search.spec/spec
           _            (search.spec/model-hooks)
           warm         (search.spec/model-hooks)
-          original     (get-method spec-multifn "card")]
-      ;; Without a hit here the probe below would miss whatever the cache key did, proving nothing.
+          original     (get-method spec-multifn :model/Card)]
       (is (identical? warm (search.spec/model-hooks)))
       (try
         (.addMethod ^clojure.lang.MultiFn spec-multifn
-                    "card"
-                    (fn [_]
-                      (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+                    :model/Card
+                    (fn [model]
+                      (update-in (original model) ["card" :render-terms] assoc :cache-probe :cache_probe)))
         (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
                             (filter #(= "card" (:search-model %)))
                             first
                             :fields)
                        :cache_probe))
         (finally
-          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
+          (.addMethod ^clojure.lang.MultiFn spec-multifn :model/Card original))))))
+
+(deftest ^:parallel search-models-match-declared-spec-names-test
+  (is (= (set search.spec/search-models)
+         (set (keys (models.resolution/spec-entries-by-name search.spec/spec)))))
+  (is (apply distinct? search.spec/search-models)))
+
+(deftest every-search-model-has-valid-spec-test
+  (doseq [search-model search.spec/search-models]
+    (testing search-model
+      (let [spec (search.spec/search-model-spec search-model)]
+        (is (= search-model (:name spec)))
+        (is (contains? (search.spec/spec (:model spec)) search-model))
+        (is (nil? (search.spec/validate-spec! spec)))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
@@ -206,3 +218,23 @@
       (is (string? hash1))
       (is (= 64 (count hash1)) "SHA-256 hex string should be 64 characters")
       (is (= hash1 hash2) "Hash should be deterministic"))))
+
+(deftest ^:parallel index-version-hash-follows-specs-test
+  (let [specs (search.spec/specifications)]
+    (testing "the hash is stable across computations and map orders"
+      (is (= (#'search.spec/compute-index-version-hash specs)
+             (#'search.spec/compute-index-version-hash specs)
+             (#'search.spec/compute-index-version-hash (into (sorted-map-by #(compare %2 %1)) specs))))
+      (is (= (#'search.spec/compute-index-version-hash specs) (search.spec/index-version-hash))))
+    (testing "the hash changes when an attribute of a spec changes"
+      (is (not= (#'search.spec/compute-index-version-hash specs)
+                (#'search.spec/compute-index-version-hash (assoc-in specs ["card" :attrs :archived] false)))))
+    (testing "the hash changes when a function of a spec is replaced by another one"
+      (is (not= (#'search.spec/compute-index-version-hash specs)
+                (#'search.spec/compute-index-version-hash
+                 (assoc-in specs ["database" :search-terms :name] str)))))
+    (testing "a function is identified by its qualified name"
+      (is (= "metabase.search.spec/explode-camel-case" (#'search.spec/canonicalize search.spec/explode-camel-case))))
+    (testing "an anonymous function is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"anonymous function"
+                            (#'search.spec/canonicalize (fn [x] x)))))))
