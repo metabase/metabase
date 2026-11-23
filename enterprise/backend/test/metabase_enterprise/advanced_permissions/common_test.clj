@@ -4,6 +4,8 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -1171,7 +1173,9 @@
     (mt/with-premium-features #{:advanced-permissions :sandboxes}
       (mt/with-model-cleanup [:model/Sandbox :model/Table]
         (mt/with-temp [:model/PermissionsGroup {gid :id} {}
-                       :model/Card             {cid :id} {:dataset_query (mt/mbql-query venues {:filter [:= $category_id 50]})}]
+                       :model/Card             {cid :id} {:dataset_query (let [mp (mt/metadata-provider)]
+                                                                           (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                                       (lib/= (lib.metadata/field mp (mt/id :venues :category_id)) 50)))}]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (-> (data-perms.graph/api-graph)
