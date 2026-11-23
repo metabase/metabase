@@ -183,10 +183,9 @@
       (effective-name identifier dialect))))
 
 (defn- where-column-source
-  "The source in `names` that `column` of a WHERE conjunct belongs to, `::inner` or nil if it is unknown.
+  "The source in `names` that `column` of a WHERE conjunct names, or nil if it names none of them.
   A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
-  A column belongs to a subquery of `conjunct` if it is qualified with one of that subquery's sources.
-  An otherwise unresolved column is taken to belong to the nearest subquery with a FROM clause.
+  A column qualified with a source of a subquery of `conjunct` belongs to that subquery.
   Port of `_where_column_source`."
   [column conjunct names dialect]
   (let [parts (into []
@@ -195,38 +194,32 @@
                               (when (instance? Expressions$Identifier identifier)
                                 (effective-name identifier dialect)))))
                     ["catalog" "db" "table"])]
-    (loop [node column, has-from? false]
+    (loop [node column]
       (if (identical? node conjunct)
-        (or (some names parts)
-            (when has-from? ::inner))
+        (some names parts)
         (let [parent    (ast/parent node)
               from-node (when (instance? Expressions$Select parent)
                           (ast/arg parent "from_"))]
-          (if (and from-node
-                   (some (into #{}
-                               (keep #(source-name % dialect))
-                               (cons (ast/this from-node) (map ast/this (ast/arg parent "joins"))))
-                         parts))
-            ::inner
-            (recur parent (or has-from? (some? from-node)))))))))
+          (when-not (and from-node
+                         (some (into #{}
+                                     (keep #(source-name % dialect))
+                                     (cons (ast/this from-node) (map ast/this (ast/arg parent "joins"))))
+                               parts))
+            (recur parent)))))))
 
 (defn- where-may-join?
-  "Whether a conjunct of `where` may be the condition of a comma join to a source in `comma-names`.
+  "Whether a conjunct of `where` names a source in `comma-names` and another source.
   The step queries leave WHERE out, so they would count the whole cross product of such a join.
-  A conjunct may be one when it compares such a source with another, or has several columns of unknown source.
+  A column that names no source may belong to any of them, so it does not count as a second source.
   Port of `_where_may_join`."
   [where names comma-names dialect]
   (boolean
    (some (fn [conjunct]
-           (let [columns (into []
-                               (comp (map #(where-column-source % conjunct names dialect))
-                                     (remove #{::inner}))
-                               (ast/find-all conjunct Expressions$Column))
-                 sources (set columns)]
-             (and (> (count columns) 1)
-                  (or (contains? sources nil)
-                      (and (> (count sources) 1)
-                           (some comma-names sources))))))
+           (let [sources (into #{}
+                               (keep #(where-column-source % conjunct names dialect))
+                               (ast/find-all conjunct Expressions$Column))]
+             (and (> (count sources) 1)
+                  (some comma-names sources))))
          (conjuncts (ast/this where)))))
 
 (defn- operand-column

@@ -327,17 +327,48 @@
       :alias "b",
       :strategy "cross",
       :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
-  {:name "a comma join to a struct column of another source is refused",
+  {:name "a comma join to a column path naming no source counts the cross product",
    :dialect "bigquery",
    :sql "SELECT * FROM a, b WHERE a.id = payload.id",
-   :expected {:status "unsupported", :reason "comma-join"}}
-  {:name "a comma join with a condition in a subquery with no FROM is refused",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "a comma join with unqualified columns in a subquery counts the cross product",
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE EXISTS (SELECT 1 WHERE a_key = b_key)",
-   :expected {:status "unsupported", :reason "comma-join"}}
-  {:name "a comma join comparing unqualified columns is refused: they may be its condition",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join comparing unqualified columns counts the cross product",
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE x = y",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join comparing struct fields of two sources is refused",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a, b WHERE a.payload.x = b.payload.y",
    :expected {:status "unsupported", :reason "comma-join"}}
   {:name "a comma join with a subquery correlated to both sources is refused",
    :dialect "postgres",
@@ -661,10 +692,19 @@
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON b.id IN (SELECT id FROM c TABLESAMPLE BERNOULLI (10))",
    :expected {:status "unsupported", :reason "unsupported-source"}}
-  {:name "an unaliased derived table after a comma is refused where commas parse as CROSS",
+  {:name "an unaliased derived table after a comma counts where commas parse as CROSS",
    :dialect "sqlite",
    :sql "SELECT * FROM a, (SELECT 1 AS x) WHERE a.id = x",
-   :expected {:status "unsupported", :reason "comma-join"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "derived",
+      :table nil,
+      :alias "",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN (SELECT 1 AS x)"}]}}
   {:name "a table function after a comma is refused where commas parse as CROSS",
    :dialect "sqlite",
    :sql "SELECT * FROM a, json_each(a.j) j WHERE a.id = j.key",
