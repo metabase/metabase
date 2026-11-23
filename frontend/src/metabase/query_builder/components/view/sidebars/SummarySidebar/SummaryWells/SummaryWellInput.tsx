@@ -111,7 +111,7 @@ export function SummaryWellInput({
       return;
     }
     setGenerateState({ status: "loading" });
-    const result = await formulaGenerator.generate(wellId, prompt);
+    const result = await formulaGenerator.generateBasedOnPrompt(wellId, prompt);
     if (result.status === "cancelled") {
       return;
     }

@@ -63,7 +63,7 @@ export function useSummaryFormulaGenerator({
     };
   }, []);
 
-  const generate = async (
+  const generateBasedOnPrompt = async (
     wellId: SummaryWellId,
     prompt: string,
   ): Promise<SummaryFormulaGenerateResult> => {
@@ -116,7 +116,7 @@ export function useSummaryFormulaGenerator({
     return { status: "added" };
   };
 
-  return { access, generate };
+  return { access, generateBasedOnPrompt };
 }
 
 function getAccess(

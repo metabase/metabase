@@ -19,8 +19,7 @@ export type SummaryFormulaAccess = "loading" | "available" | "unavailable";
 
 export type SummaryFormulaGenerator = {
   access: SummaryFormulaAccess;
-  /** Asks AI for a formula for `prompt` and adds it to the well when it compiles. */
-  generate: (
+  generateBasedOnPrompt: (
     wellId: SummaryWellId,
     prompt: string,
   ) => Promise<SummaryFormulaGenerateResult>;
