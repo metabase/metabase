@@ -253,15 +253,10 @@ export type GenerateCustomExpressionReference = {
 };
 
 export type GenerateCustomExpressionRequest = {
-  /** The type of expression to generate. */
   mode: "aggregation" | "expression";
-  /** Prompt for describing the expression to generate, e.g. `average order total`. */
   prompt: string;
-  /** Available columns, with names in escaped expression syntax, e.g. `[User → Name]` or `[Total\[USD\]]`. */
   columns: GenerateCustomExpressionReference[];
-  /** Available metrics, named like columns. Only allowed in `aggregation` mode. */
   metrics?: GenerateCustomExpressionReference[] | null;
-  /** Available measures, named like columns. Only allowed in `aggregation` mode. */
   measures?: GenerateCustomExpressionReference[] | null;
   table_name?: string | null;
   metabot_id: string;
@@ -269,7 +264,6 @@ export type GenerateCustomExpressionRequest = {
 };
 
 export type GenerateCustomExpressionResponse = {
-  /** Custom expression source without the leading `=`. */
   expression: string;
   name: string;
 };
