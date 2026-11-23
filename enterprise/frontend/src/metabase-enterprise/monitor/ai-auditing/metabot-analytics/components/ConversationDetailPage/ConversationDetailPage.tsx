@@ -134,6 +134,7 @@ export function ConversationDetailPage() {
 
   const {
     total_tokens,
+    cache_read_tokens,
     message_count,
     search_count,
     query_count,
@@ -168,6 +169,10 @@ export function ConversationDetailPage() {
               <StatCard
                 label={t`Total tokens`}
                 value={formatNumber(total_tokens)}
+                description={getCachedTokensDescription(
+                  total_tokens,
+                  cache_read_tokens,
+                )}
               />
               <StatCard
                 label={t`Queries run`}
@@ -251,7 +256,28 @@ export function ConversationDetailPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function getCachedTokensDescription(
+  totalTokens: number,
+  cachedTokens: number,
+): string | undefined {
+  if (totalTokens <= 0) {
+    return undefined;
+  }
+  // the two counts come from two tables, so the share is clamped at 100
+  const percent = Math.min(100, Math.round((cachedTokens / totalTokens) * 100));
+  const cached = formatNumber(cachedTokens);
+  return t`${cached} cached (${percent}%)`;
+}
+
+function StatCard({
+  label,
+  value,
+  description,
+}: {
+  label: string;
+  value: string;
+  description?: string;
+}) {
   return (
     <Card withBorder shadow="none" p="lg">
       <Text size="sm" c="text-secondary">
@@ -260,6 +286,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <Title order={2} mt="xxs">
         {value}
       </Title>
+      {description && (
+        <Text size="sm" c="text-secondary" mt="xxs">
+          {description}
+        </Text>
+      )}
     </Card>
   );
 }

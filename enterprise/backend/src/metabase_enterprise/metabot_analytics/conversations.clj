@@ -38,6 +38,7 @@
    :assistant_message_count     (:assistant_message_count row)
    :total_tokens                (long (:total_tokens row 0))
    :cache_read_tokens           (long (:cache_read_tokens row 0))
+   :uncached_tokens             (long (:uncached_tokens row 0))
    :last_message_at             (:last_message_at row)
    :profile_id                  (:profile_id row)
    :search_count                (:search_count row 0)
@@ -123,6 +124,8 @@
   (let [conversation (metabot-analytics.db/conversation conversation-id)]
     (api/check-404 conversation)
     (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
+          total-tokens (transduce (keep :total_tokens) + 0 all-messages)
+          cache-read   (metabot-analytics.db/cache-read-tokens-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id             (:id conversation)
@@ -130,7 +133,10 @@
        :title                       (:title conversation)
        :user                        (trim-user (:user hydrated))
        :message_count               (count all-messages)
-       :total_tokens                (transduce (keep :total_tokens) + 0 all-messages)
+       :total_tokens                total-tokens
+       :cache_read_tokens           cache-read
+       ;; the two sums come from two tables, so the difference is clamped at 0
+       :uncached_tokens             (max 0 (- total-tokens cache-read))
        :profile_id                  (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
        :slack_permalink             (slack-permalink conversation)
        :messages                    (metabot-persistence/messages->threaded-client-messages

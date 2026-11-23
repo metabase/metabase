@@ -230,20 +230,29 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
       cell: ({ row }) => formatNumber(row.original.message_count),
     },
     {
-      id: "total_tokens",
-      header: t`Tokens`,
+      id: "uncached_tokens",
+      header: ({ column }) => (
+        <Tooltip
+          label={t`Tokens not served from the provider cache: all tokens minus Cached tokens.`}
+        >
+          <SortableHeaderPill
+            name={t`Uncached tokens`}
+            sort={column.getIsSorted() || undefined}
+          />
+        </Tooltip>
+      ),
       width: "auto",
-      minWidth: 90,
+      minWidth: 140,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (convo) => convo.total_tokens,
-      cell: ({ row }) => formatNumber(row.original.total_tokens),
+      accessorFn: (convo) => convo.uncached_tokens,
+      cell: ({ row }) => formatNumber(row.original.uncached_tokens),
     },
     {
       id: "cache_read_tokens",
       header: ({ column }) => (
         <Tooltip
-          label={t`Portion of tokens served from the provider cache. A subset of Tokens, not an additional count.`}
+          label={t`Tokens served from the provider cache. Not part of Uncached tokens.`}
         >
           <SortableHeaderPill
             name={t`Cached tokens`}

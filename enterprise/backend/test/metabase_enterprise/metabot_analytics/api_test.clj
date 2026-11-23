@@ -179,7 +179,8 @@
           (is (= 1 (:message_count convo-3-response)))
           (is (= 1 (:assistant_message_count convo-3-response)))
           (is (= 99 (:total_tokens convo-3-response)))
-          (is (= 0 (:cache_read_tokens convo-3-response))))
+          (is (= 0 (:cache_read_tokens convo-3-response)))
+          (is (= 99 (:uncached_tokens convo-3-response))))
         (is (= {:conversation_id         convo-1
                 :title                   "First conversation"
                 :message_count           2
@@ -187,6 +188,8 @@
                 :assistant_message_count 1
                 :total_tokens            10
                 :cache_read_tokens       125
+                ;; more cache reads than message tokens: clamped, never negative
+                :uncached_tokens         0
                 :profile_id              "nlq"
                 :user                    {:id         test-user-id
                                           :email      "metabot-analytics-list-test@metabase.com"
@@ -194,7 +197,7 @@
                                           :last_name  "Analytics"}}
                (-> (select-keys convo-1-response [:conversation_id :title :message_count
                                                   :user_message_count :assistant_message_count :total_tokens
-                                                  :cache_read_tokens :profile_id :user])
+                                                  :cache_read_tokens :uncached_tokens :profile_id :user])
                    (update :user select-keys [:id :email :first_name :last_name]))))
         (is (= {:conversation_id         convo-2
                 :message_count           3
@@ -202,10 +205,11 @@
                 :assistant_message_count 2
                 :total_tokens            26
                 :cache_read_tokens       40
+                :uncached_tokens         0
                 :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
                                               :assistant_message_count :total_tokens :cache_read_tokens
-                                              :profile_id])))))))
+                                              :uncached_tokens :profile_id])))))))
 
 (deftest list-and-detail-agree-for-regenerated-conversation-test
   (mt/with-premium-features #{:audit-app}
@@ -240,6 +244,9 @@
                       :profile-id "internal"
                       :total-tokens 20
                       :data [{:type "text" :text "kept"}]})
+            (insert-usage! {:conversation-id conversation-id :cache-read-tokens 5})
+            (insert-usage! {:conversation-id conversation-id :cache-read-tokens 7})
+            (insert-usage! {:conversation-id conversation-id})
             (let [summary (find-conversation
                            (:data (mt/user-http-request :crowberto :get 200
                                                         (str "ee/metabot-analytics/conversations?user_id=" owner-id)))
@@ -247,10 +254,10 @@
                   detail  (mt/user-http-request :crowberto :get 200
                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
               (is (some? summary))
-              (doseq [k [:message_count :total_tokens :search_count :query_count]]
+              (doseq [k [:message_count :total_tokens :cache_read_tokens :uncached_tokens :search_count :query_count]]
                 (is (= (get detail k) (get summary k))))
-              (is (= [3 32 1]
-                     ((juxt :message_count :total_tokens :search_count) detail))))
+              (is (= [3 32 12 20 1]
+                     ((juxt :message_count :total_tokens :cache_read_tokens :uncached_tokens :search_count) detail))))
             (finally
               (delete-conversations! [conversation-id]))))))))
 
@@ -287,6 +294,7 @@
      message_count:     (m, z, a)   counts 1, 2, 3
      total_tokens:      (a, z, m)   tokens 10, 20, 30
      cache_read_tokens: (z, a, m)   cache reads 5, 15 (7+8), 25
+     uncached_tokens:   (a, m, z)   tokens minus cache reads 0 (clamped), 5, 15
      title:             (z, m, a)   Alpha request / Middle request / Zebra request
        (all six permutations of three handles are taken, so these
         necessarily repeat an earlier column's ordering)"
@@ -355,6 +363,7 @@
                ["message_count" [convo-m convo-z convo-a]]
                ["total_tokens"  [convo-a convo-z convo-m]]
                ["cache_read_tokens" [convo-z convo-a convo-m]]
+               ["uncached_tokens" [convo-a convo-m convo-z]]
                ["title"         [convo-z convo-m convo-a]]]]
         (testing (str "sort_by=" sort-by " &sort_dir=asc")
           (let [response (mt/user-http-request :crowberto :get 200
@@ -492,6 +501,9 @@
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
             (is (= 2 (:message_count response)))
+            (is (= [12 0 12]
+                   ((juxt :total_tokens :cache_read_tokens :uncached_tokens) response))
+                "no usage rows: no cache reads, every token is uncached")
             (is (= [] (:feedback response)))
             (is (= 2 (count (:messages response)))
                 "one user prompt + one assistant reply, as row-level messages")

@@ -68,10 +68,25 @@
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
    "cache_read_tokens" [:cache_read_tokens]
+   "uncached_tokens"   [:uncached_tokens]
    "user"              [[:lower [:min :u.first_name]]
                         [:lower [:min :u.last_name]]]
    "profile_id"        [:profile_id]
    "ip_address"        [:c.ip_address]})
+
+(def ^:private total-tokens-expr
+  "Sum of the tokens of a conversation's messages. Cache read tokens are part of it."
+  [:coalesce [:sum :m.total_tokens] 0])
+
+(def ^:private cache-read-tokens-expr
+  "Sum of the cache read tokens of a conversation. Cache tokens are only recorded per LLM call in `ai_usage_log`
+  (`metabot_message` stores prompt+completion only), so this is a correlated subquery rather than another one-to-many
+  join, which would fan out against the `metabot_message` join and inflate every other aggregate."
+  [:coalesce
+   ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
+                     :from   [[:ai_usage_log :aul]]
+                     :where  [:= :aul.conversation_id :c.id]}
+   0])
 
 (def ^:private conversation-list-select
   "Conversation rows with aggregate stats, including deleted attempts. Messages
@@ -82,7 +97,7 @@
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-               [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+               [total-tokens-expr :total_tokens]
                [[:max :m.created_at] :last_message_at]
                [^:allow-subquery {:select   [:mm.profile_id]
                                   :from     [[:metabot_message :mm]]
@@ -92,17 +107,9 @@
                                   :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                                   :limit    1}
                 :profile_id]
-               ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
-               ;; (`metabot_message` stores prompt+completion only), so this is a
-               ;; correlated subquery rather than another one-to-many join, which
-               ;; would fan out against the `metabot_message` join and inflate
-               ;; every aggregate above.
-               [[:coalesce
-                 ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
-                                   :from   [[:ai_usage_log :aul]]
-                                   :where  [:= :aul.conversation_id :c.id]}
-                 0]
-                :cache_read_tokens]]
+               [cache-read-tokens-expr :cache_read_tokens]
+               ;; The two sums come from two tables, so the difference is clamped at 0.
+               [[:greatest [:- total-tokens-expr cache-read-tokens-expr] 0] :uncached_tokens]]
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
@@ -146,6 +153,14 @@
     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
+
+(mu/defn cache-read-tokens-for-conversation :- ms/IntGreaterThanOrEqualToZero
+  "The sum of the cache read tokens of the LLM calls of the MetabotConversation with `conversation-id`."
+  [conversation-id :- :string]
+  (long (or (:cache_read_tokens (t2/query-one {:select [[[:sum :cache_read_tokens] :cache_read_tokens]]
+                                               :from   [:ai_usage_log]
+                                               :where  [:= :conversation_id conversation-id]}))
+            0)))
 
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
