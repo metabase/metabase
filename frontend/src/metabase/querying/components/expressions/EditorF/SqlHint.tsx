@@ -3,10 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import {
-  EXPRESSION_SQL_FIXES_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import { Box, Button, Code, Flex, Icon, Loader, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -56,7 +52,6 @@ export function useSqlHint({
   /** Writes the text at once, without a diff. */
   applySource: (source: string) => void;
 }) {
-  const [hasFixes] = usePrototypeSetting(EXPRESSION_SQL_FIXES_SETTING);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "questions/query-builder/expressions",
   );
@@ -77,8 +72,8 @@ export function useSqlHint({
     [isActive, source],
   );
   const fixes = useMemo(
-    () => (isActive && hasFixes ? getSqlFixes(source, columnNames) : []),
-    [isActive, hasFixes, source, columnNames],
+    () => (isActive ? getSqlFixes(source, columnNames) : []),
+    [isActive, source, columnNames],
   );
   // All fixes, round after round: a fix of a CASE leaves fixes in its parts
   // for the next round.

@@ -263,7 +263,6 @@ export function suggestRelatedColumns({
   query,
   stageIndex,
   availableColumns,
-  columnsOutsideBrackets = true,
 }: SuggestOptions) {
   const options: ExpressionSuggestion[] = availableColumns.map((column) => {
     const info = Lib.displayInfo(query, stageIndex, column);
@@ -282,7 +281,7 @@ export function suggestRelatedColumns({
     (token) =>
       isFieldReference(token) ||
       token?.text.startsWith("[") === true ||
-      (columnsOutsideBrackets && isIdentifier(token)),
+      isIdentifier(token),
   );
   if (source == null) {
     return null;

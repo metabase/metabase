@@ -13,10 +13,6 @@ const importInlineEditor = () =>
     return module;
   });
 
-export const prefetchInlineExpressionEditor = () => {
-  void importInlineEditor();
-};
-
 export const useInlineExpressionEditorChunk = () => {
   const [isLoaded, setIsLoaded] = useState(isInlineEditorLoaded);
 

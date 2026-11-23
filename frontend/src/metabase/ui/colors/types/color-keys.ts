@@ -168,8 +168,6 @@ export type MetabaseColorKey =
   | "core-white"
   | "core-white_constant"
   | "core-yellow-saturated"
-  | "custom_column-selected"
-  | "custom_column_label-selected"
   | "feedback-negative"
   | "feedback-negative-strong"
   | "feedback-neutral-strong"

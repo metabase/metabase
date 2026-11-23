@@ -5,10 +5,6 @@ import { t } from "ttag";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
-import {
-  EXPRESSION_PREVIEW_CONTEXT_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import { formatExpressionParts } from "metabase/querying/expressions";
 import { ActionIcon, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -25,11 +21,7 @@ import PlayIcon from "../../../components/expressions/Editor/play.svg?component"
 
 import S from "./ExpressionPreview.module.css";
 import { PreviewTable } from "./PreviewTable";
-import {
-  type ContextColumnsMode,
-  getContextCandidates,
-  pickContextColumns,
-} from "./context-columns";
+import { getContextCandidates, pickContextColumns } from "./context-columns";
 
 // Rows to run the expression on, and rows to show from them.
 const QUERY_ROW_COUNT = 200;
@@ -109,7 +101,6 @@ export function ExpressionPreview({
 
   // Columns that tell what a row is about, for the expression that they were
   // picked for. The preview waits for them, so that it runs once.
-  const [contextMode] = usePrototypeSetting(EXPRESSION_PREVIEW_CONTEXT_SETTING);
   const [context, setContext] = useState<{
     clause: Lib.ExpressionClause;
     names: string[];
@@ -121,8 +112,6 @@ export function ExpressionPreview({
     let isCancelled = false;
     const { query, stageIndex, expressionIndex, name } = latestRef.current;
     getContextNames(
-      // The options of the setting are the values of the mode.
-      contextMode as ContextColumnsMode,
       query,
       stageIndex,
       expressionMode === "filter" ? undefined : expressionIndex,
@@ -136,7 +125,7 @@ export function ExpressionPreview({
     return () => {
       isCancelled = true;
     };
-  }, [expressionMode, clause, contextMode]);
+  }, [expressionMode, clause]);
   const contextNames = context?.clause === clause ? context.names : undefined;
 
   const preview = useMemo(() => {
@@ -415,16 +404,12 @@ function getPreviewBase(
 
 /** The names of the columns that tell what a row is about. */
 async function getContextNames(
-  mode: ContextColumnsMode,
   query: Lib.Query,
   stageIndex: number,
   expressionIndex: number | undefined,
   clause: Lib.ExpressionClause,
   name: string,
 ) {
-  if (mode === "off") {
-    return [];
-  }
   const base = getPreviewBase(query, stageIndex, expressionIndex, clause, name);
   if (base == null) {
     return [];
@@ -440,7 +425,7 @@ async function getContextNames(
     Lib.expressionParts(previewQuery, stageIndex, clause),
     { query: previewQuery, stageIndex },
   );
-  return pickContextColumns(mode, source, name, candidates);
+  return pickContextColumns(source, name, candidates);
 }
 
 /**

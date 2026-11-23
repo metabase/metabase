@@ -44,8 +44,6 @@ export interface MetabotPromptInputProps {
     suggestionModels: SuggestionModel[];
     onlyDatabaseId?: DatabaseId;
   };
-  /** Turns off `@` mentions, for inputs where Metabot entities make no sense. */
-  disableMentions?: boolean;
 }
 export const MetabotPromptInput = forwardRef<
   MetabotPromptInputRef | null,
@@ -58,7 +56,6 @@ export const MetabotPromptInput = forwardRef<
       autoFocus,
       disabled,
       suggestionConfig,
-      disableMentions = false,
       onChange,
       onSubmit,
       onStop,
@@ -87,20 +84,16 @@ export const MetabotPromptInput = forwardRef<
         HTMLAttributes: { class: S.smartLink },
         siteUrl,
       }),
-      ...(disableMentions
-        ? []
-        : [
-            MetabotMentionExtension.configure({
-              suggestion: {
-                render: createBareSuggestionRenderer(
-                  createMetabotMentionSuggestionNew({
-                    searchModels: suggestionConfig.suggestionModels,
-                    onlyDatabaseId: suggestionConfig.onlyDatabaseId,
-                  }),
-                ),
-              },
+      MetabotMentionExtension.configure({
+        suggestion: {
+          render: createBareSuggestionRenderer(
+            createMetabotMentionSuggestionNew({
+              searchModels: suggestionConfig.suggestionModels,
+              onlyDatabaseId: suggestionConfig.onlyDatabaseId,
             }),
-          ]),
+          ),
+        },
+      }),
     ];
 
     const editor = useEditor(
@@ -200,7 +193,6 @@ export const MetabotPromptInput = forwardRef<
         suggestionConfig.suggestionModels.join(","),
         placeholder,
         siteUrl,
-        disableMentions,
       ],
     );
 

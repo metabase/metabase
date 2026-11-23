@@ -64,8 +64,6 @@ export type SuggestOptionsB = {
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
-  /** False: columns only after "[", not for a bare word. */
-  columnsOutsideBrackets?: boolean;
   /** Display names of the functions to suggest while the expression is empty. */
   popularFunctions?: string[];
   /** Gives the values of a column, for a value that is compared to it. */

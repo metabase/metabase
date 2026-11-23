@@ -1,11 +1,5 @@
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
-import {
-  type Diagnostic,
-  forceLinting,
-  linter,
-  setDiagnostics,
-} from "@codemirror/lint";
-import { StateEffect, StateField } from "@codemirror/state";
+import { type Diagnostic, linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 
 import {
@@ -36,41 +30,10 @@ type LintOptions = {
   database: Pick<Database, "features"> | undefined;
 };
 
-const setShowErrors = StateEffect.define<boolean>();
-
-/** False while errors are hidden, so that the user can type freely. */
-const showErrorsField = StateField.define<boolean>({
-  create: () => true,
-  update(value, tr) {
-    for (const effect of tr.effects) {
-      if (effect.is(setShowErrors)) {
-        return effect.value;
-      }
-    }
-    return value;
-  },
-});
-
-/** Shows or hides the error marks in the code. */
-export function showErrors(view: EditorView, isShown: boolean) {
-  if (view.state.field(showErrorsField, false) === isShown) {
-    return;
-  }
-  view.dispatch({ effects: setShowErrors.of(isShown) });
-  if (isShown) {
-    forceLinting(view);
-  } else {
-    view.dispatch(setDiagnostics(view.state, []));
-  }
-}
-
 const lint = (options: LintOptions) =>
   linter(
     (view: EditorView): Diagnostic[] => {
-      if (
-        !view.state.field(showErrorsField, false) ||
-        hasActiveSnippet(view.state)
-      ) {
+      if (hasActiveSnippet(view.state)) {
         return [];
       }
 
@@ -97,10 +60,6 @@ const lint = (options: LintOptions) =>
     {
       delay: DEBOUNCE_VALIDATION_MS,
       tooltipFilter: () => [],
-      needsRefresh: (update) =>
-        update.transactions.some((tr) =>
-          tr.effects.some((effect) => effect.is(setShowErrors)),
-        ),
     },
   );
 
@@ -121,8 +80,5 @@ function getErrorPosition(error: ExpressionError | Error) {
 }
 
 export function customExpression(options: LintOptions) {
-  return new LanguageSupport(expressionLanguage, [
-    showErrorsField,
-    lint(options),
-  ]);
+  return new LanguageSupport(expressionLanguage, [lint(options)]);
 }

@@ -417,7 +417,6 @@ export function InlineExpressionEditorF({
             onAcceptName={handleAcceptName}
             breakouts={breakouts}
             onAcceptBreakouts={onAcceptBreakouts}
-            inline
           />
         </Layout>
         {previewRun == null && !readOnly && (

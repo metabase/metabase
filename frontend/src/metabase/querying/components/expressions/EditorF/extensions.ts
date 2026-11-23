@@ -5,10 +5,6 @@ import { tags } from "@lezer/highlight";
 import { useMemo } from "react";
 
 import {
-  EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
-import {
   expressionEditing,
   expressionTemplates,
   functionArgumentPlaceholders,
@@ -69,9 +65,6 @@ export function useExtensions(options: Options): Extension[] {
     extensions: extra = [],
   } = options;
   const getColumnValues = useGetColumnValues(query);
-  const [hasColumnsOutsideBrackets] = usePrototypeSetting(
-    EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
-  );
 
   return useMemo(() => {
     return [
@@ -100,7 +93,6 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
-        columnsOutsideBrackets: hasColumnsOutsideBrackets,
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
         getColumnValues,
         openDocs,
@@ -122,7 +114,6 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
-    hasColumnsOutsideBrackets,
     getColumnValues,
     openDocs,
     isDocsOpen,

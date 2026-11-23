@@ -21,15 +21,12 @@ export type Options = {
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
-  /** False: columns only after "[", not for a bare word. */
-  columnsOutsideBrackets?: boolean;
 };
 
 export function suggestFields({
   query,
   stageIndex,
   availableColumns,
-  columnsOutsideBrackets = true,
 }: Options) {
   const columns = availableColumns.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
@@ -86,7 +83,7 @@ export function suggestFields({
 
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || (!columnsOutsideBrackets && !token.text.startsWith("["))) {
+    if (!token) {
       return null;
     }
 

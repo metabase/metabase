@@ -1,6 +1,6 @@
 import { closeCompletion } from "@codemirror/autocomplete";
 import { unifiedMergeView } from "@codemirror/merge";
-import { EditorSelection, type EditorState } from "@codemirror/state";
+import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
@@ -15,7 +15,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useMount } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -29,31 +28,22 @@ import {
   dismissSuggestionsOrPlaceholders,
   expressionClauseSnippet,
   format,
-  formatIdentifier,
   getClauseDefinition,
   insertExpressionTemplate,
   insertWithPlaceholders,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import { ActionIcon, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
-import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
 import { ExpressionSidePanel } from "../ExpressionSidePanel";
-import type { ExpressionSidebarName } from "../ExpressionSidebar";
-import { ExpressionSidebarPanel } from "../ExpressionSidebar";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
-import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./EditorF.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
-import { InlineToolbar } from "./InlineToolbar";
-import type { Shortcut } from "./Shortcuts";
-import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
 import type { GeneratedBreakout } from "./api";
@@ -80,16 +70,7 @@ export type EditorFProps = {
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
-  hasHeader?: boolean;
-  onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
-
-  /**
-   * Set when the editor is on the page, not in a popover. It drops the exit
-   * guard, which swallows clicks page-wide, and puts the sidebar in the host's
-   * slot when there is one.
-   */
-  inline?: boolean;
 
   /** Version F: at the start of the row, before the prompt or the code. */
   toolbarStart?: ReactNode;
@@ -117,24 +98,12 @@ export type EditorFProps = {
    * the clause when the text is valid.
    */
   onEdit?: (source: string, clause: Lib.ExpressionClause | null) => void;
-  /**
-   * Called when a proposed change shows as a diff, or changes, or goes, with
-   * the clause when the proposed text is valid, and the proposed name.
-   */
   /** Called when an AI text goes into the code without a diff to confirm. */
   onGenerated?: (run: {
     source: string;
     clause: Lib.ExpressionClause;
     name?: string;
   }) => void;
-  onProposalChange?: (
-    proposal: {
-      source: string;
-      clause: Lib.ExpressionClause | null;
-      name?: string;
-    } | null,
-  ) => void;
-  shortcuts?: Shortcut[];
   /**
    * False hides the errors, the SQL hint and the error marks in the code, so
    * that the user can type without distraction. True by default.
@@ -211,9 +180,8 @@ const INLINE_BASIC_SETUP = {
   highlightActiveLineGutter: false,
 };
 
-const EDITOR_WIDGET_HEIGHT = 220;
-const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
-const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
+// The height of the sidebar when the page has no slot for it.
+const SIDEBAR_HEIGHT = 266;
 
 export function EditorF(props: EditorFProps) {
   const {
@@ -227,11 +195,7 @@ export function EditorF(props: EditorFProps) {
     readOnly,
     error,
     reportTimezone,
-    shortcuts,
-    hasHeader,
-    onCloseEditor,
     initialExpressionClause,
-    inline = false,
     toolbarStart,
     toolbarEnd,
     name,
@@ -239,7 +203,6 @@ export function EditorF(props: EditorFProps) {
     onAcceptName,
     breakouts,
     onAcceptBreakouts,
-    onProposalChange,
     onGenerated,
     showErrors = true,
     validateRef,
@@ -259,12 +222,12 @@ export function EditorF(props: EditorFProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const { host, openSidebar, setOpenSidebar } = useEditorSidebar({ inline });
+  const { host, openSidebar, setOpenSidebar } = useEditorSidebar();
 
-  // A filter or summary popover closes on Escape before the code gets the
-  // key. Escape first closes the suggestions, then leaves the placeholders,
-  // and only then reaches the popover. The window's capture phase comes
-  // before the popover's handler.
+  // The editor closes on Escape before the code gets the key. Escape first
+  // closes the suggestions, then leaves the placeholders, and only then
+  // closes the editor. The window's capture phase comes before the editor's
+  // handler.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const view = ref.current?.view;
@@ -286,15 +249,8 @@ export function EditorF(props: EditorFProps) {
       window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, []);
 
-  const toggleSidebar = useCallback(
-    (name: ExpressionSidebarName) =>
-      setOpenSidebar(openSidebar === name ? null : name),
-    [openSidebar, setOpenSidebar],
-  );
-
   const {
     source,
-    hasSourceChanged,
     onSourceChange,
     onBlur,
     formatExpression,
@@ -306,10 +262,6 @@ export function EditorF(props: EditorFProps) {
     ...props,
     database,
     error,
-  });
-
-  const { showModal, closeModal } = useCloseModal({
-    allowPopoverExit: inline || source === "" || !hasSourceChanged,
   });
 
   const [columnHover, columnHoverCard] = useColumnHover({
@@ -356,9 +308,9 @@ export function EditorF(props: EditorFProps) {
     database,
     openDocs: stableExtensions.openDocs,
     isDocsOpen: stableExtensions.isDocsOpen,
-    // In the custom column editor, Enter saves, so a suggestion for a plain
-    // word isn't highlighted until Down.
-    highlightFirstSuggestion: !inline,
+    // Enter saves, so a suggestion for a plain word isn't highlighted until
+    // Down.
+    highlightFirstSuggestion: false,
     extensions: [customTooltip, columnHover, stableExtensions.prefix],
   });
 
@@ -538,8 +490,6 @@ export function EditorF(props: EditorFProps) {
     };
   }
 
-  useReportProposal(proposal, compileSource, onProposalChange);
-
   const handleProposedNameChange = useCallback((name: string) => {
     setProposal((proposal) => proposal && { ...proposal, name });
   }, []);
@@ -631,7 +581,7 @@ export function EditorF(props: EditorFProps) {
     };
   }
 
-  const canAssist = inline && !readOnly;
+  const canAssist = !readOnly;
 
   // A hint on SQL in the expression replaces the error.
   const sqlHint = useSqlHint({
@@ -698,28 +648,6 @@ export function EditorF(props: EditorFProps) {
     }
   }, []);
 
-  const handleColumnClick = useCallback(
-    (column: Lib.ColumnMetadata) => {
-      const view = ref.current?.view;
-      if (!view) {
-        return;
-      }
-
-      // Same text the autocomplete inserts for a column.
-      const { longDisplayName } = Lib.displayInfo(query, stageIndex, column);
-      const text = formatIdentifier(longDisplayName);
-
-      view.focus();
-      view.dispatch(
-        view.state.changeByRange((range) => ({
-          range: EditorSelection.cursor(range.from + text.length),
-          changes: [{ from: range.from, to: range.to, insert: text }],
-        })),
-      );
-    },
-    [query, stageIndex],
-  );
-
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
@@ -738,99 +666,77 @@ export function EditorF(props: EditorFProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
-  const canFormat = source.trim() !== "" && error == null && isValidated;
-
   const closeSidebar = useCallback(
     () => setOpenSidebar(null),
     [setOpenSidebar],
   );
 
-  // The side panel has its own header. The column list uses the sidebar's.
-  const sidebarContent =
-    openSidebar === "columns" ? (
-      <ExpressionSidebarPanel
-        title={t`Available columns`}
-        onClose={closeSidebar}
-      >
-        <AvailableColumnsBrowser
-          query={query}
-          stageIndex={stageIndex}
-          availableColumns={availableColumns}
-          onColumnClick={handleColumnClick}
-        />
-      </ExpressionSidebarPanel>
-    ) : (
-      <ExpressionSidePanel
-        expressionMode={expressionMode}
-        query={query}
-        reportTimezone={reportTimezone}
-        onClose={closeSidebar}
-        onFunctionClick={handleFunctionBrowserClauseClick}
-        onTemplateClick={handleTemplateClick}
-      />
-    );
+  // The docs side panel, the only sidebar of the editor.
+  const sidebarContent = (
+    <ExpressionSidePanel
+      expressionMode={expressionMode}
+      query={query}
+      reportTimezone={reportTimezone}
+      onClose={closeSidebar}
+      onFunctionClick={handleFunctionBrowserClauseClick}
+      onTemplateClick={handleTemplateClick}
+    />
+  );
 
   const [isInitiallyCode] = useState(mode === "code");
   const isAiMode = mode === "ai";
-
-  const codeMirror = (
-    <CodeMirror
-      id={id}
-      ref={ref}
-      data-testid="custom-expression-query-editor"
-      className={S.editor}
-      extensions={extensions}
-      readOnly={readOnly || isFormatting}
-      value={proposedSource ?? source}
-      onChange={handleSourceChange}
-      onBlur={isProposing ? undefined : onBlur}
-      basicSetup={inline ? INLINE_BASIC_SETUP : undefined}
-      height={inline ? undefined : "100%"}
-      width="100%"
-      indentWithTab={false}
-      // In the one-line editor on the page, Tab with nothing to pick or fill
-      // in moves on to the toolbar, instead of typing spaces.
-      tabIndents={!inline}
-      // Also the brackets around column names.
-      matchBrackets="()[]"
-      // In AI mode the prompt has the focus.
-      autoFocus={isInitiallyCode}
-      onCreateEditor={handleCreateEditor}
-      onUpdate={handleUpdate}
-      autoCorrect="off"
-      tabIndex={0}
-      onFormat={
-        error === null && isValidated && !isSnippetActive && !isProposing
-          ? formatExpression
-          : undefined
-      }
-    />
-  );
 
   return (
     <>
       <LayoutMain
         className={cx(S.wrapper, {
           [S.formatting]: isFormatting,
-          [S.inline]: inline,
           [S.withStart]: toolbarStart != null,
         })}
       >
-        {inline ? (
-          <div className={S.inlineRow}>
-            {toolbarStart != null && (
-              <div className={S.inputStart}>{toolbarStart}</div>
-            )}
-            {isAiMode && aiInput}
-            {/* Hidden, not unmounted, in AI mode: it keeps the expression. */}
-            <div className={cx(S.code, { [S.hidden]: isAiMode })}>
-              {codeMirror}
-            </div>
-            <InlineToolbar end={toolbarEnd} />
+        <div className={S.inlineRow}>
+          {toolbarStart != null && (
+            <div className={S.inputStart}>{toolbarStart}</div>
+          )}
+          {isAiMode && aiInput}
+          {/* Hidden, not unmounted, in AI mode: it keeps the expression. */}
+          <div className={cx(S.code, { [S.hidden]: isAiMode })}>
+            <CodeMirror
+              id={id}
+              ref={ref}
+              data-testid="custom-expression-query-editor"
+              className={S.editor}
+              extensions={extensions}
+              readOnly={readOnly || isFormatting}
+              value={proposedSource ?? source}
+              onChange={handleSourceChange}
+              onBlur={isProposing ? undefined : onBlur}
+              basicSetup={INLINE_BASIC_SETUP}
+              width="100%"
+              indentWithTab={false}
+              // Tab with nothing to pick or fill in moves on to the toolbar, instead
+              // of typing spaces.
+              tabIndents={false}
+              // Also the brackets around column names.
+              matchBrackets="()[]"
+              // In AI mode the prompt has the focus.
+              autoFocus={isInitiallyCode}
+              onCreateEditor={handleCreateEditor}
+              onUpdate={handleUpdate}
+              autoCorrect="off"
+              tabIndex={0}
+              onFormat={
+                error === null &&
+                isValidated &&
+                !isSnippetActive &&
+                !isProposing
+                  ? formatExpression
+                  : undefined
+              }
+            />
           </div>
-        ) : (
-          codeMirror
-        )}
+          <div className={S.inlineToolbar}>{toolbarEnd}</div>
+        </div>
         {proposal != null && (
           <ExpressionDiffControls
             portalTarget={portalTarget}
@@ -847,58 +753,9 @@ export function EditorF(props: EditorFProps) {
               ? null
               : error
           }
-          source={source}
           content={sqlHint}
-          inline={inline}
         />
         <AiErrorBar error={aiError} />
-
-        {!inline && source.trim() === "" && !isFormatting && error == null && (
-          <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
-        )}
-
-        {!inline && (
-          <Flex
-            className={S.toolbar}
-            gap="sm"
-            pt="sm"
-            pr="sm"
-            direction="column"
-          >
-            <ButtonTooltip label={t`Function browser`}>
-              <ActionIcon
-                aria-label={t`Function browser`}
-                aria-pressed={openSidebar === "functions"}
-                onClick={() => toggleSidebar("functions")}
-                variant={openSidebar === "functions" ? "filled" : "subtle"}
-              >
-                <Icon name="function" />
-              </ActionIcon>
-            </ButtonTooltip>
-            <ButtonTooltip label={t`Available columns`}>
-              <ActionIcon
-                aria-label={t`Available columns`}
-                aria-pressed={openSidebar === "columns"}
-                onClick={() => toggleSidebar("columns")}
-                variant={openSidebar === "columns" ? "filled" : "subtle"}
-              >
-                <Icon name="list" />
-              </ActionIcon>
-            </ButtonTooltip>
-            {canFormat && (
-              <ButtonTooltip label={t`Auto-format`}>
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={t`Auto-format`}
-                  onClick={formatExpression}
-                  disabled={isFormatting}
-                >
-                  <Icon name="format_code" />
-                </ActionIcon>
-              </ButtonTooltip>
-            )}
-          </Flex>
-        )}
 
         {/* The help popup would cover the diff controls and the prompt. */}
         {!isProposing && !isAiMode && portal}
@@ -909,17 +766,8 @@ export function EditorF(props: EditorFProps) {
         (host?.container ? (
           createPortal(sidebarContent, host.container)
         ) : (
-          <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
-            {sidebarContent}
-          </LayoutSidebar>
+          <LayoutSidebar h={SIDEBAR_HEIGHT}>{sidebarContent}</LayoutSidebar>
         ))}
-
-      {showModal && (
-        <CloseModal
-          onKeepEditing={closeModal}
-          onDiscardChanges={onCloseEditor}
-        />
-      )}
     </>
   );
 }
@@ -1122,8 +970,6 @@ function useExpression({
 
   return {
     source,
-    initialSource,
-    hasSourceChanged: source !== initialSource,
     onSourceChange: handleSourceChange,
     onBlur: handleBlur,
     formatExpression: handleFormatExpression,
@@ -1134,10 +980,6 @@ function useExpression({
   };
 }
 
-/**
- * Reports the proposed text, its clause and the proposed name. It compiles
- * the text only when the proposal changes.
- */
 // A diff helps only when the AI rewrites a part of a long expression.
 const COMPLEX_SOURCE_LENGTH = 120;
 const COMPLEX_CHANGE_LENGTH = 20;
@@ -1170,23 +1012,6 @@ function isComplexEdit(before: string, after: string) {
   // The text of the old expression that the suggestion removes or rewrites.
   const changedLength = a.length - prefix - suffix;
   return changedLength >= COMPLEX_CHANGE_LENGTH;
-}
-
-function useReportProposal(
-  proposal: Proposal | null,
-  compileSource: (source: string) => Lib.ExpressionClause | null,
-  onProposalChange: EditorFProps["onProposalChange"],
-) {
-  const latestRef = useRef({ compileSource, onProposalChange });
-  latestRef.current = { compileSource, onProposalChange };
-  const source = proposal?.source;
-  const name = proposal?.name?.trim() || undefined;
-  useEffect(() => {
-    const { compileSource, onProposalChange } = latestRef.current;
-    onProposalChange?.(
-      source == null ? null : { source, clause: compileSource(source), name },
-    );
-  }, [source, name]);
 }
 
 function getTooltipPosition(state: EditorState) {

@@ -114,9 +114,7 @@ export function FilterStep({
               color={color}
               isActive={inline.editedIndex === index}
               readOnly={readOnly}
-              canRename={false}
               onOpen={() => inline.open({ kind: "clause", index })}
-              onRename={noop}
               onRemove={() => handleRemoveFilter(filter, index)}
             />
           ) : null
@@ -128,9 +126,7 @@ export function FilterStep({
               color={color}
               isActive
               readOnly={readOnly}
-              canRename={false}
               onOpen={noop}
-              onRename={noop}
               onRemove={inline.close}
             />
           )

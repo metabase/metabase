@@ -15,8 +15,6 @@ type ExpressionPillBProps = {
   color?: string;
   isActive: boolean;
   readOnly?: boolean;
-  /** Off for a draft, which has no clause to carry a name yet. */
-  canRename?: boolean;
   /** True while the column has the name it got by default, like "Untitled". */
   isNameDefault?: boolean;
   hasUnsavedChanges?: boolean;
@@ -36,7 +34,6 @@ export function ExpressionPillB({
   color = "core-brand",
   isActive,
   readOnly,
-  canRename = true,
   isNameDefault = false,
   hasUnsavedChanges = false,
   hasRemoveButton = !readOnly,
@@ -55,7 +52,7 @@ export function ExpressionPillB({
     }
   }, [isRenaming]);
 
-  const canRenameNow = canRename && !readOnly;
+  const canRenameNow = !readOnly;
 
   const handleClick = useCallback(() => {
     if (!readOnly && !isActive) {

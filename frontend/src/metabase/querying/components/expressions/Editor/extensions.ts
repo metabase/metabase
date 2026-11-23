@@ -3,11 +3,6 @@ import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
 import {
-  EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
-import {
-  type TextRequestOption,
   expressionEditing,
   expressionTemplates,
   functionArgumentPlaceholders,
@@ -32,9 +27,6 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
-  textRequest?: TextRequestOption;
-  /** See `SuggestOptions`. */
-  highlightFirstSuggestion?: boolean;
   extensions?: Extension[];
 };
 
@@ -59,14 +51,9 @@ export function useExtensions(options: Options): Extension[] {
     availableColumns,
     availableMetrics,
     database,
-    textRequest,
-    highlightFirstSuggestion,
     extensions: extra = [],
   } = options;
   const getColumnValues = useGetColumnValues(query);
-  const [hasColumnsOutsideBrackets] = usePrototypeSetting(
-    EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
-  );
 
   return useMemo(() => {
     return [
@@ -89,11 +76,8 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
-        columnsOutsideBrackets: hasColumnsOutsideBrackets,
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
         getColumnValues,
-        textRequest,
-        highlightFirstSuggestion,
       }),
       tooltips({
         position: "fixed",
@@ -110,10 +94,7 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
-    hasColumnsOutsideBrackets,
     getColumnValues,
-    textRequest,
-    highlightFirstSuggestion,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

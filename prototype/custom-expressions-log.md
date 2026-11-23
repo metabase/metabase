@@ -101,6 +101,7 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-19 — D: the preview can't hide; its button in the code row shows only until the preview shows.
 - 2026-11-19 — D: the docs button in the code row shows when the user closes the docs side panel.
 - 2026-11-23 — Pill B follows the final design (Figma frame 373:19836): the name's box shows at all times; the pill is darker while selected, and lighter (#4181c4, no token in Figma) on hover and while renaming; a double-click renames it, and a default name like "Untitled" is a placeholder in the empty field. Filters and summaries keep their colors.
+- 2026-11-23 — Only one prototype setting is left, `expression-hide-ai`. The others are now fixed: columns are suggested for a bare word, not only after `[`; SQL syntax gets suggested fixes; the preview picks context columns with the on-device AI, and with the title when the model isn't there.
 - 2026-11-23 — The preview is a box of its own below the editor (Figma section 383:3763): "Preview" and a close button 16px below the editor, then the table in a bordered box. While no preview shows, the step's preview button (▶) shows to the right of the editor, where the steps have theirs; it runs the preview. Close hides the preview and brings the button back.
 - 2026-11-23 — Editor F follows the final design (Figma frame 368:8562): a 64px editor; the mode switch is two 32px cells over the border, the current one white with a brand icon, the strip grey to the bottom; the placeholder is "Ask AI, or press = to write an expression" ("to edit the expression" with a context pill); the code has a "=" before it (back from B) and the placeholder "Write an expression"; columns are `core-blue-saturated`; the context pill is brand blue, 24px, at most 320px; while the AI works, a spinner shows before Cancel (no dots before the prompt); AI and expression errors are a warning bar below the editor, lined up with the text; text is at most 800px wide.
 - 2026-11-23 — No "Suggested" list on an empty editor while the docs side panel is open: the panel already lists the functions. Typing still shows suggestions.
@@ -110,10 +111,7 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-20 — A new custom column or custom summary can be renamed before its expression is valid. The name stays in the step's state until the first valid edit adds the clause with it. The AI does not replace a name that the user gave. A new pill (column, summary or filter) shows no unsaved dot; the dot shows only on a saved clause with an invalid edit.
 
 ## Settings
-- `expression-columns-outside-brackets` — suggest columns for a bare word, not only after `[`.
-- `expression-sql-fixes` — suggest the custom expression for SQL syntax.
 - `expression-hide-ai` — behave as without an AI provider.
-- `expression-preview-context` — context columns in the preview.
 
 ## Known bugs
 - None known.

@@ -8,20 +8,18 @@ import {
 
 /**
  * Which sidebar the editor shows, and where. It uses the page's right-hand
- * sidebar when there is one: always for the inline editor, and for a popover
- * editor while the sidebar's slot is on the page (the notebook). Otherwise the
- * editor shows the sidebar in its own layout.
+ * sidebar when the page has one. Otherwise the editor shows the sidebar in its
+ * own layout.
  *
  * The page's sidebar shows the panel of the editor that opened it last, and
  * closes when that editor goes away.
  */
-export function useEditorSidebar({ inline }: { inline?: boolean }) {
+export function useEditorSidebar() {
   const editorId = useId();
   const [localSidebar, setLocalSidebar] =
     useState<ExpressionSidebarName | null>(null);
 
-  const sidebarHost = useExpressionSidebarHost();
-  const host = inline || sidebarHost?.container != null ? sidebarHost : null;
+  const host = useExpressionSidebarHost();
 
   const hostSidebar = host?.owner === editorId ? host.openSidebar : null;
   const openSidebar = host ? hostSidebar : localSidebar;

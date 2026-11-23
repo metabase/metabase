@@ -1,8 +1,5 @@
 import * as Lib from "metabase-lib";
 
-/** How the preview picks columns that help to recognize a row. */
-export type ContextColumnsMode = "off" | "heuristic" | "model";
-
 const MAX_CONTEXT_COLUMNS = 2;
 // The preview waits for the model only this long, then uses the heuristic.
 const MODEL_TIMEOUT_MS = 4000;
@@ -185,16 +182,12 @@ ${columnList}`;
  * is slow, the title or the name of the row.
  */
 export async function pickContextColumns(
-  mode: ContextColumnsMode,
   source: string,
   resultName: string,
   candidates: Candidate[],
 ): Promise<string[]> {
-  if (mode === "off" || candidates.length === 0) {
+  if (candidates.length === 0) {
     return [];
-  }
-  if (mode === "heuristic") {
-    return pickByType(candidates);
   }
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;

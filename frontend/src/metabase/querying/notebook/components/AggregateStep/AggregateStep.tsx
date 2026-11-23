@@ -9,7 +9,7 @@ import { AggregationPicker } from "metabase/querying/common/components/Aggregati
 import { formatIdentifier } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
-import type { GeneratedBreakout } from "../../../components/expressions/Editor/api";
+import type { GeneratedBreakout } from "../../../components/expressions/EditorF/api";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep, useInlineClauseEditor } from "../ClauseStep";
 import { ExpressionPillB } from "../ExpressionStep/ExpressionPillB";

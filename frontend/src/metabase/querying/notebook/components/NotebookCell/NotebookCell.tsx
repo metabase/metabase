@@ -64,7 +64,7 @@ export const NotebookCellItem = forwardRef<
   ref,
 ) {
   const hasRightSide = isValidElement(right) && !readOnly;
-  // Prototype: the summary and filter pills take the colors of the custom
+  // The summary and filter pills take the colors of the custom
   // expression design.
   const hasShades = hasPillShades(color) && !inactive;
 
