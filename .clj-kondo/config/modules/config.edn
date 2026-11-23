@@ -1161,7 +1161,9 @@
            metabase.geojson.settings}
    :uses #{api
            permissions
+           premium-features
            settings
+           startup
            util
            util.config}}
 
