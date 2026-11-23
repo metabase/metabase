@@ -565,7 +565,6 @@ describe("DashboardApp > metrics", () => {
       within(getOrdersDashcard()).queryByTestId("scalar-value"),
     ).not.toBeInTheDocument();
   });
-
 });
 
 async function assertTwoScalarMetricsAndATimeseriesMetric() {
