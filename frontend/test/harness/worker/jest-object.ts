@@ -41,6 +41,7 @@ import {
 import { resolveForMock } from "./module-hooks.ts";
 import { findFile, resolveProjectFile } from "./resolve.ts";
 import { recordSnapshots } from "./results.ts";
+import { restoreCanvasMocksOfEarlierFiles } from "./shared-packages.ts";
 import {
   type FakeTimersConfig,
   fakeClock,
@@ -212,7 +213,10 @@ function createJestObject() {
     mocked: <T>(value: T) => value,
     isMockFunction: moduleMocker.isMockFunction.bind(moduleMocker),
     clearAllMocks: () => moduleMocker.clearAllMocks(),
-    resetAllMocks: () => moduleMocker.resetAllMocks(),
+    resetAllMocks: () => {
+      moduleMocker.resetAllMocks();
+      restoreCanvasMocksOfEarlierFiles();
+    },
     restoreAllMocks: () => moduleMocker.restoreAllMocks(),
     replaceProperty: moduleMocker.replaceProperty.bind(moduleMocker),
     mock: (id: string, factory?: () => unknown, options?: MockOptions) => {

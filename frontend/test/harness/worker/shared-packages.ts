@@ -22,6 +22,7 @@ const canvasMocks: Array<
   [WeakRef<MockFunction>, (...args: unknown[]) => unknown]
 > = [];
 const rememberedContexts = new WeakSet<object>();
+let canvasMocksOfEarlierFiles = 0;
 
 export function rememberCanvasMocks(): void {
   const prototype = currentWindow().HTMLCanvasElement.prototype;
@@ -56,6 +57,21 @@ export function restoreCanvasMocks(): void {
     kept += 1;
   }
   canvasMocks.length = kept;
+  canvasMocksOfEarlierFiles = kept;
+}
+
+/**
+ * jest.resetAllMocks reaches only the mocks of the running file under jest,
+ * where a package loads again for each file. A context that a package kept
+ * from an earlier file gets its implementations back.
+ */
+export function restoreCanvasMocksOfEarlierFiles(): void {
+  for (const [reference, implementation] of canvasMocks.slice(
+    0,
+    canvasMocksOfEarlierFiles,
+  )) {
+    reference.deref()?.mockImplementation?.(implementation);
+  }
 }
 
 /**
