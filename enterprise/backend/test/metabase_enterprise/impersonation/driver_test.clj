@@ -1407,6 +1407,28 @@
           (is (= :ok       (outcome (query write))))
           (is (= :rejected (outcome (query select)))))))))
 
+(deftest ^:parallel impersonated-native-query-runs-one-statement-test
+  (testing "an impersonated native query whose rebuild Postgres reads as more than one statement is refused"
+    (let [query   (fn [sql] (lib/native-query meta/metadata-provider sql))
+          outcome (fn [sql]
+                    (try
+                      (driver.sql/validate-impersonated-query* :postgres (query sql))
+                      :ok
+                      (catch clojure.lang.ExceptionInfo _ :rejected)))]
+      (testing "read"
+        (testing "control: a plain SELECT runs"
+          (is (= :ok (outcome "SELECT id, name FROM venues WHERE price > 2"))))
+        (testing "a dollar-quoted alias, which SQLGlot writes back bare"
+          (is (= :rejected (outcome "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$")))))
+      (binding [driver.settings/*impersonation-allow-write?* true]
+        (testing "write"
+          (testing "control: a plain INSERT, UPDATE and DELETE run"
+            (is (= :ok (outcome "INSERT INTO venues (name) VALUES ('x')")))
+            (is (= :ok (outcome "UPDATE venues SET name = 'x' WHERE id = 1")))
+            (is (= :ok (outcome "DELETE FROM venues WHERE id = 1"))))
+          (testing "a dollar-quoted alias, which SQLGlot writes back bare"
+            (is (= :rejected (outcome "INSERT INTO venues (name) SELECT 'x' AS $q$a; RESET ROLE; SELECT 1$q$")))))))))
+
 (deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
   (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)

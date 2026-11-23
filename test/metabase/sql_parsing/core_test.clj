@@ -148,6 +148,39 @@
             (is (=? validate-expected validated) (pr-str sql))
             (is (= classified validated) (pr-str sql))))))))
 
+(defn- executable-verdict
+  "The verdict of [[sql-parsing/validate-executable-stmt]] for `sql` of `stmt-type` on Postgres."
+  [sql stmt-type]
+  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) "postgres" sql stmt-type))
+
+(defn- executes-one-statement?
+  "Whether a caller that executes the `:sql` of `verdict` sends one statement: true unless `verdict` is `:allowed` and
+  its `:sql` parses as more than one statement."
+  [verdict]
+  (or (not= :allowed (:verdict verdict))
+      (:single-stmt? (executable-verdict (:sql verdict) "read"))))
+
+(deftest ^:parallel read-verdict-executes-one-statement-test
+  (testing "an impersonated user's native query runs as one SELECT, so the SQL a \"read\" verdict allows is one statement"
+    (testing "control: a single SELECT is allowed as it is"
+      (is (= {:verdict :allowed :single-stmt? true :sql "SELECT 1 AS a"}
+             (executable-verdict "SELECT 1 AS a" "read"))))
+    (doseq [sql ["SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"
+                 "SELECT 1 AS E'a;SELECT 2'"]]
+      (testing (str "an alias written as a string: " (pr-str sql))
+        (let [verdict (executable-verdict sql "read")]
+          (is (executes-one-statement? verdict) (pr-str verdict)))))))
+
+(deftest ^:parallel write-verdict-executes-one-statement-test
+  (testing "an impersonated user's native write runs as one statement, so the SQL a \"write\" verdict allows is one statement"
+    (testing "control: a single INSERT, UPDATE or DELETE is allowed as it is"
+      (doseq [sql ["INSERT INTO t VALUES (1)" "UPDATE t SET x = 1 WHERE id = -1" "DELETE FROM t WHERE id = 1"]]
+        (is (= {:verdict :allowed :single-stmt? true :sql sql}
+               (executable-verdict sql "write")))))
+    (testing "an alias written as a string"
+      (let [verdict (executable-verdict "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$" "write")]
+        (is (executes-one-statement? verdict) (pr-str verdict))))))
+
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
 (deftest ^:parallel referenced-fields-test

@@ -140,7 +140,7 @@
       (call #(field-references/field-references dialect sql)))
     (replace-names [_ dialect sql replacements]
       (call #(rewrite/replace-names dialect sql (json-shaped replacements))))
-    (single-stmt-of-type [_ dialect sql stmt-type check-rebuild?]
-      (call #(statements/single-stmt-of-type dialect sql stmt-type check-rebuild?)))
+    (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
+      (call #(statements/single-stmt-of-type dialect sql stmt-type check-rebuild)))
     (transpile-sql [_ sql from-dialect to-dialect]
       (call #(transpile/transpile-sql sql from-dialect to-dialect)))))

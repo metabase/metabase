@@ -420,12 +420,13 @@
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
-  With `check-rebuild?`, the regenerated SQL of a statement of the allowed type must also pass the same checks and
-  regenerate to itself (`:reason` `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`).
-  For `\"postgres\"`, Postgres must also read it as one statement with `standard_conforming_strings` on (`:reason`
-  `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`) and with it off (`:reason` `\"backslash-quote\"`).
-  Port of `is_single_stmt_of_type`."
-  [dialect sql stmt-type check-rebuild?]
+  `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-both-settings\"`. With either string, the regenerated SQL of a
+  statement of the allowed type must also pass the same checks and regenerate to itself (`:reason`
+  `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres
+  must read it as one statement with `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`,
+  `:reason_detail` `\"multiple-statements\"`). With `\"rebuild-both-settings\"`, it must also read as one statement
+  with the setting off (`:reason` `\"backslash-quote\"`). Port of `is_single_stmt_of_type`."
+  [dialect sql stmt-type check-rebuild]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
         result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
@@ -441,14 +442,14 @@
                       (when-not stmt
                         (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
                       (ast/sql stmt dialect))
-            problem (if (or problem (not check-rebuild?) (nil? rebuilt)
+            problem (if (or problem (nil? check-rebuild) (nil? rebuilt)
                             (not (ast/instance-of-any? allowed (unbracketed stmt))))
                       problem
                       ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
                       ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
                       ;; with one backslash, so its quote moves, and a dollar-quoted alias comes back bare.
                       ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
-                      (let [again (when (not= rebuilt sql) (single-stmt-of-type dialect rebuilt stmt-type false))]
+                      (let [again (when (not= rebuilt sql) (single-stmt-of-type dialect rebuilt stmt-type nil))]
                         (cond
                           (and again (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again))))
                           ["rebuild-differs" (:reason again)]
@@ -456,7 +457,9 @@
                           (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
                           ["rebuild-differs" "multiple-statements"]
 
-                          (and (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
+                          (and (= check-rebuild "rebuild-both-settings")
+                               (= dialect "postgres")
+                               (> (postgres-statement-count rebuilt false) 1))
                           ["backslash-quote" nil])))]
         (when problem
           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))

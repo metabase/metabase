@@ -2107,7 +2107,7 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
-def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, check_rebuild: bool = False) -> str:
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, check_rebuild: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
@@ -2116,10 +2116,11 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    With `check_rebuild`, the reconstruction of a statement of the allowed type must also pass the same checks and
-    reconstruct to itself (reason "rebuild-differs", with the reconstruction's own reason as `reason_detail`). For
-    "postgres", Postgres must also read it as one statement with `standard_conforming_strings` on (reason
-    "rebuild-differs", detail "multiple-statements") and with it off (reason "backslash-quote").
+    `check_rebuild` is None, "rebuild" or "rebuild-both-settings". With either value, the reconstruction of a statement
+    of the allowed type must also pass the same checks and reconstruct to itself (reason "rebuild-differs", with the
+    reconstruction's own reason as `reason_detail`), and for "postgres", Postgres must read it as one statement with
+    `standard_conforming_strings` on (reason "rebuild-differs", detail "multiple-statements"). With
+    "rebuild-both-settings", it must also read as one statement with the setting off (reason "backslash-quote").
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2148,7 +2149,11 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                     problem = ("rebuild-differs", again.get("reason"))
                 elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
                     problem = ("rebuild-differs", "multiple-statements")
-                elif dialect == "postgres" and _postgres_statement_count(rebuilt, False) > 1:
+                elif (
+                    check_rebuild == "rebuild-both-settings"
+                    and dialect == "postgres"
+                    and _postgres_statement_count(rebuilt, False) > 1
+                ):
                     problem = ("backslash-quote", None)
         if problem is not None:
             result["reason"], result["reason_detail"] = problem

@@ -265,8 +265,8 @@
 
   {:name              "a 40 KB select is too long to gate, but can still be validated to run"
    :dialect           "snowflake"
-   :build             {:prefix    "WITH cte_0 AS (\n  -- running total for segment 0\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
-                       :item      "cte_%4$d AS (\n  -- running total for segment %4$d\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
+   :build             {:prefix    "WITH cte_0 AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment 0\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
+                       :item      "cte_%4$d AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment %4$d\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
                        :count     119
                        :separator ",\n"
                        :suffix    "\nSELECT * FROM cte_119"}
@@ -321,17 +321,39 @@
    :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}
 
   ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
-  ;; the literal there. A caller that executes the rebuild of a "read-only" statement is refused a rebuild that
-  ;; Postgres reads as more than one statement: "rebuild-differs" with the setting on, "backslash-quote" with it off
-  ;; only. Each refused case below is one statement to SQLGlot. A caller that only reads the verdict, and the other
-  ;; statement types, are not checked for it.
+  ;; the literal there. A caller that executes the rebuild is refused a rebuild that Postgres reads as more than one
+  ;; statement with the setting on ("rebuild-differs"), and for "read-only" also one it reads so with the setting off
+  ;; only ("backslash-quote"). Each refused case below is one statement to SQLGlot. A caller that only reads the
+  ;; verdict is not checked for it.
 
-  ;; This case pins the "read" verdict that impersonation executes; it changes if "read" gets the rebuild check.
-  {:name              "a read with a backslash before a quote is not checked for the setting"
+  {:name              "an executed read with a backslash before a quote is not checked for the setting off"
    :dialect           "postgres"
    :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
    :stmt-type         "read"
    :expected          {:verdict :allowed :single-stmt? true}}
+
+  {:name              "an executed read whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  ;; SQLGlot moves a `--` comment that opens a CTE's body into a `/* */` comment, which a second parse drops, so the
+  ;; rebuild does not rebuild to itself.
+  {:name              "an executed read whose CTE body opens with a -- comment is refused: its rebuild does not rebuild to itself"
+   :dialect           "postgres"
+   :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name              "an executed write whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
 
   {:name              "an executed read-only statement with a backslash before a quote is refused"
    :dialect           "postgres"
