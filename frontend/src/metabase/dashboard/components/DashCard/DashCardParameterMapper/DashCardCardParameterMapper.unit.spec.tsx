@@ -360,10 +360,11 @@ describe("DashCardCardParameterMapper", () => {
     setup({
       card: createMockCard({
         type: "question",
-        dataset_query: Lib.createTestJsQuery(
-          SAMPLE_PROVIDER,
-          DEFAULT_TEST_QUERY,
-        ),
+        dataset_query: createMockStructuredDatasetQuery({
+          query: {
+            "source-table": 1,
+          },
+        }),
       }),
       mappingOptions: [
         {

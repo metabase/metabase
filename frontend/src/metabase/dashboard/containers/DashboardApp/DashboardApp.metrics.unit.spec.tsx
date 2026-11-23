@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { createMockMetadata } from "__support__/metadata";
 import {
   setupBookmarksEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -26,7 +25,6 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
@@ -34,7 +32,6 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
@@ -569,108 +566,6 @@ describe("DashboardApp > metrics", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the saved question filtered by the clicked metric value after saving a click behavior", async () => {
-    const { router } = setup({
-      dashcards: [
-        createDashcard(10, PRODUCTS_QUESTION, 0),
-        createDashcard(11, SCALAR_METRIC, 4),
-      ],
-    });
-    await waitForDashboardToLoad();
-    await userEvent.click(screen.getByLabelText("Edit dashboard"));
-
-    const getScalarDashcard = () => getDashcards()[1];
-    await userEvent.click(
-      within(getScalarDashcard()).getByLabelText("Click behavior"),
-    );
-    const sidebar = await screen.findByTestId("click-behavior-sidebar");
-    await userEvent.click(
-      within(sidebar).getByText("Go to a custom destination"),
-    );
-    await userEvent.click(within(sidebar).getByText("Saved question"));
-    const picker = await screen.findByTestId("entity-picker-modal");
-    await userEvent.click(
-      await within(picker).findByText(ORDERS_QUESTION.name),
-    );
-
-    await userEvent.click(await within(sidebar).findByText("User ID"));
-    await userEvent.click(await screen.findByRole("option", { name: "Count" }));
-    await userEvent.click(
-      within(sidebar).getByRole("button", { name: "Done" }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() =>
-      expect(fetchMock.callHistory.calls("put-dashboard")).toHaveLength(1),
-    );
-    const saveBody = parseBody(
-      fetchMock.callHistory.lastCall("put-dashboard")?.options.body,
-    );
-    const userIdTarget = [
-      "dimension",
-      ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
-      { "stage-number": 0 },
-    ];
-    expect(saveBody.dashcards).toEqual([
-      expect.objectContaining({
-        id: 10,
-        visualization_settings: expect.not.objectContaining({
-          click_behavior: expect.anything(),
-        }),
-      }),
-      expect.objectContaining({
-        id: 11,
-        card_id: SCALAR_METRIC.id,
-        visualization_settings: expect.objectContaining({
-          click_behavior: {
-            type: "link",
-            linkType: "question",
-            targetId: ORDERS_QUESTION.id,
-            parameterMapping: {
-              [JSON.stringify(userIdTarget)]: {
-                id: JSON.stringify(userIdTarget),
-                source: { type: "column", id: "count", name: "Count" },
-                target: {
-                  type: "dimension",
-                  id: JSON.stringify(userIdTarget),
-                  dimension: userIdTarget,
-                },
-              },
-            },
-          },
-        }),
-      }),
-    ]);
-
-    // Saving reloads the link targets, then the saved dashcard renders
-    // through the metric display projection, which has to keep the click
-    // behavior for the click to drill
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("dashboard-query-metadata"),
-      ).toHaveLength(2),
-    );
-    await waitForDashboardToLoad();
-    expect(screen.getByLabelText("Edit dashboard")).toBeInTheDocument();
-    await userEvent.click(
-      within(getScalarDashcard()).getByTestId("scalar-value"),
-    );
-
-    expect(await screen.findByTestId("question-page")).toBeInTheDocument();
-    const { pathname, hash } = router.location;
-    expect(pathname).toBe("/question");
-    const drilledQuestion = new Question(
-      deserializeCardFromUrl(hash.replace(/^#/, "")),
-      createMockMetadata({ databases: [DATABASE] }),
-    );
-    expect(drilledQuestion.card().original_card_id).toBe(ORDERS_QUESTION.id);
-    const drilledQuery = drilledQuestion.query();
-    expect(
-      Lib.filters(drilledQuery, 0).map(
-        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
-      ),
-    ).toEqual(["User ID is 18760"]);
-  });
 });
 
 async function assertTwoScalarMetricsAndATimeseriesMetric() {

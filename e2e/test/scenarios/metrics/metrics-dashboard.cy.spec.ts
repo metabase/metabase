@@ -93,6 +93,7 @@ describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // `H.selectDataset` waits on this alias
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
@@ -230,6 +231,35 @@ describe("scenarios > metrics > dashboard", () => {
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
+  });
+
+  it("should be able to use click behaviors with metrics on a dashboard", () => {
+    H.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+    H.editDashboard();
+    H.getDashboardCard().realHover().findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+    H.modal().findByText("Orders").click();
+    H.sidebar().findByText("User ID").click();
+    H.popover().findByText("Count").click();
+    H.sidebar().button("Done").click();
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      H.cartesianChartCircle()
+        .eq(5) // sixth point, whose Count of 92 is passed as the User ID
+        .click({ force: true });
+    });
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("User ID is 92")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(8);
   });
 });
 
