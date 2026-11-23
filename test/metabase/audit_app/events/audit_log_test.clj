@@ -25,7 +25,6 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 

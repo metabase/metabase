@@ -2178,14 +2178,15 @@
 (deftest get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
     (testing "should return collection for published tables"
-      (mt/with-temp [:model/Database   {database-id :id} {}
-                     :model/Collection {collection-id :id} {}
-                     :model/Table      {table-id :id} {:db_id database-id :schema "public" :name "published-table"}
-                     :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id collection-id}
-                     :model/Table      _ {:db_id database-id :schema "public" :name "unpublished-table"}]
-        (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
-          (is (=? {:collection {:id collection-id}} (m/find-first #(= "published-table" (:name %)) tables)))
-          (is (=? {:collection nil} (m/find-first #(= "unpublished-table" (:name %)) tables))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Published Tables"}])]
+          (mt/with-temp [:model/Database   {database-id :id} {}
+                         :model/Table      {table-id :id} {:db_id database-id :schema "public" :name "published-table"}
+                         :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id collection-id}
+                         :model/Table      _ {:db_id database-id :schema "public" :name "unpublished-table"}]
+            (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
+              (is (=? {:collection {:id collection-id}} (m/find-first #(= "published-table" (:name %)) tables)))
+              (is (=? {:collection nil} (m/find-first #(= "unpublished-table" (:name %)) tables))))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
