@@ -536,7 +536,7 @@
     (check-parameter-permissions (:parameters card) query)
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
-    (queries/check-new-dashboard-questions-timeline-permissions! [card])
+    (queries/check-new-dashboard-questions-timeline-permissions [card])
     (let [created-card (create-card! card)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
@@ -560,7 +560,7 @@
         new-card  (assoc orig-card :name new-name)]
     (queries/with-copy-source-card orig-card
       (api/create-check :model/Card new-card))
-    (queries/check-new-dashboard-questions-timeline-permissions! [new-card])
+    (queries/check-new-dashboard-questions-timeline-permissions [new-card])
     (-> (create-card! new-card)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))

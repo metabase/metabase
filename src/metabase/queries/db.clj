@@ -181,13 +181,6 @@
   (mdb/update-grouped! :model/Card updates)
   nil)
 
-(mu/defn collections-for-content-checks
-  "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`, by ID."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (if (seq collection-ids)
-    (u/index-by :id (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
-    {}))
-
 (mu/defn dashboards-for-placement
   "The ID, `archived` flag and Collection ID of each of the Dashboards with `dashboard-ids`, by ID."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
@@ -201,13 +194,6 @@
   (if (seq document-ids)
     (t2/select-pks-set :model/Document :id [:in document-ids] :archived true)
     #{}))
-
-(mu/defn database-names
-  "A map of ID to name for the Databases with `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (if (seq database-ids)
-    (t2/select-pk->fn :name :model/Database :id [:in database-ids])
-    {}))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -338,11 +324,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
-(mu/defn document-archived?
-  "Whether the Document with `document-id` is archived."
-  [document-id :- ms/PositiveInt]
-  (t2/exists? :model/Document :id document-id :archived true))
-
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -448,15 +429,6 @@
         {}))
     {}))
 
-(mu/defn card-notification-ids
-  "The IDs of the card Notifications attached to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-pks-set :model/Notification
-                     :payload_type :notification/card
-                     :payload_id [:in ^:allow-subquery {:select [:id]
-                                                        :from   [:notification_card]
-                                                        :where  [:= :card_id card-id]}]))
-
 (mu/defn parameter-cards-for-card
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -487,7 +459,7 @@
 
 (mu/defn insert-parameter-cards!
   "Insert `parameter-cards` in one statement, returning the number inserted."
-  [parameter-cards :- [:sequential ::queries.schema/parameter-card.update]]
+  [parameter-cards :- [:sequential ::queries.schema/parameter-card.create]]
   (t2/insert! :model/ParameterCard parameter-cards))
 
 (mu/defn set-parameter-cards-card-id!
@@ -892,12 +864,6 @@
                                                     [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
                                                   card-id->timestamp))
                       :updated_at :updated_at}}))
-
-(mu/defn increment-card-view-counts! :- :int
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`, in one raw
-  statement that publishes no event, returning the number updated."
-  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (mdb/increment-counts! :model/Card :view_count count->ids))
 
 (mu/defn set-card-last-used-at!
   "Set `last_used_at` of the Card with `card-id`, returning the number updated."

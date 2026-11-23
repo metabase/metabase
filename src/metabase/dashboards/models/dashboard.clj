@@ -113,7 +113,7 @@
   (let [changes (t2/changes row)]
     (if (or (not (contains? changes :archived)) (contains? changes :archived_directly))
       row
-      (assoc row :archived_directly (dashboards.db/archived-directly-clause changes)))))
+      (assoc row :archived_directly (mi/archived-directly-clause :model/Dashboard changes)))))
 
 (t2/define-before-update :model/Dashboard
   [row]
@@ -303,7 +303,7 @@
   - its Collection is not archived, unless the Dashboard is
   - its parameters, when it has any, are well formed"
   [rows]
-  (collection/check-collections-for-model! :model/Dashboard rows)
+  (collection/check-collections-for-model :model/Dashboard rows)
   (run! params/assert-valid-parameters rows))
 
 (def ^:private TabPart
@@ -368,15 +368,14 @@
   (insert-dashboards! rows))
 
 (mu/defn create-dashboards! :- [:sequential :map]
-  "Insert the Dashboard `rows` and return the inserted instances in the order of the rows, in one transaction, publishing
-  their create event. Each Collection must be able to hold a Dashboard, and the ParameterCards of the parameters that
-  draw values from a Card are created. A row may hold its `:tabs`, whose ids are temporary and which its dashcards name
-  in their `:dashboard_tab_id`, and its `:dashcards`, each with the ids of the Cards of its `:series`: they are inserted
-  with the Dashboard, and the Revision of the creation holds them."
+  "Insert the Dashboard `rows` and return the inserted instances in the order of the rows, in one transaction,
+  publishing their create event, each Collection having to hold a Dashboard, the ParameterCards of the parameters
+  that draw values from a Card being created, and the `:tabs` and `:dashcards` of a row being inserted with it and
+  held by the Revision of the creation."
   ([rows :- [:sequential NewDashboard]]
    (create-dashboards! rows nil))
   ([rows :- [:sequential NewDashboard]
-    opts :- ::dashboards.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [created (into [] (mapcat #(create-dashboard-batch! (vec %)))
                          (partition-all app-db/create-partition-size rows))]
@@ -421,10 +420,11 @@
       cleaned)))
 
 (defn- write-columns!
-  "Apply the columns of `rows`, each holding the `:id` of one of the Dashboards of `id->stored`, a map from id to the instance
-  read before, and return the rows with the `archived_directly` that the database gave to those that change `archived`. A
-  Dashboard moved to another Collection moves its dashboard questions along, a change of `parameters` updates its ParameterCards, and a change of `archived` archives or restores its dashboard
-  questions. The rows that get the same changes against `id->stored` are one statement."
+  "Apply the columns of `rows`, each holding the `:id` of one of the Dashboards of `id->stored`, a map from id to the
+  instance read before, with one statement for the rows that get the same changes, moving the dashboard questions of
+  a Dashboard that moves, updating the ParameterCards of a change of `parameters` and archiving or restoring the
+  dashboard questions of a change of `archived`, and return the rows with the `archived_directly` that the database
+  gave to those that change `archived`."
   [id->stored rows]
   (let [moved           (filterv #(changed? (get id->stored (:id %)) % :collection_id) rows)
         reparameterised (filterv #(changed? (get id->stored (:id %)) % :parameters) rows)
@@ -462,10 +462,10 @@
                                   :dashcards (vec group)})))
 
 (defn- replace-parts!
-  "Replace the tabs, for each Dashboard of `parts`, a map from its id to the part lists it gives, when it holds `:tabs`,
-  and the dashcards, when it holds `:dashcards`, by those of `parts`: the ones the new lists lack are deleted, the others
-  updated and the new ones, which have no id of the Dashboard, created, with one statement for each of them. Returns, by
-  Dashboard id, the dashcards `:added` and `:removed`, and whether the write `:changed?` anything."
+  "Replace the tabs, for each Dashboard of `parts`, a map from its id to the part lists it gives, when it holds
+  `:tabs`, and the dashcards, when it holds `:dashcards`, by those of `parts`, deleting the ones the new lists lack,
+  updating the others and creating the new ones, with one statement for each of them, and return, by Dashboard id,
+  the dashcards `:added` and `:removed` and whether the write `:changed?` anything."
   [parts]
   (let [tabbed        (filterv #(contains? (get parts %) :tabs) (keys parts))
         carded        (filterv #(contains? (get parts %) :dashcards) (keys parts))
@@ -589,10 +589,11 @@
                        opts))))
 
 (mu/defn- write-updates! :- :nil
-  "Apply the columns of each of `rows` to the Dashboard with its `:id`, replace the parts a row holds, publishing last one update event for all the Dashboards whose columns or
-  parts it changes, and for an import a touch of each one it leaves unchanged. See [[write-columns!]] for the columns."
+  "Apply the columns of each of `rows` to the Dashboard with its `:id` and replace the parts a row holds, publishing
+  last one update event for all the Dashboards whose columns or parts it changes, and for an import a touch of each
+  one it leaves unchanged, with the columns as [[write-columns!]] applies them."
   [rows :- [:sequential UpdateDashboard]
-   opts :- ::dashboards.schema/write-opts]
+   opts :- :metabase.events.schema/write-opts]
   (t2/with-transaction [_conn]
     (let [batches (mapv update-dashboard-batch! (partition-all app-db/update-partition-size rows))]
       (publish-dashboard-updates! batches opts)))
@@ -607,22 +608,22 @@
   ([updates :- [:sequential ::dashboards.schema/dashboard.update]]
    (update-dashboards! updates nil))
   ([updates :- [:sequential ::dashboards.schema/dashboard.update]
-    opts    :- ::dashboards.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (write-updates! updates opts)
    nil))
 
 (mu/defn update-dashboard! :- :nil
-  "Apply `changes` to the Dashboard with `id`, its columns and the new lists of its `:tabs` and `:dashcards`, which replace
-  the stored ones: those the lists lack are deleted, the others updated, and those with another id created, the
-  `:dashboard_tab_id` of a dashcard naming a tab created by its temporary id. Publishes one update event for the whole
-  write, the audit events of the dashcards a replacement adds and removes, and for an import a touch when no column
-  changes."
+  "Apply `changes` to the Dashboard with `id`, its columns and the new lists of its `:tabs` and `:dashcards`, which
+  replace the stored ones, deleting those the lists lack, updating the others and creating those with another id, the
+  `:dashboard_tab_id` of a dashcard naming a tab created by its temporary id, and publish one update event for the
+  whole write, the audit events of the dashcards a replacement adds and removes, and for an import a touch when no
+  column changes."
   ([id :- ::lib.schema.id/dashboard
     changes :- DashboardChangesWithParts]
    (update-dashboard! id changes nil))
   ([id :- ::lib.schema.id/dashboard
     changes :- DashboardChangesWithParts
-    opts :- ::dashboards.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (write-updates! [(assoc changes :id id)] opts)
    nil))
 
@@ -633,7 +634,7 @@
   ([dashcards :- [:sequential DashcardPart]]
    (add-dashcards! dashcards nil))
   ([dashcards :- [:sequential DashcardPart]
-    opts      :- ::dashboards.schema/write-opts]
+    opts      :- :metabase.events.schema/write-opts]
    (if (empty? dashcards)
      []
      (t2/with-transaction [_conn]
@@ -650,7 +651,7 @@
   ([rows :- [:sequential DashcardPart]]
    (update-dashcards! rows nil))
   ([rows :- [:sequential DashcardPart]
-    opts :- ::dashboards.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
        (when-let [changed (not-empty (dashboard-card/update-dashboard-cards! rows))]
@@ -666,7 +667,7 @@
   ([dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
    (remove-dashcards! dashcard-ids nil))
   ([dashcard-ids :- [:sequential ::lib.schema.id/dashcard]
-    opts         :- ::dashboards.schema/write-opts]
+    opts         :- :metabase.events.schema/write-opts]
    (when (seq dashcard-ids)
      (t2/with-transaction [_conn]
        (let [dashcards (dashboards.db/dashcards-by-ids (vec dashcard-ids))
@@ -698,19 +699,19 @@
   (run! delete-dashboard-dependents! (map vec (partition-all app-db/delete-partition-size (map :id dashboards)))))
 
 (mu/defn delete-dashboards! :- :nil
-  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses in one
-  transaction, publishing their delete event right before the first statement. The Pulses go through their model, so the
-  triggers of their subscriptions are removed too."
+  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses,
+  which go through their model so that the triggers of their subscriptions are removed too, in one transaction,
+  publishing their delete event right before the first statement."
   ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
    (delete-dashboards! dashboard-ids nil))
   ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
-    opts          :- ::dashboards.schema/write-opts]
+    opts          :- :metabase.events.schema/write-opts]
    (app-db/delete-batched! :model/Dashboard (distinct dashboard-ids)
                            {:before-delete #(publish-and-delete-dashboard-dependents! % opts)})))
 
 (mu/defn revert-dashboard! :- :map
-  "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded: its columns, its tabs and
-  its dashcards. Its writes publish no event that a Revision comes of."
+  "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded, its columns, its tabs
+  and its dashcards, with writes that publish no event that a Revision comes of."
   [dashboard-id        :- ::lib.schema.id/dashboard
    _user-id            :- ms/PositiveInt
    serialized-dashboard :- ::dashboards.schema/dashboard.revision]
@@ -721,7 +722,7 @@
         kept-tab-ids         (into #{} (map :id) (:tabs serialized-dashboard))
         current-tab-ids      (into #{} (map :id) (dashboards.db/dashboard-tabs-for-dashboards [dashboard-id]))]
     (parameter-card/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
-    (dashboard-card/check-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
+    (dashboard-card/check-unarchive-internal-dashboard-questions dashboard-id serialized-dashcards)
     (dashboard-card/unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
     (let [dashcards     (dashboards.revisions/remove-invalid-dashcards dashboard-id serialized-dashcards)
           current-cards (->> (dashboards.db/dashcards dashboard-id)
@@ -735,15 +736,15 @@
                                 :tabs      (mapv #(select-keys % [:id :name :position]) (:tabs serialized-dashboard))
                                 :dashcards dashcards)
                          {:writer :revert})
-      (dashboard-card/check-archive-internal-dashboard-questions! dashboard-id serialized-dashcards)
+      (dashboard-card/check-archive-internal-dashboard-questions dashboard-id serialized-dashcards)
       (dashboard-card/archive-internal-dashboard-questions! dashboard-id serialized-dashcards))
     serialized-dashboard))
 
 (mu/defn increment-view-counts! :- :int
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`, in one plain
-  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`, in one
+  plain statement that publishes no event for a usage stat no rule reads, and return the number updated."
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (dashboards.db/increment-dashboard-view-counts! count->ids))
+  (app-db/increment-counts! :model/Dashboard :view_count count->ids))
 
 (mu/defn touch-last-viewed! :- :nil
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
@@ -753,8 +754,8 @@
   nil)
 
 (mu/defn set-last-viewed-at! :- :int
-  "Set `last_viewed_at` of the Dashboard with `id`, through the model, returning the number updated. The testing API backdates
-  it."
+  "Set `last_viewed_at` of the Dashboard with `id`, through the model, which the testing API uses to backdate it, and
+  return the number updated."
   [id   :- ::lib.schema.id/dashboard
    time :- ms/TemporalInstant]
   (dashboards.db/set-dashboard-last-viewed-at! id time))

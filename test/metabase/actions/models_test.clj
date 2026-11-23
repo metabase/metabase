@@ -905,7 +905,7 @@
                               databases))
                        (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-databases databases)))))))))))
 
-(deftest archived-directly-follows-collection-in-the-statement-test
+(deftest archived-directly-follows-collection-in-statement-test
   (mt/with-temp [:model/Collection {live :id}     {}
                  :model/Collection {archived :id} {:archived true}]
     (mt/with-model-cleanup [:model/Action]

@@ -1,7 +1,6 @@
 (ns metabase.notification.schema
   "Malli schemas for the notification module."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -24,10 +23,6 @@
    [:internal_id  {:optional true} [:maybe :string]]
    [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
-
-(mr/def ::notification.create
-  "What creating a Notification takes: every column of `:notification` except `id`, all optional."
-  (mut/dissoc ::notification.update :id))
 
 (mr/def ::notification-card
   "A NotificationCard as selected from the app DB: every column of `:notification_card`."

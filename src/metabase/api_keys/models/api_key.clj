@@ -211,10 +211,6 @@
   (mdb/create-batched! :model/ApiKey rows
                        {:after-create #(events/publish-event! :event/api-key-create (events/create-event %))}))
 
-(mr/def ::write-opts
-  [:map {:closed true}
-   [:context {:optional true} :metabase.events.schema/context]])
-
 (defn- check-key-group-moves
   "Throw unless every row of `updates` whose ApiKey `id->stored` holds and that sets `::api-keys/group-id` satisfies
   these rules:
@@ -282,7 +278,7 @@
   ([updates :- [:sequential ::api-keys.schema/api-key.update]]
    (update-api-keys! updates nil))
   ([updates :- [:sequential ::api-keys.schema/api-key.update]
-    opts    :- [:maybe ::write-opts]]
+    opts    :- :metabase.events.schema/write-opts]
    (let [now (t/offset-date-time)]
      (mdb/update-batched! :model/ApiKey updates
                           {:before-update (fn [updates id->stored]
@@ -305,7 +301,7 @@
   ([ids :- [:sequential ::api-keys.schema/id]]
    (delete-api-keys! ids nil))
   ([ids  :- [:sequential ::api-keys.schema/id]
-    opts :- [:maybe ::write-opts]]
+    opts :- :metabase.events.schema/write-opts]
    (mdb/delete-batched! :model/ApiKey ids
                         {:before-delete (fn [api-keys]
                                           (deactivate-key-users! api-keys opts)

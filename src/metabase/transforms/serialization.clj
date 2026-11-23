@@ -148,9 +148,9 @@
         entities))
 
 (defn rename-taken-tag-names
-  "`rows`, TransformTag rows, with each name that another tag holds replaced by the first of the name followed by \" (2)\",
-  \" (3)\" and so on that none holds. `taken` maps each name in the app DB to the id of its tag; a row owns the name held
-  by its own `:id`, and a name an earlier row took is held by that row."
+  "`rows`, TransformTag rows, with each name that another tag holds replaced by the first of the name followed by
+  ` (2)`, ` (3)` and so on that none holds, `taken` mapping each name in the app DB to the id of its tag, a row owning
+  the name held by its own `:id` and a name an earlier row took being held by that row."
   [rows taken]
   (first
    (reduce (fn [[renamed taken] {tag-name :name :as row}]

@@ -56,14 +56,14 @@
 (defn revoke-support-user-access!
   "Tear down the support user's access as of `ended-at`: drop superuser, expire every AuthIdentity so the
   time-limited password can't be used again, and end their sessions, recorded as ended by `ended-by` (the revoking
-  user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out."
+  user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out. A
+  support user who is the last admin keeps superuser, and the expired AuthIdentities and ended sessions still end the
+  access."
   [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
       (user/update-users! [{:id support-user-id :is_superuser false}])
       (catch Exception e
-        ;; If the support user is somehow the last admin, we can't remove superuser.
-        ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
       (models.auth-identity/update-auth-identities! (mapv #(hash-map :id % :expires_at ended-at) auth-identity-ids)))
@@ -77,8 +77,8 @@
   (support-access-grants.db/insert-grant! grant))
 
 (mu/defn revoke-support-access-grant! :- :int
-  "Record the grant with `grant-id` as revoked at `revoked-at` by the User with `revoked-by`, and tear down the support
-  user's access as of then. Returns the number of grants updated."
+  "Record the grant with `grant-id` as revoked at `revoked-at` by the User with `revoked-by`, tear down the support
+  user's access as of then, and return the number of grants updated."
   [grant-id   :- ms/PositiveInt
    revoked-at :- ms/TemporalInstant
    revoked-by :- [:maybe ::lib.schema.id/user]]

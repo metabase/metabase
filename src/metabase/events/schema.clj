@@ -169,6 +169,12 @@
    [:archived-with {:optional true} [:tuple :keyword pos-int?]]
    [:details {:optional true} [:map]]])
 
+(mr/def ::write-opts
+  "The options every write function of a model takes: `:writer`, who writes when it is not a user, and `:context`."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import :revert :replacement :sync :cascade]]
+           [:context {:optional true} [:maybe ::context]]]])
+
 (mr/def ::lifecycle
   "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one action created,
   updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, the

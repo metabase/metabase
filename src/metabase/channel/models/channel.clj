@@ -267,8 +267,8 @@
                          (events/update-event id->stored updates {:objects id->updated})))
 
 (mu/defn update-channels! :- :nil
-  "Apply `updates`, each the id of a Channel and the columns to set, in one transaction, publishing their update event.
-  Deactivating an active Channel first deletes its PulseChannels, and its before-update hook renames it."
+  "Apply `updates`, each the id of a Channel and the columns to set, in one transaction, publishing their update
+  event, where deactivating an active Channel first deletes its PulseChannels and its before-update hook renames it."
   [updates :- [:sequential ::channel.schema/channel.update]]
   (mdb/update-batched! :model/Channel updates {:before-update prepare-channel-updates
                                                :after-update  publish-channel-updates
@@ -284,7 +284,7 @@
   [ids :- [:sequential ms/PositiveInt]]
   (mdb/delete-batched! :model/Channel ids {:before-delete publish-channel-deletes}))
 
-(mu/defn check-channel-templates! :- :nil
+(mu/defn check-channel-templates :- :nil
   "Throws what inserting the ChannelTemplate `rows` would throw for the first of them that is invalid."
   [rows :- [:sequential ::channel.schema/channel-template.create]]
   (run! check-valid-channel-template rows)

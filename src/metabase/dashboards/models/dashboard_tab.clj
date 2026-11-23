@@ -135,7 +135,7 @@
                                                   [:deleted-tab-ids [:sequential :int]]
                                                   [:total-num-tabs  :int]]]
   "Given the `:current-tabs` and the `:new-tabs` of each of `replacements`, delete, create and update the tabs that
-  differ, with one statement for each of them. Returns, for each of `replacements`, in order:
+  differ, with one statement for each of them, and return, for each of `replacements`, in order:
   - `:old->new-tab-id`: a map from the ids of the tabs of its `:new-tabs` that were created to their new ids
   - `:created-tab-ids`, `:updated-tab-ids`, `:deleted-tab-ids`
   - `:total-num-tabs`: the total number of active tabs of its Dashboard after the operation."

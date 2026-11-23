@@ -48,7 +48,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -116,9 +115,7 @@
       (check-dashboard-subscription pulse))
     (cond-> pulse
       (and (contains? changes :archived) (not (contains? changes :archived_directly)))
-      (assoc :archived_directly (pulse.db/archived-directly-clause (boolean (:archived pulse))
-                                                                   (contains? changes :collection_id)
-                                                                   (:collection_id pulse))))))
+      (assoc :archived_directly (mi/archived-directly-clause :model/Pulse changes)))))
 
 ;;; ---------------------------------------------------- Permissions -----------------------------------------------------
 
@@ -612,10 +609,6 @@
 
 ;;; ------------------------------------------------------ Writes ----------------------------------------------------------
 
-(mr/def ::write-opts
-  [:maybe [:map {:closed true}
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (defn- moved-pulses
   "The `pulses` whose Collection their changes, `changes-of` a Pulse, move."
   [pulses changes-of]
@@ -629,7 +622,7 @@
   "The Collections of the `rows`, each holding `:collection_id`, as rows by id, read together."
   [rows]
   (when-let [ids (not-empty (into [] (comp (keep :collection_id) (distinct)) rows))]
-    (u/index-by :id (pulse.db/collections-for-content-checks ids))))
+    (collection/collections-for-content-checks ids)))
 
 (defn- check-collection
   "Throw unless the Collection of `row`, holding `:collection_id` and `:archived`, which `parents` has by id, satisfies
@@ -770,13 +763,13 @@
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
 
 (mu/defn update-pulses! :- :nil
-  "Apply `updates`, each the id of a Pulse that exists and its columns only, in one transaction, publishing their update
-  event with `opts`. A change of `:archived` also sets `archived_directly` and enables or disables the PulseChannels, and
-  a change of `:collection_id` checks that the new Collection can hold the Pulses."
+  "Apply `updates`, each the id of a Pulse that exists and its columns only, in one transaction, publishing their
+  update event with `opts`, where a change of `:archived` also sets `archived_directly` and enables or disables the
+  PulseChannels, and a change of `:collection_id` checks that the new Collection can hold the Pulses."
   ([updates :- [:sequential PulseUpdate]]
    (update-pulses! updates nil))
   ([updates :- [:sequential PulseUpdate]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (mdb/update-batched! :model/Pulse updates
                         {:before-update check-and-prepare-pulse-updates
                          :reread?       true
@@ -802,7 +795,7 @@
    (update-pulse! pulse-id changes nil))
   ([pulse-id :- ::lib.schema.id/pulse
     changes  :- PulseChangesWithParts
-    opts     :- ::write-opts]
+    opts     :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (when-let [stored (get (pulse.db/pulses-by-ids [pulse-id]) pulse-id)]
        (let [event    (write-pulse-columns! stored changes opts)
@@ -887,16 +880,17 @@
   ([ids :- [:sequential ::lib.schema.id/pulse]]
    (delete-pulses! ids nil))
   ([ids  :- [:sequential ::lib.schema.id/pulse]
-    opts :- ::write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (mdb/delete-batched! :model/Pulse ids {:before-delete #(delete-channels-and-publish! opts %)})))
 
 (mu/defn remove-pulse-channels! :- :nil
-  "Delete the PulseChannels with `channel-ids`, and archive each Pulse left without a PulseChannel, publishing its
-  update event. A Pulse that keeps a PulseChannel publishes none: the channels it loses are upkeep, not a change of it."
+  "Delete the PulseChannels with `channel-ids` and archive each Pulse left without a PulseChannel, publishing its
+  update event, while a Pulse that keeps a PulseChannel publishes none as the channels it loses are upkeep, not a
+  change of it."
   ([channel-ids :- [:sequential ms/PositiveInt]]
    (remove-pulse-channels! channel-ids nil))
   ([channel-ids :- [:sequential ms/PositiveInt]
-    opts        :- ::write-opts]
+    opts        :- :metabase.events.schema/write-opts]
    (when (seq channel-ids)
      (t2/with-transaction [_conn]
        (let [pulse-ids (vec (distinct (map :pulse_id (pulse.db/pulse-channels-with-ids channel-ids))))]
@@ -906,8 +900,8 @@
    nil))
 
 (defn- emptied-channel-ids
-  "The ids of the PulseChannels that lose their last recipient when `recipients` are deleted, and have no raw email
-  addresses. Slack PulseChannels and ones with email address subscriptions are never deleted with their recipients."
+  "The ids of the PulseChannels that lose their last recipient when `recipients` are deleted and have no raw email
+  addresses, as Slack PulseChannels and ones with email address subscriptions are never deleted with their recipients."
   [recipients]
   (when (seq recipients)
     (let [channel-ids (into #{} (map :pulse_channel_id) recipients)
@@ -919,9 +913,9 @@
       (filterv #(empty? (:emails (get details %))) candidates))))
 
 (defn- delete-recipients!
-  "Delete the PulseChannelRecipients `recipients`, and the PulseChannels they were the last recipients of, archiving the
-  Pulses left without a PulseChannel. A Pulse that keeps its PulseChannels publishes no event: a recipient leaving is
-  upkeep, not a change of the Pulse."
+  "Delete the PulseChannelRecipients `recipients` and the PulseChannels they were the last recipients of, archiving
+  the Pulses left without a PulseChannel and publishing no event for a Pulse that keeps its PulseChannels, as a
+  recipient leaving is upkeep, not a change of the Pulse."
   [recipients opts]
   (when (seq recipients)
     (t2/with-transaction [_conn]
@@ -933,8 +927,8 @@
           (pulse.db/delete-pulse-channel-recipients! (mapv :id remaining)))))))
 
 (mu/defn delete-pulse-channel-recipients! :- :nil
-  "Delete the PulseChannelRecipients with `recipient-ids`. A PulseChannel that loses its last recipient, and has no raw
-  email addresses, is deleted with them, and its Pulse is archived when it was the last PulseChannel of the Pulse."
+  "Delete the PulseChannelRecipients with `recipient-ids`, together with a PulseChannel that loses its last recipient
+  and has no raw email addresses, and archive its Pulse when it was the last PulseChannel of the Pulse."
   [recipient-ids :- [:sequential ms/PositiveInt]]
   (when (seq recipient-ids)
     (delete-recipients! (pulse.db/pulse-channel-recipients-by-ids recipient-ids) nil))
@@ -946,7 +940,7 @@
   ([user-ids :- [:sequential ::lib.schema.id/user]]
    (delete-pulse-channel-recipients-for-users! user-ids nil))
   ([user-ids :- [:sequential ::lib.schema.id/user]
-    opts     :- ::write-opts]
+    opts     :- :metabase.events.schema/write-opts]
    (when (seq user-ids)
      (delete-recipients! (pulse.db/pulse-channel-recipients-for-users user-ids) opts))
    nil))
@@ -988,16 +982,10 @@
         (keys card-refs-by-pulse)))
 
 (mu/defn- replace-pulse-channels! :- [:set ::lib.schema.id/pulse]
-  "Replace the PulseChannels of each Pulse of `channels-by-pulse`, a map from its id to a definitive collection of *all*
-  of its channels:
-
-    * If a channel has no existing `PulseChannel` object, one will be created.
-
-    * If an existing `PulseChannel` has no corresponding entry, it will be deleted.
-
-    * All previously existing channels will be updated with their most recent information.
-
-  Returns the ids of the Pulses that changed any."
+  "Replace the PulseChannels of each Pulse of `channels-by-pulse`, a map from its id to a definitive collection of
+  *all* of its channels, creating a channel that has no existing PulseChannel, deleting an existing PulseChannel that
+  has no entry and updating the others with their most recent information, and return the ids of the Pulses that
+  changed any."
   [channels-by-pulse :- [:map-of ::lib.schema.id/pulse [:sequential PulseChannelInput]]]
   (if (empty? channels-by-pulse)
     #{}
@@ -1046,7 +1034,7 @@
         parents (collection-parents checked)]
     (doseq [[pulse row] (map vector checked rows)]
       (check-collection parents pulse)
-      (pulse-channel/check-new-pulse-channels! (map #(channel-row 0 %) (:channels row))))))
+      (pulse-channel/check-new-pulse-channels (map #(channel-row 0 %) (:channels row))))))
 
 (defn- create-pulse-batch!
   "Check and insert `rows`, one batch of a call, with their PulseCards and PulseChannels, and return the inserted Pulses."

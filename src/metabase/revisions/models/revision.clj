@@ -78,8 +78,8 @@
                              (fn [error] (invalid-snapshot model (:value error) (:explain error))))))))
 
 (defn normalize-snapshot
-  "The `snapshot` of `model` that a Revision stores, decoded with the schema of its spec: the current format of what an
-  older format recorded. Throws a 400 for a snapshot that is invalid after that."
+  "The `snapshot` of `model` that a Revision stores, decoded with the schema of its spec into the current format of
+  what an older format recorded, throwing a 400 for a snapshot that is invalid after that."
   [model snapshot]
   ((snapshot-coercer model) snapshot))
 

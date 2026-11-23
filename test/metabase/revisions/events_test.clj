@@ -31,7 +31,7 @@
           (card/update-cards! [{:id card-id :collection_position 3}])
           (is (= 2 (count (revisions-of "Card" card-id)))))))))
 
-(deftest revisions-of-an-event-larger-than-one-batch-test
+(deftest revisions-of-event-larger-than-one-batch-test
   (testing "the revisions of every row of an event are recorded when the event holds more rows than one batch"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/Card]

@@ -43,10 +43,11 @@
       (assoc :updated_at (java.time.OffsetDateTime/now)))))
 
 (mu/defn update-event :- ::events.schema/lifecycle
-  "The lifecycle event of the update of the rows of `stored`, a map from id to the instance the write function read, by
-  `rows`, each an `:id` and the columns to set, by the current user, to publish after the update. A row that is not
-  stored or changes nothing is left out. `:objects` in `options`, a map from id to the row after the update, gives the
-  rows whose columns a hook of the model derives or the database sets; `:context` is the context of the event."
+  "The lifecycle event of the update of the rows of `stored`, a map from id to the instance the write function read,
+  by `rows`, each an `:id` and the columns to set, by the current user, to publish after the update, leaving out a row
+  that is not stored or changes nothing, with `:objects` in `options`, a map from id to the row after the update,
+  giving the rows whose columns a hook of the model derives or the database sets, and `:context` the context of the
+  event."
   ([stored :- [:map-of [:or :int :string] :map]
     rows   :- [:sequential [:map [:id [:or :int :string]]]]]
    (update-event stored rows nil))

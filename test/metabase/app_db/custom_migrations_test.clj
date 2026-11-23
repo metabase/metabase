@@ -1057,8 +1057,6 @@
 (deftest ^:mb/old-migrations-test migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
-          ;; A plain insert through the model applies its transforms and grants no permissions, which need the
-          ;; data_permissions table, added after the migrations we're testing here.
           (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
             (let [default-db                {:name       "DB"
                                              :engine     "postgres"

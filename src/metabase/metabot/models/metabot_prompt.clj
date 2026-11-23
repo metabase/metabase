@@ -47,8 +47,8 @@
     (mapv #(assoc % :model (card-types (:card_id %))) rows)))
 
 (mu/defn create-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
-  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, in one transaction, and return the
-  inserted prompts. A row without an existing Card fails on the foreign key."
+  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, in one transaction and return the
+  inserted prompts, a row without an existing Card failing on the foreign key."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
   (mdb/create-batched! :model/MetabotPrompt rows {:before-create add-prompt-models}))
 
@@ -66,7 +66,7 @@
 
 (mu/defn update-metabot-prompts! :- :nil
   "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in one transaction, setting
-  the model of a prompt whose Card changes to the type of the new Card. A missing Card fails on the foreign key."
+  the model of a prompt whose Card changes to the type of the new Card, a missing Card failing on the foreign key."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
   (mdb/update-batched! :model/MetabotPrompt rows {:before-update prepare-prompt-updates}))
 

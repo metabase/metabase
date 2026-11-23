@@ -1,5 +1,6 @@
 (ns metabase.permissions.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -107,14 +108,12 @@
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::collection-permission-graph-revision.create
-  "What creating a CollectionPermissionGraphRevision takes: the revision number, the user who made it, and optionally
-  the graph before the change, the change and a remark."
-  [:map {:closed true}
-   [:id      ms/PositiveInt]
-   [:user_id ::lib.schema.id/user]
-   [:before  {:optional true} [:maybe ::collection-permission-graph-revision.before]]
-   [:after   {:optional true} [:maybe ::collection-permission-graph-revision.after]]
-   [:remark  {:optional true} [:maybe :string]]])
+  "What creating a CollectionPermissionGraphRevision takes: the columns of an update but the creation time, with the
+  revision number as its `:id`, and the user who made it."
+  [:merge
+   (mut/dissoc ::collection-permission-graph-revision.update :created_at)
+   [:map {:closed true}
+    [:user_id ::lib.schema.id/user]]])
 
 (mr/def ::data-permissions
   "A DataPermissions as selected from the app DB: every column of `:data_permissions`."

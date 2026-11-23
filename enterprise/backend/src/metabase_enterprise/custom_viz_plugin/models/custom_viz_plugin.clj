@@ -98,8 +98,8 @@
                     (custom-viz-plugin.db/non-blob-plugins-by-ids (vec (keys id->stored))))}))
 
 (mu/defn update-custom-viz-plugins! :- :nil
-  "Apply `updates`, each the `:id` of a CustomVizPlugin with the columns to give it, in one transaction, publishing their
-  update event. The default select would read the bundles, so the plugins are read without them."
+  "Apply `updates`, each the `:id` of a CustomVizPlugin with the columns to give it, in one transaction, publishing
+  their update event, with the plugins read without their bundles."
   [updates :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]]
   (t2/with-transaction [_conn]
     (let [batches    (mapv #(update-custom-viz-plugin-batch! (vec %))
@@ -114,7 +114,7 @@
 
 (mu/defn delete-custom-viz-plugins! :- :nil
   "Delete the CustomVizPlugins with `ids` in one transaction, publishing their delete event right before the first
-  statement. The default select would read the bundles, so the plugins are read without them."
+  statement, with the plugins read without their bundles."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
     (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))

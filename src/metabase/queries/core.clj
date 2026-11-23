@@ -38,7 +38,7 @@
   can-delete?
   card-read-check-columns
   check-shared-dashboard-timeline-permissions!
-  check-new-dashboard-questions-timeline-permissions!
+  check-new-dashboard-questions-timeline-permissions
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   card-exposed-timeline-ids

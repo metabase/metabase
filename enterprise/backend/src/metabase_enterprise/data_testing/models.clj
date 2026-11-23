@@ -65,9 +65,8 @@
    :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (mu/defn- remove-deleted-tests-from-suites! :- :nil
-  "Remove the deleted `test-type` tests with `entity-ids` from every suite, publishing the delete event of their members.
-  Does nothing on an instance where remote sync keeps synced content read-only, since that instance cannot push the
-  changed suites; a run then reports the tests as missing."
+  "Remove the deleted `test-type` tests with `entity-ids` from every suite, publishing the delete event of their
+  members, and do nothing on an instance where remote sync keeps synced content read-only."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential :string]]
   (when-not (or (remote-sync/read-only?) (empty? entity-ids))
@@ -218,7 +217,7 @@
   publishing their update event."
   [model :- :keyword
    rows  :- [:sequential ::data-testing.schema/saved-test.update]
-   opts  :- ::data-testing.schema/write-opts]
+   opts  :- :metabase.events.schema/write-opts]
   (mdb/update-batched! model rows
                        {:reread?      true
                         :after-update (fn [updates id->stored id->updated]
@@ -235,16 +234,17 @@
   (events/publish-event! (get-in saved-test-topics [model :delete]) (events/delete-event tests)))
 
 (mu/defn delete-saved-tests! :- :nil
-  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one transaction, publishing their delete event
-  right before the statement. A run of a deleted test no longer names it, and a suite no longer holds it."
+  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one transaction, publishing their delete
+  event right before the statement, so that a run of a deleted test no longer names it and a suite no longer holds
+  it."
   [test-type :- ::data-testing.schema/test-type
    model     :- :keyword
    ids       :- [:sequential ms/PositiveInt]]
   (mdb/delete-batched! model ids {:before-delete #(delete-and-publish! test-type model %)}))
 
 (mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
-  "Insert the TransformTests `rows`, returning the inserted tests. The column transforms of the model normalize and
-  validate each row."
+  "Insert the TransformTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
   [rows :- [:sequential ::data-testing.schema/transform-test.create]]
   (create-saved-tests! :model/TransformTest rows))
 
@@ -254,7 +254,7 @@
   ([rows :- [:sequential ::data-testing.schema/transform-test.update]]
    (update-transform-tests! rows nil))
   ([rows :- [:sequential ::data-testing.schema/transform-test.update]
-    opts :- ::data-testing.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (update-saved-tests! :model/TransformTest rows opts)))
 
 (mu/defn delete-transform-tests! :- :nil

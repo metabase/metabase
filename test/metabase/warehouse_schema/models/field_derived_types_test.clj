@@ -70,11 +70,11 @@
     (mapv (comp normalized final) [:base_type :coercion_strategy :effective_type])))
 
 (defn- untouched-by?
-  "Whether no column `changes` write holds its new value in the stored types, as Toucan reads them: a strategy it does
-  not take reads as nil, so that clearing one is no change to a row that holds it. On MySQL and MariaDB an update of
-  more than 8 columns cannot keep the order of its assignments, so a strategy cleared by a new base type next to a
-  missing or invalid effective type, which the effective type's expression can then no longer tell from no strategy, is
-  left out."
+  "Whether no column `changes` write holds its new value in the stored types, as Toucan reads them, a strategy it does
+  not take reading as nil so that clearing one is no change to a row that holds it, leaving out on MySQL and MariaDB,
+  where an update of more than 8 columns cannot keep the order of its assignments, a strategy cleared by a new base
+  type next to a missing or invalid effective type, which the effective type's expression then cannot tell from no
+  strategy."
   [changes [base strategy effective]]
   (let [stored {:base_type base :coercion_strategy strategy :effective_type effective}]
     (and
@@ -86,7 +86,7 @@
                (not (contains? #{"type/Text" "type/Integer"} effective))))
      (not-any? (fn [[k v]] (= (normalized v) (get stored k ::absent))) (select-keys changes [:base_type :coercion_strategy :effective_type])))))
 
-(deftest hook-expressions-equal-the-clojure-derivation-test
+(deftest hook-expressions-equal-clojure-derivation-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}]
     (doseq [changes change-sets
@@ -101,7 +101,7 @@
               (str "stored " (pr-str state))))
         (t2/delete! :model/Field :id [:in ids])))))
 
-(deftest hook-expressions-through-the-write-function-test
+(deftest hook-expressions-through-write-function-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}]
     (let [states [["type/Text" "Coercion/UNIXSeconds->DateTime" "type/Instant"]

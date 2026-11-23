@@ -97,7 +97,7 @@
                            (events/update-event (update-vals updates first)
                                                 (mapv (fn [[id [_field changes]]] (assoc changes :id id)) updates)))))
 
-(defn- with-field-update
+(defn- add-field-update
   "`updates`, as [[publish-field-updates!]] takes them, with `changes` to `field` added."
   [updates field changes]
   (update updates (:id field) (fn [[before so-far]] [(or before field) (merge so-far changes)])))
@@ -123,7 +123,7 @@
                 (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
                 (let [changes {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}]
                   (t2/update! :model/Field :id (:id @field) changes)
-                  (swap! updates with-field-update @field changes))))
+                  (swap! updates add-field-update @field changes))))
             ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
             ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
             ;; sequence that sets effective_type alone first would be reverted before
@@ -136,7 +136,7 @@
               (when (seq upd)
                 (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
                 (t2/update! :model/Field :id (:id @field) upd)
-                (swap! updates with-field-update @field upd)))))))
+                (swap! updates add-field-update @field upd)))))))
     (publish-field-updates! @updates)))
 
 (def ^:private create-database-timeout-ms
@@ -287,7 +287,7 @@
         (if (and source-field target-pk-field)
           (let [changes {:fk_target_field_id (:id target-pk-field)}]
             (t2/update! :model/Field :id (:id source-field) changes)
-            (with-field-update updates source-field changes))
+            (add-field-update updates source-field changes))
           updates)))
     {}
     (for [{:keys [table-name field-definitions]} table-definitions
@@ -432,7 +432,7 @@
                (let [changes {:semantic_type :type/FK :fk_target_field_id fk-target-field-id}]
                  (t2/update! :model/Field :id id changes)
                  (cond-> updates
-                   (get fields id) (with-field-update (get fields id) changes))))
+                   (get fields id) (add-field-update (get fields id) changes))))
              {}
              fk-field-infos))))
 

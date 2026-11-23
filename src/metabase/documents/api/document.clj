@@ -115,7 +115,7 @@
    _query-params
    {:keys [collection_id] :as body} :- DocumentCreateOptions]
   (api/create-check :model/Document {:collection_id collection_id})
-  (m.document/check-creating-document-cards! body)
+  (m.document/check-creating-document-cards body)
   (t2/with-transaction [_conn]
     (m.document/get-document (m.document/create-document-with-cards! body))))
 
@@ -145,7 +145,7 @@
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/update-check existing-document (select-keys body [:collection_id :archived]))
-    (m.document/check-updating-document-cards! existing-document body)
+    (m.document/check-updating-document-cards existing-document body)
     (m.document/update-document-with-cards! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
@@ -182,9 +182,7 @@
                                   (assoc :document_id new-document-id
                                          :collection_id new-collection-id)))
                             cards-to-copy)]
-    ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
-    ;; collection the caller cannot read, so each card is read-checked and its copy create-checked before any is made.
-    (m.document/check-clone-cards! cards-to-copy sources)
+    (m.document/check-clone-cards cards-to-copy sources)
     (reduce (fn [accum [card source]]
               (let [new-card (m.document/clone-card! source @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))

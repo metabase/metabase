@@ -127,8 +127,8 @@
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
-  "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
-  validate each row."
+  "Insert the CardTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
   [rows :- [:sequential ::data-testing.schema/card-test.create]]
   (data-testing.models/create-saved-tests! :model/CardTest rows))
 
@@ -138,7 +138,7 @@
   ([rows :- [:sequential ::data-testing.schema/card-test.update]]
    (update-card-tests! rows nil))
   ([rows :- [:sequential ::data-testing.schema/card-test.update]
-    opts :- ::data-testing.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
 
 (mu/defn delete-card-tests! :- :nil

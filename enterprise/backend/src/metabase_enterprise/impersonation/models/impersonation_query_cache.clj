@@ -33,7 +33,7 @@
   "The lookup key of the ImpersonationQueryCache of `input`: the hash of its native query and the inputs it was
   validated with."
   [{:keys [input_query input_engine input_allow_write input_admin input_version]}
-   :- ::impersonation.schema/impersonation-query-cache.update]
+   :- ::impersonation.schema/impersonation-query-cache.create]
   {:input_query_hash  (query-hash input_query)
    :input_engine      input_engine
    :input_allow_write input_allow_write
@@ -54,7 +54,7 @@
 
 (mu/defn upsert-impersonation-query-cache! :- ms/PositiveInt
   "Store `row` as the ImpersonationQueryCache of its lookup key, replacing the one stored under that key."
-  [row :- ::impersonation.schema/impersonation-query-cache.update]
+  [row :- ::impersonation.schema/impersonation-query-cache.create]
   (impersonation.db/update-or-insert-query-cache! (lookup row) row))
 
 (mu/defn delete-impersonation-query-caches! :- :nil

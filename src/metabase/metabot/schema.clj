@@ -290,14 +290,12 @@
 
 (mr/def ::metabot
   "A Metabot as selected from the app DB: every column of `:metabot`."
-  [:merge
-   ::metabot.update
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]]])
+  ::metabot.update)
 
 (mr/def ::metabot.update
-  "What an update (or insert) of a Metabot accepts: every column of `:metabot` except `id`, all optional."
+  "What an update of a Metabot takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id                   ms/PositiveInt]
    [:name                 {:optional true} [:maybe :string]]
    [:description          {:optional true} [:maybe :string]]
    [:entity_id            {:optional true} [:maybe :string]]
@@ -441,16 +439,12 @@
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
-  [:merge
-   ::metabot-prompt.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+  ::metabot-prompt.update)
 
 (mr/def ::metabot-prompt.update
-  "What an update of a MetabotPrompt takes: its `:id` and the columns to set; the `:id` is optional so that the generic
-  entity writes of `metabase.models.db` can insert with it."
+  "What an update of a MetabotPrompt takes: its `:id` and the columns to set, each optional."
   [:map {:closed true}
-   [:id         {:optional true} ms/PositiveInt]
+   [:id         ms/PositiveInt]
    [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]

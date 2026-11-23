@@ -11,8 +11,8 @@
 (deftest attribute-is-non-blank-test
   (doseq [attribute [nil "" "  "]]
     (testing (pr-str attribute)
-      (is (not (mr/validate ::impersonation.schema/connection-impersonation.update {:attribute attribute})))))
-  (is (mr/validate ::impersonation.schema/connection-impersonation.update {:attribute "role"})))
+      (is (not (mr/validate ::impersonation.schema/connection-impersonation.update {:id 1 :attribute attribute})))))
+  (is (mr/validate ::impersonation.schema/connection-impersonation.update {:id 1 :attribute "role"})))
 
 (deftest group-and-database-are-frozen-test
   (mt/with-temp [:model/PermissionsGroup         {group-id :id}         {}
@@ -51,7 +51,7 @@
             (counted 1)
             (is (= (counted 2) (counted 6)))))))))
 
-(deftest insert-impersonations-keeps-the-last-row-of-each-group-and-database-test
+(deftest insert-impersonations-keeps-last-row-of-each-group-and-database-test
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup        {group-id :id} {}
                    :model/Database                {db-id :id}    {}

@@ -2672,7 +2672,7 @@
     (let [row     (fn [dashboard-id selecting?]
                     (cond-> {:dashboard_id dashboard-id :display :line :visualization_settings {}}
                       selecting? (assoc :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]})))
-          check!  card/check-new-dashboard-questions-timeline-permissions!]
+          check!  card/check-new-dashboard-questions-timeline-permissions]
       (testing "a row that selects a timeline the user cannot read, not first, on a shared dashboard"
         (mt/with-test-user :rasta
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"

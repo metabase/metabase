@@ -211,15 +211,11 @@
                      (coercion-changes field field))]
     (enforce-effective-type-invariant field)))
 
-;;; The before-update hook writes the types a Field takes from the columns an update changes as expressions the database
-;;; evaluates against the stored row, built by [[warehouse-schema.db/derived-types-clause]], so that every writer gets
-;;; them with no statement of the hook's own. [[enforce-effective-type-invariant]] and [[coercion-changes]] are what the
-;;; expressions must equal, row by row.
-
 (defn- add-derived-type-clauses
-  "`field`, an update, with the types its changes derive. MySQL and MariaDB evaluate the assignments of a statement left to
-  right, the later ones reading the columns the earlier ones set, so there the changes go back as a map in an order in
-  which the effective type, which reads the stored strategy, comes before the strategy that is cleared."
+  "`field`, an update, with the types its changes derive as expressions the database evaluates against the stored row,
+  equal row by row to what [[enforce-effective-type-invariant]] and [[coercion-changes]] compute, in a map whose
+  effective type, which reads the stored strategy, comes before a cleared strategy on MySQL and MariaDB, which evaluate
+  the assignments of a statement left to right, the later ones reading the columns the earlier ones set."
   [field changes]
   (let [derived (warehouse-schema.db/derived-types-clause changes)]
     (if (and (= :mysql (mdb/db-type)) (contains? derived :coercion_strategy))

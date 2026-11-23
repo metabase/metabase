@@ -124,13 +124,6 @@
           (mapv parse-advisory advisories))
         (log/warnf "Advisory fetch failed with status %s" (:status resp))))))
 
-(defn- upsert-advisory!
-  "Insert or update a single advisory by :advisory_id.
-   On insert, match_status starts as :unknown until the matching engine evaluates it.
-   On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
-  [advisory]
-  (security-advisory/upsert-advisory! advisory))
-
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
   []
@@ -142,7 +135,7 @@
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
                                (try
-                                 (upsert-advisory! advisory)
+                                 (security-advisory/upsert-advisory! advisory)
                                  n
                                  (catch Exception e
                                    (log/warnf "Error upserting advisory %s: %s" (:advisory_id advisory) (ex-message e))

@@ -283,14 +283,6 @@
 ;; Ctx building
 ;; ---------------------------------------------------------------------------
 
-(defn- thread-prompt-for
-  [thread-id]
-  (explorations.db/thread-prompt thread-id))
-
-(defn- creator-id-for-thread
-  [thread-id]
-  (explorations.db/exploration-creator-id-for-thread thread-id))
-
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
@@ -305,10 +297,10 @@
                                    m (:metrics g)]
                                [[(:block-id g) (:metric-id m)] m]))]
     {:thread-id      thread-id
-     :thread-prompt  (thread-prompt-for thread-id)
+     :thread-prompt  (explorations.db/thread-prompt thread-id)
      :metric-dim-ctx metric-dim-ctx
      :metric-by-key  metric-by-key
-     :creator-id     (creator-id-for-thread thread-id)
+     :creator-id     (explorations.db/exploration-creator-id-for-thread thread-id)
      :thread-blocks  thread-blocks}))
 
 ;; ---------------------------------------------------------------------------

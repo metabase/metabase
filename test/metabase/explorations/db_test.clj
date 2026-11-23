@@ -6,7 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
-(deftest update-queries!-writes-a-query-and-its-stamp-together-test
+(deftest update-queries!-writes-query-and-stamp-together-test
   (let [mp    (mt/metadata-provider)
         stamp {:dataset_query       (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                :data_access_token   {}

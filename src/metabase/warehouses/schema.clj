@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -71,17 +72,16 @@
                                                             [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
     [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]]])
 
-(mr/def ::database.create
-  "What a caller gives to create a Database: its name and engine, any other column of `:metabase_database`, and an
-  `id` only for a Database whose id is fixed."
+(mr/def ::database.update
+  "What an update of a Database takes: its `:id` and the columns of `:metabase_database` to change, each optional."
   [:map {:closed true}
-   [:id                          {:optional true} ::lib.schema.id/database]
+   [:id                          ::lib.schema.id/database]
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
-   [:name                        :string]
+   [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      ::lib.schema.common/keyword]
+   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]
@@ -110,14 +110,15 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
-(mr/def ::database.update
-  "What an update of a Database takes: its `id` and the columns to change, any column of `:metabase_database`."
+(mr/def ::database.create
+  "What a caller gives to create a Database: the columns of an update, with an `:id` only for a Database whose id is
+  fixed, and its name and engine."
   [:merge
-   ::database.create
-   [:map {:closed true}
-    [:id     ::lib.schema.id/database]
-    [:name   {:optional true} [:maybe :string]]
-    [:engine {:optional true} [:maybe ::lib.schema.common/keyword]]]])
+   (mut/dissoc ::database.update :id)
+   [:map
+    [:id     {:optional true} ::lib.schema.id/database]
+    [:name   :string]
+    [:engine ::lib.schema.common/keyword]]])
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."

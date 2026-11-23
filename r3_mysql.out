@@ -1,5 +1,0 @@
-WARNING: every? already refers to: #'clojure.core/every? in namespace: metabase.lib.schema.common, being replaced by: #'metabase.util.performance/every?
-Running QP tests against these drivers: #{:h2}
-Running tests with options {:mode :cli/ci, :namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))", :exclude-directories [".clj-kondo/src" "classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 60000, :multithread? :vars, :only [metabase.transforms.models.transform-test metabase.transforms.models.transform-tag-test metabase.transforms.models.transform-job-test metabase.transforms-rest.api.transform-test metabase.transforms-rest.api.transform-tag-test metabase.transforms.crud-test metabase.transforms.models-test]}
-Running tests in [metabase.transforms.models.transform-test metabase.transforms.models.transform-tag-test metabase.transforms.models.transform-job-test metabase.transforms-rest.api.transform-test metabase.transforms-rest.api.transform-tag-test metabase.transforms.crud-test metabase.transforms.models-test]
-EXIT 143

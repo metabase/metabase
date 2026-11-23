@@ -257,7 +257,6 @@
       (log/info "Migration finished")
       (set-cloud-migration-progress! id :done 100)
       (catch Exception e
-        ;; See set-cloud-migration-progress! for when :terminal is set.
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do

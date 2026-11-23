@@ -1829,8 +1829,6 @@
             (store-fake-result! qid qp-out)
             (mark-done! qid)
             (let [doc (t2/select-one :model/Document :id doc-id)]
-              ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-cards!`
-              ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
               (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
                                           queries.card/create-cards!                        (fn [& _] (throw (ex-info "boom" {})))]
                 (is (thrown? Throwable
@@ -1865,13 +1863,10 @@
                         :row_count 2}]
             (store-fake-result! qid qp-out)
             (mark-done! qid)
-            ;; Give the EQ a real dataset_query so create-cards! has a database_id to inherit.
             (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
             (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                               :exploration_query_id qid)
                   doc       (t2/select-one :model/Document :id doc-id)
-                  ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
-                  ;; the real create-cards! / stored_result write path.
                   result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                               (eqr/create-ephemeral-card-for-exploration-queries!
                                [qid] doc-id (:collection_id doc) u

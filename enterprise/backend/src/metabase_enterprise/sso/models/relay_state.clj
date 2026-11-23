@@ -73,13 +73,9 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-sso-relay-state! :- :string
-  "Persist the SAML callback `context` under its already-generated `:id` (from [[generate-key]]). Returns the id.
-
-  `context` keys:
-  - `:id`           - the RelayState key (see [[generate-key]]); stored hashed, never in plaintext
-  - `:continue-url` - where to send the user after login (redirect target, or popup fallback URL)
-  - `:origin`       - postMessage target origin (embedding popup only)
-  - `:embedding?`   - whether this is a modular-embedding popup login"
+  "Store the SAML callback `context` under the hash of its plaintext key `:id` from [[generate-key]], with the URL to
+  send the user to after login (`:continue-url`), the postMessage origin of an embedding popup (`:origin`) and whether
+  the login is a modular-embedding popup (`:embedding?`), and return the key."
   [{:keys [id continue-url origin embedding?]} :- ::sso.schema/sso-relay-state.create]
   (sso.db/insert-relay-state! {:id           (hash-key id)
                                :continue_url continue-url
@@ -88,16 +84,14 @@
   id)
 
 (mu/defn delete-sso-relay-state! :- [:maybe :int]
-  "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single
-  `DELETE` is atomic and idempotent (a concurrent or replayed callback that loses the race simply deletes
-  nothing)."
+  "Delete the RelayState entry of the plaintext `key` after a successful login, in one statement that deletes nothing
+  for a concurrent or replayed callback that comes second."
   [key :- [:maybe :string]]
   (when (relay-state-key? key)
     (sso.db/delete-relay-state! (hash-key key))))
 
 (mu/defn delete-sso-relay-states-for-cleanup! :- :int
-  "Delete the RelayState entries expired at `cutoff` (abandoned logins that never came back). Returns the number
-  deleted."
+  "Delete the RelayState entries of abandoned logins, expired at `cutoff`, and return the number deleted."
   [cutoff :- ms/TemporalInstant]
   (sso.db/delete-relay-states-expired-at! cutoff))
 

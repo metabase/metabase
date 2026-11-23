@@ -14,16 +14,10 @@
   "The `:value_ref` column of a ModelIndex, decoded."
   [:vector [:maybe ::lib.schema.common/open-json]])
 
-(mr/def ::model-index
-  "A ModelIndex as selected from the app DB: every column of `:model_index`."
-  [:merge
-   ::model-index.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
 (mr/def ::model-index.update
-  "What an update (or insert) of a ModelIndex accepts: every column of `:model_index` except `id`, all optional."
+  "A ModelIndex by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:model_id   {:optional true} [:maybe :int]]
    [:pk_ref     {:optional true} [:maybe ::model-index.pk-ref]]
    [:value_ref  {:optional true} [:maybe ::model-index.value-ref]]
@@ -33,6 +27,10 @@
    [:error      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::model-index
+  "A ModelIndex as selected from the app DB: every column of `:model_index`."
+  ::model-index.update)
 
 (mr/def ::model-index.create
   "What a caller gives to create a ModelIndex: its model, the refs of its primary key and value, and its creator."

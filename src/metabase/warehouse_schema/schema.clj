@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
@@ -34,27 +35,27 @@
     [:field                   {:optional true} [:maybe [:ref ::field]]]
     [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
-(mr/def ::dimension.create
-  "What a caller gives to create a Dimension: its Field, its type and any other column of `:dimension` except `id`; an
+(mr/def ::dimension.update
+  "What an update of a Dimension takes: its `:id` and the columns of `:dimension` to change, each optional; an
   external Dimension names the Field its human-readable values come from."
   [:map {:closed           true
          :decode/normalize {:leave check-external-dimension-field}}
-   [:field_id                ::lib.schema.id/field]
+   [:id                      ::lib.schema.id/dimension]
+   [:field_id                {:optional true} [:maybe ::lib.schema.id/field]]
    [:name                    {:optional true} [:maybe :string]]
-   [:type                    ::dimension.type]
+   [:type                    {:optional true} ::dimension.type]
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
-(mr/def ::dimension.update
-  "What an update of a Dimension takes: its `id` and the columns to change, any column of `:dimension`."
+(mr/def ::dimension.create
+  "What a caller gives to create a Dimension: the columns of an update without the `:id`, and its Field and type."
   [:merge
-   ::dimension.create
-   [:map {:closed true}
-    [:id       ::lib.schema.id/dimension]
-    [:field_id {:optional true} [:maybe ::lib.schema.id/field]]
-    [:type     {:optional true} ::dimension.type]]])
+   (mut/dissoc ::dimension.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]
+    [:type ::dimension.type]]])
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
@@ -72,19 +73,20 @@
     [:target                     {:optional true} [:maybe [:ref ::field]]]
     [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
-(mr/def ::field.create
-  "What a caller gives to create a Field: its Table, its name and any other column of `:metabase_field` except `id`."
+(mr/def ::field.update
+  "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."
   [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:name                       :string]
+   [:name                       {:optional true} [:maybe :string]]
    [:base_type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:semantic_type              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                     {:optional true} [:maybe :boolean]]
    [:description                {:optional true} [:maybe :string]]
    [:preview_display            {:optional true} [:maybe :boolean]]
    [:position                   {:optional true} [:maybe :int]]
-   [:table_id                   ::lib.schema.id/table]
+   [:table_id                   {:optional true} [:maybe ::lib.schema.id/table]]
    [:parent_id                  {:optional true} [:maybe ::lib.schema.id/field]]
    [:display_name               {:optional true} [:maybe :string]]
    [:visibility_type            {:optional true} [:maybe ::lib.schema.common/keyword]]
@@ -115,14 +117,13 @@
    [:dimension_interestingness  {:optional true} [:maybe number?]]
    [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
 
-(mr/def ::field.update
-  "What an update of a Field takes: its `id` and the columns to change, any column of `:metabase_field`."
+(mr/def ::field.create
+  "What a caller gives to create a Field: the columns of an update without the `:id`, and its Table and name."
   [:merge
-   ::field.create
-   [:map {:closed true}
-    [:id       ::lib.schema.id/field]
-    [:name     {:optional true} [:maybe :string]]
-    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]]])
+   (mut/dissoc ::field.update :id)
+   [:map
+    [:name :string]
+    [:table_id ::lib.schema.id/table]]])
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
@@ -136,11 +137,12 @@
     [:id    {:optional true} pos-int?]
     [:field {:optional true} [:maybe [:ref ::field]]]]])
 
-(mr/def ::field-user-settings.create
-  "What a caller gives to create a FieldUserSettings: its Field and any other column of `:metabase_field_user_settings`
-  except `id`."
+(mr/def ::field-user-settings.update
+  "What an update of a FieldUserSettings takes: its `:id` and the columns of `:metabase_field_user_settings` to
+  change, each optional."
   [:map {:closed true}
-   [:field_id           ::lib.schema.id/field]
+   [:id                 pos-int?]
+   [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:semantic_type      {:optional true} [:maybe ::lib.schema.common/keyword]]
@@ -162,14 +164,12 @@
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
 
-(mr/def ::field-user-settings.update
-  "What an update of a FieldUserSettings takes: its `id` and the columns to change, any column of
-  `:metabase_field_user_settings`."
+(mr/def ::field-user-settings.create
+  "What a caller gives to create a FieldUserSettings: the columns of an update without the `:id`, and its Field."
   [:merge
-   ::field-user-settings.create
-   [:map {:closed true}
-    [:id       pos-int?]
-    [:field_id {:optional true} [:maybe ::lib.schema.id/field]]]])
+   (mut/dissoc ::field-user-settings.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]]])
 
 (mr/def ::field-values.human-readable-values
   [:sequential [:maybe ms/NonBlankString]])
@@ -205,28 +205,28 @@
    [:fn {:error/fn (fn [_ _] (tru "If remapped values are specified, they must be specified for all field values"))}
     value-pairs-agree?]])
 
-(mr/def ::field-values.create
-  "What a caller gives to create a FieldValues: its Field and any other column of `:metabase_fieldvalues` except `id`;
-  human-readable values, when given with the values, cover each of them."
+(mr/def ::field-values.update
+  "What an update of a FieldValues takes: its `:id` and the columns of `:metabase_fieldvalues` to change, each
+  optional; human-readable values, when given with the values, cover each of them."
   [:map {:closed           true
          :decode/normalize {:leave check-human-readable-values-cover-values}}
+   [:id                    ms/PositiveInt]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:values                {:optional true} [:maybe ms/FieldValues]]
    [:human_readable_values {:optional true} [:maybe ::field-values.human-readable-values]]
-   [:field_id              ::lib.schema.id/field]
+   [:field_id              {:optional true} [:maybe ::lib.schema.id/field]]
    [:has_more_values       {:optional true} [:maybe :boolean]]
    [:type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::field-values.update
-  "What an update of a FieldValues takes: its `id` and the columns to change, any column of `:metabase_fieldvalues`."
+(mr/def ::field-values.create
+  "What a caller gives to create a FieldValues: the columns of an update without the `:id`, and its Field."
   [:merge
-   ::field-values.create
-   [:map {:closed true}
-    [:id       ms/PositiveInt]
-    [:field_id {:optional true} [:maybe ::lib.schema.id/field]]]])
+   (mut/dissoc ::field-values.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]]])
 
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
@@ -237,11 +237,12 @@
     [:table      {:optional true} [:maybe [:ref ::table]]]
     [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
-(mr/def ::table-user-settings.create
-  "What a caller gives to create a TableUserSettings: its Table and any other column of `:metabase_table_user_settings`
-  except `id`."
+(mr/def ::table-user-settings.update
+  "What an update of a TableUserSettings takes: its `:id` and the columns of `:metabase_table_user_settings` to
+  change, each optional."
   [:map {:closed true}
-   [:table_id                ::lib.schema.id/table]
+   [:id                      pos-int?]
+   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:display_name            {:optional true} [:maybe :string]]
@@ -266,14 +267,12 @@
    [:data_layer_set          {:optional true} :boolean]
    [:data_source_set         {:optional true} :boolean]])
 
-(mr/def ::table-user-settings.update
-  "What an update of a TableUserSettings takes: its `id` and the columns to change, any column of
-  `:metabase_table_user_settings`."
+(mr/def ::table-user-settings.create
+  "What a caller gives to create a TableUserSettings: the columns of an update without the `:id`, and its Table."
   [:merge
-   ::table-user-settings.create
-   [:map {:closed true}
-    [:id       pos-int?]
-    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]]])
+   (mut/dissoc ::table-user-settings.update :id)
+   [:map
+    [:table_id ::lib.schema.id/table]]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
@@ -294,16 +293,17 @@
                                                         [:last_name   {:optional true} [:maybe :string]]
                                                         [:common_name {:optional true} [:maybe :string]]]]]]])
 
-(mr/def ::table.create
-  "What a caller gives to create a Table: its Database, its name and any other column of `:metabase_table` except `id`."
+(mr/def ::table.update
+  "What an update of a Table takes: its `:id` and the columns of `:metabase_table` to change, each optional."
   [:map {:closed true}
+   [:id                      ::lib.schema.id/table]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:name                    :string]
+   [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                  {:optional true} [:maybe :boolean]]
-   [:db_id                   ::lib.schema.id/database]
+   [:db_id                   {:optional true} [:maybe ::lib.schema.id/database]]
    [:display_name            {:optional true} [:maybe :string]]
    [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:schema                  {:optional true} [:maybe :string]]
@@ -330,14 +330,13 @@
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
 
-(mr/def ::table.update
-  "What an update of a Table takes: its `id` and the columns to change, any column of `:metabase_table`."
+(mr/def ::table.create
+  "What a caller gives to create a Table: the columns of an update without the `:id`, and its Database and name."
   [:merge
-   ::table.create
-   [:map {:closed true}
-    [:id    ::lib.schema.id/table]
-    [:name  {:optional true} [:maybe :string]]
-    [:db_id {:optional true} [:maybe ::lib.schema.id/database]]]])
+   (mut/dissoc ::table.update :id)
+   [:map
+    [:name :string]
+    [:db_id ::lib.schema.id/database]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."

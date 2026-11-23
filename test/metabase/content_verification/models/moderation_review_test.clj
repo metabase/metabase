@@ -20,13 +20,13 @@
 
 (deftest status-and-item-type-schema-test
   (testing "status is verified or nil"
-    (is (mr/validate ::content-verification.schema/moderation-review.update {:status "verified"}))
-    (is (mr/validate ::content-verification.schema/moderation-review.update {:status nil}))
-    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:status "approved"}))))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :status "verified"}))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :status nil}))
+    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :status "approved"}))))
   (testing "item type is card or dashboard"
-    (is (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type "dashboard"}))
-    (is (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type :card}))
-    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type "table"})))))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :moderated_item_type "dashboard"}))
+    (is (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :moderated_item_type :card}))
+    (is (not (mr/validate ::content-verification.schema/moderation-review.update {:id 1 :moderated_item_type "table"})))))
 
 (deftest create-review-keeps-single-most-recent-review-test
   (mt/with-temp [:model/Card {card-id :id} {}]

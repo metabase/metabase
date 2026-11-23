@@ -11,57 +11,29 @@
   [group-id db-id perm-type perm-value]
   {:group_id group-id :db_id db-id :perm_type perm-type :perm_value perm-value})
 
-(defn- database-level
-  "The `#{[group-id db-id perm-type perm-value]}` of the database-level create-queries and transforms rows stored now."
-  [group-ids db-ids]
-  (t2/select-fn-set (juxt :group_id :db_id :perm_type :perm_value) :model/DataPermissions
-                    :group_id [:in group-ids] :db_id [:in db-ids] :table_id nil
-                    :perm_type [:in ["perms/create-queries" "perms/transforms"]]))
-
-(defn- old-refusal?
-  "Whether the check `create-data-permissions!` ran before each of its batches refused `rows`, from the rows stored
-  now: the create-queries rows were inserted first, each checked against the stored transforms permission, then the
-  transforms rows, each checked against the stored and just inserted native query access."
-  [rows]
-  (let [group-ids (into #{} (map :group_id) rows)
-        db-ids    (into #{} (map :db_id) rows)
-        stored    (database-level group-ids db-ids)
-        db-level? (fn [{:keys [table_id perm_type]}] (and (nil? table_id) (= :perms/create-queries perm_type)))
-        others    (remove #(= :perms/transforms (:perm_type %)) rows)
-        after     (into (set stored) (comp (filter db-level?) (map (juxt :group_id :db_id :perm_type :perm_value))) others)]
-    (boolean
-     (or (some (fn [{:keys [group_id db_id perm_value] :as r}]
-                 (and (db-level? r)
-                      (not= :query-builder-and-native perm_value)
-                      (contains? stored [group_id db_id :perms/transforms :yes])))
-               others)
-         (some (fn [{:keys [group_id db_id perm_type perm_value]}]
-                 (and (= :perms/transforms perm_type)
-                      (= :yes perm_value)
-                      (not (contains? after [group_id db_id :perms/create-queries :query-builder-and-native]))))
-               rows)))))
-
-(defn- check-case!
-  [group-id stored-rows rows]
+(defn- try-write!
+  "Store `stored-rows` as the only DataPermissions of the group with `group-id` in a rolled-back transaction, call
+  `create-data-permissions!` with `rows`, and check that it refuses them with a 400 that writes nothing when
+  `refused?`, and accepts them otherwise."
+  [group-id stored-rows rows refused?]
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (t2/delete! :model/DataPermissions :group_id group-id)
     (when (seq stored-rows)
       (t2/insert! :model/DataPermissions stored-rows))
-    (let [expected (old-refusal? rows)
-          stored   #(t2/select-fn-set (juxt :db_id :table_id :perm_type :perm_value) :model/DataPermissions
-                                      :group_id group-id)
-          before   (stored)
-          refusal  (try
-                     (data-perms/create-data-permissions! rows)
-                     nil
-                     (catch clojure.lang.ExceptionInfo e
-                       (:status-code (ex-data e))))]
+    (let [stored  #(t2/select-fn-set (juxt :db_id :table_id :perm_type :perm_value) :model/DataPermissions
+                                     :group_id group-id)
+          before  (stored)
+          refusal (try
+                    (data-perms/create-data-permissions! rows)
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (:status-code (ex-data e))))]
       (testing (pr-str {:stored stored-rows :written rows})
-        (is (= (when expected 400) refusal))
-        (when expected
+        (is (= (when refused? 400) refusal))
+        (when refused?
           (is (= before (stored))))))))
 
-(deftest create-data-permissions-refuses-exactly-what-the-pre-write-check-refused-test
+(deftest create-data-permissions-refuses-transforms-without-native-access-test
   (mt/with-temp [:model/PermissionsGroup {g :id} {}
                  :model/Database         {d :id} {}
                  :model/Table            {t :id} {:db_id d}]
@@ -70,13 +42,34 @@
           no-queries (row g d :perms/create-queries :no)
           table-only (assoc (row g d :perms/create-queries :query-builder) :table_id t)
           yes        (row g d :perms/transforms :yes)
-          no         (row g d :perms/transforms :no)
-          stored     [[] [native] [builder] [yes] [no] [native yes] [builder no]]
-          written    [[yes] [no] [native] [builder] [no-queries] [table-only]
-                      [native yes] [builder yes] [no-queries yes] [table-only yes] [builder no]]]
-      (doseq [stored-rows stored
-              rows        written
-              :let [stored-db-level (into #{} (map (juxt :perm_type :table_id)) stored-rows)]
-              ;; the unique key allows one row per group, Database, type and Table: skip calls that duplicate one
-              :when (not-any? #(contains? stored-db-level ((juxt :perm_type :table_id) %)) rows)]
-        (check-case! g stored-rows rows)))))
+          no         (row g d :perms/transforms :no)]
+      (doseq [[stored-rows rows refused?] [[[] [yes] true]
+                                           [[] [no] false]
+                                           [[] [native] false]
+                                           [[] [builder] false]
+                                           [[] [no-queries] false]
+                                           [[] [table-only] false]
+                                           [[] [native yes] false]
+                                           [[] [builder yes] true]
+                                           [[] [no-queries yes] true]
+                                           [[] [table-only yes] true]
+                                           [[] [builder no] false]
+                                           [[native] [yes] false]
+                                           [[native] [no] false]
+                                           [[native] [table-only] false]
+                                           [[native] [table-only yes] false]
+                                           [[builder] [yes] true]
+                                           [[builder] [no] false]
+                                           [[builder] [table-only] false]
+                                           [[builder] [table-only yes] true]
+                                           [[yes] [native] false]
+                                           [[yes] [builder] true]
+                                           [[yes] [no-queries] true]
+                                           [[yes] [table-only] false]
+                                           [[no] [native] false]
+                                           [[no] [builder] false]
+                                           [[no] [no-queries] false]
+                                           [[no] [table-only] false]
+                                           [[native yes] [table-only] false]
+                                           [[builder no] [table-only] false]]]
+        (try-write! g stored-rows rows refused?)))))

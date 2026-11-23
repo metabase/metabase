@@ -214,8 +214,8 @@
   (t2/update! :model/Notification :toucan/pk notification-id changes))
 
 (mu/defn insert-part-rows!
-  "Insert the `rows` of `model`, a model of a part of a Notification, with one statement per distinct set of columns
-  and return the inserted instances in their order. The change log is not written."
+  "Insert the `rows` of `model`, a model of a part of a Notification, with one statement per distinct set of columns,
+  writing no change log, and return the inserted instances in their order."
   [model :- PartModel
    rows  :- [:sequential {:min 1} PartRow]]
   (mdb/insert-returning-instances! model rows))
@@ -228,7 +228,7 @@
   (mdb/update-grouped! model updates))
 
 (mu/defn delete-part-rows!
-  "Delete the rows of `model`, a model of a part of a Notification, with `ids`. The change log is not written."
+  "Delete the rows of `model`, a model of a part of a Notification, with `ids`, writing no change log."
   [model :- PartModel
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/delete! model :id [:in [:auto/param ids]])
@@ -281,20 +281,6 @@
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
   [notification-ids :- [:sequential [:maybe ms/PositiveInt]]]
   (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
-
-(mu/defn cron-subscriptions-for-notification
-  "The cron NotificationSubscriptions of the Notification with `notification-id`."
-  [notification-id :- ms/PositiveInt]
-  (t2/select :model/NotificationSubscription
-             :notification_id notification-id
-             :type :notification-subscription/cron))
-
-(mu/defn cron-subscription-ids-for-notification
-  "The IDs of the cron NotificationSubscriptions of the Notification with `notification-id`."
-  [notification-id :- ms/PositiveInt]
-  (t2/select-pks-set :model/NotificationSubscription
-                     :notification_id notification-id
-                     :type :notification-subscription/cron))
 
 (mu/defn active-cron-subscriptions-by-id
   "A map of ID to cron NotificationSubscription for every active Notification."
@@ -375,11 +361,6 @@
   [recipient-id :- ms/PositiveInt]
   (t2/select-one :model/NotificationRecipient :id recipient-id))
 
-(mu/defn recipients-by-ids
-  "The NotificationRecipients with `recipient-ids`."
-  [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/NotificationRecipient :id [:in recipient-ids]))
-
 (mu/defn delete-recipients!
   "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
   [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
@@ -412,11 +393,6 @@
   "A map of ID to ChannelTemplate for `template-ids`."
   [template-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
-
-(mu/defn channel-template-channel-type
-  "The `:channel_type` of the ChannelTemplate with `template-id`."
-  [template-id :- ms/PositiveInt]
-  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] :id [:auto/param template-id]))
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 

@@ -2,6 +2,7 @@
   "Malli schemas for the tenants module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -46,8 +47,9 @@
    [:attributes {:optional true} [:maybe ::tenant.attributes]]])
 
 (mr/def ::tenant.create
-  "What creating a Tenant takes: its name and slug, and optionally its attributes."
-  [:map {:closed true}
-   [:name       ::tenant.name]
-   [:slug       ::tenant.slug]
-   [:attributes {:optional true} [:maybe ::tenant.attributes]]])
+  "What creating a Tenant takes: the attributes of an update, and its name and slug."
+  [:merge
+   (-> ::tenant.update (mut/dissoc :id) (mut/dissoc :is_active))
+   [:map {:closed true}
+    [:name ::tenant.name]
+    [:slug ::tenant.slug]]])

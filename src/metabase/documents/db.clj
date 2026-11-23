@@ -4,7 +4,6 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -59,13 +58,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(mu/defn archived-exploration-ids
-  "The IDs among `exploration-ids` of the Explorations that are archived."
-  [exploration-ids :- [:set ms/PositiveInt]]
-  (if (seq exploration-ids)
-    (set (t2/select-pks-set :model/Exploration :id [:in exploration-ids] :archived true))
-    #{}))
-
 (mu/defn explorations
   "The Explorations with `exploration-ids`."
   [exploration-ids :- [:sequential ms/PositiveInt]]
@@ -90,20 +82,6 @@
   (if (seq ids)
     (t2/select :model/Document :id [:in ids])
     []))
-
-(mu/defn documents-by-ids
-  "The Documents with `ids`, by id."
-  [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select-pk->fn identity :model/Document :id [:in ids])
-    {}))
-
-(mu/defn update-documents! :- :nil
-  "Apply each of `updates`, the `:id` of a Document and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/Document updates)
-  nil)
 
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."
@@ -315,12 +293,6 @@
                              [:and
                               [:= :c.id :d.collection_id]
                               [:= :c.archived false]]]}) :can_read :can_write)))
-
-(mu/defn increment-document-view-counts! :- :int
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one raw
-  statement that publishes no event, returning the number updated."
-  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (mdb/increment-counts! :model/Document :view_count count->ids))
 
 (mu/defn set-document-last-viewed-at!
   "Set `last_viewed_at` of the Document with `document-id`, returning the number updated."

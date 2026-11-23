@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -57,9 +58,9 @@
    [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
 
 (mr/def ::sandbox.create
-  "What creating a Sandbox takes: its group and Table, and the optional Card and attribute remappings."
-  [:map {:closed true}
-   [:table_id             ::lib.schema.id/table]
-   [:group_id             ms/PositiveInt]
-   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
-   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
+  "What creating a Sandbox takes: the columns of an update without the `:id`, and its group and Table."
+  [:merge
+   (mut/dissoc ::sandbox.update :id)
+   [:map {:closed true}
+    [:table_id ::lib.schema.id/table]
+    [:group_id ms/PositiveInt]]])

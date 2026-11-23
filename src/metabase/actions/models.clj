@@ -29,7 +29,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
@@ -182,7 +181,7 @@
   (let [changes (t2/changes action)]
     (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
       (and (contains? changes :archived) (not (contains? changes :archived_directly)))
-      (assoc :archived_directly (actions.db/archived-directly-clause changes)))))
+      (assoc :archived_directly (mi/archived-directly-clause :model/Action changes)))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` its query names, when the query names one."
@@ -644,7 +643,7 @@
   "A map of Collection id to its row for the content checks, for the Collections `actions` are in."
   [actions]
   (let [ids (into [] (comp (keep :collection_id) (distinct)) actions)]
-    (if (seq ids) (actions.db/collections-for-content-checks ids) {})))
+    (collection/collections-for-content-checks ids)))
 
 (defn- collection-of
   "The row of the Collection `action` is in, from `collections`, nil for none, and for one that does not exist, which the
@@ -676,7 +675,7 @@
 
 (mu/defn- update-query-actions! :- [:sequential ::actions.schema/query-action.update]
   "Apply the changes in each of `rows`, the id of a query Action and the columns to change, with one statement per
-  distinct set of changes, in a plain write that publishes nothing. Returns `rows`."
+  distinct set of changes, in a plain write that publishes nothing, and return `rows`."
   [rows :- [:sequential ::actions.schema/query-action.update]]
   (doseq [[changes group] (group-by #(dissoc % :action_id) rows)]
     (when (seq changes)
@@ -692,8 +691,8 @@
 
 (mu/defn- create-implicit-actions! :- [:sequential (ms/InstanceOf :model/ImplicitAction)]
   "Insert the ImplicitAction `rows`, the details of Actions that are implicit actions, in a plain write that publishes
-  nothing, and return the inserted instances. An Action of a model takes no Table and an Action without a model needs
-  one."
+  nothing, and return the inserted instances, an Action of a model taking no Table and an Action without a model
+  needing one."
   [rows :- [:sequential ::actions.schema/implicit-action.create]]
   (if (empty? rows)
     []
@@ -704,8 +703,8 @@
 
 (mu/defn- update-implicit-actions! :- [:sequential ::actions.schema/implicit-action.update]
   "Apply the changes in each of `rows`, the id of an implicit Action and the columns to change, with one statement per
-  distinct set of changes, in a plain write that publishes nothing. A Table given to an Action of a model, or missing for
-  an Action without one, throws. Returns `rows`."
+  distinct set of changes, in a plain write that publishes nothing, throwing for a Table given to an Action of a
+  model or missing for an Action without one, and return `rows`."
   [rows :- [:sequential ::actions.schema/implicit-action.update]]
   (let [with-table (filter #(contains? % :table_id) rows)
         actions    (when (seq with-table)
@@ -758,14 +757,6 @@
     (update-query-actions! (rows-of :query))
     (update-implicit-actions! (rows-of :implicit))))
 
-(mr/def ::write-opts
-  "The options of a write function of Actions: `:writer :cascade` for the write that the archive or restore of a
-  Collection carries, which skips the checks of a user's write, `:writer :import` for a SerDes import, and the context of
-  its events."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :cascade :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (defn- check-action-creates
   "Throw unless every one of `rows`, new Actions with the model `cards` and `collections` they read, satisfies these rules:
 
@@ -803,12 +794,12 @@
 
 (mu/defn create-actions! :- [:sequential (ms/InstanceOf :model/Action)]
   "Insert the Action `rows`, each with the QueryAction or ImplicitAction columns of its details, in one transaction,
-  publishing their create event last, and return the inserted instances. With `:writer :import` the rows hold no
+  publishing their create event last, and return the inserted instances, the rows of `:writer :import` holding no
   details, which the SerDes import writes on their own."
   ([rows :- [:sequential ::actions.schema/action.create]]
    (create-actions! rows nil))
   ([rows :- [:sequential ::actions.schema/action.create]
-    opts :- ::write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [actions (into [] (mapcat #(create-action-batch! % (:writer opts)))
                          (partition-all mdb/create-partition-size rows))]
@@ -859,10 +850,10 @@
     (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400}))))
 
 (defn- detail-updates
-  "The writes of the details that `rows`, updates of the stored Actions `stored`, change as `{:replaced [...] :kept [...]}`,
-  where `details` maps an Action id to its stored details. `:replaced` holds, for an Action whose type changes,
-  `{:id action-id, :old old-type, :new new-type, :row details-row}`; `:kept` holds, for one whose details columns
-  change, `{:id action-id, :type action-type, :row details-row}`."
+  "The writes of the details that `rows`, updates of the stored Actions `stored`, change as `{:replaced [...] :kept
+  [...]}`, `details` mapping an Action id to its stored details, `:replaced` holding for an Action whose type changes
+  `{:id action-id, :old old-type, :new new-type, :row details-row}` and `:kept` holding for one whose details columns
+  change `{:id action-id, :type action-type, :row details-row}`."
   [stored details rows]
   (let [updates (for [row   rows
                       :let  [id       (:id row)
@@ -973,13 +964,13 @@
     (write-action-updates! stored planned opts)))
 
 (mu/defn update-actions! :- :nil
-  "Apply the changes in each of `rows`, the id of an Action, the Action columns to change and the columns of its details,
-  in one transaction, publishing their update event last with the `:context` of `opts`. With `:writer :import` an Action
-  that the rows leave unchanged gets a touch."
+  "Apply the changes in each of `rows`, the id of an Action, the Action columns to change and the columns of its
+  details, in one transaction, publishing their update event last with the `:context` of `opts`, and with `:writer
+  :import` a touch of an Action that the rows leave unchanged."
   ([rows :- [:sequential ::actions.schema/action.update]]
    (update-actions! rows nil))
   ([rows :- [:sequential ::actions.schema/action.update]
-    opts :- ::write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv #(update-action-batch! % opts) (partition-all mdb/update-partition-size rows))]
        (publish-update! (into {} (map :stored) batches)
@@ -990,12 +981,12 @@
    nil))
 
 (mu/defn update-action! :- :nil
-  "Applies `changes`, the columns of the Action with `id` and those of its details, in one transaction, publishing one
-  update event. A change of the details columns alone sets the update time of the Action, and a change of its `:type`
-  replaces its QueryAction or ImplicitAction."
+  "Apply `changes`, the columns of the Action with `id` and those of its details, in one transaction, publishing one
+  update event, a change of the details columns alone setting the update time of the Action and a change of its
+  `:type` replacing its QueryAction or ImplicitAction."
   [id      :- ::actions.schema/id
    changes :- (mut/dissoc ::actions.schema/action.update :id)
-   opts    :- ::write-opts]
+   opts    :- :metabase.events.schema/write-opts]
   (update-actions! [(assoc changes :id id)] opts)
   nil)
 

@@ -6,6 +6,7 @@
   `:last-edit-info` belong to the callers."
   (:require
    [clojure.set :as set]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -92,7 +93,7 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:width               {:optional true} [:maybe ::dashboards.schema/dashboard.width]]
    [:auto_apply_filters  {:optional true} [:maybe :boolean]]
-   [:dashcards           {:optional true} [:maybe [:sequential ::dashboards.schema/dashboard-card.update]]]])
+   [:dashcards           {:optional true} [:maybe [:sequential (mut/dissoc ::dashboards.schema/dashboard-card.update :id)]]]])
 
 (mu/defn create-dashboard! :- :map
   "Creates a Dashboard owned by the current user after its create check, with the `:dashcards` of `attrs` when it has
@@ -101,7 +102,7 @@
    (create-dashboard! attrs nil))
   ([{:keys [name description parameters cache_ttl collection_id collection_position
             width auto_apply_filters dashcards]} :- NewDashboard
-    opts                                          :- ::dashboards.schema/write-opts]
+    opts                                          :- :metabase.events.schema/write-opts]
    (let [dashboard-data (cond-> {:name                name
                                  :description         description
                                  :parameters          (or parameters [])
@@ -339,10 +340,10 @@
                            (u/the-id existing-dashboard)
                            (set card-ids)))))))
 
-(defn- check-dashcards!
-  "Throws unless the current user may save `new-dashcards` as the dashcards of `dashboard`, hydrated with its current
-  `:dashcards`: the cards they newly expose, their parameter mappings and the cards they name must be allowed, and the
-  new dashcards must be addable. Returns the `new-dashcards` with the changes that the model reads of JSON."
+(defn- check-dashcards
+  "Throw unless the current user may save `new-dashcards` as the dashcards of `dashboard`, hydrated with its current
+  `:dashcards`, the cards they newly expose, their parameter mappings and the cards they name having to be allowed
+  and the new dashcards addable, and return the `new-dashcards` with the changes that the model reads of JSON."
   [dashboard new-dashcards]
   (let [current-ids (into #{} (map :id) (:dashcards dashboard))
         existing?   #(contains? current-ids (:id %))
@@ -471,9 +472,9 @@
                          (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
                 (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                                 {:status-code 400})))
-              (dashboard-card/check-unarchive-internal-dashboard-questions! (:id current-dash) dashcards)
+              (dashboard-card/check-unarchive-internal-dashboard-questions (:id current-dash) dashcards)
               (dashboard-card/unarchive-internal-dashboard-questions! (:id current-dash) dashcards)
-              (let [dashcards (check-dashcards! hydrated-current-dash dashcards)]
+              (let [dashcards (check-dashcards hydrated-current-dash dashcards)]
                 (vreset! parts {:tabs (vec new-tabs) :dashcards dashcards})
                 (vreset! tracked [current-dashcards current-tabs dashcards new-tabs]))))
           (let [old-param-field-ids (when @parts (dashboard-id->param-field-ids id))]
@@ -482,7 +483,7 @@
             (when @parts
               (update-field-values-for-on-demand-dbs! old-param-field-ids (dashboard-id->param-field-ids id))))
           (when update-dashcards-and-tabs?
-            (dashboard-card/check-archive-internal-dashboard-questions! id (:dashcards @parts))
+            (dashboard-card/check-archive-internal-dashboard-questions id (:dashcards @parts))
             (dashboard-card/archive-internal-dashboard-questions! id (:dashcards @parts)))
           (when (seq updates)
             (when (some? (:collection_id updates))
@@ -591,7 +592,6 @@
                                                 {:id     id
                                                  :source to-copy
                                                  :card   (assoc to-copy :collection_id dest-coll-id)}))]
-    ;; One answer for all copies; when it is no, each is asked on its own so that the refusal names the first one.
     (when-not (queries.card/can-create-all? (mapv (juxt :card :source) entries))
       (doseq [{:keys [source card]} entries]
         (queries/with-copy-source-card source
@@ -721,7 +721,6 @@
                          ;; Ok, now save the Dashboard
                          (let [decisions     (cards-to-copy is_deep_copy (:dashcards existing-dashboard))
                                questions?    (boolean (some :dashboard_id (vals (:copy decisions))))
-                               ;; a Dashboard Question needs its Dashboard, which then exists before its parts
                                [created]     (when questions? (dashboard/create-dashboards! [dashboard-data]))
                                {id->new-card :copied
                                 id->referenced-card :referenced

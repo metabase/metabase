@@ -19,7 +19,7 @@
 
 (mu/defn- mark-fks! :- ms/IntGreaterThanOrEqualToZero
   "Updates the `fk_target_field_id` of the Fields the foreign key `entries` of `database` name, which are all read in
-  one query and all written in one bulk update, whatever their number. Returns the number of Fields updated."
+  one query and all written in one bulk update, whatever their number, returning the number of Fields updated."
   [database :- i/DatabaseInstance
    entries  :- [:sequential i/FKMetadataEntry]]
   (let [changes (sync.db/fk-target-changes-for-entries (:id database) entries)]

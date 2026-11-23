@@ -93,13 +93,13 @@
   return the bookmarks, the existing one when there is one; a Collection that takes no bookmarks is a 400."
   [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
   (let [ids         (into [] (comp (filter #(= "collection" (:type %))) (map :item_id) (distinct)) rows)
-        collections (when (seq ids) (bookmarks.db/collections-for-content-checks ids))]
+        collections (collection/collections-for-content-checks ids)]
     (doseq [id ids]
       (collection/check-allowed-content :model/CollectionBookmark (or (get collections id) id))))
   (bookmarks.db/insert-bookmarks! rows))
 
 (mu/defn delete-bookmarks! :- :nil
-  "Delete the bookmark of each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`. Does
+  "Delete the bookmark of each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`, doing
   nothing for one that has none."
   [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
   (bookmarks.db/delete-bookmarks! rows)

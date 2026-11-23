@@ -195,10 +195,6 @@
         (check-group-manager-member membership member)
         (check-tenancy-matches membership member group-id->tenant?)))))
 
-(mr/def ::write-opts
-  [:map {:closed true}
-   [:context {:optional true} :metabase.events.schema/context]])
-
 (defmulti set-member-flags-of!
   "Set the flags a membership implies on the rows of `model`, `flag-changes` holding `[user-ids changes]` pairs of
   `is_superuser` or `is_data_analyst` applied in their order, without the cascades of an ordinary update, publishing
@@ -302,7 +298,7 @@
   ([pgms :- ::new-memberships]
    (add-users-to-groups! pgms nil))
   ([pgms :- ::new-memberships
-    opts :- [:maybe ::write-opts]]
+    opts :- :metabase.events.schema/write-opts]
    (when (seq pgms)
      (app-db/create-batched! :model/PermissionsGroupMembership
                              (missing-memberships (requested-memberships pgms))
@@ -321,7 +317,7 @@
    (remove-users-from-groups! users groups nil))
   ([users  :- [:sequential [:or pos-int? :metabase.users.schema/user]]
     groups :- [:sequential [:or pos-int? ::permissions.schema/permissions-group]]
-    opts   :- [:maybe ::write-opts]]
+    opts   :- :metabase.events.schema/write-opts]
    (when (and (seq users) (seq groups))
      (delete-memberships! (permissions.db/memberships-for-users-in-groups (mapv u/the-id users) (mapv u/the-id groups))
                           opts))

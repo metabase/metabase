@@ -323,11 +323,6 @@
   [rows :- [:sequential ::permissions.schema/data-permissions.create]]
   (t2/insert! :model/DataPermissions rows))
 
-(mu/defn delete-data-permissions!
-  "Delete the DataPermissions with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DataPermissions :id [:in ids]))
-
 ;;; ------------------------------------------ Data permission filters ------------------------------------------
 
 (def ^:private ColumnOrExp
@@ -526,16 +521,6 @@
   [database-id :- ms/PositiveInt]
   (t2/select-pks-vec :model/Permissions {:where [:like :object [:auto/param (str "%/db/" database-id "/%")]]}))
 
-(mu/defn permissions-by-ids
-  "The Permissions rows with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Permissions :id [:in ids]))
-
-(mu/defn delete-permissions! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Permissions rows with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/Permissions :id [:in ids]))
-
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects` with a raw statement, which runs no Permissions hook, returning the
   number deleted."
@@ -570,16 +555,6 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
-(mu/defn update-permissions-group!
-  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:name             {:optional true} [:maybe :string]]
-               [:entity_id        {:optional true} [:maybe :string]]
-               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
-               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
-
 (mu/defn magic-group
   "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
@@ -590,11 +565,6 @@
   "The ID of the PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
   (t2/select-one-pk :model/PermissionsGroup :magic_group_type magic-group-type))
-
-(mu/defn group-exists-with-lower-name?
-  "Whether a PermissionsGroup whose lower-cased name is `lower-name` exists."
-  [lower-name :- :string]
-  (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
 
 (mu/defn lower-names-taken-outside :- [:set :string]
   "The lower-cased names among `lower-names` that a PermissionsGroup other than those with `excluded-ids` has."

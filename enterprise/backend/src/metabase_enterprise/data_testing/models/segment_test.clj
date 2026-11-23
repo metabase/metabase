@@ -130,8 +130,8 @@
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
-  "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
-  validate each row."
+  "Insert the SegmentTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
   [rows :- [:sequential ::data-testing.schema/segment-test.create]]
   (data-testing.models/create-saved-tests! :model/SegmentTest rows))
 
@@ -141,7 +141,7 @@
   ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
    (update-segment-tests! rows nil))
   ([rows :- [:sequential ::data-testing.schema/segment-test.update]
-    opts :- ::data-testing.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
 
 (mu/defn delete-segment-tests! :- :nil

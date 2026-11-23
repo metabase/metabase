@@ -122,24 +122,6 @@
     (t2/select-pk->fn identity :model/Dashboard :id [:in dashboard-ids])
     {}))
 
-(defn archived-directly-clause
-  "The HoneySQL expression that sets `archived_directly` of a Dashboard when an update that makes `changes` sets
-  `archived`: false when it restores, else false when the Collection the Dashboard is in after the update, the one
-  `changes` give or else the stored one, is archived, and true otherwise. The subquery reads the Collection table, not
-  the one being updated, so MySQL accepts it as it is."
-  [changes]
-  (if-not (:archived changes)
-    [:inline false]
-    [:case
-     [:= ^:allow-subquery {:select [:c.archived]
-                           :from   [[(t2/table-name :model/Collection) :c]]
-                           :where  [:= :c.id (if (contains? changes :collection_id)
-                                               (when-some [id (:collection_id changes)] [:auto/param id])
-                                               (keyword (str (name (t2/table-name :model/Dashboard)) ".collection_id")))]}
-      [:inline true]]
-     [:inline false]
-     :else [:inline true]]))
-
 (mu/defn update-dashboards-by-changes! :- :nil
   "Apply each of `updates`, the `:id` of a Dashboard and the columns to change, with one statement for each set of columns
   that rows have in common."
@@ -327,8 +309,7 @@
 
 (mu/defn insert-dashcards!
   "Insert the DashboardCard `rows` and return the inserted instances, in the order of the rows."
-  [rows :- [:sequential
-            ::dashboards.schema/dashboard-card.update]]
+  [rows :- [:sequential (mut/dissoc ::dashboards.schema/dashboard-card.update :id)]]
   (mdb/insert-returning-instances! :model/DashboardCard rows))
 
 (mu/defn update-dashcards! :- :nil
@@ -342,11 +323,6 @@
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
-
-(mu/defn delete-series-for-dashcards!
-  "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
 
 (mu/defn dashcard-series-for-dashcards
   "The DashboardCardSeries of the DashboardCards with `dashcard-ids`."
@@ -544,11 +520,6 @@
                         (into {} (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in tab-ids]))
                         {})})
 
-(mu/defn dashboard-tabs-by-ids
-  "The DashboardTabs with `tab-ids`."
-  [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardTab :id [:in tab-ids]))
-
 (mu/defn pulse-cards-in-tabs
   "The PulseCards of the DashboardCards on the DashboardTabs with `tab-ids`, which the delete of the tabs deletes with
   them."
@@ -709,12 +680,6 @@
                            [:and
                             [:= :c.id :dash.collection_id]
                             [:= :c.archived false]]]}) :can_read :can_write))
-
-(mu/defn increment-dashboard-view-counts! :- :int
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`, in one raw
-  statement that publishes no event, returning the number updated."
-  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (mdb/increment-counts! :model/Dashboard :view_count count->ids))
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching

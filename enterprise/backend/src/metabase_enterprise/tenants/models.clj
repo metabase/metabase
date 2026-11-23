@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -136,21 +137,6 @@
                                             (create-tenant-collections! rows))
                            :after-create  #(events/publish-event! :event/tenant-create (events/create-event %))}))
 
-(defn- rename-order
-  "The rows of `updates`, whose stored Tenants `id->stored` holds, in an order in which each rename comes after the
-  rename that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a cycle."
-  [updates id->stored]
-  (let [stored-name #(u/lower-case-en (:name (id->stored (:id %))))
-        new-name    #(some-> (:name %) u/lower-case-en)]
-    (loop [pending (vec updates), ordered []]
-      (if (empty? pending)
-        ordered
-        (let [held   (into #{} (map stored-name) pending)
-              ready? (fn [row] (or (nil? (new-name row)) (= (new-name row) (stored-name row)) (not (held (new-name row)))))
-              ready  (filterv ready? pending)]
-          (when (seq ready)
-            (recur (filterv (complement ready?) pending) (into ordered ready))))))))
-
 (defn- check-tenant-updates
   "Throws a 400 unless the rows of `updates`, whose stored Tenants `id->stored` holds, satisfy these rules:
 
@@ -165,7 +151,7 @@
     (when (or (not= (count new-names) (count (distinct new-names)))
               (and (seq renames)
                    (or (tenants.db/tenant-named-outside? (mapv :name renames) (mapv :id renames))
-                       (nil? (rename-order updates id->stored)))))
+                       (nil? (perms/rename-order updates id->stored)))))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
 
 (defn- checked-existing-in-rename-order
@@ -174,7 +160,7 @@
   [updates id->stored]
   (let [updates (filterv (comp id->stored :id) updates)]
     (check-tenant-updates updates id->stored)
-    (rename-order updates id->stored)))
+    (perms/rename-order updates id->stored)))
 
 (defn- flipped-tenant-ids
   "The ids of the Tenants of `updates`, whose stored Tenants `id->stored` holds, that the rows set active to `active`

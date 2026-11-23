@@ -134,17 +134,17 @@
         (events/publish-event! :event/user-joined event)))))
 
 (mu/defn create-session! :- ::session.schema/session
-  "Insert the Session `row` for a login and return it, publishing the login events of its User. A session of a password
-  AuthIdentity while password login is disabled is a 400."
+  "Insert the Session `row` for a login and return it, publishing the login events of its User; a session of a
+  password AuthIdentity while password login is disabled is a 400."
   [row :- ::session.schema/session.create]
   (check-password-login-allowed (:auth_identity_id row))
   (u/prog1 (session.db/insert-session! row)
     (publish-login-events! (:user_id row))))
 
 (mu/defn get-or-create-mcp-session!
-  "The `core_session` row with `key-hashed` of the User with `user-id`, inserting one attributed to the AuthIdentity
-  with `auth-identity-id` when there is none, and reading the row of a concurrent insert when the insert fails. The row
-  backs an MCP client rather than a login, so no login event is published."
+  "The `core_session` row with `key-hashed` of the User with `user-id`, which backs an MCP client rather than a login
+  and so publishes no login event, inserting one attributed to the AuthIdentity with `auth-identity-id` when there is
+  none, and reading the row of a concurrent insert when the insert fails."
   [key-hashed       :- :string
    user-id          :- ::lib.schema.id/user
    auth-identity-id :- ms/PositiveInt]
@@ -223,8 +223,8 @@
   (session.db/touch-session! key-hashed))
 
 (mu/defn delete-sessions-for-cleanup! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Sessions whose recorded ending is before `cutoff`, returning the number deleted. A live session is never
-  deleted, whatever its age."
+  "Delete the Sessions whose recorded ending is before `cutoff`, which leaves every live session whatever its age, and
+  return the number deleted."
   [cutoff :- ms/TemporalInstant]
   (session.db/delete-sessions-for-cleanup! cutoff))
 

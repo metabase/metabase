@@ -54,9 +54,9 @@
 
 (defn update-changes
   "The changes of a lifecycle event for the update of the rows of `stored`, a map from id to the instance the write
-  function read, by `rows`, each an `:id` and the columns to set: a row that is not stored or that changes no column
-  has no change. `after`, a function of the stored row and its columns to set, gives the row after the update, for a
-  model whose hooks derive a column, and is `merge` by default."
+  function read, by `rows`, each an `:id` and the columns to set, where a row that is not stored or changes no column
+  has no change and `after`, a function of the stored row and its columns to set, which is `merge` by default, gives
+  the row after the update for a model whose hooks derive a column."
   ([stored rows]
    (update-changes stored rows merge))
   ([stored rows after]

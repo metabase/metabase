@@ -43,7 +43,7 @@
   "The `:status-code` normalizing `row` by the CacheConfig schema throws, or nil when it throws none."
   [row]
   (try
-    (lib/normalize ::cache.schema/cache-config.update row {:throw? true})
+    (lib/normalize ::cache.schema/cache-config.update (assoc row :id 1) {:throw? true})
     nil
     (catch clojure.lang.ExceptionInfo e
       (:status-code (ex-data e)))))

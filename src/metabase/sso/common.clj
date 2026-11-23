@@ -21,15 +21,14 @@
     (u/the-id (perms/all-external-users-group))})
 
 (defn- sync-group-memberships*!
+  "Remove the user from the groups `to-remove` and add them to `to-add`, logging rather than throwing the refusal to
+  remove the last admin, so that the sync does not block the login."
   [user-or-id to-remove to-add]
   (when (seq to-remove)
     (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
     (try
       (perms-group-membership/remove-users-from-groups! [user-or-id] (vec to-remove))
       (catch clojure.lang.ExceptionInfo e
-        ;; in case sync attempts to delete the last admin,
-        ;; [[metabase.permissions.models.permissions-group-membership/remove-users-from-groups!]] will throw an exception.
-        ;; but we don't want to block user from logging-in, so catch this exception and log a warning
         (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
           (log/warn "Attempted to remove the last admin during group sync!"
                     "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")

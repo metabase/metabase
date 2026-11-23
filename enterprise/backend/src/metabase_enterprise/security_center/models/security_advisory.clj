@@ -54,9 +54,9 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn upsert-advisory!
-  "Insert or update a SecurityAdvisory by `:advisory_id`. On insert, `:match_status` starts as `:unknown` until the
-  matching engine evaluates it. On update, sets `advisory`'s columns, leaving `:match_status`, `:last_evaluated_at`,
-  and acknowledgement fields (which `advisory` doesn't include) untouched."
+  "Insert or update a SecurityAdvisory by `:advisory_id`, starting `:match_status` as `:unknown` on insert, and on
+  update setting only the columns of `advisory`, so that `:match_status`, `:last_evaluated_at` and the acknowledgement
+  fields stay untouched."
   [advisory :- ::security-center.schema/security-advisory.update]
   (security-center.db/upsert-advisory! advisory))
 
@@ -91,8 +91,8 @@
       (t2/hydrate :acknowledged_by_user)))
 
 (mu/defn acknowledge-security-advisories!
-  "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
-   advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
+  "Acknowledge the security advisories with the given advisory_id strings, skipping the already acknowledged, and
+  return the updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids :- [:or [:sequential :string] [:set :string]]
    user-id      :- ::lib.schema.id/user]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))

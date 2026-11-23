@@ -73,7 +73,6 @@
   [idx]
   (let [changes (t2/changes idx)
         status  (pending-status-for-changes changes)]
-    ;; Plain changes hold the status and the cleared message whatever the row held, so that every row gets the same ones.
     (cond-> idx
       status (-> t2/changes (assoc :status status :error_message nil)))))
 

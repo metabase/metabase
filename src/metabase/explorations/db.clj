@@ -21,21 +21,6 @@
 
 ;;; ----------------------------------------------- Exploration -----------------------------------------------
 
-(mu/defn archived-directly-clause :- :any
-  "The expression for the `archived_directly` of an Exploration that `changes` archives or restores: true when it is
-  archived and its Collection is not, false when it is restored."
-  [changes :- :map]
-  (if (:archived changes)
-    [:case [:= ^:allow-subquery {:select [:parent.archived]
-                                 :from   [[:collection :parent]]
-                                 :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                          [:auto/param (:collection_id changes)]
-                                                          :exploration.collection_id)]}
-            true]
-     false
-     :else true]
-    [:inline false]))
-
 (mu/defn next-thread-position-clause :- :any
   "The expression for the position after the last ExplorationThread of the Exploration with `exploration-id`, read
   through a derived table because MySQL refuses a subquery on the table it inserts into."
@@ -119,24 +104,12 @@
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(mu/defn update-explorations! :- :nil
-  "Apply each of `updates`, the `:id` of an Exploration and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/Exploration updates)
-  nil)
-
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 
 (mu/defn thread
   "The ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
-
-(mu/defn explorations-by-ids
-  "The Explorations with `ids`, by id."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Exploration :id [:in ids]))
 
 (mu/defn rows
   "The rows of `model` with the ids `ids`."

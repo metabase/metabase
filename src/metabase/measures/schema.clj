@@ -1,5 +1,6 @@
 (ns metabase.measures.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
@@ -69,14 +70,13 @@
   [:select-keys ::measure.update [:name :description :definition :archived :table_id]])
 
 (mr/def ::measure.create
-  "What a caller gives to create a Measure; its table follows its definition."
-  [:map {:closed true}
-   [:name        ::measure.name]
-   [:definition  ::measure.definition]
-   [:creator_id  {:optional true} [:maybe ::lib.schema.id/user]]
-   [:description {:optional true} [:maybe :string]]
-   [:archived    {:optional true} [:maybe :boolean]]
-   [:entity_id   {:optional true} [:maybe :string]]])
+  "What a caller gives to create a Measure, whose table follows its definition: the columns of an update without the
+  `:id` and the columns the product sets, and its name and definition."
+  [:merge
+   (reduce mut/dissoc ::measure.update [:id :table_id :created_at :updated_at :dimensions :dimension_mappings])
+   [:map {:closed true}
+    [:name       ::measure.name]
+    [:definition ::measure.definition]]])
 
 (mr/def ::external-measure
   "A Measure as serialization writes it, with portable references in place of ids."

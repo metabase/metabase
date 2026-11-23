@@ -1,5 +1,6 @@
 (ns metabase.native-query-snippets.schema
   (:require
+   [malli.util :as mut]
    [metabase.collections.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,29 +26,30 @@
   snippet it refers to by name keep the ids given here when no stored snippet has the name."
   [:maybe [:map-of :string :map]])
 
-(mr/def ::native-query-snippet.create
-  "What a caller gives to create a NativeQuerySnippet."
+(mr/def ::native-query-snippet.update
+  "A NativeQuerySnippet by its `id` with the columns to change, each optional, its template tags as given."
   [:map {:closed true}
-   [:name              :string]
-   [:content           :string]
+   [:id                ::lib.schema.id/native-query-snippet]
+   [:name              {:optional true} :string]
+   [:content           {:optional true} [:maybe :string]]
    [:description       {:optional true} [:maybe :string]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:archived          {:optional true} [:maybe :boolean]]
    [:archived_directly {:optional true} [:maybe :boolean]]
    [:collection_id     {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id         {:optional true} [:maybe :string]]
-   [:template_tags     {:optional true} ::template-tags.given]])
+   [:template_tags     {:optional true} ::template-tags.given]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::native-query-snippet.update
-  "A NativeQuerySnippet by its `id` with the columns to change, its template tags as given."
+(mr/def ::native-query-snippet.create
+  "What a caller gives to create a NativeQuerySnippet: the columns of an update without the `:id` and the columns the
+  product sets, and its name and content."
   [:merge
-   ::native-query-snippet.create
+   (reduce mut/dissoc ::native-query-snippet.update [:id :created_at :updated_at])
    [:map {:closed true}
-    [:id         ::lib.schema.id/native-query-snippet]
-    [:name       {:optional true} :string]
-    [:content    {:optional true} [:maybe :string]]
-    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
+    [:name    :string]
+    [:content :string]]])
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."

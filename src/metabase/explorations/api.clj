@@ -973,11 +973,6 @@
     (= (count distinct-ids)
        (explorations.db/query-count-in-exploration exploration-id distinct-ids))))
 
-(defn- document-summary
-  "Project a Document onto the `::ExplorationDocument` wire shape."
-  [doc-id]
-  (explorations.db/summary-document-columns doc-id))
-
 (defn- page-explore-filters
   "Hydrated explore-further filters on the block that owns `page-id`, or nil
   when the page is unfiltered."
@@ -1039,7 +1034,7 @@
         (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))
-    (document-summary (:id doc))))
+    (explorations.db/summary-document-columns (:id doc))))
 
 ;;; ----------------------------------------- routes -----------------------------------------
 

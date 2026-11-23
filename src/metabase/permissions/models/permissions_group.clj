@@ -98,12 +98,6 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn exists-with-name?
-  "Does a `PermissionsGroup` with `group-name` exist in the DB? (case-insensitive)"
-  ^Boolean [group-name]
-  {:pre [((some-fn keyword? string?) group-name)]}
-  (permissions.db/group-exists-with-lower-name? (u/lower-case-en (name group-name))))
-
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
@@ -268,9 +262,9 @@
                        {:before-create check-new-groups
                         :after-create  set-default-permissions-and-publish!}))
 
-(defn- rename-order
-  "The rows of `updates`, whose stored PermissionsGroups `id->stored` holds, in an order in which each rename comes after
-  the rename that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a
+(defn rename-order
+  "The rows of `updates`, whose stored rows `id->stored` holds, in an order in which each change of `:name` comes after
+  the one that frees that name, comparing names lower-cased, or nil when the renames take each other's names in a
   cycle."
   [updates id->stored]
   (let [stored-name #(u/lower-case-en (:name (id->stored (:id %))))

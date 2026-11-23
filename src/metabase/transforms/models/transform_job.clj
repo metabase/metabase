@@ -76,17 +76,21 @@
                   [built-in-type (str (get (translated-name-and-description {:built_in_type built-in-type}) column))]))
         built-in-types))
 
+(defn- assoc-built-in-values
+  "`changes`, led by an array map of the name, description and built-in type, so that a statement that evaluates its
+  assignments in order still reads the built-in type of the stored row."
+  [changes]
+  (merge (array-map :name          (transforms.db/built-in-value-clause :name (built-in-values :name))
+                    :description   (transforms.db/built-in-value-clause :description (built-in-values :description))
+                    :built_in_type nil)
+         changes))
+
 (t2/define-before-update :model/TransformJob [job]
   (let [changes (t2/changes job)]
     (if (or (empty? (dissoc changes :updated_at))
             (contains? changes :built_in_type))
       job
-      ;; An array map keeps the name and description first, so that a statement that evaluates its assignments in order
-      ;; still reads the built-in type of the stored row.
-      (merge (array-map :name          (transforms.db/built-in-value-clause :name (built-in-values :name))
-                        :description   (transforms.db/built-in-value-clause :description (built-in-values :description))
-                        :built_in_type nil)
-             changes))))
+      (assoc-built-in-values changes))))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -240,21 +244,21 @@
 
 (mu/defn update-transform-jobs! :- :nil
   "Apply the changes in each of `rows`, the id of a TransformJob and the columns to change, in one transaction, then
-  make the Quartz trigger of each job match its row, publishing their update event. An import leaves the name and
+  make the Quartz trigger of each job match its row and publish their update event, an import leaving the name and
   description of a built-in job alone."
   ([rows :- [:sequential ::transforms.schema/transform-job.update]]
    (update-transform-jobs! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-job.update]
-    opts :- ::transforms.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (mdb/update-batched! :model/TransformJob rows
                         {:before-update #(prepare-job-updates opts %1 %2)
                          :reread?    true
                          :after-update  #(publish-job-updates! opts %1 %2 %3)})))
 
 (mu/defn- replace-tags! :- :boolean
-  "Make the TransformTags linked to the TransformJob with `job-id` those of `tag-ids`, in that order, with smart diff
-  logic: deletes removed tags, updates positions for moved tags, and inserts new tags. Duplicate and unknown tag ids are
-  left out. Returns whether the tags changed."
+  "Make the TransformTags linked to the TransformJob with `job-id` those of `tag-ids`, in that order, deleting removed
+  tags, updating positions for moved tags and inserting new tags, leaving out duplicate and unknown tag ids, and
+  return whether the tags changed."
   [job-id  :- ms/PositiveInt
    tag-ids :- [:sequential ms/PositiveInt]]
   (let [deduped-tag-ids      (vec (distinct tag-ids))
@@ -297,7 +301,7 @@
    (update-transform-job! id changes nil))
   ([id      :- ms/PositiveInt
     changes :- ::transforms.schema/transform-job.update-with-tags
-    opts    :- ::transforms.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (when-let [stored (transforms.db/job id)]
        (let [columns       (dissoc changes :tag_ids)

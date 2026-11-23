@@ -152,14 +152,13 @@
 
 (mr/def ::user-parameter-value
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
-  [:merge
-   ::user-parameter-value.update
-   [:map {:closed true}
-    [:id           ms/PositiveInt]]])
+  ::user-parameter-value.update)
 
 (mr/def ::user-parameter-value.update
-  "What an update (or insert) of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`, all optional."
+  "What an update of a UserParameterValue takes: its `:id` and every other column of `:user_parameter_value`, all
+  optional."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameter_id {:optional true} [:maybe :string]]
    [:value        {:optional true} [:maybe ::user-parameter-value.value]]

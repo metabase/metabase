@@ -968,11 +968,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn collections-for-content-checks :- [:sequential :map]
-  "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in [:auto/param collection-ids]]))
-
 (mu/defn databases-by-ids :- [:sequential :map]
   "The Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]

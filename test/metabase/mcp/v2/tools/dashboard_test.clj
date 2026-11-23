@@ -282,10 +282,9 @@
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn- do-with-series-dashboard!
-  "Calls `f` with the ids of a dashboard whose one dashcard shows two venues cards, both connected to its `cat` filter.
-   One card is in a collection the non-admin groups can't read.
-   That hidden card is the dashcard's own card when `primary-hidden?`, and its series card otherwise.
-   `f` gets `{:dash-id :dc-id :open-card :hidden-card}`."
+  "Call `f` with `{:dash-id :dc-id :open-card :hidden-card}` for a dashboard whose one dashcard shows two venues
+  cards, both connected to its `cat` filter, one of them in a collection the non-admin groups can't read, being the
+  dashcard's own card when `primary-hidden?` and its series card otherwise."
   [primary-hidden? f]
   (mt/with-model-cleanup [:model/Collection]
     (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])

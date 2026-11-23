@@ -1,5 +1,6 @@
 (ns metabase.collections.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -154,10 +155,11 @@
 (mr/def ::collection.name
   ms/NonBlankString)
 
-(mr/def ::collection.create
-  "What a caller gives to create a Collection: every column of `:collection` except `id`, and a name."
+(mr/def ::collection.update
+  "A Collection by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name                 ::collection.name]
+   [:id                   ::lib.schema.id/collection]
+   [:name                 {:optional true} [:maybe ::collection.name]]
    [:description          {:optional true} [:maybe :string]]
    [:archived             {:optional true} [:maybe :boolean]]
    [:location             {:optional true} [:maybe :string]]
@@ -173,13 +175,12 @@
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
 
-(mr/def ::collection.update
-  "A Collection by its `id` with the columns to change."
+(mr/def ::collection.create
+  "What a caller gives to create a Collection: the columns of an update without the `:id`, and a name."
   [:merge
-   ::collection.create
+   (mut/dissoc ::collection.update :id)
    [:map {:closed true}
-    [:id ::lib.schema.id/collection]
-    [:name {:optional true} [:maybe ::collection.name]]]])
+    [:name ::collection.name]]])
 
 (mr/def ::external-collection
   "A Collection as serialization writes it, with portable references in place of ids."

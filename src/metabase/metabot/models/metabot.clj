@@ -1,15 +1,13 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -45,15 +43,9 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mr/def ::metabot-update
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:use_verified_content {:optional true} [:maybe :boolean]]
-   [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
-
 (mu/defn update-metabots! :- :nil
   "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."
-  [rows :- [:sequential ::metabot-update]]
+  [rows :- [:sequential (mut/select-keys ::metabot.schema/metabot.update [:id :use_verified_content :collection_id])]]
   (mdb/update-batched! :model/Metabot rows {}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------

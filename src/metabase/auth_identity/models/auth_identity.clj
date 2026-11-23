@@ -141,8 +141,8 @@
   nil)
 
 (mu/defn touch-auth-identity!
-  "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no
-  matching AuthIdentity) updates nothing."
+  "Record that the AuthIdentity with `id` was just used to log in and return the number updated, none for a nil `id`
+  (no matching AuthIdentity)."
   [id :- [:maybe ms/PositiveInt]]
   (auth-identity.db/touch-auth-identity! id))
 

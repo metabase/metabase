@@ -621,7 +621,6 @@
                                  [:data :results_metadata :columns]))]
     (is (seq baseline))
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query reduced-query}]
-      ;; update-cards! with result metadata bypasses populate hooks, so the stale baseline sticks.
       (queries.card/update-cards! [{:id card-id :result_metadata baseline :updated_at :updated_at}])
       (mt/as-admin
         (qp/process-query-for-card

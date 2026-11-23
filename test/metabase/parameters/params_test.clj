@@ -287,7 +287,7 @@
            :model/DashboardCard dc2 {:dashboard_id dash-id :card_id (:id agg2)
                                      :parameter_mappings [{:parameter_id "p2" :card_id (:id agg2)
                                                            :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]}]}]
-          ;; Each is a single set load, so the count is constant in the number of cards -- it must NOT grow with more
+          ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
           ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
           ;; - one bulk fetch of the source Cards
           ;; - one bulk fetch of those Cards' result-metadata Fields

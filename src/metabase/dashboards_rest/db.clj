@@ -95,11 +95,6 @@
   [card-id :- [:maybe ::lib.schema.id/card]]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(mu/defn unarchived-dashboard-question-exists?
-  "Whether an unarchived Card internal to the Dashboard with `dashboard-id` exists."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
-
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]

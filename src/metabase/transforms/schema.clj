@@ -210,14 +210,6 @@
    [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type :target
     :target_db_id]])
 
-(mr/def ::write-opts
-  "The options of the write functions of Transforms, TransformJobs and TransformTags: who writes when it matters, and the
-  context of the events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :import :revert]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (mr/def ::transform.definition
   "What a Transform computes and where it writes, as a client writes it."
   [:map {:closed true}

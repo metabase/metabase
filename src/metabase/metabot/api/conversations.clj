@@ -205,10 +205,6 @@
    _query-params
    {:keys [chart_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
-  ;; Mirror the POST /api/card pre-checks: `create-cards!` itself does not check
-  ;; permissions on the query's data or the target container. Like the card API's
-  ;; `actual-collection-id`, an explicit `collection_id` on a dashboard save must
-  ;; match the dashboard's own collection.
   (query-perms/check-run-permissions-for-query (:dataset_query card))
   (if-let [dashboard-id (:dashboard_id card)]
     (let [dashboard-collection-id (:collection_id (api/write-check :model/Dashboard dashboard-id))
@@ -227,7 +223,7 @@
                                        :dashboard_id :dashboard_tab_id])
                     (update :display keyword)
                     (update :visualization_settings #(or % {})))
-        _       (queries.card/check-new-dashboard-questions-timeline-permissions! [row])
+        _       (queries.card/check-new-dashboard-questions-timeline-permissions [row])
         created (t2/with-transaction [_conn]
                   (let [[created] (queries.card/create-cards!
                                    [(queries.card/new-card-row row api/*current-user-id*)])]

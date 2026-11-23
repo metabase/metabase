@@ -599,7 +599,7 @@
              (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))
              (is (= (counted handler change 1) (counted handler change 3))))))))))
 
-(deftest create-notifications-reports-the-first-invalid-row-test
+(deftest create-notifications-reports-first-invalid-row-test
   (do-with-notification-rows!
    (fn [rows _card-id _channel-id]
      (let [[first-row second-row] (rows 2)

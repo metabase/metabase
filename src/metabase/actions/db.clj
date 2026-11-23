@@ -135,22 +135,6 @@
   [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
   (app-db/insert-returning-instances! :model/Action rows))
 
-(mu/defn archived-directly-clause
-  "The SQL expression for the `archived_directly` of an Action that `changes` archives or restores: true when it is
-  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
-  every row."
-  [changes :- :map]
-  (if (:archived changes)
-    [:case [:= ^:allow-subquery {:select [:parent.archived]
-                                 :from   [[:collection :parent]]
-                                 :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                          [:auto/param (:collection_id changes)]
-                                                          :action.collection_id)]}
-            true]
-     false
-     :else true]
-    [:inline false]))
-
 (mu/defn update-actions! :- :nil
   "Apply each of `updates`, the `:id` of an Action and the columns to change, with one statement for each set of columns
   that rows have in common."
@@ -211,11 +195,6 @@
   "A map of id to the query of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
-
-(mu/defn collections-for-content-checks
-  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
 
 (mu/defn action-ids-of-models
   "The ids of the Actions of the Cards with `model-ids`."

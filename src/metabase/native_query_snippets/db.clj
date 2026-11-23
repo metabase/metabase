@@ -37,22 +37,6 @@
   [snippet-name :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name))
 
-(mu/defn archived-directly-clause
-  "The SQL expression for the `archived_directly` of a snippet that `changes` archives or restores: true when it is
-  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
-  every row."
-  [changes :- :map]
-  (if (:archived changes)
-    [:case [:= ^:allow-subquery {:select [:parent.archived]
-                                 :from   [[:collection :parent]]
-                                 :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                          [:auto/param (:collection_id changes)]
-                                                          :native_query_snippet.collection_id)]}
-            true]
-     false
-     :else true]
-    [:inline false]))
-
 (mu/defn unarchived-snippets-in-collections
   "The unarchived NativeQuerySnippets in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]

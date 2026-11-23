@@ -29,7 +29,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -132,8 +131,8 @@
   (run! #(lib/check-measure-overwrite nil (lib-be/normalize-query (:definition %))) rows))
 
 (mu/defn create-measures! :- [:sequential (ms/InstanceOf :model/Measure)]
-  "Insert the Measure `rows` and return the inserted instances, in one transaction, publishing their create event. A
-  definition that refers to a Measure that does not exist throws."
+  "Insert the Measure `rows` and return the inserted instances, in one transaction, publishing their create event, a
+  definition that refers to a Measure that does not exist throwing."
   [rows :- [:sequential ::measures.schema/measure.create]]
   (app-db/create-batched! :model/Measure rows
                           {:before-create check-definitions-of-new-measures
@@ -148,13 +147,6 @@
       (doseq [id    ids
               :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
         (lib/check-measure-overwrite id definition)))))
-
-(mr/def ::write-opts
-  "The options of the update of Measures: `:writer`, who writes when it matters, and the context of the events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :import :replacement :revert]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (defn- check-measure-updates
   "Throw a 400 unless every one of `updates`, over the Measures `id->stored`, satisfies these rules:
@@ -177,7 +169,7 @@
   ([updates :- [:sequential ::measures.schema/measure.update]]
    (update-measures! updates nil))
   ([updates :- [:sequential ::measures.schema/measure.update]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (app-db/update-batched! :model/Measure updates
                            {:before-update (fn [updates id->stored]
                                              (check-measure-updates updates id->stored)

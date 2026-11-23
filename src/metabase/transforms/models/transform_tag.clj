@@ -53,14 +53,18 @@
   (into {} (map (fn [built-in-type] [built-in-type (str (:name (translate-name {:built_in_type built-in-type})))]))
         built-in-types))
 
+(defn- assoc-built-in-name
+  "`changes`, led by an array map of the name and built-in type, so that a statement that evaluates its assignments in
+  order still reads the built-in type of the stored row."
+  [changes]
+  (merge (array-map :name (transforms.db/built-in-value-clause :name (built-in-names)) :built_in_type nil) changes))
+
 (t2/define-before-update :model/TransformTag [tag]
   (let [changes (t2/changes tag)]
     (if (or (empty? (dissoc changes :updated_at))
             (contains? changes :built_in_type))
       tag
-      ;; An array map keeps the name first, so that a statement that evaluates its assignments in order still reads
-      ;; the built-in type of the stored row.
-      (merge (array-map :name (transforms.db/built-in-value-clause :name (built-in-names)) :built_in_type nil) changes))))
+      (assoc-built-in-name changes))))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -128,12 +132,12 @@
       (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400})))))
 
 (mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
-  "Insert the TransformTag `rows` in one transaction, publishing their create event, and return the inserted tags. A name
-  another tag holds is refused; an import makes each such name unique instead."
+  "Insert the TransformTag `rows` in one transaction, publishing their create event, refusing a name another tag
+  holds, or with an import making each such name unique instead, and return the inserted tags."
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]]
    (create-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]
-    opts :- ::transforms.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (mdb/create-batched! :model/TransformTag rows
                         {:before-create (fn [rows]
                                           (if (= :import (:writer opts))
@@ -166,8 +170,8 @@
          (some #(and (not= (:id %) (:id row)) (= new-name (:name (id->stored (:id %))))) pending))))
 
 (defn- rename-order
-  "`rows` ordered so that each rename follows the rename of the tag that holds its new name. Throws a 400 for rows that
-  swap names, which the unique index of the name cannot write."
+  "`rows` ordered so that each rename follows the rename of the tag that holds its new name, throwing a 400 for rows
+  that swap names, which the unique index of the name cannot write."
   [rows id->stored]
   (loop [pending (vec rows)
          ordered []]
@@ -179,12 +183,12 @@
 
 (mu/defn update-transform-tags! :- :nil
   "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction,
-  publishing their update event. A built-in tag that changes becomes a custom one that keeps its name. A new name
-  another tag holds is refused; an import makes each such name unique instead."
+  publishing their update event, where a built-in tag that changes becomes a custom one that keeps its name, and a new
+  name another tag holds is refused, or with an import made unique instead."
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]]
    (update-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]
-    opts :- ::transforms.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (mdb/update-batched! :model/TransformTag rows
                         {:before-update (fn [rows id->stored]
                                           (let [rows (filterv (comp id->stored :id) rows)]

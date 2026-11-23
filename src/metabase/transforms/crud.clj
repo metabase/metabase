@@ -260,7 +260,6 @@
     (when delete-tables?
       (run! transforms-base.u/delete-target-table! transforms))
     (t2/with-transaction [_]
-      ;; Each Transform publishes its delete events. The Collection `before-delete` hook deletes the subfolders.
       (transform.model/delete-transforms! (mapv :id transforms))
       (collection/delete-collections! [(:id collection)]))
     nil))

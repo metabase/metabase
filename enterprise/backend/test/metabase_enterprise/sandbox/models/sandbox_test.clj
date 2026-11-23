@@ -370,9 +370,9 @@
                 (is (or (:isError result) error) (some-> error :message message/render))
                 (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))))))
 
-(defn- with-snippet-policy!
-  "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
-  `{{#card}}` tag."
+(defn- do-with-snippet-policy!
+  "Call `f` with a policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card`
+  through a `{{#card}}` tag."
   [f]
   (let [inner-name (mt/random-name)
         outer-name (mt/random-name)]
@@ -401,15 +401,15 @@
     (letfn [(update-check [nested-card]
               (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
       (testing "a non-admin is refused the query of the nested Card"
-        (with-snippet-policy!
-          (fn [{:keys [nested-card]}]
-            (mt/with-test-user :rasta
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [nested-card]}]
+           (mt/with-test-user :rasta
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
       (testing "an admin may change it"
-        (with-snippet-policy!
-          (fn [{:keys [nested-card]}]
-            (mt/with-test-user :crowberto
-              (is (true? (update-check nested-card))))))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [nested-card]}]
+           (mt/with-test-user :crowberto
+             (is (true? (update-check nested-card))))))))))
 
 (deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
@@ -421,55 +421,55 @@
                ["archive"                       outer {:archived true}]
                ["content of the nested snippet" inner {:content "2 = 2"}]])]
       (testing "a non-admin is refused"
-        (with-snippet-policy!
-          (fn [policy]
-            (mt/with-test-user :rasta
-              (doseq [[change-name snippet changes] (guarded-changes policy)]
-                (testing change-name
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
+        (do-with-snippet-policy!
+         (fn [policy]
+           (mt/with-test-user :rasta
+             (doseq [[change-name snippet changes] (guarded-changes policy)]
+               (testing change-name
+                 (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
       (testing "an admin may do all of it"
-        (with-snippet-policy!
-          (fn [policy]
-            (mt/with-test-user :crowberto
-              (doseq [[change-name snippet changes] (guarded-changes policy)]
-                (testing change-name
-                  (is (true? (update-check snippet changes)))))))))
+        (do-with-snippet-policy!
+         (fn [policy]
+           (mt/with-test-user :crowberto
+             (doseq [[change-name snippet changes] (guarded-changes policy)]
+               (testing change-name
+                 (is (true? (update-check snippet changes)))))))))
       (testing "a change that does not touch what the sandbox reads is allowed"
-        (with-snippet-policy!
-          (fn [{:keys [outer]}]
-            (mt/with-test-user :rasta
-              (is (true? (update-check outer {:description "A description"})))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [outer]}]
+           (mt/with-test-user :rasta
+             (is (true? (update-check outer {:description "A description"})))))))
       (testing "an unrelated snippet is untouched"
-        (with-snippet-policy!
-          (fn [{:keys [other]}]
-            (mt/with-test-user :rasta
-              (is (true? (update-check other {:content "2 = 2"}))))))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [other]}]
+           (mt/with-test-user :rasta
+             (is (true? (update-check other {:content "2 = 2"}))))))))))
 
 (deftest only-admins-change-sandbox-source-snippet-through-endpoint-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(put-url [snippet]
               (str "native-query-snippet/" (:id snippet)))]
-      (with-snippet-policy!
-        (fn [{:keys [inner outer other]}]
-          (testing "a non-admin is refused"
-            (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
-                                                   ["name"                          outer {:name (mt/random-name)}]
-                                                   ["archive"                       outer {:archived true}]
-                                                   ["content of the nested snippet" inner {:content "2 = 2"}]]]
-              (testing change-name
-                (is (= forbidden-message
-                       (mt/user-http-request :rasta :put 403 (put-url snippet) changes))))))
-          (testing "the snippets are unchanged"
-            (is (= (:content outer) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id outer))))
-            (is (= (:name outer) (t2/select-one-fn :name :model/NativeQuerySnippet :id (:id outer))))
-            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id outer))))
-            (is (= (:content inner) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id inner)))))
-          (testing "an admin may change them"
-            (is (=? {:content "1 = 1"}
-                    (mt/user-http-request :crowberto :put 200 (put-url outer) {:content "1 = 1"}))))
-          (testing "a non-admin may change an unrelated snippet"
-            (is (=? {:content "2 = 2"}
-                    (mt/user-http-request :rasta :put 200 (put-url other) {:content "2 = 2"})))))))))
+      (do-with-snippet-policy!
+       (fn [{:keys [inner outer other]}]
+         (testing "a non-admin is refused"
+           (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
+                                                  ["name"                          outer {:name (mt/random-name)}]
+                                                  ["archive"                       outer {:archived true}]
+                                                  ["content of the nested snippet" inner {:content "2 = 2"}]]]
+             (testing change-name
+               (is (= forbidden-message
+                      (mt/user-http-request :rasta :put 403 (put-url snippet) changes))))))
+         (testing "the snippets are unchanged"
+           (is (= (:content outer) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id outer))))
+           (is (= (:name outer) (t2/select-one-fn :name :model/NativeQuerySnippet :id (:id outer))))
+           (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id outer))))
+           (is (= (:content inner) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id inner)))))
+         (testing "an admin may change them"
+           (is (=? {:content "1 = 1"}
+                   (mt/user-http-request :crowberto :put 200 (put-url outer) {:content "1 = 1"}))))
+         (testing "a non-admin may change an unrelated snippet"
+           (is (=? {:content "2 = 2"}
+                   (mt/user-http-request :rasta :put 200 (put-url other) {:content "2 = 2"})))))))))
 
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]

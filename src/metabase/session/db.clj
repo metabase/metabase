@@ -39,8 +39,8 @@
   (t2/select-one :core_session :key_hashed [:auto/param key-hashed] :user_id [:auto/param user-id]))
 
 (mu/defn insert-mcp-session!
-  "Insert the MCP-backed `core_session` `row` and return it as stored. Writes the table rather than `:model/Session`,
-  so the row gets no model defaults."
+  "Insert the MCP-backed `core_session` `row` into the table rather than through `:model/Session`, so that it gets no
+  model defaults, and return it as stored."
   [row :- [:map {:closed true}
            [:id               :string]
            [:key_hashed       :string]
@@ -68,15 +68,15 @@
 
 (mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
   "Record that every live Session of the Users with `user-ids` has ended with `reason`, ended by `ended-by`, clearing
-  its key. Returns the number ended."
+  its key, and return the number ended."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
    reason   :- ::session.schema/end-reason
    ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
   (t2/update! :model/Session :user_id [:in [:auto/param (vec user-ids)]] :ended_at nil (session-ending reason ended-by)))
 
 (mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
-  "Record that the live Session with `key-hashed` has ended with `reason`, ended by `ended-by`, clearing its key.
-  Returns the number ended."
+  "Record that the live Session with `key-hashed` has ended with `reason`, ended by `ended-by`, clearing its key, and
+  return the number ended."
   [key-hashed :- :string
    reason     :- ::session.schema/end-reason
    ended-by   :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
@@ -92,7 +92,7 @@
                            [:= :user_id user-id]]}))
 
 (mu/defn touch-session!
-  "Set `last_active_at` of the Session with `key-hashed` to now. Writes the table rather than `:model/Session`, whose
+  "Set `last_active_at` of the Session with `key-hashed` to now, writing the table rather than `:model/Session`, whose
   update hook allows only the columns that record an ending."
   [key-hashed :- :string]
   (t2/query-one {:update (t2/table-name :model/Session)
@@ -127,17 +127,15 @@
                                            [:user-active :tenant-active :not-expired :not-timed-out])]]}))))
 
 (mu/defn delete-sessions-for-cleanup! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Sessions whose recorded ending is before `cutoff`, returning the number deleted. A live session is never
-  deleted, whatever its age."
+  "Delete the Sessions whose recorded ending is before `cutoff`, which leaves every live session whatever its age, and
+  return the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/Session :ended_at [:< [:auto/param cutoff]]))
 
 (mu/defn delete-sessions-for-mcp-cleanup! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or (when
-  `idle-timeout-seconds` is given) idle longer than `idle-timeout-seconds`. Returns the number of rows deleted.
-
-  Only MCP rows: they are not sessions, so they are deleted outright rather than kept on record like an ended
-  session (see [[sessions-with-unrecorded-ending]])."
+  "Delete the MCP-backed `core_session` rows, which are no sessions and so are not kept on record like an ended one
+  (see [[sessions-with-unrecorded-ending]]), that are older than `max-age-minutes`, past their own `expires_at`, or
+  idle longer than `idle-timeout-seconds` when it is given, and return the number deleted."
   [max-age-minutes      :- ms/PositiveInt
    idle-timeout-seconds :- [:maybe ms/PositiveInt]]
   (let [db-type        (mdb/db-type)

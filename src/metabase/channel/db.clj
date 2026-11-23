@@ -37,10 +37,9 @@
     :char))
 
 (mu/defn deactivated-name-clause
-  "The HoneySQL expression for the name of a Channel once it is deactivated, which frees its unique name for a new
-  Channel: `DEACTIVATED_<id> <name>` cut to 254 characters, where the name is `new-name`, the one the update gives, or
-  the stored one when it is nil. It is the same for every row, and reads the stored `name` only when the update does
-  not assign it."
+  "The HoneySQL expression for the name of a Channel once it is deactivated, which frees its unique name:
+  `DEACTIVATED_<id> <name>` cut to 254 characters, where the name is `new-name`, the one the update gives, or the
+  stored one when it is nil, and the stored `name` is read only when the update does not assign it."
   [new-name :- [:maybe :string]]
   [:substring
    [:concat "DEACTIVATED_" :id " " (if new-name

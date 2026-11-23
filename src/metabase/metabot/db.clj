@@ -123,12 +123,6 @@
   [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (vec (t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])))
 
-(mu/defn delete-prompts-for-metabots! :- :nil
-  "Delete the MetabotPrompts of the Metabots with `metabot-ids`."
-  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])
-  nil)
-
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
 (mu/defn conversation
@@ -341,8 +335,9 @@
   (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
 (mu/defn messages-matching
-  "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed, as an empty
-  map would match every message. `:id` matches a single MetabotMessage or, given a collection, any of several."
+  "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed as an
+  empty map would match every message, where `:id` matches a single MetabotMessage or, given a collection, any of
+  several."
   [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions]
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
@@ -374,8 +369,9 @@
 
 (defn- upsert-row!
   "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
-  columns to those of `row`, in one statement: `ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
-  MariaDB, `MERGE ... KEY` on H2. All identifiers are constants of this namespace; the values are bound."
+  columns to those of `row`, in one statement (`ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
+  MariaDB, `MERGE ... KEY` on H2), binding the values and taking every identifier from the constants of this
+  namespace."
   [table key-columns row]
   (let [columns     (vec (keys row))
         names       (mapv name columns)

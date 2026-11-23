@@ -681,7 +681,7 @@
       (counted 2)
       (is (= (counted 2) (counted 6))))))
 
-(deftest create-transforms-reports-the-first-invalid-row-test
+(deftest create-transforms-reports-first-invalid-row-test
   (mt/with-temp [:model/Collection {regular-id :id} {}
                  :model/Collection {transforms-id :id} {:namespace collection/transforms-ns}]
     (let [missing-id (inc (t2/select-one-fn :id [:model/Collection :id] {:order-by [[:id :desc]]}))

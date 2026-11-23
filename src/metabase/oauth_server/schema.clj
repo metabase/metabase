@@ -1,20 +1,19 @@
 (ns metabase.oauth-server.schema
   "Malli schemas for the oauth-server module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::oauth-access-token
   "A OAuthAccessToken as selected from the app DB: every column of `:oauth_access_token`."
-  [:merge
-   ::oauth-access-token.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+  ::oauth-access-token.update)
 
 (mr/def ::oauth-access-token.update
-  "What an update (or insert) of a OAuthAccessToken accepts: every column of `:oauth_access_token` except `id`, all optional."
+  "What an update of an OAuthAccessToken takes: its `:id` and every other column of `:oauth_access_token`, all optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:token      {:optional true} [:maybe :string]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id  {:optional true} [:maybe :string]]
@@ -37,14 +36,13 @@
 
 (mr/def ::oauth-authorization-code
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
-  [:merge
-   ::oauth-authorization-code.update
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
+  ::oauth-authorization-code.update)
 
 (mr/def ::oauth-authorization-code.update
-  "What an update (or insert) of a OAuthAuthorizationCode accepts: every column of `:oauth_authorization_code` except `id`, all optional."
+  "What an update of an OAuthAuthorizationCode takes: its `:id` and every other column of `:oauth_authorization_code`,
+  all optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:code                  {:optional true} [:maybe :string]]
    [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id             {:optional true} [:maybe :string]]
@@ -102,35 +100,22 @@
    [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::oauth-client.create
-  "What registering an OAuthClient takes: its client id and registration type, and whichever of its other settings
-  the registration gives."
-  [:map {:closed true}
-   [:client_id                      :string]
-   [:registration_type              [:or :keyword :string]]
-   [:client_secret_hash             {:optional true} [:maybe :string]]
-   [:redirect_uris                  {:optional true} [:maybe [:sequential :string]]]
-   [:grant_types                    {:optional true} [:maybe [:sequential :string]]]
-   [:response_types                 {:optional true} [:maybe [:sequential :string]]]
-   [:scopes                         {:optional true} [:maybe [:sequential :string]]]
-   [:token_endpoint_auth_method     {:optional true} [:maybe [:or :keyword :string]]]
-   [:client_name                    {:optional true} [:maybe :string]]
-   [:client_uri                     {:optional true} [:maybe :string]]
-   [:logo_uri                       {:optional true} [:maybe :string]]
-   [:contacts                       {:optional true} [:maybe [:sequential :string]]]
-   [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
-   [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
-   [:registration_access_token_hash {:optional true} [:maybe :string]]])
+  "What registering an OAuthClient takes: the columns of an update without the `:id` and the timestamps, and its client
+  id and registration type."
+  [:merge
+   (-> ::oauth-client.update (mut/dissoc :id) (mut/dissoc :created_at) (mut/dissoc :updated_at))
+   [:map {:closed true}
+    [:client_id         :string]
+    [:registration_type [:or :keyword :string]]]])
 
 (mr/def ::oauth-client-event
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."
-  [:merge
-   ::oauth-client-event.update
-   [:map {:closed true}
-    [:id              ms/PositiveInt]]])
+  ::oauth-client-event.update)
 
 (mr/def ::oauth-client-event.update
-  "What an update (or insert) of a OAuthClientEvent accepts: every column of `:oauth_client_event` except `id`, all optional."
+  "What an update of an OAuthClientEvent takes: its `:id` and every other column of `:oauth_client_event`, all optional."
   [:map {:closed true}
+   [:id              ms/PositiveInt]
    [:oauth_client_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:event_type      {:optional true} [:maybe [:or :keyword :string]]]
@@ -138,14 +123,13 @@
 
 (mr/def ::oauth-refresh-token
   "A OAuthRefreshToken as selected from the app DB: every column of `:oauth_refresh_token`."
-  [:merge
-   ::oauth-refresh-token.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+  ::oauth-refresh-token.update)
 
 (mr/def ::oauth-refresh-token.update
-  "What an update (or insert) of a OAuthRefreshToken accepts: every column of `:oauth_refresh_token` except `id`, all optional."
+  "What an update of an OAuthRefreshToken takes: its `:id` and every other column of `:oauth_refresh_token`, all
+  optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:token      {:optional true} [:maybe :string]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id  {:optional true} [:maybe :string]]

@@ -799,18 +799,13 @@
                        {:before-update prepare-field-values-updates!
                         :after-update  publish-field-values-updates!}))
 
-(defn- duplicate-key?
-  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
-  [e]
-  (= :duplicate-key (sql-errors/error-kind e)))
-
 (defn- insert-unless-concurrent!
   "Insert the FieldValues `row` and return the inserted instance, or nil when a concurrent insert stored it first."
   [row]
   (try
     (warehouse-schema.db/insert-field-values-row! row)
     (catch Exception e
-      (when-not (duplicate-key? e)
+      (when-not (sql-errors/duplicate-key? e)
         (throw e)))))
 
 (mu/defn find-or-create-full-field-values! :- ::warehouse-schema.schema/field-values
@@ -834,8 +829,8 @@
 
 (defn- update-or-insert-full-field-values!
   "Apply `changes` to the `stored` full FieldValues of the Field with `field-id`, or insert them when there are none,
-  deleting its advanced FieldValues first when its values change; a lost race re-reads and goes once more, `retried?`
-  then letting a failure through. Returns `{:stored s}` or `{:inserted s}`."
+  deleting its advanced FieldValues first when its values change, returning `{:stored s}` or `{:inserted s}`; a lost
+  race re-reads and goes once more, `retried?` then letting a failure through."
   [field-id stored changes retried?]
   (when (or (nil? stored) (not= (:values stored) (:values changes)))
     (clear-advanced-field-values-for-fields! [field-id]))

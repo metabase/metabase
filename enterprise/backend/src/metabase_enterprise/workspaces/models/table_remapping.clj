@@ -97,12 +97,11 @@
 
 (defn- invalidate!
   "Invalidate the QP cache of the Databases with `database-ids`, once for all of them, and drop this process's
-  [[database-ids-with-remappings]] cache after the commit."
+  [[database-ids-with-remappings]] cache after the commit, since another thread that read before the commit would
+  otherwise cache the rows as they were before this write."
   [database-ids]
   (when (seq database-ids)
     (cache-config/invalidate! {:databases (vec database-ids)})
-    ;; After commit, not now: another thread that reads before the commit sees the rows as they were before this
-    ;; write, and would cache that after an early drop. The writing transaction's own reads bypass the cache.
     (app-db/do-after-commit invalidate-database-ids!)))
 
 (mu/defn upsert-table-remapping!

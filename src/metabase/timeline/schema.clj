@@ -1,6 +1,7 @@
 (ns metabase.timeline.schema
   "Malli schemas for the timeline module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -22,10 +23,11 @@
    [:map {:closed true}
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
-(mr/def ::timeline.create
-  "What a caller gives to create a Timeline."
+(mr/def ::timeline.update
+  "A Timeline by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name              ::name]
+   [:id                ms/PositiveInt]
+   [:name              {:optional true} ::name]
    [:description       {:optional true} [:maybe :string]]
    [:icon              {:optional true} ::icon]
    [:collection_id     {:optional true} [:maybe ::lib.schema.id/collection]]
@@ -33,17 +35,16 @@
    [:archived_directly {:optional true} [:maybe :boolean]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:default           {:optional true} [:maybe :boolean]]
-   [:entity_id         {:optional true} [:maybe :string]]])
+   [:entity_id         {:optional true} [:maybe :string]]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::timeline.update
-  "A Timeline by its `id` with the columns to change: those of `::timeline.create`, and the columns the product sets."
+(mr/def ::timeline.create
+  "What a caller gives to create a Timeline: the columns of an update without the `:id`, and the name."
   [:merge
-   ::timeline.create
+   (mut/dissoc ::timeline.update :id)
    [:map {:closed true}
-    [:id         ms/PositiveInt]
-    [:name       {:optional true} ::name]
-    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
+    [:name ::name]]])
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
@@ -51,32 +52,32 @@
    ::timeline-event.update
    [:map {:closed true}]])
 
-(mr/def ::timeline-event.create
-  "What a caller gives to create a TimelineEvent."
+(mr/def ::timeline-event.update
+  "A TimelineEvent by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:timeline_id  ms/PositiveInt]
-   [:name         ::name]
+   [:id           ms/PositiveInt]
+   [:timeline_id  {:optional true} ms/PositiveInt]
+   [:name         {:optional true} ::name]
    [:description  {:optional true} [:maybe :string]]
-   [:timestamp    ms/TemporalInstant]
+   [:timestamp    {:optional true} ms/TemporalInstant]
    [:time_matters {:optional true} ::time-matters]
    [:timezone     {:optional true} [:maybe :string]]
    [:icon         {:optional true} ::icon]
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:entity_id    {:optional true} [:maybe :string]]])
+   [:entity_id    {:optional true} [:maybe :string]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::timeline-event.update
-  "A TimelineEvent by its `id` with the columns to change: those of `::timeline-event.create`, and the columns the
-  product sets."
+(mr/def ::timeline-event.create
+  "What a caller gives to create a TimelineEvent: the columns of an update without the `:id`, and the timeline, name and
+  timestamp."
   [:merge
-   ::timeline-event.create
+   (mut/dissoc ::timeline-event.update :id)
    [:map {:closed true}
-    [:id           ms/PositiveInt]
-    [:timeline_id  {:optional true} ms/PositiveInt]
-    [:name         {:optional true} ::name]
-    [:timestamp    {:optional true} ms/TemporalInstant]
-    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]]])
+    [:timeline_id ms/PositiveInt]
+    [:name        ::name]
+    [:timestamp   ms/TemporalInstant]]])
 
 (mr/def ::external-timeline
   "A Timeline as serialization writes it, with portable references in place of ids."
@@ -95,10 +96,3 @@
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:timestamp {:optional true} [:maybe ::models.schema/external-date]]]]])
-
-(mr/def ::write-opts
-  "The options of a write function of Timelines or their events: `:writer`, who writes when it matters, and the context
-  of its events."
-  [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

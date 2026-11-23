@@ -56,14 +56,13 @@
 
 (mr/def ::support-access-grant-log
   "A SupportAccessGrantLog as selected from the app DB: every column of `:support_access_grant_log`."
-  [:merge
-   ::support-access-grant-log.update
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
+  ::support-access-grant-log.update)
 
 (mr/def ::support-access-grant-log.update
-  "What an update (or insert) of a SupportAccessGrantLog accepts: every column of `:support_access_grant_log` except `id`, all optional."
+  "What an update of a SupportAccessGrantLog takes: its `:id` and every other column of `:support_access_grant_log`,
+  all optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
    [:ticket_number         {:optional true} [:maybe :string]]
    [:notes                 {:optional true} [:maybe :string]]

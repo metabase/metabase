@@ -154,12 +154,9 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn mark-persisted-infos-for-pruning!
-  "Marks the PersistedInfos with `ids` as `state`, `deletable` or `off`, inactive; the PersistPrune task cleans them up
-  at some point.
-
-   `deletable` will wipe out all trace of persisted-info and allow them to be turned back on by automatic processes
-     use when you are disabling persistence at a high level.
-   `off` will ensure automatic processes do not pick up these up and re-enable."
+  "Mark the PersistedInfos with `ids` inactive and as `state`, for the PersistPrune task to clean up: `deletable`, which
+  wipes out every trace of them and lets automatic processes turn them back on, when persistence is disabled at a
+  high level, or `off`, which keeps automatic processes from picking them up again."
   [ids state]
   (when (seq ids)
     (model-persistence.db/update-persisted-infos! ids {:active false, :state state, :state_change_at :%now})))

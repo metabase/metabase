@@ -296,8 +296,8 @@
 
 (defn delete-batched!
   "Delete the rows of `model` with `pks` in batches in one transaction: `before-delete` gets every row once before the
-  first statement and throws when they cannot be deleted, and `after-delete` gets them once after the last. The rows are
-  read only when one of the two is given."
+  first statement and throws when they cannot be deleted, and `after-delete` gets them once after the last, the rows
+  being read only when one of the two is given."
   [model pks {:keys [before-delete after-delete] :as opts}]
   (check-batched-opts opts #{:before-delete :after-delete})
   (let [pk (first (t2/primary-keys model))]
@@ -347,7 +347,7 @@
 
 (mu/defn increment-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to `column` of the rows of `model` with `ids`, in one raw
-  statement that runs no hook and publishes no event, for a usage counter no rule reads. Returns the number updated."
+  statement that runs no hook and publishes no event, for a usage counter no rule reads, returning the number updated."
   [model      :- :keyword
    column     :- :keyword
    count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
@@ -361,8 +361,8 @@
 
 (mu/defn delete-oldest-rows! :- [:maybe :int]
   "Delete up to `batch-size` of the rows of `model` whose `time-column` is at or before `cutoff`, lowest ids first
-  where the database can say so, in one raw statement that runs no hook, for a log table a retention policy trims.
-  Returns the number deleted."
+  where the database can say so, in one raw statement that runs no hook, for a log table a retention policy trims,
+  returning the number deleted."
   [model       :- :keyword
    time-column :- :keyword
    cutoff      :- ms/TemporalInstant

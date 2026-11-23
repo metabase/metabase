@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [malli.util :as mut]
    [metabase.content-verification.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -178,8 +179,10 @@
   ms/NonBlankString)
 
 (mr/def ::card.update
-  "The changes of an update of Cards: every column of `:report_card`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
+  "What an update of a Card takes: its `:id` and the columns to change, each optional, plus `:verified-result-metadata?`
+  consumed by the model's hooks."
   [:map {:closed true}
+   [:id                                        ::lib.schema.id/card]
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe ::card.name]]
@@ -229,7 +232,7 @@
 (mr/def ::card.create
   "What a caller gives to create Cards: the columns of `::card.update`, and the `:id` of a Card a caller assigns."
   [:merge
-   ::card.update
+   (mut/dissoc ::card.update :id)
    [:map {:closed true}
     [:id {:optional true} ::lib.schema.id/card]]])
 
@@ -247,22 +250,24 @@
     :result_metadata :card_schema :collection_id :dashboard_id :database_id :table_id :query_type :source_card_id
     :archived :archived_directly :dataset_query_metrics_v2_migration_backup]])
 
-(mr/def ::parameter-card
-  "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
-  [:merge
-   ::parameter-card.update
-   [:map {:closed true}
-    [:id                        ms/PositiveInt]]])
-
 (mr/def ::parameter-card.update
-  "What an update (or insert) of a ParameterCard accepts: every column of `:parameter_card` except `id`, all optional."
+  "A ParameterCard by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                        ms/PositiveInt]
    [:updated_at                {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at                {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id                   {:optional true} [:maybe ::lib.schema.id/card]]
    [:parameterized_object_type {:optional true} [:maybe [:or :keyword :string]]]
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
    [:parameter_id              {:optional true} [:maybe :string]]])
+
+(mr/def ::parameter-card.create
+  "What a caller gives to create a ParameterCard: the columns of an update without the `:id`."
+  (mut/dissoc ::parameter-card.update :id))
+
+(mr/def ::parameter-card
+  "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
+  ::parameter-card.update)
 
 (mr/def ::query.query
   "The `:query` column of a Query, decoded."
@@ -291,21 +296,10 @@
   to the execution. Built by the enterprise sandboxing middleware."
   [:sequential [:ref ::lib.schema/sandboxing.details.entry]])
 
-(mr/def ::query-execution
-  "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
-  [:merge
-   ::query-execution.update
-   [:map {:closed true}
-    [:id                          ms/PositiveInt]
-    [:row_count                   {:optional true} :int]]])
-
-(mr/def ::query-execution.create
-  "What a caller gives to create a QueryExecution."
-  ::query-execution.update)
-
 (mr/def ::query-execution.update
-  "What an update (or insert) of a QueryExecution accepts: every column of `:query_execution` except `id`, all optional."
+  "A QueryExecution by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                          ms/PositiveInt]
    [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
    [:started_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:running_time                {:optional true} [:maybe :int]]
@@ -343,20 +337,29 @@
    [:embedding_client_identifier {:optional true} [:maybe :string]]
    [:sandbox_details             {:optional true} [:maybe ::query-execution.sandbox-details]]])
 
-(mr/def ::query-table
-  "A QueryTable as selected from the app DB: every column of `:query_table`."
+(mr/def ::query-execution.create
+  "What a caller gives to create a QueryExecution: the columns of an update without the `:id`."
+  (mut/dissoc ::query-execution.update :id))
+
+(mr/def ::query-execution
+  "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:merge
-   ::query-table.update
+   ::query-execution.update
    [:map {:closed true}
-    [:id       ms/PositiveInt]]])
+    [:row_count {:optional true} :int]]])
 
 (mr/def ::query-table.update
-  "What an update (or insert) of a QueryTable accepts: every column of `:query_table` except `id`, all optional."
+  "A QueryTable by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id       ms/PositiveInt]
    [:card_id  {:optional true} [:maybe ::lib.schema.id/card]]
    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
    [:schema   {:optional true} [:maybe :string]]
    [:table    {:optional true} [:maybe :string]]])
+
+(mr/def ::query-table
+  "A QueryTable as selected from the app DB: every column of `:query_table`."
+  ::query-table.update)
 
 (mr/def ::stored-result.dataset-query
   "The `:dataset_query` column of a StoredResult, decoded."
@@ -369,20 +372,10 @@
 (mr/def ::stored-result.resolved-source-ids
   ::query-permissions.schema/resolved-source-ids)
 
-(mr/def ::stored-result
-  "A StoredResult as selected from the app DB: every column of `:stored_result`."
-  [:merge
-   ::stored-result.update
-   [:map {:closed true}
-    [:id                ms/PositiveInt]]])
-
-(mr/def ::stored-result.create
-  "What a caller gives to create a StoredResult."
-  ::stored-result.update)
-
 (mr/def ::stored-result.update
-  "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
+  "A StoredResult by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                  ms/PositiveInt]
    [:result_data         {:optional true} [:maybe [:or bytes? :string]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id         {:optional true} [:maybe ::lib.schema.id/database]]
@@ -393,25 +386,32 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::stored-result-use
-  "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
-  [:merge
-   ::stored-result-use.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
+(mr/def ::stored-result.create
+  "What a caller gives to create a StoredResult: the columns of an update without the `:id`."
+  (mut/dissoc ::stored-result.update :id))
 
-(mr/def ::stored-result-use.create
-  "What a caller gives to create a StoredResultUse: exactly one of `card_id` and `exploration_id`."
-  ::stored-result-use.update)
+(mr/def ::stored-result
+  "A StoredResult as selected from the app DB: every column of `:stored_result`."
+  ::stored-result.update)
 
 (mr/def ::stored-result-use.update
-  "What an update (or insert) of a StoredResultUse accepts: every column of `:stored_result_use` except `id`, all optional."
+  "A StoredResultUse by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:stored_result_id {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_id   {:optional true} [:maybe ms/PositiveInt]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+
+(mr/def ::stored-result-use.create
+  "What a caller gives to create a StoredResultUse: the columns of an update without the `:id`, exactly one of `card_id`
+  and `exploration_id`."
+  (mut/dissoc ::stored-result-use.update :id))
+
+(mr/def ::stored-result-use
+  "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
+  ::stored-result-use.update)
 
 (mr/def ::external-card
   "A Card as serialization writes it, with portable references in place of ids."

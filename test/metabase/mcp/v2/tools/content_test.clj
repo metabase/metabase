@@ -373,7 +373,7 @@
                       dc  (layout-dashcard row)]
                   (is (some? dc))
                   (is (not (str/includes? (json/encode row) "SECRET Series"))
-                      "checked on the whole response, so a leak through another include fails too")
+                      "checked on the whole response, so any include that shows it fails too")
                   (is (= [open-card] (map :card_id (:parameter_mappings dc))))
                   (testing "the series settings go whole, since composite keys also name the card"
                     (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))))

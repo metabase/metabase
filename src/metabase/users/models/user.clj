@@ -28,7 +28,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]
@@ -532,10 +531,6 @@
                                (vector? (:deactivated_at row))
                                (assoc :deactivated_at (or (:deactivated_at user) (java.time.OffsetDateTime/now)))))))
 
-(mr/def ::write-opts
-  [:map {:closed true}
-   [:context {:optional true} :metabase.events.schema/context]])
-
 (defn- users-after
   "A map from id to the User as the update leaves it, for each of `updates` over `stored`, a map from id to User."
   [stored updates]
@@ -548,7 +543,7 @@
 
 (defn- set-admin-memberships!
   "Add the Users of `updates` that set `is_superuser` to Administrators and remove those that unset it, leaving their
-  flag alone; `admin-ids` holds those already in it. Publishes the events of the writes with `opts`."
+  flag alone and publishing the events of the writes with `opts`, where `admin-ids` holds those already in it."
   [updates admin-ids opts]
   (let [admin-group-id (:id (perms/admin-group))
         promoted       (ids-of-rows #(and (true? (:is_superuser %)) (not (contains? admin-ids (:id %)))) updates)
@@ -654,7 +649,7 @@
   ([updates :- [:sequential ::users.schema/user.update-row]]
    (update-users! updates nil))
   ([updates :- [:sequential ::users.schema/user.update-row]
-    opts    :- [:maybe ::write-opts]]
+    opts    :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [admin-ids (admin-member-ids updates)]
        (check-admins-remain updates admin-ids)

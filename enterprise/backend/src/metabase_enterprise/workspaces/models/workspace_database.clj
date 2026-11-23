@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
@@ -78,18 +79,19 @@
 
 (mu/defn create-workspace-databases!
   "Insert `rows`."
-  [rows :- [:sequential ::ws.db/workspace-database.insert]]
+  [rows :- [:sequential ::ws.db/workspace-database.create]]
   (ws.db/insert-workspace-databases! rows))
 
 (mu/defn update-workspace-database!
   "Apply `changes` to the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt
-   changes               :- ::ws.db/workspace-database.update]
+   changes               :- (mut/select-keys ::ws.db/workspace-database.update
+                                             [:output_namespace :database_details :status :updated_at])]
   (ws.db/update-workspace-database! workspace-database-id changes))
 
 (mu/defn transition-workspace-database!
   "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
-  `updated_at` to this instance's current time. Returns the number of rows updated."
+  `updated_at` to this instance's current time, returning the number of rows updated."
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::ws.db/status
    to-status             :- ::ws.db/status]
@@ -97,8 +99,8 @@
 
 (mu/defn transition-workspace-database-at!
   "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
-  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
-  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  `updated-at`, if its status is `from-status`, in one statement that carries the status condition so that of two
+  concurrent calls from the same status only one updates the row, returning the number of rows updated."
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::ws.db/status
    to-status             :- ::ws.db/status
@@ -107,7 +109,7 @@
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
-  `to-status`, and its `updated_at` to this instance's current time. Returns the number of rows updated."
+  `to-status`, and its `updated_at` to this instance's current time, returning the number of rows updated."
   [workspace-id :- ms/PositiveInt
    from-status  :- ::ws.db/status
    to-status    :- ::ws.db/status]
@@ -124,12 +126,11 @@
   (ws.db/delete-workspace-databases! workspace-database-ids))
 
 (mu/defn delete-workspace-databases-of-databases! :- :nil
-  "Delete the WorkspaceDatabases of the Databases with `database-ids`, as those Databases are deleted, refusing (409)
-  when one of them is not `:unprovisioned`: a `:provisioning`, `:provisioned`, `:deprovisioning` or `:teardown_failed`
-  row points at (or is in flight against) live warehouse schemas and users that must be torn down first, by deleting
-  their workspaces, and a `:never_started` row is removed by deleting its workspace. Deleting the `:unprovisioned`
-  rows keeps the `workspace_database.database_id` foreign key from refusing the Database delete. No premium feature
-  gates it, so that a lapsed token neither leaves the rows behind nor lets an active row through."
+  "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`, as those Databases are deleted,
+  so that the `workspace_database.database_id` foreign key does not refuse the delete, refusing (409), whatever the
+  premium features, when one of them is in another status: a `:provisioning`, `:provisioned`, `:deprovisioning` or
+  `:teardown_failed` row points at, or is in flight against, live warehouse schemas and users that must be torn down
+  first by deleting its workspace, and a `:never_started` row is removed by deleting its workspace."
   [database-ids :- [:sequential ms/PositiveInt]]
   (when-let [db-id (ws.db/database-id-with-active-workspace-databases database-ids)]
     (throw (ex-info "Cannot delete a Database with active workspace_database rows; delete their workspaces first (DELETE /api/ee/workspace-manager/:id). For rows in teardown_failed, add ?force=true only when the warehouse is gone for good."

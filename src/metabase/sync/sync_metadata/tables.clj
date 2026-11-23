@@ -281,8 +281,8 @@
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
 (mu/defn- table-metadata-changes
-  "The changes to make to the table metadata if it has changed, as a pair of `metabase-table` and its changes, nil when
-  nothing changes. Writes nothing."
+  "The changes to make to the table metadata if it has changed, as a pair of `metabase-table` and its changes, or nil
+  when nothing changes, without writing them."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- i/DatabaseInstance]

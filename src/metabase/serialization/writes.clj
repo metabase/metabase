@@ -42,9 +42,9 @@
   [])
 
 (defn insert-matched!
-  "Inserts `rows` of `model` (see [[insert!]]) and returns, for each of `rows` in order, its inserted instance, or nil
-  for a row the model left out. An instance is matched to its row by `key-fn`, by default the identity columns of the
-  model, never by the order they are returned in. `insert-fn`, by default [[insert!]] of `model`, inserts them."
+  "Insert `rows` of `model` (see [[insert!]]) with `insert-fn`, by default [[insert!]] of `model`, and return, for
+  each of `rows` in order, its inserted instance matched by `key-fn`, by default the identity columns of the model, or
+  nil for a row the model left out, never matched by the order of the returned instances."
   ([model rows]
    (insert-matched! model rows (identity-of model)))
   ([model rows key-fn]

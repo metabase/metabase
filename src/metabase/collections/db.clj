@@ -48,6 +48,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
 
+(mu/defn collections-for-content-checks
+  "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]
@@ -84,12 +89,6 @@
   sync syncs each."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :type :namespace :is_remote_synced] :id [:in collection-ids]))
-
-(mu/defn collection-remote-synced?
-  "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
-  ::collections.schema/collection) or the ::collections.schema/collection does not exist."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id))
 
 (mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
   "The map from id to location of the Collections with `collection-ids`."

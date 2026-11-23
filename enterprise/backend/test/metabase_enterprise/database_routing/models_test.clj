@@ -119,26 +119,23 @@
                                                                  {:id Integer/MAX_VALUE :user_attribute "region"}])))
     (is (= "region" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))))
 
-(defn- old-router-refusal?
-  "Whether the check `create-database-routers!` ran before its insert refused `rows`: one of their Databases is a
-  routing destination."
-  [rows]
-  (t2/exists? :model/Database :id [:in (map :database_id rows)] :router_database_id [:not= nil]))
-
-(deftest create-database-routers-refuses-exactly-what-the-pre-write-check-refused-test
+(deftest create-database-routers-refuses-any-batch-with-destination-test
   (mt/with-temp [:model/Database {plain-db :id}       {}
                  :model/Database {other-db :id}       {}
                  :model/Database {router-db :id}      {}
                  :model/Database {destination-db :id} {:router_database_id router-db}]
-    (doseq [database-ids [[plain-db] [destination-db] [plain-db other-db] [plain-db destination-db] [destination-db plain-db]]]
+    (doseq [[database-ids expected] [[[plain-db] nil]
+                                     [[destination-db] 400]
+                                     [[plain-db other-db] nil]
+                                     [[plain-db destination-db] 400]
+                                     [[destination-db plain-db] 400]]]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [rows     (mapv #(hash-map :database_id % :user_attribute "tenant") database-ids)
-              expected (old-router-refusal? rows)
-              refusal  (try
-                         (database-routing.models/create-database-routers! rows)
-                         nil
-                         (catch clojure.lang.ExceptionInfo e
-                           (:status-code (ex-data e))))]
+        (let [rows    (mapv #(hash-map :database_id % :user_attribute "tenant") database-ids)
+              refusal (try
+                        (database-routing.models/create-database-routers! rows)
+                        nil
+                        (catch clojure.lang.ExceptionInfo e
+                          (:status-code (ex-data e))))]
           (testing (pr-str database-ids)
-            (is (= (when expected 400) refusal))
-            (is (= (not expected) (t2/exists? :model/DatabaseRouter :database_id [:in database-ids])))))))))
+            (is (= expected refusal))
+            (is (= (nil? expected) (t2/exists? :model/DatabaseRouter :database_id [:in database-ids])))))))))

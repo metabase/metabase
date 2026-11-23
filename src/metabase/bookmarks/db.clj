@@ -62,11 +62,6 @@
     "exploration" (exploration-bookmark-exists? id user-id)
     (unknown-bookmark-model! model)))
 
-(mu/defn collections-for-content-checks
-  "A map of id to the id, namespace, type and `archived` flag of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
-
 (def ^:private model->bookmark-model+item-key
   {"card"        [:model/CardBookmark        :card_id]
    "dashboard"   [:model/DashboardBookmark   :dashboard_id]
@@ -75,14 +70,14 @@
    "exploration" [:model/ExplorationBookmark :exploration_id]})
 
 (defn- bookmark-model+item-key
-  "The Toucan model and the item column of the bookmarks of `type`. Throws for an unrecognized `type`."
+  "The Toucan model and the item column of the bookmarks of `type`, throwing for an unrecognized `type`."
   [type]
   (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type)))
 
 (defn insert-bookmarks!
-  "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks, the
-  existing one when there already is one, with one read and one insert for each type of bookmark. Does not read-check the
-  item; callers do. Throws for an unrecognized `:type`."
+  "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks,
+  the existing one when there already is one, with one read and one insert for each type of bookmark, without a read
+  check of the item, which callers do, and throwing for an unrecognized `:type`."
   [rows]
   (run! (comp bookmark-model+item-key :type) rows)
   (let [by-type  (group-by :type rows)
@@ -112,8 +107,8 @@
           rows)))
 
 (defn delete-bookmarks!
-  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, with one statement for
-  each type of bookmark. No-op for one that has none. Throws for an unrecognized `:type`."
+  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, with one statement
+  for each type of bookmark, doing nothing for one that has none and throwing for an unrecognized `:type`."
   [rows]
   (run! (comp bookmark-model+item-key :type) rows)
   (doseq [[type group] (group-by :type rows)

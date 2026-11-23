@@ -779,7 +779,7 @@
   - its router is not itself a destination"
   [rows writer]
   (when (= :import writer)
-    (run! warehouses.serialization/check-imported-row! rows))
+    (run! warehouses.serialization/check-imported-row rows))
   (check-routers-not-destinations rows))
 
 (defn- insert-databases!
@@ -866,7 +866,7 @@
   [updates id->stored writer]
   (when (= :import writer)
     (doseq [row updates]
-      (warehouses.serialization/check-imported-row! (merge (select-keys (get id->stored (:id row)) [:engine :name]) row)))))
+      (warehouses.serialization/check-imported-row (merge (select-keys (get id->stored (:id row)) [:engine :name]) row)))))
 
 (defn- enables-uploads?
   "Whether one of `updates`, the id of one of the `id->stored` Databases and its changes, enables uploads on it."
@@ -955,7 +955,7 @@
 
 (def ^:private refusing-follower-models
   "The models that implement [[delete-for-databases!]] and may refuse the delete, so they go before the sync triggers
-  are unscheduled: a WorkspaceDatabase in use refuses it. Only an EE build has them."
+  are unscheduled, as a WorkspaceDatabase in use refuses it, which only an EE build has."
   (if config/ee-available? [:model/WorkspaceDatabase] []))
 
 (def ^:private follower-models

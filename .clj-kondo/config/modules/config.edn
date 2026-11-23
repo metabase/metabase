@@ -1925,14 +1925,7 @@
            util
            util.classloader
            util.config}
-   :model-imports #{:model/ChannelTemplate
-                    :model/Database
-                    :model/Notification
-                    :model/NotificationCard
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/NotificationSubscription
-                    :model/TimelineEvent}}
+   :model-imports #{:model/Collection :model/Database :model/TimelineEvent}}
 
   mq
   {:team "UX West"
@@ -2012,11 +2005,7 @@
            users.schema
            util
            util.config}
-   :model-exports #{:model/Notification
-                    :model/NotificationCard
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/NotificationSubscription}
+   :model-exports #{:model/Notification :model/NotificationCard :model/NotificationHandler}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate

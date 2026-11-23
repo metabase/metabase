@@ -1,5 +1,6 @@
 (ns metabase.segments.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -69,17 +70,13 @@
    [:name :description :definition :archived :table_id :caveats :points_of_interest :show_in_getting_started]])
 
 (mr/def ::segment.create
-  "What a caller gives to create a Segment; its table follows its definition."
-  [:map {:closed true}
-   [:name                    ::segment.name]
-   [:definition              ::segment.definition]
-   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:description             {:optional true} [:maybe :string]]
-   [:archived                {:optional true} [:maybe :boolean]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+  "What a caller gives to create a Segment, whose table follows its definition: the columns of an update without the
+  `:id` and the columns the product sets, and its name and definition."
+  [:merge
+   (reduce mut/dissoc ::segment.update [:id :table_id :created_at :updated_at])
+   [:map {:closed true}
+    [:name       ::segment.name]
+    [:definition ::segment.definition]]])
 
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."

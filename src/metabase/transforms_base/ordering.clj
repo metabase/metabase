@@ -325,15 +325,10 @@
        :cycle     cycle})))
 
 (mu/defn get-transform-cycles :- [:sequential [:maybe ::cycle]]
-  "For each of `to-checks`, transforms as their update leaves them, the cycle it is part of (otherwise `nil`), among the
-  transforms stored, which are read once for all of them. The result is lazy, so a caller that stops at the first cycle
-  computes the dependencies of no later transform. Each cycle consists of:
-
-  ```
-  {:cycle-str \"transform-1 => tranform-2\"
-   :cycle [1 2]}
-  ```
-"
+  "For each of `to-checks`, transforms as their update leaves them, the cycle it is part of (otherwise `nil`), among
+  the transforms stored, which are read once for all of them, lazily so that a caller that stops at the first cycle
+  computes the dependencies of no later transform, each cycle being `{:cycle-str \"transform-1 => tranform-2\" :cycle
+  [1 2]}`."
   [to-checks :- [:sequential ::transforms-base.schema/transform]]
   (when (seq to-checks)
     (let [all-transforms (transforms-base.db/transforms-for-ordering)

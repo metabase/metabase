@@ -103,7 +103,6 @@
    :recipients     []
    :channel_id     nil})
 
-;; create-pulse-channels!
 (deftest create-pulse-channels!-test
   (mt/with-premium-features #{}
     (mt/with-temp [:model/Pulse {:keys [id]}]
@@ -423,7 +422,7 @@
 (defn- channel-row
   "A PulseChannel row with every schedule column, nil unless `overrides` sets it."
   [overrides]
-  (merge {:channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
+  (merge {:id 1 :channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
 
 (deftest ^:parallel channel-schema-test
   (doseq [[testing-name overrides] {"channel type that does not exist"       {:channel_type :sms}
@@ -461,7 +460,7 @@
       (testing (pr-str overrides)
         (is (nil? (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
   (testing "body without every schedule column leaves combination to hook"
-    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:schedule_type :weekly})))))
+    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:id 1 :schedule_type :weekly})))))
 
 (deftest update-rules-test
   (mt/with-temp [:model/Pulse        {pulse-id :id}   {}

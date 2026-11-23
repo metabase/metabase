@@ -954,7 +954,7 @@
   []
   [(t2/count :model/Document) (t2/count :model/Card)])
 
-(deftest document-cards-checks-before-the-write-test
+(deftest document-cards-checks-before-write-test
   (mt/with-model-cleanup [:model/Document :model/Card]
     (mt/with-temp-copy-of-db
       (mt/with-no-data-perms-for-all-users!
@@ -975,7 +975,7 @@
                                                       :collection_id collection-id
                                                       :document      (documents.tu/cards->prose-mirror-ast (keys cards))
                                                       :cards         cards}]
-                                            (document/check-creating-document-cards! body)
+                                            (document/check-creating-document-cards body)
                                             (document/create-document-with-cards! body)))))
                 three       (fn [second-card third-card] {-1 (good) -2 second-card -3 third-card})
                 orders-card (fn [] (assoc (good) :dataset_query orders))
@@ -994,7 +994,7 @@
                               (let [cards (into {} (map (fn [i] [(- (inc i)) (good)])) (range n))
                                     body  {:collection_id write-id :document (documents.tu/cards->prose-mirror-ast (keys cards)) :cards cards}]
                                 (mt/with-test-user :rasta
-                                  (events.tu/statement-count! #(document/check-creating-document-cards! body)))))]
+                                  (events.tu/statement-count! #(document/check-creating-document-cards body)))))]
                 (counted 1)
                 (is (= (counted 2) (counted 6)))))
             (testing "cards in a collection the user cannot write"

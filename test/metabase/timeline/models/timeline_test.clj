@@ -208,7 +208,7 @@
           (delete! 1)
           (is (= (delete! 2) (delete! 6))))))))
 
-(deftest archived-directly-follows-collection-in-the-statement-test
+(deftest archived-directly-follows-collection-in-statement-test
   (mt/with-model-cleanup [:model/Timeline :model/Collection]
     (let [user-id  (mt/user->id :rasta)
           live     (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))

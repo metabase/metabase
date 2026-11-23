@@ -23,7 +23,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -116,7 +115,7 @@
       (throw (ex-info (tru "You cannot change the creator of a snippet.") {:status-code 400})))
     (cond-> snippet
       (and (contains? changes :archived) (not (contains? changes :archived_directly)))
-      (assoc :archived_directly (native-query-snippets.db/archived-directly-clause changes)))))
+      (assoc :archived_directly (mi/archived-directly-clause :model/NativeQuerySnippet changes)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -200,7 +199,7 @@
   - its Collection is in the snippets namespace
   - its Collection is not archived, unless the snippet is"
   [rows]
-  (collection/check-collections-for-model! :model/NativeQuerySnippet rows))
+  (collection/check-collections-for-model :model/NativeQuerySnippet rows))
 
 (defn- name->id
   "A map of the name of each snippet that the content of one of `snippets` refers to, to its id, read in one query."
@@ -210,20 +209,14 @@
       (native-query-snippets.db/snippet-ids-by-names (vec names))
       {})))
 
-(mr/def ::write-opts
-  "The options of a write function of NativeQuerySnippets: who writes and the context of its events."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (defn- check-new-snippets
   "Throw a 400 unless every one of `rows`, new snippets, satisfies the rules of [[check-snippets]]."
   [rows]
   (check-snippets (map #(update % :archived boolean) rows)))
 
 (defn- prepare-new-snippets
-  "`rows`, new snippets, each with the template tags of its content. With `:writer :import` in `opts` each is renamed with
-  ` (copy)` suffixes until no other snippet holds its name."
+  "`rows`, new snippets, each with the template tags of its content, and with `:writer :import` in `opts` each renamed
+  with ` (copy)` suffixes until no other snippet holds its name."
   [rows opts]
   (let [rows (cond-> rows
                (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names nil))
@@ -232,13 +225,13 @@
 
 (mu/defn create-snippets! :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
   "Insert the NativeQuerySnippet `rows` and return the inserted instances, each with the template tags of its content,
-  in one transaction, publishing their create event. A snippet in a Collection that cannot hold it, or in an archived
-  Collection unless it is archived, throws a 400. An import, `:writer :import` in `opts`, renames each with ` (copy)`
-  suffixes until no other snippet holds its name."
+  in one transaction, publishing their create event, a snippet in a Collection that cannot hold it throwing a 400 and
+  an import, `:writer :import` in `opts`, renaming each with ` (copy)` suffixes until no other snippet holds its
+  name."
   ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
    (create-snippets! rows nil))
   ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]
-    opts :- ::write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (app-db/create-batched! :model/NativeQuerySnippet rows
                            {:before-create (fn [rows]
                                              (check-new-snippets rows)
@@ -257,15 +250,6 @@
           (not= tags (:template_tags stored)) (assoc :template_tags tags)))
       changes)))
 
-(defn- derive-archived-directly
-  "`updates`, with the `archived_directly` that the write gave each of those that change `archived`, read from
-  `id->updated`, the snippets after the write."
-  [updates id->updated]
-  (mapv (fn [{:keys [id] :as row}]
-          (cond-> row
-            (contains? row :archived) (assoc :archived_directly (:archived_directly (get id->updated id)))))
-        updates))
-
 (defn- check-snippet-updates
   "Throw a 400 unless every one of `updates` that moves a snippet of `id->stored` satisfies these rules:
 
@@ -277,9 +261,9 @@
                     (update (merge (get id->stored (:id row)) row) :archived boolean))))
 
 (defn- prepare-snippet-updates
-  "`updates` of the snippets of `id->stored`, each with the template tags of its content, reading the snippets that the
-  contents name once. With `:writer :import` in `opts` each is renamed with ` (copy)` suffixes until no other snippet, or
-  earlier row, holds its name."
+  "`updates` of the snippets of `id->stored`, each with the template tags of its content, reading the snippets that
+  the contents name once, and with `:writer :import` in `opts` each renamed with ` (copy)` suffixes until no other
+  snippet, or earlier row, holds its name."
   [updates id->stored opts]
   (let [updates  (cond-> (filterv #(contains? id->stored (:id %)) updates)
                    (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names id->stored))
@@ -295,7 +279,7 @@
   (when (seq updates)
     (events/publish-event! :event/snippet-update
                            (events/update-event id->stored
-                                                (derive-archived-directly updates id->updated)
+                                                (mi/derive-archived-directly updates id->updated)
                                                 (assoc opts :objects id->updated)))))
 
 (mu/defn update-snippets! :- :nil
@@ -304,7 +288,7 @@
   ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
    (update-snippets! updates nil))
   ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (app-db/update-batched! :model/NativeQuerySnippet updates
                            {:before-update (fn [updates id->stored]
                                              (check-snippet-updates updates id->stored)

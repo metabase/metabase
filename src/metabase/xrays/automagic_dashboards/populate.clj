@@ -130,12 +130,11 @@
    :visualization_settings {}})
 
 (defn- cards-query-fields
-  "The query-derived columns of each of `cards`, nil for one without a query, reading the Cards they are built on at once."
+  "The query-derived columns of each of `cards`, nil for one without a query, read at once with ref validation off, as
+  X-Rays adds filters and expressions that use columns from joins before adding the joins."
   [cards]
   (let [with-query (filterv :dataset_query cards)
         fields     (binding [lib.schema/*HACK-disable-ref-validation* true]
-                     ;; X-Rays adds filters and expressions that use columns from joins before adding the joins
-                     ;; themselves, so ref validation stays off until the query is complete
                      (queries/populate-cards-query-fields
                       (mapv #(hash-map :dataset_query (lib-be/normalize-query (:dataset_query %))) with-query)))
         by-card    (zipmap with-query (map #(select-keys % [:query_type :database_id :table_id]) fields))]

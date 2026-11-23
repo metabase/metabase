@@ -26,7 +26,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
@@ -624,21 +623,14 @@
   (update-field-positions! (reordered-tables id->stored updates))
   updates)
 
-(mr/def ::write-opts
-  "The options of an update of Tables: `:context` and `:writer`, that of a Collection archive the Tables follow, for the
-  events."
-  [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (mu/defn update-tables! :- :nil
   "Apply `updates`, each the `:id` of a Table and the columns to change, in one transaction, publishing their update
-  event with the `:context` and `:writer` of `opts`. A Collection that cannot hold Tables throws, and a new field order
+  event with the `:context` and `:writer` of `opts`; a Collection that cannot hold Tables throws, and a new field order
   sets the positions of their Fields."
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]]
    (update-tables! updates nil))
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (mdb/update-batched! :model/Table updates
                         {:before-update prepare-table-updates!
                          :after-update  (partial publish-table-updates! opts)})))
@@ -682,7 +674,7 @@
 
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain
-  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  statement that publishes no event, for a usage stat no rule reads, returning the number updated."
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
   (warehouse-schema.db/increment-table-view-counts! count->ids))
 

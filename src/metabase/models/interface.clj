@@ -506,10 +506,36 @@
     (cond-> obj
       should-set-updated-at? (assoc :updated_at (now)))))
 
+(defn archived-directly-clause
+  "The HoneySQL expression that sets `archived_directly` of the rows of `model` when an update that makes `changes` sets
+  `archived`: false when it restores, else false when the Collection the row is in after the update, the one `changes`
+  give or else the stored one, is archived, and true otherwise."
+  [model changes]
+  (if-not (:archived changes)
+    [:inline false]
+    [:case
+     [:= ^:allow-subquery {:select [:parent.archived]
+                           :from   [[(t2/table-name :model/Collection) :parent]]
+                           :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                    (when-some [id (:collection_id changes)] [:auto/param id])
+                                                    (u/qualified-key (t2/table-name model) :collection_id))]}
+      [:inline true]]
+     [:inline false]
+     :else [:inline true]]))
+
+(defn derive-archived-directly
+  "`updates`, with the `archived_directly` that the write gave each of those that change `archived`, read from
+  `id->updated`, the rows by id after the write."
+  [updates id->updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get id->updated id)))))
+        updates))
+
 (defn initially-published-at-clause
   "The HoneySQL expression that sets `initially_published_at` to the database clock when the row left by an update that
   makes `changes` is embedded and was never published, or nil when `changes` give the column themselves or turn
-  embedding off. It reads only stored columns: the first form when `changes` turn embedding on, which assigns
+  embedding off, reading only stored columns: the first form when `changes` turn embedding on, which assigns
   `enable_embedding`, the second when they leave it alone."
   [changes]
   (cond

@@ -11,12 +11,12 @@
   [:merge
    ::login-history.update
    [:map {:closed true}
-    [:id                 ms/PositiveInt]
     [:active             {:optional true} :boolean]]])
 
 (mr/def ::login-history.update
-  "What an update (or insert) of a LoginHistory accepts: every column of `:login_history` except `id`, all optional."
+  "What an update of a LoginHistory takes: its `:id` and every other column of `:login_history`, all optional."
   [:map {:closed true}
+   [:id                 ms/PositiveInt]
    [:timestamp          {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:session_id         {:optional true} [:maybe :string]]

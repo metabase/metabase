@@ -38,8 +38,8 @@
   (cd.db/insert-findings! rows))
 
 (mu/defn delete-findings-for-cleanup! :- :int
-  "Hard-delete every finding invalidated before `cutoff`, a batch at a time; returns the row count.
-  Active findings need no guard - their `invalidated_at` is NULL, and NULL < cutoff is never true."
+  "Hard-delete every finding invalidated before `cutoff`, a batch at a time, and return the row count; an active
+  finding needs no guard, as its `invalidated_at` is NULL and NULL < cutoff is never true."
   [cutoff :- ms/TemporalInstant]
   (loop [deleted 0]
     (let [n (long (cd.db/delete-invalidated-batch! cutoff delete-batch-size))]
@@ -77,8 +77,8 @@
       (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 
 (mu/defn invalidate-findings!
-  "Soft-invalidate the still-active findings among `ids` in one transaction; returns the set of `ids`. A finding
-  invalidated meanwhile keeps its first stamp."
+  "Soft-invalidate the still-active findings among `ids` in one transaction, a finding invalidated meanwhile keeping
+  its first stamp, and return the set of `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]

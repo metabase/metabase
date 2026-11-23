@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.schema
   "Malli schemas for the database-routing module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -17,14 +18,17 @@
    [:user_attribute {:optional true} ::database-router.user-attribute]])
 
 (mr/def ::database-router.update
-  "What an update of a DatabaseRouter takes: its `:id` and the columns to set."
+  "What an update of a DatabaseRouter takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
    [:user_attribute {:optional true} ::database-router.user-attribute]])
 
 (mr/def ::database-router.create
-  "What creating a DatabaseRouter takes: the Database it routes and the user attribute it routes on."
-  [:map {:closed true}
-   [:database_id    :metabase.lib.schema.id/database]
-   [:user_attribute ::database-router.user-attribute]])
+  "What creating a DatabaseRouter takes: the columns of an update without the `:id`, and the Database it routes and
+  the user attribute it routes on."
+  [:merge
+   (mut/dissoc ::database-router.update :id)
+   [:map
+    [:database_id    ::lib.schema.id/database]
+    [:user_attribute ::database-router.user-attribute]]])

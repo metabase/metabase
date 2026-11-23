@@ -302,7 +302,7 @@
         (testing "deleting snippets"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(native-query-snippet/delete-snippets! ids))))))))))
 
-(deftest archived-directly-follows-collection-in-the-statement-test
+(deftest archived-directly-follows-collection-in-statement-test
   (mt/with-temp [:model/Collection {live :id}     {:namespace "snippets"}
                  :model/Collection {archived :id} {:namespace "snippets" :archived true}]
     (mt/with-model-cleanup [:model/NativeQuerySnippet]

@@ -1,5 +1,6 @@
 (ns metabase.actions.schema
   (:require
+   [malli.util :as mut]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -263,17 +264,9 @@
    [:kind          {:optional true} ::implicit-action.kind]
    [:table_id      {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(mr/def ::action.create
-  "What a caller gives to create an Action: its columns and those of its QueryAction or ImplicitAction."
-  (-> [:map {:closed true}
-       [:name :string]
-       [:type ::type]]
-      (into action-write-entries)
-      (into action-detail-entries)))
-
 (mr/def ::action.update
   "An Action by its `id` with the columns to change: those of the Action and those of its QueryAction or
-  ImplicitAction."
+  ImplicitAction, each optional."
   (-> [:map {:closed true}
        [:id   ::id]
        [:name {:optional true} :string]
@@ -281,34 +274,39 @@
       (into action-write-entries)
       (into action-detail-entries)))
 
-(mr/def ::query-action.create
-  "What a caller gives to create a QueryAction."
-  [:map {:closed true}
-   [:action_id     ::lib.schema.id/action]
-   [:dataset_query ::query-action.dataset-query]
-   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:legacy_query  {:optional true} [:maybe :string]]])
+(mr/def ::action.create
+  "What a caller gives to create an Action: the columns of an update without the `:id`, and the name and type."
+  [:merge
+   (mut/dissoc ::action.update :id)
+   [:map {:closed true}
+    [:name :string]
+    [:type ::type]]])
 
 (mr/def ::query-action.update
-  "A QueryAction by the id of its Action with the columns to change."
+  "A QueryAction by the id of its Action with the columns to change, each optional."
   [:map {:closed true}
    [:action_id     ::lib.schema.id/action]
    [:dataset_query {:optional true} ::query-action.dataset-query]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:legacy_query  {:optional true} [:maybe :string]]])
 
-(mr/def ::implicit-action.create
-  "What a caller gives to create an ImplicitAction."
+(mr/def ::query-action.create
+  "What a caller gives to create a QueryAction: the columns of an update, and the query."
+  [:merge
+   ::query-action.update
+   [:map {:closed true}
+    [:dataset_query ::query-action.dataset-query]]])
+
+(mr/def ::implicit-action.update
+  "An ImplicitAction by the id of its Action with the columns to change, each optional."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
    [:kind      {:optional true} ::implicit-action.kind]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(mr/def ::implicit-action.update
-  "An ImplicitAction by the id of its Action with the columns to change."
-  [:merge
-   ::implicit-action.create
-   [:map {:closed true}]])
+(mr/def ::implicit-action.create
+  "What a caller gives to create an ImplicitAction: the columns of an update."
+  ::implicit-action.update)
 
 (mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."

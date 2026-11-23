@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -305,14 +306,6 @@
   "A segment test as a Revision stores it: its tracked columns."
   (test-update :segment_id ::lib.schema.id/segment))
 
-(mr/def ::write-opts
-  "The options of the write functions of tests, suites and members: who writes when it matters, and the context of the
-  events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :revert :import]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (def ^:private row-now
   "The `now` of a row a write takes, as an import reads it, before the column transform normalizes it: a moment or its
   text."
@@ -462,14 +455,6 @@
    [:fn {:error/message "must have exactly one of test_id and test_entity_id"}
     (fn [member] (= 1 (count (select-keys member [:test_id :test_entity_id]))))]])
 
-(mr/def ::test-suite.create
-  "What creating a test suite takes, without its members: its name, description, creator and the entity id of an import."
-  [:map {:closed true}
-   [:name        ::lib.schema.common/non-blank-string]
-   [:description {:optional true} [:maybe :string]]
-   [:creator_id  ::lib.schema.id/user]
-   [:entity_id   {:optional true} [:maybe :string]]])
-
 (mr/def ::test-suite.update
   "What an update of a test suite takes, without its members: its `:id` and the columns to change."
   [:map {:closed true}
@@ -477,13 +462,15 @@
    [:name        {:optional true} ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]])
 
-(mr/def ::test-suite-member.create
-  "A member of a test suite as it is stored: its suite, its test, by type and entity id, and its position."
-  [:map {:closed true}
-   [:suite_id       ms/PositiveInt]
-   [:test_type      ::test-type]
-   [:test_entity_id :string]
-   [:position       :int]])
+(mr/def ::test-suite.create
+  "What creating a test suite takes, without its members: the columns of an update without the `:id`, its name, creator
+  and the entity id of an import."
+  [:merge
+   (mut/dissoc ::test-suite.update :id)
+   [:map {:closed true}
+    [:name       ::lib.schema.common/non-blank-string]
+    [:creator_id ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
 
 (mr/def ::test-suite-member.update
   "What an update of a member of a test suite takes: its `:id` and the columns to change."
@@ -493,6 +480,17 @@
    [:test_type      {:optional true} [:or ::test-type :keyword]]
    [:test_entity_id {:optional true} :string]
    [:position       {:optional true} :int]])
+
+(mr/def ::test-suite-member.create
+  "A member of a test suite as it is stored: the columns of an update without the `:id`, its suite, its test, by type
+  and entity id, and its position."
+  [:merge
+   (mut/dissoc ::test-suite-member.update :id)
+   [:map {:closed true}
+    [:suite_id       ms/PositiveInt]
+    [:test_type      ::test-type]
+    [:test_entity_id :string]
+    [:position       :int]]])
 
 (mr/def ::test-suite
   "A saved test suite, without its members."

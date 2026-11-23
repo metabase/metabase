@@ -2,6 +2,7 @@
   "Malli schemas for the custom-viz-plugin module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -23,17 +24,10 @@
    ms/NonBlankString
    [:fn {:error/message "plugin identifier must not contain \":\""} #(not (str/includes? % ":"))]])
 
-(mr/def ::custom-viz-plugin
-  "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
-  [:merge
-   ::custom-viz-plugin.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
-
 (mr/def ::custom-viz-plugin.update
   "What an update of a custom viz plugin takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
-   [:id ms/PositiveInt]
+   [:id               ms/PositiveInt]
    [:identifier       {:optional true} ::custom-viz-plugin.identifier]
    [:display_name     {:optional true} [:maybe :string]]
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
@@ -49,19 +43,16 @@
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
 
 (mr/def ::custom-viz-plugin.create
-  "What creating a CustomVizPlugin takes: its identifier and the columns its bundle or dev server gives it."
-  [:map {:closed true}
-   [:identifier       ::custom-viz-plugin.identifier]
-   [:display_name     {:optional true} [:maybe :string]]
-   [:status           {:optional true} [:maybe [:or :keyword :string]]]
-   [:error_message    {:optional true} [:maybe :string]]
-   [:bundle           {:optional true} [:maybe [:or bytes? :string]]]
-   [:bundle_hash      {:optional true} [:maybe :string]]
-   [:enabled          {:optional true} [:maybe :boolean]]
-   [:icon             {:optional true} [:maybe :string]]
-   [:manifest         {:optional true} [:maybe ::custom-viz-plugin.manifest]]
-   [:metabase_version {:optional true} [:maybe :string]]
-   [:dev_bundle_url   {:optional true} [:maybe :string]]])
+  "What creating a CustomVizPlugin takes: the columns of an update without the `:id` and the timestamps, and its
+  identifier."
+  [:merge
+   (reduce mut/dissoc ::custom-viz-plugin.update [:id :created_at :updated_at])
+   [:map {:closed true}
+    [:identifier ::custom-viz-plugin.identifier]]])
+
+(mr/def ::custom-viz-plugin
+  "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
+  ::custom-viz-plugin.update)
 
 (mr/def ::external-custom-viz-plugin
   "A CustomVizPlugin as serialization writes it, with references in place of ids."

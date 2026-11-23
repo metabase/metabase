@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -57,29 +56,6 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]
    archived      :- :boolean]
   (t2/select :model/Timeline :collection_id collection-id :archived archived))
-
-(mu/defn archived-directly-clause
-  "The SQL expression for the `archived_directly` of a Timeline that `changes` archives or restores: true when it is
-  archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
-  every row."
-  [changes :- :map]
-  (if (:archived changes)
-    [:case [:= ^:allow-subquery {:select [:parent.archived]
-                                 :from   [[:collection :parent]]
-                                 :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                          [:auto/param (:collection_id changes)]
-                                                          :timeline.collection_id)]}
-            true]
-     false
-     :else true]
-    [:inline false]))
-
-(mu/defn update-timelines! :- :nil
-  "Apply each of `updates`, the `:id` of a Timeline and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/Timeline updates)
-  nil)
 
 (mu/defn unarchived-timelines-in-collections
   "The unarchived Timelines in the Collections with `collection-ids`."

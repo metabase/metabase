@@ -220,8 +220,8 @@
   (transforms.db/update-run! run-id {:message message}))
 
 (mu/defn set-run-times! :- :int
-  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id` to `run-time`, returning
-  the number updated. The testing API backdates them."
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id` to `run-time`, as the
+  testing API backdates them, and return the number updated."
   [transform-id :- ::lib.schema.id/transform
    run-time     :- ms/TemporalInstant]
   (transforms.db/set-run-times-of-transform! transform-id run-time))

@@ -63,11 +63,6 @@
   [status]
   (analytics.interface/inc! :metabase-explorations/queries-processed {:status status}))
 
-(defn- runnable-query
-  "Load the `ExplorationQuery` `query-id` if it is still work to do, else nil."
-  [query-id]
-  (explorations.db/runnable-query query-id))
-
 (defn- serialize-result
   "Run `cache.impl/do-with-serialization` against a single QP result, returning the gzipped+nippy
   byte array.
@@ -372,7 +367,7 @@
   most likely to have been lost. Returns nil only when the query is still `pending` (or on a
   canceled thread — where `runnable-query` declines it), or gone."
   [query-id]
-  (if-let [row (runnable-query query-id)]
+  (if-let [row (explorations.db/runnable-query query-id)]
     (let [creator-id (exploration-creator-id row)]
       (when-not creator-id
         ;; `exploration.creator_id` is NOT NULL, so this means the exploration was deleted out from

@@ -275,8 +275,8 @@
   (create-resource-collections! apps))
 
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
-  "Insert `apps` in one transaction, publishing their create event, and return the inserted DataApps. An app without a
-  resource collection gets one of its own, named after its slug."
+  "Insert `apps` in one transaction, publishing their create event, and return the inserted DataApps, each app without
+  a resource collection getting one named after its slug."
   [apps :- [:sequential ::data-apps.schema/data-app.create]]
   (app-db/create-batched! :model/DataApp apps
                           {:before-create prepare-new-data-apps!
@@ -304,11 +304,11 @@
 
 (mu/defn update-data-apps! :- :nil
   "Apply `updates`, each the `:id` of a DataApp and the columns to change, in one transaction, publishing their update
-  event. With `:writer :import` an app does not write a bundle that the stored app already holds."
+  event, and with `:writer :import` leaving out a bundle that the stored app already holds."
   ([updates :- [:sequential ::data-apps.schema/data-app.update]]
    (update-data-apps! updates nil))
   ([updates :- [:sequential ::data-apps.schema/data-app.update]
-    opts    :- [:maybe [:map {:closed true} [:writer {:optional true} [:enum :import]]]]]
+    opts    :- :metabase.events.schema/write-opts]
    (app-db/update-batched! :model/DataApp updates
                            {:before-update (fn [updates id->stored]
                                              (check-data-app-updates updates id->stored)

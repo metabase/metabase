@@ -1,5 +1,6 @@
 (ns metabase.dashboards.schema
   (:require
+   [malli.util :as mut]
    [metabase.actions.schema]
    [metabase.collections.schema]
    [metabase.content-verification.schema]
@@ -25,13 +26,6 @@
 
 (mr/def ::dashboard.name
   ms/NonBlankString)
-
-(mr/def ::write-opts
-  "The options of the write functions of a Dashboard and of its parts: `:writer`, who writes when it matters (a revert,
-  a SerDes import or a replacement), the user's own write by default; `:context`, the context of the events."
-  [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :import :replacement :revert]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mr/def ::dashboard.width
   [:enum "fixed" "full"])
@@ -117,30 +111,13 @@
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
 (mr/def ::dashboard.create
-  "What creating a Dashboard takes: its name, and the columns a caller gives; the columns that follow from the others, as
-  the public uuid prefix, are not accepted."
-  [:map {:closed true}
-   [:name                    ::dashboard.name]
-   [:description             {:optional true} [:maybe :string]]
-   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:parameters              {:optional true} [:maybe [:sequential ::dashboard.parameter]]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:public_uuid             {:optional true} [:maybe :string]]
-   [:made_public_by_id       {:optional true} [:maybe ::lib.schema.id/user]]
-   [:enable_embedding        {:optional true} [:maybe :boolean]]
-   [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
-   [:archived                {:optional true} [:maybe :boolean]]
-   [:archived_directly       {:optional true} [:maybe :boolean]]
-   [:position                {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:collection_position     {:optional true} [:maybe :int]]
-   [:cache_ttl               {:optional true} [:maybe :int]]
-   [:entity_id               {:optional true} [:maybe :string]]
-   [:auto_apply_filters      {:optional true} :boolean]
-   [:width                   {:optional true} ::dashboard.width]
-   [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+  "What creating a Dashboard takes: the columns of an update without the `:id` and the columns that follow from the others,
+  as the public uuid prefix, and the name."
+  [:merge
+   (reduce mut/dissoc ::dashboard.update [:id :created_at :updated_at :initially_published_at :view_count :last_viewed_at
+                                          :public_uuid_prefix])
+   [:map {:closed true}
+    [:name ::dashboard.name]]])
 
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
@@ -168,8 +145,9 @@
                                                         [:database_enabled_actions {:optional true} :boolean]]]]]]])
 
 (mr/def ::dashboard-card.update
-  "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
+  "What an update of a DashboardCard accepts: its `:id` and every other column of `:report_dashboardcard`, all optional."
   [:map {:closed true}
+   [:id                     ::lib.schema.id/dashcard]
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:size_x                 {:optional true} [:maybe ::dashboard-card.size]]
@@ -198,11 +176,14 @@
    [:position         {:optional true} ::dashboard-card-series.position]])
 
 (mr/def ::dashboard-card-series.create
-  "What creating a DashboardCardSeries takes: its DashboardCard, its Card and its position."
-  [:map {:closed true}
-   [:dashboardcard_id ::lib.schema.id/dashcard]
-   [:card_id          ::lib.schema.id/card]
-   [:position         ::dashboard-card-series.position]])
+  "What creating a DashboardCardSeries takes: the columns of an update without the `:id`, and the DashboardCard, Card and
+  position."
+  [:merge
+   (mut/dissoc ::dashboard-card-series.update :id)
+   [:map {:closed true}
+    [:dashboardcard_id ::lib.schema.id/dashcard]
+    [:card_id          ::lib.schema.id/card]
+    [:position         ::dashboard-card-series.position]]])
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
@@ -271,12 +252,13 @@
      [:dashcards {:optional true} [:maybe [:sequential [:ref ::external-dashboard-card]]]]]]])
 
 (mr/def ::dashboard-tab.create
-  "What creating a DashboardTab takes: its Dashboard, its name and its position, and an entity id to keep."
-  [:map {:closed true}
-   [:dashboard_id ::lib.schema.id/dashboard]
-   [:name         ::dashboard-tab.name]
-   [:position     ::dashboard-tab.position]
-   [:entity_id    {:optional true} [:maybe :string]]])
+  "What creating a DashboardTab takes: the columns of an update without the `:id`, and the Dashboard, name and position."
+  [:merge
+   (reduce mut/dissoc ::dashboard-tab.update [:id :created_at :updated_at])
+   [:map {:closed true}
+    [:dashboard_id ::lib.schema.id/dashboard]
+    [:name         ::dashboard-tab.name]
+    [:position     ::dashboard-tab.position]]])
 
 (mr/def ::external-dashboard-tab
   "A DashboardTab as serialization writes it, with portable references in place of ids."

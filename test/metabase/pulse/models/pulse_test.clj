@@ -132,7 +132,6 @@
           (is (= expected
                  (update-cards! cards))))))))
 
-;; create-pulses!
 ;; simple example with a single card
 (deftest create-pulse-test
   (mt/with-temp [:model/Card card {:name "Test Card"}]
@@ -222,7 +221,6 @@
                  false
                  dashboard-id)))))))
 
-;; update-pulses!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Pulse name
 ;;  2. creator_id cannot be changed
@@ -921,7 +919,7 @@
               (counted 2)
               (is (= (counted 2) (counted 6))))))))))
 
-(deftest create-pulses-reports-the-first-invalid-row-test
+(deftest create-pulses-reports-first-invalid-row-test
   (do-with-pulse-rows!
    (fn [rows _card-ids _collection-ids]
      (let [[row] (rows 1)

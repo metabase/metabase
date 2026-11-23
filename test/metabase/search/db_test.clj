@@ -29,8 +29,6 @@
                       (let [card-ids (set (t2/insert-returning-pks!
                                            :model/Card
                                            (repeatedly n #(merge (mt/with-temp-defaults :model/Card) metric))))]
-                        ;; Put the metrics back in the un-curated state the upgrade to 24 looks for. A raw UPDATE,
-                        ;; because before-insert forces `:card_schema` to current.
                         (t2/query-one {:update :report_card
                                        :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                                        :where  [:in :id card-ids]})

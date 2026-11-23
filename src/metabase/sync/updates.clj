@@ -96,7 +96,7 @@
 
 (mu/defn update-fields-by-id-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each Field of `id->changes` its changes to columns no user set, in one update: the settings of the Fields
-  are read once and their rows once per batch of the update. Returns the number of Fields updated."
+  are read once and their rows once per batch of the update, returning the number of Fields updated."
   [id->changes :- [:map-of ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
   (let [settings (u/index-by :field_id (settings-in-batches sync.db/field-user-settings-for-fields (keys id->changes)))]
     (update-fields-counted! (field-rows-unless-user-set settings id->changes) nil)))

@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
@@ -48,7 +49,7 @@
     (pulse.db/insert-pulse-cards! rows)
     []))
 
-(mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.update]
+(mu/defn- pulse-cards-to-append :- [:sequential (mut/dissoc ::pulse.schema/pulse-card.update :id)]
   "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard; one without a position takes the
   position after the last of its Pulse, which the before-insert hook has the database compute."
   [new-pulse-cards :- [:sequential NewPulseCard]]

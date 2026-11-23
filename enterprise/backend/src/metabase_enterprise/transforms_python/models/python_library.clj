@@ -38,7 +38,6 @@
 (t2/define-before-update :model/PythonLibrary
   [library]
   (let [changes (t2/changes library)]
-    ;; The changes, not the row, hold the default flag, so that every row gets it whatever it held.
     (if (seq (dissoc changes :updated_at :is_default))
       (cond-> (assoc changes :is_default false)
         (:path changes) (update :path normalize-path))

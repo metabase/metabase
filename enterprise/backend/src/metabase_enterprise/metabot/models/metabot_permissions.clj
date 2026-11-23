@@ -71,8 +71,8 @@
     (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
 
 (mu/defn set-metabot-permission!
-  "Set the permission of `perm-type` of the group with `group-id` to `perm-value`, creating its row when it has none.
-  A change for a group the stored permission mode hides is a 400."
+  "Set the permission of `perm-type` of the group with `group-id` to `perm-value`, creating its row when it has none,
+  and refuse with a 400 a change for a group the stored permission mode hides."
   [group-id   :- ms/PositiveInt
    perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
    perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]

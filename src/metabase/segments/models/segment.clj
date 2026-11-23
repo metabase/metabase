@@ -30,7 +30,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
@@ -138,8 +137,8 @@
   (run! #(lib/check-segment-overwrite nil (lib-be/normalize-query (:definition %))) rows))
 
 (mu/defn create-segments! :- [:sequential (ms/InstanceOf :model/Segment)]
-  "Insert the Segment `rows` and return the inserted instances, in one transaction, publishing their create event. A
-  definition that refers to a Segment that does not exist throws."
+  "Insert the Segment `rows` and return the inserted instances, in one transaction, publishing their create event, a
+  definition that refers to a Segment that does not exist throwing."
   [rows :- [:sequential ::segments.schema/segment.create]]
   (app-db/create-batched! :model/Segment rows
                           {:before-create check-definitions-of-new-segments
@@ -154,13 +153,6 @@
       (doseq [id    ids
               :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
         (lib/check-segment-overwrite id definition)))))
-
-(mr/def ::write-opts
-  "The options of the update of Segments: `:writer`, who writes when it matters, and the context of the events."
-  [:maybe
-   [:map {:closed true}
-    [:writer  {:optional true} [:enum :import :replacement :revert]]
-    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (defn- check-segment-updates
   "Throw a 400 unless every one of `updates`, over the Segments `id->stored`, satisfies these rules:
@@ -183,7 +175,7 @@
   ([updates :- [:sequential ::segments.schema/segment.update]]
    (update-segments! updates nil))
   ([updates :- [:sequential ::segments.schema/segment.update]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (app-db/update-batched! :model/Segment updates
                            {:before-update (fn [updates id->stored]
                                              (check-segment-updates updates id->stored)

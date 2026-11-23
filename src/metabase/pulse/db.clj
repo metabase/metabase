@@ -245,11 +245,6 @@
   [pulses :- [:sequential {:min 1} (mut/dissoc ::pulse.schema/pulse.update :id)]]
   (app-db/insert-returning-instances! :model/Pulse pulses))
 
-(mu/defn collections-for-content-checks
-  "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
-
 (mu/defn dashboard-collection-clause
   "The HoneySQL expression for the Collection of the Dashboard with `dashboard-id`, which the Pulse that subscribes to
   the Dashboard is in."
@@ -263,25 +258,6 @@
   [pulse-id :- ::lib.schema.id/pulse
    changes  :- (mut/dissoc ::pulse.schema/pulse.update :id)]
   (t2/update! :model/Pulse :id pulse-id changes))
-
-(mu/defn archived-directly-clause
-  "The HoneySQL expression for the `archived_directly` of a Pulse that an update archives or restores, `archived?` being
-  the `archived` it gives: true when it is archived while its Collection is not, which is the Collection `collection-id`
-  the update gives, or the stored one when `assigns-collection?` is false. It is the same for every row, and reads the
-  stored `collection_id` only when the update does not assign it."
-  [archived?          :- :boolean
-   assigns-collection? :- :boolean
-   collection-id      :- [:maybe ::lib.schema.id/collection]]
-  (if archived?
-    [:not [:exists ^:allow-subquery {:select [1]
-                                     :from   [[:collection :c]]
-                                     :where  [:and
-                                              [:= :c.id (cond
-                                                          (not assigns-collection?) :pulse.collection_id
-                                                          collection-id             [:auto/param collection-id]
-                                                          :else                     nil)]
-                                              [:= :c.archived true]]}]]
-    false))
 
 (mu/defn update-pulses!
   "Apply to the Pulse rows their changes in `updates`, each the `:id` of a row and the columns to change."
@@ -339,8 +315,9 @@
                        :group-by [:pulse_id]})))
 
 (mu/defn next-pulse-card-position-clause
-  "The HoneySQL expression for the position after the last PulseCard of the Pulse with `pulse-id`, 0 for the first. The
-  largest position is read through a derived table, which MySQL requires of a read of the table a statement writes."
+  "The HoneySQL expression for the position after the last PulseCard of the Pulse with `pulse-id`, 0 for the first,
+  reading the largest position through a derived table, which MySQL requires of a read of the table a statement
+  writes."
   [pulse-id :- ::lib.schema.id/pulse]
   [:+
    [:coalesce
@@ -354,7 +331,7 @@
 
 (mu/defn insert-pulse-cards!
   "Insert the PulseCard `rows`, returning the inserted instances."
-  [rows :- [:sequential ::pulse.schema/pulse-card.update]]
+  [rows :- [:sequential (mut/dissoc ::pulse.schema/pulse-card.update :id)]]
   (u/prog1 (app-db/insert-returning-instances! :model/PulseCard rows)
     (change-log/log-changes! :model/PulseCard :insert <>)))
 
@@ -372,11 +349,6 @@
   "The ids of the PulseCards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (vec (t2/select-pks-vec :model/PulseCard :pulse_id [:in pulse-ids])))
-
-(mu/defn pulse-cards-for-pulse
-  "The PulseCards of the Pulse with `pulse-id`."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select :model/PulseCard :pulse_id pulse-id))
 
 (mu/defn delete-pulse-cards!
   "Delete the PulseCards with `ids`, returning the number deleted."
@@ -448,14 +420,14 @@
 
 (mu/defn insert-pulse-channels! :- [:sequential ::pulse.schema/pulse-channel]
   "Insert the PulseChannel `rows` in one statement and return the inserted instances in their order."
-  [rows :- [:sequential ::pulse.schema/pulse-channel.update]]
+  [rows :- [:sequential (mut/dissoc ::pulse.schema/pulse-channel.update :id)]]
   (u/prog1 (app-db/insert-returning-instances! :model/PulseChannel rows)
     (change-log/log-changes! :model/PulseChannel :insert <>)))
 
 (mu/defn update-pulse-channels!
   "Apply `changes` to the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- ::pulse.schema/pulse-channel.update]
+   changes     :- (mut/dissoc ::pulse.schema/pulse-channel.update :id)]
   (change-log/log-rows! :model/PulseChannel :update :id [:in channel-ids])
   (t2/update! :model/PulseChannel :id [:in channel-ids] changes))
 
@@ -526,7 +498,7 @@
 
 (mu/defn insert-pulse-channel-recipients!
   "Insert the PulseChannelRecipient `rows`, returning the inserted instances."
-  [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.update]]
+  [rows :- [:sequential (mut/dissoc ::pulse.schema/pulse-channel-recipient.update :id)]]
   (u/prog1 (app-db/insert-returning-instances! :model/PulseChannelRecipient rows)
     (change-log/log-changes! :model/PulseChannelRecipient :insert <>)))
 

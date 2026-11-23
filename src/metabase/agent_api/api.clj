@@ -912,7 +912,6 @@
     (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
-    ;; they cannot query. `queries.card/update-cards!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
     (t2/with-transaction [_conn]
@@ -1481,7 +1480,6 @@
           "remove"
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
-            ;; Saving deletes it and cleans up its pulse cards and its orphaned inline parameters.
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1581,7 +1579,6 @@
         ;; a dashboard being archived by THIS request — otherwise the post-mutation
         ;; internal-question sync could unarchive dashboard questions on a just-archived dashboard.
         _            (when (seq mutations)
-                       ;; unless THIS request unarchives it first — restore-and-edit is one call
                        (when-not (false? (:archived updates))
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
@@ -1607,9 +1604,9 @@
                          ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
                          (when (or (seq (:added changes)) (seq (:removed changes)))
                            (let [saved (agent-api.db/dashcards id)]
-                             (dashboard-card/check-unarchive-internal-dashboard-questions! id saved)
+                             (dashboard-card/check-unarchive-internal-dashboard-questions id saved)
                              (dashboard-card/unarchive-internal-dashboard-questions! id saved)
-                             (dashboard-card/check-archive-internal-dashboard-questions! id saved)
+                             (dashboard-card/check-archive-internal-dashboard-questions id saved)
                              (dashboard-card/archive-internal-dashboard-questions! id saved)))))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)

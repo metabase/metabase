@@ -175,7 +175,7 @@
   ([updates :- [:sequential ::timeline.schema/timeline-event.update]]
    (update-timeline-events! updates nil))
   ([updates :- [:sequential ::timeline.schema/timeline-event.update]
-    opts    :- ::timeline.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (app-db/update-batched! :model/TimelineEvent updates
                            {:before-update without-empty-updates
                             :after-update  (fn [updates id->stored _id->updated]

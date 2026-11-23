@@ -1,6 +1,7 @@
 (ns metabase.documents.schema
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -53,11 +54,11 @@
   [:select-keys ::document
    [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]])
 
-(mr/def ::document.create
-  "What creating a Document takes: its name, and the columns a caller gives; the public uuid prefix follows from the
-  public uuid and is not accepted."
+(mr/def ::document.update
+  "A Document by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name                ::document.name]
+   [:id                  ms/PositiveInt]
+   [:name                {:optional true} ::document.name]
    [:document            {:optional true} [:maybe ::document.document]]
    [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
@@ -69,20 +70,20 @@
    [:public_uuid         {:optional true} [:maybe :string]]
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+   [:is_placeholder      {:optional true} [:maybe :boolean]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:view_count          {:optional true} [:maybe :int]]
+   [:public_uuid_prefix  {:optional true} [:maybe :string]]])
 
-(mr/def ::document.update
-  "A Document by its `id` with the columns to change: those of `::document.create`, and the columns the product sets."
+(mr/def ::document.create
+  "What creating a Document takes: the columns of an update without the `:id` and the columns the product sets, as the
+  public uuid prefix, which follows from the public uuid, and the name."
   [:merge
-   ::document.create
+   (reduce mut/dissoc ::document.update [:id :created_at :updated_at :last_viewed_at :view_count :public_uuid_prefix])
    [:map {:closed true}
-    [:id                 ms/PositiveInt]
-    [:name               {:optional true} ::document.name]
-    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-    [:last_viewed_at     {:optional true} [:maybe ms/TemporalInstant]]
-    [:view_count         {:optional true} [:maybe :int]]
-    [:public_uuid_prefix {:optional true} [:maybe :string]]]])
+    [:name ::document.name]]])
 
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."

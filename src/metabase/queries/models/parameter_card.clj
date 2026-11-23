@@ -49,8 +49,9 @@
   (read-check-cards (values-source-card-ids parameters)))
 
 (mu/defn parameter-source-cards-readable?
-  "Whether the current user can read every Card `parameters` draw their values from, as [[check-parameter-source-card-permissions]]
-  asks, from one read. False when one does not exist or may not be read, which that function answers with a 404 or a 403."
+  "Whether the current user can read every Card `parameters` draw their values from, as
+  [[check-parameter-source-card-permissions]] asks, from one read, false when one does not exist or may not be read,
+  which that function answers with a 404 or a 403."
   [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [card-ids (values-source-card-ids parameters)
         cards    (t2/hydrate (queries.db/cards card-ids) :can_read)]

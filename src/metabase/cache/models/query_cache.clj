@@ -19,11 +19,9 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn delete-query-caches!
-  "Delete the QueryCache entries with `query-hashes` in one transaction, `mdb/delete-partition-size` per statement."
+  "Delete the QueryCache entries with `query-hashes` in one transaction."
   [query-hashes :- [:sequential bytes?]]
-  (when (seq query-hashes)
-    (t2/with-transaction [_conn]
-      (run! (comp cache.db/delete-query-caches! vec) (partition-all mdb/delete-partition-size query-hashes)))))
+  (mdb/delete-batched! :model/QueryCache query-hashes {}))
 
 (mu/defn claim-refresh-lease! :- :int
   "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to

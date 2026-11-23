@@ -98,7 +98,7 @@
                      (events.tu/statement-count!
                       #(exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) ids))))))))))
 
-(deftest thread-without-position-goes-after-the-last-one-test
+(deftest thread-without-position-goes-after-last-one-test
   (mt/with-temp [:model/Exploration {exploration-id :id} {}
                  :model/Exploration {other-id :id}       {}]
     (let [position (fn [id] (t2/select-one-fn :position :model/ExplorationThread :id id))]

@@ -43,7 +43,7 @@
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context "Use for revenue questions.")]
       (is (= {:instructions "Use for revenue questions."} (:ai_context (by-key entity)))))))
 
-(deftest writes-nudge-a-targeted-reconcile-test
+(deftest writes-request-targeted-reconcile-test
   (testing "insert, update and delete each nudge the entity's reconcile once — deferred until the txn commits"
     (let [nudges (atom [])
           ref    ["table" 42]]

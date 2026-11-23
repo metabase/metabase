@@ -40,12 +40,6 @@
    [:card_id {:optional true} ::lib.schema.id/card]
    [:created_at {:optional true} ms/TemporalInstant]])
 
-(mr/def ::card-bookmark.create
-  "What a caller gives to create a CardBookmark."
-  [:map {:closed true}
-   [:user_id ::lib.schema.id/user]
-   [:card_id ::lib.schema.id/card]])
-
 (mr/def ::collection-bookmark
   "A CollectionBookmark as selected from the app DB: every column of `:collection_bookmark`."
   [:map {:closed true}
@@ -53,12 +47,6 @@
    [:user_id    {:optional true} ::lib.schema.id/user]
    [:collection_id {:optional true} ::lib.schema.id/collection]
    [:created_at {:optional true} ms/TemporalInstant]])
-
-(mr/def ::collection-bookmark.create
-  "What a caller gives to create a CollectionBookmark."
-  [:map {:closed true}
-   [:user_id ::lib.schema.id/user]
-   [:collection_id ::lib.schema.id/collection]])
 
 (mr/def ::dashboard-bookmark
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
@@ -68,12 +56,6 @@
    [:dashboard_id {:optional true} ::lib.schema.id/dashboard]
    [:created_at {:optional true} ms/TemporalInstant]])
 
-(mr/def ::dashboard-bookmark.create
-  "What a caller gives to create a DashboardBookmark."
-  [:map {:closed true}
-   [:user_id ::lib.schema.id/user]
-   [:dashboard_id ::lib.schema.id/dashboard]])
-
 (mr/def ::document-bookmark
   "A DocumentBookmark as selected from the app DB: every column of `:document_bookmark`."
   [:map {:closed true}
@@ -82,22 +64,10 @@
    [:document_id {:optional true} ms/PositiveInt]
    [:created_at {:optional true} ms/TemporalInstant]])
 
-(mr/def ::document-bookmark.create
-  "What a caller gives to create a DocumentBookmark."
-  [:map {:closed true}
-   [:user_id ::lib.schema.id/user]
-   [:document_id ms/PositiveInt]])
-
 (mr/def ::exploration-bookmark
-  "A ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
+  "An ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
   [:map {:closed true}
    [:id         ms/PositiveInt]
    [:user_id    {:optional true} ::lib.schema.id/user]
    [:exploration_id {:optional true} ms/PositiveInt]
    [:created_at {:optional true} ms/TemporalInstant]])
-
-(mr/def ::exploration-bookmark.create
-  "What a caller gives to create a ExplorationBookmark."
-  [:map {:closed true}
-   [:user_id ::lib.schema.id/user]
-   [:exploration_id ms/PositiveInt]])

@@ -31,7 +31,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -592,9 +591,9 @@
                               :can_write))))
 
 (defn can-write-all-collections-or-root?
-  "Whether the current user can write every one of the Collections with `collection-ids`, nil for the root Collection of
-  the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, from one read of the Collections
-  and one answer for all of them. False when one does not exist, which that function answers with a 404."
+  "Whether the current user can write every one of the Collections with `collection-ids`, nil for the root Collection
+  of the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, from one read of the
+  Collections, false when one does not exist, which that function answers with a 404."
   [collection-ids {:keys [root-namespace]}]
   (let [ids    (into [] (comp (remove nil?) (distinct)) collection-ids)
         stored (into {} (mapcat #(collections.db/collections-by-ids (vec %))) (partition-all mdb/update-partition-size ids))]
@@ -1554,13 +1553,6 @@
                 (collections.db/unarchived-collection-ids-with-location-like (str (children-location collection) "%")))
     (not (collection.root/is-root-collection? new-parent)) (conj (u/the-id new-parent))))
 
-(mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
-  "Gets the IDs of all descendant collections for a given collection.
-
-  Returns a set of positive integers representing descendant collection IDs, or nil if none exist."
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (collections.db/collection-ids-with-location-like (str (children-location collection) "%")))
-
 (mu/defn collection-ids-for-unarchiving :- [:set ms/PositiveInt]
   "The ids of the Collections on which the current user needs write permission to unarchive a `collection`. Since unarchiving is
   *recursive* (all descendants archived together get unarchived), we require write ('curate')
@@ -2004,9 +1996,9 @@
            (can-write-collection-or-root? (:collection_id changes) {:root-namespace nil}))))
 
 (defn can-move-all?
-  "Whether the current user may apply `changes` to the `:collection_id` of each of `rows`, as [[can-move?]] answers for
-  one, with the Collections read once and one answer for all of them: write access to the old Collections of those that
-  change and to the new one. False when a Collection does not exist, which [[can-move?]] answers with a 404."
+  "Whether the current user may apply `changes` to the `:collection_id` of each of `rows`, as [[can-move?]] answers
+  for one with write access to the old Collections of those that change and to the new one, from one read of the
+  Collections, false when a Collection does not exist, which [[can-move?]] answers with a 404."
   [rows changes]
   (let [moving (filterv #(api/column-will-change? (:collection_id %) (get changes :collection_id ::api/not-provided)) rows)]
     (or (empty? moving)
@@ -2080,10 +2072,19 @@
   at: the library, its Data and its Metrics."
   [library-collection-type library-data-collection-type library-metrics-collection-type])
 
-(defn check-collections-for-model!
-  "Throws, for the first of `rows`, each holding `:collection_id` and `:archived`, whose Collection cannot hold a `model`,
-  as [[check-collection-for]] does: in one query for the Collections that are archived, in a namespace `model` does not
-  go in, or the library, its Data or its Metrics, and only those are checked, in the order of `rows`."
+(defn collections-for-content-checks
+  "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`, the rows the
+  content checks read."
+  [collection-ids]
+  (collections.db/collections-for-content-checks (vec collection-ids)))
+
+(defn check-collections-for-model
+  "Throw a 400 for the first of `rows`, each holding `:collection_id` and `:archived`, that breaks one of these rules, as
+  [[check-collection-for]] does, reading in one query only the Collections that can break them, in the order of `rows`:
+
+  - its Collection is in a namespace that holds `model`
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the row is"
   [model rows]
   (let [ids      (into [] (comp (keep :collection_id) (distinct)) rows)
         problems (when (seq ids)
@@ -2602,11 +2603,6 @@
                       {:status-code 400
                        :entity_id   (:entity_id row)})))))
 
-(mr/def ::write-opts
-  "The options of a write function of Collections: who writes."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :import]]]])
-
 (defn- check-collection-creates
   "Throw unless every one of `rows`, new Collections with the `ancestors` they read, satisfies these rules:
 
@@ -2638,12 +2634,12 @@
     (insert-collections! rows ancestors)))
 
 (mu/defn create-collections! :- [:sequential (ms/InstanceOf :model/Collection)]
-  "Creates a Collection from each of `rows` and returns the new Collections in order, in one transaction, publishing
-  their create event. An import, `:writer :import` in `opts`, does not bring back an archived transforms folder."
+  "Create a Collection from each of `rows` and return the new Collections in order, in one transaction, publishing
+  their create event, an import, `:writer :import` in `opts`, not bringing back an archived transforms folder."
   ([rows :- [:sequential ::collections.schema/collection.create]]
    (create-collections! rows nil))
   ([rows :- [:sequential ::collections.schema/collection.create]
-    opts :- ::write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [created (into [] (mapcat #(create-collection-batch! % opts))
                          (partition-all mdb/create-partition-size rows))]
@@ -2939,13 +2935,13 @@
     {:entries entries :columns (write-collection-updates! entries ancestors)}))
 
 (mu/defn update-collections! :- :nil
-  "Applies the columns of each of `updates` to the Collection with its `:id`, in one transaction, publishing their update
-  event. An import, `:writer :import` in `opts`, keeps the names of the system Collections and does not bring back an
-  archived transforms folder."
+  "Apply the columns of each of `updates` to the Collection with its `:id`, in one transaction, publishing their
+  update event, an import, `:writer :import` in `opts`, keeping the names of the system Collections and not bringing
+  back an archived transforms folder."
   ([updates :- [:sequential ::collections.schema/collection.update]]
    (update-collections! updates nil))
   ([updates :- [:sequential ::collections.schema/collection.update]
-    opts    :- ::write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv #(update-collection-batch! (vec %) opts) (partition-all mdb/update-partition-size updates))
            entries (into [] (mapcat :entries) batches)]

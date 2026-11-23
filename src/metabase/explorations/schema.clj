@@ -1,6 +1,7 @@
 (ns metabase.explorations.schema
   "Malli schemas for the explorations module."
   (:require
+   [malli.util :as mut]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -10,16 +11,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::exploration
-  "A Exploration as selected from the app DB: every column of `:exploration`."
-  [:merge
-   ::exploration.create
-   [:map {:closed true}
-    [:id                  ms/PositiveInt]]])
-
-(mr/def ::exploration.create
-  "What a caller gives to create a Exploration: every column of `:exploration` except `id`, all optional."
+(mr/def ::exploration.update
+  "An Exploration by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:name                {:optional true} [:maybe :string]]
    [:description         {:optional true} [:maybe :string]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
@@ -31,12 +26,13 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::exploration.update
-  "What an update of Explorations takes: the `:id` of each and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::exploration.create])
+(mr/def ::exploration.create
+  "What a caller gives to create an Exploration: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration.update :id))
+
+(mr/def ::exploration
+  "An Exploration as selected from the app DB: every column of `:exploration`."
+  ::exploration.update)
 
 (mr/def ::exploration.revision
   "An Exploration as a Revision stores it: its tracked columns."
@@ -60,30 +56,24 @@
                [:dimension_name {:optional true} [:maybe :string]]]]])
 
 (mr/def ::exploration-block.metric
-  "One entry of the `:metrics` column of a ExplorationBlock, decoded."
+  "One entry of the `:metrics` column of an ExplorationBlock, decoded."
   [:map {:closed true}
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]
    [:explore_filters    {:optional true} [:maybe [:sequential ::exploration-block.metric.explore-filter]]]])
 
 (mr/def ::exploration-block.dimension
-  "One entry of the `:dimensions` column of a ExplorationBlock, decoded."
+  "One entry of the `:dimensions` column of an ExplorationBlock, decoded."
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
    [:semantic-type  {:optional true} [:maybe :string]]])
 
-(mr/def ::exploration-block
-  "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
-  [:merge
-   ::exploration-block.create
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
-
-(mr/def ::exploration-block.create
-  "What a caller gives to create a ExplorationBlock: every column of `:exploration_block` except `id`, all optional."
+(mr/def ::exploration-block.update
+  "An ExplorationBlock by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
    [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.dimension]]]
@@ -91,23 +81,18 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::exploration-block.update
-  "An exploration-block by its `id` with the columns to change."
-  [:merge
-   ::exploration-block.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+(mr/def ::exploration-block.create
+  "What a caller gives to create an ExplorationBlock: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-block.update :id))
 
-(mr/def ::exploration-page
-  "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
-  [:merge
-   ::exploration-page.create
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]]])
+(mr/def ::exploration-block
+  "An ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
+  ::exploration-block.update)
 
-(mr/def ::exploration-page.create
-  "What a caller gives to create a ExplorationPage: every column of `:exploration_page` except `id`, all optional."
+(mr/def ::exploration-page.update
+  "An ExplorationPage by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:entity_id            {:optional true} [:maybe :string]]
    [:exploration_block_id {:optional true} [:maybe ms/PositiveInt]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
@@ -119,75 +104,36 @@
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::exploration-page.update
-  "What an update of ExplorationPages takes: the `:id` of each and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::exploration-page.create])
+(mr/def ::exploration-page.create
+  "What a caller gives to create an ExplorationPage: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-page.update :id))
+
+(mr/def ::exploration-page
+  "An ExplorationPage as selected from the app DB: every column of `:exploration_page`."
+  ::exploration-page.update)
 
 (mr/def ::exploration-query.visualization-settings
-  "The `:visualization_settings` column of a ExplorationQuery, decoded."
+  "The `:visualization_settings` column of an ExplorationQuery, decoded."
   ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::exploration-query.dataset-query
-  "The `:dataset_query` column of a ExplorationQuery, decoded."
+  "The `:dataset_query` column of an ExplorationQuery, decoded."
   ::lib.schema/query)
 
 (mr/def ::exploration-query.params
-  "The `:params` column of a ExplorationQuery, decoded."
+  "The `:params` column of an ExplorationQuery, decoded."
   [:map {:closed true}
    [:segment_id  {:optional true} [:maybe ms/PositiveInt]]
    [:k           {:optional true} [:maybe :int]]
    [:value_index {:optional true} [:maybe nat-int?]]])
 
 (mr/def ::exploration-query.data-access-token
-  "The `:data_access_token` column of a ExplorationQuery, decoded."
+  "The `:data_access_token` column of an ExplorationQuery, decoded."
   ::exploration-thread.data-access-token)
 
 (mr/def ::exploration-query.resolved-source-ids
   "The `:resolved_source_ids` column of an ExplorationQuery, decoded."
   ::exploration-thread.resolved-source-ids)
-
-(mr/def ::exploration-query
-  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
-  [:merge
-   ::exploration-query.create
-   [:map {:closed true}
-    [:id                     ms/PositiveInt]]])
-
-(mr/def ::exploration-query.create
-  "What a caller gives to create a ExplorationQuery: every column of `:exploration_query` except `id`, all optional."
-  [:map {:closed true}
-   [:exploration_thread_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:page_id                {:optional true} [:maybe ms/PositiveInt]]
-   [:name                   {:optional true} [:maybe :string]]
-   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
-   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
-   [:segment_id             {:optional true} [:maybe ::lib.schema.id/segment]]
-   [:dimension_id           {:optional true} [:maybe :string]]
-   [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
-   [:display                {:optional true} [:maybe [:or :keyword :string]]]
-   [:visualization_settings {:optional true} [:maybe ::exploration-query.visualization-settings]]
-   [:dataset_query          {:optional true} [:maybe ::exploration-query.dataset-query]]
-   [:params                 {:optional true} [:maybe ::exploration-query.params]]
-   [:position               {:optional true} [:maybe :int]]
-   [:status                 {:optional true} [:maybe [:or :keyword :string]]]
-   [:error_message          {:optional true} [:maybe :string]]
-   [:started_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:finished_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id              {:optional true} [:maybe :string]]
-   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
-   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
-
-(mr/def ::exploration-query.update
-  "What an update of ExplorationQueries takes: the `:id` of each and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::exploration-query.create])
 
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
@@ -198,19 +144,13 @@
            (every? #(contains? changes %) ks))))])
 
 (mr/def ::exploration-query-result.chart-stats
-  "The `:chart_stats` column of a ExplorationQueryResult, decoded."
+  "The `:chart_stats` column of an ExplorationQueryResult, decoded."
   ::chart.types/chart-stats)
 
-(mr/def ::exploration-query-result
-  "A ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
-  [:merge
-   ::exploration-query-result.create
-   [:map {:closed true}
-    [:id                               ms/PositiveInt]]])
-
-(mr/def ::exploration-query-result.create
-  "What a caller gives to create a ExplorationQueryResult: every column of `:exploration_query_result` except `id`, all optional."
+(mr/def ::exploration-query-result.update
+  "An ExplorationQueryResult by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:exploration_query_id             {:optional true} [:maybe ms/PositiveInt]]
    [:stored_result_id                 {:optional true} [:maybe ms/PositiveInt]]
    [:created_at                       {:optional true} [:maybe ms/TemporalInstant]]
@@ -220,12 +160,13 @@
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
 
-(mr/def ::exploration-query-result.update
-  "An exploration-query-result by its `id` with the columns to change."
-  [:merge
-   ::exploration-query-result.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+(mr/def ::exploration-query-result.create
+  "What a caller gives to create an ExplorationQueryResult: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-query-result.update :id))
+
+(mr/def ::exploration-query-result
+  "An ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
+  ::exploration-query-result.update)
 
 (mr/def ::exploration-thread.query-plan-transcript.plan-item
   "One entry of the `:plan` a query planner emits."
@@ -261,7 +202,7 @@
    [:planner-notes {:optional true} [:maybe ::exploration-thread.query-plan-transcript.planner-notes]]])
 
 (mr/def ::exploration-thread.query-plan-transcript
-  "The `:query_plan_transcript` column of a ExplorationThread, decoded."
+  "The `:query_plan_transcript` column of an ExplorationThread, decoded."
   [:map {:closed true}
    [:generated-at {:optional true} [:maybe :string]]
    [:thread-id    {:optional true} [:maybe ms/PositiveInt]]
@@ -281,23 +222,17 @@
    [:routing       {:optional true} [:map-of ::lib.schema.id/database :string]]])
 
 (mr/def ::exploration-thread.data-access-token
-  "The `:data_access_token` column of a ExplorationThread, decoded."
+  "The `:data_access_token` column of an ExplorationThread, decoded."
   DataAccessToken)
 
 (mr/def ::exploration-thread.resolved-source-ids
-  "The `:resolved_source_ids` column of a ExplorationThread, decoded."
+  "The `:resolved_source_ids` column of an ExplorationThread, decoded."
   query-perms/ResolvedSourceIds)
 
-(mr/def ::exploration-thread
-  "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
-  [:merge
-   ::exploration-thread.create
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
-
-(mr/def ::exploration-thread.create
-  "What a caller gives to create a ExplorationThread: every column of `:exploration_thread` except `id`, all optional."
+(mr/def ::exploration-thread.update
+  "An ExplorationThread by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:exploration_id        {:optional true} [:maybe ms/PositiveInt]]
    [:name                  {:optional true} [:maybe :string]]
    [:prompt                {:optional true} [:maybe :string]]
@@ -315,32 +250,63 @@
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]
    [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
-(mr/def ::exploration-thread.update
-  "What an update of ExplorationThreads takes: the `:id` of each and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::exploration-thread.create])
+(mr/def ::exploration-thread.create
+  "What a caller gives to create an ExplorationThread: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-thread.update :id))
 
-(mr/def ::exploration-thread-timeline
-  "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
-  [:merge
-   ::exploration-thread-timeline.create
-   [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
+(mr/def ::exploration-thread
+  "An ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
+  ::exploration-thread.update)
 
-(mr/def ::exploration-thread-timeline.create
-  "What a caller gives to create a ExplorationThreadTimeline: every column of `:exploration_thread_timeline` except `id`, all optional."
+(mr/def ::exploration-query.update
+  "An ExplorationQuery by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
+   [:exploration_thread_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:page_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:name                   {:optional true} [:maybe :string]]
+   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
+   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
+   [:segment_id             {:optional true} [:maybe ::lib.schema.id/segment]]
+   [:dimension_id           {:optional true} [:maybe :string]]
+   [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:visualization_settings {:optional true} [:maybe ::exploration-query.visualization-settings]]
+   [:dataset_query          {:optional true} [:maybe ::exploration-query.dataset-query]]
+   [:params                 {:optional true} [:maybe ::exploration-query.params]]
+   [:position               {:optional true} [:maybe :int]]
+   [:status                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message          {:optional true} [:maybe :string]]
+   [:started_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:finished_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
+   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
+
+(mr/def ::exploration-query.create
+  "What a caller gives to create an ExplorationQuery: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-query.update :id))
+
+(mr/def ::exploration-query
+  "An ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
+  ::exploration-query.update)
+
+(mr/def ::exploration-thread-timeline.update
+  "An ExplorationThreadTimeline by its `id` with the columns to change, each optional."
+  [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::exploration-thread-timeline.update
-  "An exploration-thread-timeline by its `id` with the columns to change."
-  [:merge
-   ::exploration-thread-timeline.create
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+(mr/def ::exploration-thread-timeline.create
+  "What a caller gives to create an ExplorationThreadTimeline: the columns of an update without the `:id`."
+  (mut/dissoc ::exploration-thread-timeline.update :id))
+
+(mr/def ::exploration-thread-timeline
+  "An ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
+  ::exploration-thread-timeline.update)

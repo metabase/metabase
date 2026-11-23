@@ -846,9 +846,9 @@
   (timelines-readable? (revealed-timeline-ids card previous-card)))
 
 (defn can-create-all?
-  "Whether the current user can create each of `entries`, `[card copy-source]` pairs, as [[mi/can-create?]] answers for
-  one Card, from one read of their Collections and one of the timelines they newly show, whatever their number. False
-  when one cannot, or a Collection does not exist, which asking one by one answers with its error."
+  "Whether the current user can create each of `entries`, `[card copy-source]` pairs, as [[mi/can-create?]] answers
+  for one Card, from one read of their Collections and one of the timelines they newly show, false when one cannot or
+  a Collection does not exist, which asking one by one answers with its error."
   [entries]
   (and (collection/can-write-all-collections-or-root? (map (comp :collection_id first) entries) {:root-namespace nil})
        (timelines-readable? (into #{} (mapcat (fn [[card copy-source]] (revealed-timeline-ids card copy-source))) entries))))
@@ -897,7 +897,7 @@
       (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
 
-(defn check-new-dashboard-questions-timeline-permissions!
+(defn check-new-dashboard-questions-timeline-permissions
   "Throws, for the first Dashboard in order, what [[check-shared-dashboard-timeline-permissions!]] throws when `rows`, the
   Cards about to be created, put dashboard questions on a publicly shared or embedded Dashboard showing timelines that the
   current user may not read, from one read of the Dashboards and one of the timelines whatever their number."
@@ -1187,7 +1187,7 @@
   [cards dashboards]
   {:dashboards         dashboards
    :archived-documents (queries.db/archived-document-ids (into #{} (keep :document_id) cards))
-   :collections        (queries.db/collections-for-content-checks (into #{} (keep :collection_id) cards))})
+   :collections        (collection/collections-for-content-checks (into #{} (keep :collection_id) cards))})
 
 (defn- check-not-in-archived-container
   "Throws a 400 when `card`, which is not archived, is in an archived Collection, `parent`, the row of its Collection
@@ -1518,8 +1518,8 @@
 
 (defn- assoc-new-result-metadata
   "`[rows futures]`: the new Card `rows`, each with the result metadata of its query when that is ready within the
-  time a write waits for it, and the futures of the metadata that is not, by the index of the row. Rows with the same
-  query and metadata share one computation."
+  time a write waits for it, and the futures of the metadata that is not, by the index of the row, rows with the same
+  query and metadata sharing one computation."
   [rows]
   (reduce (let [cache (volatile! {})]
             (fn [[rows futures] [i row]]
@@ -1533,13 +1533,6 @@
                  (cond-> futures metadata-future (assoc i metadata-future))])))
           [[] {}]
           (map-indexed vector rows)))
-
-(def ^:private WriteOpts
-  "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
-  and `:context`, the context of the events."
-  [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (defn- derive-new-card-rows
   "`rows`, the new Cards of one batch, with the columns that their queries, their metadata and their Dashboards give
@@ -1601,14 +1594,14 @@
     (insert-cards! rows)))
 
 (mu/defn create-cards! :- [:sequential :map]
-  "Creates a Card from each of `rows` and returns the new Cards in order, after checking that each can go where it is
-  put and that its Field filters are on Fields of its Database. A user's write computes the result metadata of each
-  query first and saves what is not ready soon enough afterwards on one background thread. Publishes the creation of
-  the Cards as the last step."
+  "Create a Card from each of `rows` and return the new Cards in order, after checking that each can go where it is
+  put and that its Field filters are on Fields of its Database, a user's write computing the result metadata of each
+  query first and saving what is not ready soon enough afterwards on one background thread, and publishing the
+  creation of the Cards as the last step."
   ([rows :- [:sequential ::queries.schema/card.create]]
    (create-cards! rows nil))
   ([rows :- [:sequential ::queries.schema/card.create]
-    opts :- WriteOpts]
+    opts :- :metabase.events.schema/write-opts]
    (let [importing?     (= :import (:writer opts))
          rows           (cond->> rows
                           (not importing?) (mapv new-row-with-defaults))
@@ -1627,8 +1620,8 @@
      cards)))
 
 (defn- changing-values
-  "The entries of `update`, an `:id` and columns, that change `card`, with the values the Card stores them as. A
-  column `card` does not have, such as `:verified-result-metadata?`, never counts."
+  "The entries of `update`, an `:id` and columns, that change `card`, with the values the Card stores them as, a
+  column `card` does not have, such as `:verified-result-metadata?`, never counting."
   [card update]
   (let [transforms (t2/transforms :model/Card)]
     (into {}
@@ -2219,21 +2212,16 @@
     (save-metadata-async! (mapv (fn [card] {:future (get futures (:id card)) :card card})
                                 (queries.db/cards (keys futures))))))
 
-(def ^:private IdAndChanges
-  "The `:id` of a Card and the columns to give it."
-  [:merge ::queries.schema/card.update [:map [:id ::lib.schema.id/card]]])
-
 (mu/defn update-cards! :- :nil
-  "Applies `updates`, each the `:id` of a Card with the columns to give it, which may differ from one to the next, after
-  checking that each can go where it is put, in one pass: the Cards, what their changes need to know and the rows that
-  depend on them are read together, and the Cards that get the same changes are written with one statement, so the
-  statements do not grow with their number. The `:context` of `opts`, such as `{:archived-with [:model/Dashboard 1]}`
-  for the Cards that the archive of Dashboard 1 carries, goes to the event of the writes, which is published as the last
-  step."
-  ([updates :- [:sequential IdAndChanges]]
+  "Apply `updates`, each the `:id` of a Card with the columns to give it, which may differ from one to the next, after
+  checking that each can go where it is put, in one pass that reads the Cards, what their changes need to know and
+  the rows that depend on them together and writes the Cards that get the same changes with one statement, publishing
+  the event of the writes as the last step with the `:context` of `opts`, such as `{:archived-with [:model/Dashboard
+  1]}` for the Cards that the archive of Dashboard 1 carries."
+  ([updates :- [:sequential ::queries.schema/card.update]]
    (update-cards! updates nil))
-  ([updates :- [:sequential IdAndChanges]
-    opts    :- WriteOpts]
+  ([updates :- [:sequential ::queries.schema/card.update]
+    opts    :- :metabase.events.schema/write-opts]
    (when (seq updates)
      (let [[updates futures] (if (nil? (:writer opts))
                                (assoc-updated-result-metadata updates)
@@ -2271,7 +2259,7 @@
   ([card-ids :- [:sequential ::lib.schema.id/card]]
    (delete-cards! card-ids nil))
   ([card-ids :- [:sequential ::lib.schema.id/card]
-    opts     :- WriteOpts]
+    opts     :- :metabase.events.schema/write-opts]
    (mdb/delete-batched! :model/Card (distinct card-ids)
                         {:before-delete #(publish-and-delete-card-dependents! % opts)})))
 
@@ -2330,14 +2318,14 @@
   nil)
 
 (mu/defn increment-view-counts! :- :int
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`, in one plain
-  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`, in one
+  plain statement that publishes no event for a usage stat no rule reads, and return the number updated."
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (queries.db/increment-card-view-counts! count->ids))
+  (mdb/increment-counts! :model/Card :view_count count->ids))
 
 (mu/defn set-last-used-at! :- :int
-  "Set `last_used_at` of the Card with `id`, through the model, returning the number updated. The testing API backdates
-  it."
+  "Set `last_used_at` of the Card with `id`, through the model, which the testing API uses to backdate it, and return
+  the number updated."
   [id   :- ::lib.schema.id/card
    time :- ms/TemporalInstant]
   (queries.db/set-card-last-used-at! id time))
@@ -2515,10 +2503,10 @@
        (lib/normalize ::queries.schema/card.create)))
 
 (defn place-new-dashboard-questions!
-  "Puts each of `cards`, the new Cards that `rows` created in order, on its Dashboard when it is a dashboard question,
-  in the tab and with the size its row names, throwing a 400 for a tab of a row with no Dashboard, with one read of the
-  Dashboards and one write. What the user may do is the caller's to check, with
-  [[check-new-dashboard-questions-timeline-permissions!]]."
+  "Put each of `cards`, the new Cards that `rows` created in order, on its Dashboard when it is a dashboard question,
+  in the tab and with the size its row names, throwing a 400 for a tab of a row with no Dashboard, with one read of
+  the Dashboards and one write, what the user may do being the caller's to check with
+  [[check-new-dashboard-questions-timeline-permissions]]."
   [cards rows]
   (run! #(api/check-400 (not (and (:dashboard_tab_id %) (not (:dashboard_id %))))) rows)
   (let [placed (filterv (comp :dashboard_id first) (map vector cards rows))]

@@ -205,11 +205,6 @@
   []
   (t2/exists? :model/CacheConfig))
 
-(mu/defn delete-query-caches!
-  "Delete the QueryCache entries with `query-hashes`."
-  [query-hashes :- [:sequential bytes?]]
-  (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
-
 ;;; ---------------------------------------------- Query cache entries ----------------------------------------------
 
 (mu/defn claim-query-cache-refresh-lease!
@@ -231,7 +226,7 @@
 
 (mu/defn upsert-query-cache!
   "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
-  `timestamp`, and clearing `:refresh_started_at`. Returns the entry's primary key, which is the hash bytes."
+  `timestamp` and clearing `:refresh_started_at`, and return its primary key, the hash bytes."
   [query-hash :- bytes?
    timestamp  :- ::cache.schema/temporal
    results    :- bytes?]

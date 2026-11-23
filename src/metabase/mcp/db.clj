@@ -133,14 +133,11 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
-;; MCP is a session provider like any other as far as `auth_identity` is concerned; declaring it here is what lets
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-;; the AuthIdentity model's before-insert validation accept the rows [[metabase.mcp.session/get-or-create-embedding-session!]]
-;; creates.
 (auth-identity/derive! :provider/mcp :metabase.auth-identity.provider/provider)
 
 (mu/defn insert-feedback!

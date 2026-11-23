@@ -80,14 +80,14 @@
 
 (mu/defn reset-terminal-thread!
   "Reset the terminal ExplorationThread with `thread-id` to freshly started at `started-at`, if no query of it is
-  still running. Returns the number of rows updated."
+  still running, and return the number of rows updated."
   [thread-id  :- ms/PositiveInt
    started-at :- ms/TemporalInstant]
   (explorations.db/reset-terminal-thread! thread-id started-at))
 
 (mu/defn claim-thread-analysis!
   "Stamp the analysis start and completion of the ExplorationThread with `thread-id` at `now` if it has not been
-  claimed, canceled, or left with pending queries. Returns the number of rows updated."
+  claimed, canceled, or left with pending queries, and return the number of rows updated."
   [thread-id :- ms/PositiveInt
    now       :- ms/TemporalInstant]
   (explorations.db/claim-thread-analysis! thread-id now))

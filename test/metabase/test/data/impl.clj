@@ -425,8 +425,8 @@
   false)
 
 (defn do-with-temp-copy-of-db!
-  "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
-  from the standard test database, and syncs it."
+  "Run `f` with a temporary Database that copies the details from the standard test database and syncs it, as the
+  implementation of [[metabase.test/with-temp-copy-of-db]]."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings :dbms_version]))

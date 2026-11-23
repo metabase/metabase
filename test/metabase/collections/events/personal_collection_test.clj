@@ -15,7 +15,7 @@
                  :location          "/"}
                 (t2/select-one :model/Collection :personal_owner_id user-id)))))))
 
-(deftest personal-collection-is-named-after-the-user-test
+(deftest personal-collection-is-named-after-user-test
   (testing "the Collection created at insert time is the same one the lazy hydration path would have made"
     (mt/with-model-cleanup [:model/Collection :model/User]
       (let [[{user-id :id}] (user/create-users! [{:email      (mt/random-email)

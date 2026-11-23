@@ -254,11 +254,9 @@
                           :user-id         api/*current-user-id*}))
 
 (defn- body-with-authoritative-ids
-  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
-  payload."
+  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a payload, so that an update
+  keeps the primary keys of the rows it matches."
   [body {:keys [id payload_id]}]
-  ;; without the ids the update would treat the body as a different row and delete +
-  ;; recreate it, changing primary keys out from under the caller
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 

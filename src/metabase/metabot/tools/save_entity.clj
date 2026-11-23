@@ -291,7 +291,7 @@
                                              :visualization_settings {}
                                              :dashboard_id           dashboard-id}
                                             api/*current-user-id*)
-          _      (queries.card/check-new-dashboard-questions-timeline-permissions! [row])
+          _      (queries.card/check-new-dashboard-questions-timeline-permissions [row])
           [card] (t2/with-transaction [_conn]
                    (let [cards (queries.card/create-cards! [row])]
                      (queries.card/place-new-dashboard-questions! cards [row])

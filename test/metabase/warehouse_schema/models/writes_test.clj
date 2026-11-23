@@ -192,7 +192,7 @@
           (is (= [false true]
                  (mapv #(t2/select-one-fn :caveats_set :model/TableUserSettings :table_id %) [table-id other-table-id]))))))))
 
-(deftest create-tables-reports-the-first-invalid-row-test
+(deftest create-tables-reports-first-invalid-row-test
   (mt/with-temp [:model/Database   {db-id :id}      {}
                  :model/Collection {metrics-id :id}    {:type "library-metrics"}
                  :model/Collection {dashboards-id :id} {:type "library-dashboards"}]

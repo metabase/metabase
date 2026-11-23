@@ -109,7 +109,7 @@
   ([rows :- [:sequential NewTestSuite]]
    (create-test-suites! rows nil))
   ([rows :- [:sequential NewTestSuite]
-    opts :- ::data-testing.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [suites (into [] (mapcat (comp create-batch! vec)) (partition-all mdb/create-partition-size rows))]
        (when (seq suites)
@@ -153,29 +153,27 @@
 
 (mu/defn update-test-suites! :- :nil
   "Apply the changes in each of `rows`, the id of a TestSuite and the columns to change, without its members, in one
-  transaction, publishing their update event last, and for an import a touch of the suites that it leaves unchanged. The
-  suite rows are locked first, so a concurrent update of the same suite waits until this one commits."
+  transaction after locking the suite rows, publishing their update event last, and for an import a touch of the
+  suites that it leaves unchanged."
   ([rows :- [:sequential ::data-testing.schema/test-suite.update]]
    (update-test-suites! rows nil))
   ([rows :- [:sequential ::data-testing.schema/test-suite.update]
-    opts :- ::data-testing.schema/write-opts]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv (comp update-suite-batch! vec) (partition-all mdb/update-partition-size rows))]
        (publish-suite-updates! opts (into {} (map :id->stored) batches) (into {} (map :id->updated) batches))))
    nil))
 
 (mu/defn update-test-suite! :- :nil
-  "Apply the `changes`, columns of the TestSuite with `id`, and the `:members` it has afterwards, replacing its members
-  when `changes` has `:members`, in one transaction, publishing, last, one update event: of its columns or members,
-  and for an import, which sends a suite whose members it wrote, a touch when nothing changes. A change of members
-  alone also sets the suite's update time. The suite row is locked first, so a concurrent update of the same suite
-  waits until this one commits and then replaces the members this one wrote."
+  "Apply the `changes`, columns of the TestSuite with `id`, and the `:members` it has afterwards, replacing its
+  members when `changes` has `:members`, in one transaction after locking the suite row, publishing, last, one update
+  event of its columns or members, and for an import a touch when nothing changes."
   ([id      :- ms/PositiveInt
     changes :- UpdateTestSuite]
    (update-test-suite! id changes nil))
   ([id      :- ms/PositiveInt
     changes :- UpdateTestSuite
-    opts    :- ::data-testing.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (let [stored  (u/index-by :id (data-testing.db/test-suites-for-update [id]))
            columns (dissoc changes :members)
@@ -208,7 +206,7 @@
 
 (mu/defn- update-test-suite-members! :- [:sequential ::data-testing.schema/test-suite-member.update]
   "Apply the changes in each of `rows`, the id of a TestSuiteMember and the columns to change, with one statement per
-  distinct change set, in a plain write that publishes nothing. Returns `rows`."
+  distinct change set, in a plain write that publishes nothing, and return `rows`."
   [rows :- [:sequential ::data-testing.schema/test-suite-member.update]]
   (doseq [[changes group] (group-by #(dissoc % :id) rows)
           :when           (seq changes)]

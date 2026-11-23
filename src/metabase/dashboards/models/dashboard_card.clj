@@ -187,23 +187,23 @@
   [dashboard-id new-cards]
   (set/difference (dashboards.db/internal-dashboard-question-ids dashboard-id) (into #{} (map :card_id) new-cards)))
 
-(defn- check-questions-updatable!
+(defn- check-questions-updatable
   "Throws a 403 unless the current user may set `archived` of each of the Cards among `card-ids` that it changes."
   [card-ids archived?]
   (when (seq card-ids)
     (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived (vec card-ids) archived?) {:archived archived?}))))
 
-(defn check-unarchive-internal-dashboard-questions!
+(defn check-unarchive-internal-dashboard-questions
   "Throws a 403 unless the current user may unarchive the dashboard questions that [[unarchive-internal-dashboard-questions!]]
   unarchives for `dashboard-id` and `new-cards`."
   [dashboard-id new-cards]
-  (check-questions-updatable! (questions-to-unarchive dashboard-id new-cards) false))
+  (check-questions-updatable (questions-to-unarchive dashboard-id new-cards) false))
 
-(defn check-archive-internal-dashboard-questions!
+(defn check-archive-internal-dashboard-questions
   "Throws a 403 unless the current user may archive the dashboard questions that [[archive-internal-dashboard-questions!]]
   archives for `dashboard-id` and `new-cards`."
   [dashboard-id new-cards]
-  (check-questions-updatable! (questions-to-archive dashboard-id new-cards) true))
+  (check-questions-updatable (questions-to-archive dashboard-id new-cards) true))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -459,7 +459,7 @@
   ([rows :- [:sequential NewDashboardCard]]
    (create-dashboard-cards! rows nil))
   ([rows :- [:sequential NewDashboardCard]
-    opts :- [:maybe [:map {:closed true} [:writer {:optional true} [:= :import]]]]]
+    opts :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (into [] (mapcat #(create-dashcard-batch! % (:writer opts)))
            (partition-all app-db/create-partition-size rows)))))

@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- query-cache-input :- ::impersonation.schema/impersonation-query-cache.update
+(mu/defn- query-cache-input :- ::impersonation.schema/impersonation-query-cache.create
   "The lookup key of validating the native SQL `native` for `engine`."
   [engine       :- :keyword
    allow-write? :- [:maybe :boolean]
@@ -28,7 +28,7 @@
 
 (mu/defn- cached-result :- [:maybe ::impersonation.schema/impersonation-query-cache]
   "The cached result for `input`, or nil when there is none or the cache cannot be read."
-  [input :- ::impersonation.schema/impersonation-query-cache.update]
+  [input :- ::impersonation.schema/impersonation-query-cache.create]
   (try
     (let [row (impersonation.db/query-cache (impersonation-query-cache/lookup input))]
       (when (= (:input_query input) (:input_query row))
@@ -39,8 +39,8 @@
 
 (mu/defn- save-result! :- :nil
   "Cache `result` for `input`, replacing a row with the same lookup key, or log why the cache cannot be written."
-  [input  :- ::impersonation.schema/impersonation-query-cache.update
-   result :- ::impersonation.schema/impersonation-query-cache.update]
+  [input  :- ::impersonation.schema/impersonation-query-cache.create
+   result :- ::impersonation.schema/impersonation-query-cache.create]
   (try
     (impersonation-query-cache/upsert-impersonation-query-cache! (merge input result))
     (catch Throwable e
@@ -58,7 +58,7 @@
 
 (mu/defn- validate-and-save! :- :string
   "Call `validate` and cache what it returns, or the refusal it throws when that refusal records its result."
-  [input    :- ::impersonation.schema/impersonation-query-cache.update
+  [input    :- ::impersonation.schema/impersonation-query-cache.create
    validate :- fn?]
   (try
     (let [validated (validate)]

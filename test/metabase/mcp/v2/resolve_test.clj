@@ -89,9 +89,9 @@
                 unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
                                 (catch Exception e (ex-message e)))]
             (is (str/includes? missing "not found"))
-            ;; Compare the messages, not merely that both threw: differing wording is the leak.
             (is (= (str/replace missing "13371337" (str unreadable-id))
-                   unreadable))))))))
+                   unreadable)
+                "the messages of the two refusals are the same")))))))
 
 (deftest resolve-collection-id-or-personal-test
   (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"

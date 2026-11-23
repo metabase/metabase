@@ -37,7 +37,7 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-view-logs!
-  "Insert the ViewLog rows `views` in one transaction, one statement per `mdb/create-partition-size` rows."
+  "Insert the ViewLog rows `views` in one transaction, one statement per [[mdb/create-partition-size]] rows."
   [views :- [:sequential ::view-log.schema/view-log.create]]
   (t2/with-transaction [_conn]
     (run! (comp view-log.db/insert-view-logs! vec) (partition-all mdb/create-partition-size views))))

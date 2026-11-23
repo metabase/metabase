@@ -106,7 +106,7 @@
 (mu/defn update-or-insert-query-cache! :- ms/PositiveInt
   "Update the ImpersonationQueryCache with the lookup key `lookup` to `row`, or insert `row` when there is none."
   [lookup :- ::impersonation.schema/impersonation-query-cache.lookup
-   row    :- ::impersonation.schema/impersonation-query-cache.update]
+   row    :- ::impersonation.schema/impersonation-query-cache.create]
   (app-db/update-or-insert! :model/ImpersonationQueryCache lookup (constantly row)))
 
 (mu/defn outdated-query-cache-ids :- [:sequential ms/PositiveInt]

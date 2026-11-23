@@ -99,11 +99,6 @@
   [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.create]]
   (app-db/insert-returning-instances! :model/TestSuiteMember rows))
 
-(mu/defn suite-members-by-ids :- [:sequential ::data-testing.schema/test-suite.member]
-  "The TestSuiteMembers with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/TestSuiteMember :id [:in [:auto/param ids]]))
-
 (mu/defn update-suite-members!
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]

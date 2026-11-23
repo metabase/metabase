@@ -91,13 +91,6 @@
                                                                                 [:= :table.schema nil]]]
                                                                               [:= :self_field.name [:lower :field.name]]]}]]]})))
 
-(mu/defn table-ids-of-database-query :- :map
-  "The query of the ids of the Tables of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  ^:allow-subquery {:select [:id]
-                    :from   [(t2/table-name :model/Table)]
-                    :where  [:= :db_id database-id]})
-
 (mu/defn field-names-of-table
   "The `:id` and `:name` of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]

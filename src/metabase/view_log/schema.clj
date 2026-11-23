@@ -1,6 +1,7 @@
 (ns metabase.view-log.schema
   "Malli schemas for the view-log module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -9,20 +10,10 @@
   "The `:metadata` column of a ViewLog, decoded."
   [:map {:closed true}])
 
-(mr/def ::view-log
-  "A ViewLog as selected from the app DB: every column of `:view_log`."
-  [:merge
-   ::view-log.update
-   [:map {:closed true}
-    [:id                          ms/PositiveInt]]])
-
-(mr/def ::view-log.create
-  "What a caller gives to create a ViewLog."
-  ::view-log.update)
-
 (mr/def ::view-log.update
-  "What an update (or insert) of a ViewLog accepts: every column of `:view_log` except `id`, all optional."
+  "A ViewLog by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id                          ms/PositiveInt]
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
@@ -42,3 +33,11 @@
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]])
+
+(mr/def ::view-log.create
+  "What a caller gives to create a ViewLog: the columns of an update without the `:id`."
+  (mut/dissoc ::view-log.update :id))
+
+(mr/def ::view-log
+  "A ViewLog as selected from the app DB: every column of `:view_log`."
+  ::view-log.update)

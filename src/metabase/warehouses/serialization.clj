@@ -81,7 +81,7 @@
     (update item :row #(apply dissoc % (remove (set (keys entity)) (keys %))))
     item))
 
-(defn check-imported-row!
+(defn check-imported-row
   "Refuse the Database `row` of an import when it is H2, or SQLite on a hosted instance."
   [row]
   (assert-not-h2! row)

@@ -405,7 +405,7 @@
   - it can hold the content of Transforms (not a Library or data-app Collection that refuses it)"
   [collection-ids]
   (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks collection-ids))]
+    (let [collections (collection/collections-for-content-checks collection-ids)]
       (doseq [collection-id collection-ids
               :let [collection (or (collections collection-id) (collection/content-parent collection-id))]]
         (collection/check-collection-namespace :model/Transform collection)
@@ -480,9 +480,9 @@
           changes-by-id)))
 
 (mu/defn- replace-tags! :- :boolean
-  "Make the TransformTags linked to the Transform with `transform-id` those of `tag-ids`, in that order, with smart diff
-  logic: deletes removed tags, updates positions for moved tags, and inserts new tags. Duplicate and unknown tag ids
-  are left out. Returns whether the tags changed."
+  "Make the TransformTags linked to the Transform with `transform-id` those of `tag-ids`, in that order, deleting
+  removed tags, updating positions for moved tags and inserting new tags, leaving out duplicate and unknown tag ids,
+  and return whether the tags changed."
   [transform-id :- ::lib.schema.id/transform
    tag-ids      :- [:sequential ms/PositiveInt]]
   (let [deduped-tag-ids      (vec (distinct tag-ids))
@@ -539,9 +539,9 @@
     transforms))
 
 (mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
-  "Insert the Transform `rows` in one transaction, linking the `:tag_ids` of each, publishing their create event, and
-  return the inserted Transforms. Throws unless the Collection of each can hold Transforms and its target Database can
-  hold the tables of a transform."
+  "Insert the Transform `rows` in one transaction, linking the `:tag_ids` of each and publishing their create event,
+  throwing unless the Collection of each can hold Transforms and its target Database can hold the tables of a
+  transform, and return the inserted Transforms."
   [rows :- [:sequential ::transforms.schema/transform.create]]
   (t2/with-transaction [_conn]
     (let [created (into [] (mapcat (comp create-transform-batch! vec)) (partition-all mdb/create-partition-size rows))]
@@ -618,13 +618,13 @@
 
 (mu/defn update-transforms! :- :nil
   "Apply `updates`, each the id of a Transform and the columns to change, in one transaction, publishing their update
-  event. Throws unless the new Collections and target Databases can hold Transforms and the new definitions of query
-  transforms cause no cycle, marks the index requests of a changed definition for revalidation, and fills the Field ids
-  of a merge unique key once its target table exists."
+  event, throwing unless the new Collections and target Databases can hold Transforms and the new definitions of query
+  transforms cause no cycle, marking the index requests of a changed definition for revalidation, and filling the
+  Field ids of a merge unique key once its target table exists."
   ([updates :- [:sequential ::transforms.schema/transform.update]]
    (update-transforms! updates nil))
   ([updates :- [:sequential ::transforms.schema/transform.update]
-    opts    :- ::transforms.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (mdb/update-batched! :model/Transform updates
                         {:before-update check-and-prepare-transform-updates
                          :reread?       true
@@ -652,7 +652,7 @@
    (update-transform! id changes nil))
   ([id      :- ::lib.schema.id/transform
     changes :- ::transforms.schema/transform.update-with-tags
-    opts    :- ::transforms.schema/write-opts]
+    opts    :- :metabase.events.schema/write-opts]
    (t2/with-transaction [_conn]
      (when-let [stored (get (transforms.db/transforms-by-ids [id]) id)]
        (let [columns-event (update-transform-columns! stored (dissoc changes :tag_ids) opts)

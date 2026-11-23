@@ -243,7 +243,7 @@
 ;;; ---------------------------------------------------- Writes -----------------------------------------------------
 
 (defn save-cache-config!
-  "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id. A
+  "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id; a
   concurrent first save of the same target makes one of them retry as an update."
   [{:keys [model model_id] :as config}]
   (let [save! (fn []

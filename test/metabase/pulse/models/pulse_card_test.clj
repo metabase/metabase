@@ -63,8 +63,8 @@
 
 (deftest ^:parallel position-schema-test
   (testing "PulseCard position is not negative"
-    (is (not (mr/validate ::pulse.schema/pulse-card.update {:position -1})))
-    (is (mr/validate ::pulse.schema/pulse-card.update {:position 5}))))
+    (is (not (mr/validate ::pulse.schema/pulse-card.update {:id 1 :position -1})))
+    (is (mr/validate ::pulse.schema/pulse-card.update {:id 1 :position 5}))))
 
 (deftest delete-pulse-cards-for-dashcards-audits-their-pulse-test
   (mt/with-premium-features #{:audit-app}

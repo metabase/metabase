@@ -990,10 +990,9 @@
           :db_id      db-id})))))
 
 (defn set-default-databases-permissions!
-  "Bulk-sets default permissions for newly-created `databases` across all `groups`, in one insert.
-   For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
-   For other groups, values are based on the group's lowest existing permission level.
-   Uses batch SQL operations instead of per-row mutations."
+  "Set the default permissions of every one of `groups` on the new `databases` in one insert: the least permissive
+  values for a tenant group, fixed values on an audit Database, and otherwise values based on the group's lowest
+  existing permission level."
   [databases groups]
   (when (and (seq groups) (seq databases))
     (let [all-audit    (every? :is_audit databases)

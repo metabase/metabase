@@ -43,8 +43,8 @@
   (data-testing.db/finish-started-suite-run! run-id status members))
 
 (mu/defn add-members-to-ended-test-suite-run! :- :int
-  "Set the `members` of the TestSuiteRun `run-id` if the run has ended, returning the number of rows updated. The
-  cluster reaper ends a run without its members; this sets them afterward."
+  "Set the `members` of the TestSuiteRun `run-id` if the run has ended, which the cluster reaper does without its
+  members, returning the number of rows updated."
   [run-id  :- ms/PositiveInt
    members :- ::data-testing.schema/test-suite-run.stored-members]
   (data-testing.db/add-members-to-ended-suite-run! run-id members))

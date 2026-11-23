@@ -255,7 +255,7 @@
     (counted [Integer/MAX_VALUE])
     (is (= (counted (range 1000001 1000003)) (counted (range 1000003 1000009))))))
 
-(deftest with-task-history-measures-the-task-with-the-database-clock-test
+(deftest with-task-history-measures-task-with-database-clock-test
   (mt/with-model-cleanup [:model/TaskHistory]
     (let [task-name (mt/random-name)]
       (task-history/with-task-history {:task task-name}

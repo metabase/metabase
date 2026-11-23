@@ -459,8 +459,8 @@
   (testing "DashboardCard has positive size and position that is not negative"
     (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1}]]
       (testing (pr-str bad)
-        (is (not (mr/validate ::dashboards.schema/dashboard-card.update bad)))))
-    (is (mr/validate ::dashboards.schema/dashboard-card.update {:size_x 4 :size_y 4 :row 0 :col 20}))))
+        (is (not (mr/validate ::dashboards.schema/dashboard-card.update (assoc bad :id 1))))))
+    (is (mr/validate ::dashboards.schema/dashboard-card.update {:id 1 :size_x 4 :size_y 4 :row 0 :col 20}))))
 
 (deftest dashcard-dashboard-is-frozen-test
   (testing "A DashboardCard does not move to another Dashboard"
@@ -488,7 +488,7 @@
 (deftest ^:parallel dashcard-parameter-mappings-schema-test
   (testing "parameter mappings of DashboardCard are sequence of mappings"
     (is (not (mr/validate ::dashboards.schema/dashboard-card.update
-                          {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
+                          {:id 1 :parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
 
 (deftest dashboard-card-writes-statement-count-test
   (testing "Creating, updating and deleting DashboardCards takes the same number of statements for any number of them"
@@ -620,13 +620,13 @@
     (testing "a user who cannot write the Collection is refused the archive of an unused dashboard question"
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
-                              (dashboard-card/check-archive-internal-dashboard-questions! dashboard-id [])))
+                              (dashboard-card/check-archive-internal-dashboard-questions dashboard-id [])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
-                              (dashboard-card/check-unarchive-internal-dashboard-questions!
+                              (dashboard-card/check-unarchive-internal-dashboard-questions
                                dashboard-id [{:card_id archived-id}])))))
     (testing "a user who can write the Collection passes, and the checks write nothing"
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (do (dashboard-card/check-archive-internal-dashboard-questions! dashboard-id []) true))
-        (is (do (dashboard-card/check-unarchive-internal-dashboard-questions! dashboard-id [{:card_id archived-id}]) true))
+        (is (do (dashboard-card/check-archive-internal-dashboard-questions dashboard-id []) true))
+        (is (do (dashboard-card/check-unarchive-internal-dashboard-questions dashboard-id [{:card_id archived-id}]) true))
         (is (false? (t2/select-one-fn :archived :model/Card :id live-id)))
         (is (true? (t2/select-one-fn :archived :model/Card :id archived-id)))))))

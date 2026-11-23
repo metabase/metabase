@@ -436,16 +436,14 @@
   (permissions.db/insert-permissions! rows))
 
 (mu/defn create-permissions! :- ms/IntGreaterThanOrEqualToZero
-  "Insert the Permissions `rows` in one transaction, returning the number inserted. A row for the Admin group, or one
+  "Insert the Permissions `rows` in one transaction and return the number inserted; a row for the Admin group, or one
   granting a tenant group what tenant groups cannot hold, is a 400."
   [rows :- [:sequential ::permissions.schema/permissions.create]]
   (t2/with-transaction [_conn]
     (transduce (map (comp create-permissions-batch! vec)) + 0 (partition-all app-db/create-partition-size rows))))
 
 (defn- check-permissions-deletable
-  "Throws a 400 unless every one of the Permissions `rows` satisfies these rules:
-
-  - it is not a row of the Admin group"
+  "Throws a 400 when one of the Permissions `rows` is a row of the Admin group."
   [rows]
   (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) rows)))
 
@@ -453,12 +451,7 @@
   "Delete the Permissions rows with `ids` in one transaction; a row of the Admin group among them is a 400 and deletes
   nothing."
   [ids :- [:maybe [:sequential ms/PositiveInt]]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))]
-        (check-permissions-deletable (into [] (mapcat permissions.db/permissions-by-ids) batches))
-        (run! permissions.db/delete-permissions! batches))))
-  nil)
+  (app-db/delete-batched! :model/Permissions ids {:before-delete check-permissions-deletable}))
 
 (def collection-permission-ids
   "The ids of the Permissions rows of a Collection, see [[permissions.db/collection-permission-ids]]."

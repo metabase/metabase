@@ -6,14 +6,12 @@
 
 (mr/def ::sso-relay-state
   "A SsoRelayState as selected from the app DB: every column of `:sso_relay_state`."
-  [:merge
-   ::sso-relay-state.update
-   [:map {:closed true}
-    [:id           :string]]])
+  ::sso-relay-state.update)
 
 (mr/def ::sso-relay-state.update
-  "What an update (or insert) of a SsoRelayState accepts: every column of `:sso_relay_state` except `id`, all optional."
+  "What an update of a SsoRelayState takes: its `:id` and every other column of `:sso_relay_state`, all optional."
   [:map {:closed true}
+   [:id           :string]
    [:continue_url {:optional true} [:maybe :string]]
    [:origin       {:optional true} [:maybe :string]]
    [:embedding    {:optional true} [:maybe :boolean]]

@@ -104,7 +104,8 @@
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups
-  all-users-magic-group-type]
+  all-users-magic-group-type
+  rename-order]
  [metabase.permissions.models.permissions-group-membership
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members

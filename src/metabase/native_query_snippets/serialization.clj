@@ -111,9 +111,9 @@
         snippets))
 
 (defn rename-to-free-names
-  "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name. `stored`, a map from id
-  to the stored snippet of an update, gives the entity id of the snippet a row writes, which is that of the row itself
-  for an insert, `stored` being nil. Rows without a name are left alone."
+  "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name, `stored`, a map from
+  id to the stored snippet of an update, giving the entity id of the snippet a row writes, which is that of the row
+  itself for an insert, `stored` being nil, and rows without a name being left alone."
   [rows stored]
   (let [taken (when-let [names (seq (distinct (keep :name rows)))]
                 (into {} (map (juxt :name :entity_id)) (native-query-snippets.db/snippet-names-and-entity-ids (vec names))))]

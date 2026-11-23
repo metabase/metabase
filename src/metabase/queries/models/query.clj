@@ -58,12 +58,6 @@
         {:database-id database-id
          :table-id    table-id}))))
 
-(mu/defn query-is-native? :- :boolean
-  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
-  regardless of whether the Card has a native query or not."
-  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
-  (boolean (some-> query not-empty lib/native-only-query?)))
-
 (mu/defn supports-implicit-actions? :- :boolean
   "Whether a model with `query` supports implicit actions: every stage is MBQL with no clauses, so it is a raw table."
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]

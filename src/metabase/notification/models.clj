@@ -574,9 +574,6 @@
 ;;                                          Update Spec                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-;; An update of a Notification writes the columns below, the payload, the subscriptions, and the handlers with their
-;; recipients and template; see `update-parts!`.
-
 (def ^:private update-columns
   "The keys of a Notification that an update of it uses."
   #{:active :creator_id :payload_type :internal_id :payload_id :payload :subscriptions :handlers})
@@ -911,21 +908,21 @@
     []))
 
 (mu/defn create-notification-recipients! :- :nil
-  "Insert the NotificationRecipient `rows`. A recipient joining is upkeep, not a change of its Notification, which
-  publishes no event."
+  "Insert the NotificationRecipient `rows`, publishing no event as a recipient joining is upkeep, not a change of its
+  Notification."
   [rows :- [:sequential ::notification.schema/notification-recipient.create]]
   (when (seq rows)
     (notification.db/insert-recipients! rows))
   nil)
 
-(defn- check-template-maps!
+(defn- check-template-maps
   "Throws a 400 unless the inline `:template` of each of `handlers` is a map."
   [handlers]
   (doseq [{:keys [template]} handlers]
     (when (and template (not (map? template)))
       (throw (ex-info "Channel template must be a map" {:status-code 400})))))
 
-(defn- check-new-notifications!
+(defn- check-new-notifications
   "Throws what inserting the Notifications of `rows` with their parts would throw for the first of them that is invalid,
   checking the parts of each in the order they are inserted: the Notification, its subscriptions, the templates of its
   handlers, its handlers, and their recipients."
@@ -939,7 +936,7 @@
                                  (dissoc :subscriptions :handlers :payload)
                                  (assoc :payload_id (when (= :notification/card (:payload_type row)) 1))))
       (run! #(validate-subscription (assoc % :notification_id 1)) subscriptions)
-      (models.channel/check-channel-templates! (into [] (keep :template) handlers))
+      (models.channel/check-channel-templates (into [] (keep :template) handlers))
       (doseq [{:keys [template template_id channel_type]} handlers
               :when (or template template_id)
               :let  [channel-type  (keyword channel_type)
@@ -1008,9 +1005,9 @@
   [rows :- [:sequential ::notification-with-parts.create]]
   (doseq [{:keys [handlers]} rows]
     (validate-email-handlers! handlers)
-    (check-template-maps! handlers))
+    (check-template-maps handlers))
   (t2/with-transaction [_conn]
-    (check-new-notifications! rows)
+    (check-new-notifications rows)
     (let [instances (into [] (mapcat (comp create-batch! vec)) (partition-all mdb/create-partition-size rows))]
       (when (seq instances)
         (events/publish-event! :event/notification-row-create (events/create-event instances)))
@@ -1047,11 +1044,6 @@
                                              row))
     (change-log/log-changes! model :delete (vals (apply dissoc old (keys new))))))
 
-(defn- update-existing-rows!
-  "Write each of `rows`, an `:id` and the columns to set, of `model`."
-  [model rows]
-  (notification.db/update-part-rows! model rows))
-
 (defn- replace-part-rows!
   "Make the rows of `model` that `existing` holds the `new-rows`, matched by id and compared on `columns`: one insert of
   the new rows, one delete of the missing ones, and one update for each distinct set of changes of the others."
@@ -1061,7 +1053,7 @@
       (notification.db/insert-part-rows! model (mapv #(select-keys % columns) to-create)))
     (when (seq to-delete)
       (notification.db/delete-part-rows! model (mapv :id to-delete)))
-    (update-existing-rows! model (map #(assoc (select-keys % columns) :id (:id %)) to-update))))
+    (notification.db/update-part-rows! model (map #(assoc (select-keys % columns) :id (:id %)) to-update))))
 
 (defn- update-payload!
   "Make the NotificationCard `existing` the payload `new`: delete it when there is none, insert it when there was none or
@@ -1100,7 +1092,7 @@
       (notification.db/delete-part-rows! :model/ChannelTemplate deletes))
     (let [created-ids (volatile! (map :id (when (seq creates)
                                             (notification.db/insert-part-rows! :model/ChannelTemplate creates))))]
-      (update-existing-rows! :model/ChannelTemplate (keep :update writes))
+      (notification.db/update-part-rows! :model/ChannelTemplate (keep :update writes))
       (mapv (fn [{:keys [create id]}]
               (if create
                 (u/prog1 (first @created-ids)
@@ -1124,7 +1116,7 @@
         handler-ids (into (mapv :id created) (map :id) (drop (count to-create) rows))]
     (when (seq to-delete)
       (notification.db/delete-part-rows! :model/NotificationHandler (mapv :id to-delete)))
-    (update-existing-rows!
+    (notification.db/update-part-rows!
      :model/NotificationHandler
      (into []
            (keep-indexed (fn [i [row row-with-refs]]
@@ -1144,8 +1136,8 @@
         (notification.db/insert-part-rows! :model/NotificationRecipient (mapv #(select-keys % recipient-columns) to-create-recipients)))
       (when (seq to-delete-recipients)
         (notification.db/delete-part-rows! :model/NotificationRecipient (mapv :id to-delete-recipients)))
-      (update-existing-rows! :model/NotificationRecipient
-                             (map #(assoc (select-keys % recipient-columns) :id (:id %)) (mapcat :to-update diffs))))))
+      (notification.db/update-part-rows! :model/NotificationRecipient
+                                         (map #(assoc (select-keys % recipient-columns) :id (:id %)) (mapcat :to-update diffs))))))
 
 (defn- update-parts!
   "Make the Notification `existing` the `new` one: its columns, its payload, its subscriptions, and its handlers with their
@@ -1237,7 +1229,7 @@
 
 (mu/defn update-notifications! :- :nil
   "Apply the changes in each of `rows`, the id of a Notification and the columns to change, in one transaction,
-  publishing their update event. A change of `:active` adds or removes the Quartz triggers of their cron
+  publishing their update event, a change of `:active` adding or removing the Quartz triggers of their cron
   subscriptions."
   [rows :- [:sequential ::notification.schema/notification.update]]
   (mdb/update-batched! :model/Notification rows
@@ -1263,8 +1255,8 @@
   (mdb/delete-batched! :model/Notification notification-ids {:before-delete delete-cascades-and-publish!}))
 
 (mu/defn delete-notification-recipients! :- :nil
-  "Delete the NotificationRecipients with `recipient-ids`. A recipient leaving is upkeep, not a change of its
-  Notification, which publishes no event."
+  "Delete the NotificationRecipients with `recipient-ids`, publishing no event as a recipient leaving is upkeep, not a
+  change of its Notification."
   [recipient-ids :- [:sequential ms/PositiveInt]]
   (when (seq recipient-ids)
     (notification.db/delete-recipients! (vec recipient-ids)))

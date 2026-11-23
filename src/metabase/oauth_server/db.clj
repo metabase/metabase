@@ -2,6 +2,7 @@
   "Application database queries for the OAuth server module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
@@ -91,12 +92,7 @@
 
 (mu/defn insert-client-event!
   "Insert the OAuthClientEvent `row`, returning the number inserted."
-  [row :- [:map {:closed true}
-           [:id              {:optional true} ms/PositiveInt]
-           [:oauth_client_id {:optional true} [:maybe ms/PositiveInt]]
-           [:user_id         {:optional true} [:maybe ::lib.schema.id/user]]
-           [:event_type      {:optional true} [:maybe [:or :keyword :string]]]
-           [:created_at      {:optional true} [:maybe ms/TemporalInstant]]]]
+  [row :- (mut/optional-keys ::oauth-server.schema/oauth-client-event.update [:id])]
   (t2/insert! :model/OAuthClientEvent row))
 
 (mu/defn oauth-client
@@ -111,7 +107,7 @@
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."
-  [row :- ::oauth-server.schema/oauth-authorization-code.update]
+  [row :- (mut/dissoc ::oauth-server.schema/oauth-authorization-code.update :id)]
   (t2/insert! :model/OAuthAuthorizationCode row))
 
 (mu/defn authorization-code
@@ -131,7 +127,7 @@
 
 (mu/defn insert-access-token!
   "Insert the OAuthAccessToken `row`, returning the number inserted."
-  [row :- ::oauth-server.schema/oauth-access-token.update]
+  [row :- (mut/dissoc ::oauth-server.schema/oauth-access-token.update :id)]
   (t2/insert! :model/OAuthAccessToken row))
 
 (mu/defn unrevoked-access-token
@@ -141,7 +137,7 @@
 
 (mu/defn insert-refresh-token!
   "Insert the OAuthRefreshToken `row`, returning the number inserted."
-  [row :- ::oauth-server.schema/oauth-refresh-token.update]
+  [row :- (mut/dissoc ::oauth-server.schema/oauth-refresh-token.update :id)]
   (t2/insert! :model/OAuthRefreshToken row))
 
 (mu/defn unrevoked-refresh-token

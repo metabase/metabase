@@ -164,8 +164,8 @@
   [pulse_id (update-vals (select-keys pulse-channel schedule-columns) #(if (keyword? %) (name %) %))])
 
 (defn- update-triggers!
-  "Add the `channels` to, or remove them from, their SendPulse triggers, one update per pulse and schedule. `op` is
-  `:add-pc-ids` or `:remove-pc-ids`."
+  "Add the `channels` to their SendPulse triggers when `op` is `:add-pc-ids`, or remove them when it is
+  `:remove-pc-ids`, one update per pulse and schedule."
   [op channels]
   (doseq [[[pulse-id schedule] group] (group-by trigger-group-key channels)]
     (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id schedule op (into #{} (map :id) group))))
@@ -187,7 +187,6 @@
   [:merge
    ::pulse.schema/pulse-channel.update
    [:map {:closed true}
-    [:id         ms/PositiveInt]
     [:recipients {:optional true} [:maybe [:sequential ::pulse.schema/pulse-channel.recipient]]]]])
 
 (defn- user-ids-and-emails
@@ -309,7 +308,7 @@
      :schedule_frame (when (= schedule_type :monthly)
                        schedule_frame)}))
 
-(defn check-new-pulse-channels!
+(defn check-new-pulse-channels
   "Throws what inserting the PulseChannels of `rows`, rows of [[create-pulse-channels!]] whose Pulse need not exist yet,
   would throw, for the first that is invalid."
   [rows]
@@ -336,8 +335,9 @@
       channels)))
 
 (mu/defn delete-pulse-channels! :- :boolean
-  "Delete the PulseChannels with `channel-ids` and remove them from their SendPulse triggers, and return whether there
-  were any. Does not archive the Pulses left without a channel: see [[metabase.pulse.models.pulse/remove-pulse-channels!]]."
+  "Delete the PulseChannels with `channel-ids` and remove them from their SendPulse triggers, returning whether there
+  were any, without archiving the Pulses left without a channel, which
+  [[metabase.pulse.models.pulse/remove-pulse-channels!]] does."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (boolean
    (when (seq channel-ids)
