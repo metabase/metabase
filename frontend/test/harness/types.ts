@@ -99,6 +99,10 @@ export type FileDone = {
   file: string;
   durationMs: number;
   result: FileResult;
+  /**
+   * The files that its worker ran before this one, in order.
+   */
+  earlierFiles: string[];
 };
 
 export type MessageToWorker = { type: "run"; file: string } | { type: "stop" };
