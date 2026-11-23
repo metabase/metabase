@@ -46,7 +46,7 @@ export function DataAppFrame({
   className,
   style,
 }: DataAppFrameProps) {
-  const { iframeRef, iframeKey, src, error } = useDataAppFrame({
+  const { iframeRef, src, error } = useDataAppFrame({
     path,
     slug,
     isPathControlled,
@@ -64,7 +64,6 @@ export function DataAppFrame({
 
   return (
     <iframe
-      key={iframeKey}
       ref={iframeRef}
       src={src}
       className={className}

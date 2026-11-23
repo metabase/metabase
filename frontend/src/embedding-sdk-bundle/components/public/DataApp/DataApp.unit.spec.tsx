@@ -787,42 +787,6 @@ describe("DataApp", () => {
     ]);
   });
 
-  it("loads a new iframe when authentication fails before a route change renders", async () => {
-    let setHostPath: (path: string) => void = () => {};
-
-    function HostWithPathSetter() {
-      const [path, setPath] = useState("boba-hq");
-      setHostPath = setPath;
-
-      return <DataApp path={path} />;
-    }
-
-    const { iframe } = renderFrame(<HostWithPathSetter />);
-    message(iframe, "metabase.embed.iframeReady");
-
-    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
-
-    // the route change has not rendered when authentication fails
-    await act(async () => {
-      window.dispatchEvent(
-        messageEvent(iframe, "metabase.embed.requestSessionToken"),
-      );
-      setHostPath("boba-hq/orders/42");
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    const nextIframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
-    expect(nextIframe).not.toBe(iframe);
-
-    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
-    message(nextIframe, "metabase.embed.iframeReady");
-
-    expect(postMessage).toHaveBeenCalledWith(
-      navigateMessage("boba-hq/orders/42"),
-      ORIGIN,
-    );
-  });
-
   it("shows an error when the provider cannot refresh the session", async () => {
     requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
 
