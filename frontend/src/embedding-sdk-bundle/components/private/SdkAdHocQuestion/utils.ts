@@ -5,8 +5,7 @@ import type Question from "metabase-lib/v1/Question";
 
 function isNativeOnlyQuestion(question: Question): boolean {
   try {
-    const query = question.query();
-    return Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
+    return Lib.isNativeOnlyQuery(question.query());
   } catch {
     // A card that cannot be read as a query is left for the question loader to report.
     return false;

@@ -66,10 +66,11 @@ export const datasetApi = Api.injectEndpoints({
       serializeQueryArgs: ({ queryArgs }) =>
         Lib.canonicalizeLibUuids(queryArgs),
       providesTags: () => provideAdhocDatasetTags(),
-      // Dataset results can be large and the cache key is the full
-      // DatasetQuery, so cross-caller cache hits are rare. Evict
-      // immediately on unsubscribe to match the legacy fetch-and-discard
-      // behavior used by the imperative `runAdhocDatasetQuery` runner.
+      // Dataset results can be large, so evict immediately on unsubscribe
+      // to match the legacy fetch-and-discard behavior used by the
+      // imperative `runAdhocDatasetQuery` runner. Callers subscribed at
+      // the same time still share an entry when their queries differ only
+      // in Lib UUIDs (see `serializeQueryArgs`).
       keepUnusedDataFor: 0,
     }),
     getAdhocPivotQuery: builder.query<

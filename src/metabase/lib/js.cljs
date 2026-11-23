@@ -2010,6 +2010,14 @@
   [database-id metadata inner-query]
   (lib.core/native-query (metadataProvider database-id metadata) inner-query))
 
+(defn ^:export native-only-query?
+  "Whether `a-query` is a single native stage and nothing else. False for a query with MBQL stages after a native first
+  stage, which `isNative` in [[display-info]] is true for.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/native-only-query? a-query))
+
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.
 

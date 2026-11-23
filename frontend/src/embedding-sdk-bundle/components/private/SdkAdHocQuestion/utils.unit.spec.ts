@@ -33,16 +33,6 @@ describe("resolveQuestionId", () => {
     expect(resolveQuestionId(undefined, STRUCTURED_QUESTION)).toBeNull();
   });
 
-  it("returns null for a structured stage on top of a native stage", () => {
-    const query = Lib.appendStage(
-      Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
-    );
-
-    expect(
-      resolveQuestionId(undefined, createQuestion(Lib.toJsQuery(query))),
-    ).toBeNull();
-  });
-
   it("returns numeric ID for a saved question slug", () => {
     expect(
       resolveQuestionId("109-days-when-orders-were-added", undefined),

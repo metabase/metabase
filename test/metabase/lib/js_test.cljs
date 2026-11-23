@@ -208,6 +208,15 @@
            (#'lib.js/template-tags-js->cljs
             #js [#js {"name" "tag", "display-name" "Tag", "type" "number", "widget-type" "number/="}])))))
 
+(deftest ^:parallel native-only-query?-test
+  (let [native-query (lib.js/native-query (:id meta/database) meta/metadata-provider "select 1")]
+    (testing "a single native stage"
+      (is (true? (lib.js/native-only-query? native-query))))
+    (testing "MBQL stages after a native first stage"
+      (is (false? (lib.js/native-only-query? (lib/append-stage native-query)))))
+    (testing "an MBQL query"
+      (is (false? (lib.js/native-only-query? (lib.tu/venues-query)))))))
+
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
   (is (false? (lib.js/column-metadata? 1))))
