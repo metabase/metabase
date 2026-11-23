@@ -104,16 +104,15 @@ export function replaceClause(
 }
 
 /**
- * The UUID of a clause in its query. It tells apart clauses that are otherwise equal.
+ * Whether both are the same clause of a query. It compares identity, not content: two `Count()`
+ * aggregations in one query are different clauses.
  *
- * UUIDs are not stable. Replacing a clause, for example to rename or edit it, gives it a new UUID,
- * and replacing a clause that it refers to can too. Converting a legacy MBQL query makes new UUIDs.
- *
- * Use a UUID only to find a clause again after short-lived changes, and expect that no clause has
- * it anymore.
+ * Use it to find a clause again in a later version of the same query in memory. Replacing a clause,
+ * for example to rename or edit it, makes a different clause, and replacing a clause that it refers
+ * to can too. The answer does not hold across a reload of the query.
  */
-export function clauseUuid(clause: Clause): string {
-  return ML.clause_uuid(clause);
+export function isSameClause(clause: Clause, otherClause: Clause): boolean {
+  return ML.same_clause_QMARK_(clause, otherClause);
 }
 
 export function swapClauses(

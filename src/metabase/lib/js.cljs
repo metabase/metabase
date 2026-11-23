@@ -736,18 +736,20 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
-(defn ^:export clause-uuid
-  "Returns the `:lib/uuid` of `a-clause`, such as an aggregation, breakout, custom expression, filter, or order by.
+(defn ^:export same-clause?
+  "Whether `a-clause` and `other-clause` are the same clause of a query, such as an aggregation, breakout, custom
+  expression, filter, or order by. It compares identity, not content: two `Count()` aggregations in one query are
+  different clauses.
 
-  Each clause in a query has its own UUID, so it tells apart clauses that are otherwise equal.
-
-  UUIDs are not stable. Replacing a clause, for example to rename or edit it, gives it a new UUID, and replacing a
-  clause that it refers to can too. Converting a legacy MBQL query makes new UUIDs. Use a UUID only to find a clause
-  again after short-lived changes, and expect that no clause has it anymore.
+  Use it to find a clause again in a later version of the same query in memory, after other clauses changed. Replacing
+  a clause, for example to rename or edit it, makes a different clause, and replacing a clause that it refers to can
+  too. The answer does not hold across a reload of the query.
 
   > **Code health:** Healthy"
-  [a-clause]
-  (lib.options/uuid a-clause))
+  [a-clause other-clause]
+  (let [clause-uuid (lib.options/uuid a-clause)]
+    (and (some? clause-uuid)
+         (= clause-uuid (lib.options/uuid other-clause)))))
 
 (defn- -unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.

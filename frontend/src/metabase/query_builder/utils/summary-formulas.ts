@@ -24,7 +24,7 @@ export function makeSummaryFormula(
   return {
     stageIndex: index,
     name,
-    uuid: Lib.clauseUuid(expression),
+    clause: expression,
   };
 }
 
@@ -34,7 +34,7 @@ export function reconcileSummaryFormulas(
 ): SummaryGeneratedExpression[] {
   return formulas.filter((formula) => {
     const current = makeSummaryFormula(query, formula.stageIndex, formula.name);
-    if (!current || current.uuid !== formula.uuid) {
+    if (!current || !Lib.isSameClause(current.clause, formula.clause)) {
       return false;
     }
     return Lib.breakouts(query, formula.stageIndex).some((breakout) => {

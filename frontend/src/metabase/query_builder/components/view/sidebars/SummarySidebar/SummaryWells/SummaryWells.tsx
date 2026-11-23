@@ -41,7 +41,7 @@ type SummaryWellsProps = {
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
     | null;
-  editingFormulaUuid?: string;
+  editingFormulaClause?: SummaryFormulaClause;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
@@ -53,13 +53,15 @@ export function SummaryWells({
   sections,
   formulaInputs,
   draftFormula,
-  editingFormulaUuid,
+  editingFormulaClause,
   draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
   const isEditing = (clause?: SummaryFormulaClause) =>
-    !isEmpty(clause) && Lib.clauseUuid(clause) === editingFormulaUuid;
+    !isEmpty(clause) &&
+    !isEmpty(editingFormulaClause) &&
+    Lib.isSameClause(clause, editingFormulaClause);
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],

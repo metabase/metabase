@@ -18,6 +18,15 @@ type Options = SummaryQueryChangeOptions & {
   generatedExpressions: SummaryGeneratedExpression[];
 };
 
+function isSameFormula(
+  formula: SummaryGeneratedExpression | undefined,
+  otherFormula: SummaryGeneratedExpression,
+) {
+  return (
+    isNotNull(formula) && Lib.isSameClause(formula.clause, otherFormula.clause)
+  );
+}
+
 export function updateSummaryFormula({
   query,
   nextQuery,
@@ -35,7 +44,7 @@ export function updateSummaryFormula({
       if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
-      // a rename or an edit gives the changed formula a new UUID
+      // a rename or an edit replaces the changed formula with a new clause
       const name =
         formula.name === renamedFormula?.name
           ? renamedFormula.nextName
@@ -66,7 +75,10 @@ export function updateSummaryFormula({
     (formula) =>
       formula.stageIndex === index &&
       !groupingNames.includes(formula.name) &&
-      makeSummaryFormula(nextQuery, index, formula.name)?.uuid === formula.uuid,
+      isSameFormula(
+        makeSummaryFormula(nextQuery, index, formula.name),
+        formula,
+      ),
   );
   const cleanedQuery = removed.reduce((currentQuery, formula) => {
     const expression = Lib.expressions(currentQuery, index).find(

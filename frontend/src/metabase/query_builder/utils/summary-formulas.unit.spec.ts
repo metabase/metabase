@@ -36,7 +36,7 @@ it("preserves formula ownership across query serialization but rejects a changed
   expect(formula).toEqual({
     stageIndex: 0,
     name: "Generated",
-    uuid: expect.any(String),
+    clause: expect.anything(),
   });
   if (!formula) {
     return;

@@ -46,7 +46,7 @@ export function useSummaryFormulaBar({
   const editedFormula = useMemo(
     () =>
       draft?.kind === "edit"
-        ? findSummaryFormula(query, stageIndex, draft.wellId, draft.uuid)
+        ? findSummaryFormula(query, stageIndex, draft.wellId, draft.clause)
         : null,
     [query, stageIndex, draft],
   );
@@ -100,19 +100,18 @@ export function useSummaryFormulaBar({
     clause: SummaryFormulaClause,
     input: HTMLInputElement | null,
   ) => {
-    const uuid = Lib.clauseUuid(clause);
-    if (openFormula?.uuid === uuid) {
+    if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
       editorSource.focus();
       return;
     }
-    const formula = findSummaryFormula(query, stageIndex, wellId, uuid);
+    const formula = findSummaryFormula(query, stageIndex, wellId, clause);
     if (!formula) {
       return;
     }
     const key = open(input, {
       kind: "edit",
       wellId,
-      uuid,
+      clause,
       source: "",
       original: { status: "loading" },
     });
@@ -151,7 +150,7 @@ export function useSummaryFormulaBar({
       update: (source) => editorSource.updateNew(wellId, source),
       edit: (clause, input) => editFormula(wellId, clause, input),
       cancelEdit: (clause) => {
-        if (openFormula?.uuid === Lib.clauseUuid(clause)) {
+        if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
           close();
         }
       },
@@ -191,7 +190,7 @@ export function useSummaryFormulaBar({
             onCancel: close,
           }
         : null,
-    editingFormulaUuid: openFormula?.uuid,
+    editingFormulaClause: openFormula?.clause,
     formulaInputs: {
       values: getFormulaInput("values"),
       columns: getFormulaInput("columns"),

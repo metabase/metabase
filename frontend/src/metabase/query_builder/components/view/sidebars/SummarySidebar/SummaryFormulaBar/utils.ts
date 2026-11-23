@@ -9,7 +9,7 @@ import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expressio
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
 import { getDimensionItems, getValueItems, isFormulaValue } from "../utils";
 
-import type { SummaryFormula } from "./types";
+import type { SummaryFormula, SummaryFormulaClause } from "./types";
 
 function findFormulaColumn(
   query: Lib.Query,
@@ -62,7 +62,6 @@ function getValueFormulas(
       {
         wellId: "values",
         clause: item.clause,
-        uuid: Lib.clauseUuid(item.clause),
         index,
         name: isNamed ? displayName : undefined,
       },
@@ -74,20 +73,18 @@ function getDimensionFormulas(
   query: Lib.Query,
   stageIndex: number,
 ): SummaryFormula[] {
-  const expressionUuids = Lib.expressions(query, stageIndex).map(
-    Lib.clauseUuid,
-  );
+  const expressions = Lib.expressions(query, stageIndex);
   return getDimensionItems(query, stageIndex).flatMap(({ expression }) => {
     if (!expression) {
       return [];
     }
-    const uuid = Lib.clauseUuid(expression);
     return [
       {
         wellId: "columns",
         clause: expression,
-        uuid,
-        index: expressionUuids.indexOf(uuid),
+        index: expressions.findIndex((clause) =>
+          Lib.isSameClause(clause, expression),
+        ),
         name: Lib.displayInfo(query, stageIndex, expression).displayName,
       },
     ];
@@ -99,13 +96,15 @@ export function findSummaryFormula(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
-  uuid: string,
+  clause: SummaryFormulaClause,
 ): SummaryFormula | null {
   const formulas =
     wellId === "values"
       ? getValueFormulas(query, stageIndex)
       : getDimensionFormulas(query, stageIndex);
-  return formulas.find((formula) => formula.uuid === uuid) ?? null;
+  return (
+    formulas.find((formula) => Lib.isSameClause(formula.clause, clause)) ?? null
+  );
 }
 
 function getFormulaBreakouts(
