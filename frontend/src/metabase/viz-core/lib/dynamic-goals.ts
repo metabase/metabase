@@ -380,7 +380,6 @@ export function getGoalErrors(results: GoalValueResult[]): GoalRefError[] {
   return results.flatMap((result) => (result.error ? [result.error] : []));
 }
 
-/** The entities `values` read, one per entity, in a stable order. */
 export function getGoalSources(
   values: (GoalValue | null | undefined)[],
 ): GoalForeignEntityRef[] {
@@ -395,7 +394,6 @@ export function getGoalSources(
   );
 }
 
-/** The entities the goals `card` shows read. */
 export function getChartGoalSources(card: GoalCard): GoalForeignEntityRef[] {
   return getGoalSources(
     getGoalValues(
