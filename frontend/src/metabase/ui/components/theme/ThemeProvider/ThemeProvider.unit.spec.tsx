@@ -56,17 +56,21 @@ describe.skip("ThemeProvider", () => {
   });
 });
 
+interface SetupOpts {
+  theme?: MantineThemeOverride;
+}
+
 describe("ThemeProvider theme override", () => {
   const METABASE_THEME = getThemeOverrides();
 
-  const readTheme = (theme?: MantineThemeOverride) => {
+  const readTheme = ({ theme }: SetupOpts = {}) => {
     let result: MantineTheme | undefined;
     const Reader = () => {
       result = useMantineTheme();
       return null;
     };
 
-    render(
+    renderWithoutProviders(
       <ThemeProvider theme={theme}>
         <Reader />
       </ThemeProvider>,
@@ -95,9 +99,11 @@ describe("ThemeProvider theme override", () => {
   it("replaces primitives and colour tuples from the override", () => {
     const tuple = getColorShades("rgb(12, 34, 56)");
     const theme = readTheme({
-      primaryColor: "text-primary",
-      fontFamily: "Comic Sans MS",
-      colors: { "text-primary": tuple },
+      theme: {
+        primaryColor: "text-primary",
+        fontFamily: "Comic Sans MS",
+        colors: { "text-primary": tuple },
+      },
     });
 
     expect(theme.primaryColor).toBe("text-primary");
@@ -106,7 +112,7 @@ describe("ThemeProvider theme override", () => {
   });
 
   it("keeps Metabase values the override does not mention", () => {
-    const theme = readTheme({ fontFamily: "Comic Sans MS" });
+    const theme = readTheme({ theme: { fontFamily: "Comic Sans MS" } });
 
     expect(theme.fontSizes.xl).toBe(METABASE_THEME.fontSizes!.xl);
     expect(theme.primaryColor).toBe(METABASE_THEME.primaryColor);
@@ -121,11 +127,13 @@ describe("ThemeProvider theme override", () => {
     const tuple = getColorShades("rgb(12, 34, 56)");
     const portalProps = { target: "#sdk-root" };
     const theme = readTheme({
-      fontFamily: "Comic Sans MS",
-      colors: { "text-primary": tuple },
-      other: { popover: { zIndex: 9999 } },
-      components: {
-        Tooltip: { defaultProps: { portalProps, events: { focus: false } } },
+      theme: {
+        fontFamily: "Comic Sans MS",
+        colors: { "text-primary": tuple },
+        other: { popover: { zIndex: 9999 } },
+        components: {
+          Tooltip: { defaultProps: { portalProps, events: { focus: false } } },
+        },
       },
     });
 
@@ -148,8 +156,7 @@ describe("ThemeProvider theme override", () => {
       withinPortal: true,
     });
   });
-  // `render` wraps the tree in another ThemeProvider, and Mantine merges a nested
-  // provider's theme into its parent's itself. These cover a single provider.
+
   describe("as the only provider", () => {
     it("keeps an object-form primaryShade from the override", () => {
       const primaryShade = { light: 4, dark: 6 } as const;

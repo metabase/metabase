@@ -8,8 +8,9 @@ import { Icon } from "../../icons";
 import { SegmentedControl, type SegmentedControlItem } from "./index";
 
 jest.mock("metabase/utils/focus-visible", () => ({
-  ...jest.requireActual("metabase/utils/focus-visible"),
-  isFocusVisible: jest.fn(() => false),
+  isFocusVisible: jest.fn<boolean, Parameters<typeof isFocusVisible>>(
+    () => false,
+  ),
 }));
 
 type Value = "code" | "preview";
