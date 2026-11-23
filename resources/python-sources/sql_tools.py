@@ -566,44 +566,50 @@ def _two_counts(first, second, with_=None):
     return select
 
 
-# The dialects whose databases run the marker join of `_left_join_counts`, besides the default dialect.
-_JOIN_MARKER_DIALECTS = {"mysql", "postgres"}
+_JOIN_COMPARISONS = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
 
 
-def _left_join_counts(from_, joins, with_, dialect):
-    """The output and matched counts of a chain ending in a LEFT join, from one evaluation of it, or None.
+def _conjuncts(node):
+    """The operands of the top-level ANDs in `node`."""
+    if isinstance(node, exp.And):
+        return _conjuncts(node.this) + _conjuncts(node.expression)
+    return [node]
 
-    The joined source is cross joined with a one-row relation holding a marker, which is NULL on a row with no match.
-    The source itself stays as written, so its hidden columns and qualified names still resolve.
-    Returns None for a dialect not known to run this, a join with anything beyond a side and a condition (a NATURAL
-    join's keys could include the marker), and a query that already uses the marker's names.
+
+def _on_counts_matches(join, strategy, dialect):
+    """Whether counting the rows where the join's ON clause holds counts exactly the rows that found a match.
+
+    The clause must be an AND of comparisons between qualified columns and literals, so it is safe to evaluate again.
+    It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
+    ClickHouse fills unmatched columns with defaults rather than NULL.
     """
-    join = joins[-1]
-    names = {i.name.lower() for node in [from_, *joins] for i in node.find_all(exp.Identifier)}
-    if (
-        # `is not None` first: a null passed in from the JVM is not equal to the `None` a set could hold.
-        (dialect is not None and dialect not in _JOIN_MARKER_DIALECTS)
-        or not isinstance(join.this, (exp.Table, exp.Subquery))
-        or _set_args(join) - {"this", "on", "using", "side", "kind"}
-        or (join.kind or "").upper() not in ("", "OUTER")
-        or names & {"mb_marker", "mb_matched"}
-    ):
-        return None
-    marker = exp.Subquery(
-        this=exp.Select(expressions=[exp.alias_(exp.Literal.number(1), "mb_matched")]),
-        alias=exp.TableAlias(this=exp.to_identifier("mb_marker")),
-    )
-    source = join.this.copy()
-    source.set("joins", [exp.Join(this=marker, kind="CROSS")])
-    last = join.copy()
-    last.set("this", exp.Subquery(this=source))
+    on = join.args.get("on")
+    alias = join.this.args.get("alias")
+    identifier = alias.this if alias is not None and alias.this is not None else join.this.this
+    if on is None or dialect == "clickhouse" or not isinstance(identifier, exp.Identifier):
+        return False
+    joined = _effective_name(identifier, dialect)
+    columns = []
+    for conjunct in _conjuncts(on):
+        if not isinstance(conjunct, _JOIN_COMPARISONS):
+            return False
+        for operand in (conjunct.this, conjunct.expression):
+            if isinstance(operand, exp.Column) and isinstance(operand.args.get("table"), exp.Identifier):
+                columns.append(_effective_name(operand.args["table"], dialect))
+            elif not isinstance(operand, exp.Literal):
+                return False
+    from_joined = joined in columns
+    from_earlier = any(column != joined for column in columns)
+    return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
+
+
+def _on_counts(from_, joins, with_):
+    """`SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from_> <joins>`."""
+    matched = exp.Case(ifs=[exp.If(this=joins[-1].args["on"].copy(), true=exp.Literal.number(1))])
     select = exp.Select(
-        expressions=[
-            exp.alias_(exp.Count(this=exp.Star()), "n"),
-            exp.alias_(exp.Count(this=exp.column("mb_matched", table="mb_marker")), "m"),
-        ],
+        expressions=[exp.alias_(exp.Count(this=exp.Star()), "n"), exp.alias_(exp.Count(this=matched), "m")],
         from_=from_.copy(),
-        joins=[j.copy() for j in joins[:-1]] + [last],
+        joins=[j.copy() for j in joins],
     )
     if with_ is not None:
         select.set("with_", with_.copy())
@@ -621,8 +627,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
 
     For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
     and those where that last join found a match.
-    A LEFT join counts both from one evaluation of the chain where it can, and otherwise the second count comes from
-    the same chain with that join made INNER.
+    Both come from one evaluation of the chain when the ON clause alone identifies a match, and otherwise the second
+    count comes from the same chain with that join made INNER.
     Every other step query returns one count.
 
     Returns a JSON object.
@@ -630,7 +636,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
     A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
     A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
     Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
-    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `nested-join` and `parameters`.
+    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`
+    and `parameters`.
     Of several statements, only the first is read.
 
     Examples:
@@ -638,8 +645,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
         => '{"status": "ok", "from": {"source": "table", "table": [null, null, "a"], "alias": "a"},
              "base_sql": "SELECT COUNT(*) AS n FROM a",
              "steps": [{"source": "table", "table": [null, null, "b"], "alias": "b", "strategy": "left",
-                        "sql": "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM a
-                                LEFT JOIN (b CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON a.id = b.a_id"}]}'
+                        "sql": "SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = b.a_id THEN 1 END) AS m FROM a
+                                LEFT JOIN b ON a.id = b.a_id"}]}'
 
         join_steps("SELECT * FROM a, b")
         => '{"status": "unsupported", "reason": "comma-join"}'
@@ -687,8 +694,9 @@ def join_steps(sql: str, dialect: str = None) -> str:
             strategy = _join_step_strategy(join, dialect)
             step = dict(source, strategy=strategy)
             if strategy in ("left", "right", "full"):
-                query = _left_join_counts(from_, joins[:n], with_, dialect) if strategy == "left" else None
-                if query is None:
+                if _on_counts_matches(join, strategy, dialect):
+                    query = _on_counts(from_, joins[:n], with_)
+                else:
                     inner = join.copy()
                     inner.set("side", None)
                     if (inner.kind or "").upper() == "OUTER":

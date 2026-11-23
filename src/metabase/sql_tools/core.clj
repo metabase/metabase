@@ -323,7 +323,7 @@
   A comma join is refused as `:comma-join`, since its join condition would be in the WHERE clause.
   A query whose generated SQL would write or lock is refused as `:not-read-only`.
   The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
-  `:parameters`, `:large-literal-list` and `:unparseable`.
+  `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
 
   Always parses with sqlglot, so with Macaw selected it uses the default sqlglot backend."
   [driver       :- :keyword

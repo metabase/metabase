@@ -5,7 +5,9 @@
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Lateral Expressions$Parameter
+   (com.metabase.sqlglot.ast Expr Expressions$And Expressions$Column Expressions$EQ Expressions$GT Expressions$GTE
+                             Expressions$Identifier Expressions$LT Expressions$LTE Expressions$Lateral
+                             Expressions$Literal Expressions$NEQ Expressions$Parameter
                              Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
                              Expressions$Subquery Expressions$Table Expressions$TableSample Expressions$Values)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
@@ -155,48 +157,78 @@
       (ast/set-arg! inner "kind" nil))
     inner))
 
-(def ^:private marker-dialects
-  "The dialects whose databases run the marker join of [[left-join-counts]], the default dialect (nil) among them."
-  #{nil "mysql" "postgres"})
+(def ^:private join-comparisons
+  "The comparisons a join condition may be made of for its matches to be counted by evaluating it again."
+  [Expressions$EQ Expressions$GT Expressions$GTE Expressions$LT Expressions$LTE Expressions$NEQ])
 
-(defn- uses-marker-name?
-  "Whether any identifier under `nodes` is one of the marker's names."
-  [nodes]
-  (some #(#{"mb_marker" "mb_matched"} (ast/lower (ast/node-name %)))
-        (mapcat #(ast/find-all % Expressions$Identifier) nodes)))
+(defn- conjuncts
+  "The operands of the top-level ANDs in `node`."
+  [node]
+  (if (instance? Expressions$And node)
+    (into (conjuncts (ast/this node)) (conjuncts (ast/arg node "expression")))
+    [node]))
 
-(defn- left-join-counts
-  "The output and matched counts of a chain ending in a LEFT join, from one evaluation of it, or nil.
-  The joined source is cross joined with a one-row relation holding a marker, which is NULL on a row with no match.
-  Port of `_left_join_counts`."
-  [from-node chain with-node dialect]
-  (let [join (peek chain)]
-    (when-not (or (not (contains? marker-dialects dialect))
-                  (not (ast/instance-of-any? [Expressions$Table Expressions$Subquery] (ast/this join)))
-                  (not-every? #{"this" "on" "using" "side" "kind"} (set-args join))
-                  (not (#{"" "OUTER"} (upper-arg join "kind")))
-                  (uses-marker-name? (cons from-node chain)))
-      (let [one    (ast/create "Literal" {"this" "1", "is_string" false})
-            marker (ast/create "Subquery"
-                               {"this"  (ast/create "Select"
-                                                    {"expressions" [(ast/create "Alias"
-                                                                                {"this"  one
-                                                                                 "alias" (ast/to-identifier
-                                                                                          "mb_matched")})]})
-                                "alias" (ast/create "TableAlias" {"this" (ast/to-identifier "mb_marker")})})
-            source (doto (ast/copy (ast/this join))
-                     (ast/set-arg! "joins" [(ast/create "Join" {"this" marker, "kind" "CROSS"})]))
-            last'  (doto (ast/copy join)
-                     (ast/set-arg! "this" (ast/create "Subquery" {"this" source})))
-            count' (ast/create "Count" {"this" (ast/create "Column" {"this"  (ast/to-identifier "mb_matched")
-                                                                     "table" (ast/to-identifier "mb_marker")})})]
-        (with-clause
-          (ast/create "Select"
-                      {"expressions" [(count-star-as-n)
-                                      (ast/create "Alias" {"this" count', "alias" (ast/to-identifier "m")})]
-                       "from_"       (ast/copy from-node)
-                       "joins"       (conj (mapv ast/copy (pop chain)) last')})
-          with-node)))))
+(defn- on-columns
+  "The effective table names of the columns compared in the join condition `on`.
+  Returns nil unless `on` is an AND of comparisons between qualified columns and literals."
+  [on dialect]
+  (reduce (fn [tables conjunct]
+            (if-not (ast/instance-of-any? join-comparisons conjunct)
+              (reduced nil)
+              (reduce (fn [tables operand]
+                        (cond
+                          (and (instance? Expressions$Column operand)
+                               (instance? Expressions$Identifier (ast/arg operand "table")))
+                          (conj tables (effective-name (ast/arg operand "table") dialect))
+
+                          (instance? Expressions$Literal operand)
+                          tables
+
+                          :else
+                          (reduced nil)))
+                      tables
+                      [(ast/this conjunct) (ast/arg conjunct "expression")])))
+          []
+          (conjuncts on)))
+
+(defn- on-counts-matches?
+  "Whether counting the rows where the join's ON clause holds counts exactly the rows that found a match.
+  The clause must be safe to evaluate again, and compare a column from each side that can be NULL-extended.
+  ClickHouse fills unmatched columns with defaults rather than NULL.
+  Port of `_on_counts_matches`."
+  [join strategy dialect]
+  (let [on         (ast/arg join "on")
+        source     (ast/this join)
+        identifier (or (some-> (ast/arg source "alias") ast/this)
+                       (ast/this source))
+        columns    (when (and on
+                              (not= "clickhouse" dialect)
+                              (instance? Expressions$Identifier identifier))
+                     (on-columns on dialect))]
+    (when columns
+      (let [joined       (effective-name identifier dialect)
+            from-joined  (boolean (some #{joined} columns))
+            from-earlier (boolean (some #(not= joined %) columns))]
+        (case strategy
+          "left"  from-joined
+          "right" from-earlier
+          "full"  (and from-joined from-earlier))))))
+
+(defn- on-counts
+  "`SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from-node> <chain>`.
+  Port of `_on_counts`."
+  [from-node chain with-node]
+  (let [one     (ast/create "Literal" {"this" "1", "is_string" false})
+        matched (ast/create "Case" {"ifs" [(ast/create "If" {"this" (ast/copy (ast/arg (peek chain) "on"))
+                                                             "true" one})]})]
+    (with-clause
+      (ast/create "Select"
+                  {"expressions" [(count-star-as-n)
+                                  (ast/create "Alias" {"this"  (ast/create "Count" {"this" matched})
+                                                       "alias" (ast/to-identifier "m")})]
+                   "from_"       (ast/copy from-node)
+                   "joins"       (mapv ast/copy chain)})
+      with-node)))
 
 (defn- whole-query
   "`stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
@@ -282,12 +314,12 @@
                                strategy (step-strategy join dialect)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
-                                          (or (when (= "left" strategy)
-                                                (left-join-counts from-node chain with-node dialect))
-                                              (two-counts (count-select from-node chain)
-                                                          (count-select from-node
-                                                                        (conj (pop chain) (inner-variant join)))
-                                                          with-node))
+                                          (if (on-counts-matches? join strategy dialect)
+                                            (on-counts from-node chain with-node)
+                                            (two-counts (count-select from-node chain)
+                                                        (count-select from-node
+                                                                      (conj (pop chain) (inner-variant join)))
+                                                        with-node))
                                           (count-select from-node chain with-node))]
                            (assoc source :strategy strategy :sql (ast/sql query dialect))))
                        joins))})))

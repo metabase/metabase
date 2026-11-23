@@ -4,8 +4,8 @@
    Cards returned:
    - base-count: COUNT(*) with 0 joins
    - join-step-N: [output COUNT(*), matched COUNT(*)] for each join step. MBQL counts the matched rows with
-     COUNT(CASE WHEN join_condition THEN 1 END); native counts the rows of the same join chain with the last join made
-     INNER, which sql-tools generates.
+     COUNT(CASE WHEN join_condition THEN 1 END); native step queries come from sql-tools, which counts them the same way
+     when the condition allows it, and otherwise from the same join chain with the last join made INNER.
    - table-N-count: COUNT(*) for each joined table (right-row-count)
 
    FE derives from card results:

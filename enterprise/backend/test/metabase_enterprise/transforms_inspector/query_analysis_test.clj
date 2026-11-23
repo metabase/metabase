@@ -56,9 +56,9 @@
     (sql.u/quote-name driver/*driver* :field col-name)))
 
 (defn- join-steps-drivers
-  "The SQL drivers with left joins."
+  "The drivers a native transform runs on, whose join steps the inspector can show, and H2."
   []
-  (mt/normal-driver-select {:+parent :sql, :+features [:left-join]}))
+  (conj (mt/normal-driver-select {:+parent :sql, :+features [:left-join :transforms/table]}) :h2))
 
 (defn- make-native-transform
   [query]
@@ -168,7 +168,7 @@
         (is (= [[orders 0]] (step-counts result)))))))
 
 (deftest analyze-native-query-comma-join-has-no-join-structure-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
+  (mt/test-drivers (join-steps-drivers)
     (testing "a comma join is refused, since its condition is in the WHERE clause, and visited fields still resolve"
       (let [query  (lib/native-query
                     (mt/metadata-provider)
