@@ -1,6 +1,7 @@
 ## Tables and Fields record how a table is built: its role, its history (slowly changing dimension) and custom
-## property bindings, and which fields make up its grain. Every value column is nullable with no default and no
-## backfill, so an existing instance sees NULL everywhere.
+## property bindings, its grain (what one row is, as a noun) and which fields make up that grain, how its rows change
+## between loads, and the facets of each field (the roles it plays besides its semantic type). Every value column is
+## nullable with no default and no backfill, so an existing instance sees NULL everywhere.
 ##
 ## metabase_table_user_settings and metabase_field_user_settings carry the same columns to record what a user set.
 ## A user's NULL is indistinguishable from "not set", so each value column carries a `_set` flag recording that the
@@ -340,5 +341,173 @@ databaseChangeLog:
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: "Whether the user set attribute_scd_type, so a NULL attribute_scd_type overrides the sync value"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0hsxh4
+      author: metatyb
+      comment: Add facets to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: facets
+                  type: ${text.type}
+                  remarks: "JSON array of type/* keywords: the roles the field plays besides its semantic type"
+
+  - changeSet:
+      id: hebsk5
+      author: metatyb
+      comment: Add facets to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: facets
+                  type: ${text.type}
+                  remarks: "User-set facets for the Field"
+
+  - changeSet:
+      id: t5jy54
+      author: metatyb
+      comment: Add facets_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: facets_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set facets, so a NULL facets overrides the sync value"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: wq326t
+      author: metatyb
+      comment: Add grain to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: grain
+                  type: varchar(254)
+                  remarks: "What one row of the table is, as a noun, e.g. order line"
+
+  - changeSet:
+      id: lheiut
+      author: metatyb
+      comment: Add grain to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: grain
+                  type: varchar(254)
+                  remarks: "User-set grain for the Table"
+
+  - changeSet:
+      id: 8l2tad
+      author: metatyb
+      comment: Add grain_set to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: grain_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set grain, so a NULL grain overrides the sync value"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: t1gzih
+      author: metatyb
+      comment: Add mutability to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: mutability
+                  type: varchar(32)
+                  remarks: "How the table's rows change between loads, e.g. append_only or mutable"
+
+  - changeSet:
+      id: xezvgd
+      author: metatyb
+      comment: Add load_strategy to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: load_strategy
+                  type: varchar(32)
+                  remarks: "How the loader writes the table, e.g. full or incremental"
+
+  - changeSet:
+      id: k0rc5w
+      author: metatyb
+      comment: Add mutability to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: mutability
+                  type: varchar(32)
+                  remarks: "User-set mutability for the Table"
+
+  - changeSet:
+      id: ag6hhl
+      author: metatyb
+      comment: Add load_strategy to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: load_strategy
+                  type: varchar(32)
+                  remarks: "User-set load_strategy for the Table"
+
+  - changeSet:
+      id: 7kch39
+      author: metatyb
+      comment: Add mutability_set to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: mutability_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set mutability, so a NULL mutability overrides the sync value"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: qpwu5p
+      author: metatyb
+      comment: Add load_strategy_set to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: load_strategy_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set load_strategy, so a NULL load_strategy overrides the sync value"
                   constraints:
                     nullable: false
