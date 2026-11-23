@@ -46,7 +46,8 @@
    :table-rows-sample
    :transform-inspector
    :slackbot
-   :exploration])
+   :exploration
+   :filter-stats])
 
 (mr/def ::hash
   #?(:clj bytes?
