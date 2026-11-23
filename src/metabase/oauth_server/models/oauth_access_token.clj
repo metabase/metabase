@@ -39,13 +39,10 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
   (oauth-server.db/revoke-access-tokens-for-users! user-ids))
 
-(mu/defn delete-oauth-access-tokens! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the OAuthAccessTokens with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-oauth-access-tokens! :- :nil
+  "Delete the OAuthAccessTokens with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp oauth-server.db/delete-access-tokens! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/OAuthAccessToken ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -2,8 +2,6 @@
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.agent-api.schema :as agent-api.schema]
-   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -64,18 +62,7 @@
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
 
-(mu/defn insert-call-logs!
-  "Insert the AgentApiCallLog `rows` with one statement for each set of columns they have, and return the new instances
-  in the order of `rows`."
-  [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
-  (app-db/insert-returning-instances! :model/AgentApiCallLog rows))
-
 (mu/defn call-log-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the AgentApiCallLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]})))
-
-(mu/defn delete-call-logs!
-  "Delete the AgentApiCallLogs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/AgentApiCallLog :id [:in [:auto/param (vec ids)]]))

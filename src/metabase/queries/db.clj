@@ -181,11 +181,6 @@
   (mdb/update-grouped! :model/Card updates)
   nil)
 
-(mu/defn delete-cards!
-  "Delete the Cards with `card-ids`, returning the number deleted."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! :model/Card :id [:in card-ids]))
-
 (mu/defn collections-for-content-checks
   "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`, by ID."
   [collection-ids :- [:set ::lib.schema.id/collection]]

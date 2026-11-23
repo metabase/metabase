@@ -158,11 +158,6 @@
   (app-db/update-grouped! :model/Action updates)
   nil)
 
-(mu/defn delete-actions!
-  "Delete the Actions with `action-ids`, returning the number deleted."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/delete! :model/Action :id [:in action-ids]))
-
 (mu/defn insert-query-actions!
   "Insert the QueryAction `rows` and return the inserted instances."
   [rows :- [:sequential ::actions.schema/query-action.create]]

@@ -24,13 +24,10 @@
    row       :- ::mcp.schema/mcp-query-handle.create]
   (mcp.db/insert-query-handle! handle-id row))
 
-(mu/defn delete-mcp-query-handles! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the McpQueryHandles with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-mcp-query-handles! :- :nil
+  "Delete the McpQueryHandles with `ids` in one transaction."
   [ids :- [:sequential :string]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp mcp.db/delete-query-handles! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/McpQueryHandle ids {}))
 
 (mu/defn delete-mcp-query-handles-for-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id` through the core

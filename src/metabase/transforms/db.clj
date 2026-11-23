@@ -113,12 +113,6 @@
   [updates :- [:sequential ::transforms.schema/transform.update]]
   (mdb/update-grouped! :model/Transform updates))
 
-(mu/defn delete-transforms! :- :nil
-  "Delete the Transforms with `transform-ids`."
-  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
-  (t2/delete! :model/Transform :id [:in [:auto/param transform-ids]])
-  nil)
-
 (mu/defn transform-ids-for-source-databases :- [:sequential ::lib.schema.id/transform]
   "The ids of the Transforms reading from the Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
@@ -155,16 +149,6 @@
         (t2/query {:select [:id :name]
                    :from   [(t2/table-name :model/TransformTag)]})))
 
-(mu/defn tags-by-ids :- [:sequential ::transforms.schema/transform-tag]
-  "The TransformTags with `tag-ids`."
-  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/TransformTag :id [:in [:auto/param tag-ids]]))
-
-(mu/defn insert-tags! :- [:sequential ::transforms.schema/transform-tag]
-  "Insert the TransformTag `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::transforms.schema/transform-tag.create]]
-  (mdb/insert-returning-instances! :model/TransformTag rows))
-
 (mu/defn built-in-value-clause :- [:fn vector?]
   "The expression that keeps `column`, a column of a TransformTag or TransformJob, of a custom row and gives a built-in
   row the value in `built-in-values`, a map from `built_in_type` to its translated value, the same expression for every
@@ -174,17 +158,6 @@
   (into [:case]
         (concat (mapcat (fn [[built-in-type value]] [[:= :built_in_type built-in-type] value]) built-in-values)
                 [:else column])))
-
-(mu/defn update-tags! :- :nil
-  "Apply to the TransformTag rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::transforms.schema/transform-tag.update]]
-  (mdb/update-grouped! :model/TransformTag updates))
-
-(mu/defn delete-tags! :- :nil
-  "Delete the TransformTags with `tag-ids`."
-  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TransformTag :id [:in [:auto/param tag-ids]])
-  nil)
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
@@ -269,11 +242,6 @@
   []
   (t2/select-pks-set :model/TransformJob :active false))
 
-(mu/defn jobs-by-ids :- [:sequential ::transforms.schema/transform-job]
-  "The TransformJobs with `job-ids`."
-  [job-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/TransformJob :id [:in [:auto/param job-ids]]))
-
 (mu/defn insert-jobs! :- [:sequential ::transforms.schema/transform-job]
   "Insert the TransformJob `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.create]]
@@ -283,12 +251,6 @@
   "Apply to the TransformJob rows their changes in `updates`, each the `:id` of a row and the columns to change."
   [updates :- [:sequential ::transforms.schema/transform-job.update]]
   (mdb/update-grouped! :model/TransformJob updates))
-
-(mu/defn delete-jobs! :- :nil
-  "Delete the TransformJobs with `job-ids`."
-  [job-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TransformJob :id [:in [:auto/param job-ids]])
-  nil)
 
 (mu/defn job-snapshot
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."

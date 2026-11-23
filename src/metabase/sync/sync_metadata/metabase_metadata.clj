@@ -65,7 +65,8 @@
               field-id (lib/normalize ::warehouse-schema.schema/field.update {k value})))
            (sync.updates/update-table-unless-user-set!
             table-id (lib/normalize ::warehouse-schema.schema/table.update {k value}))))
-       (database/update-databases! [{:id (u/the-id database) k value}])))))
+       (do (database/update-databases! [{:id (u/the-id database) k value}])
+           true)))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other

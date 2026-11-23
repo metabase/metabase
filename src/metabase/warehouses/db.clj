@@ -67,11 +67,6 @@
   [rows :- [:sequential :map]]
   (mdb/update-grouped! :model/Database rows))
 
-(mu/defn delete-databases!
-  "Delete the Databases with `database-ids`, returning the number deleted."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/delete! :model/Database :id [:in database-ids]))
-
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
   []

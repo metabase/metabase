@@ -238,72 +238,79 @@
           by-pk   (u/index-by pk-of (t2/select model :toucan/pk [:in pks]))]
       (mapv by-pk pks))))
 
+(defn- check-batched-opts
+  "Throw when `opts` of a batched write has a key that is none of `known`."
+  [opts known]
+  (when-let [unknown (seq (remove known (keys opts)))]
+    (throw (ex-info (format "Unknown options of a batched write: %s" (pr-str (vec unknown)))
+                    {:unknown (vec unknown), :known known}))))
+
 (defn create-batched!
-  "Insert `rows` of `model` in batches in one transaction and return the inserted rows: for each batch `check-fn` throws
-  when its rows cannot be inserted and `prepare-fn` returns the rows to insert, and `publish-fn` gets every inserted row
-  once."
-  [model rows {:keys [check-fn prepare-fn publish-fn]}]
+  "Insert `rows` of `model` in batches in one transaction and return the inserted rows: `before-create` gets each batch
+  before its insert, throws when it cannot be inserted and returns the rows to insert, or nil for the batch as given,
+  and `after-create` gets every inserted row once."
+  [model rows {:keys [before-create after-create] :as opts}]
+  (check-batched-opts opts #{:before-create :after-create})
   (t2/with-transaction [_conn]
     (let [created (into []
                         (mapcat (fn [batch]
                                   (let [batch (vec batch)]
-                                    (when check-fn
-                                      (check-fn batch))
-                                    (insert-returning-instances! model (cond-> batch prepare-fn prepare-fn)))))
+                                    (insert-returning-instances! model (or (when before-create (before-create batch))
+                                                                           batch)))))
                         (partition-all create-partition-size rows))]
-      (when (and publish-fn (seq created))
-        (publish-fn created))
+      (when (and after-create (seq created))
+        (after-create created))
       created)))
 
 (defn- update-batch!
   "Update one batch of `updates` of `model` by `pk` and return the updates written with the rows by primary key as
   stored before and, with `reread?`, after."
-  [model pk updates {:keys [check-fn prepare-fn reread?]}]
+  [model pk updates {:keys [before-update reread?]}]
   (let [pks        (mapv pk updates)
-        id->stored (t2/select-pk->fn identity model pk [:in [:auto/param pks]])]
-    (when check-fn
-      (check-fn updates id->stored))
-    (let [updates (cond-> updates prepare-fn (prepare-fn id->stored))]
-      (update-grouped! model updates)
-      {:updates     updates
-       :id->stored  id->stored
-       :id->updated (when reread?
-                      (t2/select-pk->fn identity model pk [:in [:auto/param pks]]))})))
+        id->stored (t2/select-pk->fn identity model pk [:in [:auto/param pks]])
+        updates    (or (when before-update (before-update updates id->stored))
+                       updates)]
+    (update-grouped! model updates)
+    {:updates     updates
+     :id->stored  id->stored
+     :id->updated (when reread?
+                    (t2/select-pk->fn identity model pk [:in [:auto/param pks]]))}))
 
 (defn update-batched!
   "Apply `updates`, each the primary key of a row of `model` and the columns to change, in batches in one transaction:
-  for each batch `check-fn` throws when its updates cannot be applied to the stored rows by primary key and `prepare-fn`
-  returns the updates to write, and `publish-fn` gets every update written and the rows by primary key as stored before
-  and, with `reread?`, after, once."
-  [model updates {:keys [publish-fn reread?] :as opts}]
+  `before-update` gets each batch with its rows by primary key as stored, throws when it cannot be applied and returns
+  the updates to write, or nil for the batch as given, and `after-update` gets every update written and the rows by
+  primary key as stored before and, with `reread?`, after, once, when any of the rows exists."
+  [model updates {:keys [after-update reread?] :as opts}]
+  (check-batched-opts opts #{:before-update :after-update :reread?})
   (let [pk (first (t2/primary-keys model))]
     (t2/with-transaction [_conn]
       (let [batches (mapv #(update-batch! model pk (vec %) opts)
                           (partition-all update-partition-size updates))]
-        (when (and publish-fn (seq batches))
-          (publish-fn (into [] (mapcat :updates) batches)
-                      (into {} (map :id->stored) batches)
-                      (when reread?
-                        (into {} (map :id->updated) batches))))))
+        (when (and after-update (some (comp seq :id->stored) batches))
+          (after-update (into [] (mapcat :updates) batches)
+                        (into {} (map :id->stored) batches)
+                        (when reread?
+                          (into {} (map :id->updated) batches))))))
     nil))
 
 (defn delete-batched!
-  "Delete the rows of `model` with `pks` in batches in one transaction: before the first statement `check-fn` throws
-  when the rows cannot be deleted, `cascade-fn` deletes what they own and `publish-fn` gets them, each once with every
-  row."
-  [model pks {:keys [check-fn cascade-fn publish-fn]}]
+  "Delete the rows of `model` with `pks` in batches in one transaction: `before-delete` gets every row once before the
+  first statement and throws when they cannot be deleted, and `after-delete` gets them once after the last. The rows are
+  read only when one of the two is given."
+  [model pks {:keys [before-delete after-delete] :as opts}]
+  (check-batched-opts opts #{:before-delete :after-delete})
   (let [pk (first (t2/primary-keys model))]
     (t2/with-transaction [_conn]
       (let [batches (mapv vec (partition-all delete-partition-size pks))
-            rows    (into [] (mapcat #(t2/select model pk [:in [:auto/param %]])) batches)]
-        (when (seq rows)
-          (when check-fn
-            (check-fn rows))
-          (when cascade-fn
-            (cascade-fn rows))
-          (when publish-fn
-            (publish-fn rows))
-          (run! #(t2/delete! model pk [:in [:auto/param %]]) batches))))
+            rows    (when (or before-delete after-delete)
+                      (into [] (mapcat #(t2/select model pk [:in [:auto/param %]])) batches))]
+        (when (or (nil? rows) (seq rows))
+          (when before-delete
+            (before-delete rows))
+          (run! #(t2/delete! model pk [:in [:auto/param %]]) batches)
+          (when after-delete
+            (after-delete rows)))))
     nil))
 
 (defn select-or-insert!

@@ -2,7 +2,6 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -38,16 +37,6 @@
   [snippet-name :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name))
 
-(mu/defn insert-snippets!
-  "Insert the NativeQuerySnippet `rows` and return the inserted instances."
-  [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
-  (app-db/insert-returning-instances! :model/NativeQuerySnippet rows))
-
-(mu/defn snippets-by-ids
-  "A map of id to NativeQuerySnippet for the snippets with `ids`."
-  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
-  (t2/select-pk->fn identity :model/NativeQuerySnippet :id [:in ids]))
-
 (mu/defn archived-directly-clause
   "The SQL expression for the `archived_directly` of a snippet that `changes` archives or restores: true when it is
   archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
@@ -63,18 +52,6 @@
      false
      :else true]
     [:inline false]))
-
-(mu/defn update-snippets! :- :nil
-  "Apply each of `updates`, the `:id` of a NativeQuerySnippet and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/NativeQuerySnippet updates)
-  nil)
-
-(mu/defn delete-snippets!
-  "Delete the NativeQuerySnippets with `ids`, returning the number deleted."
-  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
-  (t2/delete! :model/NativeQuerySnippet :id [:in ids]))
 
 (mu/defn unarchived-snippets-in-collections
   "The unarchived NativeQuerySnippets in the Collections with `collection-ids`."

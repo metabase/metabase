@@ -1,7 +1,8 @@
 (ns metabase.model-persistence.events.persisted-info-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -54,8 +55,15 @@
                        :model/Card     c4 {:database_id (u/the-id db)}
                        :model/Card     c5 {:database_id (u/the-id db)}]
           (mt/with-model-cleanup [:model/PersistedInfo]
-            (let [card-ids (mapv u/the-id [c1 c2 c3 c4 c5])]
-              (with-redefs [mdb/create-partition-size 2]
+            (let [card-ids (mapv u/the-id [c1 c2 c3 c4 c5])
+                  batches  (atom 0)
+                  turn-on! persisted-info/turn-on-models!]
+              (with-redefs [mdb.query/create-partition-size 2
+                            persisted-info/turn-on-models!  (fn [& args]
+                                                              (swap! batches inc)
+                                                              (apply turn-on! args))]
                 (mt/with-current-user (mt/user->id :crowberto)
                   (card/update-cards! (vec (for [id card-ids] {:id id :type :model})))))
+              (testing "the Cards are handled in batches of two"
+                (is (= 3 @batches)))
               (is (= 5 (t2/count :model/PersistedInfo :card_id [:in card-ids]))))))))))

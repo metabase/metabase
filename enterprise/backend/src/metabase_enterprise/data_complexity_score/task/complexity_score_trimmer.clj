@@ -23,10 +23,9 @@
 (defn- trim-old-complexity-score-data!
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
-  (let [deleted (data-complexity-score/delete-data-complexity-scores!
-                 (data-complexity-score.db/score-ids-created-before
-                  (t/minus (t/offset-date-time) (t/months retention-months))))]
-    (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
+  (let [ids (data-complexity-score.db/score-ids-created-before (t/minus (t/offset-date-time) (t/months retention-months)))]
+    (data-complexity-score/delete-data-complexity-scores! ids)
+    (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (count ids))))
 
 (task/defjob DataComplexityScoreTrimmer
   "Delete old Data Complexity Score snapshots"

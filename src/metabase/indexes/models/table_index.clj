@@ -124,29 +124,19 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-table-indexes! :- [:sequential ::schema/table-index]
-  "Insert the TableIndex `models` in batches of [[mdb/create-partition-size]] and return them."
+  "Insert the TableIndex `models` in one transaction and return them."
   [models :- [:sequential ::schema/table-index.create]]
-  (if (seq models)
-    (t2/with-transaction [_conn]
-      (into [] (mapcat #(indexes.db/insert-table-indexes! (vec %))) (partition-all mdb/create-partition-size models)))
-    []))
+  (mdb/create-batched! :model/TableIndex models {}))
 
 (mu/defn update-table-indexes! :- :nil
-  "Apply each of `rows`, the id of a TableIndex and the columns to change, in one transaction and batches of
-  [[mdb/update-partition-size]]."
-  [rows :- [:sequential ::schema/table-index.update]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (run! #(indexes.db/update-table-indexes! (vec %)) (partition-all mdb/update-partition-size rows))))
-  nil)
+  "Apply `updates`, each the `:id` of a TableIndex and the columns to change, in one transaction."
+  [updates :- [:sequential ::schema/table-index.update]]
+  (mdb/update-batched! :model/TableIndex updates {}))
 
 (mu/defn delete-table-indexes! :- :nil
-  "Delete the TableIndexes with `ids` in one transaction and batches of [[mdb/delete-partition-size]]."
+  "Delete the TableIndexes with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (run! #(indexes.db/delete-table-indexes! (vec %)) (partition-all mdb/delete-partition-size ids))))
-  nil)
+  (mdb/delete-batched! :model/TableIndex ids {}))
 
 (mu/defn mark-table-index-failed! :- [:maybe :int]
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`, returning

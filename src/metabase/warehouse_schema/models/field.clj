@@ -479,23 +479,13 @@
   [rows]
   (check-fk-targets (filter :fk_target_field_id rows)))
 
-(defn- create-field-batch!
-  "Check and insert `rows`, one batch of a call, and return the inserted Fields."
-  [rows]
-  (check-new-fields rows)
-  (warehouse-schema.db/insert-fields! rows))
-
 (mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
   "Insert the Field `rows` in one transaction, publishing their create event, and return the inserted Fields, refusing a
   foreign key target outside the Database of a Field's Table."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into []
-                        (mapcat (comp create-field-batch! vec))
-                        (partition-all mdb/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/field-create (events/create-event created)))
-      created)))
+  (mdb/create-batched! :model/Field rows
+                       {:before-create check-new-fields
+                        :after-create  #(events/publish-event! :event/field-create (events/create-event %))}))
 
 (defmulti clear-for-deactivated-fields!
   "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose

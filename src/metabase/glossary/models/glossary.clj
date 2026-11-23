@@ -10,7 +10,6 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -79,37 +78,25 @@
   "Insert the Glossary `rows` and return the inserted instances, in the order of `rows`, publishing their create
   event."
   [rows :- [:sequential ::glossary.schema/glossary.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (u/prog1 (glossary.db/insert-glossaries! rows)
-        (events/publish-event! :event/glossary-create (events/create-event <>))))))
+  (app-db/create-batched! :model/Glossary rows
+                          {:after-create #(events/publish-event! :event/glossary-create (events/create-event %))}))
 
 (mu/defn update-glossaries! :- :nil
   "Apply `updates`, each the `:id` of a Glossary entry with the columns to give it, publishing one update event for all
   of them."
   [updates :- [:sequential ::glossary.schema/glossary.update]]
-  (let [stored (glossary.db/glossaries-by-ids (mapv :id updates))
-        rows   (filterv #(contains? stored (:id %)) updates)]
-    (when (seq rows)
-      (t2/with-transaction [_conn]
-        (glossary.db/update-glossaries! rows)
-        (events/publish-event! :event/glossary-update
-                               (events/update-event stored rows
-                                                    {:objects (glossary.db/glossaries-by-ids (mapv :id rows))})))))
-  nil)
+  (app-db/update-batched! :model/Glossary updates
+                          {:reread?      true
+                           :after-update (fn [updates id->stored id->updated]
+                                           (events/publish-event! :event/glossary-update
+                                                                  (events/update-event id->stored updates {:objects id->updated})))}))
 
 (mu/defn delete-glossaries! :- :nil
   "Delete the Glossary entries with `ids` in one transaction, publishing their delete event right before the first
   statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size ids)]
-      (when (seq batches)
-        (events/publish-event! :event/glossary-delete
-                               (events/delete-event (into [] (mapcat #(vals (glossary.db/glossaries-by-ids (vec %)))) batches))))
-      (run! #(glossary.db/delete-glossaries! (vec %)) batches)))
-  nil)
+  (app-db/delete-batched! :model/Glossary ids
+                          {:before-delete #(events/publish-event! :event/glossary-delete (events/delete-event %))}))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

@@ -16,23 +16,20 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-ai-usage-logs!
-  "Record the LLM call `rows` in one statement."
+(mu/defn create-ai-usage-logs! :- [:sequential :map]
+  "Record the LLM call `rows` in one transaction, and return the inserted rows."
   [rows :- [:sequential ::metabot.schema/ai-usage-log.create]]
-  (when (seq rows)
-    (metabot.db/insert-usage-logs! rows)))
+  (mdb/create-batched! :model/AiUsageLog rows {}))
 
 (mu/defn ids-for-conversations :- [:sequential ms/PositiveInt]
   "The ids of the AiUsageLogs of the conversations with `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
   (metabot.db/usage-log-ids-for-conversations conversation-ids))
 
-(mu/defn delete-ai-usage-logs! :- :int
-  "Delete the AiUsageLogs with `ids`, in batches in one transaction, and return the number deleted."
+(mu/defn delete-ai-usage-logs! :- :nil
+  "Delete the AiUsageLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (run! metabot.db/delete-usage-logs! (map vec (partition-all mdb/delete-partition-size ids))))
-  (count ids))
+  (mdb/delete-batched! :model/AiUsageLog ids {}))
 
 (mu/defn seed-ai-usage-log!
   "Insert the AiUsageLog `row` as given, its timestamps included, which the testing API seeds."

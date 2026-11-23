@@ -492,24 +492,18 @@
                                                          group-id (default-group-ids user)]
                                                      {:user (:id user) :group group-id}))))))
 
-(defn- create-user-batch!
-  "Check and insert the User `rows`, one batch of a call, and return the inserted Users."
-  [rows]
-  (check-new-users rows)
-  (users.db/insert-users! rows))
+(defn- publish-new-users!
+  "Publish the create event of the new `users` and add each of them to its default groups."
+  [users]
+  (events/publish-event! :event/user-create (events/create-event users))
+  (add-to-default-groups! users))
 
 (mu/defn create-users! :- [:sequential ::users.schema/user]
   "Insert the User `rows` in one transaction and return them in order, each in its default groups, publishing their
   create event; an SSO user before the initial setup, a personal user over the plan's limit or an email in use throw."
   [rows :- [:sequential ::users.schema/user.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into []
-                        (mapcat (comp create-user-batch! vec))
-                        (partition-all app-db/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/user-create (events/create-event created))
-        (add-to-default-groups! created))
-      created)))
+  (app-db/create-batched! :model/User rows {:before-create check-new-users
+                                            :after-create  publish-new-users!}))
 
 (defn- user-after
   "The row of the stored `user` as the hooks of the model leave it after an update of `changes`, which they run here
@@ -617,8 +611,8 @@
   (check-emails-free updates))
 
 (defn- update-user-batch!
-  "Check and write `updates`, one batch of a call, and return the rows of existing Users with the Users by id as stored
-  before and after."
+  "Check and write `updates`, one batch of a call, and return the rows of existing Users with the Users by id, every
+  column, as stored before and after."
   [updates]
   (let [id->stored (users.db/users-by-ids (mapv :id updates))
         updates    (filterv (comp id->stored :id) updates)]
@@ -626,7 +620,7 @@
     (users.db/update-users! updates)
     {:updates     updates
      :id->stored  id->stored
-     :id->updated (users-after id->stored updates)}))
+     :id->updated (users.db/users-by-ids (mapv :id updates))}))
 
 (defn- cascade-user-updates!
   "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one write per kind
@@ -637,10 +631,10 @@
   (when-let [deactivated (not-empty (ids-of-rows #(false? (:is_active %)) updates))]
     (delete-subscriptions! deactivated opts)))
 
-(mu/defn update-users! :- :int
-  "Apply `updates`, each the id of a User and the columns to set, in one transaction and return the number of rows of
-  existing Users, publishing their update event with `opts`; deactivating or demoting the last admin throws, a change of
-  `is_superuser` adds or removes the Administrators membership, and deactivating a User deletes its subscriptions."
+(mu/defn update-users! :- :nil
+  "Apply `updates`, each the id of a User and the columns to set, in one transaction, publishing their update event
+  with `opts`; deactivating or demoting the last admin throws, a change of `is_superuser` adds or removes the
+  Administrators membership, and deactivating a User deletes its subscriptions."
   ([updates :- [:sequential ::users.schema/user.update-row]]
    (update-users! updates nil))
   ([updates :- [:sequential ::users.schema/user.update-row]
@@ -655,8 +649,8 @@
                                   (events/update-event (into {} (map :id->stored) batches)
                                                        updated
                                                        (assoc opts :objects (into {} (map :id->updated) batches)))))
-         (cascade-user-updates! updated admin-ids opts)
-         (count updated))))))
+         (cascade-user-updates! updated admin-ids opts))))
+   nil))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only

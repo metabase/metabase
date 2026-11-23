@@ -2,13 +2,14 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
+   [metabase.revisions.db :as revisions.db]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -34,12 +35,16 @@
   (testing "the revisions of every row of an event are recorded when the event holds more rows than one batch"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/Card]
-        (with-redefs [app-db/create-partition-size 2]
+        (with-redefs [app-db.query/create-partition-size 2]
           (let [rows (mapv (fn [_] {:creator_id (mt/user->id :rasta) :database_id (mt/id)
                                     :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
                                     :display :table :name (mt/random-name) :visualization_settings {}})
                            (range 5))
-                ids  (mapv :id (card/create-cards! rows))]
+                inserts (atom [])
+                ids     (mt/with-dynamic-fn-redefs [revisions.db/insert-revisions! (let [f (mt/original-fn #'revisions.db/insert-revisions!)]
+                                                                                     (fn [rows] (swap! inserts conj (count rows)) (f rows)))]
+                          (mapv :id (card/create-cards! rows)))]
+            (is (= [2 2 1] @inserts) "the revisions are written in batches of the partition size")
             (is (= (repeat 5 1) (mapv #(count (revisions-of "Card" %)) ids)))))))))
 
 (deftest no-user-records-nothing-test

@@ -121,11 +121,6 @@
    entity-ids :- [:sequential {:min 1} :string]]
   (t2/select :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]]))
 
-(mu/defn delete-test-suites!
-  "Delete the TestSuites with `ids`, and their members."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TestSuite :id [:in [:auto/param ids]]))
-
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites with `suite-ids`, by suite and then position."
   [suite-ids :- [:sequential ms/PositiveInt]]
@@ -188,30 +183,6 @@
   "The models of the saved tests."
   [:enum :model/TransformTest :model/CardTest :model/SegmentTest])
 
-(mu/defn insert-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
-  "Insert the `rows` of `model` and return the inserted instances."
-  [model :- saved-test-model
-   rows  :- [:sequential {:min 1} ::data-testing.schema/saved-test.create]]
-  (app-db/insert-returning-instances! model rows))
-
-(mu/defn saved-tests-by-ids :- [:sequential ::data-testing.schema/saved-test]
-  "The tests of `model` with `ids`."
-  [model :- saved-test-model
-   ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select model :id [:in [:auto/param ids]]))
-
-(mu/defn update-saved-tests! :- :nil
-  "Apply to the tests of `model` their changes in `updates`, each the `:id` of a test and the columns to change."
-  [model   :- saved-test-model
-   updates :- [:sequential ::data-testing.schema/saved-test.update]]
-  (app-db/update-grouped! model updates))
-
-(mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
-  "The tests of `model` with `ids`."
-  [model :- saved-test-model
-   ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select model :id [:in [:auto/param ids]]))
-
 (mu/defn saved-test-ids-of-subjects :- [:sequential ms/PositiveInt]
   "The ids of the tests of `model` whose `subject-column` holds one of `subject-ids`."
   [model          :- saved-test-model
@@ -220,13 +191,6 @@
   (if (seq subject-ids)
     (vec (t2/select-pks-vec model subject-column [:in [:auto/param subject-ids]]))
     []))
-
-(mu/defn delete-saved-tests! :- :nil
-  "Delete the tests of `model` with `ids`."
-  [model :- saved-test-model
-   ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! model :id [:in [:auto/param ids]])
-  nil)
 
 (mu/defn delete-suite-members-of-tests! :- :nil
   "Remove the `test-type` tests with `entity-ids` from every TestSuite."

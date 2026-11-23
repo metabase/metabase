@@ -29,8 +29,12 @@
   [model time-column cutoff batch-size]
   (case model
     :model/QueryExecution (query-execution/delete-older-than! time-column cutoff batch-size)
-    :model/AuditLog       (audit-log/delete-audit-logs! (audit-app.db/audit-log-ids-before time-column cutoff batch-size))
-    :model/ViewLog        (view-log/delete-view-logs! (view-log.core/view-log-ids-before time-column cutoff batch-size))))
+    :model/AuditLog       (let [ids (audit-app.db/audit-log-ids-before time-column cutoff batch-size)]
+                            (audit-log/delete-audit-logs! ids)
+                            (count ids))
+    :model/ViewLog        (let [ids (view-log.core/view-log-ids-before time-column cutoff batch-size)]
+                            (view-log/delete-view-logs! ids)
+                            (count ids))))
 
 (defn- truncate-table-batched!
   [model time-column]

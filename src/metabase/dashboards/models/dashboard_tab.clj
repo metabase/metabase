@@ -100,16 +100,12 @@
 (mu/defn create-dashboard-tabs! :- [:sequential :map]
   "Insert the DashboardTab `rows` in one transaction and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
-  (t2/with-transaction [_conn]
-    (into [] (mapcat (comp dashboards.db/insert-dashboard-tabs! vec))
-          (partition-all app-db/create-partition-size rows))))
+  (app-db/create-batched! :model/DashboardTab rows {}))
 
 (mu/defn update-dashboard-tabs! :- :nil
   "Apply the columns of each of `updates`, each holding the `:id` of its DashboardTab, in one transaction."
   [updates :- [:sequential ::dashboards.schema/dashboard-tab.update]]
-  (t2/with-transaction [_conn]
-    (run! (comp dashboards.db/update-dashboard-tabs! vec) (partition-all app-db/update-partition-size updates)))
-  nil)
+  (app-db/update-batched! :model/DashboardTab updates {}))
 
 (defn- delete-dashboard-tab-batch!
   "Delete the DashboardTabs with `ids`, one batch of a call, logging to the change log the PulseCards that the database

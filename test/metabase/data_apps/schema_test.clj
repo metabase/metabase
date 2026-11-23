@@ -2,12 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.lib.core :as lib]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
 (defn- valid? [schema x]
   (mr/validate schema x))
+
+(defn- valid-as-decoded?
+  "Whether `x`, as a YAML manifest gives it, is a `schema` once the enums of the schema have normalized its strings."
+  [schema x]
+  (mr/validate schema (lib/normalize schema x)))
 
 (deftest data-app-create-requires-manifest-columns-test
   (is (valid? ::data-apps.schema/data-app.create {:slug "a" :name "A" :bundle_path "i.js"}))
@@ -72,19 +78,19 @@
 (deftest query-spec-test
   (let [stage {:source {:type :table :id 1}}]
     (testing "a query spec has one stage on a table"
-      (is (valid? ::data-apps.schema/query-spec {:stages [stage]})))
+      (is (valid-as-decoded? ::data-apps.schema/query-spec {:stages [stage]})))
     (testing "a query spec of several stages, or none, is rejected"
       (doseq [stages [[] [stage stage]]]
-        (is (not (valid? ::data-apps.schema/query-spec {:stages stages})) (str "should reject: " (pr-str stages)))))
+        (is (not (valid-as-decoded? ::data-apps.schema/query-spec {:stages stages})) (str "should reject: " (pr-str stages)))))
     (testing "a stage on a card is rejected"
-      (is (not (valid? ::data-apps.schema/query-spec {:stages [{:source {:type :card :id 1}}]}))))
+      (is (not (valid-as-decoded? ::data-apps.schema/query-spec {:stages [{:source {:type :card :id 1}}]}))))
     (testing "a stage holds no joins or custom expressions"
       (doseq [k [:joins :expressions]]
-        (is (not (valid? ::data-apps.schema/query-spec {:stages [(assoc stage k [])]})) (str "should reject: " k))))))
+        (is (not (valid-as-decoded? ::data-apps.schema/query-spec {:stages [(assoc stage k [])]})) (str "should reject: " k))))))
 
 (deftest action-spec-test
   (testing "an action spec is an implicit action of a known kind on a table"
-    (is (valid? ::data-apps.schema/action-spec {:kind "row/update" :table {:id 1}})))
+    (is (valid-as-decoded? ::data-apps.schema/action-spec {:kind "row/update" :table {:id 1}})))
   (testing "an unknown kind, or a table without an ID, is rejected"
     (doseq [bad [{:kind "row/upsert" :table {:id 1}} {:kind "row/update" :table {}}]]
-      (is (not (valid? ::data-apps.schema/action-spec bad)) (str "should reject: " (pr-str bad))))))
+      (is (not (valid-as-decoded? ::data-apps.schema/action-spec bad)) (str "should reject: " (pr-str bad))))))

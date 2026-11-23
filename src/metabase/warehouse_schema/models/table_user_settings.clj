@@ -389,16 +389,11 @@
         (partition-all mdb/delete-partition-size table-ids)))
 
 (mu/defn delete-table-user-settings! :- :nil
-  "Delete the TableUserSettings with `ids` in one transaction, leaving their Tables as they are for sync to take over:
-  one event for all of them before the statements, which run in batches of [[mdb/delete-partition-size]]."
+  "Delete the TableUserSettings with `ids` in one transaction, publishing their delete event, leaving their Tables as
+  they are for sync to take over."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (vec (vals (settings-by-id ids))))]
-        (events/publish-event! :event/table-user-settings-delete (events/delete-event rows))
-        (run! #(warehouse-schema.db/delete-table-user-settings-by-ids! (mapv :id %))
-              (partition-all mdb/delete-partition-size rows)))))
-  nil)
+  (mdb/delete-batched! :model/TableUserSettings ids
+                       {:before-delete #(events/publish-event! :event/table-user-settings-delete (events/delete-event %))}))
 
 (defn- load-legacy-fields!
   "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other

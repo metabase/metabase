@@ -12,7 +12,6 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -113,31 +112,21 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(defn- updated-tag
-  "The TransformTag `stored` as the update `changes` leaves it: a built-in tag that changes becomes a custom one that keeps
-  its name, as the update hook makes it."
-  [stored changes]
-  (let [object (merge stored changes)]
-    (if (or (nil? (:built_in_type stored))
-            (empty? (dissoc (into {} (filter (fn [[k v]] (not= v (get stored k)))) changes) :updated_at)))
-      object
-      (-> (merge object (translate-name stored) {:built_in_type nil} changes)
-          (update :name str)))))
+(defn- rename-taken-names
+  "`rows`, TransformTag rows of an import, with each name another tag holds made unique."
+  [rows]
+  (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids)))
 
 (mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
-  "Insert the TransformTag `rows` in batches in one transaction, publishing one create event for all, and return the inserted tags.
-  A name another tag holds is refused by the unique index of the name; an import makes each such name unique instead."
+  "Insert the TransformTag `rows` in one transaction, publishing their create event, and return the inserted tags. A name
+  another tag holds is refused by the unique index of the name; an import makes each such name unique instead."
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]]
    (create-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]
     opts :- ::transforms.schema/write-opts]
-   (let [rows (cond-> rows
-                (= :import (:writer opts)) (transforms.serialization/rename-taken-tag-names (transforms.db/tag-names-to-ids)))]
-     (t2/with-transaction [_conn]
-       (let [tags (into [] (mapcat transforms.db/insert-tags!) (map vec (partition-all mdb/create-partition-size rows)))]
-         (when (seq tags)
-           (events/publish-event! :event/transform-tag-create (events/create-event tags opts)))
-         tags)))))
+   (mdb/create-batched! :model/TransformTag rows
+                        {:before-create #(cond-> % (= :import (:writer opts)) rename-taken-names)
+                         :after-create #(events/publish-event! :event/transform-tag-create (events/create-event % opts))})))
 
 (defn- without-built-in-names
   "`changes`, the changes of an import, without the name of `stored`, a built-in tag, unless they set its type."
@@ -147,79 +136,58 @@
     (dissoc :name)))
 
 (defn- import-rows
-  "`rows`, the changes of an import, with a built-in tag of `stored` keeping its name and each other name another tag
+  "`rows`, the changes of an import, with a built-in tag of `id->stored` keeping its name and each other name another tag
   holds made unique against the tags the other rows leave: the old name of a tag of the call that is renamed is free."
-  [rows stored]
-  (let [rows    (mapv #(without-built-in-names (stored (:id %)) %) rows)
+  [rows id->stored]
+  (let [rows    (mapv #(without-built-in-names (id->stored (:id %)) %) rows)
         renamed (into #{} (comp (filter :name) (map :id)) rows)
         taken   (into {} (remove (comp renamed val)) (transforms.db/tag-names-to-ids))]
     (transforms.serialization/rename-taken-tag-names rows taken)))
 
 (defn- renames-held-name?
-  "Whether `row`, which renames a tag of `stored`, takes the name of a tag in `pending`, the rows not written yet."
-  [stored pending row]
+  "Whether `row`, which renames a tag of `id->stored`, takes the name of a tag in `pending`, the rows not written yet."
+  [id->stored pending row]
   (let [new-name (:name row)]
     (and (some? new-name)
-         (not= new-name (:name (stored (:id row))))
-         (some #(and (not= (:id %) (:id row)) (= new-name (:name (stored (:id %))))) pending))))
+         (not= new-name (:name (id->stored (:id row))))
+         (some #(and (not= (:id %) (:id row)) (= new-name (:name (id->stored (:id %))))) pending))))
 
 (defn- rename-order
   "`rows` ordered so that each rename follows the rename of the tag that holds its new name. Throws a 400 for rows that
   swap names, which the unique index of the name cannot write."
-  [rows stored]
+  [rows id->stored]
   (loop [pending (vec rows)
          ordered []]
     (if (empty? pending)
       ordered
-      (if-let [row (first (remove #(renames-held-name? stored pending %) pending))]
+      (if-let [row (first (remove #(renames-held-name? id->stored pending %) pending))]
         (recur (filterv #(not= (:id %) (:id row)) pending) (conj ordered row))
         (throw (ex-info "TransformTags cannot swap names in one update." {:status-code 400}))))))
 
-(defn- requested-changes
-  "A vector of `[id changes]` pairs, one for each of `rows`, the id of a TransformTag and its columns to change, for the
-  tags in `stored`, as `opts` says they are written, in an order that writes each rename after the one that frees its
-  name."
-  [rows stored opts]
-  (let [rows (filterv (comp stored :id) rows)
-        rows (cond-> rows (= :import (:writer opts)) (import-rows stored))]
-    (mapv (juxt :id #(dissoc % :id)) (rename-order rows stored))))
-
-(defn- update-event
-  "The update event of the tags of `stored` that `requested`, a map from id to its changes, changes."
-  [stored requested opts]
-  (events/update-event stored
-                       (mapv (fn [[id changes]] (assoc changes :id id)) requested)
-                       (assoc opts :objects (into {} (map (fn [[id changes]] [id (updated-tag (stored id) changes)])) requested))))
-
 (mu/defn update-transform-tags! :- :nil
-  "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction, in
-  batches with one statement per distinct change set, publishing one update event for all. A built-in tag that
-  changes becomes a custom one that keeps its name. A new name another tag holds is refused by the unique index of the
-  name; an import makes each such name unique instead."
+  "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction,
+  publishing their update event. A built-in tag that changes becomes a custom one that keeps its name. A new name
+  another tag holds is refused by the unique index of the name; an import makes each such name unique instead."
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]]
    (update-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]
     opts :- ::transforms.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [stored    (u/index-by :id (when (seq rows) (transforms.db/tags-by-ids (mapv :id rows))))
-           requested (requested-changes rows stored opts)]
-       (doseq [batch (partition-all mdb/update-partition-size requested)]
-         (transforms.db/update-tags! (mapv (fn [[id changes]] (assoc changes :id id)) batch)))
-       (when (seq requested)
-         (events/publish-event! :event/transform-tag-update (update-event stored (into {} requested) opts)))))
-   nil))
+   (mdb/update-batched! :model/TransformTag rows
+                        {:before-update (fn [rows id->stored]
+                                          (let [rows (filterv (comp id->stored :id) rows)]
+                                            (rename-order (cond-> rows (= :import (:writer opts)) (import-rows id->stored))
+                                                          id->stored)))
+                         :reread?    true
+                         :after-update (fn [rows id->stored id->updated]
+                                         (events/publish-event! :event/transform-tag-update
+                                                                (events/update-event id->stored rows (assoc opts :objects id->updated))))})))
 
 (mu/defn delete-transform-tags! :- :nil
-  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs, in batches in
-  one transaction, publishing one delete event for all right before the first statement."
+  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs, in one
+  transaction, publishing their delete event."
   [tag-ids :- [:sequential ::lib.schema.id/transform-tag]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size tag-ids))]
-      (when (seq batches)
-        (events/publish-event! :event/transform-tag-delete
-                               (events/delete-event (into [] (mapcat transforms.db/tags-by-ids) batches))))
-      (run! transforms.db/delete-tags! batches)))
-  nil)
+  (mdb/delete-batched! :model/TransformTag tag-ids
+                       {:before-delete #(events/publish-event! :event/transform-tag-delete (events/delete-event %))}))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

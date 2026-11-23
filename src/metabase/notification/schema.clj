@@ -1,6 +1,7 @@
 (ns metabase.notification.schema
   "Malli schemas for the notification module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -8,20 +9,14 @@
 (mr/def ::notification
   "A Notification as selected from the app DB: every column of `:notification`."
   [:merge
-   ::notification.changes
+   ::notification.update
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::notification.update
-  "What an update of a Notification takes: its `:id` and the columns to change."
-  [:merge
-   ::notification.changes
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
-
-(mr/def ::notification.changes
-  "What an update (or insert) of a Notification accepts: every column of `:notification` except `id`, all optional."
+  "What an update of a Notification takes: its `:id` and the columns to change, every column of `:notification`."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:payload_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active       {:optional true} [:maybe :boolean]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
@@ -29,6 +24,10 @@
    [:internal_id  {:optional true} [:maybe :string]]
    [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::notification.create
+  "What creating a Notification takes: every column of `:notification` except `id`, all optional."
+  (mut/dissoc ::notification.update :id))
 
 (mr/def ::notification-card
   "A NotificationCard as selected from the app DB: every column of `:notification_card`."

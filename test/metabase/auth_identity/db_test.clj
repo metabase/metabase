@@ -43,8 +43,5 @@
     (testing "id read finds only the given user's identity at the given provider"
       (is (= [] (auth-identity.db/auth-identity-ids user-id "password")))
       (is (= [ai-id] (auth-identity.db/auth-identity-ids user-id "google"))))
-    (testing "delete removes only the identities with the given ids"
-      (is (= 1 (auth-identity.db/delete-auth-identities! [ai-id])))
-      (is (t2/exists? :model/AuthIdentity :user_id other-id :provider "google")))
     (testing "an id-only lookup still finds the user"
       (is (true? (auth-identity.db/user-active? user-id))))))

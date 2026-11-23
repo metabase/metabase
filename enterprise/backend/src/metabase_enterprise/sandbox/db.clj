@@ -85,26 +85,10 @@
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
-  "Insert the Sandbox `rows` in one statement and return the new instances in their order."
-  [rows :- [:sequential ::sandbox.schema/sandbox.create]]
-  (mdb/insert-returning-instances! :model/Sandbox rows))
-
-(mu/defn update-sandboxes!
-  "Apply each of `rows`, the `:id` of a Sandbox and the columns to set, one statement per distinct change, in the order
-  the changes first appear."
-  [rows :- [:sequential ::sandbox.schema/sandbox.update]]
-  (mdb/update-grouped! :model/Sandbox rows))
-
 (mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
   "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
   [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
   (t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param (vec (distinct sandbox-ids))]]))
-
-(mu/defn delete-sandboxes!
-  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
-  [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
-  (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
 
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."

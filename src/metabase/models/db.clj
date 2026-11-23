@@ -24,7 +24,8 @@
   of the generic entity helpers below (a literal keyword, not a `require`, to avoid a dependency cycle with the module
   that owns these models)."
   {:model/ChannelTemplate          :metabase.channel.schema/channel-template.update
-   :model/Notification             :metabase.notification.schema/notification.changes
+   :model/Notification             [:select-keys :metabase.notification.schema/notification.update
+                                    [:payload_type :active :created_at :updated_at :internal_id :payload_id :creator_id]]
    :model/NotificationCard         :metabase.notification.schema/notification-card.update
    :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
    :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.update

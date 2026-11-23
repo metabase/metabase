@@ -37,13 +37,10 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
   (oauth-server.db/revoke-refresh-tokens-for-users! user-ids))
 
-(mu/defn delete-oauth-refresh-tokens! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the OAuthRefreshTokens with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-oauth-refresh-tokens! :- :nil
+  "Delete the OAuthRefreshTokens with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp oauth-server.db/delete-refresh-tokens! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/OAuthRefreshToken ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

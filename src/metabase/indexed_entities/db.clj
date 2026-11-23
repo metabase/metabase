@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.app-db.core :as app-db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -29,16 +28,6 @@
   "The ModelIndexes whose id is not in `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ModelIndex :id [:not-in ids]))
-
-(mu/defn model-indexes
-  "The ModelIndexes with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ModelIndex :id [:in ids]))
-
-(mu/defn delete-model-indexes!
-  "Delete the ModelIndexes with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ModelIndex :id [:in ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -83,8 +72,3 @@
   "Insert the ModelIndexValue `rows`, returning the number inserted."
   [rows :- [:sequential (mut/select-keys ::indexed-entities.schema/model-index-value.update [:model_index_id :model_pk :name])]]
   (t2/insert! :model/ModelIndexValue rows))
-
-(mu/defn insert-model-indexes!
-  "Insert the ModelIndex `rows` and return the inserted instances, in order."
-  [rows :- [:sequential ::indexed-entities.schema/model-index.update]]
-  (app-db/insert-returning-instances! :model/ModelIndex rows))

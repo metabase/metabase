@@ -678,14 +678,19 @@
            (publish-update! id->stored rows (keys id->stored) opts)))))
    nil))
 
-(defn- delete-dashboard-batch!
-  "Delete the Dashboards with `dashboard-ids`, one batch of a call, after the rows that depend on them."
+(defn- delete-dashboard-dependents!
+  "Delete the rows that depend on the Dashboards with `dashboard-ids`, one batch of a call."
   [dashboard-ids]
   (parameter-card/delete-parameter-cards-for-objects! "dashboard" dashboard-ids [])
   (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
   (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "dashboard" dashboard-ids))
-  (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-  (dashboards.db/delete-dashboards! dashboard-ids))
+  (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids)))
+
+(defn- publish-and-delete-dashboard-dependents!
+  "Publish the delete event of the Dashboards `dashboards` with `opts`, then delete the rows that depend on them."
+  [dashboards opts]
+  (events/publish-event! :event/dashboard-delete (events/delete-event dashboards opts))
+  (run! delete-dashboard-dependents! (map vec (partition-all app-db/delete-partition-size (map :id dashboards)))))
 
 (mu/defn delete-dashboards! :- :nil
   "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses in one
@@ -695,13 +700,8 @@
    (delete-dashboards! dashboard-ids nil))
   ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
     opts          :- ::dashboards.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [batches    (mapv vec (partition-all app-db/delete-partition-size (distinct dashboard-ids)))
-           dashboards (into [] (mapcat (comp vals dashboards.db/dashboards-by-ids)) batches)]
-       (when (seq dashboards)
-         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards opts)))
-       (run! delete-dashboard-batch! batches)))
-   nil))
+   (app-db/delete-batched! :model/Dashboard (distinct dashboard-ids)
+                           {:before-delete #(publish-and-delete-dashboard-dependents! % opts)})))
 
 (mu/defn revert-dashboard! :- :map
   "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded: its columns, its tabs and

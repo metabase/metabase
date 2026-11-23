@@ -1,7 +1,6 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
-   [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -222,37 +221,22 @@
 
 ;;; ------------------------------------------------------- Writes -------------------------------------------------------
 
+(defn- publish-channel-creates
+  "Publish the create event of the Channels `created`."
+  [created]
+  (events/publish-event! :event/channel-create (events/create-event created)))
+
 (mu/defn create-channels! :- [:sequential ::channel.schema/channel]
-  "Insert the Channel `rows`, publishing their events, and return the inserted channels in order."
+  "Insert the Channel `rows` in one transaction, publishing their create event, and return the inserted channels in
+  order."
   [rows :- [:sequential ::channel.schema/channel.create]]
-  (t2/with-transaction [_conn]
-    (let [channels (into [] (mapcat channel.db/insert-channels!) (map vec (partition-all mdb/create-partition-size rows)))]
-      (when (seq channels)
-        (events/publish-event! :event/channel-create (events/create-event channels)))
-      channels)))
+  (mdb/create-batched! :model/Channel rows {:after-create publish-channel-creates}))
 
 (defmulti delete-for-channels!
   "Deletes the rows of `model` that belong to the Channels with `channel-ids`, which a model that follows its Channels
   implements with its own write function, publishing its events with the `:context` of `opts`."
   {:arglists '([model channel-ids opts])}
   (fn [model _channel-ids _opts] model))
-
-(defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a Channel and the columns to set, for the Channels in
-  `stored`, leaving out the columns that already hold the value and the Channels left with none, so that deactivating
-  an inactive Channel does not rename it."
-  [rows stored]
-  (into {}
-        (keep (fn [{:keys [id] :as row}]
-                (when-let [channel (stored id)]
-                  (when-let [changes (not-empty (into {} (remove (fn [[k v]] (= v (get channel k)))) (dissoc row :id)))]
-                    [id changes]))))
-        rows))
-
-(defn- deactivated-ids
-  "The ids of the active Channels of `stored` that `requested`, a map from id to its changes, deactivates."
-  [stored requested]
-  (into [] (filter (fn [id] (and (false? (:active (requested id))) (:active (stored id))))) (keys requested)))
 
 (defn- delete-pulse-channels-of!
   "Delete the PulseChannels of the Channels with `channel-ids`."
@@ -261,46 +245,44 @@
     (t2/resolve-model :model/PulseChannel)
     (delete-for-channels! :model/PulseChannel channel-ids nil)))
 
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a Channel and the columns to set, deleting the PulseChannels of the Channels it
-  deactivates first, and return the Channels as read, their changes and the ids it deactivates."
-  [rows]
-  (let [stored      (m/index-by :id (channel.db/channels-by-ids (mapv :id rows)))
-        requested   (requested-changes rows stored)
-        deactivated (deactivated-ids stored requested)]
-    (delete-pulse-channels-of! deactivated)
-    (channel.db/update-channels! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
-    {:stored stored :requested requested :deactivated deactivated}))
+(defn- prepare-channel-updates
+  "The `updates` of the Channels of `id->stored` that change a column, without the columns that already hold the value, so
+  that deactivating an inactive Channel does not rename it, after deleting the PulseChannels of the active Channels that
+  they deactivate."
+  [updates id->stored]
+  (let [changed (into []
+                      (keep (fn [{:keys [id] :as update}]
+                              (when-let [channel (id->stored id)]
+                                (when-let [changes (not-empty (into {} (remove (fn [[k v]] (= v (get channel k)))) (dissoc update :id)))]
+                                  (assoc changes :id id)))))
+                      updates)]
+    (delete-pulse-channels-of! (into [] (comp (filter #(false? (:active %))) (map :id) (filter (comp :active id->stored))) changed))
+    changed))
+
+(defn- publish-channel-updates
+  "Publish the update event of the Channels that `updates` changes, as stored before in `id->stored` and after in
+  `id->updated`."
+  [updates id->stored id->updated]
+  (events/publish-event! :event/channel-update
+                         (events/update-event id->stored updates {:objects id->updated})))
 
 (mu/defn update-channels! :- :nil
-  "Apply the changes in each of `rows`, the id of a Channel and the columns to set, in batches in one transaction,
-  publishing one update event for all. Deactivating an active Channel first deletes its PulseChannels, and its
-  before-update hook renames it."
-  [rows :- [:sequential ::channel.schema/channel.update]]
-  (t2/with-transaction [_conn]
-    (let [batches     (mapv (comp update-batch! vec) (partition-all mdb/update-partition-size rows))
-          stored      (into {} (mapcat :stored) batches)
-          requested   (into {} (mapcat :requested) batches)
-          deactivated (into [] (mapcat :deactivated) batches)]
-      (when (seq requested)
-        (events/publish-event! :event/channel-update
-                               (events/update-event stored
-                                                    (mapv (fn [[id changes]] (assoc changes :id id)) requested)
-                                                    {:objects (when (seq deactivated)
-                                                                (m/index-by :id (channel.db/channels-by-ids deactivated)))})))))
-  nil)
+  "Apply `updates`, each the id of a Channel and the columns to set, in one transaction, publishing their update event.
+  Deactivating an active Channel first deletes its PulseChannels, and its before-update hook renames it."
+  [updates :- [:sequential ::channel.schema/channel.update]]
+  (mdb/update-batched! :model/Channel updates {:before-update prepare-channel-updates
+                                               :after-update  publish-channel-updates
+                                               :reread?       true}))
+
+(defn- publish-channel-deletes
+  "Publish the delete event of the Channels `channels`."
+  [channels]
+  (events/publish-event! :event/channel-delete (events/delete-event channels)))
 
 (mu/defn delete-channels! :- :nil
-  "Delete the Channels with `ids`, in batches in one transaction, publishing one delete event for all right before the
-  first statement."
+  "Delete the Channels with `ids` in one transaction, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))]
-      (when (seq batches)
-        (events/publish-event! :event/channel-delete
-                               (events/delete-event (into [] (mapcat channel.db/channels-by-ids) batches))))
-      (run! channel.db/delete-channels! batches)))
-  nil)
+  (mdb/delete-batched! :model/Channel ids {:before-delete publish-channel-deletes}))
 
 (mu/defn check-channel-templates! :- :nil
   "Throws what inserting the ChannelTemplate `rows` would throw for the first of them that is invalid."
@@ -308,25 +290,26 @@
   (run! check-valid-channel-template rows)
   nil)
 
+(defn- publish-channel-template-creates
+  "Publish the create event of the ChannelTemplates `created`."
+  [created]
+  (events/publish-event! :event/channel-template-create (events/create-event created)))
+
 (mu/defn create-channel-templates! :- [:sequential ::channel.schema/channel-template]
-  "Insert the ChannelTemplate `rows`, publishing their create event, and return the inserted instances."
+  "Insert the ChannelTemplate `rows` in one transaction, publishing their create event, and return the inserted
+  instances."
   [rows :- [:sequential ::channel.schema/channel-template.create]]
-  (t2/with-transaction [_conn]
-    (let [templates (into [] (mapcat channel.db/insert-channel-templates!) (map vec (partition-all mdb/create-partition-size rows)))]
-      (when (seq templates)
-        (events/publish-event! :event/channel-template-create (events/create-event templates)))
-      templates)))
+  (mdb/create-batched! :model/ChannelTemplate rows {:after-create publish-channel-template-creates}))
+
+(defn- publish-channel-template-deletes
+  "Publish the delete event of the ChannelTemplates `templates`."
+  [templates]
+  (events/publish-event! :event/channel-template-delete (events/delete-event templates)))
 
 (mu/defn delete-channel-templates! :- :nil
-  "Delete the ChannelTemplates with `template-ids`, publishing their events."
+  "Delete the ChannelTemplates with `template-ids` in one transaction, publishing their delete event."
   [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size template-ids))]
-      (when (seq batches)
-        (events/publish-event! :event/channel-template-delete
-                               (events/delete-event (into [] (mapcat channel.db/channel-templates-by-ids) batches))))
-      (run! channel.db/delete-channel-templates! batches)))
-  nil)
+  (mdb/delete-batched! :model/ChannelTemplate template-ids {:before-delete publish-channel-template-deletes}))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

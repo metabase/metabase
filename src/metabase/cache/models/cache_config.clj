@@ -276,29 +276,21 @@
    (delete-cache-configs! ids nil))
   ([ids  :- [:sequential ms/PositiveInt]
     opts :- [:maybe [:map {:closed true} [:context {:optional true} :map]]]]
-   (when (seq ids)
-     (t2/with-transaction [_conn]
-       (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))
-             configs (into [] (mapcat cache.db/cache-configs-by-ids) batches)]
-         (when (seq configs)
-           (events/publish-event! :event/cache-config-delete (events/delete-event configs opts))
-           (run! cache.db/delete-cache-configs! batches)))))
-   nil))
+   (mdb/delete-batched! :model/CacheConfig ids
+                        {:before-delete #(events/publish-event! :event/cache-config-delete (events/delete-event % opts))})))
 
 (defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]
   (delete-cache-configs! (cache-config-ids-for-targets "database" (mapv :id databases))))
 
-(mu/defn update-cache-configs!
+(mu/defn update-cache-configs! :- :nil
   "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig, in one
   transaction."
   [rows :- [:sequential [:map {:closed true}
                          [:id             ms/PositiveInt]
                          [:next_run_at    {:optional true} ::cache.schema/temporal]
                          [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (run! (comp cache.db/update-cache-configs! vec) (partition-all mdb/update-partition-size rows)))))
+  (mdb/update-batched! :model/CacheConfig rows {}))
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

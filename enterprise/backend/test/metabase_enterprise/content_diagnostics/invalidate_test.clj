@@ -128,8 +128,8 @@
               stamp! (mt/original-fn #'cd.db/invalidate-findings-by-ids!)]
           ;; stamp for real, then fail, so the assertions prove a rollback rather than a write never made
           (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-by-ids! (fn [ids]
-                                                                         (stamp! ids)
-                                                                         (throw (ex-info "boom" {})))]
+                                                                          (stamp! ids)
+                                                                          (throw (ex-info "boom" {})))]
             (mt/user-http-request :rasta :post 500 "ee/content-diagnostics/invalidate" {:ids [a b]}))
           (is (true? (active? a)))
           (is (true? (active? b))))))))

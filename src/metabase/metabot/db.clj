@@ -51,16 +51,6 @@
   [metabot-id :- ms/PositiveInt]
   (t2/exists? :model/Metabot :id metabot-id))
 
-(mu/defn metabots-by-ids
-  "The Metabots with `metabot-ids`."
-  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
-
-(mu/defn update-metabots!
-  "Apply to the Metabot rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/Metabot updates))
-
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
 (mu/defn prompts-for-metabots
@@ -128,21 +118,6 @@
   [metabot-id :- ms/PositiveInt]
   (t2/count :model/MetabotPrompt :metabot_id metabot-id))
 
-(mu/defn insert-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
-  "Insert the MetabotPrompt `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.create]]
-  (mdb/insert-returning-instances! :model/MetabotPrompt rows))
-
-(mu/defn prompts-by-ids
-  "The MetabotPrompts with `prompt-ids`."
-  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/MetabotPrompt :id [:in [:auto/param prompt-ids]]))
-
-(mu/defn update-prompts! :- :nil
-  "Apply to the MetabotPrompt rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (mdb/update-grouped! :model/MetabotPrompt updates))
-
 (mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
   "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
   [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
@@ -152,12 +127,6 @@
   "Delete the MetabotPrompts of the Metabots with `metabot-ids`."
   [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/delete! :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])
-  nil)
-
-(mu/defn delete-prompts! :- :nil
-  "Delete the MetabotPrompts with `prompt-ids`."
-  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]])
   nil)
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
@@ -271,12 +240,6 @@
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
-(mu/defn insert-conversations! :- [:sequential ::metabot.schema/metabot-conversation]
-  "Insert the MetabotConversation `rows`, each under its client-generated id, in one statement, returning the inserted
-  instances in their order."
-  [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
-  (mdb/insert-returning-instances! :model/MetabotConversation rows))
-
 (mu/defn insert-upserted-conversation!
   "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
   row."
@@ -377,16 +340,6 @@
   [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
   (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
-(mu/defn messages-by-ids
-  "The MetabotMessages with `message-ids`."
-  [message-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
-
-(mu/defn update-messages! :- :nil
-  "Apply to the MetabotMessage rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::metabot.schema/metabot-message.update]]
-  (mdb/update-grouped! :model/MetabotMessage updates))
-
 (mu/defn messages-matching
   "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed, as an empty
   map would match every message. `:id` matches a single MetabotMessage or, given a collection, any of several."
@@ -412,21 +365,10 @@
 
 ;;; -------------------------------------------------- AI usage --------------------------------------------------
 
-(mu/defn insert-usage-logs!
-  "Insert the AiUsageLog `rows` in one statement."
-  [rows :- [:sequential ::metabot.schema/ai-usage-log.create]]
-  (t2/insert! :model/AiUsageLog rows))
-
 (mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the AiUsageLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]})))
-
-(mu/defn delete-usage-logs! :- :nil
-  "Delete the AiUsageLogs with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/AiUsageLog :id [:in [:auto/param ids]])
-  nil)
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
@@ -1306,17 +1248,7 @@
     (vec (t2/select-pks-vec :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
     []))
 
-(mu/defn conversations-by-ids
-  "The MetabotConversations with `conversation-ids`."
-  [conversation-ids :- [:sequential :string]]
-  (t2/select :model/MetabotConversation :id [:in conversation-ids]))
-
 (mu/defn conversation-ids-created-before :- [:sequential :string]
   "The ids of the MetabotConversations created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (mapv :id (conversations-created-before cutoff)))
-
-(mu/defn delete-conversations!
-  "Delete the MetabotConversations with `conversation-ids`."
-  [conversation-ids :- [:sequential {:min 1} :string]]
-  (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))

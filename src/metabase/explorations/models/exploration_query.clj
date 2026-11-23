@@ -74,7 +74,7 @@
 (mu/defn create-queries! :- [:sequential (ms/InstanceOf :model/ExplorationQuery)]
   "Insert the ExplorationQuery `rows` and return the new instances, in the order of `rows`."
   [rows :- [:sequential ::explorations.schema/exploration-query.create]]
-  (explorations.db/insert-queries! rows))
+  (app-db/create-batched! :model/ExplorationQuery rows {}))
 
 (defn- write-query-updates!
   "Writes `rows`, updates of ExplorationQueries, with one statement for each distinct set of columns, and returns the

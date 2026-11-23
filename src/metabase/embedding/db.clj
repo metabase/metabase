@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.embedding.schema :as embedding.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -48,26 +47,3 @@
        WHEN NOT MATCHED THEN INSERT (host, last_seen_at) VALUES (s.host, s.seen_at)"
       host seen-at]))
   nil)
-
-(mu/defn insert-embedding-themes!
-  "Insert the EmbeddingTheme `rows`, with one statement for each set of columns they give, so that a column a row leaves
-  out takes its default, and return the inserted instances in the order of `rows`."
-  [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
-  (let [groups (vals (group-by (comp set keys second) (map-indexed vector rows)))]
-    (->> groups
-         (mapcat (fn [group]
-                   (map vector (map first group) (mdb/insert-returning-instances! :model/EmbeddingTheme (mapv second group)))))
-         (sort-by first)
-         (mapv second))))
-
-(mu/defn update-embedding-themes! :- :nil
-  "Apply each of `updates`, the `:id` of a EmbeddingTheme and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/EmbeddingTheme updates)
-  nil)
-
-(mu/defn delete-embedding-themes!
-  "Delete the EmbeddingThemes with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/EmbeddingTheme :id [:in ids]))

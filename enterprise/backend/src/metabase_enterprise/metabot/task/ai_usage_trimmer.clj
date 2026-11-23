@@ -23,9 +23,10 @@
       (log/info "Skipping AI usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
-        (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (ai-usage-log/delete-ai-usage-logs! (metabot.db/usage-log-ids-created-before cutoff))]
-          (log/infof "AI usage log cleanup complete. Deleted %d rows." (or deleted 0)))))))
+        (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))
+              ids    (metabot.db/usage-log-ids-created-before cutoff)]
+          (ai-usage-log/delete-ai-usage-logs! ids)
+          (log/infof "AI usage log cleanup complete. Deleted %d rows." (count ids)))))))
 
 (task/defjob AiUsageTrimmer
   "Delete old ai_usage_log rows"

@@ -526,26 +526,26 @@
   [rows]
   (check-allowed-contents (map :collection_id rows)))
 
-(defn- create-table-batch!
-  "Check and insert `rows`, one batch of a call, with the default field order of their driver, and return the inserted
-  Tables, given the default permissions of a new Table."
+(defn- prepare-new-tables
+  "Check the new Table `rows` and return them with the default field order of their driver."
   [rows]
   (check-new-tables rows)
-  (u/prog1 (vec (warehouse-schema.db/insert-tables! (add-default-field-orders rows)))
-    (set-new-permissions! <>)))
+  (add-default-field-orders rows))
+
+(defn- tables-created!
+  "Give the new `tables` the default permissions of a new Table and publish their create event."
+  [tables]
+  (set-new-permissions! tables)
+  (events/publish-event! :event/table-create (events/create-event tables)))
 
 (mu/defn create-tables! :- [:sequential ::warehouse-schema.schema/table]
   "Insert the Table `rows` in one transaction, publishing their create event, and return the inserted Tables, with the
   default field order of their driver and the default permissions of a new Table; a Collection that cannot hold Tables
   throws."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into []
-                        (mapcat (comp create-table-batch! vec))
-                        (partition-all mdb/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/table-create (events/create-event created)))
-      created)))
+  (mdb/create-batched! :model/Table rows
+                       {:before-create prepare-new-tables
+                        :after-create  tables-created!}))
 
 (defn- ordered-field-positions
   "The position of each Field of the `tables`, which share `field-order`, in that order: one read."
@@ -575,19 +575,17 @@
       (assoc :updated_at (:updated_at previous))))
 
 (defn- publish-table-updates!
-  "Publish the `:event/table-update` event of `batches`, each the rows a batch wrote and its Tables by id as stored
-  before, with the `:context` and `:writer` of `opts`, leaving out the rows that change nothing."
-  [batches opts]
-  (let [id->stored (into {} (map :id->stored) batches)
-        updates    (into [] (mapcat :updates) batches)]
-    (events/publish-event! :event/table-update
-                           (events/update-event id->stored
-                                                updates
-                                                (assoc opts :objects (into {}
-                                                                           (keep (fn [{:keys [id] :as row}]
-                                                                                   (when-let [previous (id->stored id)]
-                                                                                     [id (updated-table previous (dissoc row :id))])))
-                                                                           updates))))))
+  "Publish the `:event/table-update` event of `updates` over the `id->stored` Tables with the `:context` and `:writer` of
+  `opts`, leaving out the rows that change nothing."
+  [opts updates id->stored _id->updated]
+  (events/publish-event! :event/table-update
+                         (events/update-event id->stored
+                                              updates
+                                              (assoc opts :objects (into {}
+                                                                         (keep (fn [{:keys [id] :as row}]
+                                                                                 (when-let [previous (id->stored id)]
+                                                                                   [id (updated-table previous (dissoc row :id))])))
+                                                                         updates)))))
 
 (defn- moved-collection-ids
   "The ids of the Collections that `rows`, the id of a Table of `stored`, `{id row}`, and its changes, move Tables to."
@@ -611,15 +609,6 @@
   [ids]
   (into {} (map #(warehouse-schema.db/tables-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
 
-(defn- stored-tables
-  "The stored Tables that `updates` change, by id: those of `held`, the Tables the caller read, and the others read in
-  one query."
-  [updates held]
-  (let [id->held (into {} (map (juxt :id identity)) held)
-        missing  (into [] (comp (map :id) (remove id->held) (distinct)) updates)]
-    (cond-> id->held
-      (seq missing) (merge (warehouse-schema.db/tables-by-ids missing)))))
-
 (defn- check-table-updates
   "Throw unless every one of `updates`, the id of one of the `id->stored` Tables and its changes, satisfies this rule:
 
@@ -627,39 +616,32 @@
   [updates id->stored]
   (check-allowed-contents (moved-collection-ids id->stored updates)))
 
-(defn- update-table-batch!
-  "Check and write `updates`, one batch of a call, with `held`, the Tables the caller read, set the positions of the
-  Fields of the Tables that get another field order, and return the rows written with the Tables by id as stored
-  before."
-  [updates held]
-  (let [id->stored (stored-tables updates held)]
-    (check-table-updates updates id->stored)
-    (warehouse-schema.db/update-tables! updates)
-    (update-field-positions! (reordered-tables id->stored updates))
-    {:updates updates :id->stored id->stored}))
+(defn- prepare-table-updates!
+  "Check `updates` over the `id->stored` Tables, set the positions of the Fields of the Tables they give another field
+  order, and return `updates`."
+  [updates id->stored]
+  (check-table-updates updates id->stored)
+  (update-field-positions! (reordered-tables id->stored updates))
+  updates)
 
 (mr/def ::write-opts
-  "The options of an update of Tables: `:tables`, the Tables the caller already read, as the rows before it, so that it
-  reads none; `:context` and `:writer`, that of a Collection archive the Tables follow, for the events."
+  "The options of an update of Tables: `:context` and `:writer`, that of a Collection archive the Tables follow, for the
+  events."
   [:maybe [:map {:closed true}
-           [:tables  {:optional true} [:sequential ::warehouse-schema.schema/table]]
            [:writer  {:optional true} [:enum :import]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mu/defn update-tables! :- :nil
   "Apply `updates`, each the `:id` of a Table and the columns to change, in one transaction, publishing their update
-  event with the `:context` and `:writer` of `opts`; the stored rows are read unless the caller gives them as
-  `:tables`. A Collection that cannot hold Tables throws, and a new field order sets the positions of their Fields."
+  event with the `:context` and `:writer` of `opts`. A Collection that cannot hold Tables throws, and a new field order
+  sets the positions of their Fields."
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]]
    (update-tables! updates nil))
-  ([updates                   :- [:sequential ::warehouse-schema.schema/table.update]
-    {:keys [tables] :as opts} :- ::write-opts]
-   (t2/with-transaction [_conn]
-     (let [batches (mapv #(update-table-batch! (vec %) tables)
-                         (partition-all mdb/update-partition-size updates))]
-       (when (seq batches)
-         (publish-table-updates! batches (dissoc opts :tables)))))
-   nil))
+  ([updates :- [:sequential ::warehouse-schema.schema/table.update]
+    opts    :- ::write-opts]
+   (mdb/update-batched! :model/Table updates
+                        {:before-update prepare-table-updates!
+                         :after-update  (partial publish-table-updates! opts)})))
 
 (mu/defn change-case!
   "Set each of `columns`, such as `:name` and `:schema`, of the Tables with `table-ids` to its value in `kase`, `:lower`
@@ -683,24 +665,20 @@
   [database-id :- ::lib.schema.id/database]
   (warehouse-schema.db/table-ids-of-database database-id))
 
-(defn- delete-table-batch!
-  "Delete the Tables with `ids`, after their Fields and the implicit Actions that write to them."
-  [ids]
-  (field/delete-fields! (vec (warehouse-schema.db/field-ids-for-tables ids)))
-  (actions.models/delete-actions! (actions.models/action-ids-of-tables ids))
-  (warehouse-schema.db/delete-tables! ids))
+(defn- delete-table-content-and-publish!
+  "Delete the Fields of the Table rows `tables`, nested ones first, and the implicit Actions that write to them, then
+  publish the Tables' delete event."
+  [tables]
+  (let [batches (partition-all mdb/delete-partition-size (map :id tables))]
+    (field/delete-fields! (into [] (mapcat #(warehouse-schema.db/field-ids-for-tables (vec %))) batches))
+    (actions.models/delete-actions! (into [] (mapcat #(actions.models/action-ids-of-tables (vec %))) batches)))
+  (events/publish-event! :event/table-delete (events/delete-event tables)))
 
 (mu/defn delete-tables! :- :nil
   "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them, in one
-  transaction, publishing their delete event before the statements."
+  transaction, publishing their delete event after those and before the Tables' own statements."
   [ids :- [:sequential ::lib.schema.id/table]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))
-          tables  (into [] (mapcat (comp vals warehouse-schema.db/tables-by-ids)) batches)]
-      (when (seq tables)
-        (events/publish-event! :event/table-delete (events/delete-event tables))
-        (run! delete-table-batch! batches))))
-  nil)
+  (mdb/delete-batched! :model/Table ids {:before-delete delete-table-content-and-publish!}))
 
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain

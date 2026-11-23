@@ -344,16 +344,11 @@
         (partition-all mdb/delete-partition-size field-ids)))
 
 (mu/defn delete-field-user-settings! :- :nil
-  "Delete the FieldUserSettings with `ids` in one transaction, leaving their Fields as they are for sync to take over:
-  one event for all of them before the statements, which run in batches of [[mdb/delete-partition-size]]."
+  "Delete the FieldUserSettings with `ids` in one transaction, publishing their delete event, leaving their Fields as
+  they are for sync to take over."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (vec (vals (settings-by-id ids))))]
-        (events/publish-event! :event/field-user-settings-delete (events/delete-event rows))
-        (run! #(warehouse-schema.db/delete-field-user-settings-by-ids! (mapv :id %))
-              (partition-all mdb/delete-partition-size rows)))))
-  nil)
+  (mdb/delete-batched! :model/FieldUserSettings ids
+                       {:before-delete #(events/publish-event! :event/field-user-settings-delete (events/delete-event %))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

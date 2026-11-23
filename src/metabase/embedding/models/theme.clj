@@ -3,7 +3,6 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
-   [metabase.embedding.db :as embedding.db]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -40,30 +39,17 @@
 (mu/defn create-embedding-themes! :- [:sequential :map]
   "Insert the EmbeddingTheme `rows` and return the inserted instances, in the order of `rows`."
   [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
-  (if (seq rows) (embedding.db/insert-embedding-themes! rows) []))
-
-(defn- write-theme-updates!
-  "Writes `rows`, updates of EmbeddingThemes, with one statement for each distinct set of columns."
-  [rows]
-  (embedding.db/update-embedding-themes! rows))
+  (app-db/create-batched! :model/EmbeddingTheme rows {}))
 
 (mu/defn update-embedding-themes! :- :nil
   "Apply `updates`, each the `:id` of an EmbeddingTheme with the columns to give it, in one transaction."
-  [updates :- [:sequential [:merge
-                            [:map {:closed true} [:id ms/PositiveInt]]
-                            [:map {:closed true}
-                             [:name     {:optional true} :string]
-                             [:settings {:optional true} ::embedding.schema/embedding-theme.settings]]]]]
-  (t2/with-transaction [_conn]
-    (run! write-theme-updates! (partition-all app-db/update-partition-size updates)))
-  nil)
+  [updates :- [:sequential ::embedding.schema/embedding-theme.update]]
+  (app-db/update-batched! :model/EmbeddingTheme updates {}))
 
 (mu/defn delete-embedding-themes! :- :nil
   "Delete the EmbeddingThemes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (embedding.db/delete-embedding-themes! ids))
-  nil)
+  (app-db/delete-batched! :model/EmbeddingTheme ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

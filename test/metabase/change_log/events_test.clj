@@ -3,9 +3,10 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
+   [metabase.change-log.db :as change-log.db]
    [metabase.change-log.log :as change-log.log]
    [metabase.change-log.numbering :as change-log.numbering]
    [metabase.change-log.spec :as change-log.spec]
@@ -123,14 +124,18 @@
                      :model/Table    t  {:db_id (:id db)}]
         (testing "with the create constant lowered, an insert of three Fields logs all three"
           (let [created (atom nil)
-                rows    (with-redefs [app-db/create-partition-size 1]
+                calls   (atom 0)
+                rows    (with-redefs [app-db.query/create-partition-size 1
+                                      change-log.db/insert-entries!      (let [f @#'change-log.db/insert-entries!] (fn [& args] (swap! calls inc) (apply f args)))]
                           (logged-by #(reset! created (field/create-fields! (vec (for [field-name ["b1" "b2" "b3"]]
                                                                                    {:table_id      (:id t)
                                                                                     :name          field-name
                                                                                     :base_type     :type/Text
                                                                                     :database_type "TEXT"}))))))]
             (is (= (set (map :id @created)) (set (map second rows))))
-            (is (= 3 (count rows)))))))))
+            (is (= 3 (count rows)))
+            (testing "in one insert per row"
+              (is (= 3 @calls)))))))))
 
 (deftest wake-numbering-test
   (testing "a log wakes the numbering, but not in tests"

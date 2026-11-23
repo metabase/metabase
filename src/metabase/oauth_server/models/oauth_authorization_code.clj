@@ -28,13 +28,10 @@
   [row :- ::oauth-server.schema/oauth-authorization-code.create]
   (oauth-server.db/insert-authorization-code! row))
 
-(mu/defn delete-oauth-authorization-codes! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the OAuthAuthorizationCodes with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-oauth-authorization-codes! :- :nil
+  "Delete the OAuthAuthorizationCodes with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp oauth-server.db/delete-authorization-codes! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/OAuthAuthorizationCode ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

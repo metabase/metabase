@@ -207,11 +207,6 @@
   [rows :- [:sequential {:min 1} NotificationRow]]
   (mdb/insert-returning-instances! :model/Notification rows))
 
-(mu/defn update-notifications!
-  "Apply to the Notification rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::notification.schema/notification.update]]
-  (mdb/update-grouped! :model/Notification updates))
-
 (mu/defn update-notification-columns!
   "Apply `changes` to the Notification with `notification-id`, returning the number updated."
   [notification-id :- ms/PositiveInt
@@ -238,11 +233,6 @@
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/delete! model :id [:in [:auto/param ids]])
   nil)
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
 
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
 

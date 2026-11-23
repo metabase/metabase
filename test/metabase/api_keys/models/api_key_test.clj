@@ -5,7 +5,8 @@
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -141,10 +142,13 @@
                                                             :user_id               admin-id
                                                             :creator_id            admin-id
                                                             :updated_by_id         admin-id)))))]
-           (testing "with the constants lowered, an update of three keys records an audit row for each"
-             (with-redefs [app-db/create-partition-size 1
-                           app-db/delete-partition-size 1]
-               (mt/with-current-user admin-id
-                 (api-key/update-api-keys! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))
+           (testing "with the constants lowered, an update of three keys records an audit row for each, in three inserts"
+             (let [calls (atom 0)]
+               (with-redefs [app-db.query/create-partition-size 1
+                             app-db.query/delete-partition-size 1
+                             audit-app.db/insert-audit-logs!   (let [f @#'audit-app.db/insert-audit-logs!] (fn [& args] (swap! calls inc) (apply f args)))]
+                 (mt/with-current-user admin-id
+                   (api-key/update-api-keys! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))
+               (is (= 3 @calls)))
              (is (= (set ids)
                     (t2/select-fn-set :model_id :model/AuditLog :model "ApiKey" :model_id [:in ids] :topic "api-key-update"))))))))))

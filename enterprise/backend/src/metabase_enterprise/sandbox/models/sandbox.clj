@@ -307,75 +307,55 @@
   [rows]
   (run! check-columns-match-table rows))
 
-(defn- create-sandbox-batch!
-  "Check and insert `rows`, one batch of a call, taking native query access away from each group on the Database of the
-  Table where it has it, and return the inserted Sandboxes."
+(defn- remove-native-access-of-groups!
+  "Take native query access away from the group of each of `rows` on the Database of its Table where it has it, and
+  return the rows."
   [rows]
-  (check-new-sandboxes rows)
   (run! remove-native-access! rows)
-  (sandbox.db/insert-sandboxes! rows))
+  rows)
 
 (mu/defn create-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
   "Insert the Sandbox `rows` in one transaction and return them in order, publishing their create event; a Card whose
   columns do not match the Table is a 400, and the group loses native query access to the Database of the Table where
   it has it."
   [rows :- [:sequential ::sandbox.schema/sandbox.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into [] (mapcat (comp create-sandbox-batch! vec)) (partition-all mdb/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/sandbox-create (events/create-event created)))
-      created)))
+  (mdb/create-batched! :model/Sandbox rows
+                       {:before-create (fn [rows]
+                                         (check-new-sandboxes rows)
+                                         (remove-native-access-of-groups! rows))
+                        :after-create  #(events/publish-event! :event/sandbox-create (events/create-event %))}))
 
 (defn- check-sandbox-updates
-  "Throws a 400 unless every row of `updates`, whose stored Sandboxes `id->stored` holds, satisfies these rules, with
-  the refusal of the first row that breaks one, in this order for each:
+  "Throws a 400 unless every row of `updates` whose Sandbox `id->stored` holds satisfies these rules, with the refusal
+  of the first row that breaks one, in this order for each:
 
   - a new Card's columns match the Table of the Sandbox
   - the Sandbox keeps its Table and its group"
   [updates id->stored]
   (doseq [{id :id :as row} updates
           :let [before  (id->stored id)
-                changes (dissoc row :id)]]
+                changes (dissoc row :id)]
+          :when before]
     (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id before)))
       (check-columns-match-table (merge before changes)))
     (t2.before-update/before-update :model/Sandbox (merge before changes))))
-
-(defn- update-sandbox-batch!
-  "Check and write the rows of `batch` whose Sandboxes exist, one batch of a call, and return the rows written with the
-  Sandboxes by id as stored before and after."
-  [batch]
-  (let [id->stored (sandbox.db/sandboxes-by-ids (mapv :id batch))
-        updates    (filterv (comp id->stored :id) batch)]
-    (check-sandbox-updates updates id->stored)
-    (sandbox.db/update-sandboxes! updates)
-    {:updates     updates
-     :id->stored  id->stored
-     :id->updated (if (seq updates) (sandbox.db/sandboxes-by-ids (mapv :id updates)) {})}))
 
 (mu/defn update-sandboxes! :- :nil
   "Apply `updates`, each the id of a Sandbox and the columns to set, in one transaction, publishing their update event;
   a new Card whose columns do not match the Table is a 400, the refusal of the first refused row being the one thrown."
   [updates :- [:sequential ::sandbox.schema/sandbox.update]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv (comp update-sandbox-batch! vec) (partition-all mdb/update-partition-size updates))
-          updates (into [] (mapcat :updates) batches)]
-      (when (seq updates)
-        (events/publish-event! :event/sandbox-update
-                               (events/update-event (into {} (map :id->stored) batches)
-                                                    updates
-                                                    {:objects (into {} (map :id->updated) batches)})))))
-  nil)
+  (mdb/update-batched! :model/Sandbox updates
+                       {:before-update check-sandbox-updates
+                        :reread?       true
+                        :after-update  (fn [updates id->stored id->updated]
+                                         (events/publish-event! :event/sandbox-update
+                                                                (events/update-event id->stored updates {:objects id->updated})))}))
 
 (mu/defn delete-sandboxes! :- :nil
   "Delete the Sandboxes with `sandbox-ids` in one transaction, publishing their delete event."
   [sandbox-ids :- [:sequential ::lib.schema.id/sandbox]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv vec (partition-all mdb/delete-partition-size (distinct sandbox-ids)))
-          sandboxes (into [] (mapcat (comp vals sandbox.db/sandboxes-by-ids)) batches)]
-      (when (seq sandboxes)
-        (events/publish-event! :event/sandbox-delete (events/delete-event sandboxes))
-        (run! sandbox.db/delete-sandboxes! batches))))
-  nil)
+  (mdb/delete-batched! :model/Sandbox sandbox-ids
+                       {:before-delete #(events/publish-event! :event/sandbox-delete (events/delete-event %))}))
 
 (defn- graph-sandbox-change
   "The update row of `sandbox`, a sandbox of a permissions graph with an `:id`, when it holds a `:card_id` or

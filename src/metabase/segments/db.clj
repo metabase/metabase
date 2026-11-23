@@ -2,7 +2,6 @@
   "Application database queries for the segments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,11 +24,6 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-segments!
-  "Insert the Segment `rows` and return the inserted instances."
-  [rows :- [:sequential ::segments.schema/segment.create]]
-  (app-db/insert-returning-instances! :model/Segment rows))
-
 (mu/defn segment
   "The Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
@@ -39,23 +33,6 @@
   "The unarchived Segments, in case-insensitive name order."
   []
   (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn segments-by-ids
-  "A map of id to Segment for the Segments with `ids`."
-  [ids :- [:sequential ::lib.schema.id/segment]]
-  (t2/select-pk->fn identity :model/Segment :id [:in ids]))
-
-(mu/defn update-segments! :- :nil
-  "Apply each of `updates`, the `:id` of a Segment and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/Segment updates)
-  nil)
-
-(mu/defn delete-segments!
-  "Delete the Segments with `ids`, returning the number deleted."
-  [ids :- [:sequential ::lib.schema.id/segment]]
-  (t2/delete! :model/Segment :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

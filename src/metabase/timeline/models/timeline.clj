@@ -98,22 +98,18 @@
   [rows]
   (collection/check-collections-for-model! :model/Timeline rows))
 
-(defn- create-timeline-batch!
-  "Check and insert `rows`, one batch of a call, and return the new Timelines."
+(defn- check-new-timelines
+  "Throw a 400 unless every one of `rows`, new Timelines, satisfies the rules of [[check-timelines]]."
   [rows]
-  (check-timelines (map #(update % :archived boolean) rows))
-  (timeline.db/insert-timelines! rows))
+  (check-timelines (map #(update % :archived boolean) rows)))
 
 (mu/defn create-timelines! :- [:sequential (ms/InstanceOf :model/Timeline)]
   "Insert the Timeline `rows` and return the inserted instances, in one transaction, publishing their create event. A
   Timeline in a Collection that cannot hold it, or in an archived Collection unless it is archived, throws."
   [rows :- [:sequential ::timeline.schema/timeline.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into [] (mapcat (comp create-timeline-batch! vec))
-                        (partition-all app-db/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/timeline-create (events/create-event created)))
-      created)))
+  (app-db/create-batched! :model/Timeline rows
+                          {:before-create check-new-timelines
+                           :after-create  #(events/publish-event! :event/timeline-create (events/create-event %))}))
 
 (defn- carry-to-events!
   "Set the archived flag of the TimelineEvents of the Timelines that `rows`, updates of the Timelines `id->stored`,
@@ -185,13 +181,8 @@
   "Delete the Timelines with `ids` and their events in one transaction, publishing their delete event right before the
   first statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv vec (partition-all app-db/delete-partition-size (distinct ids)))
-          timelines (into [] (mapcat (comp vals timeline.db/timelines-by-ids)) batches)]
-      (when (seq timelines)
-        (events/publish-event! :event/timeline-delete (events/delete-event timelines)))
-      (run! timeline.db/delete-timelines! batches)))
-  nil)
+  (app-db/delete-batched! :model/Timeline ids
+                          {:before-delete #(events/publish-event! :event/timeline-delete (events/delete-event %))}))
 
 (defmethod collection/archive-in-collections! :model/Timeline
   [_model collection-ids opts]

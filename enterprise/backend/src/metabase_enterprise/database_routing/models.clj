@@ -71,68 +71,46 @@
   (when (and (seq database-ids) (database-routing.db/destination-database-exists? database-ids))
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
+(defn- check-new-routers
+  "Throws a 400 unless the DatabaseRouter `rows` satisfy these rules:
+
+  - no router Database is a routing destination, since a destination cannot be a router"
+  [rows]
+  (check-not-destinations (mapv :database_id rows)))
+
 (mu/defn create-database-routers! :- [:sequential ::database-routing.schema/database-router]
   "Insert the DatabaseRouter `rows` in one transaction and return them in order, publishing their create event; a
   destination Database is a 400."
   [rows :- [:sequential ::database-routing.schema/database-router.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [created (into []
-                          (mapcat (fn [batch]
-                                    (check-not-destinations (mapv :database_id batch))
-                                    (database-routing.db/insert-routers! (vec batch))))
-                          (partition-all app-db/create-partition-size rows))]
-        (events/publish-event! :event/database-router-create (events/create-event created))
-        created))))
+  (app-db/create-batched! :model/DatabaseRouter rows
+                          {:before-create check-new-routers
+                           :after-create  #(events/publish-event! :event/database-router-create (events/create-event %))}))
 
 (defn- check-router-updates
-  "Throws unless every row of `updates`, whose stored DatabaseRouters `stored` holds, satisfies these rules:
+  "Throws unless every row of `updates` whose DatabaseRouter `id->stored` holds satisfies these rules:
 
   - the hooks of the DatabaseRouter accept the row merged into its stored row"
-  [stored updates]
-  (doseq [{id :id :as row} updates]
-    (t2.before-update/before-update :model/DatabaseRouter (merge (stored id) (dissoc row :id)))))
+  [updates id->stored]
+  (doseq [{id :id :as row} updates
+          :let [stored (id->stored id)]
+          :when stored]
+    (t2.before-update/before-update :model/DatabaseRouter (merge stored (dissoc row :id)))))
 
-(defn- write-router-updates!
-  "Write `updates` over the `stored` DatabaseRouters, a statement per row, and return each row with its
-  stored DatabaseRouter."
-  [stored updates]
-  (database-routing.db/update-routers! updates)
-  (mapv (fn [row] [(stored (:id row)) row]) updates))
-
-(defn- update-router-batch!
-  "Check and apply the `batch` of updates whose DatabaseRouters exist, returning what [[write-router-updates!]]
-  returns."
-  [batch]
-  (let [stored  (u/index-by :id (database-routing.db/routers-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (check-router-updates stored updates)
-    (write-router-updates! stored updates)))
-
-(mu/defn update-database-routers! :- [:sequential ::database-routing.schema/database-router.update]
-  "Apply `rows`, each an `:id` and its changes, to their DatabaseRouters in one transaction and return the rows that
-  exist, publishing their update event."
+(mu/defn update-database-routers! :- :nil
+  "Apply `rows`, each an `:id` and its changes, to their DatabaseRouters in one transaction, publishing their update
+  event."
   [rows :- [:sequential ::database-routing.schema/database-router.update]]
-  (t2/with-transaction [_conn]
-    (let [written (into [] (mapcat update-router-batch!) (partition-all app-db/update-partition-size rows))]
-      (when (seq written)
-        (events/publish-event! :event/database-router-update
-                               (events/update-event (into {} (map (fn [[stored _]] [(:id stored) stored])) written)
-                                                    (mapv second written))))
-      (mapv second written))))
+  (app-db/update-batched! :model/DatabaseRouter rows
+                          {:before-update check-router-updates
+                           :after-update  (fn [updates id->stored _]
+                                            (events/publish-event! :event/database-router-update
+                                                                   (events/update-event id->stored updates)))}))
 
 (mu/defn delete-database-routers! :- :nil
   "Delete the DatabaseRouters with `ids` in one transaction, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))
-            routers (into [] (mapcat database-routing.db/routers-by-ids) batches)]
-        (when (seq routers)
-          (events/publish-event! :event/database-router-delete (events/delete-event routers))
-          (run! database-routing.db/delete-routers! batches)))))
-  nil)
+  (app-db/delete-batched! :model/DatabaseRouter ids
+                          {:before-delete #(events/publish-event! :event/database-router-delete (events/delete-event %))}))
 
 (defenterprise delete-database-routers-for-databases!
   "Deletes the Database Routers of the router Databases with `database-ids`, which are being deleted."

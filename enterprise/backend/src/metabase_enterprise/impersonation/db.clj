@@ -62,11 +62,6 @@
                                                    [:db_id :group_id :attribute])]]
   (app-db/insert-returning-instances! :model/ConnectionImpersonation impersonations))
 
-(mu/defn delete-impersonations!
-  "Delete the ConnectionImpersonations with `ids`, which must not be empty."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/ConnectionImpersonation :id [:in [:auto/param (vec ids)]]))
-
 (mu/defn impersonation-ids-for-groups-and-databases :- [:sequential ms/PositiveInt]
   "The ids of the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`, read
   `app-db/update-partition-size` pairs at a time."
@@ -121,8 +116,3 @@
   (vec (t2/select-pks-vec :model/ImpersonationQueryCache {:where [:or
                                                                   [:not= :input_version version]
                                                                   [:< :created_at cutoff]]})))
-
-(mu/defn delete-query-caches! :- :int
-  "Delete the ImpersonationQueryCaches with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/ImpersonationQueryCache :id [:in ids]))

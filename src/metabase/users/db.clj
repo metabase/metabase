@@ -168,15 +168,15 @@
   [tenant-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
 
-(mu/defn insert-users!
-  "Insert the User `rows`, one statement for each set of columns they give, and return the new instances in their order."
-  [rows :- [:sequential ::users.schema/user.create]]
-  (app-db/insert-returning-instances! :model/User rows))
+(mu/defn users-with-all-columns :- [:sequential :map]
+  "The Users with `user-ids`, at most one partition of them, with every column of `:core_user`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select [:model/User :*] :id [:in [:auto/param (vec user-ids)]]))
 
 (mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
   "A map from id to the User, with every column of `:core_user`, for each of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (into {} (map (juxt :id identity)) (by-id-partitions #(t2/select [:model/User :*] :id [:in (vec %)]) user-ids)))
+  (into {} (map (juxt :id identity)) (by-id-partitions users-with-all-columns user-ids)))
 
 (mu/defn user-ids-by-emails :- [:map-of :string ::lib.schema.id/user]
   "A map from the lower-cased email to the id of each User whose lower-cased email is one of `lower-case-emails`."

@@ -2,6 +2,7 @@
   "Application database queries for the pulse module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
    [metabase.collections.listing :as collections.listing]
@@ -241,7 +242,7 @@
 (mu/defn insert-pulses!
   "Insert the Pulse `pulses` with one statement per distinct set of columns and return the inserted instances in their
   order."
-  [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.changes]]
+  [pulses :- [:sequential {:min 1} (mut/dissoc ::pulse.schema/pulse.update :id)]]
   (app-db/insert-returning-instances! :model/Pulse pulses))
 
 (mu/defn collections-for-content-checks
@@ -260,7 +261,7 @@
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse
-   changes  :- ::pulse.schema/pulse.changes]
+   changes  :- (mut/dissoc ::pulse.schema/pulse.update :id)]
   (t2/update! :model/Pulse :id pulse-id changes))
 
 (mu/defn archived-directly-clause
@@ -287,15 +288,10 @@
   [updates :- [:sequential ::pulse.schema/pulse.update]]
   (app-db/update-grouped! :model/Pulse updates))
 
-(mu/defn delete-pulses!
-  "Delete the Pulses with `pulse-ids`."
-  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (t2/delete! :model/Pulse :id [:in pulse-ids]))
-
 (mu/defn update-pulses-for-dashboards!
   "Apply the changes of each Dashboard in `changes-by-dashboard`, a map of Dashboard id to changes with the same keys,
   to the Pulses of that Dashboard in one statement, leaving `updated_at` untouched."
-  [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard ::pulse.schema/pulse.changes]]
+  [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard (mut/dissoc ::pulse.schema/pulse.update :id)]]
   (let [columns (vec (distinct (mapcat keys (vals changes-by-dashboard))))
         value-of (fn [column]
                    (into [:case]

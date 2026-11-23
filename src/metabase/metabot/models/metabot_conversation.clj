@@ -69,11 +69,8 @@
   "Insert the MetabotConversation `rows`, each under its client-generated `:id`, and return them in order, publishing
   the event of the write."
   [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (u/prog1 (metabot.db/insert-conversations! rows)
-        (events/publish-event! :event/metabot-conversation-create (events/create-event <>))))))
+  (mdb/create-batched! :model/MetabotConversation rows
+                       {:after-create #(events/publish-event! :event/metabot-conversation-create (events/create-event %))}))
 
 (mu/defn upsert-metabot-conversation!
   "Insert the MetabotConversation with `conversation-id` for the User `user-id` with the `columns`, or when it exists
@@ -113,17 +110,11 @@
     (u/prog1 (metabot.db/insert-conversation-row! row)
       (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
 
-(mu/defn delete-metabot-conversations! :- :int
-  "Delete the MetabotConversations with `conversation-ids`, in batches in one transaction, publishing one delete event
-  for all right before the first statement, and return the number deleted."
+(mu/defn delete-metabot-conversations! :- :nil
+  "Delete the MetabotConversations with `conversation-ids` in one transaction, publishing their delete event."
   [conversation-ids :- [:sequential :string]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size conversation-ids))
-          rows    (into [] (mapcat metabot.db/conversations-by-ids) batches)]
-      (when (seq batches)
-        (events/publish-event! :event/metabot-conversation-delete (events/delete-event rows)))
-      (run! metabot.db/delete-conversations! batches)
-      (count rows))))
+  (mdb/delete-batched! :model/MetabotConversation conversation-ids
+                       {:before-delete #(events/publish-event! :event/metabot-conversation-delete (events/delete-event %))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

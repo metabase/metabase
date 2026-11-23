@@ -1212,12 +1212,6 @@
                                                                             (events/touch-event [notification-after])))))))))
    nil))
 
-(defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a Notification and the columns to change, for the
-  Notifications in `stored`."
-  [rows stored]
-  (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows))
-
 (defn- flipped-ids
   "The ids of the Notifications of `stored` whose `:active` the changes in `requested`, a map from id, flip."
   [stored requested]
@@ -1234,51 +1228,39 @@
   (doseq [[active ids] (group-by #(boolean (:active (requested %))) (flipped-ids stored requested))]
     (update-subscription-triggers! active (notification.db/subscriptions-for-notifications (vec ids)))))
 
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a Notification and the columns to change, and return the Notifications as read
-  and their changes, each a map from id."
-  [rows]
-  (let [stored    (u/index-by :id (notification.db/notifications-by-id (mapv :id rows)))
-        requested (requested-changes rows stored)]
-    (notification.db/update-notifications! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
-    (update-triggers-of-flipped! stored requested)
-    {:stored stored :requested requested}))
+(defn- publish-notification-updates!
+  "Add or remove the Quartz triggers of the cron subscriptions of the Notifications of `id->stored` that `updates` activate
+  or deactivate, then publish the update event of the Notifications."
+  [updates id->stored]
+  (update-triggers-of-flipped! id->stored (into {} (map (juxt :id #(dissoc % :id))) updates))
+  (events/publish-event! :event/notification-row-update (events/update-event id->stored updates)))
 
 (mu/defn update-notifications! :- :nil
-  "Apply the changes in each of `rows`, the id of a Notification and the columns to change, in batches in one
-  transaction, publishing one update event for all. A change of `:active` adds or removes the Quartz triggers of their
-  cron subscriptions."
+  "Apply the changes in each of `rows`, the id of a Notification and the columns to change, in one transaction,
+  publishing their update event. A change of `:active` adds or removes the Quartz triggers of their cron
+  subscriptions."
   [rows :- [:sequential ::notification.schema/notification.update]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv (comp update-batch! vec) (partition-all mdb/update-partition-size rows))
-          stored    (into {} (mapcat :stored) batches)
-          requested (into {} (mapcat :requested) batches)]
-      (when (seq stored)
-        (events/publish-event! :event/notification-row-update
-                               (events/update-event stored (mapv (fn [[id changes]] (assoc changes :id id)) requested))))))
-  nil)
+  (mdb/update-batched! :model/Notification rows
+                       {:before-update (fn [rows id->stored] (filterv (comp id->stored :id) rows))
+                        :after-update  publish-notification-updates!}))
 
-(defn- delete-cascades!
-  "Delete the Quartz triggers of the cron subscriptions of the Notifications with `ids` and their NotificationCards."
-  [ids]
-  (doseq [subscription (notification.db/subscriptions-for-notifications ids)
-          :when        (= :notification-subscription/cron (:type subscription))]
-    (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
-  (notification.db/delete-notification-cards-for-notifications! ids))
+(defn- delete-cascades-and-publish!
+  "Delete the Quartz triggers of the cron subscriptions of `notifications` and their NotificationCards, then publish
+  their delete event."
+  [notifications]
+  (let [ids (mapv :id notifications)]
+    (doseq [subscription (notification.db/subscriptions-for-notifications ids)
+            :when        (= :notification-subscription/cron (:type subscription))]
+      (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
+    (notification.db/delete-notification-cards-for-notifications! ids))
+  (events/publish-event! :event/notification-row-delete (events/delete-event notifications)))
 
-(mu/defn delete-notifications! :- :int
+(mu/defn delete-notifications! :- :nil
   "Delete the Notifications with `notification-ids` along with the NotificationCards they hold and the Quartz triggers
-  of their cron subscriptions, in batches in one transaction, publishing one delete event for all right before the
-  first Notification statement, and return the number deleted."
+  of their cron subscriptions, in one transaction, publishing their delete event right before the first Notification
+  statement."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches       (mapv vec (partition-all mdb/delete-partition-size notification-ids))
-          notifications (into [] (mapcat notification.db/notifications-by-id) batches)]
-      (run! delete-cascades! batches)
-      (when (seq batches)
-        (events/publish-event! :event/notification-row-delete (events/delete-event notifications)))
-      (run! notification.db/delete-notifications! batches)
-      (count notifications))))
+  (mdb/delete-batched! :model/Notification notification-ids {:before-delete delete-cascades-and-publish!}))
 
 (mu/defn delete-notification-recipients! :- :nil
   "Delete the NotificationRecipients with `recipient-ids`. A recipient leaving is upkeep, not a change of its

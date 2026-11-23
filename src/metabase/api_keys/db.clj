@@ -7,7 +7,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -43,20 +42,10 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey :id id))
 
-(mu/defn api-keys-by-ids
-  "The ApiKeys with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/ApiKey :id [:in ids]))
-
 (mu/defn api-key-ids-with-scope :- [:sequential ms/PositiveInt]
   "The ids of the ApiKeys with `scope`."
   [scope :- ::api-keys.schema/scope]
   (vec (t2/select-pks-vec :model/ApiKey :scope scope)))
-
-(mu/defn delete-api-keys!
-  "Delete the ApiKeys with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ApiKey :id [:in ids]))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
@@ -98,31 +87,6 @@
   "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]})))
-
-(mu/defn delete-api-key-usage-logs!
-  "Delete the ApiKeyUsageLogs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/ApiKeyUsageLog :id [:in ids]))
-
-(mu/defn insert-api-keys! :- [:sequential ::api-keys.schema/api-key]
-  "Insert the ApiKey `rows` in one statement and return the inserted instances in their order."
-  [rows :- [:sequential ::api-keys.schema/api-key.create]]
-  (mdb/insert-returning-instances! :model/ApiKey rows))
-
-(mr/def ::api-key-columns.update
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:name          {:optional true} ::api-keys.schema/name]
-   [:key           {:optional true} [:ref ::api-keys.schema/key.hashed]]
-   [:key_prefix    {:optional true} [:ref ::api-keys.schema/prefix]]
-   [:updated_by_id {:optional true} pos-int?]
-   [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
-
-(mu/defn update-api-keys!
-  "Apply each of `rows`, the `:id` of a ApiKey and the columns to set, one statement per distinct change, in the order
-  the changes first appear."
-  [rows :- [:sequential ::api-key-columns.update]]
-  (mdb/update-grouped! :model/ApiKey rows))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

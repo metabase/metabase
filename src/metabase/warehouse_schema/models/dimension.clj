@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -75,82 +74,54 @@
           (api/checkp (= target-database-id (field-id->database-id field_id))
                       :human_readable_field_id (tru "Target field must belong to the same database")))))))
 
-(mu/defn create-dimensions! :- [:sequential ::warehouse-schema.schema/dimension]
-  "Insert the Dimension `rows` in one transaction and batches of [[mdb/create-partition-size]] and return the inserted
-  instances, refusing a human-readable Field outside the Database of the Dimension's Field."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (u/prog1 (into []
-                     (mapcat (fn [batch]
-                               (check-human-readable-fields (filter :human_readable_field_id batch))
-                               (warehouse-schema.db/insert-dimensions! (vec batch))))
-                     (partition-all mdb/create-partition-size rows))
-        (events/publish-event! :event/dimension-create (events/create-event <>))))))
+(defn- check-new-dimensions
+  "Throw a 400 unless every one of the new Dimension `rows` satisfies this rule:
 
-(defn- dimensions-by-id
-  "The Dimensions with `ids`, `{id row}`, read in batches of [[mdb/delete-partition-size]] ids."
-  [ids]
-  (into {}
-        (comp (mapcat #(warehouse-schema.db/dimensions-by-ids (vec %))) (map (juxt :id identity)))
-        (partition-all mdb/delete-partition-size ids)))
+  - its human-readable Field, a Field that exists, is a Field of the Database of its own Field"
+  [rows]
+  (check-human-readable-fields (filter :human_readable_field_id rows)))
+
+(mu/defn create-dimensions! :- [:sequential ::warehouse-schema.schema/dimension]
+  "Insert the Dimension `rows` in one transaction, publishing their create event, and return the inserted Dimensions,
+  refusing a human-readable Field outside the Database of the Dimension's Field."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
+  (mdb/create-batched! :model/Dimension rows
+                       {:before-create check-new-dimensions
+                        :after-create  #(events/publish-event! :event/dimension-create (events/create-event %))}))
 
 (defn- check-dimension-updates
-  "Throw unless every one of `rows`, the id of one of the `stored` Dimensions, `{id row}`, and its changes, satisfies this
-  rule, the Databases read in one query:
+  "Throw a 400 unless every one of `updates`, the id of one of the `id->stored` Dimensions and its changes, satisfies
+  this rule, the Databases read in one query:
 
   - a new human-readable Field, a Field that exists, is a Field of the Database of the Dimension's Field"
-  [stored rows]
+  [updates id->stored]
   (check-human-readable-fields
-   (for [{:keys [id human_readable_field_id]} rows
-         :let  [dimension (stored id)]
+   (for [{:keys [id human_readable_field_id]} updates
+         :let  [dimension (id->stored id)]
          :when (and dimension
                     human_readable_field_id
                     (not= human_readable_field_id (:human_readable_field_id dimension)))]
      (assoc dimension :human_readable_field_id human_readable_field_id))))
 
-(defn- write-dimension-updates!
-  "Write each of `rows`, the id of a Dimension and the columns to change, over the `stored` Dimensions, `{id row}`,
-  returning the rows of the Dimensions that exist."
-  [stored rows]
-  (let [rows (filterv #(contains? stored (:id %)) rows)]
-    (when (seq rows)
-      (warehouse-schema.db/update-dimensions! rows))
-    rows))
-
 (defn- publish-dimension-updates!
-  "Publish the update event of `rows`, the rows written over the `stored` Dimensions, `{id row}`, when there are any."
-  [stored rows]
-  (when (seq rows)
-    (events/publish-event! :event/dimension-update (events/update-event stored rows))))
+  "Publish the update event of `updates` over the `id->stored` Dimensions, when any of them exists."
+  [updates id->stored _id->updated]
+  (when (seq id->stored)
+    (events/publish-event! :event/dimension-update (events/update-event id->stored updates))))
 
-(mu/defn update-dimensions! :- [:sequential ::warehouse-schema.schema/dimension.update]
-  "Apply each of `rows`, the id of a Dimension and the columns to change, in one transaction and batches of
-  [[mdb/update-partition-size]], publish one event for all of them, and return them, refusing a new human-readable
-  Field outside the Database of the Dimension's Field."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [stored  (dimensions-by-id (map :id rows))
-            written (into []
-                          (mapcat (fn [batch]
-                                    (check-dimension-updates stored batch)
-                                    (write-dimension-updates! stored batch)))
-                          (partition-all mdb/update-partition-size rows))]
-        (publish-dimension-updates! stored written))))
-  (vec rows))
+(mu/defn update-dimensions! :- :nil
+  "Apply `updates`, each the `:id` of a Dimension and the columns to change, in one transaction, publishing their update
+  event, refusing a new human-readable Field outside the Database of the Dimension's Field."
+  [updates :- [:sequential ::warehouse-schema.schema/dimension.update]]
+  (mdb/update-batched! :model/Dimension updates
+                       {:before-update check-dimension-updates
+                        :after-update  publish-dimension-updates!}))
 
 (mu/defn delete-dimensions! :- :nil
-  "Delete the Dimensions with `ids` in one transaction: one event for all of them before the statements, which run in
-  batches of [[mdb/delete-partition-size]]."
+  "Delete the Dimensions with `ids` in one transaction, publishing their delete event."
   [ids :- [:sequential ::lib.schema.id/dimension]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (when-let [dimensions (not-empty (vec (vals (dimensions-by-id ids))))]
-        (events/publish-event! :event/dimension-delete (events/delete-event dimensions))
-        (run! #(warehouse-schema.db/delete-dimensions! (mapv :id %)) (partition-all mdb/delete-partition-size dimensions)))))
-  nil)
+  (mdb/delete-batched! :model/Dimension ids
+                       {:before-delete #(events/publish-event! :event/dimension-delete (events/delete-event %))}))
 
 (mu/defn rename-dimensions-for-fields!
   "Name the Dimension of each Field in `field-id->name` after it, in one statement."
@@ -160,7 +131,7 @@
       (when-let [dimensions (not-empty (warehouse-schema.db/dimensions-for-fields (set (keys field-id->name))))]
         (warehouse-schema.db/rename-dimensions-for-fields! field-id->name)
         (events/publish-event! :event/dimension-update
-                               (events/update-event (u/index-by :id dimensions)
+                               (events/update-event (zipmap (map :id dimensions) dimensions)
                                                     (mapv (fn [{:keys [id field_id]}] {:id id :name (field-id->name field_id)})
                                                           dimensions)))))))
 

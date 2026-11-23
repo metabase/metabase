@@ -42,13 +42,10 @@
   (t2/with-transaction [_conn]
     (run! (comp view-log.db/insert-view-logs! vec) (partition-all mdb/create-partition-size views))))
 
-(mu/defn delete-view-logs! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the ViewLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-view-logs! :- :nil
+  "Delete the ViewLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp view-log.db/delete-view-logs! vec)) + 0 (partition-all mdb/delete-partition-size ids)))))
+  (mdb/delete-batched! :model/ViewLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

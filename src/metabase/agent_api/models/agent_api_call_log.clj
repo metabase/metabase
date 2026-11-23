@@ -19,22 +19,16 @@
 (mu/defn create-agent-api-call-logs! :- [:sequential :map]
   "Record the Agent API calls `rows` in one transaction and return the new instances, in order."
   [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (into [] (mapcat (comp agent-api.db/insert-call-logs! vec)) (partition-all app-db/create-partition-size rows)))))
+  (app-db/create-batched! :model/AgentApiCallLog rows {}))
 
 (def call-log-ids-created-before
   "The ids of the AgentApiCallLogs created before a cutoff, see [[agent-api.db/call-log-ids-created-before]]."
   agent-api.db/call-log-ids-created-before)
 
-(mu/defn delete-agent-api-call-logs! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the AgentApiCallLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-agent-api-call-logs! :- :nil
+  "Delete the AgentApiCallLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp agent-api.db/delete-call-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/AgentApiCallLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

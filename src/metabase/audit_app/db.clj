@@ -55,8 +55,3 @@
   (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
                                            :order-by [[:id :asc]]
                                            :limit    batch-size})))
-
-(mu/defn delete-audit-logs!
-  "Delete the AuditLogs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/AuditLog :id [:in ids]))

@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.actions.models :as actions.models]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -2449,9 +2449,9 @@
   (testing "a create, update and delete that cross the partition size write every Card and publish one event each"
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (mt/with-model-cleanup [:model/Card]
-        (with-redefs [app-db/create-partition-size 2
-                      app-db/update-partition-size 2
-                      app-db/delete-partition-size 2]
+        (with-redefs [app-db.query/create-partition-size 2
+                      app-db.query/update-partition-size 2
+                      app-db.query/delete-partition-size 2]
           (let [ids    (atom [])
                 topics (events.tu/published-topics!
                         (fn []

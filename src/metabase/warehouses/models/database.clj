@@ -978,28 +978,24 @@
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
-(defn- delete-database-batch!
-  "Delete the Database rows `databases`, after their Secrets and what else belongs to them, with their sync triggers
-  unscheduled once the followers that may refuse the delete have accepted it."
+(defn- delete-database-content-and-publish!
+  "Delete the Secrets of the Database rows `databases` and what else belongs to them, with their sync triggers
+  unscheduled once the followers that may refuse the delete have accepted it, then publish their delete event and tell
+  their drivers."
   [databases]
   (delete-followers! refusing-follower-models databases)
   (run! unschedule-tasks! databases)
   (models.secret/delete-secrets-for-databases! databases)
   (delete-followers! follower-models databases)
-  (run! notify-database-deleted! databases)
-  (warehouses.db/delete-databases! (mapv :id databases)))
+  (events/publish-event! :event/database-delete (events/delete-event databases))
+  (run! notify-database-deleted! databases))
 
 (mu/defn delete-databases! :- :nil
   "Delete the Databases with `database-ids` in one transaction, after their Secrets and what else belongs to them (see
-  [[delete-for-databases!]]), publishing their delete event before the statements."
+  [[delete-for-databases!]]), publishing their delete event and telling their drivers before their own statements."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv vec (partition-all mdb/delete-partition-size (distinct database-ids)))
-          databases (into [] (mapcat (comp vals warehouses.db/databases-by-ids)) batches)]
-      (when (seq databases)
-        (events/publish-event! :event/database-delete (events/delete-event databases))
-        (run! delete-database-batch! (partition-all mdb/delete-partition-size databases)))))
-  nil)
+  (mdb/delete-batched! :model/Database (distinct database-ids)
+                       {:before-delete delete-database-content-and-publish!}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

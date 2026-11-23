@@ -223,11 +223,6 @@
           :state state,
           :state_change_at :%now}}))
 
-(mu/defn delete-persisted-infos!
-  "Delete the PersistedInfos with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/PersistedInfo :id [:in ids]))
-
 (mu/defn unpersisted-models-for-database
   "The model Cards of the Database with `database-id` that have no PersistedInfo."
   [database-id :- ::lib.schema.id/database]

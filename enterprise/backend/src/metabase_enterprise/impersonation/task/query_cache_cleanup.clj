@@ -23,9 +23,9 @@
   "Delete the outdated impersonation query cache rows."
   []
   (let [cutoff  (t/minus (t/offset-date-time) (t/days (impersonation.settings/impersonation-query-cache-retention-days)))
-        deleted (impersonation-query-cache/delete-impersonation-query-caches!
-                 (impersonation.db/outdated-query-cache-ids config/mb-version-string cutoff))]
-    (log/infof "Impersonation query cache cleanup complete. Deleted %d row(s)." deleted)))
+        ids     (impersonation.db/outdated-query-cache-ids config/mb-version-string cutoff)]
+    (impersonation-query-cache/delete-impersonation-query-caches! ids)
+    (log/infof "Impersonation query cache cleanup complete. Deleted %d row(s)." (count ids))))
 
 (task/defjob ImpersonationQueryCacheCleanup
   "Delete outdated impersonation query cache rows"

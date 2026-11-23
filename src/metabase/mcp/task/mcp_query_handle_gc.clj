@@ -25,9 +25,10 @@
   []
   (let [ttl-hours (mcp.settings/mcp-query-handle-ttl-hours)
         cutoff    (t/minus (t/offset-date-time) (t/hours (long ttl-hours)))
-        deleted   (mcp-query-handle/delete-mcp-query-handles! (mcp.db/query-handle-ids-created-before cutoff))]
+        ids       (mcp.db/query-handle-ids-created-before cutoff)]
+    (mcp-query-handle/delete-mcp-query-handles! ids)
     (log/infof "MCP query handle GC complete. Deleted %d handle(s) older than %d hours."
-               (or deleted 0) (long ttl-hours))))
+               (count ids) (long ttl-hours))))
 
 (task/defjob McpQueryHandleGc
   "Delete expired MCP query handles"

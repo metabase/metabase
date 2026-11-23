@@ -10,7 +10,6 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -82,22 +81,12 @@
 (mu/defn create-metabot-messages! :- [:sequential ::metabot.schema/metabot-message]
   "Insert the MetabotMessage `rows` and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::metabot.schema/metabot-message.create]]
-  (metabot.db/insert-messages! rows))
-
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a MetabotMessage and the columns to set."
-  [rows]
-  (let [stored    (u/index-by :id (metabot.db/messages-by-ids (mapv :id rows)))
-        requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
-    (metabot.db/update-messages! (mapv (fn [[id changes]] (assoc changes :id id)) requested))))
+  (mdb/create-batched! :model/MetabotMessage rows {}))
 
 (mu/defn update-metabot-messages! :- :nil
-  "Apply the changes in each of `rows`, the id of a MetabotMessage and the columns to set, in batches in one
-  transaction."
+  "Apply the changes in each of `rows`, the id of a MetabotMessage and the columns to set, in one transaction."
   [rows :- [:sequential ::metabot.schema/metabot-message.update]]
-  (t2/with-transaction [_conn]
-    (run! (comp update-batch! vec) (partition-all mdb/update-partition-size rows)))
-  nil)
+  (mdb/update-batched! :model/MetabotMessage rows {}))
 
 (mu/defn soft-delete-metabot-messages! :- :int
   "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the

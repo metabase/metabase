@@ -64,19 +64,12 @@
 (mu/defn create-threads! :- [:sequential (ms/InstanceOf :model/ExplorationThread)]
   "Insert the ExplorationThread `rows` and return the new instances, in the order of `rows`."
   [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
-  (explorations.db/insert-threads! rows))
-
-(defn- write-thread-updates!
-  "Writes `rows`, updates of ExplorationThreads, with one statement for each distinct set of columns."
-  [rows]
-  (explorations.db/update-threads! rows))
+  (app-db/create-batched! :model/ExplorationThread rows {}))
 
 (mu/defn update-threads! :- :nil
   "Apply `updates`, each the `:id` of an ExplorationThread with the columns to give it, in one transaction."
   [updates :- [:sequential ::explorations.schema/exploration-thread.update]]
-  (t2/with-transaction [_conn]
-    (run! write-thread-updates! (partition-all app-db/update-partition-size updates)))
-  nil)
+  (app-db/update-batched! :model/ExplorationThread updates {}))
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of

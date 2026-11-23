@@ -1,11 +1,12 @@
 (ns metabase.users.models.last-admin-verification-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.config.core :as config]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.session.models.session :as session]
    [metabase.test :as mt]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
@@ -132,7 +133,14 @@
 (deftest update-users-refuses-last-admins-across-batches-test
   (testing "deactivating one admin and demoting other, in batches of one row, is refused before first batch"
     (mt/with-model-cleanup [:model/User]
-      (with-redefs [app-db/update-partition-size 1]
-        (doseq [named-rows [[[:a {:is_active false}] [:b {:is_superuser false}]]
-                            [[:b {:is_superuser false}] [:plain {:first_name "Renamed"}] [:a {:is_active false}]]]]
-          (check-case! true named-rows))))))
+      (let [batch-reads (atom 0)
+            read-users  (mt/original-fn #'users.db/users-with-all-columns)]
+        (with-redefs [app-db.query/update-partition-size 1]
+          (mt/with-dynamic-fn-redefs [users.db/users-with-all-columns (fn [user-ids]
+                                                                        (swap! batch-reads inc)
+                                                                        (read-users user-ids))]
+            (doseq [named-rows [[[:a {:is_active false}] [:b {:is_superuser false}]]
+                                [[:b {:is_superuser false}] [:plain {:first_name "Renamed"}] [:a {:is_active false}]]]]
+              (check-case! true named-rows))))
+        (testing "no batch starts"
+          (is (zero? @batch-reads)))))))

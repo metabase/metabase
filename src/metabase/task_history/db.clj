@@ -142,11 +142,6 @@
   [ended-before :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before])))
 
-(mu/defn delete-task-histories!
-  "Delete the TaskHistory rows with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TaskHistory :id [:in ids]))
-
 (def ^:private join-sort-columns
   "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
   {:db_name   :metabase_database.name

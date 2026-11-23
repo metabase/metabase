@@ -6,7 +6,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -41,51 +40,40 @@
   (let [card-ids (into [] (comp (map :card_id) (distinct)) rows)]
     (if (seq card-ids) (metabot.db/card-types card-ids) {})))
 
-(defn- create-batch!
-  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, and return the inserted prompts."
+(defn- add-prompt-models
+  "The MetabotPrompt `rows`, each with the type of its Card as its model."
   [rows]
   (let [card-types (card-types-of rows)]
-    (metabot.db/insert-prompts! (mapv #(assoc % :model (card-types (:card_id %))) rows))))
+    (mapv #(assoc % :model (card-types (:card_id %))) rows)))
 
 (mu/defn create-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
-  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, in batches in one transaction, and
-  return the inserted prompts. A row without an existing Card fails on the foreign key."
+  "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, in one transaction, and return the
+  inserted prompts. A row without an existing Card fails on the foreign key."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
-  (t2/with-transaction [_conn]
-    (into [] (mapcat (comp create-batch! vec)) (partition-all mdb/create-partition-size rows))))
+  (mdb/create-batched! :model/MetabotPrompt rows {:before-create add-prompt-models}))
 
-(defn- prompt-changes
-  "A map from id to the changes of each of `rows`, the id of a MetabotPrompt and the columns to set, for the prompts in
-  `stored`, the model of a prompt whose Card changes set to the type of the new Card."
-  [rows stored]
+(defn- prepare-prompt-updates
+  "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, the model of a prompt
+  whose Card changes set to the type of the new Card."
+  [rows id->stored]
   (let [card-types (card-types-of (filter #(contains? % :card_id) rows))]
-    (into {}
-          (comp (filter (comp stored :id))
-                (map (fn [{:keys [id card_id] :as row}]
-                       [id (cond-> (dissoc row :id)
-                             (contains? row :card_id) (assoc :model (card-types card_id)))])))
+    (into []
+          (comp (filter (comp id->stored :id))
+                (map (fn [{:keys [card_id] :as row}]
+                       (cond-> row
+                         (contains? row :card_id) (assoc :model (card-types card_id))))))
           rows)))
 
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a MetabotPrompt and the columns to set."
-  [rows]
-  (let [stored (u/index-by :id (metabot.db/prompts-by-ids (mapv :id rows)))]
-    (metabot.db/update-prompts! (mapv (fn [[id changes]] (assoc changes :id id)) (prompt-changes rows stored)))))
-
 (mu/defn update-metabot-prompts! :- :nil
-  "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in batches in one transaction,
-  setting the model of a prompt whose Card changes to the type of the new Card. A missing Card fails on the foreign key."
+  "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in one transaction, setting
+  the model of a prompt whose Card changes to the type of the new Card. A missing Card fails on the foreign key."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (t2/with-transaction [_conn]
-    (run! (comp update-batch! vec) (partition-all mdb/update-partition-size rows)))
-  nil)
+  (mdb/update-batched! :model/MetabotPrompt rows {:before-update prepare-prompt-updates}))
 
 (mu/defn delete-metabot-prompts! :- :nil
-  "Delete the MetabotPrompts with `prompt-ids`, in batches in one transaction."
+  "Delete the MetabotPrompts with `prompt-ids` in one transaction."
   [prompt-ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (run! metabot.db/delete-prompts! (map vec (partition-all mdb/delete-partition-size prompt-ids))))
-  nil)
+  (mdb/delete-batched! :model/MetabotPrompt prompt-ids {}))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

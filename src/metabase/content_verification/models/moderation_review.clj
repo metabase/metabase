@@ -119,13 +119,8 @@
   "Delete the ModerationReviews with `ids` in one transaction, publishing their delete event right before the first
   statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size (distinct ids))]
-      (when (seq batches)
-        (events/publish-event! :event/moderation-review-delete
-                               (events/delete-event (into [] (mapcat #(content-verification.db/moderation-reviews-by-ids (vec %))) batches))))
-      (run! #(content-verification.db/delete-moderation-reviews! (vec %)) batches)))
-  nil)
+  (app-db/delete-batched! :model/ModerationReview ids
+                          {:before-delete #(events/publish-event! :event/moderation-review-delete (events/delete-event %))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

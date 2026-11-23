@@ -2,7 +2,6 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,11 +24,6 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-measures!
-  "Insert the Measure `rows` and return the inserted instances."
-  [rows :- [:sequential ::measures.schema/measure.create]]
-  (app-db/insert-returning-instances! :model/Measure rows))
-
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
@@ -39,23 +33,6 @@
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn measures-by-ids
-  "A map of id to Measure for the Measures with `ids`."
-  [ids :- [:sequential ::lib.schema.id/measure]]
-  (t2/select-pk->fn identity :model/Measure :id [:in ids]))
-
-(mu/defn update-measures! :- :nil
-  "Apply each of `updates`, the `:id` of a Measure and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/Measure updates)
-  nil)
-
-(mu/defn delete-measures!
-  "Delete the Measures with `ids`, returning the number deleted."
-  [ids :- [:sequential ::lib.schema.id/measure]]
-  (t2/delete! :model/Measure :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

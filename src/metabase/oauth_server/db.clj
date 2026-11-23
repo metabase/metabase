@@ -2,7 +2,6 @@
   "Application database queries for the OAuth server module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
@@ -110,11 +109,6 @@
   [row :- ::oauth-server.schema/oauth-client.create]
   (t2/insert! :model/OAuthClient row))
 
-(mu/defn update-oauth-clients!
-  "Apply each of `rows`, the `:id` of a OAuthClient and the columns to set, one statement per distinct change."
-  [rows :- [:sequential ::oauth-server.schema/oauth-client.update]]
-  (app-db/update-grouped! :model/OAuthClient rows))
-
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."
   [row :- ::oauth-server.schema/oauth-authorization-code.update]
@@ -134,11 +128,6 @@
   "The ids of every OAuthAuthorizationCode `code`."
   [code :- :string]
   (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :code code)))
-
-(mu/defn delete-authorization-codes!
-  "Delete the OAuthAuthorizationCodes with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/OAuthAuthorizationCode :id [:in ids]))
 
 (mu/defn insert-access-token!
   "Insert the OAuthAccessToken `row`, returning the number inserted."
@@ -185,11 +174,6 @@
   []
   (vec (t2/select-pks-vec :model/OAuthAccessToken :revoked_at [:not= nil])))
 
-(mu/defn delete-access-tokens!
-  "Delete the OAuthAccessTokens with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/OAuthAccessToken :id [:in ids]))
-
 (mu/defn refresh-token-ids-expired-before :- [:sequential ms/PositiveInt]
   "The ids of the OAuthRefreshTokens that expired before `now`."
   [now :- ms/PositiveInt]
@@ -199,8 +183,3 @@
   "The ids of the revoked OAuthRefreshTokens."
   []
   (vec (t2/select-pks-vec :model/OAuthRefreshToken :revoked_at [:not= nil])))
-
-(mu/defn delete-refresh-tokens!
-  "Delete the OAuthRefreshTokens with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/OAuthRefreshToken :id [:in ids]))

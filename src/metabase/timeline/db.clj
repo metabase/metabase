@@ -32,11 +32,6 @@
      [:= (u/qualified-key alias :archived) false])
    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
-(mu/defn insert-timelines!
-  "Insert the Timeline `rows` and return the inserted instances."
-  [rows :- [:sequential ::timeline.schema/timeline.create]]
-  (app-db/insert-returning-instances! :model/Timeline rows))
-
 (mu/defn timelines-in-visible-collections
   "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
   case-insensitive name order."
@@ -107,11 +102,6 @@
    archived     :- :boolean]
   (t2/select :model/TimelineEvent :timeline_id [:in timeline-ids] :archived archived))
 
-(mu/defn delete-timelines!
-  "Delete the Timelines with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Timeline :id [:in ids]))
-
 (mu/defn delete-timelines-in-collections!
   "Delete the Timelines in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -121,11 +111,6 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn insert-timeline-events!
-  "Insert the TimelineEvent `rows` and return the inserted instances."
-  [rows :- [:sequential ::timeline.schema/timeline-event.create]]
-  (app-db/insert-returning-instances! :model/TimelineEvent rows))
 
 (mu/defn timeline-event
   "The TimelineEvent with `id`, or nil."
@@ -159,11 +144,6 @@
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
-(mu/defn timeline-events-by-ids
-  "A map of id to TimelineEvent for the TimelineEvents with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids]))
-
 (mu/defn icon-clause
   "The SQL expression for the icon of a new event of the Timeline with `timeline-id`: the icon of the Timeline, or
   `default-icon` when it has none."
@@ -173,18 +153,6 @@
                                :from   [:timeline]
                                :where  [:= :timeline.id [:auto/param timeline-id]]}
    default-icon])
-
-(mu/defn update-timeline-events! :- :nil
-  "Apply each of `updates`, the `:id` of a TimelineEvent and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/TimelineEvent updates)
-  nil)
-
-(mu/defn delete-timeline-events!
-  "Delete the TimelineEvents with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TimelineEvent :id [:in ids]))
 
 (mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
   "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."

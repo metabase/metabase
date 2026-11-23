@@ -2,11 +2,8 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [metabase-enterprise.database-routing.schema :as database-routing.schema]
-   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn database
@@ -65,24 +62,3 @@
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
-
-(mu/defn routers-by-ids
-  "The DatabaseRouters with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/DatabaseRouter :id [:in ids]))
-
-(mu/defn insert-routers! :- [:sequential ::database-routing.schema/database-router]
-  "Insert the DatabaseRouter `rows` in one statement and return the inserted instances in their order."
-  [rows :- [:sequential ::database-routing.schema/database-router.create]]
-  (app-db/insert-returning-instances! :model/DatabaseRouter rows))
-
-(mu/defn update-routers!
-  "Apply each of `rows`, the `:id` of a DatabaseRouter and the columns to set, one statement per distinct change, in the
-  order the changes first appear."
-  [rows :- [:sequential ::database-routing.schema/database-router.update]]
-  (app-db/update-grouped! :model/DatabaseRouter rows))
-
-(mu/defn delete-routers!
-  "Delete the DatabaseRouters with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/DatabaseRouter :id [:in ids]))

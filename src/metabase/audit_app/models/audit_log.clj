@@ -119,13 +119,10 @@
     (span/with-span! {:name "create-audit-logs!" :attributes {:audit/rows (count rows)}}
       (transduce (map (comp audit-app.db/insert-audit-logs! vec)) + 0 (partition-all mdb/create-partition-size rows)))))
 
-(mu/defn delete-audit-logs! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the AuditLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-audit-logs! :- :nil
+  "Delete the AuditLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp audit-app.db/delete-audit-logs! vec)) + 0 (partition-all mdb/delete-partition-size ids)))))
+  (mdb/delete-batched! :model/AuditLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

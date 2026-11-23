@@ -332,7 +332,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
+             (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -344,10 +344,10 @@
                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (pos? (user/update-users! [{:id user-id :is_active false}])))
+               (is (nil? (user/update-users! [{:id user-id :is_active false}])))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (user/update-users! [{:id user-2-id :is_active false}]))
+               (is (nil? (user/update-users! [{:id user-2-id :is_active false}])))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
@@ -360,7 +360,7 @@
                           :model/PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
                           :model/PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
-               (is (user/update-users! [{:id user-id :is_active false}])))
+               (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -370,7 +370,7 @@
                                                  :details      {:channel "#general"}
                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
+               (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
@@ -379,7 +379,7 @@
            (fn [{:keys [archived? user-id pulse-channel-id]}]
              (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
+               (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -389,7 +389,7 @@
                                                    :details      {:emails ["foo@bar.com"]}
                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
+                 (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
 
@@ -455,7 +455,7 @@
 
 (deftest ^:parallel dashboard-subscription-schema-test
   (let [row (fn [overrides]
-              (merge {:dashboard_id 1 :collection_position nil :alert_condition nil
+              (merge {:id 1 :dashboard_id 1 :collection_position nil :alert_condition nil
                       :alert_first_only nil :alert_above_goal nil}
                      overrides))]
     (testing "dashboard subscription has none of the columns of an alert, or a collection position"
@@ -464,14 +464,14 @@
                          {:alert_above_goal true}
                          {:collection_position 1}]]
         (testing (pr-str overrides)
-          (is (= 400 (pulse-channel-test/normalize-status ::pulse.schema/pulse.changes (row overrides)))))))
+          (is (= 400 (pulse-channel-test/normalize-status ::pulse.schema/pulse.update (row overrides)))))))
     (testing "columns of an alert and collection position are fine without dashboard"
       (is (nil? (pulse-channel-test/normalize-status
-                 ::pulse.schema/pulse.changes
+                 ::pulse.schema/pulse.update
                  (row {:dashboard_id nil :alert_condition "rows" :alert_first_only false :collection_position 1})))))
     (testing "body with only some of the columns passes"
-      (is (nil? (pulse-channel-test/normalize-status ::pulse.schema/pulse.changes
-                                                     {:dashboard_id 1 :alert_condition "rows"}))))))
+      (is (nil? (pulse-channel-test/normalize-status ::pulse.schema/pulse.update
+                                                     {:id 1 :dashboard_id 1 :alert_condition "rows"}))))))
 
 (deftest dashboard-subscription-update-shape-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
@@ -491,8 +491,8 @@
 
 (deftest ^:parallel pulse-parameters-schema-test
   (testing "parameters are sequence of maps with id"
-    (is (not (mr/validate ::pulse.schema/pulse.changes {:parameters [{:value 1}]})))
-    (is (mr/validate ::pulse.schema/pulse.changes {:parameters [{:id "abc" :value 1}]}))))
+    (is (not (mr/validate ::pulse.schema/pulse.update {:id 1 :parameters [{:value 1}]})))
+    (is (mr/validate ::pulse.schema/pulse.update {:id 1 :parameters [{:id "abc" :value 1}]}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |

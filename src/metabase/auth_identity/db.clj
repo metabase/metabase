@@ -75,11 +75,6 @@
    provider :- :string]
   (vec (t2/select-pks-vec :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider])))
 
-(mu/defn delete-auth-identities!
-  "Delete the AuthIdentities with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/AuthIdentity :id [:in [:auto/param (vec ids)]]))
-
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]

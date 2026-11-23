@@ -28,8 +28,7 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (table/update-tables! [{:id (u/the-id table) :initial_sync_status "complete"}]
-                          (stored-option :model/Table :tables table))))
+    (table/update-tables! [{:id (u/the-id table) :initial_sync_status "complete"}])))
 
 (defn- update-fields-counted!
   "Apply the Field update `rows` with `opts` and return their number."
@@ -38,9 +37,9 @@
   (count rows))
 
 (defn- update-tables-counted!
-  "Apply the Table update `rows` with `opts` and return their number."
-  [rows opts]
-  (table/update-tables! (vec rows) opts)
+  "Apply the Table update `rows` and return their number."
+  [rows]
+  (table/update-tables! (vec rows))
   (count rows))
 
 (defn set-initial-table-sync-complete-for-db!
@@ -48,8 +47,7 @@
   returning the number of Tables updated."
   [database]
   (update-tables-counted! (for [id (distinct (sync.db/sync-table-ids (u/the-id database)))]
-                            {:id id :initial_sync_status "complete"})
-                          nil))
+                            {:id id :initial_sync_status "complete"})))
 
 (defn- settings-in-batches
   "What `read-settings`, a read of the settings of the rows with some ids, returns for all of `ids`, read in batches of
@@ -105,17 +103,14 @@
 
 (mu/defn update-tables-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each of `pairs`, a Table instance sync holds and its changes, the changes to columns no user set, in one
-  update with the Tables sync holds as the rows before it, the settings of the Tables read once, returning the number of
-  Tables updated."
+  update, the settings of the Tables read once, returning the number of Tables updated."
   [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Table) (mut/dissoc ::warehouse-schema.schema/table.update :id)]]]
   (let [settings (u/index-by :table_id (settings-in-batches sync.db/table-user-settings-for-tables (map (comp :id first) pairs)))]
-    (update-tables-counted! (table-rows-unless-user-set settings (map (fn [[table changes]] [(:id table) changes]) pairs))
-                            {:tables (mapv first pairs)})))
+    (update-tables-counted! (table-rows-unless-user-set settings (map (fn [[table changes]] [(:id table) changes]) pairs)))))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
   [table   :- [:or ::lib.schema.id/table (ms/InstanceOf :model/Table)]
    changes :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
   (let [id (u/the-id table)]
-    (update-tables-counted! (table-rows-unless-user-set {id (sync.db/table-user-settings id)} {id changes})
-                            (stored-option :model/Table :tables table))))
+    (update-tables-counted! (table-rows-unless-user-set {id (sync.db/table-user-settings id)} {id changes}))))

@@ -119,11 +119,6 @@
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(mu/defn insert-explorations!
-  "Insert the Explorations `rows` and return the new instances."
-  [rows :- [:sequential ::explorations.schema/exploration.create]]
-  (mdb/insert-returning-instances! :model/Exploration rows))
-
 (mu/defn update-explorations! :- :nil
   "Apply each of `updates`, the `:id` of an Exploration and the columns to change, with one statement for each set of columns
   that rows have in common."
@@ -131,17 +126,17 @@
   (mdb/update-grouped! :model/Exploration updates)
   nil)
 
-(mu/defn delete-explorations!
-  "Delete the Explorations with `exploration-ids`, returning the number deleted."
-  [exploration-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Exploration :id [:in exploration-ids]))
-
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 
 (mu/defn thread
   "The ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
+
+(mu/defn explorations-by-ids
+  "The Explorations with `ids`, by id."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn identity :model/Exploration :id [:in ids]))
 
 (mu/defn rows
   "The rows of `model` with the ids `ids`."
@@ -218,18 +213,6 @@
              :from   [:exploration_thread]
              :where  [:= :id thread-id]
              :for    [:update]}))
-
-(mu/defn insert-threads!
-  "Insert the ExplorationThread `rows` and return the new instances."
-  [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
-  (mdb/insert-returning-instances! :model/ExplorationThread rows))
-
-(mu/defn update-threads! :- :nil
-  "Apply each of `updates`, the `:id` of an ExplorationThread and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/ExplorationThread updates)
-  nil)
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of
@@ -395,23 +378,6 @@
              :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
              :where  [:in :b.exploration_thread_id thread-ids]}))
 
-(mu/defn insert-pages!
-  "Insert the ExplorationPage `rows` and return the new instances."
-  [rows :- [:sequential ::explorations.schema/exploration-page.create]]
-  (mdb/insert-returning-instances! :model/ExplorationPage rows))
-
-(mu/defn update-pages! :- :nil
-  "Apply each of `updates`, the `:id` of an ExplorationPage and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (mdb/update-grouped! :model/ExplorationPage updates)
-  nil)
-
-(mu/defn delete-pages!
-  "Delete the ExplorationPages with `page-ids`."
-  [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ExplorationPage :id [:in page-ids]))
-
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 
 (mu/defn query
@@ -514,11 +480,6 @@
   "The subset of `page-ids` that some ExplorationQuery points at."
   [page-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
-
-(mu/defn insert-queries!
-  "Insert the ExplorationQuery `rows` and return the new instances."
-  [rows :- [:sequential ::explorations.schema/exploration-query.create]]
-  (mdb/insert-returning-instances! :model/ExplorationQuery rows))
 
 (mu/defn update-queries!
   "Apply `changes` to the ExplorationQueries with `query-ids`, returning the number updated."

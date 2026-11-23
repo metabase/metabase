@@ -409,22 +409,18 @@
            [:writer  {:optional true} [:enum :import :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(defn- create-document-batch!
-  "Check and insert `rows`, one batch of a call, and return the new Documents."
+(defn- check-new-documents
+  "Throw a 400 unless every one of `rows`, new Documents, satisfies the rules of [[check-documents]]."
   [rows]
-  (check-documents (map #(update % :archived boolean) rows))
-  (documents.db/insert-documents! rows))
+  (check-documents (map #(update % :archived boolean) rows)))
 
 (mu/defn create-documents! :- [:sequential (ms/InstanceOf :model/Document)]
   "Insert the Document `rows` and return the inserted instances in the order of the rows, in one transaction, publishing
   their create event. Each Collection must be able to hold a Document."
   [rows :- [:sequential ::documents.schema/document.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into [] (mapcat (comp create-document-batch! vec))
-                        (partition-all app-db/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/document-create (events/create-event created)))
-      created)))
+  (app-db/create-batched! :model/Document rows
+                          {:before-create check-new-documents
+                           :after-create  #(events/publish-event! :event/document-create (events/create-event %))}))
 
 (defn- changed?
   "Whether `row`, the columns to write, changes the column `k` of `stored`."
@@ -523,13 +519,8 @@
 (mu/defn delete-documents! :- :nil
   "Delete the Documents with `ids` in one transaction, publishing their delete event right before the first statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv vec (partition-all app-db/delete-partition-size (distinct ids)))
-          documents (into [] (mapcat (comp vals documents.db/documents-by-ids)) batches)]
-      (when (seq documents)
-        (events/publish-event! :event/document-delete (events/delete-event documents)))
-      (run! documents.db/delete-documents! batches)))
-  nil)
+  (app-db/delete-batched! :model/Document ids
+                          {:before-delete #(events/publish-event! :event/document-delete (events/delete-event %))}))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The

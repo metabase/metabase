@@ -98,28 +98,6 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(mu/defn insert-comments!
-  "Insert the Comment `rows` and return the inserted instances, in the order of `rows`."
-  [rows :- [:sequential ::comments.schema/comment.create]]
-  (app-db/insert-returning-instances! :model/Comment rows))
-
-(mu/defn comments-by-ids
-  "A map of id to Comment for the Comments with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Comment :id [:in ids]))
-
-(mu/defn update-comments! :- :nil
-  "Apply each of `updates`, the `:id` of a Comment and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/Comment updates)
-  nil)
-
-(mu/defn soft-delete-comments!
-  "Mark the Comments with `ids` deleted now, returning the number updated."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/Comment :id [:in ids] {:deleted_at [:now]}))
-
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
   everyone; everyone else is limited to their own tenant and further narrowed by the `user-visibility`

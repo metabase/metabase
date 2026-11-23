@@ -87,9 +87,10 @@
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-    (count (if-let [router (database-routing.db/router-for-database db-id)]
-             (database-routing.models/update-database-routers! [{:id (:id router) :user_attribute user-attribute}])
-             (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute user-attribute}])))))
+    (if-let [router (database-routing.db/router-for-database db-id)]
+      (do (database-routing.models/update-database-routers! [{:id (:id router) :user_attribute user-attribute}])
+          1)
+      (count (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute user-attribute}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

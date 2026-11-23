@@ -241,59 +241,31 @@
   "Insert the Comment `rows` and return the inserted instances, in the order of `rows`, in one transaction, publishing
   their create event."
   [rows :- [:sequential ::comments.schema/comment.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into [] (mapcat comments.db/insert-comments!)
-                        (partition-all app-db/create-partition-size rows))]
-      (when (seq created)
-        (events/publish-event! :event/comment-create (events/create-event created)))
-      created)))
-
-(defn- write-comment-updates!
-  "Writes `rows`, updates of Comments, with one statement for each distinct set of changes."
-  [rows]
-  (comments.db/update-comments! rows))
-
-(defn- update-comment-batch!
-  "Writes the Comments of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch]
-  (let [stored (comments.db/comments-by-ids (mapv :id batch))
-        rows   (filterv #(contains? stored (:id %)) batch)]
-    (write-comment-updates! rows)
-    {:stored stored :rows rows}))
+  (app-db/create-batched! :model/Comment rows
+                          {:after-create #(events/publish-event! :event/comment-create (events/create-event %))}))
 
 (mu/defn update-comments! :- :nil
   "Apply `updates`, each the `:id` of a Comment with the columns to give it, in one transaction, publishing one update
   event for all of them."
   [updates :- [:sequential ::comments.schema/comment.update]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv update-comment-batch! (partition-all app-db/update-partition-size updates))]
-      (when (some (comp seq :rows) batches)
-        (events/publish-event! :event/comment-update
-                               (events/update-event (into {} (map :stored) batches)
-                                                    (into [] (mapcat :rows) batches))))))
-  nil)
-
-(defn- soft-delete-comment-batch!
-  "Marks the Comments of `batch` deleted, and returns what the event needs."
-  [batch]
-  (let [stored (comments.db/comments-by-ids (vec batch))]
-    (when (seq stored)
-      (comments.db/soft-delete-comments! (vec (keys stored))))
-    {:stored  stored
-     :objects (comments.db/comments-by-ids (vec (keys stored)))}))
+  (app-db/update-batched! :model/Comment updates
+                          {:before-update (fn [updates _id->stored] (filterv #(seq (dissoc % :id)) updates))
+                           :after-update  (fn [updates id->stored _id->updated]
+                                            (when (seq updates)
+                                              (events/publish-event! :event/comment-update
+                                                                     (events/update-event id->stored updates))))}))
 
 (mu/defn soft-delete-comments! :- :nil
   "Mark the Comments with `ids` deleted now in one transaction, publishing their update event."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv soft-delete-comment-batch! (partition-all app-db/update-partition-size (distinct ids)))
-          stored  (into {} (map :stored) batches)]
-      (when (seq stored)
-        (events/publish-event! :event/comment-update
-                               (events/update-event stored
-                                                    (mapv (fn [id] {:id id}) (keys stored))
-                                                    {:objects (into {} (map :objects) batches)})))))
-  nil)
+  (app-db/update-batched! :model/Comment (mapv (fn [id] {:id id :deleted_at [:now]}) (distinct ids))
+                          {:reread?      true
+                           :after-update (fn [_updates id->stored id->updated]
+                                           (when (seq id->stored)
+                                             (events/publish-event! :event/comment-update
+                                                                    (events/update-event id->stored
+                                                                                         (mapv (fn [id] {:id id}) (keys id->stored))
+                                                                                         {:objects id->updated}))))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -1,9 +1,10 @@
 (ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
@@ -369,15 +370,21 @@
                  :model/User             {user-3 :id}   {}]
     (let [user-ids [user-1 user-2 user-3]
           members  #(t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id)]
-      (with-redefs [app-db/create-partition-size 1
-                    app-db/delete-partition-size 1]
-        (testing "an addition of three users with constants lowered adds all three and publishes one event"
-          (is (= [:event/group-membership-create]
-                 (events.tu/published-topics!
-                  #(perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))))))
+      (with-redefs [app-db.query/create-partition-size 1
+                    app-db.query/delete-partition-size 1]
+        (testing "an addition of three users with constants lowered adds all three in three inserts and publishes one event"
+          (let [calls (atom 0)]
+            (mt/with-dynamic-fn-redefs [app-db.query/insert-returning-instances! (let [f (mt/original-fn #'app-db.query/insert-returning-instances!)] (fn [& args] (swap! calls inc) (apply f args)))]
+              (is (= [:event/group-membership-create]
+                     (events.tu/published-topics!
+                      #(perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))))))
+            (is (= 3 @calls))))
         (is (= (set user-ids) (members)))
-        (testing "a removal of three users with constants lowered removes all three and publishes one event"
-          (is (= [:event/group-membership-delete]
-                 (events.tu/published-topics!
-                  #(perms-group-membership/remove-users-from-groups! user-ids [group-id]))))
+        (testing "a removal of three users with constants lowered removes all three in three deletes and publishes one event"
+          (let [calls (atom 0)]
+            (mt/with-dynamic-fn-redefs [permissions.db/delete-group-memberships! (let [f (mt/original-fn #'permissions.db/delete-group-memberships!)] (fn [& args] (swap! calls inc) (apply f args)))]
+              (is (= [:event/group-membership-delete]
+                     (events.tu/published-topics!
+                      #(perms-group-membership/remove-users-from-groups! user-ids [group-id])))))
+            (is (= 3 @calls)))
           (is (empty? (members))))))))

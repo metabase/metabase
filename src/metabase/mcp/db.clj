@@ -163,11 +163,6 @@
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]})))
 
-(mu/defn delete-session-logs!
-  "Delete the McpSessionLogs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} :string]]
-  (t2/delete! :model/McpSessionLog :id [:in [:auto/param (vec ids)]]))
-
 (mu/defn insert-tool-call-log!
   "Insert the McpToolCallLog `row`."
   [row :- ::mcp.schema/mcp-tool-call-log.update]
@@ -177,11 +172,6 @@
   "The ids of the McpToolCallLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]})))
-
-(mu/defn delete-tool-call-logs!
-  "Delete the McpToolCallLogs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/McpToolCallLog :id [:in [:auto/param (vec ids)]]))
 
 (defn session-user-ids
   "The ids of every User owning a `core_session` with `key-hashed`.
@@ -214,11 +204,6 @@
   "The ids of every McpQueryHandle created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/McpQueryHandle {:where [:< :created_at [:auto/param cutoff]]})))
-
-(mu/defn delete-query-handles!
-  "Delete the McpQueryHandles with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} :string]]
-  (t2/delete! :model/McpQueryHandle :id [:in [:auto/param (vec ids)]]))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any

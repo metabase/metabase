@@ -180,11 +180,6 @@
         (mapcat #(t2/select-pks-vec :model/CacheConfig :model model :model_id [:in (vec %)]))
         (partition-all app-db/delete-partition-size model-ids)))
 
-(mu/defn delete-cache-configs!
-  "Delete the CacheConfigs with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/CacheConfig :id [:in [:auto/param (vec ids)]]))
-
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
@@ -209,19 +204,6 @@
   "Whether any CacheConfig exists."
   []
   (t2/exists? :model/CacheConfig))
-
-(mu/defn cache-configs-by-ids
-  "The CacheConfigs with `cache-config-ids`, in any order."
-  [cache-config-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/CacheConfig :id [:in [:auto/param (vec (distinct cache-config-ids))]]))
-
-(mu/defn update-cache-configs!
-  "Apply each of `rows`, the `:id` of a CacheConfig and the columns to set, one statement per distinct change, in the
-  order the changes first appear."
-  [rows :- [:sequential [:merge
-                         (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])
-                         [:map [:id ms/PositiveInt]]]]]
-  (app-db/update-grouped! :model/CacheConfig rows))
 
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."

@@ -3,10 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
    [metabase-enterprise.tenants.schema :as tenants.schema]
-   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -76,28 +74,6 @@
   (t2/exists? :model/Tenant {:where [:and
                                      [:in :name [:auto/param (vec (distinct tenant-names))]]
                                      [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]}))
-
-(mr/def ::tenant.insert
-  [:merge
-   ::tenants.schema/tenant.create
-   [:map {:closed true}
-    [:tenant_collection_id ::lib.schema.id/collection]]])
-
-(mu/defn insert-tenants! :- [:sequential ::tenants.schema/tenant]
-  "Insert the Tenant `rows` in one statement and return the new instances in their order."
-  [rows :- [:sequential ::tenant.insert]]
-  (app-db/insert-returning-instances! :model/Tenant rows))
-
-(mu/defn tenants-by-ids :- [:map-of ms/PositiveInt ::tenants.schema/tenant]
-  "The map from id to Tenant of the Tenants with `tenant-ids`."
-  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
-
-(mu/defn update-tenants!
-  "Apply each of `rows`, the `:id` of a Tenant and the columns to set, one statement per distinct change, in the order
-  the changes first appear."
-  [rows :- [:sequential ::tenants.schema/tenant.update]]
-  (app-db/update-grouped! :model/Tenant rows))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."

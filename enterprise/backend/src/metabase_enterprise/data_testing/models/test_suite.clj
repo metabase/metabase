@@ -118,7 +118,7 @@
 
 (def ^:private UpdateTestSuite
   [:merge
-   ::data-testing.schema/test-suite.changes
+   (mut/dissoc ::data-testing.schema/test-suite.update :id)
    [:map {:closed true}
     [:members {:optional true} [:sequential SuiteMember]]]])
 
@@ -134,32 +134,34 @@
     (when (seq (:changes event))
       (events/publish-event! :event/test-suite-update event))))
 
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a TestSuite and the columns to change, to the suites it locks first, and
-  return the suites as read and as they are after, each a map from id."
+(defn- publish-suite-updates!
+  "Publish the update event of the suites of `id->stored` as `id->updated` holds them after the write, and for an import
+  the touch of those it leaves unchanged."
+  [opts id->stored id->updated]
+  (when (seq id->stored)
+    (let [ids (vec (keys id->stored))]
+      (publish-update! id->stored id->updated (mapv #(hash-map :id %) ids) (if (= :import (:writer opts)) ids []) opts))))
+
+(defn- update-suite-batch!
+  "Lock the suites of `rows`, one batch of a call, each a suite id and the columns to change, apply the changes, and
+  return the suites by id as read and as they are after."
   [rows]
-  (let [stored    (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))
-        requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
-    (when (seq requested)
-      (data-testing.db/update-test-suites! (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
-    {:stored stored
-     :fresh  (when (seq stored) (u/index-by :id (data-testing.db/test-suites-by-ids (vec (keys stored)))))}))
+  (let [id->stored (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))]
+    (data-testing.db/update-test-suites! (filterv (comp id->stored :id) rows))
+    {:id->stored  id->stored
+     :id->updated (when (seq id->stored) (u/index-by :id (data-testing.db/test-suites-by-ids (vec (keys id->stored)))))}))
 
 (mu/defn update-test-suites! :- :nil
   "Apply the changes in each of `rows`, the id of a TestSuite and the columns to change, without its members, in one
-  transaction, in batches, publishing one update event for all, and for an import a touch of the suites that it leaves
-  unchanged. The suite rows are locked first, so a concurrent update of the same suite waits until this one commits."
+  transaction, publishing their update event last, and for an import a touch of the suites that it leaves unchanged. The
+  suite rows are locked first, so a concurrent update of the same suite waits until this one commits."
   ([rows :- [:sequential ::data-testing.schema/test-suite.update]]
    (update-test-suites! rows nil))
   ([rows :- [:sequential ::data-testing.schema/test-suite.update]
     opts :- ::data-testing.schema/write-opts]
    (t2/with-transaction [_conn]
-     (let [batches (mapv (comp update-batch! vec) (partition-all mdb/update-partition-size rows))
-           stored  (into {} (mapcat :stored) batches)
-           fresh   (into {} (mapcat :fresh) batches)
-           ids     (vec (keys stored))]
-       (when (seq stored)
-         (publish-update! stored fresh (mapv #(hash-map :id %) ids) (if (= :import (:writer opts)) ids []) opts))))
+     (let [batches (mapv (comp update-suite-batch! vec) (partition-all mdb/update-partition-size rows))]
+       (publish-suite-updates! opts (into {} (map :id->stored) batches) (into {} (map :id->updated) batches))))
    nil))
 
 (mu/defn update-test-suite! :- :nil
@@ -192,16 +194,10 @@
    nil))
 
 (mu/defn delete-test-suites!
-  "Delete the TestSuites with `ids`, and their members, in batches in one transaction, publishing one delete event for
-  all right before the first statement."
+  "Delete the TestSuites with `ids`, and their members, in one transaction, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))]
-      (when (seq batches)
-        (events/publish-event! :event/test-suite-delete
-                               (events/delete-event (into [] (mapcat data-testing.db/test-suites-by-ids) batches))))
-      (run! data-testing.db/delete-test-suites! batches)))
-  nil)
+  (mdb/delete-batched! :model/TestSuite ids
+                       {:before-delete #(events/publish-event! :event/test-suite-delete (events/delete-event %))}))
 
 (mu/defn- create-test-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` in a plain write that publishes nothing, and return the inserted members."

@@ -1,7 +1,7 @@
 (ns metabase.pulse.events-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.pulse.events :as pulse.events]
    [metabase.test :as mt]
@@ -52,6 +52,7 @@
 
 (deftest sync-handles-events-with-more-rows-than-one-batch-test
   (testing "every Dashboard of an event larger than one batch gets its subscriptions renamed"
-    (with-redefs [mdb/update-partition-size 2
-                  mdb/create-partition-size 2]
-      (is (pos? (sync-statement-count! 5))))))
+    (let [unbatched (sync-statement-count! 5)]
+      (with-redefs [mdb.query/update-partition-size 2
+                    mdb.query/create-partition-size 2]
+        (is (< unbatched (sync-statement-count! 5)))))))

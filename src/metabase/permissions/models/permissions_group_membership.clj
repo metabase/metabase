@@ -276,13 +276,16 @@
           :when (not (contains? existing [user-id group-id]))]
       {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})))
 
-(defn- create-membership-batch!
-  "Check and insert `memberships`, one batch of a call, and return the inserted PermissionsGroupMemberships."
+(defn- check-new-memberships
+  "Throws unless the new `memberships` satisfy these rules, see the check of each:
+
+  - none changes the members of All Users or All tenant users outside the scope that allows it
+  - none adds to the Data Analysts group without the premium feature, see [[check-can-add-to-data-analyst-group]]
+  - the rules of [[check-members]]"
   [memberships]
   (check-magic-group-members-unchanged (map :group_id memberships))
   (check-can-add-to-data-analyst-group (map :group_id memberships))
-  (check-members memberships)
-  (permissions.db/insert-group-memberships! memberships))
+  (check-members memberships))
 
 (defn- set-new-member-flags!
   "Set the flags that the `created` memberships imply on their Users, publishing the events of the writes with `opts`."
@@ -301,12 +304,13 @@
   ([pgms :- ::new-memberships
     opts :- [:maybe ::write-opts]]
    (when (seq pgms)
-     (t2/with-transaction [_conn]
-       (let [created (into [] (mapcat (comp create-membership-batch! vec))
-                           (partition-all app-db/create-partition-size (missing-memberships (requested-memberships pgms))))]
-         (when (seq created)
-           (events/publish-event! :event/group-membership-create (events/create-event created opts))
-           (set-new-member-flags! created opts)))))
+     (app-db/create-batched! :model/PermissionsGroupMembership
+                             (missing-memberships (requested-memberships pgms))
+                             {:before-create check-new-memberships
+                              :after-create  (fn [created]
+                                               (events/publish-event! :event/group-membership-create
+                                                                      (events/create-event created opts))
+                                               (set-new-member-flags! created opts))}))
    nil))
 
 (mu/defn remove-users-from-groups! :- :nil
@@ -333,33 +337,22 @@
   (let [user-ids (into #{} (keep (fn [{id :id :as row}] (when (:is_group_manager row) (:user_id (id->stored id))))) updates)
         members  (if (seq user-ids) (permissions.db/member-flags-by-user-ids user-ids) {})]
     (doseq [{id :id :as row} updates
-            :let [changes (dissoc row :id)
-                  before  (id->stored id)]]
+            :let  [changes (dissoc row :id)
+                   before  (id->stored id)]
+            :when before]
       (when (:is_group_manager changes)
         (check-group-manager-member (merge before changes) (get members (:user_id before))))
       (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))))
-
-(defn- update-membership-batch!
-  "Check and write the rows of `batch` whose memberships exist, one batch of a call, and return the rows written with
-  the memberships by id as stored before."
-  [batch]
-  (let [id->stored (permissions.db/group-memberships-by-ids (mapv :id batch))
-        updates    (filterv (comp id->stored :id) batch)]
-    (check-membership-updates updates id->stored)
-    (permissions.db/update-group-memberships! updates)
-    {:updates updates :id->stored id->stored}))
 
 (mu/defn update-permissions-group-memberships! :- :nil
   "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroupMemberships in one transaction, publishing
   their update event; making a tenant user or an admin a group manager is a 400."
   [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv (comp update-membership-batch! vec) (partition-all app-db/update-partition-size rows))
-          updates (into [] (mapcat :updates) batches)]
-      (when (seq updates)
-        (events/publish-event! :event/group-membership-update
-                               (events/update-event (into {} (map :id->stored) batches) updates)))))
-  nil)
+  (app-db/update-batched! :model/PermissionsGroupMembership rows
+                          {:before-update check-membership-updates
+                           :after-update  (fn [updates id->stored _]
+                                            (events/publish-event! :event/group-membership-update
+                                                                   (events/update-event id->stored updates)))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

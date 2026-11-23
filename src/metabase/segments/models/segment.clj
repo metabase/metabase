@@ -141,13 +141,9 @@
   "Insert the Segment `rows` and return the inserted instances, in one transaction, publishing their create event. A
   definition that refers to a Segment that does not exist throws."
   [rows :- [:sequential ::segments.schema/segment.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (check-definitions-of-new-segments rows)
-      (let [segments (vec (segments.db/insert-segments! rows))]
-        (events/publish-event! :event/segment-create (events/create-event segments))
-        segments))))
+  (app-db/create-batched! :model/Segment rows
+                          {:before-create check-definitions-of-new-segments
+                           :after-create  #(events/publish-event! :event/segment-create (events/create-event %))}))
 
 (defn- check-changed-definition
   "Throws when the new definition in `changes` of one of the Segments with `ids`, `stored` as they are, differs from the
@@ -159,13 +155,6 @@
               :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
         (lib/check-segment-overwrite id definition)))))
 
-(defn- updated-segment
-  "The Segment `stored` as the update `changes` leaves it, with the table that the hook derives from a new definition."
-  [stored changes]
-  (cond-> (merge stored changes)
-    (contains? changes :definition) (assoc :definition (lib-be/normalize-query (:definition changes))
-                                           :table_id   (definition-table-id (:definition changes)))))
-
 (mr/def ::write-opts
   "The options of the update of Segments: `:writer`, who writes when it matters, and the context of the events."
   [:maybe
@@ -174,70 +163,50 @@
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (defn- check-segment-updates
-  "Throw a 400 unless every one of `rows`, updates of the `stored` Segments, satisfies these rules:
+  "Throw a 400 unless every one of `updates`, over the Segments `id->stored`, satisfies these rules:
 
   - a new definition does not refer to the Segment itself or make a cycle of Segments"
-  [stored rows]
-  (doseq [{:keys [id] :as row} rows]
-    (check-changed-definition [id] (dissoc row :id) stored)))
+  [updates id->stored]
+  (doseq [{:keys [id] :as row} updates]
+    (check-changed-definition [id] (dissoc row :id) id->stored)))
 
 (defn- assoc-segment-tables
-  "`rows`, updates of Segments, each with the table its new definition gives, computed once for each distinct definition."
-  [rows]
+  "`updates` of Segments, each with the table its new definition gives, computed once for each distinct definition."
+  [updates _id->stored]
   (let [table-ids (into {} (map (fn [definition] [definition (definition-table-id definition)]))
-                        (distinct (keep :definition rows)))]
-    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) rows)))
+                        (distinct (keep :definition updates)))]
+    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) updates)))
 
-(defn- write-segment-updates!
-  "Writes `rows`, updates of the `stored` Segments, each with the table its new definition gives, and returns what the event
-  needs, the changes of each row and the Segments as they are after the write."
-  [stored rows]
-  (segments.db/update-segments! (assoc-segment-tables rows))
-  {:stored  stored
-   :rows    rows
-   :objects (into {} (map (fn [{:keys [id] :as row}] [id (updated-segment (stored id) (dissoc row :id))])) rows)})
-
-(defn- update-segment-batch!
-  "Checks and writes the Segments of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch]
-  (let [stored (segments.db/segments-by-ids (mapv :id batch))
-        rows   (filterv #(contains? stored (:id %)) batch)]
-    (check-segment-updates stored rows)
-    (write-segment-updates! stored rows)))
-
-(defn- publish-segment-updates!
-  "Publishes the update event of the Segments that `batches`, what [[update-segment-batch!]] returned, wrote."
-  [batches opts]
-  (when (some (comp seq :rows) batches)
-    (events/publish-event! :event/segment-update
-                           (events/update-event (into {} (map :stored) batches)
-                                                (into [] (mapcat :rows) batches)
-                                                (assoc opts :objects (into {} (map :objects) batches))))))
-
-(mu/defn update-segments! :- [:sequential ::segments.schema/segment.update]
+(mu/defn update-segments! :- :nil
   "Apply `updates`, each the `:id` of a Segment with the columns to give it, in one transaction, publishing their update
-  event with the `:writer` and `:context` of `opts`. Returns `updates`."
+  event with the `:writer` and `:context` of `opts`."
   ([updates :- [:sequential ::segments.schema/segment.update]]
    (update-segments! updates nil))
   ([updates :- [:sequential ::segments.schema/segment.update]
     opts    :- ::write-opts]
-   (t2/with-transaction [_conn]
-     (let [batches (mapv update-segment-batch! (partition-all app-db/update-partition-size updates))]
-       (publish-segment-updates! batches opts)))
-   (vec updates)))
+   (app-db/update-batched! :model/Segment updates
+                           {:before-update (fn [updates id->stored]
+                                             (check-segment-updates updates id->stored)
+                                             (assoc-segment-tables updates id->stored))
+                            :reread?       true
+                            :after-update  (fn [updates id->stored id->updated]
+                                             (when (seq updates)
+                                               (events/publish-event! :event/segment-update
+                                                                      (events/update-event id->stored updates
+                                                                                           (assoc opts :objects id->updated)))))})))
+
+(defn- delete-tests-and-publish!
+  "Delete the tests of the Segments `rows`, with the data testing feature, then publish their delete event."
+  [rows]
+  (delete-segment-tests-for-segments! (mapv :id rows))
+  (events/publish-event! :event/segment-delete (events/delete-event rows)))
 
 (mu/defn delete-segments! :- :nil
   "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction, publishing their
   delete event right before the first statement."
   [ids :- [:sequential ::lib.schema.id/segment]]
-  (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size ids)]
-      (delete-segment-tests-for-segments! ids)
-      (when (seq batches)
-        (events/publish-event! :event/segment-delete
-                               (events/delete-event (into [] (mapcat #(vals (segments.db/segments-by-ids (vec %)))) batches))))
-      (run! #(segments.db/delete-segments! (vec %)) batches)))
-  nil)
+  (app-db/delete-batched! :model/Segment ids
+                          {:before-delete delete-tests-and-publish!}))
 
 (def ^:private revision-columns
   "The columns of a Segment that its Revisions track and a revert restores."
@@ -263,7 +232,7 @@
    :import-dependencies segments.serialization/import-dependencies
    :storage-paths       segments.serialization/storage-paths
    :insert!             create-segments!
-   :update!             #(update-segments! % {:writer :import})
+   :update!             #(do (update-segments! % {:writer :import}) %)
    :delete!             delete-segments!})
 
 (defmethod remote-sync/spec :model/Segment
@@ -331,7 +300,7 @@
 (defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
    :swap-source        segments.replacement/swap-source
-   :update!            #(update-segments! % {:writer :replacement})})
+   :update!            #(do (update-segments! % {:writer :replacement}) %)})
 
 (defmethod eid-translation/spec :model/Segment [_model]
   {:names [:segment]})

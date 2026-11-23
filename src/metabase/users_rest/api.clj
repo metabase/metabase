@@ -708,5 +708,6 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
     (check-not-internal-user id)
-    (api/check-500 (pos? (user/update-users! (for [user-id (user/user-ids-of-type [id] :personal)] {:id user-id k false})))))
+    (let [user-ids (api/check-500 (not-empty (user/user-ids-of-type [id] :personal)))]
+      (user/update-users! (for [user-id user-ids] {:id user-id k false}))))
   {:success true})

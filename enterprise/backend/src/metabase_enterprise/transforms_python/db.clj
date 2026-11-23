@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
-   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -46,27 +45,6 @@
   "The PythonLibrary at `path`, or nil."
   [path :- :string]
   (t2/select-one :model/PythonLibrary :path path))
-
-(mu/defn insert-python-libraries!
-  "Insert the PythonLibrary `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::transforms-python.schema/python-library.create]]
-  (app-db/insert-returning-instances! :model/PythonLibrary rows))
-
-(mu/defn update-python-libraries!
-  "Apply to the PythonLibrary rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::transforms-python.schema/python-library.update]]
-  (app-db/update-grouped! :model/PythonLibrary updates))
-
-(mu/defn python-libraries-by-ids
-  "The PythonLibraries with `library-ids`."
-  [library-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/PythonLibrary :id [:in [:auto/param library-ids]]))
-
-(mu/defn delete-python-libraries!
-  "Delete the PythonLibraries with `library-ids`."
-  [library-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/PythonLibrary :id [:in [:auto/param library-ids]])
-  nil)
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

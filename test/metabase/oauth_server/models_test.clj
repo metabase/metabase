@@ -1,7 +1,7 @@
 (ns metabase.oauth-server.models-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.query :as app-db.query]
    [metabase.events.test-util :as events.tu]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
@@ -47,8 +47,9 @@
                       :expiry       (+ (System/currentTimeMillis) 60000)}))]
         (doseq [user-id [user-1 user-1 user-2 other]]
           (code! user-id))
-        (is (= 3 (oauth-authorization-code/delete-oauth-authorization-codes!
-                  (oauth-server.db/authorization-code-ids-of-users [user-1 user-2]))))
+        (let [ids (oauth-server.db/authorization-code-ids-of-users [user-1 user-2])]
+          (is (= 3 (count ids)))
+          (oauth-authorization-code/delete-oauth-authorization-codes! ids))
         (is (empty? (oauth-server.db/authorization-code-ids-of-users [user-1 user-2])))
         (is (= 1 (count (oauth-server.db/authorization-code-ids-of-users [other]))))))))
 
@@ -68,9 +69,13 @@
             :scope        []
             :nonce        nil
             :expiry       (+ (System/currentTimeMillis) 60000)}))
-        (with-redefs [app-db/update-partition-size 1
-                      app-db/delete-partition-size 1]
-          (user/update-users! (mapv #(hash-map :id % :is_active false) user-ids)))
+        (let [calls (atom 0)]
+          (with-redefs [app-db.query/update-partition-size 1
+                        app-db.query/delete-partition-size 1
+                        oauth-server.db/authorization-code-ids-of-users (let [f @#'oauth-server.db/authorization-code-ids-of-users] (fn [& args] (swap! calls inc) (apply f args)))]
+            (user/update-users! (mapv #(hash-map :id % :is_active false) user-ids)))
+          (testing "the codes of the users are read one batch at a time"
+            (is (= 3 @calls))))
         (testing "every token of every deactivated user is revoked"
           (is (every? :token-revoked? (map access.tu/access-state accesses))))
         (testing "every authorization code of every deactivated user is deleted"

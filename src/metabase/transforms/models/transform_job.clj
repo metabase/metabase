@@ -214,21 +214,6 @@
           (update :name str)
           (update :description str)))))
 
-(defn- write-columns!
-  "Apply `requested`, a map from the id of a job of `stored` to its changes, then make the Quartz trigger of each job
-  match its row."
-  [stored requested]
-  (when (seq requested)
-    (transforms.db/update-jobs! (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
-  (sync-triggers! (transforms.db/jobs-by-ids (vec (keys stored)))))
-
-(defn- column-update-event
-  "The update event of the jobs of `stored` that `requested`, a map from id to its changes, changes."
-  [stored requested opts]
-  (events/update-event stored
-                       (mapv (fn [[id changes]] (assoc changes :id id)) requested)
-                       (assoc opts :objects (into {} (map (fn [[id changes]] [id (updated-job (stored id) changes)])) requested))))
-
 (defn- without-built-in-texts
   "`changes`, the changes of an import, without the name and description of `stored`, a built-in job, unless they set its
   type."
@@ -237,42 +222,34 @@
     (and (some? (:built_in_type stored)) (not (contains? changes :built_in_type)))
     (dissoc :name :description)))
 
-(defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a TransformJob and its columns to change, for the jobs in
-  `stored`, as `opts` says they are written."
-  [rows stored opts]
-  (into {}
-        (comp (filter (comp stored :id))
-              (map (fn [{:keys [id] :as row}]
-                     [id (cond->> (dissoc row :id)
-                           (= :import (:writer opts)) (without-built-in-texts (stored id)))])))
-        rows))
+(defn- prepare-job-updates
+  "The `updates` of the jobs of `id->stored`, those with a stored job only, as `opts` says they are written."
+  [opts updates id->stored]
+  (into []
+        (comp (filter (comp id->stored :id))
+              (map #(cond->> % (= :import (:writer opts)) (without-built-in-texts (id->stored (:id %))))))
+        updates))
 
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a TransformJob and the columns to change, then make the Quartz trigger of each
-  job match its row, and return the jobs as read and their changes, each a map from id."
-  [rows opts]
-  (let [stored    (u/index-by :id (transforms.db/jobs-by-ids (mapv :id rows)))
-        requested (requested-changes rows stored opts)]
-    (when (seq requested)
-      (write-columns! stored requested))
-    {:stored stored :requested requested}))
+(defn- publish-job-updates!
+  "Make the Quartz trigger of each of the jobs `id->updated` match its row, then publish the update event of the jobs of
+  `id->stored` that `updates` change."
+  [opts updates id->stored id->updated]
+  (sync-triggers! (vec (vals id->updated)))
+  (events/publish-event! :event/transform-job-update
+                         (events/update-event id->stored updates (assoc opts :objects id->updated))))
 
 (mu/defn update-transform-jobs! :- :nil
-  "Apply the changes in each of `rows`, the id of a TransformJob and the columns to change, in one transaction, in
-  batches with one statement per distinct change set, then make the Quartz trigger of each job match its row,
-  publishing one update event for all. An import leaves the name and description of a built-in job alone."
+  "Apply the changes in each of `rows`, the id of a TransformJob and the columns to change, in one transaction, then
+  make the Quartz trigger of each job match its row, publishing their update event. An import leaves the name and
+  description of a built-in job alone."
   ([rows :- [:sequential ::transforms.schema/transform-job.update]]
    (update-transform-jobs! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-job.update]
     opts :- ::transforms.schema/write-opts]
-   (t2/with-transaction [_conn]
-     (let [batches   (mapv #(update-batch! (vec %) opts) (partition-all mdb/update-partition-size rows))
-           stored    (into {} (mapcat :stored) batches)
-           requested (into {} (mapcat :requested) batches)]
-       (when (seq requested)
-         (events/publish-event! :event/transform-job-update (column-update-event stored requested opts)))))
-   nil))
+   (mdb/update-batched! :model/TransformJob rows
+                        {:before-update #(prepare-job-updates opts %1 %2)
+                         :reread?    true
+                         :after-update  #(publish-job-updates! opts %1 %2 %3)})))
 
 (mu/defn- replace-tags! :- :boolean
   "Make the TransformTags linked to the TransformJob with `job-id` those of `tag-ids`, in that order, with smart diff
@@ -304,6 +281,13 @@
           :position (get new-positions tag-id)})))
     (not= current-tag-ids new-tag-ids)))
 
+(defn- write-job-columns!
+  "Write the `columns` to change of the TransformJob `stored`, if any, then make its Quartz trigger match its row."
+  [stored columns]
+  (when (seq columns)
+    (transforms.db/update-jobs! [(assoc columns :id (:id stored))]))
+  (sync-triggers! [(transforms.db/job (:id stored))]))
+
 (mu/defn update-transform-job! :- :nil
   "Apply the `changes`, columns of the TransformJob with `id` and the `:tag_ids` it has afterwards, in one transaction,
   then make its Quartz trigger match its row, publishing one update event: of its columns, or a touch when only its
@@ -319,30 +303,26 @@
        (let [columns       (dissoc changes :tag_ids)
              tags-changed? (and (contains? changes :tag_ids) (replace-tags! id (:tag_ids changes)))]
          (when (or (seq columns) tags-changed?)
-           (write-columns! {id stored} (if (seq columns) {id columns} {}))
+           (write-job-columns! stored columns)
            (events/publish-event! :event/transform-job-update
                                   (if (seq columns)
-                                    (column-update-event {id stored} {id columns} opts)
+                                    (events/update-event {id stored}
+                                                         [(assoc columns :id id)]
+                                                         (assoc opts :objects {id (updated-job stored columns)}))
                                     (events/touch-event [stored] opts)))))))
    nil))
 
-(defn- delete-batch!
-  "Delete the Quartz jobs and then the TransformJobs with `ids`."
-  [ids]
-  (run! transforms.schedule/delete-job! ids)
-  (transforms.db/delete-jobs! ids))
+(defn- delete-quartz-jobs-and-publish!
+  "Delete the Quartz jobs of `jobs`, then publish their delete event."
+  [jobs]
+  (run! transforms.schedule/delete-job! (map :id jobs))
+  (events/publish-event! :event/transform-job-delete (events/delete-event jobs)))
 
 (mu/defn delete-transform-jobs! :- :nil
-  "Delete the Quartz jobs and then the TransformJobs with `job-ids`, in batches in one transaction, publishing one
-  delete event for all right before the first statement."
+  "Delete the Quartz jobs and then the TransformJobs with `job-ids`, in one transaction, publishing their delete event
+  right before the statement."
   [job-ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size job-ids))]
-      (when (seq batches)
-        (events/publish-event! :event/transform-job-delete
-                               (events/delete-event (into [] (mapcat transforms.db/jobs-by-ids) batches))))
-      (run! delete-batch! batches)))
-  nil)
+  (mdb/delete-batched! :model/TransformJob job-ids {:before-delete delete-quartz-jobs-and-publish!}))
 
 (mu/defn- flip-active! :- :nil
   "Mark the TransformJob with `job-id` active or inactive, as `active?` says, and make its Quartz trigger match when it

@@ -57,14 +57,10 @@
   [row :- ::impersonation.schema/impersonation-query-cache.update]
   (impersonation.db/update-or-insert-query-cache! (lookup row) row))
 
-(mu/defn delete-impersonation-query-caches! :- :int
-  "Delete the ImpersonationQueryCaches with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-impersonation-query-caches! :- :nil
+  "Delete the ImpersonationQueryCaches with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp impersonation.db/delete-query-caches! vec)) + 0
-                 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/ImpersonationQueryCache ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

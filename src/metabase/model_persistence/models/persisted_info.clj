@@ -239,12 +239,9 @@
   (model-persistence.db/end-persisted-info-refresh! id active? state error))
 
 (mu/defn delete-persisted-infos! :- :nil
-  "Delete the PersistedInfos with `ids` in one transaction and batches of [[mdb/delete-partition-size]]."
+  "Delete the PersistedInfos with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (run! #(model-persistence.db/delete-persisted-infos! (vec %)) (partition-all mdb/delete-partition-size ids))))
-  nil)
+  (mdb/delete-batched! :model/PersistedInfo ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

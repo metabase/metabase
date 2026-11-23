@@ -972,10 +972,10 @@
     (check-action-updates (:contexts planned) opts)
     (write-action-updates! stored planned opts)))
 
-(mu/defn update-actions! :- [:sequential ::actions.schema/action.update]
+(mu/defn update-actions! :- :nil
   "Apply the changes in each of `rows`, the id of an Action, the Action columns to change and the columns of its details,
   in one transaction, publishing their update event last with the `:context` of `opts`. With `:writer :import` an Action
-  that the rows leave unchanged gets a touch. Returns `rows`."
+  that the rows leave unchanged gets a touch."
   ([rows :- [:sequential ::actions.schema/action.update]]
    (update-actions! rows nil))
   ([rows :- [:sequential ::actions.schema/action.update]
@@ -987,7 +987,7 @@
                         (into [] (mapcat :rows) batches)
                         (if (= :import (:writer opts)) (mapv :id rows) [])
                         opts)))
-   (vec rows)))
+   nil))
 
 (mu/defn update-action! :- :nil
   "Applies `changes`, the columns of the Action with `id` and those of its details, in one transaction, publishing one
@@ -999,17 +999,12 @@
   (update-actions! [(assoc changes :id id)] opts)
   nil)
 
-(mu/defn delete-actions!
+(mu/defn delete-actions! :- :nil
   "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, in one transaction, publishing
   their delete event right before the first statement."
   [ids :- [:sequential ::lib.schema.id/action]]
-  (t2/with-transaction [_conn]
-    (let [batches (partition-all mdb/delete-partition-size (distinct ids))]
-      (when (seq batches)
-        (events/publish-event! :event/action-delete
-                               (events/delete-event (into [] (mapcat #(vals (actions.db/actions-by-ids (vec %)))) batches))))
-      (run! #(actions.db/delete-actions! (vec %)) batches)))
-  nil)
+  (mdb/delete-batched! :model/Action ids
+                       {:before-delete #(events/publish-event! :event/action-delete (events/delete-event %))}))
 
 (mu/defn update-actions-for-models!
   "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for
@@ -1077,7 +1072,7 @@
    :export-dependencies actions.serialization/export-dependencies
    :loaded-entities     actions.serialization/loaded-entities
    :insert!             #(create-actions! % {:writer :import})
-   :update!             #(update-actions! % {:writer :import})
+   :update!             #(do (update-actions! % {:writer :import}) %)
    :delete!             delete-actions!})
 
 (defmethod remote-sync/spec :model/Action

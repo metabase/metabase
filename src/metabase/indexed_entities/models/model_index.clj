@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
@@ -191,38 +192,37 @@
   []
   (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
+(defn- prepare-model-indexes
+  "The ModelIndex rows that the `rows` of a call give: each with the default schedule and the initial state."
+  [rows]
+  (mapv (fn [{:keys [model-id pk-ref value-ref creator-id]}]
+          {:model_id   model-id
+           :pk_ref     pk-ref
+           :value_ref  value-ref
+           :schedule   (default-schedule)
+           :state      "initial"
+           :creator_id creator-id})
+        rows))
+
 (mu/defn create-model-indexes! :- [:sequential :map]
   "Create a ModelIndex from each of `rows`, with the default schedule and the initial state, and return the new
-  instances in order, publishing their create event."
+  instances in order, in one transaction, publishing their create event."
   [rows :- [:sequential ::indexed-entities.schema/model-index.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [indexes (indexed-entities.db/insert-model-indexes!
-                     (mapv (fn [{:keys [model-id pk-ref value-ref creator-id]}]
-                             {:model_id   model-id
-                              :pk_ref     pk-ref
-                              :value_ref  value-ref
-                              :schedule   (default-schedule)
-                              :state      "initial"
-                              :creator_id creator-id})
-                           rows))]
-        (events/publish-event! :event/model-index-create (events/create-event indexes))
-        indexes))))
+  (app-db/create-batched! :model/ModelIndex rows
+                          {:before-create prepare-model-indexes
+                           :after-create  #(events/publish-event! :event/model-index-create (events/create-event %))}))
 
-(mu/defn delete-model-indexes! :- :int
-  "Remove the indexing jobs of the ModelIndexes with `ids` and delete those that exist, publishing their delete event,
-  and return the number deleted."
+(defn- remove-indexing-jobs-and-publish!
+  "Remove the indexing jobs of the ModelIndexes `rows`, then publish their delete event."
+  [rows]
+  (run! remove-indexing-job rows)
+  (events/publish-event! :event/model-index-delete (events/delete-event rows)))
+
+(mu/defn delete-model-indexes! :- :nil
+  "Delete the ModelIndexes with `ids` in one transaction, removing their indexing jobs and publishing their delete event
+  right before the first statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (run! #(remove-indexing-job {:id %}) ids)
-      (if-let [indexes (not-empty (vec (indexed-entities.db/model-indexes ids)))]
-        (do
-          (events/publish-event! :event/model-index-delete (events/delete-event indexes))
-          (indexed-entities.db/delete-model-indexes! (mapv :id indexes)))
-        0))))
+  (app-db/delete-batched! :model/ModelIndex ids {:before-delete remove-indexing-jobs-and-publish!}))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 

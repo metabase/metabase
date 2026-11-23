@@ -72,6 +72,7 @@
           (let [counted (fn [ids]
                           (let [rows (mapv (fn [id] {:id id :name (str "Renamed " (count ids)) :enable_embedding true}) ids)]
                             (doseq [id ids]
+                              (t2/update! model :id id {:name "Stored"})
                               (t2/update! model :id id {:enable_embedding false})
                               (t2/update! model :id id {:initially_published_at nil}))
                             (doseq [id (take-nth 2 ids)]
@@ -81,15 +82,16 @@
             (counted [g])
             (testing "rows in different stored states, which Toucan writes apart, cost two statements more for each"
               (is (<= (- (counted [a b c d e f]) (counted [a b])) (* 2 (- 6 2)))))
+            (testing "rows embedded before keep their time and the others get the time of the write"
+              (let [stored (t2/select-pk->fn :initially_published_at model :id [:in [a b c d e f]])]
+                (is (= #{(t/offset-date-time published)} (set (map stored [a c e]))))
+                (is (every? #(and (some? %) (not= (t/offset-date-time published) %)) (map stored [b d f])))))
             (testing "rows in the same stored state cost the same statements at two and six rows"
               (let [same (fn [ids]
                            (doseq [id ids]
+                             (t2/update! model :id id {:name "Stored"})
                              (t2/update! model :id id {:enable_embedding false})
                              (t2/update! model :id id {:initially_published_at nil}))
                            (events.tu/statement-count!
                             #(update-rows! model (mapv (fn [id] {:id id :name (str "Renamed " (count ids)) :enable_embedding true}) ids))))]
-                (is (= (same [a b]) (same [a b c d e f])))))
-            (testing "rows embedded before keep their time and the others get the time of the write"
-              (let [stored (t2/select-pk->fn :initially_published_at model :id [:in [a b c d e f]])]
-                (is (= #{(t/offset-date-time published)} (set (map stored [a c e]))))
-                (is (every? #(and (some? %) (not= (t/offset-date-time published) %)) (map stored [b d f])))))))))))
+                (is (= (same [a b]) (same [a b c d e f])))))))))))

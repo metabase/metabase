@@ -38,10 +38,7 @@
 (mu/defn create-permissions-revisions!
   "Insert the PermissionsRevision `rows` in one transaction and return them in order."
   [rows :- [:sequential ::permissions.schema/permissions-revision.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (into [] (mapcat (comp permissions.db/insert-permissions-revisions! vec)) (partition-all app-db/create-partition-size rows)))))
+  (app-db/create-batched! :model/PermissionsRevision rows {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -73,14 +73,16 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- publish-python-library-creates
+  "Publish the create event of the PythonLibraries `created`."
+  [created]
+  (events/publish-event! :event/python-library-create (events/create-event created)))
+
 (mu/defn create-python-libraries! :- [:sequential ::transforms-python.schema/python-library]
-  "Insert the PythonLibrary `rows` in batches in one transaction, publishing one create event for all, and return the inserted libraries."
+  "Insert the PythonLibrary `rows` in one transaction, publishing their create event, and return the inserted
+  libraries."
   [rows :- [:sequential ::transforms-python.schema/python-library.create]]
-  (t2/with-transaction [_conn]
-    (let [libraries (into [] (mapcat transforms-python.db/insert-python-libraries!) (map vec (partition-all mdb/create-partition-size rows)))]
-      (when (seq libraries)
-        (events/publish-event! :event/python-library-create (events/create-event libraries)))
-      libraries)))
+  (mdb/create-batched! :model/PythonLibrary rows {:after-create publish-python-library-creates}))
 
 (defn- updated-library
   "The PythonLibrary `stored` as the update `changes` leaves it, with what the update hook sets."
@@ -90,52 +92,38 @@
       (seq (dissoc differing :updated_at :is_default)) (assoc :is_default false)
       (:path changes)                                 (update :path normalize-path))))
 
-(defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a PythonLibrary and its columns to change, for the
-  libraries in `stored`."
-  [rows stored]
-  (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows))
+(defn- existing-python-library-updates
+  "The `updates` of the PythonLibraries that exist among `id->stored`."
+  [updates id->stored]
+  (filterv (comp id->stored :id) updates))
 
-(defn- update-event
-  "The update event of the libraries of `stored` that `requested`, a map from id to its changes, changes."
-  [stored requested]
-  (events/update-event stored
-                       (mapv (fn [[id changes]] (assoc changes :id id)) requested)
-                       {:objects (into {} (map (fn [[id changes]] [id (updated-library (stored id) changes)])) requested)}))
-
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a PythonLibrary and the columns to change, and return the libraries as read
-  and their changes, each a map from id."
-  [rows]
-  (let [stored    (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (mapv :id rows)))
-        requested (requested-changes rows stored)]
-    (when (seq requested)
-      (transforms-python.db/update-python-libraries! (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
-    {:stored stored :requested requested}))
+(defn- publish-python-library-updates
+  "Publish the update event of the PythonLibraries that `updates` changes, as stored before in `id->stored`."
+  [updates id->stored _id->updated]
+  (events/publish-event! :event/python-library-update
+                         (events/update-event id->stored
+                                              updates
+                                              {:objects (into {}
+                                                              (map (fn [{:keys [id] :as row}]
+                                                                     [id (updated-library (id->stored id) (dissoc row :id))]))
+                                                              updates)})))
 
 (mu/defn update-python-libraries! :- :nil
-  "Apply the changes in each of `rows`, the id of a PythonLibrary and the columns to change, in one transaction, in
-  batches with one statement per distinct change set, publishing one update event for all."
-  [rows :- [:sequential ::transforms-python.schema/python-library.update]]
-  (t2/with-transaction [_conn]
-    (let [batches   (mapv (comp update-batch! vec) (partition-all mdb/update-partition-size rows))
-          stored    (into {} (mapcat :stored) batches)
-          requested (into {} (mapcat :requested) batches)]
-      (when (seq requested)
-        (events/publish-event! :event/python-library-update (update-event stored requested)))))
-  nil)
+  "Apply `updates`, each the id of a PythonLibrary and the columns to change, in one transaction, publishing their
+  update event."
+  [updates :- [:sequential ::transforms-python.schema/python-library.update]]
+  (mdb/update-batched! :model/PythonLibrary updates {:before-update existing-python-library-updates
+                                                     :after-update  publish-python-library-updates}))
 
-(mu/defn delete-python-libraries!
-  "Delete the PythonLibraries with `ids`, in batches in one transaction, publishing one delete event for all right
-  before the first statement."
+(defn- publish-python-library-deletes
+  "Publish the delete event of the PythonLibraries `libraries`."
+  [libraries]
+  (events/publish-event! :event/python-library-delete (events/delete-event libraries)))
+
+(mu/defn delete-python-libraries! :- :nil
+  "Delete the PythonLibraries with `ids` in one transaction, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))]
-      (when (seq batches)
-        (events/publish-event! :event/python-library-delete
-                               (events/delete-event (into [] (mapcat transforms-python.db/python-libraries-by-ids) batches))))
-      (run! transforms-python.db/delete-python-libraries! batches)))
-  nil)
+  (mdb/delete-batched! :model/PythonLibrary ids {:before-delete publish-python-library-deletes}))
 
 (mu/defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."

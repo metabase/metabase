@@ -101,7 +101,9 @@
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when
   something was removed."
   [user-id]
-  (pos? (models.auth-identity/delete-auth-identities! (mfa.db/totp-identity-ids user-id))))
+  (let [ids (mfa.db/totp-identity-ids user-id)]
+    (models.auth-identity/delete-auth-identities! ids)
+    (boolean (seq ids))))
 
 ;;; -------------------------------------------------- Recovery-code management --------------------------------------------------
 

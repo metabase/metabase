@@ -14,16 +14,10 @@
    [:enum "common" "common.py"]
    (deferred-tru "Invalid library path. Only ''common'' is currently supported.")))
 
-(mr/def ::python-library
-  "A PythonLibrary as selected from the app DB: every column of `:python_library`."
-  [:merge
-   ::python-library.changes
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
-(mr/def ::python-library.changes
-  "The columns to change of a PythonLibrary, every column of `:python_library`."
+(mr/def ::python-library.update
+  "What an update of a PythonLibrary takes: its `:id` and the columns to change, every column of `:python_library`."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:path       {:optional true} [:maybe :string]]
    [:source     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
@@ -31,12 +25,9 @@
    [:entity_id  {:optional true} [:maybe :string]]
    [:is_default {:optional true} [:maybe :boolean]]])
 
-(mr/def ::python-library.update
-  "What an update of a PythonLibrary takes: its `:id` and the columns to change."
-  [:merge
-   ::python-library.changes
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
+(mr/def ::python-library
+  "A PythonLibrary as selected from the app DB: every column of `:python_library`."
+  ::python-library.update)
 
 (mr/def ::python-library.create
   "What creating a PythonLibrary takes: its path and source, and the entity id and default flag of a built-in one."

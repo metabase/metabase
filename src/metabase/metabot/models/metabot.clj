@@ -7,7 +7,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -46,30 +45,16 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mr/def ::metabot-change
+(mr/def ::metabot-update
   [:map {:closed true}
+   [:id                   ms/PositiveInt]
    [:use_verified_content {:optional true} [:maybe :boolean]]
    [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
 
-(mr/def ::metabot-update
-  [:merge
-   ::metabot-change
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
-
-(defn- update-batch!
-  "Apply the changes in `rows`, the id of a Metabot and the columns to change."
-  [rows]
-  (let [stored    (u/index-by :id (metabot.db/metabots-by-ids (mapv :id rows)))
-        requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
-    (metabot.db/update-metabots! (mapv (fn [[id changes]] (assoc changes :id id)) requested))))
-
 (mu/defn update-metabots! :- :nil
-  "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in batches in one transaction."
+  "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."
   [rows :- [:sequential ::metabot-update]]
-  (t2/with-transaction [_conn]
-    (run! (comp update-batch! vec) (partition-all mdb/update-partition-size rows)))
-  nil)
+  (mdb/update-batched! :model/Metabot rows {}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

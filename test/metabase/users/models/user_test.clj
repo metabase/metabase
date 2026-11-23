@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as app-db.query]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
@@ -23,6 +24,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
@@ -436,10 +438,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (user/update-users! [{:id user-id :is_active true :first_name "New name"}])))
+          (is (nil? (user/update-users! [{:id user-id :is_active true :first_name "New name"}])))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
+          (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -975,23 +977,37 @@
   (mt/with-model-cleanup [:model/User]
     (let [users (user/create-users! (vec (for [_ (range 5)] {:email (str (random-uuid) "@example.com")})))
           ids   (mapv :id users)]
-      (with-redefs [mdb/update-partition-size 2]
-        (let [topics (events.tu/published-topics!
-                      #(is (= 5 (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
-                                                           {:id id :first_name (str "Test User " i)}))))))]
-          (testing "five rows in batches of two publish one event"
-            (is (= [:event/user-update] topics)))))
+      (let [read-sizes (atom [])
+            read-users (mt/original-fn #'users.db/users-with-all-columns)]
+        (with-redefs [app-db.query/update-partition-size 2]
+          (mt/with-dynamic-fn-redefs [users.db/users-with-all-columns (fn [user-ids]
+                                                                        (swap! read-sizes conj (count user-ids))
+                                                                        (read-users user-ids))]
+            (let [topics (events.tu/published-topics!
+                          #(is (nil? (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
+                                                                {:id id :first_name (str "Test User " i)}))))))]
+              (testing "five rows in batches of two publish one event"
+                (is (= [:event/user-update] topics))))))
+        (testing "each of three batches reads its stored rows and rereads them after its write"
+          (is (= [2 2 2 2 1 1] @read-sizes))))
       (testing "every row gets its own change"
         (is (= (vec (for [i (range 5)] (str "Test User " i)))
                (mapv #(t2/select-one-fn :first_name :model/User :id %) ids)))))))
 
 (deftest create-users-across-partitions-test
   (mt/with-model-cleanup [:model/User]
-    (with-redefs [mdb/create-partition-size 2]
-      (let [emails  (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
-            created (atom nil)
-            topics  (events.tu/published-topics!
-                     #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails))))]
+    (with-redefs [app-db.query/create-partition-size 2]
+      (let [emails      (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
+            created     (atom nil)
+            check-sizes (atom [])
+            read-emails (mt/original-fn #'users.db/user-ids-by-emails)
+            topics      (mt/with-dynamic-fn-redefs [users.db/user-ids-by-emails (fn [lower-case-emails]
+                                                                                  (swap! check-sizes conj (count lower-case-emails))
+                                                                                  (read-emails lower-case-emails))]
+                          (events.tu/published-topics!
+                           #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails)))))]
+        (testing "each of three batches checks its own emails"
+          (is (= [2 2 1] @check-sizes)))
         (testing "rows come back in input order"
           (is (= emails (mapv :email @created))))
         (testing "five rows in batches of two publish one create event and one membership event"

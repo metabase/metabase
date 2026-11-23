@@ -2,7 +2,6 @@
   "Application database queries for the custom-viz-plugin module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -57,22 +56,19 @@
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
 
-(mu/defn insert-plugins!
-  "Insert the `plugins` and return the new instances."
-  [plugins :- [:sequential {:min 1} ::custom-viz-plugin.schema/custom-viz-plugin.create]]
-  (app-db/insert-returning-instances! :model/CustomVizPlugin plugins))
+(mu/defn non-blob-plugins-by-ids :- [:map-of ms/PositiveInt :map]
+  "The CustomVizPlugins with `plugin-ids`, without their bundles, by id."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (into {}
+        (map (juxt :id identity))
+        (t2/select non-blob-columns :id [:in [:auto/param plugin-ids]])))
 
 (mu/defn update-plugins! :- :nil
-  "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of columns
-  that rows have in common."
+  "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of
+  columns that rows have in common."
   [updates :- [:sequential :map]]
   (app-db/update-grouped! :model/CustomVizPlugin updates)
   nil)
-
-(mu/defn non-blob-plugins-by-ids
-  "The CustomVizPlugins with `plugin-ids`, without their bundles."
-  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select non-blob-columns :id [:in [:auto/param plugin-ids]]))
 
 (mu/defn delete-plugins!
   "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."

@@ -570,16 +570,6 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
-(mu/defn permissions-groups-by-ids :- [:map-of ms/PositiveInt ::permissions.schema/permissions-group]
-  "The map from id to PermissionsGroup of the groups with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
-
-(mu/defn insert-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
-  "Insert the PermissionsGroup `rows` and return the inserted instances in their order."
-  [rows :- [:sequential ::permissions.schema/permissions-group.create]]
-  (mdb/insert-returning-instances! :model/PermissionsGroup rows))
-
 (mu/defn update-permissions-group!
   "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
   [id      :- ms/PositiveInt
@@ -589,17 +579,6 @@
                [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
                [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
-
-(mu/defn update-permissions-groups!
-  "Apply each of `rows`, the `:id` of a PermissionsGroup and the columns to set, one statement per distinct change, in
-  the order the changes first appear."
-  [rows :- [:sequential ::permissions.schema/permissions-group.update]]
-  (mdb/update-grouped! :model/PermissionsGroup rows))
-
-(mu/defn delete-permissions-groups!
-  "Delete the PermissionsGroups with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn magic-group
   "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
@@ -704,20 +683,6 @@
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
-(mu/defn update-group-memberships!
-  "Apply each of `rows`, the `:id` of a PermissionsGroupMembership and the columns to set, one statement per distinct
-  change, in the order the changes first appear."
-  [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
-  (mdb/update-grouped! :model/PermissionsGroupMembership rows))
-
-(mu/defn insert-group-memberships!
-  "Insert the PermissionsGroupMemberships `memberships` through the model, returning the inserted instances."
-  [memberships :- [:sequential [:map {:closed true}
-                                [:user_id          ::lib.schema.id/user]
-                                [:group_id         ms/PositiveInt]
-                                [:is_group_manager :boolean]]]]
-  (mdb/insert-returning-instances! :model/PermissionsGroupMembership memberships))
-
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`: all of
   them less those among `user-ids`, read `mdb/delete-partition-size` ids at a time."
@@ -739,11 +704,6 @@
   "The IDs of the PermissionsGroups the User with `user-id` manages, or nil when they manage none."
   [user-id :- ::lib.schema.id/user]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
-
-(mu/defn group-memberships-by-ids :- [:map-of ms/PositiveInt ::permissions.schema/permissions-group-membership]
-  "The map from id to PermissionsGroupMembership of the memberships with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/PermissionsGroupMembership :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn memberships-for-users-in-groups
   "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroups with `group-ids`."
@@ -788,32 +748,6 @@
   "The highest ID of any ApplicationPermissionsRevision, or nil."
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
-
-(mu/defn insert-collection-permission-graph-revisions!
-  "Insert the CollectionPermissionGraphRevision `rows` in one statement and return the new instances in their order."
-  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
-  (mdb/insert-returning-instances! :model/CollectionPermissionGraphRevision rows))
-
-(mu/defn insert-permissions-revisions!
-  "Insert the PermissionsRevision `rows` in one statement and return the new instances in their order."
-  [rows :- [:sequential ::permissions.schema/permissions-revision.create]]
-  (mdb/insert-returning-instances! :model/PermissionsRevision rows))
-
-(mu/defn insert-application-permissions-revisions!
-  "Insert the ApplicationPermissionsRevision `rows` in one statement and return the new instances in their order."
-  [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
-  (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
-
-(mu/defn collection-permission-graph-revisions-by-ids :- [:map-of ms/PositiveInt :map]
-  "The map from id to CollectionPermissionGraphRevision of the revisions with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
-
-(mu/defn update-collection-permission-graph-revisions!
-  "Apply each of `rows`, the `:id` of a CollectionPermissionGraphRevision and the columns to set, one statement per
-  distinct change, in the order the changes first appear."
-  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
-  (mdb/update-grouped! :model/CollectionPermissionGraphRevision rows))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

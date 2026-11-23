@@ -630,7 +630,7 @@
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
        (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-         (is (some? (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}]))))))))
+         (is (nil? (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}]))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!

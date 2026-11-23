@@ -32,7 +32,8 @@
    {:keys [login_attributes]} :- [:map {:closed true}
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (sandbox.db/personal-user id))
-  (pos? (user/update-users! [{:id id :login_attributes login_attributes}])))
+  (user/update-users! [{:id id :login_attributes login_attributes}])
+  true)
 
 (def ^:private max-login-attributes 5000)
 

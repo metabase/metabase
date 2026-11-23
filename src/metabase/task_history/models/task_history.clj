@@ -103,14 +103,10 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn delete-task-histories! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the TaskHistory rows with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-task-histories! :- :nil
+  "Delete the TaskHistory rows with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp task-history.db/delete-task-histories! vec)) + 0
-                 (partition-all mdb/delete-partition-size ids)))))
+  (mdb/delete-batched! :model/TaskHistory ids {}))
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}

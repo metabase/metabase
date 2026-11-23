@@ -98,22 +98,12 @@
     (t2/select-pk->fn identity :model/Document :id [:in ids])
     {}))
 
-(mu/defn insert-documents!
-  "Insert the Document `rows` and return the inserted instances, in the order of the rows."
-  [rows :- [:sequential ::documents.schema/document.create]]
-  (mdb/insert-returning-instances! :model/Document rows))
-
 (mu/defn update-documents! :- :nil
   "Apply each of `updates`, the `:id` of a Document and the columns to change, with one statement for each set of columns
   that rows have in common."
   [updates :- [:sequential :map]]
   (mdb/update-grouped! :model/Document updates)
   nil)
-
-(mu/defn delete-documents!
-  "Delete the Documents with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Document :id [:in ids]))
 
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."

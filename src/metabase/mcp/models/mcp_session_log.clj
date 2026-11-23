@@ -5,7 +5,6 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -26,13 +25,10 @@
   [session-id :- :string]
   (mcp.db/end-session-log! session-id))
 
-(mu/defn delete-mcp-session-logs! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the McpSessionLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-mcp-session-logs! :- :nil
+  "Delete the McpSessionLogs with `ids` in one transaction."
   [ids :- [:sequential :string]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp mcp.db/delete-session-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/McpSessionLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

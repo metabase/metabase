@@ -228,12 +228,6 @@
                     :visibility_type [:not-in ["sensitive" "retired"]]
                     {:from [[(t2/table-name :model/Field) :f]]}))
 
-(mu/defn insert-fields!
-  "Insert the Field `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
-  its default, and return the inserted instances in the order of `rows`."
-  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (app-db/insert-returning-instances! :model/Field rows))
-
 (mu/defn fields-targeting
   "The Fields whose foreign key targets one of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -455,11 +449,6 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
 
-(mu/defn delete-field-user-settings-by-ids!
-  "Delete the FieldUserSettings with `ids`, returning the number deleted."
-  [ids :- [:sequential pos-int?]]
-  (t2/delete! :model/FieldUserSettings :id [:in ids]))
-
 (mu/defn field-user-settings-by-ids
   "The FieldUserSettings with `ids`."
   [ids :- [:sequential pos-int?]]
@@ -522,11 +511,6 @@
   "Apply `rows`, each the id of a TableUserSettings and the columns to change, one update per distinct change."
   [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/TableUserSettings rows))
-
-(mu/defn delete-table-user-settings-by-ids!
-  "Delete the TableUserSettings with `ids`, returning the number deleted."
-  [ids :- [:sequential pos-int?]]
-  (t2/delete! :model/TableUserSettings :id [:in ids]))
 
 (defn- empty-table-user-settings-clause
   "The clause over TableUserSettings selecting those, among those of the Tables with `table-ids`, that hold no user
@@ -620,11 +604,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
 
-(mu/defn dimensions-by-ids
-  "The Dimensions with `ids`."
-  [ids :- [:sequential ::lib.schema.id/dimension]]
-  (t2/select :model/Dimension :id [:in ids]))
-
 (mu/defn dimensions-of-field
   "The `dimension-type` Dimensions of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
@@ -635,22 +614,6 @@
   "The Dimensions whose human-readable values come from the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/Dimension :human_readable_field_id [:in field-ids]))
-
-(mu/defn insert-dimensions!
-  "Insert the Dimension `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
-  its default, and return the inserted instances in the order of `rows`."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
-  (app-db/insert-returning-instances! :model/Dimension rows))
-
-(mu/defn update-dimensions!
-  "Apply `rows`, each the id of a Dimension and the columns to change, one update per distinct change."
-  [rows :- [:sequential :map]]
-  (app-db/update-grouped! :model/Dimension rows))
-
-(mu/defn delete-dimensions!
-  "Delete the Dimensions with `ids`, returning the number deleted."
-  [ids :- [:sequential ::lib.schema.id/dimension]]
-  (t2/delete! :model/Dimension :id [:in ids]))
 
 (mu/defn rename-dimensions-for-fields!
   "Set the name of the Dimension of each ::warehouse-schema.schema/field in `field-id->name` to its name there,
@@ -663,17 +626,6 @@
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Dimension :field_id [:in field-ids]))
-
-(mu/defn field-values-by-ids
-  "The FieldValues with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/FieldValues :id [:in ids]))
-
-(mu/defn insert-field-values!
-  "Insert the FieldValues `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
-  its default, and return the inserted instances in the order of `rows`."
-  [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
-  (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
   "Apply `rows`, each the id of a FieldValues and the columns to change, one update per distinct change."
@@ -701,11 +653,6 @@
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt]
   (t2/update! :model/FieldValues :id field-values-id {:last_used_at :%now}))
-
-(mu/defn delete-field-values!
-  "Delete the FieldValues with `field-values-ids`, returning the number deleted."
-  [field-values-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/FieldValues :id [:in field-values-ids]))
 
 (defn- field-values-of-fields-kvs
   "The conditions on FieldValues of the Fields with `field-ids`."
@@ -787,12 +734,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn insert-tables!
-  "Insert the Table `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
-  its default, and return the inserted instances in the order of `rows`."
-  [rows :- [:sequential ::warehouse-schema.schema/table.create]]
-  (app-db/insert-returning-instances! :model/Table rows))
-
 (mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -805,16 +746,6 @@
    kase      :- [:enum :lower :upper]
    columns   :- [:sequential :keyword]]
   (t2/update! :model/Table :id [:in table-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
-
-(mu/defn delete-tables!
-  "Delete the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/Table :id [:in table-ids]))
-
-(mu/defn update-tables!
-  "Apply `rows`, each the id of a Table and the columns to change, one update per distinct change."
-  [rows :- [:sequential :map]]
-  (app-db/update-grouped! :model/Table rows))
 
 (mu/defn tables
   "The Tables with `table-ids`."

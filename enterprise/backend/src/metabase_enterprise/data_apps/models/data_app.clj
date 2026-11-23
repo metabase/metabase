@@ -268,14 +268,19 @@
     (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (slug->collection (:slug %))))
           apps)))
 
+(defn- prepare-new-data-apps!
+  "Check the new `apps` and return them with a resource collection for each that has none."
+  [apps]
+  (check-new-data-apps apps)
+  (create-resource-collections! apps))
+
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert `apps` in one transaction, publishing their create event, and return the inserted DataApps. An app without a
   resource collection gets one of its own, named after its slug."
   [apps :- [:sequential ::data-apps.schema/data-app.create]]
   (app-db/create-batched! :model/DataApp apps
-                          {:check-fn   check-new-data-apps
-                           :prepare-fn create-resource-collections!
-                           :publish-fn #(events/publish-event! :event/data-app-create (events/create-event %))}))
+                          {:before-create prepare-new-data-apps!
+                           :after-create  #(events/publish-event! :event/data-app-create (events/create-event %))}))
 
 (defn- without-held-bundles
   "The `updates` of an import without the bundle that the stored app of the row already holds."
@@ -305,14 +310,14 @@
   ([updates :- [:sequential ::data-apps.schema/data-app.update]
     opts    :- [:maybe [:map {:closed true} [:writer {:optional true} [:enum :import]]]]]
    (app-db/update-batched! :model/DataApp updates
-                           {:check-fn   check-data-app-updates
-                            :prepare-fn (fn [updates id->stored]
-                                          (cond-> updates
-                                            (= :import (:writer opts)) (without-held-bundles id->stored)))
-                            :reread?    true
-                            :publish-fn (fn [updates id->stored id->updated]
-                                          (events/publish-event! :event/data-app-update
-                                                                 (events/update-event id->stored updates {:objects id->updated})))})))
+                           {:before-update (fn [updates id->stored]
+                                             (check-data-app-updates updates id->stored)
+                                             (cond-> updates
+                                               (= :import (:writer opts)) (without-held-bundles id->stored)))
+                            :reread?       true
+                            :after-update  (fn [updates id->stored id->updated]
+                                             (events/publish-event! :event/data-app-update
+                                                                    (events/update-event id->stored updates {:objects id->updated})))})))
 
 (defn- delete-resource-collections!
   "Delete the resource collections of `apps`, with the grants on them; the hooks of a collection delete what it holds."
@@ -325,8 +330,9 @@
   event."
   [ids :- [:sequential ms/PositiveInt]]
   (app-db/delete-batched! :model/DataApp ids
-                          {:cascade-fn delete-resource-collections!
-                           :publish-fn #(events/publish-event! :event/data-app-delete (events/delete-event %))}))
+                          {:before-delete (fn [apps]
+                                            (delete-resource-collections! apps)
+                                            (events/publish-event! :event/data-app-delete (events/delete-event apps)))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

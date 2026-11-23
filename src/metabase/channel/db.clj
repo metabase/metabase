@@ -3,19 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
-   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(def ^:private ChannelRow
-  "A whole Channel row for insert or update."
-  ::channel.schema/channel.changes)
-
-(def ^:private ChannelTemplateRow
-  "A whole ChannelTemplate row for insert."
-  ::channel.schema/channel-template.update)
 
 (mu/defn channels
   "Every Channel."
@@ -32,26 +23,10 @@
   [channel-name :- :string]
   (t2/exists? :model/Channel :name channel-name))
 
-(mu/defn insert-channels!
-  "Insert the Channel `rows` with one statement per distinct set of columns and return the inserted instances in their
-  order."
-  [rows :- [:sequential {:min 1} ChannelRow]]
-  (app-db/insert-returning-instances! :model/Channel rows))
-
-(mu/defn channels-by-ids
-  "The Channels with `ids`."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Channel :id [:in [:auto/param ids]]))
-
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Channel :id [:auto/param id]))
-
-(mu/defn update-channels!
-  "Apply to the Channel rows their changes in `updates`, each the `:id` of a row and the columns to change."
-  [updates :- [:sequential ::channel.schema/channel.update]]
-  (app-db/update-grouped! :model/Channel updates))
 
 (defn- text-type
   "The SQL type to cast a text parameter to, for the app DB."
@@ -133,24 +108,3 @@
   "Some User, or nil."
   []
   (t2/select-one :model/User))
-
-(mu/defn insert-channel-templates!
-  "Insert the ChannelTemplate `rows` with one statement per distinct set of columns and return the inserted instances
-  in their order."
-  [rows :- [:sequential {:min 1} ChannelTemplateRow]]
-  (app-db/insert-returning-instances! :model/ChannelTemplate rows))
-
-(mu/defn channel-templates-by-ids
-  "The ChannelTemplates with `template-ids`."
-  [template-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/ChannelTemplate :id [:in template-ids]))
-
-(mu/defn delete-channel-templates!
-  "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
-  [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
-
-(mu/defn delete-channels!
-  "Delete the Channels with `channel-ids`, returning the number deleted."
-  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/Channel :id [:in channel-ids]))

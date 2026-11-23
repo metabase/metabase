@@ -2220,8 +2220,8 @@
        (save-pending-metadata! futures)
        nil))))
 
-(defn- delete-card-batch!
-  "Deletes the Cards with `card-ids`, one batch of a call, after the rows that depend on them."
+(defn- delete-card-dependents!
+  "Deletes the rows that depend on the Cards with `card-ids`, one batch of a call."
   [card-ids]
   (delete-card-tests-for-cards! card-ids)
   (actions.models/delete-actions! (actions.models/action-ids-of-models card-ids))
@@ -2229,8 +2229,13 @@
   (moderation-review/delete-moderation-reviews! (moderation-review/moderation-review-ids-of-cards card-ids))
   (revision/delete-revisions-for-entities! "Card" card-ids)
   (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" card-ids))
-  (delete-notifications-of-cards! card-ids)
-  (queries.db/delete-cards! card-ids))
+  (delete-notifications-of-cards! card-ids))
+
+(defn- publish-and-delete-card-dependents!
+  "Publish the delete event of the Cards `cards` with `opts`, then delete the rows that depend on them."
+  [cards opts]
+  (events/publish-event! :event/card-delete (events/delete-event cards opts))
+  (run! delete-card-dependents! (map vec (partition-all mdb/delete-partition-size (map :id cards)))))
 
 (mu/defn delete-cards! :- :nil
   "Deletes the Cards with `card-ids` after the rows that depend on them, in one transaction, publishing their delete
@@ -2239,13 +2244,8 @@
    (delete-cards! card-ids nil))
   ([card-ids :- [:sequential ::lib.schema.id/card]
     opts     :- WriteOpts]
-   (t2/with-transaction [_conn]
-     (let [batches (mapv vec (partition-all mdb/delete-partition-size (distinct card-ids)))
-           cards   (into [] (mapcat (comp vals queries.db/cards-by-ids)) batches)]
-       (when (seq cards)
-         (events/publish-event! :event/card-delete (events/delete-event cards opts)))
-       (run! delete-card-batch! batches)))
-   nil))
+   (mdb/delete-batched! :model/Card (distinct card-ids)
+                        {:before-delete #(publish-and-delete-card-dependents! % opts)})))
 
 (def ^:private tombstone-chunk-size
   "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."

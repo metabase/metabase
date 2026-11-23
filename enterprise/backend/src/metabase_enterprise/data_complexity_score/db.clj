@@ -102,8 +102,3 @@
   "The ids of the DataComplexityScores created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]})))
-
-(mu/defn delete-scores!
-  "Delete the DataComplexityScores with `ids`, returning the number deleted."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/DataComplexityScore :id [:in [:auto/param (vec ids)]]))

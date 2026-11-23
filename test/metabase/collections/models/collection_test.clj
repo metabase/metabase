@@ -9,6 +9,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -2242,6 +2243,6 @@
                    :model/User {d :id} {} :model/User {e :id} {}]
       (let [ids [a b c d e]]
         (t2/delete! :model/Collection :personal_owner_id [:in ids])
-        (with-redefs [mdb/delete-partition-size 2]
+        (with-redefs [app-db.query/delete-partition-size 2]
           (collection/create-personal-collections! ids))
         (is (= (set ids) (t2/select-fn-set :personal_owner_id :model/Collection :personal_owner_id [:in ids])))))))

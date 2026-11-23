@@ -61,10 +61,7 @@
 (mu/defn delete-connection-impersonations! :- :nil
   "Delete the ConnectionImpersonations with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (run! (comp impersonation.db/delete-impersonations! vec) (partition-all app-db/delete-partition-size ids))))
-  nil)
+  (app-db/delete-batched! :model/ConnectionImpersonation ids {}))
 
 (def ^:private impersonation-pair
   "The group and Database of an impersonation."

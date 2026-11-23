@@ -2,7 +2,6 @@
   "Application database queries for the indexes module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -114,17 +113,6 @@
    index-name   :- :string]
   (t2/exists? :model/TableIndex :transform_id transform-id :index_name index-name))
 
-(mu/defn insert-table-indexes!
-  "Insert the TableIndex `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} :map]]
-  (t2/insert-returning-instances! :model/TableIndex rows))
-
-(mu/defn update-table-indexes!
-  "Apply `rows`, each the id of a TableIndex and the columns to change, with one plain update for the rows that get the
-  same changes."
-  [rows :- [:sequential :map]]
-  (mdb/update-grouped! :model/TableIndex rows))
-
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
   [transform-id  :- ::lib.schema.id/transform
@@ -133,8 +121,3 @@
   (t2/update! :model/TableIndex
               :transform_id transform-id :index_name index-name
               {:status :failed :error_message error-message :last_executed_at :%now}))
-
-(mu/defn delete-table-indexes!
-  "Delete the TableIndexes with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TableIndex :id [:in ids]))

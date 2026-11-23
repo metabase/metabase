@@ -115,9 +115,9 @@
                            [{:id router-id :user_attribute "region"}
                             {:id router-id :database_id other-id}])))
     (is (= "tenant" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))
-    (is (= [{:id router-id :user_attribute "region"}]
-           (database-routing.models/update-database-routers! [{:id router-id :user_attribute "region"}
-                                                              {:id Integer/MAX_VALUE :user_attribute "region"}])))))
+    (is (nil? (database-routing.models/update-database-routers! [{:id router-id :user_attribute "region"}
+                                                                 {:id Integer/MAX_VALUE :user_attribute "region"}])))
+    (is (= "region" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))))
 
 (defn- old-router-refusal?
   "Whether the check `create-database-routers!` ran before its insert refused `rows`: one of their Databases is a

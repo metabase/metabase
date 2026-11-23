@@ -95,8 +95,3 @@
   "The ids of the ModerationReviews of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (vec (t2/select-pks-vec :model/ModerationReview :moderated_item_type "card" :moderated_item_id [:in card-ids])))
-
-(mu/defn moderation-reviews-by-ids
-  "The ModerationReviews with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (vec (t2/select :model/ModerationReview :id [:in ids])))

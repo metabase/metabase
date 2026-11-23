@@ -146,13 +146,10 @@
   [id :- [:maybe ms/PositiveInt]]
   (auth-identity.db/touch-auth-identity! id))
 
-(mu/defn delete-auth-identities! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the AuthIdentities with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-auth-identities! :- :nil
+  "Delete the AuthIdentities with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map auth-identity.db/delete-auth-identities!) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/AuthIdentity ids {}))
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the

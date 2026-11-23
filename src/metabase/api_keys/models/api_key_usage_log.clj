@@ -23,12 +23,10 @@
     (t2/with-transaction [_conn]
       (run! (comp api-keys.db/insert-api-key-usage-logs! vec) (partition-all mdb/create-partition-size rows)))))
 
-(mu/defn delete-api-key-usage-logs! :- :int
-  "Delete the ApiKeyUsageLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-api-key-usage-logs! :- :nil
+  "Delete the ApiKeyUsageLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (transduce (map (comp api-keys.db/delete-api-key-usage-logs! vec)) + 0
-               (partition-all mdb/delete-partition-size ids))))
+  (mdb/delete-batched! :model/ApiKeyUsageLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

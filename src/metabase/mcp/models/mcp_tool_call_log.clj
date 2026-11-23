@@ -21,13 +21,10 @@
   [row :- ::mcp.schema/mcp-tool-call-log.create]
   (mcp.db/insert-tool-call-log! row))
 
-(mu/defn delete-mcp-tool-call-logs! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the McpToolCallLogs with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-mcp-tool-call-logs! :- :nil
+  "Delete the McpToolCallLogs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp mcp.db/delete-tool-call-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/McpToolCallLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

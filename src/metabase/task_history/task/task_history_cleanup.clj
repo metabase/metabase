@@ -20,7 +20,9 @@
   `rows-to-keep` rows, and return the number deleted, or nil when there are no more rows than that."
   [rows-to-keep]
   (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at rows-to-keep)]
-    (task-history/delete-task-histories! (task-history.db/task-history-ids-ended-before clean-before-date))))
+    (let [ids (task-history.db/task-history-ids-ended-before clean-before-date)]
+      (task-history/delete-task-histories! ids)
+      (count ids))))
 
 (defn- task-history-cleanup!
   "Delete older TaskHistory rows, see [[delete-old-task-history!]]."

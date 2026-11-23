@@ -69,14 +69,10 @@
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
 
-(mu/defn delete-data-complexity-scores! :- :int
-  "Delete the Data Complexity Score snapshots with `ids` in one transaction, returning the number deleted."
+(mu/defn delete-data-complexity-scores! :- :nil
+  "Delete the Data Complexity Score snapshots with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (empty? ids)
-    0
-    (t2/with-transaction [_conn]
-      (transduce (map (comp data-complexity-score.db/delete-scores! vec)) + 0
-                 (partition-all app-db/delete-partition-size ids)))))
+  (app-db/delete-batched! :model/DataComplexityScore ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

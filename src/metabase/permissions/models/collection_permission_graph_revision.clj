@@ -47,35 +47,22 @@
 (mu/defn create-collection-permission-graph-revisions!
   "Insert the CollectionPermissionGraphRevision `rows` in one transaction and return them in order."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (into [] (mapcat (comp permissions.db/insert-collection-permission-graph-revisions! vec))
-            (partition-all app-db/create-partition-size rows)))))
+  (app-db/create-batched! :model/CollectionPermissionGraphRevision rows {}))
 
 (defn- check-revision-updates
-  "Throws unless every row of `updates`, whose stored revisions `id->stored` holds, satisfies these rules:
+  "Throws unless every row of `updates` whose revision `id->stored` holds satisfies these rules:
 
   - the hooks of the revision accept the row merged into its stored row"
   [updates id->stored]
-  (doseq [{id :id :as row} updates]
-    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge (id->stored id) (dissoc row :id)))))
-
-(defn- update-revision-batch!
-  "Check and write the rows of `batch` whose revisions exist, one batch of a call."
-  [batch]
-  (let [id->stored (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id batch))
-        updates    (filterv (comp id->stored :id) batch)]
-    (check-revision-updates updates id->stored)
-    (permissions.db/update-collection-permission-graph-revisions! updates)))
+  (doseq [{id :id :as row} updates
+          :let [stored (id->stored id)]
+          :when stored]
+    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge stored (dissoc row :id)))))
 
 (mu/defn update-collection-permission-graph-revisions! :- :nil
   "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions in one transaction."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (run! (comp update-revision-batch! vec) (partition-all app-db/update-partition-size rows))))
-  nil)
+  (app-db/update-batched! :model/CollectionPermissionGraphRevision rows {:before-update check-revision-updates}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

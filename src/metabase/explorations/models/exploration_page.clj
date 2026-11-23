@@ -34,24 +34,17 @@
 (mu/defn create-pages! :- [:sequential (ms/InstanceOf :model/ExplorationPage)]
   "Insert the ExplorationPage `rows` and return the new instances, in the order of `rows`."
   [rows :- [:sequential ::explorations.schema/exploration-page.create]]
-  (explorations.db/insert-pages! rows))
-
-(defn- write-page-updates!
-  "Writes `rows`, updates of ExplorationPages, with one statement for each distinct set of columns."
-  [rows]
-  (explorations.db/update-pages! rows))
+  (app-db/create-batched! :model/ExplorationPage rows {}))
 
 (mu/defn update-pages! :- :nil
   "Apply `updates`, each the `:id` of an ExplorationPage with the columns to give it, in one transaction."
   [updates :- [:sequential ::explorations.schema/exploration-page.update]]
-  (t2/with-transaction [_conn]
-    (run! write-page-updates! (partition-all app-db/update-partition-size updates)))
-  nil)
+  (app-db/update-batched! :model/ExplorationPage updates {}))
 
-(mu/defn delete-pages!
-  "Delete the ExplorationPages with `page-ids`."
+(mu/defn delete-pages! :- :nil
+  "Delete the ExplorationPages with `page-ids` in one transaction."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (explorations.db/delete-pages! page-ids))
+  (app-db/delete-batched! :model/ExplorationPage page-ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
