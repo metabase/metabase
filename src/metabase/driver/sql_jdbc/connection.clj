@@ -819,8 +819,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-connection-spec-for-testing-connection
-  "Impl for [[with-connection-spec-for-testing-connection]]."
+(defn do-with-unpooled-connection-spec
+  "Calls `f` with a JDBC spec built from `details` as given, outside the connection pools, and returns what `f`
+  returns. The spec is valid only inside `f`: an SSH tunnel closes when `f` returns. Throws when `details` hold a
+  connection parameter that Metabase does not allow."
   [driver details f]
   (driver.u/validate-connection-parameters! driver details)
   (let [details (-> details
@@ -834,6 +836,11 @@
             _                 (driver.u/validate-connection-parameters! driver details-with-auth)
             spec              (connection-details->spec driver details-with-auth)]
         (f spec)))))
+
+(defn do-with-connection-spec-for-testing-connection
+  "Impl for [[with-connection-spec-for-testing-connection]]."
+  [driver details f]
+  (do-with-unpooled-connection-spec driver details f))
 
 (defmacro with-connection-spec-for-testing-connection
   "Execute `body` with an appropriate [[clojure.java.jdbc]] connection spec based on connection `details`. Handles SSH

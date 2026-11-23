@@ -8,6 +8,7 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.auth-identity.providers.emailed-secret :as emailed-secret]
    [metabase.auth-identity.session :as auth-session]
+   [metabase.auth-identity.validation :as validation]
    [potemkin :as p]))
 
 ;; Import model query functions
@@ -56,11 +57,12 @@
   isa?
   underive!]
  [provider
-  validate
   authenticate
   login!
   provider-string->keyword
-  provider-keyword->string])
+  provider-keyword->string]
+ [validation
+  validate])
 
 ;; Import session integration functions
 (p/import-vars

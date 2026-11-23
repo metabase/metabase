@@ -53,8 +53,6 @@
   select-tables-and-groups-granting-perm]
  [metabase.permissions.data-permissions
   at-least-as-permissive?
-  batch-delete-permissions!
-  batch-insert-permissions!
   data-app-collection-ids
   data-app-collection?
   database-permissions-for-user
@@ -64,6 +62,7 @@
   index-database-permissions
   is-superuser?
   is-data-analyst?
+  permission-implications
   permissions-for-user
   sandboxes-for-user
   with-sandboxes-for-user
@@ -73,6 +72,7 @@
   set-database-permission!
   set-table-permission!
   set-table-permissions!
+  table-level-value
   table-permissions-for-groups
   table-permissions-for-user
   user-has-highest-permission-anywhere?
@@ -82,8 +82,9 @@
   with-additional-table-permission
   user-has-transforms-permission-anywhere?
   user-has-transforms-permission-for-database?
-  set-default-group-permissions!
+  set-default-groups-permissions!
   set-default-database-permissions!
+  set-default-databases-permissions!
   set-default-table-permissions!
   set-default-table-permissions-bulk!
   with-global-permissions-lock
@@ -103,20 +104,13 @@
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups
-  all-users-magic-group-type]
+  all-users-magic-group-type
+  rename-order]
  [metabase.permissions.models.permissions-group-membership
-  add-users-to-groups!
-  add-user-to-groups!
-  add-user-to-group!
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
   fail-to-add-data-analyst-msg
-  remove-user-from-group!
-  remove-user-from-groups!
-  remove-all-users-from-group!
-  remove-user-from-all-groups!
-  throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
   application-perms-path
@@ -142,7 +136,8 @@
   check-advanced-permissions-enabled
   check-group-manager
   check-has-application-permission
-  check-manager-of-group]
+  check-manager-of-group
+  has-application-permission?]
  [metabase.permissions.models.collection.graph
   graph
   update-graph!]
@@ -174,5 +169,5 @@
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
 
 (p/import-vars [metabase.permissions.models.permissions-group
-                check-tenant-groups-visible!
+                check-tenant-groups-visible
                 hidden-tenant-group-ids])

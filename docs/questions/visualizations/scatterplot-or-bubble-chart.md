@@ -7,8 +7,6 @@ redirect_from:
 
 # Scatterplots and bubble charts
 
-Scatterplots and bubble charts visualize the relationship between values. 
-
 Scatterplots show two numeric values per data point, while bubble charts show three by using the size of each dot to represent a third value. In Metabase, both chart types use the same **Scatter** visualization type. Adding a bubble size column turns a scatterplot into a bubble chart.
 
 ![Scatter](../images/scatter.png)

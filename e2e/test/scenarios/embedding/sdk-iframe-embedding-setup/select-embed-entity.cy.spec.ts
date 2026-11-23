@@ -4,7 +4,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -32,8 +31,6 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-modular", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -160,8 +157,6 @@ describe("recently created dashboards", () => {
     H.updateSetting("enable-embedding-modular", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-    mockEmbedJsToDevServer();
   });
 
   // When using x-rays to create your first dashboard in the onboarding

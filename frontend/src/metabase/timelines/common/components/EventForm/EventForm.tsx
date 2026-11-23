@@ -20,8 +20,8 @@ import {
 import {
   ActionIcon,
   Button,
+  DefaultSelectItem,
   Flex,
-  Group,
   Icon,
   Modal,
   Stack,
@@ -155,7 +155,6 @@ const EventForm = ({
                     value={getTimeInputValue(values.timestamp)}
                     name="date"
                     label={t`Time`}
-                    fw="bold"
                     flex={1}
                     onChange={(time) => {
                       if (time) {
@@ -168,7 +167,7 @@ const EventForm = ({
                   />
                   <ActionIcon
                     size="sm"
-                    mb="sm"
+                    mb="xxs"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
@@ -178,7 +177,6 @@ const EventForm = ({
                 </Flex>
               ) : (
                 <Button
-                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}
@@ -197,11 +195,12 @@ const EventForm = ({
               data={iconOptions}
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
-                <Group p="sm" fw="bold">
-                  {/* Unjustified type cast. FIXME */}
-                  {option.value && <Icon name={option.value as IconName} />}
-                  <span>{option.label}</span>
-                </Group>
+                <DefaultSelectItem
+                  value={option.value}
+                  label={option.label}
+                  // Unjustified type cast. FIXME
+                  icon={option.value as IconName}
+                />
               )}
             />
             {timelines?.length > 1 && (

@@ -1,5 +1,4 @@
 .Schedule {
-  line-height: 2.5rem;
   display: grid;
   grid-template-columns: min-content auto;
   gap: var(--schedule-grid-gap, 0.5rem);
@@ -18,6 +17,7 @@
 }
 
 .TextInFirstColumn {
+  align-self: center;
   display: flex;
   flex-flow: row wrap;
   white-space: nowrap;

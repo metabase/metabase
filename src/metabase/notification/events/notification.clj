@@ -88,3 +88,15 @@
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
   (maybe-send-notification-for-topic! topic event-info))
+
+(events/derive! ::notification-row-create :metabase/event)
+(events/derive! :event/notification-row-create ::notification-row-create)
+
+(methodical/defmethod events/publish-event! ::notification-row-create
+  "Publish `:event/notification-create` for each Notification that the batch created, fully hydrated now that its
+  batch wrote all of it, as the user who created it, loading them together."
+  [_topic {:keys [changes user-id]}]
+  (when user-id
+    (when-let [ids (not-empty (mapv (comp :id :object) changes))]
+      (doseq [notification (models.notification/hydrate-notification (notification.db/notifications-by-id ids))]
+        (events/publish-event! :event/notification-create {:object notification :user-id user-id})))))

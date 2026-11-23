@@ -9,6 +9,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]))
@@ -128,3 +129,16 @@
                                   [:field (mt/id :coerced-date-times-table :text_date) {:base-type :type/Text}]
                                   -15 :day {:include-current true}]]})
                      mt/rows))))))))
+
+(deftest server-side-relative-datetime-reads-the-pinned-clock-test
+  (testing "a relative date computed in the JVM starts from the moment `with-pinned-now` fixed"
+    (mt/with-driver :h2
+      (mt/with-results-timezone-id "UTC"
+        (let [thirty-days-ago #(-> (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
+                                    :h2 :day -30 :base-type :type/DateTime)
+                                   sql/format-expr)]
+          (is (= ["CAST(? AS timestamp)" "2020-05-18 00:00:00"]
+                 (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+                   (thirty-days-ago))))
+          (testing "control: unpinned, the real clock"
+            (is (not= ["CAST(? AS timestamp)" "2020-05-18 00:00:00"] (thirty-days-ago)))))))))

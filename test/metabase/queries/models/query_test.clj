@@ -1,12 +1,16 @@
 (ns metabase.queries.models.query-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.query :as query]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel query->database-and-table-ids-test
   (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
@@ -61,3 +65,28 @@
               query-with-source-card))
       (is (= {:database-id (meta/id), :table-id (meta/id :venues)}
              (query/query->database-and-table-ids query-with-source-card))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (let [hashes   (atom [])
+        new-hash (fn [] (let [bytes (byte-array 32)]
+                          (.nextBytes (java.security.SecureRandom.) bytes)
+                          (swap! hashes conj bytes)
+                          bytes))
+        query    (fn [] {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
+        entries  (fn [n]
+                   (let [rows (mapv (fn [i] {:query (query) :query-hash (new-hash) :execution-time-ms (* 100 (inc i))}) (range n))]
+                     (t2/insert! :model/Query (mapv (fn [{:keys [query-hash]}] {:query_hash query-hash :average_execution_time 100})
+                                                    (take-nth 3 (drop 1 rows))))
+                     (t2/insert! :model/Query (mapv (fn [{:keys [query query-hash]}] {:query query :query_hash query-hash :average_execution_time 100})
+                                                    (take-nth 3 (drop 2 rows))))
+                     (into rows (take 1 rows))))]
+    (try
+      (testing "saving queries, some new, some up to date and some of before their text was stored"
+        (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! (entries 3)))
+        (let [small (entries 3)
+              large (entries 12)]
+          (is (= (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! small))
+                 (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! large))))))
+      (finally
+        (when (seq @hashes)
+          (t2/delete! :model/Query :query_hash [:in @hashes]))))))

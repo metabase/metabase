@@ -1,4 +1,9 @@
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type {
+  CollectionId,
+  DatabaseId,
+  GroupId,
+  TableId,
+} from "metabase-types/api";
 
 export function adminPermissions() {
   return "/admin/permissions";
@@ -11,3 +16,12 @@ export function tableDataPermissions(
 ) {
   return `/admin/permissions/data/database/${databaseId}/schema/${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
+
+export const groupDataPermissions = (groupId: GroupId) =>
+  `/admin/permissions/data/group/${groupId}`;
+
+export const databaseDataPermissions = (databaseId: DatabaseId) =>
+  `/admin/permissions/data/database/${databaseId}`;
+
+export const collectionPermissions = (collectionId: CollectionId) =>
+  `/admin/permissions/collections/${collectionId}`;

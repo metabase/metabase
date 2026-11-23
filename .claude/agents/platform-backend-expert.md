@@ -5,6 +5,7 @@ model: opus
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
 ---
 
 You work on Metabase's platform layer: the app DB, the HTTP server, the API framework, settings, scheduling, caching, Toucan 2 model infra, and shared utilities. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
@@ -39,7 +40,7 @@ All OSS, under `src/metabase/` unless noted.
 - **Three app DBs: H2, Postgres, MySQL/MariaDB.** Locking, DDL, JSON, and case rules differ. `metabase.app-db.liquibase.h2` and `.mysql` exist because of this.
 - **The guards run in the Toucan pipeline.** `honeysql-guard` runs before `value-guard`. It rejects a `{:raw ...}` map or a bare subquery inline in a value slot, marked or not. `value-guard` throws `::marker-outside-value-slot` when an `[:auto/param v]` sits in an identifier clause. A marker in `:order-by` or `:group-by` compiles to `ORDER BY ?` without an error. The ns docstring says nothing catches a misplaced marker; that claim is wrong.
 - **Middleware order is inverted.** `metabase.server.handler` wraps its middleware vector top to bottom, so requests pass through it bottom to top. Read the comment there before you insert a middleware.
-- **`defendpoint` checks closed schemas when it evaluates the endpoint.** A request-reachable open `[:map ...]`, `:map-of :keyword`, or `:any` fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`.
+- **`defendpoint` checks its request schemas when it evaluates the endpoint.** A request-reachable `:any`, or a `:map-of` keyed by keywords, fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`. A `[:map {:closed false}]` opts out of that, and `metabase.api-routes.closed-schemas-test` pins every one a request can reach.
 - **Settings cache coherence is eventual.** Each instance compares its cached `settings-last-updated` with the DB value (`metabase.settings.models.setting.cache`). Another instance sees a write only after it refreshes.
 - **Quartz state persists in the app DB.** `schedule-task!` reschedules when the job exists. On a multi-trigger job with no key match, it replaces an arbitrary trigger (`metabase.task.impl/reschedule-task!`). Startup tasks run on every instance and on each restart, so they must be idempotent (`QUARTZ.md`).
 - **Streaming responses share one fixed pool.** Size comes from `MB_ASYNC_QUERY_THREAD_POOL_SIZE`, else `MB_JETTY_MAXTHREADS`, else 50. Blocking work in a streaming body starves every other export.

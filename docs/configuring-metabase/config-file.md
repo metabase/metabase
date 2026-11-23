@@ -1,6 +1,6 @@
 ---
 title: "Configuration file"
-summary: Set up people, databases, API keys, and settings from a config.yml file when Metabase launches, on self-hosted Pro and Enterprise plans.
+summary: On self-hosted Pro and Enterprise plans, set up people, databases, API keys, and settings from a config.yml file when Metabase starts.
 ---
 
 # Configuration file
@@ -259,7 +259,7 @@ Whereas in the config file, you'd translate that to:
 name-of-variable
 ```
 
-So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
+So for example, if you wanted to specify the [`MB_EMAIL_FROM_NAME`](./environment-variables.md#mb_email_from_name) in the `config.yml` file:
 
 ```yml
 version: 1

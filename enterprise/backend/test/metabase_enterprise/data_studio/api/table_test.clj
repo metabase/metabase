@@ -11,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -85,7 +86,8 @@
                        (user-table (mt/id :venues))))
                (testing "audit log entry is created for unpublish"
                  (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
-                         (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
+                         (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues))))))
+             (collection/delete-collections! [collection-id]))))
        (testing "deleting the collection unpublishes"
          (is (=? {:display_name "Users"
                   :collection_id nil
@@ -109,12 +111,13 @@
        (mt/with-temp [:model/Collection {data-id :id} {:type collection/library-data-collection-type}
                       :model/Collection {subcollection-id :id} {:type     collection/library-data-collection-type
                                                                 :location (str "/" data-id "/")}]
-         (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                               {:table_ids     [(mt/id :users)]
-                                :collection_id subcollection-id})
-         (is (=? {:collection_id subcollection-id
-                  :is_published  true}
-                 (user-table (mt/id :users)))))))))
+         (mt/with-temp-vals-in-db :model/Table (mt/id :users) {:collection_id nil :is_published false}
+           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                 {:table_ids     [(mt/id :users)]
+                                  :collection_id subcollection-id})
+           (is (=? {:collection_id subcollection-id
+                    :is_published  true}
+                   (user-table (mt/id :users))))))))))
 
 (deftest publishing-info-test
   (mt/with-premium-features #{:library :audit-app}
@@ -200,39 +203,39 @@
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "Data analysts (members of Data Analysts group) can access library endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
-        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
-                                                     :last_name "Analyst"
-                                                     :email "data-analyst@metabase.com"
-                                                     :is_data_analyst true}
-                       :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {table-id :id} {:db_id db-id}
-                       :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
-          ;; Grant data analyst group view-data permission on this database
-          (data-perms/set-database-permission! data-analyst-group-id db-id :perms/view-data :unrestricted)
-          (testing "data analyst can publish tables"
-            (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
-                                            {:table_ids     [table-id]
-                                             :collection_id collection-id}))))
-          (testing "data analyst can unpublish tables"
-            (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
-                                            {:table_ids [table-id]})))))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type collection/library-data-collection-type}])]
+            (mt/with-model-cleanup [:model/User]
+              (let [[{analyst-id :id}] (user/create-users! [{:first_name "Data" :last_name "Analyst" :email "data-analyst@metabase.com" :is_data_analyst true}])]
+                (mt/with-temp [:model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
+                               :model/Database {db-id :id} {}
+                               :model/Table {table-id :id} {:db_id db-id}]
+                  ;; Grant data analyst group view-data permission on this database
+                  (data-perms/set-database-permission! data-analyst-group-id db-id :perms/view-data :unrestricted)
+                  (testing "data analyst can publish tables"
+                    (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
+                                                    {:table_ids     [table-id]
+                                                     :collection_id collection-id}))))
+                  (testing "data analyst can unpublish tables"
+                    (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
+                                                    {:table_ids [table-id]})))))))))))))
 
 (deftest unpublish-tables-requires-collection-write-test
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "users without write access to the collection of a table cannot unpublish it"
       (let [data-analyst-group (perms-group/data-analyst)]
-        (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
-                       :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id (:id data-analyst-group)}
-                       :model/Table {table-id :id} {:db_id (mt/id)}
-                       :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
-          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                {:table_ids [table-id] :collection_id collection-id})
-          (mt/with-non-admin-groups-no-collection-perms collection-id
-            (perms/grant-collection-read-permissions! data-analyst-group collection-id)
-            (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
-                                  {:table_ids [table-id]})
-            (is (true? (user-table-fn :is_published table-id)))))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type collection/library-data-collection-type}])]
+            (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                           :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id (:id data-analyst-group)}
+                           :model/Table {table-id :id} {:db_id (mt/id)}]
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                    {:table_ids [table-id] :collection_id collection-id})
+              (mt/with-non-admin-groups-no-collection-perms collection-id
+                (perms/grant-collection-read-permissions! data-analyst-group collection-id)
+                (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                      {:table_ids [table-id]})
+                (is (true? (user-table-fn :is_published table-id)))))))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (mt/with-premium-features #{:library}
@@ -451,7 +454,7 @@
     (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
-          (t2/delete! :model/Collection :id coll-a)
+          (collection/delete-collections! [coll-a])
           (testing "Table X (in the deleted collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"
@@ -463,8 +466,7 @@
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
           (mt/with-current-user (mt/user->id :crowberto)
-            (collection/archive-or-unarchive-collection!
-             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+            (collection/update-collections! [{:id coll-a :archived true}] nil))
           (testing "Table X (in the archived collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

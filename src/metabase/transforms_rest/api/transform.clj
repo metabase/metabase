@@ -13,6 +13,8 @@
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms-rest.schema :as transforms-rest.schema]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -181,11 +183,6 @@
             [:owner_email {:optional true} [:maybe :string]]]]
   (transforms.core/check-feature-enabled! (transforms.u/->definition body))
   (api/create-check :model/Transform body)
-  (transforms.core/check-database-feature (transforms.u/->definition body))
-  (transforms.core/validate-incremental-column-type! (transforms.u/->definition body))
-  (api/check (not (transforms-base.u/planned-target-table-exists? body))
-             409
-             (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
       transforms.u/add-source-readable))
 
@@ -339,7 +336,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
-    (transforms.core/mark-cancel-started-run! (:id run))
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
       ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
       ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
@@ -351,7 +348,7 @@
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (transforms-rest.db/reset-checkpoint! id)
+  (transform/update-transforms! [{:id id :last_checkpoint_value nil}])
   nil)
 
 (mu/defn- check-feature-and-lock! :- :nil

@@ -28,6 +28,8 @@
   "A count metric over `table-kw`, so different tables mean genuinely different required perms."
   [table-kw]
   (let [mp (mt/metadata-provider)]
+    ;; existing usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
                            (lib/aggregate (lib/count))))))
 
@@ -192,8 +194,7 @@
   (let [mp   (mt/metadata-provider)
         base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                  (lib/aggregate (lib/count)))]
-    (lib/->legacy-MBQL
-     (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base)))))))
+    (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base))))))
 
 (deftest batching-does-not-merge-a-plain-breakout-with-an-fk-traversed-one-test
   (testing "the two halves of the verdict project the query differently — perms from the raw query,
@@ -218,7 +219,7 @@
   "A plain, unaggregated query over `table-kw` — a shape that works as a join source."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id table-kw))))))
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
 
 (defn- card-joined-query
   "A venues count joined to a saved card that itself reads venues. Both of the key's query
@@ -315,10 +316,11 @@
                         (t2/with-call-count [call-count]
                           (derived-perms/thread-ids-with-visible-derived-data [thread])
                           (call-count)))))
+          _       (measure 1)
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 2 small))
-          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+      (is (= small large)
+          (format "resolution must not grow with charts (2 charts: %d queries, 25 charts: %d)" small large)))))
 
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])

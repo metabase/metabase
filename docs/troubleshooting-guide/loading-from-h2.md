@@ -48,6 +48,8 @@ Command failed with exception: Unsupported database file version or invalid file
     java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
     ```
 
+    For details on each `MB_DB_*` variable, see [Environment variables](../configuring-metabase/environment-variables.md#mb_db_automigrate).
+
 If you're using a [Pro or Enterprise version of Metabase][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
 
 ## Are you trying to downgrade?

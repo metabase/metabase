@@ -7,11 +7,6 @@
   background-color: var(--mb-color-background_page-primary);
 }
 
-.searchInput {
-  border-radius: var(--mantine-radius-sm);
-  font-size: var(--mantine-font-size-md);
-}
-
 .noBreakoutSection {
   margin-top: 0.5rem;
   padding-top: 1rem;

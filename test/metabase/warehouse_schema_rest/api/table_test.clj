@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -24,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors)))
@@ -573,9 +575,9 @@
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
-              ;; original is private so a var will pick up the redef'd. need contents of var before
-              original (mt/original-fn #'api.table/sync-unhidden-tables)]
-          (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables
+              ;; need contents of var before redefining it
+              original (mt/original-fn #'sync/sync-tables-in-background!)]
+          (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background!
                                       (fn [unhidden]
                                         (when (seq unhidden)
                                           (is (= (:id table)
@@ -619,7 +621,7 @@
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [:model/Table {id-1 :id} {}
                      :model/Table {id-2 :id} {:visibility_type "hidden"}]
-        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
+        (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background! (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
                     (testing (format "Set visibility type => %s" (pr-str state))
@@ -766,8 +768,9 @@
 (deftest ^:parallel table-segment-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "segments include :definition_description"
-      (mt/with-temp [:model/Segment _ {:table_id (mt/id :venues)
-                                       :definition (:query (mt/mbql-query venues {:filter [:= $price 4]}))}]
+      (mt/with-temp [:model/Segment _ {:definition (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                         (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 4))))}]
         (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
@@ -785,7 +788,8 @@
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change
   that for `category_id`, then invoke `f` and roll it back afterwards"
   [semantic-type f]
-  (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:semantic_type semantic-type}
+  (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:semantic_type      semantic-type
+                                                                      :fk_target_field_id (mt/id :categories :id)}
     (f)))
 
 (deftest query-metadata-remappings-test
@@ -845,11 +849,8 @@
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
                  :dimensions []}]
-               (category-id-semantic-type!
-                :type/Category
-                (fn []
-                  (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
+               (narrow-fields ["PRICE" "CATEGORY_ID"]
+                              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
 
 (deftest ^:parallel related-test
   (testing "GET /api/table/:id/related"
@@ -876,6 +877,18 @@
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
+
+(deftest discard-values-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Table       {table-id :id} {}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/field-values-delete topic)
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-fields [field-id])))
+        (is (contains? @deleted fv-id))))))
 
 (deftest field-ordering-test
   (let [original-field-order (user-table-fn :field_order (mt/id :venues))]
@@ -1372,17 +1385,30 @@
              (map #(user-table-fn :visibility_type %) [t1 t2]))))))
 
 (deftest bulk-update-tables-collection-id-persists-test
-  (testing "PUT /api/table with an ids vector sets collection_id on every listed table"
+  (testing "PUT /api/table with an ids vector moves every listed published table to collection_id"
     (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
-                   :model/Table      {t1 :id}      {:db_id (mt/id)}
-                   :model/Table      {t2 :id}      {:db_id (mt/id)}]
+                   :model/Table      {t1 :id}      {:db_id (mt/id) :is_published true}
+                   :model/Table      {t2 :id}      {:db_id (mt/id) :is_published true}]
       (mt/user-http-request :crowberto :put 200 "table"
                             {:ids [t1 t2] :collection_id coll-id})
       (is (= [coll-id coll-id]
              (map #(user-table-fn :collection_id %) [t1 t2])))
       (testing "and leaves is_published as it was, as PUT /api/table/:id does"
-        (is (= [false false]
+        (is (= [true true]
                (map #(user-table-fn :is_published %) [t1 t2])))))))
+
+(deftest update-unpublished-table-collection-id-test
+  (testing "PUT /api/table/:id with collection_id refuses an unpublished table"
+    (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
+                   :model/Table      {table-id :id} {:db_id (mt/id)}]
+      (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {:collection_id coll-id})
+      (is (nil? (user-table-fn :collection_id table-id))))))
+
+(deftest update-table-data-source-metabase-transform-test
+  (testing "PUT /api/table/:id does not accept metabase-transform as data_source"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :data_source :ingested}]
+      (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {:data_source "metabase-transform"})
+      (is (= :ingested (user-table-fn :data_source table-id))))))
 
 (deftest bulk-update-tables-collection-id-checks-test
   (mt/with-temp [:model/Collection {plain-coll-id :id} {}

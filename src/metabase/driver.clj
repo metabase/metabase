@@ -10,6 +10,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   ;; loaded for the `ManyToManyChannel` class used in `::execute-reducible-query.context`
+   [clojure.core.async.impl.channels]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -29,7 +31,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? mapv]]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -677,8 +681,56 @@
 
 (defmethod extra-info ::driver [_] nil)
 
+(mr/def ::execute-reducible-query.context
+  [:map
+   {:closed true}
+   [:canceled-chan (lib.schema.common/instance-of-class ManyToManyChannel)]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
+  [:sequential
+   [:map
+    [:name          string?] ; allowed to be a blank string :(
+    ;; can be `nil` when the driver has no base type for the database type, e.g. H2's `NULL`
+    [:base_type     [:maybe ::lib.schema.common/base-type]]
+    [:database_type ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata
+  [:map
+   [:cols ::execute-reducible-query.respond-fn.results-metadata.cols]])
+
+(mr/def ::execute-reducible-query.respond-fn.rows
+  [:or
+   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+   [:fn {:error/message "sequential?"} sequential?]])
+
+(mr/def ::execute-reducible-query.respond-fn
+  [:=>
+   [:cat ::execute-reducible-query.respond-fn.results-metadata ::execute-reducible-query.respond-fn.rows]
+   ;; return value is ignored
+   :any])
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66):
+
+    {:stages             [{:lib/type :mbql.stage/native
+                           :native   \"SELECT * FROM table WHERE id = ?\"
+                           :params   [1]}]
+     :qp/original-stages <original MBQL stages if this was compiled from MBQL>
+     :info               ...}
+
+  Otherwise `query` is in a Legacy MBQL shape:
+
+    {:native {:query  \"SELECT * FROM table WHERE id = ?\"
+              :params [1]}
+     :query  <original legacy MBQL 'inner query' if this was compiled from MBQL>
+     :info   ...}
+
+  Note that in 69 or later `query` will always be in an MBQL 5 shape as legacy shapes will be unsupported.
+
+  `context` is a map that matches the shape of `::execute-reducible-query.context`.
 
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
@@ -883,6 +935,18 @@
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
     ;;
+    ;; Test-only acknowledgements of how a Python transform replaces an existing target on this driver. Without
+    ;; `:atomic-renames`, the replacement isn't atomic, and a test fails unless the driver's test extensions support
+    ;; exactly the one of these that matches.
+    ;;
+    ;; With `:rename` but not `:atomic-renames`: the transform loads a new table, drops the target, then renames the
+    ;; new table into place. Between the drop and the rename, readers find no table.
+    :test/python-transforms-without-atomic-renames
+    ;;
+    ;; With neither: the transform drops the target, then creates and fills it again. Readers find the table missing,
+    ;; then partly filled, and a failed run loses the old data.
+    :test/python-transforms-without-renames
+    ;;
     ;; Does the driver support CREATE OR REPLACE TABLE syntax
     :create-or-replace-table
     ;;
@@ -1060,6 +1124,12 @@
     ;; Thrift transport on the server side, causing subsequent statement close() to throw).
     :jdbc/set-query-timeout
     ;;
+    ;; May [[query-on-connection]] cap a query's rows with `Statement.setMaxRows`? Defaults to true. False for Redshift:
+    ;; in a data-test run there, a capped query left the transaction aborted, and the next statement failed with "current
+    ;; transaction is aborted". What triggers it is unknown; the same sequence passes in other tests. Without the flag,
+    ;; [[query-on-connection]] streams the result and stops reading at the cap. Only [[query-on-connection]] consults it.
+    :jdbc/set-max-rows
+    ;;
     ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
     :describe-default-expr
     ;;
@@ -1092,7 +1162,22 @@
     ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
     ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
     ;; this has the same value as `:stage-ctes`.
-    :stage-ctes/nested})
+    :stage-ctes/nested
+    ;;
+    ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
+    ;;
+    ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
+    ;; MBQL shape? Default `false` This only affects the shape of arguments passed to
+    ;; [[execute-reducible-query]]. See driver changelog for more notes on the differences between the shapes.
+    ;;
+    :mbql-5-native-query-execution})
+
+(mr/def ::feature
+  "Valid driver feature keyword: one of [[features]], or a namespace-qualified keyword, which [[database-supports?]]
+  accepts without it being listed there (allowed since tests define them for various purposes)."
+  [:or
+   (into [:enum {:error/message "valid driver feature"}] (sort features))
+   qualified-keyword?])
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1120,8 +1205,11 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(mu/defmethod database-supports? :default
+  [_driver   :- :keyword
+   _feature  :- ::feature
+   _database :- [:maybe :map]]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true
@@ -1502,7 +1590,11 @@
 
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
-  Drivers that support `:actions/custom` must implement this method."
+  Drivers that support `:actions/custom` must implement this method.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66), otherwise the query is in Legacy MBQL shape. See docstring
+  for [[execute-reducible-query]] for more information."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

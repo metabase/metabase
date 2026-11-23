@@ -256,7 +256,9 @@
 (def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"gpt-6-astra"   {:display-name "GPT-6 Astra"   :context-window 922000}
+  {"gpt-6.2-astra" {:display-name "GPT-6.2 Astra" :context-window 922000}
+   "gpt-6.2-sol"   {:display-name "GPT-6.2 Sol"   :context-window 922000}
+   "gpt-6-astra"   {:display-name "GPT-6 Astra"   :context-window 922000}
    "gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}
    "gpt-5.6-terra" {:display-name "GPT-5.6 Terra" :context-window 922000}
    "gpt-5.6-luna"  {:display-name "GPT-5.6 Luna"  :context-window 922000}

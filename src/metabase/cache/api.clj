@@ -4,84 +4,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
+   [metabase.cache.schema :as cache.schema]
    [metabase.config.core :as config]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [deferred-tru tru trun]]
+   [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-;; Data shape
-
-;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
-
-(defn- cache-strategy-dispatch
-  "`:multi` dispatch for a cache strategy.
-
-  `:type` arrives from JSON as a string, and `:multi` dispatches before the branch that would coerce it to a keyword
-  runs, so the dispatch has to do the coercion itself. A sibling `[:map [:type [:enum ...]]]` guard can't do it for
-  us: request decoding would then strip every key the guard doesn't name, emptying out the strategy."
-  [strategy]
-  (let [strategy-type (:type strategy)]
-    (when (or (keyword? strategy-type) (string? strategy-type))
-      (keyword strategy-type))))
-
-(mr/def ::cache-strategy.nocache
-  ::lib.schema/cache-strategy.nocache)
-
-(mr/def ::cache-strategy.ttl
-  "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers."
-  [:merge
-   ::lib.schema/cache-strategy.ttl
-   [:map {:closed true}
-    [:multiplier      ms/PositiveInt]
-    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]])
-
-(mr/def ::cache-strategy.oss
-  "Schema for a caching strategy (OSS)"
-  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
-           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         cache-strategy-dispatch
-           :error/fn    (fn [{:keys [value]} _]
-                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl"
-                               (pr-str (:type value))))}
-   [:nocache ::cache-strategy.nocache]
-   [:ttl     ::cache-strategy.ttl]])
-
-(mr/def ::cache-strategy.ee.duration
-  "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units."
-  [:merge
-   ::lib.schema/cache-strategy.duration
-   [:map {:closed true}
-    [:duration ms/PositiveInt]]])
-
-(mr/def ::cache-strategy.ee.schedule
-  "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule."
-  [:merge
-   ::lib.schema/cache-strategy.schedule
-   [:map {:closed true}
-    [:schedule u.cron/CronScheduleString]]])
-
-;;; This is basically the same schema as `:metabase-enterprise.cache.strategies/cache-strategy` except it doesn't have
-;;; the optional `:invalidated-at` keys
-(mr/def ::cache-strategy.ee
-  "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
-  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
-           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         cache-strategy-dispatch
-           :error/fn    (fn [{:keys [value]} _]
-                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl, :duration, :schedule"
-                               (pr-str (:type value))))}
-   [:nocache     ::cache-strategy.nocache]
-   [:ttl         ::cache-strategy.ttl]
-   [:duration    ::cache-strategy.ee.duration]
-   [:schedule    ::cache-strategy.ee.schedule]])
 
 (mr/def ::cache-strategy
   (if config/ee-available?
@@ -90,9 +21,9 @@
                   (if (premium-features/has-feature? :cache-granular-controls)
                     :ee
                     :oss))}
-     [:ee  ::cache-strategy.ee]
-     [:oss ::cache-strategy.oss]]
-    ::cache-strategy.oss))
+     [:ee  ::cache.schema/cache-strategy.ee]
+     [:oss ::cache.schema/cache-strategy.oss]]
+    ::cache.schema/cache-strategy.oss))
 
 (defn- assert-valid-models [model ids premium?]
   (cond
@@ -112,8 +43,8 @@
 
 (mr/def ::cache-config-item
   [:map
-   [:model    cache-config/CachingModel]
-   [:model_id ms/IntGreaterThanOrEqualToZero]
+   [:model    ::cache.schema/cache-config.model]
+   [:model_id ::cache.schema/cache-config.model-id]
    [:strategy [:map [:type :keyword]]]
    [:name       {:optional true} [:maybe :string]]
    [:collection {:optional true} [:maybe [:map
@@ -139,16 +70,10 @@
              [:count   :int]
              [:message :string]]]])
 
-(defn- check-cache-access [model id]
-  (if (or (nil? id)
-          ;; sometimes its a sequence and we're going to check for settings access anyway
-          (not (number? id))
-          (zero? id))
-    ;; if you're not accessing a concrete entity, you have to be an admin
-    (api/check-superuser)
-    ;; Use CacheConfig's can-write? which checks collection permissions directly,
-    ;; bypassing the remote-sync content lock on Dashboards/Cards.
-    (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/CacheConfig {:model model :model_id id}) :can_write)))))
+(defn- target-config
+  "An unsaved CacheConfig for the `model` target with `model-id`, to ask permission questions about its target."
+  [model model-id]
+  (t2/instance :model/CacheConfig {:model model :model_id model-id}))
 
 (api.macros/defendpoint :get "/" :- ::cache-config-list-response
   "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,
@@ -157,7 +82,7 @@
    {:keys [model collection id] :as params}
    :- [:merge
        [:map {:closed true}
-        [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+        [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf ::cache.schema/cache-config.model)
                                                   {:description "Type of model"})]
         [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
                                                {:description "Collection id to filter results. Returns everything if not supplied."})]
@@ -167,7 +92,9 @@
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
-  (check-cache-access (first model) id)
+  (if id
+    (api/write-check (target-config (first model) id))
+    (api/check-superuser))
   (let [sort-params (select-keys params [:sort_column :sort_direction])
         limit       (request/limit)
         offset      (request/offset)
@@ -184,23 +111,26 @@
   [_route-params
    _query-params
    {:keys [model model_id] :as config} :- [:map {:closed true}
-                                           [:model    cache-config/CachingModel]
-                                           [:model_id ms/IntGreaterThanOrEqualToZero]
+                                           [:model    ::cache.schema/cache-config.model]
+                                           [:model_id ::cache.schema/cache-config.model-id]
                                            [:strategy ::cache-strategy]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
-  (check-cache-access model model_id)
-  {:id (cache-config/store! api/*current-user-id* config)})
+  (if-let [existing (first (cache.db/cache-configs-for model [model_id]))]
+    (api/update-check existing (cache-config/config->row config))
+    (api/create-check :model/CacheConfig (cache-config/config->row config)))
+  {:id (cache-config/save-cache-config! config)})
 
 (api.macros/defendpoint :delete "/" :- :nil
   "Delete cache configurations."
   [_route-params
    _query-params
    {:keys [model model_id]} :- [:map {:closed true}
-                                [:model    cache-config/CachingModel]
-                                [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
+                                [:model    ::cache.schema/cache-config.model]
+                                [:model_id (ms/QueryVectorOf ::cache.schema/cache-config.model-id)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
-  (doseq [id model_id] (check-cache-access model id))
-  (cache-config/delete! api/*current-user-id* model model_id)
+  (doseq [id model_id] (api/write-check (target-config model id)))
+  (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets model model_id)
+                                      {:context {:details {}}})
   nil)
 
 (defn- write-check-all

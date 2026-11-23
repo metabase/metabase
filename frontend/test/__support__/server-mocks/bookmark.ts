@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import type { Bookmark, ReorderBookmarksRequest } from "metabase-types/api";
+import {
+  BOOKMARK_TYPES,
+  type Bookmark,
+  type ReorderBookmarksRequest,
+} from "metabase-types/api";
 import { createMockBookmark } from "metabase-types/api/mocks";
 
 export function setupBookmarksEndpoints(bookmarks: Bookmark[]) {
@@ -38,7 +42,7 @@ export function setupBookmarksEndpointsWithError({
 }
 
 /**
- * Stateful bookmark mocks for write-then-read tests: DELETE
+ * Stateful bookmark mocks for write-then-read tests: POST and DELETE
  * /api/bookmark/:type/:id and PUT /api/bookmark/ordering change the list that
  * GET /api/bookmark returns, so the refetch after a write reflects it.
  * The ordering route is named `bookmark-ordering` for `fetchMock.modifyRoute`.
@@ -47,6 +51,23 @@ export function setupStatefulBookmarksEndpoints(initialBookmarks: Bookmark[]) {
   let bookmarks = [...initialBookmarks];
 
   fetchMock.get("path:/api/bookmark", () => bookmarks);
+
+  fetchMock.post(/\/api\/bookmark\/\w+\/\d+$/, ({ url }) => {
+    const [typeParam, itemId] = new URL(url).pathname.split("/").slice(-2);
+    const type = BOOKMARK_TYPES.find(
+      (bookmarkType) => bookmarkType === typeParam,
+    );
+    if (!type) {
+      return 400;
+    }
+    const bookmark = createMockBookmark({
+      id: `${type}-${itemId}`,
+      type,
+      item_id: Number(itemId),
+    });
+    bookmarks = [...bookmarks, bookmark];
+    return bookmark;
+  });
 
   fetchMock.delete(/\/api\/bookmark\/\w+\/\d+$/, ({ url }) => {
     const [type, itemId] = new URL(url).pathname.split("/").slice(-2);

@@ -3,15 +3,17 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.replacement.db :as replacement.db]
+   [metabase-enterprise.replacement.entity :as replacement.entity]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.usages :as replacement.usages]
-   [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.model-persistence.core :as model-persistence]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.replacement.core :as replacement]
    [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
@@ -31,6 +33,13 @@
     (succeed-run! [_])
     (fail-run! [_ _throwable])))
 
+(defn- rows-of-type
+  "The rows among `rows`, as `{[entity-type id] row}`, of the entities of `entity-type`."
+  [rows entity-type]
+  (for [[[row-type _id] row] rows
+        :when (= row-type entity-type)]
+    row))
+
 (defn bulk-load-metadata-for-entities!
   "Bulk load metadata for a batch of entities into the metadata provider cache.
 
@@ -39,54 +48,34 @@
   [metadata-provider entities]
   (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
     (throw (ex-info "Must provided a cached metadata provider" {})))
-  (letfn [(id->instances [m]
-            (let [ids (into []
-                            (comp (filter #(= m (first %)))
-                                  (map second))
-                            entities)]
-              (when (seq ids)
-                (into {}
-                      (map (juxt (fn [o] [m (:id o)]) identity))
-                      (case m
-                        :card      (replacement.db/cards-with-ids ids)
-                        :table     (replacement.db/tables-with-ids ids)
-                        :dashboard (replacement.db/dashboards-with-ids ids)
-                        :transform (replacement.db/transforms-with-ids ids)
-                        :segment   (replacement.db/segments-with-ids ids)
-                        :measure   (replacement.db/measures-with-ids ids))))))]
-    (let [cards      (id->instances :card)
-          tables     (id->instances :table)
-          dashboards (id->instances :dashboard)
-          transforms (id->instances :transform)
-          segments   (id->instances :segment)
-          measures   (id->instances :measure)
-          queries    (into []
-                           (concat
-                            ;; Card dataset queries
-                            (eduction (comp (keep :dataset_query)
-                                            (filter replacement.util/valid-query?)
-                                            (map #(lib/query metadata-provider %)))
-                                      (vals cards))
-                            ;; Transform query sources
-                            (eduction (comp (keep :source)
-                                            (filter #(= :query (:type %)))
-                                            (keep :query)
-                                            (map #(lib/query metadata-provider %)))
-                                      (vals transforms))
-                            ;; Segment definitions
-                            (eduction (comp (keep :definition)
-                                            (map #(lib/query metadata-provider %)))
-                                      (vals segments))
-                            ;; Measure definitions
-                            (eduction (comp (keep :definition)
-                                            (map #(lib/query metadata-provider %)))
-                                      (vals measures))))]
-      (when (seq queries)
-        ;; Extract all referenced entity IDs across all queries
-        (let [referenced-ids (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})]
-          ;; Bulk load all metadata at once
-          (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
-      (merge {} cards tables dashboards transforms segments measures))))
+  (let [rows    (replacement.entity/rows-by-entity entities)
+        queries (into []
+                      (concat
+                       ;; Card dataset queries
+                       (eduction (comp (keep :dataset_query)
+                                       (filter replacement/valid-query?)
+                                       (map #(lib/query metadata-provider %)))
+                                 (rows-of-type rows :card))
+                       ;; Transform query sources
+                       (eduction (comp (keep :source)
+                                       (filter #(= :query (:type %)))
+                                       (keep :query)
+                                       (map #(lib/query metadata-provider %)))
+                                 (rows-of-type rows :transform))
+                       ;; Segment definitions
+                       (eduction (comp (keep :definition)
+                                       (map #(lib/query metadata-provider %)))
+                                 (rows-of-type rows :segment))
+                       ;; Measure definitions
+                       (eduction (comp (keep :definition)
+                                       (map #(lib/query metadata-provider %)))
+                                 (rows-of-type rows :measure))))]
+    (when (seq queries)
+      ;; Extract all referenced entity IDs across all queries
+      (let [referenced-ids (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})]
+        ;; Bulk load all metadata at once
+        (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
+    rows))
 
 (defn- failure-message
   "Build a human-readable message summarizing swap failures, showing at most 10 individual errors."
@@ -109,9 +98,7 @@
                                     (+ (count all-transitive-dependents)  ;; phase 1: upgrade
                                        (count all-transitive-dependents))) ;; phase 2: swap
 
-  (let [db-id      (case (first old-source)
-                     :card  (replacement.db/card-database-id (second old-source))
-                     :table (replacement.db/table-database-id (second old-source)))
+  (let [db-id      (replacement.entity/source-database-id old-source)
         batch-size 500]
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
@@ -205,6 +192,6 @@
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
      (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
-       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+       (persisted-info/mark-persisted-infos-for-pruning! [(:id persisted-info)] "off"))
      ;; phase 4: convert the model to a saved question
-     (replacement.db/update-card! card-id {:type :question}))))
+     (queries.card/update-cards! [{:id card-id :type :question}]))))

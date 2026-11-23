@@ -11,6 +11,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
@@ -102,7 +103,7 @@
                      (:schema target) (:name target) driver)))
       ;; Also clean up the Metabase metadata
       (try
-        (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
+        (table/delete-tables! (vec (t2/select-pks-set :model/Table :name (:name target) :db_id (:id (mt/db)))))
         (catch Exception e
           (log/warnf e "Failed to delete Table metadata for %s" (:name target)))))))
 

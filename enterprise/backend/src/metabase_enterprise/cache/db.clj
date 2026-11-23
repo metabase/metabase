@@ -14,12 +14,6 @@
    [:model-id      ms/PositiveInt]
    [:rerun-cutoff  ms/TemporalInstant]])
 
-(def ^:private CacheConfigChanges
-  "The keys callers pass to [[update-cache-config!]]."
-  [:map {:closed true}
-   [:next_run_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:invalidated_at {:optional true} ms/TemporalInstant]])
-
 (mu/defn card-cache-config
   "The most specific CacheConfig applying to the Card with `card-id` on the Dashboard with `dashboard-id` in the
   Database with `database-id`, or nil."
@@ -142,11 +136,6 @@
                          [[:min :qe.started_at] :asc]]
               :limit    limit}))
 
-(mu/defn delete-query-caches!
-  "Delete the QueryCache entries with `query-hashes`."
-  [query-hashes :- [:sequential bytes?]]
-  (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
-
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -161,9 +150,3 @@
              {:where [:or
                       [:= :next_run_at nil]
                       [:<= :next_run_at now]]}))
-
-(mu/defn update-cache-config!
-  "Apply `changes` to the CacheConfig with `cache-config-id`."
-  [cache-config-id :- ms/PositiveInt
-   changes         :- CacheConfigChanges]
-  (t2/update! :model/CacheConfig {:id cache-config-id} changes))

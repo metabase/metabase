@@ -1,7 +1,7 @@
 (ns metabase.users.events.last-login
   (:require
    [metabase.events.core :as events]
-   [metabase.users.db :as users.db]
+   [metabase.users.models.user :as user]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -14,7 +14,7 @@
   (when user-id
     (try
       ;; just make a simple attempt to set the `:last_login` for the given user to now
-      (users.db/set-user-last-login-now! user-id)
+      (user/set-last-login-now! user-id)
       (catch Throwable e
         ;; TODO -- huh? Terrible log message.
-        (log/warnf "Failed to process sync-database event. %s: %s" topic (ex-message e))))))
+        (log/warnf "Failed to set the last login of a user. %s: %s" topic (ex-message e))))))

@@ -27,21 +27,24 @@
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
 ;; and extract with `:include-h2?` (production keeps it filtered).
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- by-model [entities model-name]
@@ -106,7 +109,7 @@
                                 {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
             ingestion #(ts/ingestion-in-memory [db coll bad-card])
             ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
-        (testing "by default the schema check is what refuses the import"
+        (testing "by default the validation of the query by its import transform refuses the import"
           (mt/with-empty-h2-app-db!
             (is (ours? (load-failure-messages! (ingestion))))))
         (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
@@ -115,6 +118,34 @@
               (let [messages (load-failure-messages! (ingestion))]
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
+
+(deftest import-checks-non-query-columns-against-schema-test
+  (testing "the entity check refuses an invalid column that is no query, and the import validates the query columns itself"
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db) :type :native :native {:query "SELECT 1"}})]
+          (reset! extracted {:db   (ts/extract-one "Database" (:id db))
+                             :coll (ts/extract-one "Collection" (:id coll))
+                             :card (ts/extract-one "Card" (:id card))})))
+      (let [{:keys [db coll card]} @extracted
+            load!                  #(load-failure-messages! (ts/ingestion-in-memory [db coll %]))]
+        (testing "control: the card loads"
+          (mt/with-empty-h2-app-db!
+            (is (serdes.load/load-metabase! (ts/ingestion-in-memory [db coll card])))))
+        (testing "an invalid column that is no query is refused by the entity check"
+          (mt/with-empty-h2-app-db!
+            (is (some (partial re-find #"Invalid Card .*:name") (load! (assoc card :name 5))))))
+        (testing "an invalid query is refused by the import of the query column, not by the entity check"
+          (mt/with-empty-h2-app-db!
+            (let [messages (load! (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                            {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}}))]
+              (is (some (partial re-find #"does not match this Metabase's query schema") messages))
+              (is (not-any? (partial re-find #"Invalid Card ") messages)))))))))
 
 (deftest http-action-dashcards-are-dropped-test
   (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"
@@ -440,6 +471,64 @@
           (is (= 1 (count errors)))
           (is (= "After" (setting/get :site-name))))))))
 
+(defn- exported-setting
+  "The exported Setting entity of `setting-key`."
+  [setting-key]
+  (some #(when (= (name setting-key) (:key %)) %)
+        (into [] (serialization/export :model/Setting (setting/exportable-settings)))))
+
+(defn- setting-entity
+  "A Setting entity that sets `setting-key` to `value`."
+  [setting-key value]
+  {:serdes/meta [{:model "Setting"}] :key (name setting-key) :value value})
+
+(deftest typed-setting-round-trip-test
+  (testing "typed setting exported to YAML is imported as its typed value through its setter"
+    (let [formatting {:type/Number {:number_separators ".,"}}]
+      (mt/with-temporary-raw-setting-values [custom-formatting nil]
+        (setting/set! :custom-formatting formatting)
+        (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+          (serdes.storage/store! [(exported-setting :custom-formatting)] (serdes.storage.files/file-writer dump-dir))
+          (setting/set! :custom-formatting {})
+          (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))
+          (is (= formatting (setting/get :custom-formatting))))
+        (testing "value its setter refuses is not set"
+          (let [{:keys [errors]} (serdes.load/load-metabase!
+                                  (ts/ingestion-in-memory
+                                   [(setting-entity :custom-formatting
+                                                    (json/encode {:type/Number {:number_separators "x"}}))])
+                                  :continue-on-error true)]
+            (is (= 1 (count errors)))
+            (is (= formatting (setting/get :custom-formatting)))))))))
+
+(deftest feature-gated-setting-import-test
+  (testing "setting whose premium feature is missing is not set"
+    (mt/with-temporary-raw-setting-values [application-name nil]
+      (mt/with-premium-features #{}
+        (let [ingestion (ts/ingestion-in-memory [(setting-entity :application-name "Acme")])]
+          (is (thrown-with-msg? Exception #"feature :whitelabel is not available"
+                                (serdes.load/load-metabase! ingestion)))
+          (is (= 1 (count (:errors (serdes.load/load-metabase! ingestion :continue-on-error true)))))
+          (is (nil? (setting/db-stored-value :application-name)))))
+      (testing "unless it would leave the stored value as it is"
+        (mt/with-premium-features #{}
+          (is (empty? (:errors (serdes.load/load-metabase!
+                                (ts/ingestion-in-memory [(setting-entity :application-name nil)])))))))
+      (testing "with the feature it is set"
+        (mt/with-premium-features #{:whitelabel}
+          (serdes.load/load-metabase! (ts/ingestion-in-memory [(setting-entity :application-name "Acme")]))
+          (is (= "Acme" (setting/db-stored-value :application-name))))))))
+
+(deftest env-var-setting-import-test
+  (testing "setting an environment variable sets is not overwritten"
+    (mt/with-temporary-raw-setting-values [site-name "Stored"]
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (let [ingestion (ts/ingestion-in-memory [(setting-entity :site-name "Imported")])]
+          (is (thrown-with-msg? Exception #"set by the environment variable MB_SITE_NAME"
+                                (serdes.load/load-metabase! ingestion)))
+          (is (= 1 (count (:errors (serdes.load/load-metabase! ingestion :continue-on-error true)))))
+          (is (= "Stored" (setting/db-stored-value :site-name))))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)
@@ -548,7 +637,9 @@
             (reset! db2s (ts/create! :model/Database :name "db2"))
             (reset! t2s  (ts/create! :model/Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! :model/Field    :name "Target Field" :table_id (:id @t1s)))
-            (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
+            (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"
+                                     :table_id (:id (ts/create! :model/Table :name "comments" :db_id (:id @db1s)))
+                                     :fk_target_field_id (:id @f1s)))
             (reset! f3s  (ts/create! :model/Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "serialization of databases is based on the :name"
@@ -794,9 +885,10 @@
             (reset! table1s (ts/create! :model/Table :name "customers" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "age"    :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Minors"
-                                        :definition {:source-table (:id @table1s)
-                                                     :filter       [:< [:field (:id @field1s) nil] 18]}
+            (reset! seg1s   (ts/create! :model/Segment :name "Minors"
+                                        :definition (let [mp (lib-be/application-database-metadata-provider (:id @db1s))]
+                                                      (-> (lib/query mp (lib.metadata/table mp (:id @table1s)))
+                                                          (lib/filter (lib/< (lib.metadata/field mp (:id @field1s)) 18))))
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "exported form is properly converted"
@@ -879,7 +971,7 @@
             (reset! table1s (ts/create! :model/Table :name "sales" :db_id (:id @db1s)))
             (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+            (reset! msr1s   (ts/create! :model/Measure :name "Total Sales"
                                         :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -941,7 +1033,7 @@
             (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             ;; Create base measure: sum(amount)
-            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+            (reset! msr1s   (ts/create! :model/Measure :name "Total Sales"
                                         :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             ;; Create derived measure: base_measure * 2
@@ -950,7 +1042,7 @@
                   query (lib/query mp table)
                   base-measure (lib.metadata/measure mp (:id @msr1s))
                   derived-definition (lib/aggregate query (lib/* base-measure 2))]
-              (reset! msr2s (ts/create! :model/Measure :table_id (:id @table1s) :name "Double Sales"
+              (reset! msr2s (ts/create! :model/Measure :name "Double Sales"
                                         :definition derived-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -1005,9 +1097,10 @@
             (reset! field1s (ts/create! :model/Field :name "price" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             ;; Create segment: price > 100
-            (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Expensive"
-                                        :definition {:source-table (:id @table1s)
-                                                     :filter [:> [:field (:id @field1s) nil] 100]}
+            (reset! seg1s   (ts/create! :model/Segment :name "Expensive"
+                                        :definition (let [mp (lib-be/application-database-metadata-provider (:id @db1s))]
+                                                      (-> (lib/query mp (lib.metadata/table mp (:id @table1s)))
+                                                          (lib/filter (lib/> (lib.metadata/field mp (:id @field1s)) 100))))
                                         :creator_id (:id @user1s)))
             ;; Create measure: count-where(segment)
             (let [mp (lib-be/application-database-metadata-provider (:id @db1s))
@@ -1015,7 +1108,7 @@
                   query (lib/query mp table)
                   segment (lib.metadata/segment mp (:id @seg1s))
                   measure-definition (lib/aggregate query (lib/count-where segment))]
-              (reset! msr1s (ts/create! :model/Measure :table_id (:id @table1s) :name "Expensive Count"
+              (reset! msr1s (ts/create! :model/Measure :name "Expensive Count"
                                         :definition measure-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -1988,13 +2081,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                          {:entity_id     eid
-                                                           :name          "the action"
-                                                           :model_id      (:id card)
-                                                           :type          :query
-                                                           :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
-                                                           :database_id   (:id db)}))]
+                _action-id (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert
+                                                                               {:entity_id     eid
+                                                                                :name          "the action"
+                                                                                :model_id      (:id card)
+                                                                                :type          :query
+                                                                                :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
+                                                                                :database_id   (:id db)})])))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true})))
             (let [action-serialized (first (filter (fn [entity] (= [:model/Action eid] (serialization/key-of entity)))
                                                    @serialized))]
@@ -2138,12 +2231,14 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/insert! {:entity_id     eid
-                                            :name          "the action"
-                                            :model_id      (:id card)
-                                            :type          :query
-                                            :dataset_query {}
-                                            :database_id   (:id db)})]
+                _action-id (:id (first (action/create-actions! [{:entity_id     eid
+                                                                 :name          "the action"
+                                                                 :model_id      (:id card)
+                                                                 :type          :query
+                                                                 :dataset_query (lib/native-query
+                                                                                 (lib-be/application-database-metadata-provider (:id db))
+                                                                                 "SELECT 1")
+                                                                 :database_id   (:id db)}])))]
             (reset! serialized
                     (->> (serdes.extract/extract {:include-h2? true})
                          ;; add an extra key to *every serialized model*
@@ -2544,7 +2639,7 @@
                 table    (ts/create! :model/Table :name "customers" :db_id (:id db))
                 field    (ts/create! :model/Field :name "age" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                _segment (ts/create! :model/Segment :name "Minors"
                                      :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -2570,7 +2665,7 @@
                 table    (ts/create! :model/Table :name "sales" :db_id (:id db))
                 field    (ts/create! :model/Field :name "amount" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                _measure (ts/create! :model/Measure :name "Total Sales"
                                      :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
@@ -3157,7 +3252,7 @@
                 table    (ts/create! :model/Table :name "customers" :db_id (:id db))
                 field    (ts/create! :model/Field :name "age" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                _segment (ts/create! :model/Segment :name "Minors"
                                      :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))
@@ -3180,7 +3275,7 @@
                 table    (ts/create! :model/Table :name "sales" :db_id (:id db))
                 field    (ts/create! :model/Field :name "amount" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                _measure (ts/create! :model/Measure :name "Total Sales"
                                      :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))

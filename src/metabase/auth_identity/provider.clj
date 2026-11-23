@@ -3,7 +3,8 @@
   that all authentication providers must implement.
 
   The provider system uses three multimethods:
-  - validate: Validate credentials before database insert/update (throws on error)
+  - validate: Validate credentials before database insert/update (throws on error), in
+    [[metabase.auth-identity.validation]]
   - authenticate: Core authentication logic (returns success/failure/redirect)
   - login!: Complete login orchestration (calls authenticate, creates session)
 
@@ -41,7 +42,7 @@
        :auth-identity {...}})
 
     ;; Optional: Implement validation
-    (methodical/defmethod provider/validate :provider/my-provider
+    (methodical/defmethod validation/validate :provider/my-provider
       [_provider auth-identity-data]
       (when-not (valid? auth-identity-data)
         (throw (ex-info \"Invalid credentials\" {:error :invalid}))))
@@ -56,6 +57,7 @@
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
+   [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
    [metabase.channel.email.messages :as messages]
@@ -64,6 +66,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -86,43 +89,6 @@
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
 (def ^:private personal-only-message (deferred-tru "This login is only for personal accounts."))
-
-;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
-
-(methodical/defmulti validate
-  "Validate credentials and settings for a provider before insert/update into AuthIdentity.
-   Throws an exception with error details if invalid. This ensures transaction rollback on validation failure.
-   Returns nil if valid.
-
-   This method is called from define-before-insert and define-before-update hooks in the AuthIdentity model.
-
-   Args:
-     provider: Provider keyword (e.g., ::provider/password)
-     auth-identity-data: Map containing :credentials, :metadata, etc.
-
-   Returns:
-     nil if valid
-
-   Throws:
-     ExceptionInfo if validation fails
-
-   Examples:
-     ;; Password provider validates credentials structure
-     (validate ::provider/password {:credentials {:password_hash \"...\" :password_salt \"...\"}})
-     => nil
-
-     ;; Throws if invalid
-     (validate ::provider/password {:credentials {:password_hash nil}})
-     => throws ExceptionInfo"
-  {:arglists '([provider auth-identity-data])}
-  (fn [provider _auth-identity-data]
-    provider)
-  :hierarchy #'auth-identity.hierarchy/hierarchy)
-
-(methodical/defmethod validate ::provider
-  [_provider _auth-identity-data]
-  ;; Default: no validation (SSO providers typically don't need credential validation)
-  nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
 
@@ -506,12 +472,11 @@
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
-      (auth-identity.db/update-user! user-id
-                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
-                                       reactivating? (assoc :is_superuser false))))
+      (user/update-users! [(cond-> (assoc (select-keys user-data (conj (sso-user-fields) :is_active)) :id user-id)
+                             reactivating? (assoc :is_superuser false))]))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
-      (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
-                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+      (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                             (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
     (auth-identity.db/user-login-status user-id)))
 
 (mu/defn- create-user!
@@ -528,13 +493,12 @@
       (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
                       {:status-code 500})))
     (t2/with-transaction [_]
-      (u/prog1
-        (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
-        (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
-                                                  (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+      (let [[{user-id :id :as new-user}] (user/create-users! [(select-keys user-data insert-fields)])]
+        (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                               (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
-                                                                     :sso_source (name provider))}))))))
+          (events/publish-event! :event/user-invited {:object (assoc new-user :sso_source (name provider))}))
+        (select-keys (auth-identity.db/user-login-columns user-id) [:id :last_login :is_active :tenant_id])))))
 
 (defn- create-or-update-user!
   [provider request]

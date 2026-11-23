@@ -9,7 +9,6 @@
   (:require
    [java-time.api :as t]
    [metabase.actions.args :as actions.args]
-   [metabase.actions.db :as actions.db]
    [metabase.actions.types :as actions.types]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
@@ -19,6 +18,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -122,7 +122,7 @@
                         [{:query             (:json_query row)
                           :query-hash        (:hash row)
                           :execution-time-ms (:running_time row)}])
-                       (actions.db/insert-query-execution! (dissoc row :json_query)))
+                       (query-execution/create-query-executions! [(dissoc row :json_query)]))
                      (catch Throwable e
                        (log/errorf e "Failed to record action execution for %s" (:action base)))))]
     (try

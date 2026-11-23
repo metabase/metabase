@@ -9,12 +9,16 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -100,3 +104,15 @@
   none of those are present."
   [dim]
   (or (:display-name dim) (:dimension-id dim) (:name dim)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-blocks! :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
+  "Insert the ExplorationBlock `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-block.create]]
+  (explorations.db/insert-blocks! rows))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
+  {:skip? false})

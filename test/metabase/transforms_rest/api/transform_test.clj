@@ -1279,8 +1279,8 @@
                                                                (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
-                                             (let [revision (t2/select-one :model/Revision :model "Transform"
-                                                                           :model_id transform-id :most_recent true)
+                                             (let [revision (t2/select-one :model/Revision :model "Transform" :model_id transform-id
+                                                                           {:order-by [[:id :desc]]})
                                                    rev-transform (:object revision)
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
@@ -1487,7 +1487,7 @@
                            :model/TransformTag tag1 {:name "get-tag-1"}
                            :model/TransformTag tag2 {:name "get-tag-2"}]
               ;; Add tags to transform
-              (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
+              (transform.model/update-transform! (:id transform) {:tag_ids [(:id tag1) (:id tag2)]})
               (testing "Single transform returns tag_ids"
                 (let [fetched (mt/user-http-request user :get 200 (str "transform/" (:id transform)))]
                   (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids fetched))))))
@@ -1518,8 +1518,8 @@
                          :model/TransformTag tag1 {:name "list-tag-1"}
                          :model/TransformTag tag2 {:name "list-tag-2"}]
             ;; Add tags to transforms
-            (transform.model/update-transform-tags! (:id transform1) [(:id tag1)])
-            (transform.model/update-transform-tags! (:id transform2) [(:id tag1) (:id tag2)])
+            (transform.model/update-transform! (:id transform1) {:tag_ids [(:id tag1)]})
+            (transform.model/update-transform! (:id transform2) {:tag_ids [(:id tag1) (:id tag2)]})
             (testing "List endpoint returns all transforms with their tag_ids"
               (let [transforms (mt/user-http-request user :get 200 "transform")
                     t1 (some #(when (= (:id %) (:id transform1)) %) transforms)
@@ -1544,7 +1544,7 @@
                                                {:name "tag-to-delete"})]
                 (try
                   ;; Add both tags to transform
-                  (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
+                  (transform.model/update-transform! (:id transform) {:tag_ids [(:id tag1) (:id tag2)]})
                   ;; Verify tags are associated
                   (let [fetched (mt/user-http-request user :get 200 (str "transform/" (:id transform)))]
                     (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids fetched)))))
@@ -1750,7 +1750,7 @@
                                        :schema schema
                                        :name table-name
                                        :target-incremental-strategy {:type "append"}}}]
-                (transform.model/update-transform-tags! transform-id [tag-id])
+                (transform.model/update-transform! transform-id {:tag_ids [tag-id]})
                 (testing "removing the tag (tag_ids-only update) should not re-validate the stale checkpoint field"
                   (let [updated (mt/user-http-request :crowberto :put 200
                                                       (format "transform/%d" transform-id)
@@ -2184,6 +2184,24 @@
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))
 
+(deftest reject-target-that-is-source-table-as-cycle-test
+  (testing "PUT /api/transform/:id moving the target onto the source table is a cycle, not a name collision"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (with-transforms-api-users! [user]
+              (with-transform-cleanup! [table-name "cycle_source"]
+                (let [schema (get-test-schema)
+                      source (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
+                      {id :id} (mt/user-http-request user :post 200 "transform"
+                                                     {:name   "Cycle Transform"
+                                                      :source {:type :query :query (make-query "Gadget")}
+                                                      :target {:type "table" :schema schema :name table-name}})]
+                  (is (=? #"Cyclic transform definitions detected.*"
+                          (mt/user-http-request user :put 400 (format "transform/%d" id)
+                                                {:target {:type "table" :schema schema :name source}}))))))))))))
+
 (deftest delete-target-then-recreate-same-name-test
   (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
     (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
@@ -2362,3 +2380,48 @@
                                             (format "transform/collection/%d?delete-tables=true" dropped-folder-id))
                       (is (false? (t2/exists? :model/Transform :id (:id dropped))))
                       (is (false? (transforms-base.u/target-table-exists? dropped))))))))))))))
+
+(deftest transform-run-bookkeeping-records-no-audit-row-or-revision-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Bookkept"}]
+        (let [audit-rows (fn [] (t2/count :model/AuditLog :model "Transform" :model_id id))
+              revisions  (fn [] (t2/count :model/Revision :model "Transform" :model_id id))
+              before     [(audit-rows) (revisions)]]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "a run saving its checkpoint and its target table"
+              (transform.model/update-transforms! [{:id id :last_checkpoint_value "5"}])
+              (transform.model/update-transforms! [{:id id :target_table_id table-id}])
+              (is (= before [(audit-rows) (revisions)]))))
+          (testing "resetting the checkpoint"
+            (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" id))
+            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id id)))
+            (is (= before [(audit-rows) (revisions)])))
+          (testing "an edit by a user still records"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (transform.model/update-transforms! [{:id id :name "Renamed"}]))
+            (is (= [(inc (first before)) (inc (second before))] [(audit-rows) (revisions)]))))))))
+
+(deftest reverting-transform-keeps-computed-columns-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Table {table-id :id} {}
+                     :model/Transform {id :id} {:name "Original"}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (transform.model/update-transforms! [{:id id :name "Edited"}]))
+        (let [revision (t2/select-one :model/Revision :model "Transform" :model_id id {:order-by [[:id :desc]]})]
+          (testing "a revision holds no computed column"
+            (is (not-any? #(contains? (:object revision) %) [:last_checkpoint_value :target_table_id :table_dependencies])))
+          (transform.model/update-transforms! [{:id id :last_checkpoint_value "9" :target_table_id table-id}])
+          (mt/with-current-user (mt/user->id :crowberto)
+            (transform.model/update-transforms! [{:id id :name "Edited again"}]))
+          (testing "reverting an old revision that holds computed columns does not write them back"
+            (let [legacy-id (t2/insert-returning-pk! :model/Revision
+                                                     {:model "Transform" :model_id id :user_id (mt/user->id :crowberto)
+                                                      :object (assoc (:object revision) :last_checkpoint_value "old" :target_table_id nil)
+                                                      :is_creation false :is_reversion false})]
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform" :id id :revision_id legacy-id})
+              (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
+                      (t2/select-one :model/Transform :id id))))))))))

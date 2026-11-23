@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
@@ -24,7 +25,7 @@
 
 (def ^:private SettingValue
   "What a client may set a Setting to: the JSON encoding of any setting type -- a scalar, a list, or an object."
-  [:maybe [:or :string number? :boolean [:sequential [:or :string number? :boolean ms/OpaqueJSONObject]] ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean [:sequential [:or :string number? :boolean ::settings.schema/setting-value.object]] ::settings.schema/setting-value.object]])
 
 (defmacro ^:private with-setting-access-control
   "Executes the given body with setting access enforcement enabled, and adds some exception handling to make sure we

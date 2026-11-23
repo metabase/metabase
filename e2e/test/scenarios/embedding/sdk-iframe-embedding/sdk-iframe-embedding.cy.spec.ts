@@ -16,7 +16,7 @@ describe("scenarios > embedding > modular embedding", () => {
   });
 
   it("can find the embed.js file", { tags: ["@prerelease", "@EE"] }, () => {
-    cy.request("http://localhost:4000/app/embed.js").then((response) => {
+    cy.request("/app/embed.js").then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.be.a("string").and.not.be.empty;
     });
@@ -510,7 +510,7 @@ describe("scenarios > embedding > modular embedding", () => {
       }).as("analyticsProxy");
 
       cy.signOut();
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://different-than-metabase-instance.com",
         elements: [
@@ -696,7 +696,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     it("should send locale_used=true when locale is configured", () => {
       cy.signOut();
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://different-than-metabase-instance.com",
         elements: [

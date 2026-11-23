@@ -47,6 +47,7 @@
   do-before-commit
   do-after-commit
   in-transaction?
+  mariadb?
   quartz-data-source
   quoting-style
   unique-identifier
@@ -76,7 +77,14 @@
   spec]
  [metabase.app-db.query
   compile
+  create-batched!
+  create-partition-size
   current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  delete-partition-size
+  increment-counts!
+  insert-returning-instances!
   isa
   join
   qualify
@@ -86,6 +94,9 @@
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
+  update-batched!
+  update-grouped!
+  update-partition-size
   with-conflict-retry]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
@@ -110,7 +121,8 @@
   This is the public, no-argument hook for tools that need to confirm appdb connectivity without
   modifying the schema."
   []
-  (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source)))
+  (mdb.connection/record-mariadb!
+   (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source))))
 
 (defn setup-db-without-migrations!
   "Like [[setup-db!]] but never runs migrations or mutates the schema. Idempotent: no-ops if the

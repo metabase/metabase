@@ -16,8 +16,12 @@
   card->ref
   maybe-filter-pulse-recipients
   maybe-strip-sensitive-metadata
+  retrieve-alert
   retrieve-alerts-for-cards
   retrieve-pulse
-  update-pulse!]
+  update-pulse!
+  update-pulses!]
  [metabase.pulse.update-alerts
-  delete-alerts-if-needed!])
+  card-change-invalidates-alerts?
+  alerts-of-card-being-changed
+  notify-alerts-deleted!])

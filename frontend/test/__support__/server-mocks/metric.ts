@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  AddMetricDimensionsRequest,
   Dataset,
   ExplorationDimensionGroup,
   ListMetricDimensionsResponse,
@@ -8,6 +9,10 @@ import type {
   MetricDimension,
   MetricId,
 } from "metabase-types/api";
+
+type AddMetricDimensionsBody = Partial<
+  Omit<AddMetricDimensionsRequest, "metricId">
+>;
 
 export function setupMetricEndpoint(metric: Metric) {
   fetchMock.get(`path:/api/metric/${metric.id}`, metric);
@@ -102,6 +107,7 @@ export function setupMetricDimensionsEndpoints(
 ) {
   // Mutations update this so subsequent GETs reflect persisted dimensions.
   let added = [...response.added];
+  let addable = [...response.addable];
 
   fetchMock.get(
     `path:/api/metric/${metricId}/dimension`,
@@ -117,9 +123,9 @@ export function setupMetricDimensionsEndpoints(
             dimension.display_name.toLowerCase().includes(query),
           )
         : visibleAdded;
-      const addable =
+      const filteredAddable =
         searchParams.get("with-addable") === "true"
-          ? response.addable
+          ? addable
               .map(({ group, dimensions }) => ({
                 group,
                 dimensions: query
@@ -130,13 +136,38 @@ export function setupMetricDimensionsEndpoints(
               }))
               .filter(({ dimensions }) => dimensions.length > 0)
           : [];
-      return { added: filteredAdded, addable };
+      return { added: filteredAdded, addable: filteredAddable };
     },
     { name: `metric-${metricId}-dimensions-list` },
   );
-  fetchMock.post(`path:/api/metric/${metricId}/dimension/add`, response.added, {
-    name: `metric-${metricId}-dimensions-add`,
-  });
+  fetchMock.post(
+    `path:/api/metric/${metricId}/dimension/add`,
+    async (call) => {
+      const body: AddMetricDimensionsBody = JSON.parse(
+        (await call.request?.text()) ?? "{}",
+      );
+      const addedIds = new Set(
+        (body.dimensions ?? []).map((dimension) => dimension.id),
+      );
+      const newDimensions = (body.dimensions ?? []).map(
+        ({ mapping_target: _mappingTarget, ...dimension }) => ({
+          ...dimension,
+          status: "status/active" as const,
+          default: false,
+        }),
+      );
+      added = [...added, ...newDimensions];
+      addable = addable.map(({ group, dimensions }) => ({
+        group,
+        dimensions: dimensions.filter(
+          (dimension) => !addedIds.has(dimension.id),
+        ),
+      }));
+      newDimensions.forEach((dimension) => setupUpdateRoute(dimension.id));
+      return added;
+    },
+    { name: `metric-${metricId}-dimensions-add` },
+  );
   fetchMock.post(
     `path:/api/metric/${metricId}/dimension/remove`,
     async (call) => {
@@ -169,14 +200,36 @@ export function setupMetricDimensionsEndpoints(
   );
   fetchMock.post(
     `path:/api/metric/${metricId}/dimension/set-default`,
-    response.added,
+    async (call) => {
+      const body: { dimension_id?: string | null } = JSON.parse(
+        (await call.request?.text()) ?? "{}",
+      );
+      added = added.map((dimension) => ({
+        ...dimension,
+        default: dimension.id === body.dimension_id,
+      }));
+      return added;
+    },
     { name: `metric-${metricId}-dimensions-set-default` },
   );
-  response.added.forEach((dimension) => {
+
+  function setupUpdateRoute(dimensionId: string) {
     fetchMock.post(
-      `path:/api/metric/${metricId}/dimension/${encodeURIComponent(dimension.id)}`,
-      dimension,
-      { name: `metric-${metricId}-dimension-${dimension.id}-update` },
+      `path:/api/metric/${metricId}/dimension/${encodeURIComponent(dimensionId)}`,
+      async (call) => {
+        const changes: Partial<MetricDimension> = JSON.parse(
+          (await call.request?.text()) ?? "{}",
+        );
+        added = added.map((dimension) =>
+          dimension.id === dimensionId
+            ? { ...dimension, ...changes }
+            : dimension,
+        );
+        return added.find((dimension) => dimension.id === dimensionId);
+      },
+      { name: `metric-${metricId}-dimension-${dimensionId}-update` },
     );
-  });
+  }
+
+  response.added.forEach((dimension) => setupUpdateRoute(dimension.id));
 }

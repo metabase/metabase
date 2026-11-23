@@ -178,6 +178,8 @@ describe("QuestionActions", () => {
 
       await openActionsMenu();
 
+      // e.g. models in the instance analytics collection (metabase#36228)
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
       expect(
         screen.queryByText("Edit query definition"),
       ).not.toBeInTheDocument();
@@ -387,6 +389,38 @@ describe("QuestionActions", () => {
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+  });
+
+  it("should allow to move a dashboard question but not to turn it into a model or add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: 1,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.queryByText("Turn into a model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add to dashboard")).not.toBeInTheDocument();
+  });
+
+  it("should allow to turn a collection question into a model and add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: null,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.getByText("Turn into a model")).toBeInTheDocument();
+    expect(screen.getByText("Add to dashboard")).toBeInTheDocument();
   });
 
   it("should not render the menu when there are no menu items", () => {

@@ -497,7 +497,7 @@
                       (testing "an entity that has left the library is post-filtered out before the index catches up"
                         ;; unpublish without reconciling: the index still holds the docs, but the tool drops
                         ;; the hit because the table is no longer a current library member.
-                        (mt/with-temp-vals-in-db :model/Table table-id {:is_published false}
+                        (mt/with-temp-vals-in-db :model/Table table-id {:is_published false, :collection_id nil}
                           (is (empty? (search!)))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (format "osi/ai-context/table/%d" table-id))

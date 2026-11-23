@@ -5,19 +5,15 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import {
-  skipToken,
-  useGetAdhocQueryQuery,
-  useGetCardQuery,
-} from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
+import { markChartSaved } from "metabase/metabot/state";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -32,7 +28,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
@@ -40,6 +35,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 
 import { useSaveMetabotEntityMutation } from "../../api";
+import { useSavedChartCardId } from "../../hooks";
 
 import S from "./MetabotInlineChart.module.css";
 
@@ -63,20 +59,8 @@ export function MetabotInlineChart({
   const { id: chartId, title, description, display, query } = value;
   const datasetQuery = query.query;
   const clipboard = useClipboard();
-  const recordedCardId = useSelector((state) =>
-    getSavedChartCardId(state, chartId),
-  );
+  const savedCardId = useSavedChartCardId(chartId);
   const siteUrl = useSetting("site-url");
-
-  const { data: savedCard, error: savedCardError } = useGetCardQuery(
-    recordedCardId != null
-      ? { id: recordedCardId, ignore_error: true }
-      : skipToken,
-  );
-  const isLinkSevered =
-    isResourceNotFoundError(savedCardError) ||
-    (savedCard != null && savedCard.metabot_chart_id !== chartId);
-  const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
   const buildQuestion = useQuestionFromOptsBuilder();
   const question = useMemo(() => {

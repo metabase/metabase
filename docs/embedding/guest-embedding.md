@@ -131,6 +131,8 @@ Parameters on a guest embed start out **Disabled**: the widget is hidden, and no
 
 Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser.
 
+Your app decides who sees what, not Metabase. Metabase doesn't know who's viewing a guest embed, so your server code has to look up the viewer (for example, the customer's ID in your app's session) and put that value in the token. What Metabase does is check the token: it only loads a guest embed whose JWT is [signed with your embedding secret key](#regenerating-the-embedding-secret-key), it rejects a token that leaves out a locked parameter, and it rejects a value for a locked parameter that comes from the page (like `initial-parameters`, a widget, or the URL) instead of the token. So as long as your secret key stays on your server, a viewer can't change or remove a locked value.
+
 - For the walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds).
 - For the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token).
 - To control a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).

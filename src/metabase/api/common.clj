@@ -507,83 +507,6 @@
    (and (not= after ::not-provided)
         (not= before after))))
 
-;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
-
-(mu/defn reconcile-position-for-collection!
-  "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
-  for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- [:maybe ms/PositiveInt]
-   old-position  :- [:maybe ms/PositiveInt]
-   new-position  :- [:maybe ms/PositiveInt]]
-  (when (not= new-position old-position)
-    (cond
-      (and (nil? new-position)
-           old-position)
-      (doseq [shift-after! [api.db/shift-card-positions-after! api.db/shift-dashboard-positions-after!
-                            api.db/shift-pulse-positions-after! api.db/shift-document-positions-after!]]
-        (shift-after! collection-id old-position :-))
-
-      (and new-position (nil? old-position))
-      (doseq [shift-from! [api.db/shift-card-positions-from! api.db/shift-dashboard-positions-from!
-                           api.db/shift-pulse-positions-from! api.db/shift-document-positions-from!]]
-        (shift-from! collection-id new-position :+))
-
-      (> new-position old-position)
-      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
-                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
-        (shift-between! collection-id old-position new-position :-))
-
-      (< new-position old-position)
-      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
-                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
-        (shift-between! collection-id new-position old-position :+)))))
-
-(def ^:private ModelWithPosition
-  "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map {:closed true}
-   [:collection_id       [:maybe ms/PositiveInt]]
-   [:collection_position [:maybe ms/PositiveInt]]])
-
-(def ^:private ModelWithOptionalPosition
-  "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
-  present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map {:closed true}
-   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
-
-(mu/defn maybe-reconcile-collection-position!
-  "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
-  impact to the collection position of that model instance. If so, executes updates to fix the collection position
-  that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
-  updating an existing instance, but creating a new one)."
-  ([new-model-data :- ModelWithOptionalPosition]
-   (maybe-reconcile-collection-position! nil new-model-data))
-  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
-    {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
-   (let [updated-collection? (and (contains? model-updates :collection_id)
-                                  (not= old-collection-id new-collection-id))
-         updated-position?   (and (contains? model-updates :collection_position)
-                                  (not= old-position new-position))]
-     (cond
-       ;; If the collection hasn't changed, but we have a new collection position, we might need to reconcile
-       (and (not updated-collection?) updated-position?)
-       (reconcile-position-for-collection! old-collection-id old-position new-position)
-
-       ;; If we have a new collection id, but no new position, reconcile the old collection, then update the new
-       ;; collection with the existing position
-       (and updated-collection? (not updated-position?))
-       (do
-         (reconcile-position-for-collection! old-collection-id old-position nil)
-         (reconcile-position-for-collection! new-collection-id nil old-position))
-
-       ;; We have a new collection id AND and new collection position
-       ;; Update the old collection using the old position
-       ;; Update the new collection using the new position
-       (and updated-collection? updated-position?)
-       (do
-         (reconcile-position-for-collection! old-collection-id old-position nil)
-         (reconcile-position-for-collection! new-collection-id nil new-position))))))
-
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
@@ -618,21 +541,13 @@
     (map parse-fn xs)
     [(parse-fn xs)]))
 
-;;; ---------------------------------------- SET `archived_directly` ---------------------------------
+;;; ---------------------------------------- ARCHIVE REQUESTS ---------------------------------
 
-(defn updates-with-archived-directly
-  "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
+(defn updates-without-collection-when-archiving
+  "`obj-updates` without the `archived_directly` of the request, which the model derives, and without `collection_id`
+  when they archive `current-obj`, because the frontend's undo sends an archive together with a move to the Trash."
   [current-obj obj-updates]
-  (cond-> obj-updates
-    (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
-    (assoc :archived_directly (boolean (:archived obj-updates)))
-
-    ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
-    ;; between the current state and the previous state. Sometimes this results in the frontend telling us to
-    ;; *both* mark an item as archived *and* "move" it to the Trash.
-    ;;
-    ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
-    ;; along with it.
+  (cond-> (dissoc obj-updates :archived_directly)
     (and (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
          (:archived obj-updates))
     (dissoc :collection_id)))

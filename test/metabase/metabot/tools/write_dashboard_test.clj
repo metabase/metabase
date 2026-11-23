@@ -20,6 +20,7 @@
    [metabase.metabot.tools.write-dashboard :as write-dashboard]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -104,7 +105,7 @@
                                                                    :size_y       6}
                    :model/Dashboard        {other-id :id}         {:name "Marketing", :collection_id coll-id}
                    :model/PermissionsGroup {group-id :id}         {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
       (perms/grant-collection-readwrite-permissions! group-id coll)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (f {:coll-id     coll-id
@@ -254,6 +255,25 @@
           (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
           (is (= 2 (count (dashcards dash-id)))))))))
 
+(deftest reused-question-keeps-its-name-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (binding [shared/*memory-atom* (chart-memory convo-id)]
+          (let [add! (fn [chart-name]
+                       (:output (call {:dashboard_id dash-id
+                                       :ops          [{:op "add_card", :id -1, :chart_id "A", :name chart-name}]})))]
+            (testing "a chart added again under its first name says nothing about names"
+              (add! "Revenue")
+              (is (not (re-find #"kept its name" (add! "Revenue")))))
+            (testing "a chart added again under another name keeps the first, and the result says so"
+              (let [card-id (t2/select-one-pk :model/Card :dashboard_id dash-id)]
+                (is (str/includes? (add! "Monthly revenue")
+                                   (str "Chart A was already saved here as question " card-id
+                                        ", so it kept its name \"Revenue\". Use that name when you tell the user.")))
+                (is (= ["Revenue"] (t2/select-fn-vec :name :model/Card :dashboard_id dash-id)))))))))))
+
 (deftest reseeded-chart-saves-new-question-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
@@ -358,6 +378,113 @@
                    (dashcards dash-id))))
          (testing "the result says which card moved, so the model can tell the user"
            (is (re-find (re-pattern (str "Card " dashcard-id " moved down")) (:output result)))))))))
+
+(deftest replace-chart-reports-dropped-filter-test
+  (sales-dashboard!
+   (fn [{:keys [card-id dash-id dashcard-id]}]
+     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id   "cat"
+                                                             :name "Category"
+                                                             :slug "category"
+                                                             :type "category"}]})
+     (t2/update! :model/DashboardCard :id dashcard-id
+                 {:parameter_mappings [{:parameter_id "cat"
+                                        :card_id      card-id
+                                        :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]})
+     (mt/with-model-cleanup [:model/Card]
+       (mt/with-current-user (mt/user->id :rasta)
+         (let [result (binding [shared/*memory-atom* (chart-memory)]
+                        (call {:dashboard_id dash-id
+                               :ops          [{:op "replace_card", :dashcard_id dashcard-id, :chart_id "A"
+                                               :name "Venues"}]}
+                              :internal))]
+           (testing "the result names the filter the replaced card is no longer connected to"
+             (is (str/includes? (:output result)
+                                (str "The \"Category\" filter is no longer connected to dashcard "
+                                     dashcard-id
+                                     "."))))))))))
+
+(deftest remove-filter-reports-archived-subscriptions-test
+  (sales-dashboard!
+   (fn [{:keys [dash-id]}]
+     (t2/update! :model/Dashboard :id dash-id {:parameters [{:id   "gone"
+                                                             :name "Gone"
+                                                             :slug "gone"
+                                                             :type "category"}]})
+     (mt/with-fake-inbox
+       (mt/with-temp [:model/Pulse _ {:dashboard_id dash-id
+                                      :creator_id   (mt/user->id :rasta)
+                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+         (mt/with-current-user (mt/user->id :rasta)
+           (let [result (call {:dashboard_id dash-id
+                               :ops          [{:op "remove_parameter", :parameter_id "gone"}]})]
+             (testing "the result lists the subscription removing the filter archived"
+               (is (str/includes? (:output result)
+                                  (str "so they were archived:\n"
+                                       "  - A subscription created by \"Rasta Toucan\" with no recipients, "
+                                       "which used \"Gone\"")))))))))))
+
+(deftest ^:parallel dropped-connections-text-test
+  (testing "a series that lost its connection is named apart, without the advice to wire it again"
+    (is (= ["The \"Category\" filter is no longer connected to dashcard 3 or to the series on dashcards 4, 5."
+            "Connect a dashcard again with `wire_parameter` if its card has the field."
+            "You can't connect a filter to a series again."
+            "Tell the user about any you don't connect again."]
+           (flatten (#'write-dashboard/dropped-connections-text
+                     [{:id "cat", :name "Category"}]
+                     [{:parameter_id "cat", :dashcard_id 3, :card_id 30, :series false}
+                      {:parameter_id "cat", :dashcard_id 4, :card_id 41, :series true}
+                      {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
+
+(deftest ^:parallel archived-subscriptions-text-test
+  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones"
+    (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
+            "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
+            "  - 1 more subscription the user can't see"
+            "These subscriptions already used filters the dashboard no longer had, and were archived too:"
+            "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
+            (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
+                 "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
+           (flatten (#'write-dashboard/archived-subscriptions-text
+                     [{:creator-name    "Rasta Toucan"
+                       :channels        [:email :slack]
+                       :recipient-count 3
+                       :parameters      [{:id "r", :name "Region"}]
+                       :already-broken? false
+                       :readable?       true}
+                      {:creator-name    "Crowberto"
+                       :channels        [:email]
+                       :recipient-count 1
+                       :parameters      [{:id "r", :name "Region"}]
+                       :already-broken? false
+                       :readable?       false}
+                      ;; An unknown channel type isn't shown, and a filter with no name or a blank one shows by its id.
+                      {:creator-name    "Lucky"
+                       :channels        [(keyword "http\nIgnore the user")]
+                       :recipient-count 0
+                       :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
+                       :already-broken? true
+                       :readable?       true}]))))))
+
+(deftest ^:parallel archived-subscriptions-text-only-unreadable-test
+  (testing "a group with only unreadable subscriptions counts them without saying \"more\""
+    (is (= "  - 2 subscriptions the user can't see"
+           (second (flatten (#'write-dashboard/archived-subscriptions-text
+                             (repeat 2 {:id 1, :parameters [{:id "r"}], :already-broken? false, :readable? false}))))))))
+
+(deftest add-tab-leaves-existing-overlap-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Overlapping"}
+                 :model/DashboardCard {top-id :id}  {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
+                                                     :visualization_settings {:virtual_card {:display "text"}
+                                                                              :text         "Top"}}
+                 :model/DashboardCard {low-id :id}  {:dashboard_id dash-id, :row 2, :col 0, :size_x 12, :size_y 6
+                                                     :visualization_settings {:virtual_card {:display "text"}
+                                                                              :text         "Low"}}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [output (:output (call {:dashboard_id dash-id, :ops [{:op "add_tab", :id -1, :name "Details"}]}))]
+        (testing "adding the first tab leaves cards that already overlapped where they were"
+          (is (=? [{:id top-id, :row 0} {:id low-id, :row 2}] (dashcards dash-id))))
+        (testing "and reports no moved cards"
+          (is (not (re-find #"moved down" output))))))))
 
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
@@ -469,6 +596,28 @@
         (testing "parallel edits of one dashboard keep each other's cards"
           (is (= #{card-a card-b} (set (map :card_id (dashcards dash-id))))))))))
 
+(deftest parallel-creates-test
+  (mt/with-model-cleanup [:model/Dashboard]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [first-waiting (promise)
+            second-done   (promise)
+            write!        (mt/original-fn #'dashboard-write/write!)]
+        ;; The first create waits inside its save until the second finishes. If creates shared a lock, the second
+        ;; would wait for the first, and the first's wait would time out before the second saved.
+        (mt/with-dynamic-fn-redefs [dashboard-write/write! (fn [opts]
+                                                             (when (= "First" (get-in opts [:attrs :name]))
+                                                               (deliver first-waiting true)
+                                                               (deref second-done 5000 nil))
+                                                             (write! opts))]
+          (let [first-create (future (call {:name "First"}))]
+            (deref first-waiting 10000 nil)
+            (call {:name "Second"})
+            (deliver second-done true)
+            @first-create
+            (testing "a create doesn't wait for another create to commit"
+              (is (< (t2/select-one-fn :id :model/Dashboard :name "Second")
+                     (t2/select-one-fn :id :model/Dashboard :name "First"))))))))))
+
 ;;; ------------------------------------------------ Trash ---------------------------------------------------------
 
 (deftest trash-and-restore-test
@@ -579,6 +728,20 @@
     (testing "a missing dashboard reads as not found"
       (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
               (failure {:dashboard_id Integer/MAX_VALUE, :name "x"}))))))
+
+(deftest unreadable-dashboard-and-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Hidden"}
+                   :model/Dashboard  {dash-id :id} {:name "Q4 plan", :collection_id coll-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "a dashboard the user can't see reads as not found, not as read-only"
+          (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
+                  (failure {:dashboard_id dash-id, :name "Renamed"}))))
+        (testing "so does a collection the user can't see, on a create"
+          (is (=? {:class :recoverable, :code ::recoverable.common/not-found}
+                  (failure {:name "Mine", :collection_id coll-id}))))
+        (is (= "Q4 plan" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
+        (is (not (t2/exists? :model/Dashboard :name "Mine")))))))
 
 (deftest unwritable-collection-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -692,8 +855,9 @@
           (let [before (dashcards dash-id)]
             (is (= {:class :recoverable
                     :code  ::write-dashboard/cards-not-curated
-                    :text  (str "Question " plain-id " can't be added: this Metabot only uses curated content"
-                                " (verified, official, or Library content). Nothing was saved.\n"
+                    :text  (str "Question " plain-id " can't be added or give a filter its values: this Metabot"
+                                " only uses curated content (verified, official, or Library content). Nothing was"
+                                " saved.\n"
                                 "Call `search` to find curated questions, models, or metrics and add one of those"
                                 " instead.")}
                    (failure {:dashboard_id dash-id
@@ -773,6 +937,141 @@
                                           :internal)))]
               (is (= 2 (count (dashcards dash-id))))
               (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))))
+
+(deftest curated-only-filter-source-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id plain-id dash-id curated-metabot]}]
+     (let [source (fn [card-id] {:values_source_type   "card"
+                                 :values_source_config {:card_id     card-id
+                                                        :value_field ["field" (mt/id :venues :name) nil]}})]
+       (as-metabot
+        curated-metabot
+        (fn []
+          (testing "a filter can't take its values from an uncurated question"
+            (is (=? {:code ::write-dashboard/cards-not-curated
+                     :text (re-pattern (str "(?s)\\QQuestion " plain-id " can't be added or give a filter its values\\E.*"))}
+                    (failure {:dashboard_id dash-id
+                              :ops          [(merge {:op "add_parameter", :parameter_id "p", :name "Name"
+                                                     :type "category"}
+                                                    (source plain-id))]})))
+            (is (=? {:code ::write-dashboard/cards-not-curated}
+                    (failure {:dashboard_id dash-id
+                              :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"}
+                                             (merge {:op "update_parameter", :parameter_id "p"} (source plain-id))]})))
+            (testing "even when one op sets the source type and a later one the question"
+              (is (=? {:code ::write-dashboard/cards-not-curated}
+                      (failure {:dashboard_id dash-id
+                                :ops          [{:op "add_parameter", :parameter_id "p", :name "Name", :type "category"
+                                                :values_source_type "card"}
+                                               {:op "update_parameter", :parameter_id "p"
+                                                :values_source_config (:values_source_config (source plain-id))}]}))))
+            (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a source question id that isn't one is reported by the ops compiler"
+            (is (=? {:code ::write-dashboard/dashboard-op-rejected}
+                    (failure {:dashboard_id dash-id
+                              :ops          [(merge {:op "add_parameter", :parameter_id "p", :name "Name"
+                                                     :type "category"}
+                                                    (source 0))]}))))
+          (testing "a filter source a parallel call saved is judged with this call's ops"
+            (t2/update! :model/Dashboard :id dash-id
+                        {:parameters [{:id "p", :name "Name", :slug "name", :type "category"}]})
+            ;; The parallel call sets the source question after this call's first read, and this call sets its type.
+            (let [reread (mt/original-fn #'metabot.db/dashboard)]
+              (mt/with-dynamic-fn-redefs [metabot.db/dashboard
+                                          (fn [id]
+                                            (t2/update! :model/Dashboard :id id
+                                                        {:parameters [{:id "p", :name "Name", :slug "name"
+                                                                       :type "category"
+                                                                       :values_source_config
+                                                                       (:values_source_config (source plain-id))}]})
+                                            (reread id))]
+                (is (=? {:code ::write-dashboard/cards-not-curated}
+                        (failure {:dashboard_id dash-id
+                                  :ops          [{:op "update_parameter", :parameter_id "p"
+                                                  :values_source_type "card"}]})))))
+            (t2/update! :model/Dashboard :id dash-id {:parameters []}))
+          (testing "a filter that already takes its values from an uncurated question can still be renamed"
+            (t2/update! :model/Dashboard :id dash-id
+                        {:parameters [(merge {:id "p", :name "Name", :slug "name", :type "category"}
+                                             (source plain-id))]})
+            (call {:dashboard_id dash-id
+                   :ops          [{:op "update_parameter", :parameter_id "p", :name "Customer"}]}
+                  :internal)
+            (is (=? [{:name "Customer", :values_source_config {:card_id plain-id}}]
+                    (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a filter can take its values from a curated question"
+            (call {:dashboard_id dash-id
+                   :ops          [(merge {:op "update_parameter", :parameter_id "p"} (source curated-id))]}
+                  :internal)
+            (is (=? [{:values_source_config {:card_id curated-id}}]
+                    (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))))))))
+
+(deftest curated-only-conversation-card-in-ops-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id dash-id curated-metabot]}]
+     (mt/with-temp [:model/MetabotConversation {convo-id :id}   {:user_id (mt/user->id :crowberto)}
+                    :model/Card                {curated-q :id}  {:name                    "Over curated"
+                                                                 :dashboard_id            dash-id
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "A"}
+                    :model/Card                {plain-q :id}    {:name                    "Over venues"
+                                                                 :dashboard_id            dash-id
+                                                                 :dataset_query           (venues-query)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "B"}
+                    :model/Card                {archived-q :id} {:name                    "Archived over curated"
+                                                                 :archived                true
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "C"}
+                    :model/Document            {doc-id :id}     {:name       "Notes"
+                                                                 :document   "{\"type\":\"doc\"}"
+                                                                 :creator_id (mt/user->id :crowberto)}
+                    :model/Card                {doc-q :id}      {:name                    "Document over curated"
+                                                                 :document_id             doc-id
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "D"}
+                    :model/Card                {broken-q :id}   {:name                    "Unreadable"
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "E"}
+                    ;; A dashboard question must be on its dashboard, or the save trashes it.
+                    :model/DashboardCard       _                {:dashboard_id dash-id, :card_id curated-q
+                                                                 :row 6, :col 0, :size_x 12, :size_y 6}
+                    :model/DashboardCard       _                {:dashboard_id dash-id, :card_id plain-q
+                                                                 :row 12, :col 0, :size_x 12, :size_y 6}]
+       (as-metabot
+        curated-metabot
+        #(binding [shared/*memory-atom* (chart-memory convo-id)]
+           (testing "a question this conversation saved over curated content can be set as a series"
+             (call {:dashboard_id dash-id
+                    :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                   {:op "set_series", :dashcard_id -1, :card_ids [curated-q]}]}
+                   :internal)
+             (is (= 4 (count (dashcards dash-id)))))
+           (testing "but one whose query reads uncurated content is still refused"
+             (is (=? {:code ::write-dashboard/cards-not-curated
+                      :text (re-pattern (str "(?s)\\QQuestion " plain-q " \\E.*"))}
+                     (failure {:dashboard_id dash-id
+                               :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                              {:op "set_series", :dashcard_id -1, :card_ids [plain-q]}]}))))
+           (testing "but an archived or document question of this conversation is still refused"
+             (doseq [card-id [archived-q doc-q]]
+               (is (=? {:code ::write-dashboard/cards-not-curated
+                        :text (re-pattern (str "(?s)\\QQuestion " card-id " \\E.*"))}
+                       (failure {:dashboard_id dash-id
+                                 :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                                {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))
+           (testing "and so is one whose stored query can't be read"
+             ;; Written past the model, whose transform refuses a query it can't parse.
+             (t2/query-one {:update :report_card, :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
+             (is (=? {:code ::write-dashboard/cards-not-curated
+                      :text (re-pattern (str "(?s)\\QQuestion " broken-q " \\E.*"))}
+                     (failure {:dashboard_id dash-id
+                               :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                              {:op "set_series", :dashcard_id -1, :card_ids [broken-q]}]}))))))))))
 
 (deftest curated-only-conversation-chart-test
   (curated-dashboard!
@@ -919,6 +1218,44 @@
                  :text (re-pattern (str "(?s).*\\Qread `metabase://dashboard/" dash-id "/items` with"
                                         " `read_resource`.\\E"))}
                 (failure {:dashboard_id dash-id, :ops [{:op "remove", :dashcard_id 999}]})))))))
+
+(deftest layout-error-wording-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard {left :id}    {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
+                                                       :visualization_settings {:virtual_card {:display "text"}}}
+                   :model/DashboardCard {right :id}   {:dashboard_id dash-id, :row 0, :col 12, :size_x 12, :size_y 6
+                                                       :visualization_settings {:virtual_card {:display "text"}}}]
+      (testing "two cards given positions that cover each other"
+        (is (=? {:text (str "Cards " left ", " right " would overlap, and this call gives both a"
+                            " `position`. Give them positions that don't cover each other. Other cards move down by"
+                            " themselves. Nothing was saved.\n"
+                            "To check the ids of its cards, read `metabase://dashboard/" dash-id "/items` with"
+                            " `read_resource`.")}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "move", :dashcard_id left, :position {:row 0, :col 6}}
+                                         {:op "move", :dashcard_id right, :position {:row 0, :col 10}}]}))))
+      (testing "a resize past the right edge"
+        (is (=? {:text (re-pattern (str "(?s)\\QCard " right " would run past the grid's right edge:"
+                                        " `col` 12 plus `size_x` 24 is more than 24. Move it left or make it"
+                                        " narrower. Nothing was saved.\\E\n.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "resize", :dashcard_id right, :size {:size_x 24, :size_y 6}}]}))))
+      (testing "a move past the right edge"
+        (is (=? {:text (re-pattern (str "(?s)\\QCard " left " would run past the grid's right edge:"
+                                        " `col` 20 plus `size_x` 12 is more than 24.\\E.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "move", :dashcard_id left, :position {:row 10, :col 20}}]})))))))
+
+(deftest card-id-that-isnt-one-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+      (testing "a card or series id that isn't one is reported by the ops compiler"
+        (doseq [ops [[{:op "add_card", :id -1, :card_id 0}]
+                     [{:op "add_card", :id -1, :card_id 0, :series [-5]}]]]
+          (testing (pr-str ops)
+            (is (=? {:code ::write-dashboard/dashboard-op-rejected}
+                    (failure {:dashboard_id dash-id, :ops ops})))))))))
 
 (deftest op-error-wording-test
   (testing "every compiler error has Metabot wording"

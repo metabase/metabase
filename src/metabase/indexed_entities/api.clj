@@ -50,6 +50,10 @@
                                                             [:value_ref ::indexed-entities.schema/model-index.value-ref]]]
   (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
+    (when-not (= (:type model) :model)
+      (throw (ex-info (tru "Question {0} is not a model" model_id)
+                      {:model_id    model_id
+                       :status-code 400})))
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
                       {:model-id model_id})))
@@ -57,10 +61,10 @@
     (ensure-type :type/Integer pk_ref metadata)
     (ensure-type :type/Text value_ref metadata)
     ;; todo: do we care if there's already an index on that model?
-    (let [model-index (model-index/create {:model-id   model_id
-                                           :pk-ref     pk_ref
-                                           :value-ref  value_ref
-                                           :creator-id api/*current-user-id*})]
+    (let [model-index (first (model-index/create-model-indexes! [{:model-id   model_id
+                                                                  :pk-ref     pk_ref
+                                                                  :value-ref  value_ref
+                                                                  :creator-id api/*current-user-id*}]))]
       (analytics/track-event! :snowplow/model
                               {:event    :index-model-entities-enabled
                                :model-id model_id})
@@ -114,4 +118,5 @@
                     [:id ms/PositiveInt]]]
   (api/let-404 [model-index (indexed-entities.db/model-index id)]
     (api/write-check :model/Card (:model_id model-index))
-    (indexed-entities.db/delete-model-index! id)))
+    (model-index/delete-model-indexes! [id])
+    1))

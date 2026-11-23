@@ -1,14 +1,18 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.query :as app-db.query]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -95,7 +99,7 @@
                  :model/Card          {card-id-2 :id} {:name "card2"}
                  :model/Card          {card-id3 :id} {:name "card3"}]
     (let [upd-series (fn [series]
-                       (dashboard-card/update-dashboard-cards-series! {dashcard-id series})
+                       (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {dashcard-id series}))
                        (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name :model/Card, :id card-id))))]
       (is (= #{}
@@ -161,11 +165,10 @@
                 "ensure the card_id cannot be changed 4. ensure the dashboard_id cannot be changed")
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id} {}
-                   :model/DashboardCard {dashcard-id :id
-                                         :as dashboard-card} {:dashboard_id       dashboard-id
-                                                              :card_id            card-id
-                                                              :parameter_mappings [{:parameter_id "x"
-                                                                                    :target       [:dimension [:template-tag "x"]]}]}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+                                                           :card_id            card-id
+                                                           :parameter_mappings [{:parameter_id "x"
+                                                                                 :target       [:dimension [:template-tag "x"]]}]}
                    :model/Card          {card-id-1 :id}   {:name "Test Card 1"}
                    :model/Card          {card-id-2 :id}   {:name "Test Card 2"}]
       (testing "unmodified dashcard"
@@ -178,20 +181,20 @@
                  :visualization_settings {}
                  :series                 []}
                 (dashboard-card/retrieve-dashboard-card dashcard-id))))
-      (testing "return value from the update call should be nil"
-        (is (nil? (dashboard-card/update-dashboard-card!
-                   {:id                     dashcard-id
-                    :dashboard_id           nil
-                    :card_id                nil
-                    :size_x                 5
-                    :size_y                 3
-                    :row                    1
-                    :col                    1
-                    :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
-                    :inline_parameters      []
-                    :visualization_settings {}
-                    :series                 [card-id-2 card-id-1]}
-                   dashboard-card))))
+      (testing "return value from the update call is the ids of the changed rows"
+        (is (=? [dashcard-id]
+                (dashboard-card/update-dashboard-cards!
+                 [{:id                     dashcard-id
+                   :dashboard_id           nil
+                   :card_id                nil
+                   :size_x                 5
+                   :size_y                 3
+                   :row                    1
+                   :col                    1
+                   :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
+                   :inline_parameters      []
+                   :visualization_settings {}
+                   :series                 [card-id-2 card-id-1]}]))))
       (testing "validate db captured everything"
         (is (=? {:size_x                 5
                  :size_y                 3
@@ -217,43 +220,31 @@
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
     PUT /api/dashboard/:id/cards handler"
-    (mt/with-temp [:model/Dashboard     {dashboard-id :id :as dashboard} {}
-                   :model/Card          {card-id :id} {}
-                   :model/DashboardCard dashcard-1 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/DashboardCard dashcard-2 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/DashboardCard dashcard-3 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/Card          {series-id-1 :id} {:name "Series Card 1"}
-                   :model/Card          {series-id-2 :id} {:name "Series Card 2"}]
-      (let [dashboard (t2/hydrate dashboard [:dashcards :series :card])]
-        (testing "Should have fewer DB calls if there are no changes to the dashcards"
-          (t2/with-call-count [call-count]
-            (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
-            (is (= 1 (call-count)))))
-        (testing "Should have more calls if there are changes to the dashcards"
-          (t2/with-call-count [call-count]
-            (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                     :card_id card-id
-                                                     :row    1
-                                                     :col    2
-                                                     :size_x 3
-                                                     :size_y 4
-                                                     :series [{:id series-id-1}]}
-                                                    {:id     (:id dashcard-2)
-                                                     :card_id card-id
-                                                     :row    1
-                                                     :col    2
-                                                     :size_x 3
-                                                     :size_y 4
-                                                     :series [{:id series-id-2}]}
-                                                    {:id     (:id dashcard-3)
-                                                     :card_id card-id
-                                                     :row    1
-                                                     :col    2
-                                                     :size_x 3
-                                                     :size_y 4
-                                                     :series []}])
-            ;; this is usually 13, but it can be 14 sometimes in CI for some reason
-            (is (contains? #{13 14} (call-count)))))))))
+    (mt/with-temp [:model/Card {card-id :id}   {}
+                   :model/Card {series-id :id} {:name "Series Card"}]
+      (let [counted   (fn [n dashcard-changes]
+                        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+                          (let [dashcards (dashboard-card/create-dashboard-cards!
+                                           (for [i (range n)]
+                                             {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))]
+                            (t2/with-call-count [call-count]
+                              (dashboard/update-dashboard! dashboard-id
+                                                           {:dashcards (mapv #(merge (select-keys % [:id :card_id :row :col :size_x :size_y])
+                                                                                     dashcard-changes)
+                                                                             dashcards)})
+                              (call-count)))))
+            unchanged #(counted % {})
+            changed   #(counted % {:row 1 :col 2 :size_x 3 :size_y 4 :series [series-id]})]
+        (unchanged 1)
+        (changed 1)
+        (let [unchanged-2 (unchanged 2)
+              changed-2   (changed 2)]
+          (testing "Should take the same number of DB calls for any number of dashcards without changes"
+            (is (= unchanged-2 (unchanged 6))))
+          (testing "Should take the same number of DB calls for any number of dashcards with changes"
+            (is (= changed-2 (changed 6))))
+          (testing "Should have fewer DB calls if there are no changes to the dashcards"
+            (is (< unchanged-2 changed-2))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -463,3 +454,179 @@
         (mt/with-test-user :crowberto
           (is (= {(:id plain) true, (:id on-hidden) true, (:id series) true}
                  (answers :can_read mi/can-read?))))))))
+
+(deftest ^:parallel dashcard-layout-schema-test
+  (testing "DashboardCard has positive size and position that is not negative"
+    (doseq [bad [{:size_x 0} {:size_y -1} {:row -1} {:col -1}]]
+      (testing (pr-str bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard-card.update (assoc bad :id 1))))))
+    (is (mr/validate ::dashboards.schema/dashboard-card.update {:id 1 :size_x 4 :size_y 4 :row 0 :col 20}))))
+
+(deftest dashcard-dashboard-is-frozen-test
+  (testing "A DashboardCard does not move to another Dashboard"
+    (mt/with-temp [:model/Dashboard dash       {}
+                   :model/Dashboard other-dash {}
+                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
+                            (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:dashboard_id (u/the-id other-dash)})))
+      (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardCard :id (u/the-id dashcard)))))))
+
+(deftest dashcard-tab-belongs-to-dashboard-test
+  (testing "The tab of a DashboardCard belongs to its Dashboard, when it is inserted and when it changes"
+    (mt/with-temp [:model/Dashboard    dash      {}
+                   :model/Dashboard    other     {}
+                   :model/DashboardTab tab       {:dashboard_id (u/the-id dash)}
+                   :model/DashboardTab other-tab {:dashboard_id (u/the-id other)}
+                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id tab)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
+                            (dashboard-card/create-dashboard-cards! [{:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id other-tab)
+                                                                      :size_x 4 :size_y 4 :row 0 :col 0}])))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
+                            (dashboard-card/update-dashboard-cards! [{:id (u/the-id dashcard) :dashboard_tab_id (u/the-id other-tab)}])))
+      (is (= (u/the-id tab) (t2/select-one-fn :dashboard_tab_id :model/DashboardCard :id (u/the-id dashcard)))))))
+
+(deftest ^:parallel dashcard-parameter-mappings-schema-test
+  (testing "parameter mappings of DashboardCard are sequence of mappings"
+    (is (not (mr/validate ::dashboards.schema/dashboard-card.update
+                          {:id 1 :parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
+
+(deftest dashboard-card-writes-statement-count-test
+  (testing "Creating, updating and deleting DashboardCards takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                   :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id}
+                   :model/DashboardTab {other-tab-id :id} {:dashboard_id dashboard-id}
+                   :model/Card         {card-id :id}      {}]
+      (let [create-statements (fn [n]
+                                (t2/with-call-count [call-count]
+                                  (dashboard-card/create-dashboard-cards!
+                                   (for [i (range n)]
+                                     {:dashboard_id dashboard-id :dashboard_tab_id tab-id :card_id card-id
+                                      :row i :col 0 :size_x 4 :size_y 4}))
+                                  (call-count)))
+            update-statements (fn [n]
+                                (let [dashcards (dashboard-card/create-dashboard-cards!
+                                                 (for [i (range n)]
+                                                   {:dashboard_id dashboard-id :dashboard_tab_id tab-id :card_id card-id
+                                                    :row i :col 0 :size_x 4 :size_y 4}))]
+                                  (t2/with-call-count [call-count]
+                                    (dashboard-card/update-dashboard-cards!
+                                     (for [{:keys [id]} dashcards]
+                                       {:id id :dashboard_tab_id other-tab-id}))
+                                    (call-count))))
+            delete-statements (fn [n]
+                                (let [dashcards (dashboard-card/create-dashboard-cards!
+                                                 (for [i (range n)]
+                                                   {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))]
+                                  (t2/with-call-count [call-count]
+                                    (dashboard-card/delete-dashboard-cards! (mapv :id dashcards))
+                                    (call-count))))]
+        (create-statements 1)
+        (is (= (create-statements 2) (create-statements 6)))
+        (update-statements 1)
+        (testing "the same number of statements for any number of DashboardCards"
+          (is (= (update-statements 2) (update-statements 6))))
+        (delete-statements 1)
+        (is (= (delete-statements 2) (delete-statements 6)))))))
+
+(deftest dashboard-card-row-and-series-writes-statement-count-test
+  (testing "Updating DashboardCard rows and their series takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {}
+                   :model/Card      {series-id :id}    {}]
+      (let [dashcards!      (fn [n]
+                              (mapv :id (dashboard-card/create-dashboard-cards!
+                                         (for [i (range n)]
+                                           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))))
+            row-statements  (fn [n]
+                              (let [ids (dashcards! n)]
+                                (t2/with-call-count [call-count]
+                                  (dashboard-card/update-dashboard-cards! (mapv (fn [id] {:id id :size_x 3}) ids))
+                                  (call-count))))
+            series-statements (fn [n]
+                                (let [ids (dashcards! n)]
+                                  (t2/with-call-count [call-count]
+                                    (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) (zipmap ids (repeat [series-id]))))
+                                    (call-count))))]
+        (row-statements 1)
+        (testing "the same number of statements for any number of DashboardCards"
+          (is (= (row-statements 2) (row-statements 6))))
+        (series-statements 1)
+        (testing "the same number of statements for any number of DashboardCards"
+          (is (= (series-statements 2) (series-statements 6))))))))
+
+(deftest create-dashboard-cards!-rows-with-different-columns-test
+  (testing "DashboardCards given different sets of columns are all stored with the columns they give"
+    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                   :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id}
+                   :model/Card         {card-id :id}      {}]
+      (mt/with-model-cleanup [:model/DashboardCard]
+        (let [layout        {:dashboard_id dashboard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}
+              [tabbed bare] (dashboard-card/create-dashboard-cards! [(assoc layout :dashboard_tab_id tab-id)
+                                                                     layout])]
+          (is (=? {:dashboard_tab_id tab-id}
+                  (t2/select-one :model/DashboardCard :id (:id tabbed))))
+          (is (=? {:dashboard_tab_id nil}
+                  (t2/select-one :model/DashboardCard :id (:id bare)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                 :model/DashboardTab {tab-id :id} {:dashboard_id dashboard-id}
+                 :model/DashboardTab {other-tab-id :id} {:dashboard_id dashboard-id}
+                 :model/Card {card-id :id} {}
+                 :model/Card {series-id :id} {}
+                 :model/Card {other-series-id :id} {}]
+    (mt/with-model-cleanup [:model/DashboardCard]
+      (let [rows    (fn [n]
+                      (mapv (fn [i] {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4
+                                     :dashboard_tab_id (if (even? i) tab-id other-tab-id)
+                                     :series [series-id]})
+                            (range n)))
+            fresh!  (fn [n] (mapv :id (dashboard-card/create-dashboard-cards! (rows n))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating dashcards with series"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-card/create-dashboard-cards! rows))))))
+        (testing "updating dashcards, some already holding the new values"
+          (counted (fn [n]
+                     (let [ids (fresh! n)
+                           row (fn [id] {:id id :size_x 5 :dashboard_tab_id other-tab-id :series [other-series-id]})]
+                       (dashboard-card/update-dashboard-cards! (mapv row (take-nth 2 ids)))
+                       (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
+        (testing "deleting dashcards"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-card/delete-dashboard-cards! ids))))))))))
+
+(deftest dashboard-card-writes-across-partitions-test
+  (testing "a create, update and delete that cross the partition size write every DashboardCard"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card {card-id :id} {}]
+      (with-redefs [app-db.query/create-partition-size 2
+                    app-db.query/update-partition-size 2
+                    app-db.query/delete-partition-size 2]
+        (let [ids (mapv :id (dashboard-card/create-dashboard-cards!
+                             (mapv (fn [i] {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}) (range 5))))]
+          (is (= 5 (count ids)))
+          (is (= (set ids) (set (dashboard-card/update-dashboard-cards! (mapv (fn [id] {:id id :size_x 7}) ids)))))
+          (is (= #{7} (set (t2/select-fn-vec :size_x :model/DashboardCard :id [:in ids]))))
+          (dashboard-card/delete-dashboard-cards! ids)
+          (is (zero? (t2/count :model/DashboardCard :id [:in ids]))))))))
+
+(deftest internal-dashboard-question-checks-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}
+                 :model/Card       {live-id :id}       {:dashboard_id dashboard-id :collection_id collection-id}
+                 :model/Card       {archived-id :id}   {:dashboard_id dashboard-id :collection_id collection-id
+                                                        :archived true :archived_directly false}]
+    (testing "a user who cannot write the Collection is refused the archive of an unused dashboard question"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                              (dashboard-card/check-archive-internal-dashboard-questions dashboard-id [])))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                              (dashboard-card/check-unarchive-internal-dashboard-questions
+                               dashboard-id [{:card_id archived-id}])))))
+    (testing "a user who can write the Collection passes, and the checks write nothing"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (do (dashboard-card/check-archive-internal-dashboard-questions dashboard-id []) true))
+        (is (do (dashboard-card/check-unarchive-internal-dashboard-questions dashboard-id [{:card_id archived-id}]) true))
+        (is (false? (t2/select-one-fn :archived :model/Card :id live-id)))
+        (is (true? (t2/select-one-fn :archived :model/Card :id archived-id)))))))
