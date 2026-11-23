@@ -9,11 +9,12 @@ import {
   waitFor,
 } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
-import { checkNotNull } from "metabase/utils/types";
+import Question from "metabase-lib/v1/Question";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -23,7 +24,11 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const ordersQuestion = Question.create({
+  DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+  DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+  metadata,
+});
 
 type SetupOpts = Partial<ModelCacheRefreshStatus> & {
   waitForSectionAppearance?: boolean;
@@ -35,7 +40,7 @@ async function setup({
   canManageDB = true,
   ...cacheInfo
 }: SetupOpts = {}) {
-  const question = ordersTable.question();
+  const question = ordersQuestion;
   const model = question.setCard({
     ...question.card(),
     id: 1,

@@ -2,18 +2,22 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-permissions.impl-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.fn :as mu.fn]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -23,53 +27,43 @@
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
 
-(deftest ^:parallel card-in-collection-test
-  (mt/with-temp [:model/Collection collection]
-    (testing "Shouldn't be able to read a Card not in Collection without permissions"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{})]
-          (is (not (mi/can-read? card)))))
-      (testing "...or one in a Collection either!"
-        (mt/with-temp [:model/Card card (card-in-collection collection)]
-          (binding [*current-user-permissions-set* (delay #{})]
-            (is (not (mi/can-read? card)))))))
-    (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you have perms for some other Collection"
-          (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you only have Root Collection perms"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-          (is (mi/can-write? card)))
-        (testing "...root Collection Read Perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for another collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
-              (is (not (mi/can-write? card))))))))
-    (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
-          (is (mi/can-write? card)))
-        (testing "...Collection read perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for the Root Collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-              (is (not (mi/can-write? card))))))))))
+(deftest card-in-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Collection other      {}
+                   :model/Card       root-card  (card)
+                   :model/Card       card       (card-in-collection collection)]
+      (letfn [(can-read? [card]  (mi/can-read? (t2/hydrate card :can_read)))
+              (can-write? [card] (mi/can-write? (t2/hydrate card :can_write)))]
+        (mt/with-test-user :rasta
+          (testing "without permissions, neither Card is readable"
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card))))
+          (testing "permissions for other Collection give nothing"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) other)
+            (is (false? (can-read? root-card)))
+            (is (false? (can-read? card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "root Collection read permissions make root Card readable, not writable, and not Card in Collection"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-read? root-card)))
+            (is (false? (can-write? root-card)))
+            (is (false? (can-read? card))))
+          (testing "root Collection write permissions make root Card writable, and not Card in Collection"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+            (is (true? (can-write? root-card)))
+            (is (false? (can-write? card))))
+          (testing "Collection read permissions make its Card readable, not writable"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (is (true? (can-read? card)))
+            (is (false? (can-write? card))))
+          (testing "Collection write permissions make its Card writable"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+            (is (true? (can-write? card)))))))))
 
 (defn- native [query]
-  {:database 1
+  {:database (mt/id)
    :type     :native
    :native   {:query query}})
 
@@ -97,8 +91,7 @@
                    :model/Table    table {:db_id (u/the-id db) :schema nil}
                    :model/Field    _     {:table_id (u/the-id table)}]
       (mt/with-no-data-perms-for-all-users!
-        (binding [*current-user-permissions-set* (atom nil)
-                  *current-user-id*              (mt/user->id :rasta)]
+        (mt/with-current-user (mt/user->id :rasta)
           (is (= {:perms/view-data      {(u/the-id table) :unrestricted}
                   :perms/create-queries {(u/the-id table) :query-builder}}
                  (query-perms/required-perms-for-query
@@ -134,7 +127,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -145,7 +138,7 @@
                                      :dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
-      (is (= {:paths #{(permissions.path/collection-read-path collection)}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -157,7 +150,7 @@
                                       :type     :query
                                       :query    {:source-table (mt/id :checkins)
                                                  :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -167,7 +160,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :native
                                                      :native   {:query "SELECT * FROM CHECKINS"}}}]
-      (is (= {:paths #{"/collection/root/read/"}}
+      (is (= {:source-card-ids #{(u/the-id card)}}
              (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
@@ -186,8 +179,31 @@
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
     (is (= {:perms/create-queries {0 :query-builder}}
            (query-perms/required-perms-for-query
-            (mt/mbql-query venues
-              {:filter [:WOW 100 200]}))))))
+            (assoc-in (lib/query (mt/metadata-provider) (mt/mbql-query venues))
+                      [:stages 0 :filters]
+                      [[:WOW {:lib/uuid (str (random-uuid))} 100 200]]))))))
+
+(deftest ^:parallel query-that-cannot-be-normalized-test
+  (testing "a query that cannot be converted to MBQL 5 is refused, even for an admin, with or without schemas"
+    ;; written out by hand because they must not be valid queries
+    (doseq [query    [{:database (mt/id), :type :native, :native {:query "SELECT 1"}, :stages []}
+                      {:lib/type "mbql/query", :database (mt/id), :type "native"
+                       :stages   [{:lib/type "mbql.stage/native", :native "SELECT 1"}]}
+                      {:type :native, :native {:query "SELECT 1"}}
+                      {:database (mt/id)}
+                      {:database (mt/id), :type :internal, :fn "x"}]
+            enforce? [true false]]
+      (testing (pr-str query enforce?)
+        (binding [mu.fn/*enforce* enforce?]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                (query-perms/required-perms-for-query query)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                (query-perms/query->source-ids query)))
+          (mt/with-test-user :crowberto
+            (is (false? (query-perms/can-run-query? query)))
+            (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {:table-ids #{(mt/id :venues)}})))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
+                                  (query-perms/can-run-query? query false true)))))))))
 
 (deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
@@ -245,8 +261,263 @@
                  (qp.preprocess/preprocess
                   query)))))))))
 
+(defn- orders-joining-products-query
+  "An MBQL 5 query of the ORDERS Table of the mock metadata provider, with a join against its PRODUCTS Table."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/join (lib/join-clause (meta/table-metadata :products)
+                                 [(lib/= (meta/field-metadata :orders :product-id)
+                                         (meta/field-metadata :products :id))]))))
+
+(defn- native-orders-query
+  "A native MBQL 5 query against the mock metadata provider."
+  []
+  (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS"))
+
+(def ^:private first-stage [:stages 0])
+
+(def ^:private second-stage [:stages 1])
+
+(def ^:private join-stage
+  "The path of the stage of the join in [[orders-joining-products-query]]."
+  [:stages 0 :joins 0 :stages 0])
+
+(defn- from-card
+  "`query` with the stage at `stage-path` marked as a stage of the Card with `card-id`, the way preprocessing marks
+  the stages it puts in place of a `:source-card`."
+  [query stage-path card-id]
+  (assoc-in query (conj stage-path :qp/stage-is-from-source-card) card-id))
+
+(defn- sandboxed
+  "`query` with the stage at `stage-path` marked as a sandboxed stage for the Table with `table-id`, the way
+  sandboxing marks the stages it puts in place of a read of that Table."
+  [query stage-path table-id]
+  (assoc-in query (conj stage-path :query-permissions/sandboxed-table) table-id))
+
+(defn- joining-native-products
+  "`query`, an [[orders-joining-products-query]], with the join reading a native query in place of PRODUCTS."
+  [query]
+  (assoc-in query
+            [:stages 0 :joins 0 :stages]
+            (:stages (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS"))))
+
+(deftest ^:parallel query->source-ids-ad-hoc-test
+  (testing "an ad-hoc query needs query permissions for every Table it reads, the ones it joins included"
+    (is (= {:table-ids       #{(meta/id :orders) (meta/id :products)}
+            :table-query-ids #{(meta/id :orders) (meta/id :products)}}
+           (query-perms/query->source-ids (orders-joining-products-query)))))
+  (testing "a `:source-card` that preprocessing has not resolved adds no source IDs"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Orders"
+                        :database-id   (meta/id)
+                        :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :orders))}]})]
+      (is (nil? (query-perms/query->source-ids (lib/query mp (lib.metadata/card mp 1))))))))
+
+(deftest ^:parallel query->source-ids-card-test
+  (testing "a stage of a Card is read with the permissions of the Card"
+    (testing "and so is a join inside it"
+      (is (= {:card-ids  #{1}
+              :table-ids #{(meta/id :orders) (meta/id :products)}}
+             (query-perms/query->source-ids
+              (from-card (orders-joining-products-query) first-stage 1)))))
+    (testing "and so is a stage that feeds into it"
+      (is (= {:card-ids  #{1}
+              :table-ids #{(meta/id :orders) (meta/id :products)}}
+             (query-perms/query->source-ids
+              (-> (orders-joining-products-query)
+                  lib/append-stage
+                  (from-card second-stage 1))))))
+    (testing "but not a join in a later stage, which is ad hoc"
+      (is (= {:card-ids        #{1}
+              :table-ids       #{(meta/id :orders) (meta/id :products) (meta/id :people)}
+              :table-query-ids #{(meta/id :people)}}
+             (query-perms/query->source-ids
+              (-> (orders-joining-products-query)
+                  (from-card first-stage 1)
+                  lib/append-stage
+                  (lib/join -1 (lib/join-clause (meta/table-metadata :people)
+                                                [(lib/= (meta/field-metadata :orders :user-id)
+                                                        (meta/field-metadata :people :id))])))))))
+    (testing "a Card joined to an ad-hoc query does not cover the Table the query reads"
+      (is (= {:card-ids        #{1}
+              :table-ids       #{(meta/id :orders) (meta/id :products)}
+              :table-query-ids #{(meta/id :orders)}}
+             (query-perms/query->source-ids
+              (from-card (orders-joining-products-query) join-stage 1)))))))
+
+(deftest ^:parallel query->source-ids-sandbox-test
+  (testing "a sandboxed stage needs query permissions for the sandboxed Table, not for the Table the Sandbox reads"
+    (is (= {:table-ids       #{(meta/id :orders) (meta/id :products)}
+            :table-query-ids #{(meta/id :orders)}}
+           (query-perms/query->source-ids
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                (sandboxed first-stage (meta/id :orders))
+                lib/append-stage)))))
+  (testing "a stage that feeds into a sandboxed stage is part of the Sandbox"
+    (is (= {:table-ids       #{(meta/id :orders) (meta/id :products)}
+            :table-query-ids #{(meta/id :orders)}}
+           (query-perms/query->source-ids
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                lib/append-stage
+                (sandboxed second-stage (meta/id :orders))))))
+    (testing "even when it is a sandboxed stage of the same Sandbox itself"
+      (is (= {:table-ids       #{(meta/id :orders) (meta/id :products)}
+              :table-query-ids #{(meta/id :orders)}}
+             (query-perms/query->source-ids
+              (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  lib/append-stage
+                  (sandboxed first-stage (meta/id :orders))
+                  (sandboxed second-stage (meta/id :orders))
+                  lib/append-stage))))))
+  (testing "a native Sandbox does not need native permissions"
+    (is (= {:table-ids       #{(meta/id :orders)}
+            :table-query-ids #{(meta/id :orders)}}
+           (query-perms/query->source-ids
+            (-> (native-orders-query)
+                (sandboxed first-stage (meta/id :orders))
+                lib/append-stage)))))
+  (testing "a sandboxed stage of a Card is read with the permissions of the Card"
+    (is (= {:card-ids  #{1}
+            :table-ids #{(meta/id :orders)}}
+           (query-perms/query->source-ids
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (sandboxed first-stage (meta/id :orders))
+                lib/append-stage
+                (from-card second-stage 1)))))))
+
+(deftest ^:parallel query->source-ids-sandbox-and-join-test
+  (testing "a join of a sandboxed stage feeds into it, so it is part of the Sandbox"
+    (is (= {:table-ids       #{(meta/id :orders) (meta/id :products) (meta/id :people)}
+            :table-query-ids #{(meta/id :people)}}
+           (query-perms/query->source-ids
+            (sandboxed (orders-joining-products-query) first-stage (meta/id :people)))))
+    (testing "but a native query it joins is still one the user would need native permissions for"
+      (is (= {:table-ids       #{(meta/id :orders) (meta/id :people)}
+              :table-query-ids #{(meta/id :people)}
+              :native?         true}
+             (query-perms/query->source-ids
+              (-> (orders-joining-products-query)
+                  joining-native-products
+                  (sandboxed first-stage (meta/id :people))))))))
+  (testing "a sandboxed stage in a join needs query permissions for the sandboxed Table"
+    (testing "next to the Table an ad-hoc query reads"
+      (is (= {:table-ids       #{(meta/id :orders) (meta/id :products) (meta/id :people)}
+              :table-query-ids #{(meta/id :orders) (meta/id :people)}}
+             (query-perms/query->source-ids
+              (sandboxed (orders-joining-products-query) join-stage (meta/id :people))))))
+    (testing "but not when the join is inside a stage of a Card"
+      (is (= {:card-ids  #{1}
+              :table-ids #{(meta/id :orders) (meta/id :products) (meta/id :people)}}
+             (query-perms/query->source-ids
+              (-> (orders-joining-products-query)
+                  (sandboxed join-stage (meta/id :people))
+                  (from-card first-stage 1))))))))
+
+(deftest ^:parallel query->source-ids-native-test
+  (testing "a native query needs native permissions"
+    (is (= {:native? true}
+           (query-perms/query->source-ids (native-orders-query)))))
+  (testing "and so does an MBQL query on top of a native stage"
+    (is (= {:native? true}
+           (query-perms/query->source-ids (lib/append-stage (native-orders-query))))))
+  (testing "and so does a query joining a native stage"
+    (is (= {:table-ids       #{(meta/id :orders)}
+            :table-query-ids #{(meta/id :orders)}
+            :native?         true}
+           (query-perms/query->source-ids
+            (joining-native-products (orders-joining-products-query))))))
+  (testing "the native query of a Card is read with the permissions of the Card"
+    (is (= {:card-ids #{1}}
+           (query-perms/query->source-ids
+            (lib/append-stage (from-card (native-orders-query) first-stage 1)))))
+    (testing "when it feeds into a stage of the Card"
+      (is (= {:card-ids #{1}}
+             (query-perms/query->source-ids
+              (-> (native-orders-query)
+                  lib/append-stage
+                  (from-card second-stage 1))))))
+    (testing "when a stage of the Card joins it"
+      (is (= {:card-ids  #{1}
+              :table-ids #{(meta/id :orders)}}
+             (query-perms/query->source-ids
+              (-> (orders-joining-products-query)
+                  joining-native-products
+                  (from-card first-stage 1))))))))
+
+(deftest ^:parallel query->source-ids-native-only-query-test
+  (testing "a query that is one native stage and nothing else needs native permissions whatever keys the stage has"
+    (doseq [query [(from-card (native-orders-query) first-stage 1)
+                   (sandboxed (native-orders-query) first-stage (meta/id :orders))]]
+      (is (=? {:native? true}
+              (query-perms/query->source-ids query)))
+      (is (=? {:perms/create-queries :query-builder-and-native, :perms/view-data :unrestricted}
+              (query-perms/required-perms-for-query query :already-preprocessed? true))))))
+
+(deftest ^:parallel native-query-that-cannot-be-preprocessed-test
+  (testing (str "a query with a native stage that cannot be preprocessed, such as one with a template tag that has no "
+                "value, still requires native permissions")
+    (doseq [query [{:database (mt/id)
+                    :type     :native
+                    :native   {:query         "SELECT * FROM venues WHERE id = {{id}}"
+                               :template-tags {"id" {:name "id", :display-name "ID", :type :text}}}}
+                   (lib/append-stage (lib/native-query (mt/metadata-provider) "SELECT * FROM venues WHERE id = {{id}}"))]]
+      (testing (pr-str query)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating permissions"
+                              (query-perms/required-perms-for-query query :throw-exceptions? true)))
+        (is (= {:perms/create-queries :query-builder-and-native
+                :perms/view-data      :unrestricted}
+               (query-perms/required-perms-for-query query)))))))
+
+(defn- native-queries-that-cannot-be-preprocessed
+  [stage-key]
+  (let [mp       (mt/metadata-provider)
+        unfilled (lib/native-query mp "SELECT * FROM venues WHERE id = {{id}}")]
+    [(assoc-in unfilled [:stages 0 stage-key] 1)
+     (assoc-in (lib/append-stage unfilled) [:stages 0 stage-key] 1)
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+         (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :checkins)) [(lib/= 1 1)]))
+         (assoc-in [:stages 0 :joins 0 :stages] (:stages (lib/native-query mp "SELECT * FROM checkins")))
+         (assoc-in [:stages 0 :joins 0 :stages 0 stage-key] 1)
+         (assoc-in [:stages 0 :source-table] Integer/MAX_VALUE))
+     ;; written out by hand because it has to be legacy MBQL
+     {:database (mt/id)
+      :type     :native
+      :native   {:query         "SELECT * FROM venues WHERE id = {{id}}"
+                 :template-tags {"id" {:name "id", :display-name "ID", :type :text}}
+                 stage-key      1}}]))
+
+(deftest ^:parallel native-query-with-keys-only-the-qp-sets-that-cannot-be-preprocessed-test
+  (testing "the native stage of a query that cannot be preprocessed requires native permissions whatever keys it has"
+    (doseq [stage-key [:qp/stage-is-from-source-card :query-permissions/sandboxed-table]
+            query     (native-queries-that-cannot-be-preprocessed stage-key)
+            enforce?  [true false]]
+      (testing (pr-str stage-key enforce? (dissoc query :lib/metadata))
+        (binding [mu.fn/*enforce* enforce?]
+          (is (= {:perms/create-queries :query-builder-and-native
+                  :perms/view-data      :unrestricted}
+                 (query-perms/required-perms-for-query query))))))))
+
+(deftest native-query-with-keys-only-the-qp-sets-needs-native-permission-test
+  (testing "a key that only the QP sets does not let a user run or save a native query that cannot be preprocessed"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (let [grant! #(perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries %)]
+        (mt/with-test-user :rasta
+          (doseq [stage-key [:qp/stage-is-from-source-card :query-permissions/sandboxed-table]
+                  query     (native-queries-that-cannot-be-preprocessed stage-key)]
+            (testing (pr-str stage-key (dissoc query :lib/metadata))
+              (grant! :query-builder)
+              (is (false? (query-perms/can-run-query? query)))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot save this Question"
+                                    (query-perms/check-run-permissions-for-query query)))
+              (grant! :query-builder-and-native)
+              (is (true? (query-perms/can-run-query? query)))
+              (is (nil? (query-perms/check-run-permissions-for-query query))))))))))
+
 (deftest ^:parallel query->resolved-source-ids-test
-  (testing "table-sourced queries behave like query->source-table-ids"
+  (testing "table-sourced queries resolve to their source table"
     (is (= #{(mt/id :venues)}
            (:table-ids (query-perms/query->resolved-source-ids (mt/mbql-query venues))))))
   (testing "card-sourced queries resolve to the card's underlying source table"
@@ -329,13 +600,13 @@
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted
                 :card-ids             #{card-1-id card-2-id}
-                :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                        (format "/collection/%d/read/" collection-2-id)}}
+                :source-card-ids      #{card-1-id card-2-id}}
                (query-perms/required-perms-for-query
                 {:database                              (mt/id)
                  :type                                  :native
-                 :native                                "SELECT * FROM (SELECT * FROM whatever);"
-                 :query-permissions/referenced-card-ids #{card-1-id card-2-id}}))))
+                 :native                                {:query "SELECT * FROM (SELECT * FROM whatever);"}
+                 :query-permissions/referenced-card-ids #{card-1-id card-2-id}}
+                :already-preprocessed? true))))
       (testing "MBQL query with native source queries"
         (let [native-query {:database (mt/id)
                             :type     :query
@@ -348,15 +619,13 @@
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
                   :card-ids             #{card-1-id card-2-id}
-                  :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                          (format "/collection/%d/read/" collection-2-id)}}
+                  :source-card-ids      #{card-1-id card-2-id}}
                  (query-perms/required-perms-for-query native-query :already-preprocessed? true)))
           (testing "MBQL 5 query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
                     :card-ids             #{card-1-id card-2-id}
-                    :paths                #{(format "/collection/%d/read/" collection-1-id)
-                                            (format "/collection/%d/read/" collection-2-id)}}
+                    :source-card-ids      #{card-1-id card-2-id}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
                                (lib/->mbql5 native-query))

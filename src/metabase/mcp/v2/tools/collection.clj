@@ -9,6 +9,7 @@
   (:require
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
+   [metabase.collections.schema :as collections.schema]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
@@ -91,7 +92,7 @@
         description     (assoc :description description)
         parent-id       (assoc :parent_id parent-id)
         coll-namespace  (assoc :namespace coll-namespace)
-        authority_level (assoc :authority_level authority_level))))))
+        authority_level (assoc :authority_level (keyword authority_level)))))))
 
 (defn- update!
   [id {:keys [description parent_id archived authority_level], coll-name :name, :as args}]
@@ -106,7 +107,7 @@
         (contains? args :description)     (assoc :description description)
         (contains? args :parent_id)       (assoc :parent_id (v2.resolve/resolve-collection-id parent_id))
         (contains? args :archived)        (assoc :archived (boolean archived))
-        (contains? args :authority_level) (assoc :authority_level authority_level))))))
+        (contains? args :authority_level) (assoc :authority_level (some-> authority_level keyword)))))))
 
 (def ^:private collection-write-args-schema
   [:map {:closed true}
@@ -118,8 +119,8 @@
     [:maybe [:or
              [:int {:description "Numeric id of the collection to update."}]
              [:string {:description "21-character entity_id of the collection to update."}]]]]
-   [:name {:optional true}
-    [:maybe [:string {:min 1 :description "Required on create; editable on update: display name of the collection."}]]]
+   [:name {:optional true :description "Required on create; editable on update: display name of the collection."}
+    [:maybe ::collections.schema/collection.name]]
    [:description {:optional true}
     [:maybe [:string {:min 1 :description (str "Optional human-readable description. To remove one, name it in "
                                                "`clear` — `clear: [\"description\"]`.")}]]]

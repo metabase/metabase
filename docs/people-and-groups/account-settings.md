@@ -31,7 +31,7 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 ## Two-factor authentication
 
-{% include plans-blockquote.html feature="Two-factor authentication" %}
+> Two-factor authentication is available on the Starter plan on Metabase Cloud, and on all Pro and Enterprise plans (both self-hosted and on Metabase Cloud).
 
 If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see an **Authentication** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
@@ -71,7 +71,7 @@ The login history lists each login, along with some location information (if ava
 
 ### A note about new login emails
 
-Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know.
+Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know. Admins of self-hosted Metabases can turn off these emails with the [`MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`](../configuring-metabase/environment-variables.md#mb_send_email_on_first_login_from_new_device) environment variable.
 
 ## Disable animations in Metabase
 

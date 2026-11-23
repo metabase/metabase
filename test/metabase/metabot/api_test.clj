@@ -153,7 +153,11 @@
                             :data_version 2}
                            {:total_tokens  pos-int?
                             :role          :assistant
-                            :data          [{:type "step-start"}
+                            ;; the <context> block sent before the user's message comes first, so the
+                            ;; next turn can send that message again with the same bytes
+                            :data          [{:type "data-context"
+                                             :data {:block #"(?s)<context>.*</context>\n" :full true}}
+                                            {:type "step-start"}
                                             {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version  2
                             ;; the provider truncated this turn, so the row records why it stopped
@@ -801,6 +805,15 @@
                          :source_type "table"
                          :positive    true}))))))
 
+(deftest ^:parallel source-feedback-refuses-unsupported-source-type-test
+  (testing "POST /metabot/source-feedback refuses a source type other than a table, card or model"
+    (is (=? {:errors {:source_type some?}}
+            (mt/user-http-request :rasta :post 400 "metabot/source-feedback"
+                                  {:message_id  (str (random-uuid))
+                                   :source_id   42
+                                   :source_type "dashboard"
+                                   :positive    true})))))
+
 (deftest source-feedback-returns-no-content-test
   (testing "POST /metabot/source-feedback returns 204 after persisting feedback"
     (let [conversation-id (str (random-uuid))
@@ -1214,12 +1227,14 @@
             (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                   (agent-request conversation-id "follow-up-prompt"
                                                  :parent_message_id parent-id))
-            (let [msgs (input-messages (last @requests))]
+            (let [[sent-prompt] (input-messages (first @requests))
+                  msgs          (input-messages (last @requests))]
               (is (= 2 (count @requests)))
-              (is (= [[:user "prior-user-prompt"]
+              (is (=? [:user #"(?s)<context>.*</context>\nprior-user-prompt"] sent-prompt))
+              (is (= [sent-prompt
                       [:assistant "prior-assistant-reply"]]
                      (take 2 msgs))
-                  "prior turn replayed with the right roles, order, and content")
+                  "prior turn replayed with the right roles, order, and content, the prompt as it was sent")
               (is (= 3 (count msgs))
                   "exactly prior user + prior assistant + new prompt — no duplicated turns")
               (is (= :user (first (nth msgs 2))))
@@ -1345,33 +1360,6 @@
     (is (= {"unknown" {:prompt 50 :completion 10}}
            (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 50 :completionTokens 10}}])))))
-
-(deftest combine-text-parts-xf-test
-  (testing "passes through non-text parts"
-    (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :tool, :id 1} {:type :tool, :id 2}]))))
-  (testing "combines consecutive text parts"
-    (is (= [{:type :text, :text "hello world"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "hello "}
-                  {:type :text, :text "world"}]))))
-  (testing "combines multiple runs"
-    (is (= [{:type :text, :text "ab"}
-            {:type :tool, :id 1}
-            {:type :text, :text "cd"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "a"}
-                  {:type :text, :text "b"}
-                  {:type :tool, :id 1}
-                  {:type :text, :text "c"}
-                  {:type :text, :text "d"}]))))
-  (testing "handles empty input"
-    (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
-  (testing "handles single text part"
-    (is (= [{:type :text, :text "solo"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "solo"}])))))
 
 (defn- start-and-finalize-with-provider!
   "Helper: run start-turn! + finalize-assistant-turn! under `provider`, return the
@@ -1609,7 +1597,8 @@
   (testing "Native queries are properly adjusted"
     (let [mp (mt/metadata-provider)
           native (lib/native-query mp "select * from orders")
-          legacy (lib.convert/->legacy-MBQL native)
+          ;; existing usage -- do not use going forward
+          legacy #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL native)
           items  [{:type "adhoc" :query legacy}
                   {:type "dashboard"}
                   {:type "model" :query legacy :chart_configs [{:query legacy}]}]

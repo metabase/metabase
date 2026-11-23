@@ -19,7 +19,7 @@
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
-   [metabase.query-processor.db :as query-processor.db]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -54,7 +54,7 @@
   possibly waiting for a connection, so then the batch is dropped."
   [query-executions]
   (try
-    (query-processor.db/insert-query-executions! query-executions)
+    (query-execution/create-query-executions! query-executions)
     (catch Throwable e
       (if (sql-errors/row-rejected? e)
         (do
@@ -62,7 +62,7 @@
                      (count query-executions) (ex-message e))
           (doseq [query-execution query-executions]
             (try
-              (query-processor.db/insert-query-executions! [query-execution])
+              (query-execution/create-query-executions! [query-execution])
               (catch Throwable e
                 (log/errorf "Error saving query execution info: %s" (ex-message e))))))
         (log/errorf "Error saving %d QueryExecution(s): %s" (count query-executions) (ex-message e))))))

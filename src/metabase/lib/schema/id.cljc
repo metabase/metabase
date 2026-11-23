@@ -160,8 +160,9 @@
   :string)
 
 (mr/def ::external-dashcard
-  "A DashboardCard as serialization references it, as `[dashboard-entity-id dashcard-entity-id]`."
-  [:tuple ::external-dashboard :string])
+  "A DashboardCard as serialization references it, by entity id, or as `[dashboard-entity-id dashcard-entity-id]` in
+  older exports."
+  [:or :string [:tuple ::external-dashboard :string]])
 
 (mr/def ::external-user
   "A User as serialization references it, by email."
@@ -188,8 +189,9 @@
   :string)
 
 (mr/def ::external-dashboard-tab
-  "A DashboardTab as serialization references it, as `[dashboard-entity-id tab-entity-id]`."
-  [:tuple ::external-dashboard :string])
+  "A DashboardTab as serialization references it, by entity id, or as `[dashboard-entity-id tab-entity-id]` in older
+  exports."
+  [:or :string [:tuple ::external-dashboard :string]])
 
 (mr/def ::external-transform-tag
   "A TransformTag as serialization references it, by entity id."
@@ -198,6 +200,22 @@
 (mr/def ::external-sandbox
   "A Sandbox as serialization references it, by entity id."
   :string)
+
+(mr/def ::database-or-older-export-id
+  "A Database id, which older exports wrote as it is rather than by the Database's name, and import keeps."
+  [:or ::database pos-int?])
+
+(mr/def ::table-or-older-export-id
+  "A Table id, which older exports wrote as it is rather than by the Table's path, and import keeps."
+  [:or ::table pos-int?])
+
+(mr/def ::field-or-older-export-id
+  "A Field id, which older exports wrote as it is rather than by the Field's path, and import keeps."
+  [:or ::field pos-int?])
+
+(mr/def ::user-or-older-export-id
+  "A User id, which older exports wrote as it is rather than by the User's email, and import keeps."
+  [:or ::user pos-int?])
 
 (def external-registry
   "A local registry that swaps every id schema for its external one, so `[:schema {:registry external-registry} s]`

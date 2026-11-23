@@ -1,5 +1,6 @@
 ---
 title: General settings
+summary: Instance-wide settings like your site name, site URL, homepage, and usage tracking.
 redirect_from:
   - /docs/latest/administration-guide/08-configuration-settings
 ---
@@ -18,6 +19,8 @@ How you’d like to refer to this instance of Metabase.
 ## Site URL
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](https://www.metabase.com/docs/latest/cloud/custom-domain).
+
+Metabase doesn't officially support running on a subpath, like `https://example.com/metabase`. Many features work on a subpath, but some can break. Serve Metabase at the root of a domain or subdomain instead, like `https://metabase.example.com`, to make sure your Metabase runs smoothly.
 
 ### Redirect to HTTPS
 
@@ -66,3 +69,19 @@ To manually label field or table names in Metabase, check out the [Table Metadat
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.
+
+## Configure general settings with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md).
+
+| Setting                                                                   | Environment variable                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Site name](#site-name)                                                   | [`MB_SITE_NAME`](./environment-variables.md#mb_site_name)                                                                                                                                                                         |
+| [Site URL](#site-url)                                                     | [`MB_SITE_URL`](./environment-variables.md#mb_site_url)                                                                                                                                                                           |
+| [Redirect to HTTPS](#redirect-to-https)                                   | [`MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`](./environment-variables.md#mb_redirect_all_requests_to_https)                                                                                                                               |
+| [Homepage](#homepage)                                                     | [`MB_CUSTOM_HOMEPAGE`](./environment-variables.md#mb_custom_homepage), [`MB_CUSTOM_HOMEPAGE_DASHBOARD`](./environment-variables.md#mb_custom_homepage_dashboard), [`MB_LANDING_PAGE`](./environment-variables.md#mb_landing_page) |
+| [Email address for help requests](#email-address-for-help-requests)       | [`MB_ADMIN_EMAIL`](./environment-variables.md#mb_admin_email)                                                                                                                                                                     |
+| [Send anonymous tracking data](#send-anonymous-tracking-data-to-metabase) | [`MB_ANON_TRACKING_ENABLED`](./environment-variables.md#mb_anon_tracking_enabled)                                                                                                                                                 |
+| [Collect user data](#collect-user-data-to-display-in-usage-analytics)     | [`MB_ANALYTICS_PII_RETENTION_ENABLED`](./environment-variables.md#mb_analytics_pii_retention_enabled)                                                                                                                             |
+| [Friendly table and field names](#friendly-table-and-field-names)         | [`MB_HUMANIZATION_STRATEGY`](./environment-variables.md#mb_humanization_strategy)                                                                                                                                                 |
+| [Enable X-rays](#enable-x-rays)                                           | [`MB_ENABLE_XRAYS`](./environment-variables.md#mb_enable_xrays)                                                                                                                                                                   |

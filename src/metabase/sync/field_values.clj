@@ -23,7 +23,7 @@
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
-    (field-values/clear-field-values-for-field! field)
+    (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
     ::field-values/fv-deleted))
 
 (defn- result->delta [result]
@@ -247,10 +247,8 @@
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *on-demand-select-batch-size*
-  "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
-  clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+(def ^:private on-demand-select-batch-size
+  "Chunk size when fetching :model/Field rows for on-demand updates, so each app-DB `IN (…)` clause stays bounded."
   500)
 
 (defn update-field-values-for-on-demand-dbs!
@@ -262,7 +260,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (->> field-ids
-                      (partition-all *on-demand-select-batch-size*)
+                      (partition-all on-demand-select-batch-size)
                       (mapcat (fn [batch]
                                 (sync.db/fields-for-field-values batch)))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
@@ -279,7 +277,7 @@
     (let [types        field-values/advanced-field-values-types
           max-age-days (t/as field-values/advanced-field-values-max-age :days)
           rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
-      (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
+      (field-values/delete-field-values! (field-values/ids-older-than (:id field) types max-age-days))
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

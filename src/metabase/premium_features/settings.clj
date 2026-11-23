@@ -393,6 +393,15 @@
   "Should we allow users to view database schemas as ER diagrams?"
   :schema-viewer)
 
+(define-premium-feature enable-workspaces?
+  "Should we allow users to manage workspaces?"
+  :workspaces)
+
+(define-premium-feature enable-change-log?
+  "Should we log which rows each write changes (the change log)?"
+  :change-log
+  :visibility :internal)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -453,6 +462,7 @@
    :transforms-python              (enable-python-transforms?)
    :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
+   :workspaces                     (enable-workspaces?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})

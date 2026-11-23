@@ -12,13 +12,14 @@
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -620,8 +621,7 @@
                                  [:data :results_metadata :columns]))]
     (is (seq baseline))
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query reduced-query}]
-      ;; set-card-result-metadata! bypasses populate hooks, so the stale baseline sticks.
-      (query-processor.db/set-card-result-metadata! card-id baseline)
+      (queries.card/update-cards! [{:id card-id :result_metadata baseline :updated_at :updated_at}])
       (mt/as-admin
         (qp/process-query-for-card
          (t2/select-one :model/Card :id card-id) :api
@@ -632,3 +632,25 @@
       (let [after (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (is (= #{"product_id" "cnt"} (into #{} (map (comp u/lower-case-en :name)) after))
             "parameter-independent schema change should persist despite the parameter skip")))))
+
+(deftest unchanged-metadata-skips-sandbox-check-test
+  (testing "a run whose result metadata matches the stored one asks nothing of sandboxing"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query :result_metadata nil}]
+        (let [calls (atom 0)
+              run!  (fn []
+                      (mt/as-admin
+                        (qp/process-query-for-card
+                         (t2/select-one :model/Card :id card-id) :api
+                         :make-run (constantly
+                                    (fn [query info]
+                                      (qp/process-query (assoc query :info info)))))))]
+          (mt/with-dynamic-fn-redefs [middleware.results-metadata/sandboxes-allow-result-metadata-write?
+                                      (fn [_card-id] (swap! calls inc) true)]
+            (run!)
+            (testing "the first run, which stores the metadata, asks once"
+              (is (= 1 @calls)))
+            (run!)
+            (testing "a second run, which stores nothing, does not ask"
+              (is (= 1 @calls)))))))))

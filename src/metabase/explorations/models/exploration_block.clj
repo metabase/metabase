@@ -9,11 +9,16 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -84,19 +89,14 @@
   {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
-(defmethod mi/can-read? :model/ExplorationBlock
-  ([instance]
-   (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
-     (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationBlock :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/thread-exploration-id-row (:exploration_thread_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
-(defmethod mi/can-write? :model/ExplorationBlock
-  ([instance]
-   (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
-  ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
-     (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationBlock :can_write]
+  "Add whether the current user can write each ExplorationBlock, which is whether they can write its parent."
+  [_model k instances]
+  (exploration/hydrate-can-write-from-parents k instances :exploration_thread_id :model/ExplorationThread))
 
 (defn dimension-label
   "User-facing label for a dimension: the curated `:display-name` when set, else the raw
@@ -104,3 +104,15 @@
   none of those are present."
   [dim]
   (or (:display-name dim) (:dimension-id dim) (:name dim)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-blocks! :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
+  "Insert the ExplorationBlock `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-block.create]]
+  (explorations.db/insert-blocks! rows))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
+  {:skip? false})

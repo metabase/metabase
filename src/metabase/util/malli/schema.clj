@@ -4,14 +4,12 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -19,16 +17,10 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 (defn- stringify-keys
-  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces -- and, when `recursive?`, the
-  keys of every map nested inside it too. Request decoding keywordizes every JSON object key; this undoes that for the
-  objects we do not type."
-  ([x]
-   (stringify-keys x false))
-  ([x recursive?]
-   (if recursive?
-     (walk/postwalk stringify-keys x)
-     (cond-> x
-       (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
+  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces."
+  [x]
+  (cond-> x
+    (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 ;;;
@@ -53,7 +45,8 @@
                                [:set {:min 1} :keyword]]]
      (mu/with-api-error-message
       [:fn
-       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))}
+       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))
+        :json-schema   {:type "object"}}
        (if (keyword? model-or-models)
          #(t2/instance-of? model-or-models %)
          (fn [instance]
@@ -62,12 +55,25 @@
                  model-or-models)))]
       (deferred-tru "value must be an instance of {0}" (pr-str model-or-models))))))
 
+(def ^:private class-json-schemas
+  "How instances of these classes, and of their subclasses, look once encoded as JSON."
+  [[java.time.OffsetDateTime          {:type "string" :format "date-time"}]
+   [java.time.Instant                 {:type "string" :format "date-time"}]
+   [java.util.Date                    {:type "string" :format "date-time"}]
+   [java.time.temporal.Temporal       {:type "string"}]
+   [java.io.File                      {:type "string" :format "binary"}]
+   [java.io.InputStream               {:type "string" :format "binary"}]
+   [metabase.util.i18n.UserLocalizedString {:type "string"}]
+   [metabase.util.i18n.SiteLocalizedString {:type "string"}]])
+
 (def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
   (memoize
    (fn [^Class klass]
      [:fn
-      {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+      (cond-> {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+        (some (fn [[c _]] (isa? klass c)) class-json-schemas)
+        (assoc :json-schema (some (fn [[c json-schema]] (when (isa? klass c) json-schema)) class-json-schemas)))
       (partial instance? klass)])))
 
 (def ^{:arglists '([maps-schema k])} maps-with-unique-key
@@ -159,7 +165,7 @@
 
 (def LocalizedString
   "Schema that is a localized string."
-  [:fn i18n/localized-string?])
+  [:fn {:json-schema {:type "string"}} i18n/localized-string?])
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -170,7 +176,7 @@
 (def FieldType
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
   (mu/with-api-error-message
-   [:fn #(isa? % :type/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? % :type/*)]
    (deferred-tru "value must be a valid field type.")))
 
 (def FieldSemanticOrRelationType
@@ -178,13 +184,13 @@
   to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
   schema. See #15486."
   (mu/with-api-error-message
-   [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
+   [:fn {:json-schema {:type "string"}} (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
    (deferred-tru "value must be a valid field semantic or relation type.")))
 
 (def CoercionStrategy
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
   (mu/with-api-error-message
-   [:fn #(isa? % :Coercion/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? % :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy.")))
 
 (def FieldTypeKeywordOrString
@@ -192,41 +198,15 @@
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
   (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :type/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
-(def FieldSemanticOrRelationTypeKeywordOrString
-  "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn (fn [k]
-          (let [k (keyword k)]
-            (or (isa? k :Semantic/*)
-                (isa? k :Relation/*))))]
-   (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
-
-(def CoercionStrategyKeywordOrString
-  "Like `CoercionStrategy` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :Coercion/*)]
-   (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
-
 (defn- open-map
-  "A map whose keys are deliberately not ours to declare. The marker property is what lets
-  [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
+  "A map whose keys are not ours to declare, which the API passes through as it arrived."
   [description]
   (mu/with-api-error-message
-   [:map {:closed false, ::mr/deliberately-open true, :description description}]
+   [:map {:closed false, :description description}]
    (deferred-tru "Value must be a map.")))
-
-(def VisualizationSettings
-  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
-  the keys are whatever the visualization the user picked needs."
-  (open-map "visualization settings"))
-
-(def DatabaseDetails
-  "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
-  are not knowable here."
-  (open-map "database connection details"))
 
 (defn- open-json
   "A JSON value whose objects are deliberately open maps: a scalar, a sequence of such values, or an open map."
@@ -253,10 +233,6 @@
 (def RingResponseBody
   "What an endpoint returns, before its response schema encodes it."
   (open-json ::ring-response-body "response body"))
-
-(def VisualizationSettingsValue
-  "A value nested inside [[VisualizationSettings]], whose shape the frontend owns."
-  (open-json ::visualization-settings-value "visualization settings value"))
 
 (def HttpRequestBody
   "The body the test HTTP client sends, as written by the test calling the endpoint: a JSON-shaped value, or (for a
@@ -298,60 +274,19 @@
   "The attributes of a tenant, whose keys are defined by the admin."
   (open-map "tenant attributes"))
 
-(def DatabaseSettings
-  "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
-  schema. Not for any other bag of settings."
-  (open-map "database settings"))
-
 (def UserSettings
   "A User's `:settings`: user-local settings, whose keys are owned by the settings registry rather than by this
   schema. Not for any other bag of settings."
   (open-map "user settings"))
 
 (defn string-keyed-map
-  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
-  Normalizing stringifies its keys -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the value looks the way it did on the wire and nothing can quietly start reading it by
-  keyword. Only the keys of the map itself, unless `recursive?`, which stringifies the keys of every map nested inside
-  it as well. Dispatching on `map?` keeps a value that is not a map out of the `:map-of`, whose request-decoding strip
-  step would otherwise throw on it instead of leaving it to validation."
-  ([value-schema]
-   (string-keyed-map value-schema false))
-  ([value-schema recursive?]
-   (mu/with-api-error-message
-    [:multi {:dispatch map?}
-     [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
-     [false (mu/with-api-error-message [:fn map?] (deferred-tru "Value must be a map."))]]
-    (deferred-tru "Value must be a map."))))
-
-(def OpaqueJSONObject
-  "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a
-  [[string-keyed-map]] of anything, stringified all the way down. Under no circumstances may its keys be keywords: a
-  map this code builds and reads by keyword is not opaque and gets a schema of its own. The marker property is what
-  lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
-  (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
-
-(defn string-keyed-object
-  "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
-  [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
-
-    (string-keyed-object [\"id\" :int] [\"label\" {:optional true} [:maybe :string]])
-
-  Every key of the object is a string, the declared ones included, so the map never mixes keyword and string keys and
-  code reads the declared keys the same way it would any other: `(get attrs \"id\")`. Decoding stringifies the keys of
-  the object itself first of all -- a request on its way in, or a keywordized JSON column read back from the
-  application database -- so the declared entries, their defaults included, are found under their string keys; the
-  values of the undeclared keys are stringified all the way down, the declared ones only as their schemas say. Prefer a
-  fully typed map when the keys are known: this is for objects another party owns, like an editor's node attributes."
-  [& entries]
-  (doseq [[k] entries]
-    (assert (string? k) (str "string-keyed-object keys must be strings, got: " (pr-str k))))
-  (into [:map
-         {:decode/string    {:enter stringify-keys}
-          :decode/json      {:enter stringify-keys}
-          :decode/normalize {:enter stringify-keys}}
-         [::mc/default OpaqueJSONObject]]
-        entries))
+  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema` whose keys normalizing stringifies."
+  [value-schema]
+  (mu/with-api-error-message
+   [:multi {:dispatch map?}
+    [true  [:map-of {:decode/normalize {:enter stringify-keys}} :string value-schema]]
+    [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
+   (deferred-tru "Value must be a map.")))
 
 (def Email
   "Schema for a valid email string."
@@ -364,15 +299,22 @@
 (def Url
   "Schema for a valid URL string."
   (mu/with-api-error-message
-   [:fn u/url?]
+   [:fn {:json-schema {:type "string"}} u/url?]
    (deferred-tru "value must be a valid URL.")))
 
 (def ValidPassword
-  "Schema for a valid password of sufficient complexity which is not found on a common password list."
+  "Schema for a valid password of sufficient complexity which is not found on a common password list.
+
+  API request decoding wraps the password in a [[u.secret/secret]], so validation errors and logs print it redacted.
+  Callers can extract the raw string with [[u.secret/expose]]."
   (mu/with-api-error-message
    [:and
-    :string
-    [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
+    {:decode/api  #(cond-> % (string? %) u.secret/secret)
+     :json-schema {:type "string"}}
+    [:fn {:error/message "valid password that is not too common"}
+     #(and (u.secret/secret? %)
+           (string? (u.secret/expose %))
+           (u.password/is-valid? (u.secret/expose %)))]]
    (deferred-tru "password is too common.")))
 
 (def TemporalInstant

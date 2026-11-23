@@ -1,6 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { Card, StructuredQuery } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
@@ -29,7 +29,7 @@ describe("pivot tables", () => {
       });
     });
 
-    function createPivotableQuery(source: Card): StructuredQuery {
+    function createPivotableQuery(source: Card) {
       return {
         ...QSHelpers.createQ1Query(source),
         aggregation: [["count"]],

@@ -24,6 +24,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.sql ResultSet Connection)))
@@ -158,12 +159,13 @@
       (is (= 0
              (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
-(defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (mt/with-temp [:model/Database db-filtered database]
-    (sync/sync-database! (:id db-filtered) {:scan :schema})
-    (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
-      (doseq [table tables]
-        (assert-table-fn table)))))
+(defn- sync-and-assert-filtered-tables! [database assert-table-fn]
+  (mt/with-model-cleanup [:model/Database :model/Secret]
+    (let [[db-filtered] (database/create-databases! [database])]
+      (sync/sync-database! (:id db-filtered) {:scan :schema})
+      (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
+        (doseq [table tables]
+          (assert-table-fn table))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -218,7 +220,7 @@
           patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
       (testing "Filtering connections for schemas works as expected"
         (testing " with an inclusion filter"
-          (sync-and-assert-filtered-tables
+          (sync-and-assert-filtered-tables!
            {:name    (format "Test %s DB with dataset inclusion filters" driver)
             :engine  driver
             :details (filtered-db-details driver filter-type-prop "inclusion"
@@ -227,7 +229,7 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (contains? #{\s \v \2} (first schema-name)))))))
         (testing " with an exclusion filter"
-          (sync-and-assert-filtered-tables
+          (sync-and-assert-filtered-tables!
            {:name    (format "Test %s DB with dataset exclusion filters" driver)
             :engine  driver
             :details (filtered-db-details driver filter-type-prop "exclusion"
@@ -268,7 +270,8 @@
 (deftest sync-table-with-backslash-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-drivers #{:postgres}
+  ;; MotherDuck has its own PK and FK queries
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
                                 [{:field-name "humanraceid" :base-type :type/Integer :pk? true}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 /**
  * Filter out empty arrays, strings, objects, null and undefined.
  * This keeps the embed settings readable in snippets.

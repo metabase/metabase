@@ -94,7 +94,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "xXJnvo81DWhDWcCzNaJ0e",
-      "collection_preview": true,
       "visualization_settings": {
         "table.pivot_column": "category",
         "table.cell_column": "change",

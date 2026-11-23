@@ -1,10 +1,9 @@
 ---
 title: Actions on dashboards
+summary: Add buttons to a dashboard that create, update, or delete records, and connect them to dashboard filters.
 ---
 
 # Actions on dashboards
-
-You can add buttons to dashboards to perform [actions](../data-modeling/models/actions/start.md) like creating or updating records, and combine them with dashboard [filters](./filters.md).
 
 ![Dashboard with filter, action button, and detail card view](./images/dashboard-filter-action.png)
 

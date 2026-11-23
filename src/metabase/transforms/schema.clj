@@ -1,11 +1,13 @@
 (ns metabase.transforms.schema
   (:require
+   [malli.util :as mut]
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -22,7 +24,7 @@
 (mr/def ::checkpoint-strategy
   [:map {:closed true}
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field-or-older-export-id]
    [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
@@ -41,7 +43,7 @@
 (mr/def ::python-source
   "The `:source` of a Python transform: its script and the tables it reads."
   [:map {:closed true}
-   [:source-database {:optional true} [:maybe ::lib.schema.id/database]]
+   [:source-database {:optional true} [:maybe ::lib.schema.id/database-or-older-export-id]]
    ;; NB: if source is checkpoint, only one table allowed
    [:source-tables   {:decode/normalize #(cond-> % (map? %) (-> (update-keys name) transforms-base.u/source-tables-map->vec))}
     [:sequential ::transforms-base.u/source-table-entry]]
@@ -173,8 +175,9 @@
   (ms/enum-decode-keyword [:none :global-schedule]))
 
 (mr/def ::transform.update
-  "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
+  "What an update of a Transform takes: its `:id` and the columns to change, every column of `:transform` and `:run_trigger`, which the model's hooks consume."
   [:map {:closed true}
+   [:id                    ::lib.schema.id/transform]
    [:name                  {:optional true} [:maybe :string]]
    [:description           {:optional true} [:maybe :string]]
    [:source                {:optional true} [:maybe ::transform.source]]
@@ -193,6 +196,19 @@
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe ::run-trigger]]])
+
+(mr/def ::transform.update-with-tags
+  "What the update of one Transform takes: the columns to change and the `:tag_ids` it has afterwards."
+  [:merge
+   (mut/dissoc ::transform.update :id)
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]]])
+
+(mr/def ::transform.revision
+  "A Transform as a Revision stores it: its tracked columns."
+  [:select-keys ::transform.update
+   [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type :target
+    :target_db_id]])
 
 (mr/def ::transform.definition
   "What a Transform computes and where it writes, as a client writes it."
@@ -234,18 +250,42 @@
    [:map {:closed true}
     [:id              ms/PositiveInt]]])
 
+(mr/def ::transform-job.schedule
+  "The `:schedule` column of a TransformJob: a Quartz cron expression."
+  u.cron/CronScheduleString)
+
 (mr/def ::transform-job.update
-  "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
+  "What an update of a TransformJob takes: its `:id` and the columns to change, every column of `:transform_job`."
   [:map {:closed true}
+   [:id              ms/PositiveInt]
    [:name            {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
-   [:schedule        {:optional true} [:maybe :string]]
+   [:schedule        {:optional true} [:maybe ::transform-job.schedule]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
+   [:built_in_type   {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active          {:optional true} [:maybe :boolean]]])
+
+(mr/def ::transform-job.update-with-tags
+  "What the update of one TransformJob takes: the columns to change and the `:tag_ids` the job has afterwards."
+  [:merge
+   (mut/dissoc ::transform-job.update :id)
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]])
+
+(mr/def ::transform-job.create
+  "What creating a TransformJob takes: its name and schedule, and optionally its description and display type, and for
+  an import its entity id and built-in type."
+  [:map {:closed true}
+   [:name            [:or :string mu/localized-string-schema]]
+   [:schedule        ::transform-job.schedule]
+   [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
+   [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:entity_id       {:optional true} [:maybe :string]]
+   [:built_in_type   {:optional true} [:maybe :string]]
+   [:tag_ids         {:optional true} [:sequential ms/PositiveInt]]])
 
 (mr/def ::transform-job-run
   "A TransformJobRun as selected from the app DB: every column of `:transform_job_run`."
@@ -284,6 +324,13 @@
    [:tag_id    {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id {:optional true} [:maybe :string]]
    [:position  {:optional true} [:maybe :int]]])
+
+(mr/def ::transform-job-transform-tag.create
+  "What creating a TransformJobTransformTag takes: its TransformJob, its TransformTag and its position."
+  [:map {:closed true}
+   [:job_id   ms/PositiveInt]
+   [:tag_id   ::lib.schema.id/transform-tag]
+   [:position ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::transform-run
   "A TransformRun as selected from the app DB: every column of `:transform_run`."
@@ -333,13 +380,21 @@
     [:id            ms/PositiveInt]]])
 
 (mr/def ::transform-tag.update
-  "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
+  "What an update of a TransformTag takes: its `:id` and the columns to change, every column of `:transform_tag`."
   [:map {:closed true}
+   [:id            ms/PositiveInt]
    [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]])
+   [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+
+(mr/def ::transform-tag.create
+  "What creating a TransformTag takes: its name, and for an import its entity id and built-in type."
+  [:map {:closed true}
+   [:name          :string]
+   [:entity_id     {:optional true} [:maybe :string]]
+   [:built_in_type {:optional true} [:maybe :string]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."
@@ -356,6 +411,13 @@
    [:entity_id    {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]])
 
+(mr/def ::transform-transform-tag.create
+  "What creating a TransformTransformTag takes: its Transform, its TransformTag and its position."
+  [:map {:closed true}
+   [:transform_id ::lib.schema.id/transform]
+   [:tag_id       ::lib.schema.id/transform-tag]
+   [:position     ms/IntGreaterThanOrEqualToZero]])
+
 (mr/def ::coordinated-run-model
   "A model that tracks a coordinated run."
   [:enum :model/TransformJobRun :model/TransformDagRun])
@@ -371,11 +433,23 @@
   (ms/InstanceOfClass clojure.lang.IPending))
 
 (mr/def ::transform.create
-  "What a client posts to create a Transform: the columns an insert accepts, plus the `:tag_ids` to link."
-  [:merge
-   ::transform.update
-   [:map {:closed true}
-    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
+  "What creating a Transform takes: its name, source and target, and optionally its owner, creator, Collection and run
+  trigger, and for an import its entity id and the Database of a source that names none."
+  [:map {:closed true}
+   [:name               :string]
+   [:source             ::transform.source]
+   [:target             ::transform.target]
+   [:tag_ids            {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]
+   [:description        {:optional true} [:maybe :string]]
+   [:entity_id          {:optional true} [:maybe :string]]
+   [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
+   [:source_database_id {:optional true} [:maybe ::lib.schema.id/database]]
+   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:owner_user_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:owner_email        {:optional true} [:maybe :string]]
+   [:run_trigger        {:optional true} [:maybe ::run-trigger]]])
 
 (mr/def ::transform-run.presented
   "A TransformRun prepared for an API response: its timestamps are ISO strings in UTC."

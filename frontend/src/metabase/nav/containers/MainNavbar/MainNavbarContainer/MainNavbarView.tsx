@@ -273,22 +273,21 @@ export function MainNavbarView({
                 role="section"
                 aria-label={t`Collections`}
               >
-                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                    collections={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                  />
-                ) : (
-                  <Tree
-                    data={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                    TreeNode={SidebarCollectionLink}
-                    role="tree"
-                    aria-label="collection-tree"
-                  />
-                )}
+                <Tree
+                  data={regularCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                  rightSection={(item) =>
+                    typeof item.id === "number" && (
+                      <PLUGIN_REMOTE_SYNC.ChangesBadge
+                        target={{ type: "collection", id: item.id }}
+                      />
+                    )
+                  }
+                />
                 {showOtherUsersCollections && (
                   <SidebarLink
                     icon="group"

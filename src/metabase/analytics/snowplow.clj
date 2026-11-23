@@ -195,8 +195,8 @@
    [:parameters      {:optional true}
     [:map {:closed true}
      ["synonym_threshold" {:optional true} [:maybe number?]]
-     ["weights"           {:optional true} [:maybe ms/OpaqueJSONObject]]
-     ["embedding_model"   {:optional true} [:maybe ms/OpaqueJSONObject]]
+     ["weights"           {:optional true} [:maybe :map]]
+     ["embedding_model"   {:optional true} [:maybe :map]]
      ["text_variant"      {:optional true} [:maybe :string]]]]
    [:catalog     {:optional true} :keyword]
    [:key         {:optional true} :string]
@@ -216,11 +216,18 @@
    [:duration-ms                   {:optional true} [:maybe :int]]
    [:result                        {:optional true} :string]
    [:event-details                 {:optional true}
-    [:map {:closed true}
-     ["tool_name"   {:optional true} [:maybe :string]]
-     ["step"        {:optional true} :int]
-     ["error_class" {:optional true} :string]
-     ["error_code"  {:optional true} :string]]]])
+    [:or
+     ;; agent_used_tool
+     [:map {:closed true}
+      ["tool_name"   {:optional true} [:maybe :string]]
+      ["step"        {:optional true} :int]
+      ["error_class" {:optional true} :string]
+      ["error_code"  {:optional true} :string]
+      ["repairs"     {:optional true} [:sequential :string]]]
+     ;; agent_turn_finished
+     [:map {:closed true}
+      ["finish_reason" {:optional true} :string]
+      ["steps"         {:optional true} :int]]]]])
 
 (def SnowplowEventData
   "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`
@@ -242,7 +249,7 @@
    cleanup-event-data
    data-complexity-event-data
    ai-service-event-data
-   ms/OpaqueJSONObject
+   [:map-of :string :metabase.util.malli/value]
    no-payload-event-data])
 
 (defn- tracker-config

@@ -39,7 +39,7 @@
 
 (def localized-string-schema
   "Schema for localized string."
-  #?(:clj  [:fn {:error/message "must be a localized string"}
+  #?(:clj  [:fn {:error/message "must be a localized string", :json-schema {:type "string"}}
             i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
@@ -57,13 +57,36 @@
    [:items       {:optional true} [:ref ::json-schema-doc]]
    [:properties  {:optional true} [:map-of :string [:ref ::json-schema-doc]]]])
 
+(mr/def ::object
+  "An object of any class, for code that holds or prints a value and never reads into it."
+  [:fn {:error/message "an object"} some?])
+
+(mr/def ::value.object
+  [:map {:closed false, :description "a map of any keys"}])
+
+(mr/def ::value
+  "A value of a basic type: nil, a scalar, a map, or a collection of such values."
+  [:or
+   :nil
+   :boolean
+   :string
+   :keyword
+   :symbol
+   number?
+   :uuid
+   inst?
+   #?(:clj  [:fn {:error/message "a temporal value", :json-schema {:type "string", :format "date-time"}} #(instance? java.time.temporal.Temporal %)]
+      :cljs [:fn {:error/message "a temporal value", :json-schema {:type "string", :format "date-time"}} (constantly false)])
+   ::value.object
+   [:sequential [:ref ::value]]
+   [:set [:ref ::value]]])
+
 (def ^:private SchemaProperties
   "The malli schema properties [[with]] is actually asked to attach."
   [:map {:closed true}
-   [:description          {:optional true} [:or :string localized-string-schema]]
-   [:decode/api           {:optional true} ifn?]
-   [:json-schema          {:optional true} ::json-schema-doc]
-   [::mr/deliberately-open {:optional true} :boolean]])
+   [:description {:optional true} [:or :string localized-string-schema]]
+   [:decode/api  {:optional true} ifn?]
+   [:json-schema {:optional true} ::json-schema-doc]])
 
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"
@@ -173,9 +196,15 @@
       :and (some map-schema-keys (mc/children schema))
       nil)))
 
+(core/defn never
+  "A schema that never validates, with `properties` such as its `:error/message`, and whose JSON Schema accepts nothing."
+  ([]
+   (never {}))
+  ([properties]
+   [:fn (merge {:json-schema {:not {}}} properties) (constantly false)]))
+
 (core/defn refuse
   "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
   an `[:or ...]`."
   [message-fn]
-  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
-   (constantly false)])
+  (never {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}))

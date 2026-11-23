@@ -98,7 +98,8 @@
   "Stamp `last_heartbeat = now` on the given still-active run-ids."
   [model   :- ::transforms.schema/coordinated-run-model
    run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! model [:is_active true] :last_heartbeat run-ids))
+  (when (seq run-ids)
+    (transforms.db/heartbeat-active-runs! model run-ids)))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential [:or ::transforms.schema/transform-job-run ::transforms.schema/transform-dag-run]]]
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -111,7 +112,8 @@
    {:model    model
     :active   [:is_active true]
     :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"}
+    :set-terminal! #(transforms.db/set-active-runs-terminal!
+                     model % {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"})
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
                :tags           {:type type-tag}

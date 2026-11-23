@@ -20,6 +20,9 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.validation :as sql.validation]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
@@ -27,15 +30,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- invoke-document-tool-with-memory-atom
+  "Call `tool-name` from the Documents profile through the runtime, with `memory-atom` holding the agent's memory."
+  [tool-name args memory-atom]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
+                                         memory-atom nil :document-generate-content)]
+      ((get-in entries [tool-name :fn]) args))))
+
 (defn- invoke-document-tool
   "Call `tool-name` from the Documents profile through the runtime, with `memory` as the agent's memory."
   ([tool-name args]
    (invoke-document-tool tool-name args {}))
   ([tool-name args memory]
-   (binding [scope/*current-user-scope* api-scope/unrestricted]
-     (let [entries (agent-tools/->entries (:tools (profiles/get-profile :document-generate-content))
-                                          (atom memory) nil :document-generate-content)]
-       ((get-in entries [tool-name :fn]) args)))))
+   (invoke-document-tool-with-memory-atom tool-name args (atom memory))))
 
 (defn- mentions
   "Agent memory in which the user `@`-mentioned `references`."
@@ -58,11 +66,12 @@
    :viz_settings {:chart_type "bar"}})
 
 (deftest document-schema-collect-tool-test
-  (testing "returns schema/instructions when one database reference is present"
-    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [_] {:id 1 :engine "h2"})
+  (testing "returns schema/instructions for the one mentioned database, whatever `database_id` the model sets"
+    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [id] {:id id :engine "h2"})
                                 table-utils/schema-full (fn [_]
                                                           "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
-      (let [result (invoke-document-tool "document_schema_collect" {} (mentions {"database:1" "Test Database"}))]
+      (let [result (invoke-document-tool "document_schema_collect" {:database_id 2}
+                                         (mentions {"database:1" "Test Database"}))]
         (is (nil? (:error result)))
         (is (re-find #"CREATE TABLE TestTable" (:output result)))
         (is (re-find #"TestColumn varchar" (:output result)))
@@ -71,35 +80,97 @@
                 :sql_engine  "h2"}
                (:structured-output result)))))))
 
-(deftest document-schema-collect-needs-one-mentioned-database-test
-  (testing "only the user can mention a database, so a call without exactly one ends the turn with a message for them"
-    (doseq [[references code user-message]
-            [[{}
-              ::document-tools/no-database-mentioned
-              "Mention a database with @ to create this chart with SQL."]
-             [{"database:1" "Test DB 1" "database:2" "Test DB 2"}
-              ::document-tools/several-databases-mentioned
-              "Mention only one database with @ to create this chart with SQL."]]]
-      (testing (pr-str references)
-        (let [result (invoke-document-tool "document_schema_collect" {} (mentions references))]
-          (is (= {:class :unrecoverable :code code :user-message user-message}
+(deftest document-schema-collect-chosen-database-test
+  (testing "the model chooses the database when the user mentioned none, or one of several that the user mentioned"
+    (mt/with-dynamic-fn-redefs [warehouses/get-database          (fn [id] {:id id :engine "h2"})
+                                sql.common/native-query-access? (constantly true)
+                                table-utils/schema-full          (constantly "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
+      (doseq [references [{} {"database:1" "Test DB 1" "database:2" "Test DB 2"}]]
+        (testing (pr-str references)
+          (let [result (invoke-document-tool "document_schema_collect" {:database_id 2} (mentions references))]
+            (is (nil? (:error result)))
+            (is (= {:database_id 2 :sql_engine "h2"}
+                   (:structured-output result)))))))))
+
+(deftest document-schema-collect-database-not-chosen-test
+  (testing "the model is told to choose a database when it set none, or none of the several that the user mentioned"
+    (doseq [[references args code text]
+            [[{} {} ::document-tools/no-database-chosen "`list_available_data_sources`"]
+             [{"database:1" "Test DB 1" "database:2" "Test DB 2"} {} ::document-tools/unmentioned-database "databases 1, 2"]
+             [{"database:1" "Test DB 1" "database:2" "Test DB 2"} {:database_id 3} ::document-tools/unmentioned-database
+              "databases 1, 2"]]]
+      (testing (pr-str references args)
+        (let [result (invoke-document-tool "document_schema_collect" args (mentions references))]
+          (is (= {:class :recoverable :code code}
                  (:error result)))
-          (is (str/includes? (:output result) "Don't retry")))))))
+          (is (str/includes? (:output result) text)))))))
+
+(deftest document-schema-collect-non-positive-database-id-test
+  (testing "a `database_id` below 1 is a validation error that the model can correct"
+    (doseq [database-id [0 -1]]
+      (testing database-id
+        (is (=? {:class :validation}
+                (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
+                                              (mentions {})))))))))
 
 (deftest document-schema-collect-unavailable-database-test
-  (testing "a mentioned database that doesn't exist or that the user can't read ends the turn with one message for both"
+  (testing "a database that doesn't exist or that the user can't read"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-no-data-perms-for-all-users!
         (doseq [[user database-id] [[:crowberto Integer/MAX_VALUE]
                                     [:rasta db-id]]]
-          (testing user
-            (mt/with-current-user (mt/user->id user)
-              (let [result (invoke-document-tool "document_schema_collect" {}
-                                                 (mentions {(str "database:" database-id) "Gone"}))]
-                (is (= {:class        :unrecoverable
-                        :code         ::document-tools/database-unavailable
-                        :user-message "The database you mentioned wasn't found, or you don't have access to it."}
-                       (:error result)))))))))))
+          (mt/with-current-user (mt/user->id user)
+            (testing (str user " mentioned it, so the turn ends with one message for both")
+              (is (= {:class        :unrecoverable
+                      :code         ::document-tools/database-unavailable
+                      :user-message "The database you mentioned wasn't found, or you don't have access to it."}
+                     (:error (invoke-document-tool "document_schema_collect" {}
+                                                   (mentions {(str "database:" database-id) "Gone"}))))))
+            (testing (str "the model chose it for " user ", so the model is sent to choose another")
+              (is (= {:class :recoverable :code ::document-tools/chosen-database-not-found}
+                     (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
+                                                   (mentions {})))))
+              (testing "and the logs keep the refusal"
+                (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                     (tools/handle document-tools/document-schema-collect-tool
+                                                   {:database_id database-id}
+                                                   {:memory-atom (atom (mentions {}))})))]
+                  (is (= (if (= user :crowberto) 404 403)
+                         (:status-code (ex-data (ex-cause e))))))))))))))
+
+(deftest document-schema-collect-chosen-database-without-sql-access-test
+  (testing "the user can read the database but can't write SQL against it"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "the model chose it, so the model is sent to choose another"
+          (let [result (invoke-document-tool "document_schema_collect" {:database_id (mt/id)} (mentions {}))]
+            (is (= {:class :recoverable :code ::document-tools/chosen-database-without-sql-access}
+                   (:error result)))
+            (is (str/includes? (:output result) "`list_available_data_sources`"))))
+        (testing "the user mentioned it, so the tool returns the schema"
+          (is (= {:database_id (mt/id) :sql_engine :h2}
+                 (:structured-output (invoke-document-tool "document_schema_collect" {}
+                                                           (mentions {(str "database:" (mt/id)) "Test Data"}))))))))))
+
+(deftest schema-collect-ddl-columns-once-test
+  (testing "the DDL of a table lists each column once, with a comma between columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [output (:output (invoke-document-tool "document_schema_collect" {:database_id (mt/id)} (mentions {})))]
+        (is (str/includes? output (str "CREATE TABLE PUBLIC.ORDERS (\n"
+                                       "  ID BIGINT,\n"
+                                       "  USER_ID INTEGER,\n"
+                                       "  PRODUCT_ID INTEGER,\n"
+                                       "  SUBTOTAL DOUBLE PRECISION,\n"
+                                       "  TAX DOUBLE PRECISION,\n"
+                                       "  TOTAL DOUBLE PRECISION,\n"
+                                       "  DISCOUNT DOUBLE PRECISION,\n"
+                                       "  CREATED_AT TIMESTAMP WITH TIME ZONE,\n"
+                                       "  QUANTITY INTEGER\n"
+                                       ");")))
+        (testing "no table has a column line with no comma before the next column"
+          (is (nil? (re-find #"[^,(]\n  \S" output))))))))
 
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"
@@ -164,6 +235,29 @@
           (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
           (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
           (is (not (str/includes? output "this edit did not change"))))))))
+
+(deftest document-construct-sql-chart-reference-test
+  (testing "a reference to a card that does not exist gets the SQL tools' recoverable error, and no draft"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (invoke-document-tool "document_construct_sql_chart"
+                                         (assoc sql-chart-args
+                                                :database_id (mt/id)
+                                                :sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")))]
+        (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
+        (is (nil? (:structured-output result)))))))
+
+(deftest document-construct-sql-chart-skips-table-check-test
+  (testing "a table that does not exist records no reference warning, because the tool does not show warnings"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] nil)]
+          (let [memory-atom (atom {})
+                result      (invoke-document-tool-with-memory-atom
+                             "document_construct_sql_chart"
+                             (assoc sql-chart-args :database_id (mt/id) :sql "SELECT * FROM no_such_account")
+                             memory-atom)]
+            (is (nil? (:error result)))
+            (is (empty? (::sql.validation/shown-reference-warnings @memory-atom)))))))))
 
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"
@@ -310,12 +404,13 @@
                                            :sql         "DELETE FROM VENUES WHERE 1 = 0")))))))
 
 (deftest document-construct-sql-chart-unknown-database-test
-  (testing "an unknown database ID sends the model back to the tool that returns the mentioned database's ID"
+  (testing "an unknown database ID sends the model to the database list and to the tool that returns a database's ID"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [result (invoke-document-tool "document_construct_sql_chart"
                                          (assoc sql-chart-args :database_id Integer/MAX_VALUE))]
         (is (= {:class :recoverable :code ::recoverable/unknown-database} (:error result)))
         (is (= (str "Database " Integer/MAX_VALUE " was not found.\n"
+                    "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry.\n"
                     "Call `document_schema_collect`, then retry with the `database_id` it returns.")
                (:output result)))))))
 
@@ -343,6 +438,29 @@
             (is (=? {:database (mt/id)
                      :stages [{:source-card (:id model)}]}
                     (:dataset_query structured)))))))))
+
+(deftest document-construct-model-chart-repairs-test
+  (testing "the chart draft keeps the repair passes of its query, so the `agent_used_tool` event reports them"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card model {:type          :model
+                                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (let [repairs (fn [stage]
+                          (let [query  {:lib/type "mbql/query"
+                                        :stages   [(merge {:lib/type    "mbql.stage/mbql"
+                                                           :source-card (:entity_id model)
+                                                           :aggregation [["count" {}]]
+                                                           :breakout    [["field" {:temporal-unit "month"} "CREATED_AT"]]}
+                                                          stage)]}
+                                result (invoke-document-tool "document_construct_model_chart"
+                                                             (assoc model-chart-args :query query))]
+                            (is (nil? (:error result)))
+                            (get-in result [:structured-output :repairs])))]
+            (is (= ["rewrite-operator-name-aliases"]
+                   (repairs {:filters [["gte" {} ["field" {} "TOTAL"] 10]]})))
+            (is (= []
+                   (repairs {}))
+                "no reported pass changed the query")))))))
 
 (deftest document-construct-model-chart-metric-as-source-card-test
   (testing "a metric in `source-card` is a failed call that names the source to use, not a chart"
@@ -392,11 +510,12 @@
                 ::recoverable.pipeline/missing-source-in-first-stage
                 (str no-source "\n`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; "
                      "`source-card:` takes an entity_id string.")]
-               ;; Its only step reads a resource, and this profile has no `read_resource`.
                [no-card
                 {:error :unknown-card :entity-id "abc"}
                 ::recoverable.pipeline/unknown-card
-                no-card]]]
+                (str no-card "\nDo not invent or guess entity_ids: call `read_resource` with "
+                     "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the "
+                     "exact `portable_entity_id` from the response into `source-card:`.")]]]
         (testing code
           (mt/with-dynamic-fn-redefs [construct-tools/execute-representations-query
                                       (fn [_ & _]

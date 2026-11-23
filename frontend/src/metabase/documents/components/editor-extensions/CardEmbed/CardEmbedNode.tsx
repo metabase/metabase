@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
@@ -697,6 +698,7 @@ export const CardEmbedComponent = memo(
                           minHeight: "auto",
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
+                          boxShadow: "none",
                           "&:focus": {
                             border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:

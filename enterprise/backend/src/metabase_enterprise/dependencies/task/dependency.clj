@@ -7,8 +7,10 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.analysis-finding-status :as models.analysis-finding-status]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.models.dependency-status :as models.dependency-status]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -16,7 +18,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -25,57 +26,32 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private entity-types
-  "The list of entity types whose dependencies the job computes, snippets first, so that the snippets the entities
-  using them expand are known when those are computed.
-
-  This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
-  own. Instead, links involving tables are found via analysis of the other side of the relation."
-  (vec (sort-by #(not= :snippet %) deps.dependency-types/backfillable-dependency-types)))
-
 (def ^:private Entity
   "An entity whose dependencies the job computes, as the app DB holds it."
   [:fn {:error/message "a Toucan entity"} t2/instance?])
 
-;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
-
-(defmulti post-deps-cleanup!
-  "Perform entity-specific cleanup after dependencies have been replaced.
-  For example, transforms need to clean up outdated downstream table->transform dependencies.
-  Default is no-op."
-  {:arglists '([entity-type entity])}
-  (fn [entity-type _entity] entity-type))
-
-(defmethod post-deps-cleanup! :default [_ _entity] nil)
-
-(defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
-  (let [db-id                (transforms/transform-source-database transform)
-        downstream-table-ids (dependencies.db/downstream-table-ids-of-transform id)
-        downstream-tables    (when (seq downstream-table-ids)
-                               (dependencies.db/tables downstream-table-ids))
-        outdated-tables      (remove (fn [table]
-                                       (and (= (:schema table) (:schema target))
-                                            (= (:name   table) (:name   target))
-                                            (or (not db-id)
-                                                (= db-id (:db_id table)))))
-                                     downstream-tables)
-        not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
-                                     downstream-table-ids)]
-    (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
-                                                        (map :id) outdated-tables))]
-      (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
+(mu/defn- drop-stale-dependents!
+  "Drop the edges to the `entity` of `entity-type` from its dependents that its spec's `:after-dependencies` says no
+  longer hold."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- Entity]
+  (when-let [after-dependencies (deps.calculation/after-dependencies entity-type)]
+    (doseq [[dependent-type dependent-ids] (after-dependencies
+                                            entity
+                                            (dependencies.db/direct-dependent-ids entity-type (:id entity)))
+            :when (seq dependent-ids)]
+      (models.dependency/delete-dependencies-for-dependents! dependent-type (vec dependent-ids) entity-type (:id entity)))))
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
 (mu/defn- hydrated-entities :- [:sequential Entity]
-  "The entities of `entity-type` with `entity-ids`, hydrated for computing their dependencies."
+  "The entities of `entity-type` with `entity-ids`, hydrated by their spec for computing their dependencies."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-ids  :- [:set ms/PositiveInt]]
-  (vec (deps.dependency-status/hydrate-for-deps
-        entity-type (vec (dependencies.db/entities entity-type entity-ids)))))
+  (deps.calculation/hydrate-entities entity-type (dependencies.db/entities entity-type entity-ids)))
 
 (mu/defn- compute-deps-for-entity! :- :any
-  "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
+  "Compute and store the dependencies of an `entity` hydrated by [[hydrated-entities]], marking
   an entity with a new upstream stale for its result metadata and analysis, or for a snippet the analysis of what
   expands it, which an upstream change made before the edge existed never marked."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -86,14 +62,14 @@
     (t2/with-transaction [_]
       (when (seq (models.dependency/new-dependencies entity-type (:id entity) deps))
         (when (= :card entity-type)
-          (dependencies.db/mark-result-metadata-statuses-stale! own))
-        (when (contains? deps.analysis-finding/analyzable-entities entity-type)
-          (dependencies.db/mark-analysis-finding-statuses-stale! own))
+          (models.result-metadata-status/mark-result-metadata-statuses-stale! own))
+        (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
+          (models.analysis-finding-status/mark-analysis-finding-statuses-stale! own))
         (when (= :snippet entity-type)
-          (dependencies.db/mark-analysis-finding-statuses-stale!
+          (models.analysis-finding-status/mark-analysis-finding-statuses-stale!
            (models.dependency/transitive-dependents {:snippet [entity]}))))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
-      (post-deps-cleanup! entity-type entity))))
+      (drop-stale-dependents! entity-type entity))))
 
 (mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -103,9 +79,24 @@
   (let [entity-ids (dependencies.db/dependency-deleted-entity-ids entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
-        (dependencies.db/delete-dependencies-from! entity-type entity-ids)
-        (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
+        (models.dependency/delete-dependencies-for-entities! entity-type entity-ids)
+        (models.dependency-status/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
+
+(mu/defn- record-failure! :- :nil
+  "Count a failure `e` to compute the dependencies of `entity-type` `entity-id`. The analysis only runs on current
+  dependencies, so an analyzable entity the job gives up on gets `e` as its finding, and is marked stale so the
+  analysis replaces that finding once its dependencies compute again."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (log/errorf "Computing the dependencies of %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (when (models.dependency-status/record-dependency-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the dependencies of %s %s until it changes" (name entity-type) entity-id)
+    (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
+      (models.analysis-finding-status/mark-analysis-finding-statuses-stale! {entity-type #{entity-id}})
+      (deps.analysis-finding/record-failed-finding! entity-type entity-id e)))
+  nil)
 
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
@@ -114,19 +105,20 @@
    batch-size  :- ms/PositiveInt]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
-          statuses  (deps.dependency-status/take-pending-statuses! entity-type batch-size)
+          statuses  (models.dependency-status/take-pending-statuses! entity-type batch-size)
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (doseq [entity (when (seq statuses) (hydrated-entities entity-type (set (keys stale))))]
+      (doseq [entity (when (seq statuses)
+                       (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                          (set (keys stale))
+                                                          #(record-failure! entity-type %1 %2)))]
         (try
           (compute-deps-for-entity! entity-type entity)
-          (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
+          (models.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
-            (log/errorf "Computing the dependencies of %s %s failed: %s" type-name (:id entity) (ex-message e))
-            (when (dependencies.db/record-dependency-failure! entity-type (:id entity)
-                                                              (deps.settings/dependency-max-failures))
-              (log/warnf "Giving up on the dependencies of %s %s until it changes" type-name (:id entity)))
+            (dependencies.db/throw-unless-app-db-reachable! e)
+            (record-failure! entity-type (:id entity) e)
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
       (count statuses))))
@@ -148,7 +140,7 @@
                                      (log/debug "Updated" processed "entities."))
                                    (- remaining removed processed))))
                              batch-size
-                             entity-types)]
+                             (deps.calculation/computed-types))]
       (when (< remaining batch-size)
         (task.analysis-finding/trigger-analysis-finding-job!)
         (task.result-metadata/trigger-result-metadata-job!)
@@ -189,6 +181,16 @@
    :delay-minutes    deps.settings/dependency-backfill-delay-minutes
    :variance-minutes deps.settings/dependency-backfill-variance-minutes
    :run-batch!       #'run-batch!})
+
+(mu/defn run-batch-in-place! :- ::task.util/batch-outcome
+  "Run a batch of the UpdateDependencies job now rather than on its schedule."
+  []
+  (task.util/run-batch-in-place! job))
+
+(mu/defn enabled? :- :boolean
+  "Whether the UpdateDependencies job runs."
+  []
+  (task.util/enabled? job))
 
 (mu/defn trigger-dependency-job! :- :any
   "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive

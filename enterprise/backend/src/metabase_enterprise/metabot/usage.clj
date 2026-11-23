@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log])
   (:import
@@ -75,22 +76,22 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (metabot.db/insert-usage-log!
-         {:source                 source
-          :model                  model
-          :provider               provider
-          :model_name             model-name
-          :prompt_tokens          prompt-tokens
-          :completion_tokens      completion-tokens
-          :total_tokens           total-tokens
-          :cache_creation_tokens  cache-creation
-          :cache_read_tokens      cache-read
-          :user_id                (or user-id api/*current-user-id*)
-          :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-          :conversation_id        conversation-id
-          :profile_id             (some-> profile-id name)
-          :request_id             request-id
-          :ai_proxied             ai-proxied}))
+        (ai-usage-log/create-ai-usage-logs!
+         [{:source                 source
+           :model                  model
+           :provider               provider
+           :model_name             model-name
+           :prompt_tokens          prompt-tokens
+           :completion_tokens      completion-tokens
+           :total_tokens           total-tokens
+           :cache_creation_tokens  cache-creation
+           :cache_read_tokens      cache-read
+           :user_id                (or user-id api/*current-user-id*)
+           :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+           :conversation_id        conversation-id
+           :profile_id             (some-> profile-id name)
+           :request_id             request-id
+           :ai_proxied             ai-proxied}]))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
@@ -174,12 +175,6 @@
   (memoize/memo-clear! check-instance-limit*)
   (memoize/memo-clear! check-tenant-limit*)
   (memoize/memo-clear! check-user-limit*))
-
-(defenterprise clear-metabot-limit-cache!
-  "EE implementation: clears the memoized limit-check results so they re-evaluate immediately."
-  :feature :none
-  []
-  (clear-limit-cache!))
 
 (defenterprise check-usage-limits!
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,

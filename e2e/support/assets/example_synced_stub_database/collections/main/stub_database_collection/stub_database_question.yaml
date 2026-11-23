@@ -1,0 +1,38 @@
+name: Stub Database Question
+entity_id: StubDbQuestion1234567
+creator_id: admin@metabase.test
+display: table
+collection_id: StubDbCollection12345
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Stub Postgres
+  stages:
+  - fields:
+    - - field
+      - base-type: type/*
+      - - Stub Postgres
+        - public
+        - products
+        - title
+    limit: 1
+    order-by:
+    - - asc
+      - {}
+      - - field
+        - base-type: type/*
+        - - Stub Postgres
+          - public
+          - products
+          - id
+    source-table:
+    - Stub Postgres
+    - public
+    - products
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings: {}
+card_schema: 24
+serdes/meta:
+- model: Card
+type: question

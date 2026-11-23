@@ -7,6 +7,7 @@
    [malli.generator :as mg]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -43,12 +44,17 @@
            :else nil)
          (:model-id constructed-event)))))
 
+(defn- record-event!
+  "Insert the row that [[audit-log/audit-row]] builds for `topic` and `params`."
+  [topic params]
+  (audit-log/create-audit-logs! [(audit-log/audit-row topic params)]))
+
 (deftest basic-record-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
-      (testing "Test that `record-event!` succesfully records basic card events"
+      (testing "Test that `create-audit-logs!` succesfully records basic card events"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (audit-log/record-event! :event/card-create {:object card})
+          (record-event! :event/card-create {:object card :details {:name "Test card"}})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
           (is (partial=
                {:topic    :card-create
@@ -57,13 +63,14 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-      (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
+      (testing "Test that `create-audit-logs!` succesfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
-          (audit-log/record-event! :event/card-create
-                                   {:object card
-                                    :user-id (mt/user->id :rasta)
-                                    :model :model/Card
-                                    :model-id card-id})
+          (record-event! :event/card-create
+                         {:object card
+                          :user-id (mt/user->id :rasta)
+                          :model :model/Card
+                          :model-id card-id
+                          :details {:name "Test card"}})
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)
@@ -71,8 +78,8 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-      (testing "Test that `record-event!` records an event with arbitrary data and no model specified"
-        (audit-log/record-event! :event/test-event {:details {:foo "bar"}})
+      (testing "Test that `create-audit-logs!` records an event with arbitrary data and no model specified"
+        (record-event! :event/test-event {:details {:foo "bar"}})
         (is (partial=
              {:topic :test-event
               :user_id (mt/user->id :rasta)
@@ -80,3 +87,17 @@
               :model_id nil
               :details {:foo "bar"}}
              (t2/select-one :model/AuditLog :topic :test-event)))))))
+
+(deftest create-audit-logs-statement-count-does-not-grow-with-rows-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [counted (fn [n]
+                      (let [rows (mapv (fn [i] (audit-log/audit-row :event/card-create
+                                                                    {:user-id  (mt/user->id :rasta)
+                                                                     :model    :model/Card
+                                                                     :model-id (inc i)
+                                                                     :details  {:index i}}))
+                                       (range n))]
+                        (events.tu/statement-count! #(audit-log/create-audit-logs! rows))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

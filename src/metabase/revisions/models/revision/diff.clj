@@ -1,18 +1,9 @@
 (ns metabase.revisions.models.revision.diff
   (:require
    [clojure.data :as data]
-   [metabase.models.interface :as mi]
-   [metabase.revisions.db :as revisions.db]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.match :as match]))
-
-(defn- readable-name
-  [model id]
-  (when id
-    (when-let [instance (revisions.db/entity model id)]
-      (when (mi/can-read? instance)
-        (:name instance)))))
 
 (defn- match-1 [k v1 v2 identifier]
   (match/match-one [k v1 v2]
@@ -55,7 +46,13 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")))
 
-(defn- match-2 [k v1 v2 identifier]
+(def data-test-subject-models
+  "The model of the subject of a data test, by the key that holds the subject's id."
+  {:transform_id :model/Transform
+   :card_id      :model/Card
+   :segment_id   :model/Segment})
+
+(defn- match-2 [k v1 v2 identifier names]
   (match/match-one [k v1 v2]
     [:archived _ after]
     (if after
@@ -67,17 +64,17 @@
 
     [:collection_id nil coll-id]
     (deferred-tru "moved {0} to {1}" identifier (if coll-id
-                                                  (or (readable-name :model/Collection coll-id)
+                                                  (or (get-in names [:collection-names coll-id])
                                                       (str "#" coll-id))
                                                   (deferred-tru "Our analytics")))
 
     [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
                   identifier
-                  (or (readable-name :model/Collection prev-coll-id)
+                  (or (get-in names [:collection-names prev-coll-id])
                       (str "#" prev-coll-id))
                   (if coll-id
-                    (or (readable-name :model/Collection coll-id)
+                    (or (get-in names [:collection-names coll-id])
                         (str "#" coll-id))
                     (deferred-tru "Our analytics")))
 
@@ -87,11 +84,6 @@
     ;;  Card specific
     [:parameter_mappings _ _]
     (deferred-tru "changed the filter mapping")
-
-    [:collection_preview _ after]
-    (if after
-      (deferred-tru "enabled collection review")
-      (deferred-tru "disabled collection preview"))
 
     [:dataset_query _ _]
     (deferred-tru "modified the query")
@@ -112,12 +104,12 @@
     [:dashboard_id v1 v2]
     (cond
       (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
-                                (readable-name :model/Dashboard v1)
-                                (readable-name :model/Dashboard v2))
+                                (get-in names [:dashboard-names v1])
+                                (get-in names [:dashboard-names v2]))
       (nil? v1) (deferred-tru "moved this question into {0}"
-                              (readable-name :model/Dashboard v2))
+                              (get-in names [:dashboard-names v2]))
       (nil? v2) (deferred-tru "moved this question from {0}"
-                              (readable-name :model/Dashboard v1)))
+                              (get-in names [:dashboard-names v1])))
 
     [:width v1 v2]
     (if (and v1 v2)
@@ -127,6 +119,23 @@
     [:source _ _]
     (deferred-tru "changed the source")
 
+    ;; Data test specific
+    [:inputs _ _]
+    (deferred-tru "changed the inputs")
+
+    [:expectations _ _]
+    (deferred-tru "changed the expectations")
+
+    [:now _ _]
+    (deferred-tru "changed the time the test reads as now")
+
+    [(subject-key :guard data-test-subject-models) _ _]
+    (let [model (data-test-subject-models subject-key)]
+      (deferred-tru "moved {0} from {1} to {2}"
+                    identifier
+                    (or (get-in names [:subject-names model v1]) (str "#" v1))
+                    (or (get-in names [:subject-names model v2]) (str "#" v2))))
+
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
@@ -135,9 +144,9 @@
     ;; Don't recurse, bail on fallthrough.
     _ nil))
 
-(defn- diff-string [k v1 v2 identifier]
+(defn- diff-string [k v1 v2 identifier names]
   (or (match-1 k v1 v2 identifier)
-      (match-2 k v1 v2 identifier)))
+      (match-2 k v1 v2 identifier names)))
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one."
@@ -158,12 +167,14 @@
     "Document"      (deferred-tru "Document")
     "Exploration"   (deferred-tru "Exploration")
     "Transform"     (deferred-tru "Transform")
-    "TransformTest" (deferred-tru "Transform test")))
+    "TransformTest" (deferred-tru "Transform test")
+    "CardTest"      (deferred-tru "Card test")
+    "SegmentTest"   (deferred-tru "Segment test")))
 
 (defn diff-strings*
-  "Create a seq of string describing how `o1` is different from `o2`.
+  "Create a seq of string describing how `o1` is different from `o2`, naming Collections and Dashboards from `names`.
   The directionality of the statement should indicate that `o1` changed into `o2`."
-  [model o1 o2]
+  [model o1 o2 names]
   (when-let [[before after] (data/diff o1 o2)]
     (let [model-name (try
                        (model-str->i18n-str model)
@@ -184,6 +195,6 @@
           strings
           (let [k          (first ks)
                 identifier (if (zero? identifier-count) (deferred-tru "this {0}" model-name) (deferred-tru "it"))]
-            (if-let [diff-str (diff-string k (k before) (k after) identifier)]
+            (if-let [diff-str (diff-string k (k before) (k after) identifier names)]
               (recur (rest ks) (inc identifier-count) (conj strings diff-str))
               (recur (rest ks) identifier-count strings))))))))

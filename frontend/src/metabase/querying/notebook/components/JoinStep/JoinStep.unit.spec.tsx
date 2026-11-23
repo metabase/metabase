@@ -24,6 +24,8 @@ import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
@@ -34,6 +36,7 @@ import type {
   TestExpressionSpec,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -47,8 +50,6 @@ import {
   PRODUCTS_ID,
   REVIEWS_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep, getColumnNames } from "../../test-utils";
@@ -85,8 +86,14 @@ const ANOTHER_DATABASE = createMockDatabase({
   ],
 });
 const DATABASES = [SAMPLE_DATABASE, ANOTHER_DATABASE];
-const MODEL = createStructuredModelCard({ name: "my cool model" });
-const QUESTION = createSavedStructuredCard({
+const ORDERS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+const MODEL = createMockCard({
+  type: "model",
+  name: "my cool model",
+  dataset_query: ORDERS_QUERY,
+});
+const QUESTION = createMockCard({
+  dataset_query: ORDERS_QUERY,
   id: 300,
   name: "other database question",
   database_id: ANOTHER_DATABASE.id,
@@ -862,6 +869,105 @@ describe("Notebook Editor > Join Step", () => {
         "Reviews → Product ID",
       );
     });
+    it.each([
+      { title: "without a breakout", hasBreakout: false },
+      { title: "with a breakout", hasBreakout: true },
+    ])(
+      "should join on a nested aggregation of the previous stage $title",
+      async ({ hasBreakout }) => {
+        const query = Lib.createTestQuery(provider, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: "Foo",
+                  value: {
+                    type: "operator",
+                    operator: "min",
+                    args: [{ type: "column", name: "SUBTOTAL" }],
+                  },
+                },
+                {
+                  name: "Bar",
+                  value: {
+                    type: "operator",
+                    operator: "+",
+                    args: [
+                      { type: "column", name: "Foo" },
+                      {
+                        type: "operator",
+                        operator: "avg",
+                        args: [{ type: "column", name: "TAX" }],
+                      },
+                    ],
+                  },
+                },
+              ],
+              breakouts: hasBreakout
+                ? [{ type: "column", name: "CREATED_AT", unit: "month" }]
+                : [],
+            },
+            {},
+          ],
+        });
+        const { getRecentJoin } = setup({
+          step: createMockNotebookStep({ query, stageIndex: 1 }),
+        });
+
+        await userEvent.click(
+          within(screen.getByLabelText("Right table")).getByRole("textbox"),
+        );
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: /Browse all/ }),
+        );
+        const modal = await screen.findByTestId("entity-picker-modal");
+        await waitForLoaderToBeRemoved();
+        await userEvent.click(await within(modal).findByText("Databases"));
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(modal).findByText("Products"));
+
+        const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+        await userEvent.click(within(lhsColumnPicker).getByText("Foo"));
+        const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
+        await userEvent.click(within(rhsColumnPicker).getByText("Price"));
+
+        await userEvent.click(await screen.findByLabelText("Pick columns"));
+        const joinColumnsPicker = await screen.findByTestId(
+          "join-columns-picker",
+        );
+        await userEvent.click(
+          within(joinColumnsPicker).getByText("Select all"),
+        );
+        await userEvent.click(within(joinColumnsPicker).getByText("ID"));
+
+        const { query: nextQuery, conditions, fields } = getRecentJoin();
+        expect(conditions).toEqual([
+          expect.objectContaining({
+            operator: "=",
+            lhsExpression: expect.objectContaining({
+              name: "Foo",
+              isFromPreviousStage: true,
+            }),
+            rhsExpression: expect.objectContaining({
+              longDisplayName: "Products - Foo → Price",
+            }),
+          }),
+        ]);
+        if (!Array.isArray(fields)) {
+          throw new Error("Expected a list of join columns");
+        }
+        const fieldNames = fields.map(
+          (column) => Lib.displayInfo(nextQuery, 1, column).name,
+        );
+        expect(fieldNames).toEqual(["ID"]);
+        const joinedColumnNames = Lib.returnedColumns(nextQuery, 1)
+          .map((column) => Lib.displayInfo(nextQuery, 1, column))
+          .filter((info) => info.isFromJoin)
+          .map((info) => info.longDisplayName);
+        expect(joinedColumnNames).toEqual(["Products - Foo → ID"]);
+      },
+    );
   });
 
   describe("join strategies", () => {

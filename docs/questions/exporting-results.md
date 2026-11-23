@@ -1,13 +1,11 @@
 ---
 title: Exporting results
-summary: Exporting your Metabase questions and dashboards as CSV, Excel, JSON, PDF, or PNG files.
+summary: Export the results of your questions and dashboards as CSV, Excel, JSON, PDF, or PNG files.
 redirect_from:
   - /docs/latest/questions/sharing/exporting-results
 ---
 
 # Exporting results
-
-You can export the results of a question or dashboard.
 
 ## Exporting results of a question
 
@@ -28,6 +26,16 @@ You can choose between downloading the results as:
 - **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../data-modeling/metadata/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
 
 If you don't see the option to export results, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
+
+## Copying results of a question
+
+To copy the results of a question to your clipboard, click the **clipboard** icon in the lower right of a question, next to the **Download** button. Metabase copies the columns that are visible in the table. If the question is a chart, Metabase copies the chart as an image.
+
+You can't copy results with more than 1,000,000 cells. If the results are truncated, Metabase copies only the rows that it loaded.
+
+If you don't see the clipboard icon, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
+
+To copy only some cells from a table, see [Copy cells from a table](./visualizations/table.md#copy-cells-from-a-table).
 
 ## Exporting pivot tables
 
@@ -63,12 +71,16 @@ The reason Metabase doesn't try to export results as a native Excel PivotTable i
 
 By default, Metabase will export the first 1048575 rows of results.
 
-- For CSV exports, you can increase this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_download_row_limit). Increasing this limit, however, may impact your Metabase's performance.
+- For CSV and JSON exports, you can increase this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_download_row_limit). Increasing this limit, however, may impact your Metabase's performance.
 - XLSX exports will always be limited to Excel's maximum of 1048575 rows (plus the header row).
 
 ### Cell character limit in Excel exports
 
 When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/excel/excel-specifications-and-limits). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
+
+## Setting the field separator for CSV exports
+
+By default, Metabase uses a comma (`,`) to separate fields in CSV exports. You can change the separator character with the [`MB_CSV_FIELD_SEPARATOR`](../configuring-metabase/environment-variables.md#mb_csv_field_separator) environment variable. Common alternatives include a semicolon (`;`), used in some locales, and a tab (`\t`).
 
 ## Exporting results from document cards
 

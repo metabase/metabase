@@ -7,7 +7,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -390,7 +390,7 @@
                               :native   {:query         "SELECT {{snippet: snippet-0-0}}"
                                          :template-tags (make-snippet-template-tag (snippet-id 0 0) (snippet-name 0 0))}})
           fetches           (atom 0)
-          orig              lib.metadata/native-query-snippet]
+          orig              (mt/original-fn #'lib.metadata/native-query-snippet)]
       (mt/with-dynamic-fn-redefs [lib.metadata/native-query-snippet (fn [mp id]
                                                                       (swap! fetches inc)
                                                                       (orig mp id))]

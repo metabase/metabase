@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -572,7 +573,8 @@
   {:host "x.cloud.databricks.com"
    :http-path "/sql/1.0/warehouses/abc"
    :catalog "main"
-   :auth-mode "wif"})
+   :auth-mode "wif"
+   :wif-provider "OIDC"})
 
 (deftest ^:parallel connection-details->spec-wif-inline-token-test
   (testing "WIF with an inline pasted JWT sets Auth_AccessToken via pass-through (AuthMech=11, Auth_Flow=0)"
@@ -587,6 +589,25 @@
         (is (not (contains? spec :pwd)))
         (is (not (contains? spec :OAuth2ClientId)))
         (is (not (contains? spec :OAuth2Secret)))))))
+
+(deftest ^:parallel connection-details->spec-wif-strips-legacy-creds-test
+  (testing "when an admin switches from PAT/M2M to WIF, stale credentials in details don't reach the spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details
+                       :wif-token    "eyJhbGciOi.jwt.sig"
+                       :token        "stale-pat"
+                       :client-id    "stale-cid"
+                       :oauth-secret "stale-secret"
+                       :password     "stale-password"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)))
+      (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec)))
+      (is (not (contains? spec :uid)))
+      (is (not (contains? spec :pwd)))
+      (is (not (contains? spec :OAuth2ClientId)))
+      (is (not (contains? spec :OAuth2Secret)))
+      (is (not (contains? spec :password))))))
 
 (deftest connection-details->spec-wif-file-path-wins-test
   (testing "file path wins over inline token; trailing newline is stripped"
@@ -611,6 +632,85 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
         (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
           (is (= "from-file" (:Auth_AccessToken (spec)))))))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-ignores-oidc-fields-test
+  (testing "non-OIDC provider ignores :wif-token and :wif-token-file-path"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "from-metadata"})]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :databricks
+                  (assoc wif-base-details
+                         :wif-provider        "GCP"
+                         :wif-audience        "aud"
+                         :wif-token           "ignored-inline"
+                         :wif-token-file-path "/some/other/path"))]
+        (is (= "from-metadata" (:Auth_AccessToken spec)))))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-gcp-test
+  (testing "WIF provider GCP calls the metadata server with the configured audience and embeds the token"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "  gcp-jwt-from-metadata\n"})]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :databricks
+                  (assoc wif-base-details :wif-provider "GCP" :wif-audience "databricks"))]
+        (is (= "gcp-jwt-from-metadata" (:Auth_AccessToken spec)))
+        (is (= 11 (:AuthMech spec)))
+        (is (= 0 (:Auth_Flow spec)))))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-gcp-missing-audience-test
+  (testing "GCP requires a non-blank :wif-audience"
+    (are [details] (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"requires an audience"
+                    (sql-jdbc.conn/connection-details->spec :databricks details))
+      (assoc wif-base-details :wif-provider "GCP")
+      (assoc wif-base-details :wif-provider "GCP" :wif-audience "")
+      (assoc wif-base-details :wif-provider "GCP" :wif-audience nil))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-unknown-test
+  (testing "any WIF provider that isn't exactly OIDC or GCP is rejected"
+    (are [provider] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unsupported WIF provider"
+                     (sql-jdbc.conn/connection-details->spec
+                      :databricks
+                      (assoc wif-base-details :wif-provider provider)))
+      nil
+      ""
+      "bogus"
+      "Oidc"
+      "oidc"
+      "Gcp"
+      "gcp")))
+
+(deftest connection-details->spec-wif-hosted-rejects-ambient-providers-test
+  (testing "on Metabase Cloud, ambient WIF providers are not allowed"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"not available on Metabase Cloud"
+           (sql-jdbc.conn/connection-details->spec
+            :databricks
+            (assoc wif-base-details :wif-provider "GCP"))))))
+  (testing "OIDC with an explicit token is still allowed on Metabase Cloud"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :databricks
+                  (assoc wif-base-details :wif-provider "OIDC" :wif-token "eyJhbGciOi.jwt.sig"))]
+        (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec)))
+        (is (= 11 (:AuthMech spec)))
+        (is (= 0 (:Auth_Flow spec)))))))
+
+(deftest wif-provider-options-hidden-when-hosted-test
+  (let [wif-provider-values
+        (fn [] (->> (:details-fields (:databricks (driver.u/available-drivers-info)))
+                    (m/find-first #(= "wif-provider" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "on Metabase Cloud, ambient options are stripped from the wif-provider select"
+      (mt/with-premium-features #{:hosting}
+        (is (= ["OIDC"] (wif-provider-values)))))
+    (testing "off Metabase Cloud, OIDC and GCP are offered"
+      (mt/with-premium-features #{}
+        (is (= ["OIDC" "GCP"] (wif-provider-values)))))))
 
 (defn- fake-jwt
   "A parseable (but not verifiable) JWT with `claims` as the payload."
@@ -744,6 +844,7 @@
           :http-path     (tx/db-test-env-var-or-throw :databricks :http-path)
           :catalog       (tx/db-test-env-var-or-throw :databricks :catalog)
           :auth-mode     "wif"
+          :wif-provider  "OIDC"
           :wif-client-id (tx/db-test-env-var-or-throw :databricks :wif-user)}
          token-source))
 

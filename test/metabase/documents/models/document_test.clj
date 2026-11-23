@@ -2,19 +2,30 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.documents.models.document-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.models.document :as document]
+   [metabase.documents.schema :as documents.schema]
+   [metabase.documents.test-util :as documents.tu]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.serialization.core :as serialization]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -32,58 +43,6 @@
           (is (= nil
                  (:public_uuid document))))))))
 
-(deftest sync-document-cards-collection-matching-cards-test
-  (testing "should only update cards with matching document_id"
-    (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
-                   :model/Document {document-id :id} {:name "Test Document"}
-                   :model/Card {card1-id :id} {:name "Document Card 1"
-                                               :document_id document-id
-                                               :collection_id nil
-                                               :dataset_query (mt/mbql-query venues)}
-                   :model/Card {card2-id :id} {:name "Document Card 2"
-                                               :document_id document-id
-                                               :collection_id nil
-                                               :dataset_query (mt/mbql-query venues)}
-                   :model/Card {other-card-id :id} {:name "Other Card"
-                                                    :type :question
-                                                    :collection_id nil
-                                                    :dataset_query (mt/mbql-query venues)}]
-      (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
-        ;; Should update exactly 2 cards
-        (is (= 2 updated-count))
-        ;; Verify the document cards were updated
-        (let [updated-card1 (t2/select-one :model/Card :id card1-id)
-              updated-card2 (t2/select-one :model/Card :id card2-id)
-              other-card (t2/select-one :model/Card :id other-card-id)]
-          (is (= collection-id (:collection_id updated-card1)))
-          (is (= collection-id (:collection_id updated-card2)))
-          ;; Other card should not be affected
-          (is (nil? (:collection_id other-card))))))))
-
-(deftest sync-document-cards-collection-nil-document-document-id-test
-  (testing "should not affect cards with nil document_id"
-    (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
-                   :model/Document {document-id :id} {:name "Test Document"}
-                   :model/Card {nil-document-card-id :id} {:name "Nil Document Card"
-                                                           :document_id nil
-                                                           :collection_id nil
-                                                           :dataset_query (mt/mbql-query venues)}]
-      (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
-        ;; Should update 0 cards since no cards have matching document_id
-        (is (= 0 updated-count))
-        ;; Verify the card with nil document_id was not affected
-        (let [unchanged-card (t2/select-one :model/Card :id nil-document-card-id)]
-          (is (nil? (:collection_id unchanged-card))))))))
-
-(deftest sync-document-cards-collection-empty-result-sets-test
-  (testing "should handle empty result sets gracefully"
-    (mt/with-temp [:model/Collection {collection-id :id} {:name "Target Collection"}
-                   :model/Document {document-id :id} {:name "Empty Document"}]
-      ;; No cards associated with this document
-      (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
-        ;; Should return 0 for no updates
-        (is (= 0 updated-count))))))
-
 (deftest document-collection-sync-hook-triggers-on-collection-change-test
   (testing "Hook is called when document collection_id changes"
     (mt/with-temp
@@ -98,7 +57,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
+      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -113,7 +72,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (t2/update! :model/Document :id document-id {:collection_id nil})
+      (document/update-documents! [{:id document-id :collection_id nil}])
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -137,7 +96,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
+      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -147,145 +106,155 @@
 (deftest personal-collection-edge-cases-test
   (testing "Personal collection handling"
     (binding [collection/*allow-deleting-personal-collections* true]
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@example.com"}
-                     :model/Collection {regular-collection-id :id} {:name "Regular Collection"}
-                     :model/Document {document-id :id} {:collection_id regular-collection-id
-                                                        :name "Personal Test Document"}
-                     :model/Card {card-id :id} {:name "Personal Card"
-                                                :document_id document-id
-                                                :collection_id regular-collection-id
-                                                :dataset_query (mt/mbql-query venues)}]
-        (let [personal-coll-id (personal-collection-id user-id)]
-          (testing "moving document to personal collection moves associated cards"
+      (mt/with-model-cleanup [:model/Collection :model/User]
+        (let [[{user-id :id}] (user/create-users! [{:first_name "Test" :last_name "User" :email "test@example.com"}])]
+          (mt/with-temp [:model/Collection {regular-collection-id :id} {:name "Regular Collection"}
+                         :model/Document {document-id :id} {:collection_id regular-collection-id
+                                                            :name "Personal Test Document"}
+                         :model/Card {card-id :id} {:name "Personal Card"
+                                                    :document_id document-id
+                                                    :collection_id regular-collection-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+            (let [personal-coll-id (personal-collection-id user-id)]
+              (testing "moving document to personal collection moves associated cards"
+                (mt/with-current-user user-id
+                  ;; As the personal collection owner, update should succeed
+                  (document/update-documents! [{:id document-id :collection_id personal-coll-id}])
+                  ;; Verify both document and card moved to personal collection
+                  (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
+                  (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+              (testing "moving document from personal collection works"
+                (mt/with-current-user user-id
+                  ;; Move back to regular collection
+                  (document/update-documents! [{:id document-id :collection_id regular-collection-id}])
+                  ;; Verify both document and card moved back
+                  (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
+                  (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))))
+
+(defn- move-allowed?
+  "Whether the current user may move the Document in `old-collection-id` to `new-collection-id`."
+  [old-collection-id new-collection-id]
+  (mt/with-temp [:model/Document document {:collection_id old-collection-id}]
+    (mi/can-update? (t2/hydrate document :can_write) {:collection_id new-collection-id})))
+
+(deftest can-update-collection-move-test
+  (testing "moving a Document needs write access to both its Collection and the Collection it moves to"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {old-id :id} {}
+                     :model/Collection {new-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
             (mt/with-current-user user-id
-              ;; As the personal collection owner, update should succeed
-              (t2/update! :model/Document :id document-id {:collection_id personal-coll-id})
-              ;; Verify both document and card moved to personal collection
-              (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
-              (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
-          (testing "moving document from personal collection works"
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+              (is (false? (move-allowed? old-id new-id)))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
+              (is (true? (move-allowed? old-id new-id))))
             (mt/with-current-user user-id
-              ;; Move back to regular collection
-              (t2/update! :model/Document :id document-id {:collection_id regular-collection-id})
-              ;; Verify both document and card moved back
-              (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-              (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
+              (mt/with-temp [:model/Collection {other-id :id} {}
+                             :model/Document document {:collection_id old-id}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                      (api/update-check document {:collection_id other-id})))))))))))
 
-(deftest validate-collection-move-permissions-allows-move-with-both-permissions-test
-  (testing "allows move when user has write permissions for both collections"
+(deftest can-update-root-collection-move-test
+  (testing "moving a Document from or to the root Collection needs write access to the root Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permissions to both collections
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception
-          (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+            (mt/with-current-user user-id
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (false? (move-allowed? coll-id nil)))
+              (is (false? (move-allowed? nil coll-id)))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+              (is (true? (move-allowed? coll-id nil)))
+              (is (true? (move-allowed? nil coll-id))))))))))
 
-(deftest validate-collection-move-permissions-throws-403-missing-old-permission-test
-  (testing "throws 403 when user lacks write permission for old collection"
+(deftest can-update-without-collection-move-test
+  (testing "an update that keeps the Collection needs only write access to the Document"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission only to new collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document document {:collection_id coll-id}]
+        (mt/with-model-cleanup [:model/User]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+            (mt/with-current-user user-id
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (true? (mi/can-update? (t2/hydrate document :can_write) {:name "New name"})))
+              (is (true? (mi/can-update? (t2/hydrate document :can_write) {:collection_id coll-id}))))))))))
 
-(deftest validate-collection-move-permissions-throws-403-missing-new-permission-test
-  (testing "throws 403 when user lacks write permission for new collection"
+(deftest can-update-public-sharing-test
+  (testing "only superusers change the public sharing columns of a Document"
+    (mt/with-temp [:model/Document document {}]
+      (letfn [(can-update? [user changes]
+                (mt/with-current-user (mt/user->id user)
+                  (mi/can-update? (t2/hydrate document :can_write) changes)))]
+        (is (true? (can-update? :crowberto {:public_uuid (str (random-uuid))})))
+        (is (false? (can-update? :rasta {:public_uuid (str (random-uuid))})))
+        (is (false? (can-update? :rasta {:made_public_by_id (mt/user->id :rasta)})))
+        (is (true? (can-update? :rasta {:name "New name"})))))))
+
+(deftest can-create-test
+  (testing "creating a Document needs write access to its Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission only to old collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/User]
+          (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+            (mt/with-current-user user-id
+              (is (false? (mi/can-create? :model/Document {:collection_id coll-id})))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+              (is (true? (mi/can-create? :model/Document {:collection_id coll-id}))))))))))
 
-(deftest validate-collection-move-permissions-throws-403-no-permissions-test
-  (testing "throws 403 when user lacks write permissions for both collections"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; No permissions granted
+(deftest document-does-not-go-into-archived-collection-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Document   document          {}]
+    (testing "moving a Document that is not archived into an archived Collection is a 400"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
+                            (document/update-documents! [{:id (:id document) :collection_id archived-id}])))
+      (is (nil? (t2/select-one-fn :collection_id :model/Document :id (:id document)))))
+    (testing "a Document that stays where it is, or goes to the root, passes"
+      (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
+      (is (nil? (document/update-documents! [{:id (:id document) :collection_id nil}]))))))
 
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+(deftest document-schema-test
+  (testing "the Document schema takes a non-blank name of at most 254 characters"
+    (doseq [bad-name ["" "   " (apply str (repeat 255 "a"))]]
+      (is (not (mr/validate ::documents.schema/document.update {:id 1 :name bad-name}))))
+    (is (mr/validate ::documents.schema/document.update {:id 1 :name (apply str (repeat 254 "a"))})))
+  (testing "the Document schema takes a body only when it is a ProseMirror node"
+    (is (not (mr/validate ::documents.schema/document.update {:id 1 :document {:content []}})))
+    (is (mr/validate ::documents.schema/document.update {:id 1 :document {:type "doc" :content []}}))))
 
-(deftest validate-collection-move-permissions-allows-move-from-root-test
-  (testing "allows move when old collection is nil (moving from root)"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission to new collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception when old collection is nil
-          (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
+(deftest collection-namespace-test
+  (testing "a Document goes only in Collections of an allowed namespace"
+    (mt/with-temp [:model/Collection {snippets-id :id} {:namespace "snippets"}
+                   :model/Document {doc-id :id} {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
+                            (document/create-documents! [{:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id}])))
+      (is (not (t2/exists? :model/Document :collection_id snippets-id)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
+                            (document/update-documents! [{:id doc-id :collection_id snippets-id}])))
+      (is (nil? (t2/select-one-fn :collection_id :model/Document :id doc-id))))))
 
-(deftest validate-collection-move-permissions-allows-move-to-root-test
-  (testing "allows move when new collection is nil (moving to root)"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission to old collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should not throw any exception when new collection is nil
-          (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
+(deftest public-uuid-prefix-is-derived-test
+  (testing "the public UUID prefix follows the public UUID and is not written alone"
+    (mt/with-temp [:model/Document {doc-id :id} {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its public UUID"
+                            (t2/update! :model/Document :id doc-id {:public_uuid_prefix "abcdefgh"})))
+      (let [uuid (str (random-uuid))]
+        (t2/update! :model/Document :id doc-id {:public_uuid uuid})
+        (is (= (subs uuid 0 8) (t2/select-one-fn :public_uuid_prefix :model/Document :id doc-id)))))))
 
-(deftest validate-collection-move-permissions-allows-move-both-nil-test
-  (testing "allows move when both collections are nil"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (mt/with-current-user user-id
-        ;; Should not throw any exception when both collections are nil
-        (is (nil? (document/validate-collection-move-permissions nil nil)))))))
-
-(deftest validate-collection-move-permissions-throws-400-nonexistent-collection-test
-  (testing "throws 400 when new collection does not exist"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission to old collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Use a non-existent collection ID
-          (let [non-existent-id 999999]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Request."
-                                  (document/validate-collection-move-permissions old-collection-id non-existent-id)))))))))
-
-(deftest validate-collection-move-permissions-throws-400-archived-collection-test
-  (testing "throws 400 when new collection is archived"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {archived-collection-id :id} {:name "Archived Collection" :archived true}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permissions to both collections
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection-id)
-          ;; Should throw 400 exception for archived collection
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
-                                (document/validate-collection-move-permissions old-collection-id archived-collection-id))))))))
-
-(deftest validate-collection-move-permissions-superuser-test
-  (testing "superuser can move between any collections"
-    (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                   :model/Collection {new-collection-id :id} {:name "New Collection"}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        ;; Superuser should be able to move without explicit permissions
-        (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
+(deftest cards-follow-collection-only-when-it-changes-test
+  (testing "updating a Document leaves its Cards in their Collection unless its own Collection changes"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Collection {card-coll-id :id} {}
+                   :model/Collection {new-coll-id :id} {}
+                   :model/Document {doc-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:document_id doc-id :collection_id coll-id}]
+      (t2/update! :model/Card :id card-id {:collection_id card-coll-id})
+      (t2/update! :model/Document :id doc-id {:name "Renamed"})
+      (is (= card-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
+      (document/update-documents! [{:id doc-id :collection_id new-coll-id}])
+      (is (= new-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
 (deftest hydrate-document-creator-test
   (testing "hydrates document creator correctly"
@@ -429,27 +398,14 @@
 
 ;;; ------------------------------------------------- Serialization Tests -------------------------------------------
 
-(deftest document-serdes-spec-test
-  (testing "Document serialization spec includes all required fields"
-    (let [spec (serdes/make-spec "Document" {})]
-      (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
-             (:copy spec)))
-      (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
-      (is (contains? (:transform spec) :document))
-      (is (contains? (:transform spec) :collection_id))
-      (is (contains? (:transform spec) :creator_id))
-      (testing "foreign key transformers are properly configured"
-        (is (get-in spec [:transform :collection_id ::serdes/fk]))
-        (is (get-in spec [:transform :creator_id ::serdes/fk]))))))
-
 (deftest document-serdes-dependencies-test
   (testing "Document dependencies method works correctly"
     (testing "with collection and creator"
       (let [document {:collection_id 123
                       :creator_id 456
-                      :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-            deps (serdes/deserialization-dependencies document)]
-        (is (= #{[{:model "Collection" :id 123}]}
+                      :serdes/meta [{:model "Document"}]}
+            deps (first (serialization/import-dependencies :model/Document [document]))]
+        (is (= #{[:model/Collection 123]}
                deps))))))
 
 (deftest document-serdes-smartlink-single-reference-test
@@ -459,13 +415,13 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-multiple-references-test
   (testing "multiple smartLink references of different types"
@@ -474,21 +430,21 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Dashboard" :id 456}]
-                                                             "model" "dashboard"}}
+                                                     :attrs {:entityId [{:model "Dashboard" :id 456}]
+                                                             :model "dashboard"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Table" :id 321}]
-                                                             "model" "table"}}]}]}
+                                                     :attrs {:entityId [{:model "Database" :id "db"} {:model "Table" :id "t"}]
+                                                             :model "table"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Dashboard" :id 456}]))
-      (is (contains? deps [{:model "Table" :id 321}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Dashboard 456]))
+      (is (contains? deps [:model/Table ["db" nil "t"]]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-nested-structure-test
   (testing "nested smartLink in complex prose mirror structure"
@@ -501,13 +457,13 @@
                                           :content [{:type "listItem"
                                                      :content [{:type "paragraph"
                                                                 :content [{:type "smartLink"
-                                                                           :attrs {"entityId" [{:model "Card" :id 999}]
-                                                                                   "model" "card"}}]}]}]}]}
+                                                                           :attrs {:entityId [{:model "Card" :id 999}]
+                                                                                   :model "card"}}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 999}]))
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 999]))
+      (is (contains? deps [:model/Collection 123])))))
 
 (deftest document-serdes-smartlink-no-smartlinks-test
   (testing "document with no smartLinks"
@@ -517,9 +473,9 @@
                                :content [{:type "paragraph"
                                           :content [{:type "text" :text "Plain text only"}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (= #{[{:model "Collection" :id 123}]}
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]}
              deps)))))
 
 (deftest document-serdes-smartlink-unknown-model-test
@@ -529,16 +485,16 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Unknown" :id 789}]
-                                                             "model" "unknown-model"}}
+                                                     :attrs {:entityId [{:model "Unknown" :id 789}]
+                                                             :model "unknown-model"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
-      (is (not (some #(= (:model (first %)) "unknown-model") deps))))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
+      (is (= #{[:model/Card 456] [:model/Collection 123]} deps)))))
 
 (deftest document-serdes-smartlink-missing-entity-id-test
   (testing "smartLink with missing entityId is ignored"
@@ -547,14 +503,14 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"model" "card"}}
+                                                     :attrs {:model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-duplicate-references-test
@@ -564,15 +520,15 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
       (is (= 2 (count deps)))))) ; collection and one unique card
 
 (deftest document-serdes-smartlink-empty-content-test
@@ -582,9 +538,9 @@
                     :document {:type "doc"
                                :content []}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (= #{[{:model "Collection" :id 123}]}
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]}
              deps)))))
 
 (deftest document-serdes-smartlink-missing-model-test
@@ -594,14 +550,14 @@
                     :document {:type "doc"
                                :content [{:type "paragraph"
                                           :content [{:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]}}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-nil-attrs-test
@@ -613,12 +569,12 @@
                                           :content [{:type "smartLink"
                                                      :attrs nil}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 456}]
-                                                             "model" "card"}}]}]}
+                                                     :attrs {:entityId [{:model "Card" :id 456}]
+                                                             :model "card"}}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 456}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 456]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
 (deftest document-serdes-smartlink-mixed-content-test
@@ -629,29 +585,29 @@
                                :content [{:type "paragraph"
                                           :content [{:type "text" :text "Check out this "}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Card" :id 789}]
-                                                             "model" "card"}}
+                                                     :attrs {:entityId [{:model "Card" :id 789}]
+                                                             :model "card"}}
                                                     {:type "text" :text " and this "}
                                                     {:type "smartLink"
-                                                     :attrs {"entityId" [{:model "Dashboard" :id 456}]
-                                                             "model" "dashboard"}}]}
+                                                     :attrs {:entityId [{:model "Dashboard" :id 456}]
+                                                             :model "dashboard"}}]}
                                          {:type "heading"
-                                          :attrs {"level" 2}
+                                          :attrs {:level 2}
                                           :content [{:type "text" :text "Section with table"}]}
                                          {:type "table"
                                           :content [{:type "tableRow"
                                                      :content [{:type "tableCell"
                                                                 :content [{:type "paragraph"
                                                                            :content [{:type "smartLink"
-                                                                                      :attrs {"entityId" [{:model "Table" :id 321}]
-                                                                                              "model" "table"}}]}]}]}]}]}
+                                                                                      :attrs {:entityId [{:model "Database" :id "db"} {:model "Table" :id "t"}]
+                                                                                              :model "table"}}]}]}]}]}]}
                     :content_type "application/json+vnd.prose-mirror"
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Card" :id 789}]))
-      (is (contains? deps [{:model "Dashboard" :id 456}]))
-      (is (contains? deps [{:model "Table" :id 321}]))
-      (is (contains? deps [{:model "Collection" :id 123}]))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (contains? deps [:model/Card 789]))
+      (is (contains? deps [:model/Dashboard 456]))
+      (is (contains? deps [:model/Table ["db" nil "t"]]))
+      (is (contains? deps [:model/Collection 123]))
       (is (= 4 (count deps)))))) ; 3 smartLinks + collection
 
 (deftest document-serdes-smartlink-non-prose-mirror-test
@@ -660,151 +616,138 @@
                     :creator_id 456
                     :document {:type "doc"
                                :content [{:type "smartLink"
-                                          :attrs {"entityId" [{:model "Card" :id 456}]
-                                                  "model" "card"}}]}
+                                          :attrs {:entityId [{:model "Card" :id 456}]
+                                                  :model "card"}}]}
                     :content_type "application/json" ; Not prose-mirror
-                    :serdes/meta [{:model "Document" :id "test-entity-id"}]}
-          deps (serdes/deserialization-dependencies document)]
-      (is (contains? deps [{:model "Collection" :id 123}])))))
+                    :serdes/meta [{:model "Document"}]}
+          deps (first (serialization/import-dependencies :model/Document [document]))]
+      (is (= #{[:model/Collection 123]} deps)))))
 
-(deftest document-serdes-descendants-embedded-cards-test
-  (testing "Document descendants includes embedded cards"
+(defn- export-dependencies [document-id]
+  (first (serialization/export-dependencies :model/Document [(t2/select-one :model/Document :id document-id)])))
+
+(deftest document-serdes-export-dependencies-embedded-cards-test
+  (testing "Document export dependencies includes embedded cards"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 456}}
+                                                                            :attrs {:id 456}}
                                                                            {:type "cardEmbed"
-                                                                            :attrs {"id" 789}}]}
+                                                                            :attrs {:id 789}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 456] {"Document" document-id}
-                ["Card" 789] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]
+                 [:model/Card 789]}
+               deps))))))
 
-(deftest document-serdes-descendants-smart-links-test
-  (testing "Document descendants includes smart links"
+(deftest document-serdes-export-dependencies-smart-links-test
+  (testing "Document export dependencies includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 789
-                                                                                    "model" "dashboard"}}]}
+                                                                            :attrs {:entityId 789
+                                                                                    :model "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 456] {"Document" document-id}
-                ["Dashboard" 789] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]
+                 [:model/Dashboard 789]}
+               deps))))))
 
-(deftest document-serdes-descendants-mixed-content-test
-  (testing "Document descendants includes both embedded cards and smart links"
+(deftest document-serdes-export-dependencies-mixed-content-test
+  (testing "Document export dependencies includes both embedded cards and smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 111}}
+                                                                            :attrs {:id 111}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 222
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 222
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 333
-                                                                                    "model" "table"}}]}
+                                                                            :attrs {:entityId 333
+                                                                                    :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 111] {"Document" document-id}
-                ["Card" 222] {"Document" document-id}
-                ["Table" 333] {"Document" document-id}}
-               descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 111]
+                 [:model/Card 222]
+                 [:model/Table 333]}
+               deps))))))
 
-(deftest document-serdes-descendants-empty-document-test
-  (testing "Document descendants handles document with no embedded content"
+(deftest document-serdes-export-dependencies-empty-document-test
+  (testing "Document export dependencies handles document with no embedded content"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "paragraph"
                                                                             :content [{:type "text" :text "Plain text only"}]}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {} descendants))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{} deps))))))
 
-(deftest document-serdes-descendants-nonexistent-document-test
-  (testing "Document descendants returns nil for non-existent document"
-    (let [descendants (serdes/descendants "Document" 99999999 {})]
-      (is (nil? descendants)))))
-
-(deftest document-serdes-descendants-unknown-smart-link-model-test
-  (testing "Document descendants ignores smart links with unknown model types"
+(deftest document-serdes-export-dependencies-unknown-smart-link-model-test
+  (testing "Document export dependencies ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 789
-                                                                                    "model" "unknown-model"}}]}
+                                                                            :attrs {:entityId 789
+                                                                                    :model "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        ;; Should only include the known model type
-        (is (= {["Card" 456] {"Document" document-id}}
-               descendants))
-        ;; Should not include unknown model
-        (is (not (contains? descendants ["Unknown" 789])))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]}
+               deps))
+        (is (not (contains? deps [:model/Unknown 789])))))))
 
-(deftest document-serdes-descendants-duplicate-references-test
-  (testing "Document descendants handles duplicate references correctly"
+(deftest document-serdes-export-dependencies-duplicate-references-test
+  (testing "Document export dependencies handles duplicate references correctly"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
-                                                                            :attrs {"id" 456}}
+                                                                            :attrs {:id 456}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 456
-                                                                                    "model" "card"}}]}
+                                                                            :attrs {:entityId 456
+                                                                                    :model "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        ;; Should merge duplicate references - same card referenced twice
-        (is (= {["Card" 456] {"Document" document-id}}
-               descendants))
-        ;; Should only have one entry for the card
-        (is (= 1 (count descendants)))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 456]}
+               deps))
+        (is (= 1 (count deps)))))))
 
-(deftest document-serdes-descendants-non-prose-mirror-test
-  (testing "Document descendants handles non-prose-mirror documents"
+(deftest document-serdes-export-dependencies-non-prose-mirror-test
+  (testing "Document export dependencies handles non-prose-mirror documents"
     (mt/with-temp [:model/Document {document-id :id} {:document {:some "other format"}
                                                       :content_type "application/json"}] ; Not prose-mirror
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (nil? descendants))))))
+      (is (empty? (export-dependencies document-id))))))
 
-(deftest document-serdes-descendants-all-model-types-test
-  (testing "Document descendants correctly maps all supported smart link model types"
+(deftest document-serdes-export-dependencies-all-model-types-test
+  (testing "Document export dependencies correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {"entityId" 111
-                                                                                    "model" "card"}}
+                                                                            :attrs {:entityId 111
+                                                                                    :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 222
-                                                                                    "model" "dashboard"}}
+                                                                            :attrs {:entityId 222
+                                                                                    :model "dashboard"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {"entityId" 333
-                                                                                    "model" "table"}}]}
+                                                                            :attrs {:entityId 333
+                                                                                    :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id {})]
-        (is (= {["Card" 111] {"Document" document-id}
-                ["Dashboard" 222] {"Document" document-id}
-                ["Table" 333] {"Document" document-id}}
-               descendants))
-        ;; Verify all supported model types are included
-        (is (contains? descendants ["Card" 111]))
-        (is (contains? descendants ["Dashboard" 222]))
-        (is (contains? descendants ["Table" 333]))))))
+      (let [deps (export-dependencies document-id)]
+        (is (= #{[:model/Card 111]
+                 [:model/Dashboard 222]
+                 [:model/Table 333]}
+               deps))
+        (is (contains? deps [:model/Card 111]))
+        (is (contains? deps [:model/Dashboard 222]))
+        (is (contains? deps [:model/Table 333]))))))
 
-(deftest no-events-during-deserialization-test
-  (testing "Document after-update hook does not publish events during deserialization (#72293)"
+(deftest update-publishes-lifecycle-event-test
+  (testing "updating a Document through the model publishes its update event with the previous row"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"}]
       (let [events-published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
-          (testing "events fire normally"
-            (t2/update! :model/Document :id doc-id {:name "Updated Name"})
-            (is (= 1 (count @events-published)))
-            (is (= :event/document-update (ffirst @events-published))))
-          (reset! events-published [])
-          (testing "events are suppressed during deserialization"
-            (binding [mi/*deserializing?* true]
-              (t2/update! :model/Document :id doc-id {:name "Deserialized Name"}))
-            (is (empty? @events-published))))))))
+          (document/update-documents! [{:id doc-id :name "Updated Name"}]))
+        (is (=? [[:event/document-update {:changes [{:object          {:id doc-id :name "Updated Name"}
+                                                     :previous-object {:id doc-id :name "Test Document"}}]}]]
+                (filterv (comp #{:event/document-update} first) @events-published)))))))
 
 (deftest never-viewed-document-reports-null-activity-anchor
   (testing "a never-viewed document's activity anchor is NULL, not its last_viewed_at storage default
@@ -814,8 +757,7 @@
                                                                                :view_count 5})
                    :model/Document {never-id :id} {:name       "never viewed"
                                                    :created_at (stale-test/datetime-months-ago 7)}]
-      (let [rows   (t2/query (staleness/find-stale-query
-                              :model/Document
+      (let [rows   (t2/query ((staleness/candidates-fn :model/Document)
                               {:collection-ids #{nil}
                                :cutoff-date    (stale-test/date-months-ago 6)}))
             anchor (fn [id] (:last_used_at (first (filter #(= id (:id %)) rows))))]
@@ -827,8 +769,8 @@
 (defn- export-document-ast
   "Run a document row through the serdes `:document` export transform and return the exported AST."
   [document]
-  ((get-in (serdes/make-spec "Document" {}) [:transform :document :export-with-context])
-   document :document nil))
+  (first ((get-in (serialization/spec :model/Document) [:transform :document :export])
+          serialization/app-db-store [document] [(:document document)] {})))
 
 (deftest document-serdes-static-card-embed-test
   (testing "A static (snapshot-backed) cardEmbed"
@@ -837,60 +779,36 @@
       (let [node (-> {:content_type "application/json+vnd.prose-mirror"
                       :document     {:type    "doc"
                                      :content [{:type  "cardEmbed"
-                                                :attrs {"id"               card-id
-                                                        "stored_result_id" 987654321}}]}}
+                                                :attrs {:id               card-id
+                                                        :stored_result_id 987654321}}]}}
                      export-document-ast
                      :content
                      first)]
-        (testing "still rewrites its Card :id to a portable serdes path — the ephemeral Card is a real serdes entity"
-          (is (vector? (get-in node [:attrs "id"])))
-          (is (= "Card" (:model (first (get-in node [:attrs "id"]))))))
+        (testing "still rewrites its Card :id to a serdes path — the ephemeral Card is a real serdes entity"
+          (is (vector? (get-in node [:attrs :id])))
+          (is (= "Card" (:model (first (get-in node [:attrs :id]))))))
         (testing "drops :stored_result_id — a raw local id for a row that is not a serdes entity, which would resolve to an unrelated snapshot on import"
-          (is (not (contains? (:attrs node) "stored_result_id"))))))))
+          (is (not (contains? (:attrs node) :stored_result_id))))))))
 
 (deftest document-serdes-live-card-embed-keeps-attrs-test
-  (testing "A live cardEmbed exports its :id as a portable path and is otherwise untouched"
+  (testing "A live cardEmbed exports its :id as a serdes path and is otherwise untouched"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card       {card-id :id} {:collection_id coll-id}]
       (let [node (-> {:content_type "application/json+vnd.prose-mirror"
                       :document     {:type    "doc"
                                      :content [{:type  "cardEmbed"
-                                                :attrs {"id" card-id "_id" "abc"}}]}}
+                                                :attrs {:id card-id :_id "abc"}}]}}
                      export-document-ast
                      :content
                      first)]
-        (is (= "Card" (:model (first (get-in node [:attrs "id"])))))
-        (is (= "abc" (get-in node [:attrs "_id"])))))))
-
-(deftest serdes-extract-query-excludes-exploration-documents-test
-  (testing "serdes never extracts an exploration Summary document"
-    (mt/with-temp [:model/Collection  {coll-id :id}    {}
-                   :model/User        {user-id :id}    {:email "serdes-doc@example.com"}
-                   :model/Exploration {expl-id :id}    {:name "Explo" :creator_id user-id}
-                   :model/Document    {plain-id :id}   {:name "Plain" :creator_id user-id
-                                                        :collection_id coll-id}
-                   :model/Document    {summary-id :id} {:name           "Summary"
-                                                        :creator_id     user-id
-                                                        :collection_id  coll-id
-                                                        :exploration_id expl-id}]
-      (let [eid       #(t2/select-one-fn :entity_id :model/Document :id %)
-            ;; A caller-supplied id filter must still compose — this is also the shape a full
-            ;; (untargeted) export takes, where the Collection descendants filter never runs.
-            extracted (into #{}
-                            (map :entity_id)
-                            (serdes/extract-all "Document" {:filter-column :id
-                                                            :filter-ids    [plain-id summary-id]}))]
-        (is (contains? extracted (eid plain-id))
-            "an ordinary document is still exported")
-        (is (not (contains? extracted (eid summary-id)))
-            "a Summary document is never exported — it is not first-class content, and its body embeds
-             values computed under its creator's data-access lens")))))
+        (is (= "Card" (:model (first (get-in node [:attrs :id])))))
+        (is (= "abc" (get-in node [:attrs :_id])))))))
 
 (defn- import-document-ast
   "Run an exported AST back through the serdes `:document` import transform."
   [document]
-  ((get-in (serdes/make-spec "Document" {}) [:transform :document :import-with-context])
-   document :document nil))
+  (first ((get-in (serialization/spec :model/Document) [:transform :document :import])
+          serialization/app-db-store [document] [(:document document)] {:create-missing? true})))
 
 (deftest document-serdes-card-embed-round-trips-test
   (testing "a cardEmbed's Card id survives export and comes back on import"
@@ -900,13 +818,241 @@
                       {:content_type "application/json+vnd.prose-mirror"
                        :document     {:type    "doc"
                                       :content [{:type  "cardEmbed"
-                                                 :attrs {"id" card-id}}]}})
+                                                 :attrs {:id card-id}}]}})
             imported (import-document-ast
                       {:content_type "application/json+vnd.prose-mirror"
                        :document     exported})]
-        (testing "export rewrites the id to a portable path"
-          (is (vector? (get-in exported [:content 0 :attrs "id"]))))
+        (testing "export rewrites the id to a serdes path"
+          (is (vector? (get-in exported [:content 0 :attrs :id]))))
         (testing "import rewrites it back to this instance's Card id — on the serialized form the id
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
-          (is (= card-id (get-in imported [:content 0 :attrs "id"]))))))))
+          (is (= card-id (get-in imported [:content 0 :attrs :id]))))))))
+
+(deftest document-writes-statement-count-test
+  (testing "Creating, moving, archiving and deleting Documents takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (mt/with-model-cleanup [:model/Document]
+        (let [create     (fn [n] (document/create-documents! (for [i (range n)] {:name (str "Document " i) :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id from-id})))
+              statements (fn [n f]
+                           (let [documents (create n)]
+                             (t2/with-call-count [call-count]
+                               (f documents)
+                               (call-count))))
+              updater    (fn [changes] (fn [documents] (document/update-documents! (mapv (fn [row-id] (assoc changes :id row-id)) (mapv :id documents)))))]
+          (testing "creating"
+            (create 1)
+            (is (= (t2/with-call-count [call-count] (create 2) (call-count))
+                   (t2/with-call-count [call-count] (create 6) (call-count)))))
+          (testing "moving"
+            (statements 1 (updater {:collection_id to-id}))
+            (is (= (statements 2 (updater {:collection_id to-id})) (statements 6 (updater {:collection_id to-id})))))
+          (testing "archiving"
+            (statements 1 (updater {:archived true}))
+            (is (= (statements 2 (updater {:archived true})) (statements 6 (updater {:archived true})))))
+          (testing "deleting"
+            (statements 1 #(document/delete-documents! (mapv :id %)))
+            (is (= (statements 2 #(document/delete-documents! (mapv :id %)))
+                   (statements 6 #(document/delete-documents! (mapv :id %)))))))))))
+
+(deftest create-documents-with-different-columns-test
+  (mt/with-model-cleanup [:model/Document]
+    (let [creator-id (mt/user->id :rasta)
+          documents  (document/create-documents! [{:name "Plain" :creator_id creator-id :content_type "application/json+vnd.prose-mirror"}
+                                                  {:name "Archived" :creator_id creator-id :archived true
+                                                   :content_type "application/json+vnd.prose-mirror"}])]
+      (is (= ["Plain" "Archived"] (map :name documents)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/Document :id (:id %)) documents))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {live :id}  {}
+                 :model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [rows    (fn [n] (mapv (fn [_] {:name (mt/random-name) :collection_id live :creator_id (mt/user->id :rasta)
+                                             :document (documents.tu/text->prose-mirror-ast "text") :content_type "application/json+vnd.prose-mirror"})
+                                    (range n)))
+              fresh!  (fn [n]
+                        (let [ids (mapv :id (document/create-documents! (rows n)))]
+                          (doseq [id ids]
+                            (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :document_id id :collection_id live)))
+                          ids))
+              update! (fn [prepare changes n]
+                        (let [ids (fresh! n)]
+                          (prepare (take-nth 2 ids))
+                          (events.tu/statement-count! #(document/update-documents! (mapv (fn [id] (assoc changes :id id)) ids)))))
+              counted (fn [f]
+                        (f 1)
+                        (is (= (f 2) (f 6))))]
+          (testing "creating documents"
+            (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(document/create-documents! rows))))))
+          (testing "updating columns, some already holding the new value"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                              {:name "Same"})))
+          (testing "archiving documents and their cards, some already archived"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                              {:archived true})))
+          (testing "restoring documents and their cards, some already live"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                              {:archived false})))
+          (testing "moving documents and their cards, some already in the Collection"
+            (counted (partial update!
+                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                              {:collection_id other})))
+          (testing "deleting documents"
+            (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/delete-documents! ids))))))
+          (testing "counting views"
+            (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/increment-view-counts! {3 ids})))))))))))
+
+(deftest document-with-cards-statement-counts-do-not-grow-with-cards-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp      (mt/metadata-provider)
+            query   (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            cards   (fn [n]
+                      (into {} (map (fn [i] [(- (inc i)) {:name (mt/random-name) :dataset_query query :display "table"
+                                                          :visualization_settings {}}]))
+                            (range n)))
+            body    (fn [n] {:name     (mt/random-name)
+                             :document (documents.tu/cards->prose-mirror-ast (map (comp - inc) (range n)))
+                             :cards    (cards n)})
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating a document with the new cards it embeds"
+          (counted (fn [n] (let [body (body n)] (events.tu/statement-count! #(document/create-document-with-cards! body))))))
+        (testing "updating a document with the new cards it embeds"
+          (counted (fn [n]
+                     (let [existing (t2/select-one :model/Document :id (document/create-document-with-cards! {:name (mt/random-name) :document (documents.tu/text->prose-mirror-ast "text")}))
+                           body     (select-keys (body n) [:document :cards])]
+                       (events.tu/statement-count! #(document/update-document-with-cards! existing body))))))
+        (testing "creating a document that embeds cards copied from another card"
+          (mt/with-temp [:model/Card {source-id :id} {}]
+            (counted (fn [n]
+                       (let [body (update (body n) :cards update-vals #(assoc % :source_card_id source-id))]
+                         (events.tu/statement-count! #(document/create-document-with-cards! body)))))))))))
+
+(defn- refusal
+  "The status and message of the exception `f` throws, nil when it throws none."
+  [f]
+  (try
+    (f)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      {:status (:status-code (ex-data e)) :message (ex-message e)})))
+
+(def ^:private generic-403 "You don't have permissions to do that.")
+(def ^:private query-403 "You cannot save this Question because you do not have permissions to run its query.")
+(def ^:private field-403 "You must have data permissions to add a parameter referencing this Field.")
+
+(defn- documents-and-cards
+  "The numbers of Documents and Cards."
+  []
+  [(t2/count :model/Document) (t2/count :model/Card)])
+
+(deftest document-cards-checks-before-write-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {write-id :id}  {}
+                       :model/Collection {read-id :id}   {}
+                       :model/Card       {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
+          (let [mp          (mt/metadata-provider)
+                venues      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                orders      (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                good        (fn [] {:name (mt/random-name) :dataset_query venues :display "table" :visualization_settings {}})
+                create!     (fn [collection-id cards]
+                              (mt/with-test-user :rasta
+                                (refusal #(let [body {:name          (mt/random-name)
+                                                      :collection_id collection-id
+                                                      :document      (documents.tu/cards->prose-mirror-ast (keys cards))
+                                                      :cards         cards}]
+                                            (document/check-creating-document-cards body)
+                                            (document/create-document-with-cards! body)))))
+                three       (fn [second-card third-card] {-1 (good) -2 second-card -3 third-card})
+                orders-card (fn [] (assoc (good) :dataset_query orders))
+                field-card  (fn [] (assoc (good) :parameters [{:id "p" :type :category :name "p" :slug "p"
+                                                               :target [:dimension [:field (mt/id :orders :total) nil]]}]))
+                refused     (fn [expected cards & [collection-id]]
+                              (let [before (documents-and-cards)]
+                                (is (= expected (create! (or collection-id write-id) cards)))
+                                (is (= before (documents-and-cards)) "nothing is written")))]
+            (testing "cards the user may create are not refused"
+              (let [before (documents-and-cards)]
+                (is (nil? (create! write-id (three (good) (good)))))
+                (is (= [(inc (first before)) (+ 3 (second before))] (documents-and-cards)))))
+            (testing "the statements of the checks do not grow with the cards"
+              (let [counted (fn [n]
+                              (let [cards (into {} (map (fn [i] [(- (inc i)) (good)])) (range n))
+                                    body  {:collection_id write-id :document (documents.tu/cards->prose-mirror-ast (keys cards)) :cards cards}]
+                                (mt/with-test-user :rasta
+                                  (events.tu/statement-count! #(document/check-creating-document-cards body)))))]
+                (counted 1)
+                (is (= (counted 2) (counted 6)))))
+            (testing "cards in a collection the user cannot write"
+              (refused {:status 403 :message generic-403} (three (good) (good)) read-id))
+            (testing "a card whose query reads a table the user cannot query"
+              (refused {:status 403 :message query-403} (three (orders-card) (good))))
+            (testing "a card with a native query the user has no native permission for"
+              (refused {:status 403 :message query-403}
+                       (three (assoc (good) :dataset_query (lib/native-query mp "SELECT 1")) (good))))
+            (testing "a card whose parameter draws values from a card the user cannot read"
+              (refused {:status 403 :message generic-403}
+                       (three (good)
+                              (assoc (good) :parameters [{:id "p" :type :category :name "p" :slug "p"
+                                                          :values_source_type   :card
+                                                          :values_source_config {:card_id     secret-id
+                                                                                 :value_field (mt/$ids $venues.name)}}]))))
+            (testing "a card whose parameter targets a field the user cannot see"
+              (refused {:status 403 :message field-403} (three (field-card) (good))))
+            (testing "a card copied from a card the user cannot read"
+              (refused {:status 403 :message generic-403} (three (assoc (good) :source_card_id secret-id) (good))))
+            (testing "the first card in order that the user may not create gives the error"
+              (refused {:status 403 :message query-403} (three (orders-card) (field-card)))
+              (refused {:status 403 :message field-403} (three (field-card) (orders-card)))
+              (refused {:status 403 :message generic-403} (three (assoc (good) :source_card_id secret-id) (orders-card)))
+              (refused {:status 403 :message query-403} (three (orders-card) (assoc (good) :source_card_id secret-id))))))))))
+
+(deftest update-documents-for-import-test
+  (testing "an import writes different columns to each Document"
+    (mt/with-temp [:model/Document {a :id} {}
+                   :model/Document {b :id} {}]
+      (let [rows [{:id a :name "Imported A"} {:id b :name "Imported B" :collection_position 3}]]
+        (document/update-documents! rows {:writer :import})
+        (is (= ["Imported A" "Imported B"] (mapv #(t2/select-one-fn :name :model/Document :id %) [a b])))
+        (is (= 3 (t2/select-one-fn :collection_position :model/Document :id b)))))))
+
+(def ^:private ^:dynamic *update-events* nil)
+
+(events/derive! ::document-update-capture :metabase/event)
+(events/derive! :event/document-update ::document-update-capture)
+
+(methodical/defmethod events/publish-event! ::document-update-capture
+  [_topic event]
+  (when *update-events*
+    (swap! *update-events* conj event)))
+
+(deftest archived-directly-follows-parents-through-plain-update-test
+  (testing "a plain t2/update! of archived derives archived_directly in the statement from the Collection and the restore"
+    (mt/with-temp [:model/Collection {live :id}     {}
+                   :model/Collection {archived :id} {:archived true}
+                   :model/Document   {a :id}        {:collection_id live}
+                   :model/Document   {b :id}        {:collection_id archived}
+                   :model/Document   {c :id}        {}]
+      (t2/update! :model/Document :id [:in [a b c]] {:archived true})
+      (is (= [true false true] (mapv #(t2/select-one-fn :archived_directly :model/Document :id %) [a b c])))
+      (t2/update! :model/Document :id [:in [a b c]] {:archived false})
+      (is (= [false false false] (mapv #(t2/select-one-fn :archived_directly :model/Document :id %) [a b c])))))
+  (testing "the update event carries the stored value"
+    (mt/with-temp [:model/Document {a :id} {}]
+      (binding [*update-events* (atom [])]
+        (document/update-documents! [{:id a :archived true}])
+        (is (= [true] (mapv #(-> % :object :archived_directly) (mapcat :changes @*update-events*))))))))

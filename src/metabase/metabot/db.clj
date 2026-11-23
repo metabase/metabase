@@ -13,7 +13,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -48,12 +50,6 @@
   "Whether a Metabot with `metabot-id` exists."
   [metabot-id :- ms/PositiveInt]
   (t2/exists? :model/Metabot :id metabot-id))
-
-(mu/defn update-metabot!
-  "Apply `changes` to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot :id metabot-id changes))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -122,23 +118,10 @@
   [metabot-id :- ms/PositiveInt]
   (t2/count :model/MetabotPrompt :metabot_id metabot-id))
 
-(mu/defn insert-prompts!
-  "Insert the MetabotPrompt `rows`."
-  [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (t2/insert! :model/MetabotPrompt rows))
-
-(mu/defn delete-metabot-prompt!
-  "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   prompt-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id metabot-id]]}))
-
-(mu/defn delete-prompts-for-metabot!
-  "Delete the MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+(mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
+  "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (vec (t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
@@ -251,37 +234,39 @@
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
-(mu/defn insert-conversation!
-  "Insert `conversation` under the client-generated `conversation-id`."
+(mu/defn insert-upserted-conversation!
+  "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
+  row."
   [conversation-id :- :string
-   conversation    :- ::metabot.schema/metabot-conversation.update]
-  (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
+   columns         :- :map]
+  (first (t2/insert-returning-instances! :model/MetabotConversation (assoc columns :id conversation-id))))
 
-(mu/defn upsert-conversation!
-  "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
-  insert) and must return the fields to write."
+(mu/defn update-conversation!
+  "Apply `changes` to the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
+   changes         :- :map]
+  (t2/update! :model/MetabotConversation :id conversation-id changes))
 
-(mu/defn set-conversation-title-if-missing!
-  "Set the title of the MetabotConversation with `conversation-id` if it has none."
-  [conversation-id :- :string
-   title :- :string]
-  (t2/update! :model/MetabotConversation {:id conversation-id, :title nil} {:title title}))
+(mu/defn titleless-conversation
+  "The MetabotConversation with `conversation-id` if it has no title, or nil."
+  [conversation-id :- :string]
+  (t2/select-one :model/MetabotConversation :id conversation-id :title nil))
 
-(mu/defn delete-conversations-created-before!
-  "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
+(mu/defn conversations-created-before
+  "The MetabotConversations created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
+  (t2/select :model/MetabotConversation {:where [:< :created_at cutoff]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
-(mu/defn participant?
-  "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string
+(mu/defn participated-conversation-ids :- [:maybe [:set :string]]
+  "The IDs of those of the MetabotConversations with `conversation-ids` the User with `user-id` has sent a message in,
+  or nil if none."
+  [conversation-ids :- [:sequential :string]
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+  (t2/select-fn-set :conversation_id :model/MetabotMessage
+                    :conversation_id [:in conversation-ids]
+                    :user_id user-id))
 
 (mu/defn- other-participant?
   "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
@@ -343,77 +328,92 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
-(mu/defn insert-message-returning-pk!
-  "Insert `message` and return its ID."
-  [message :- ::metabot.schema/metabot-message.update]
-  (t2/insert-returning-pk! :model/MetabotMessage message))
+(mu/defn insert-messages! :- [:sequential ::metabot.schema/metabot-message]
+  "Insert the MetabotMessage `rows`, one statement for each set of columns they give, and return the new instances in
+  their order."
+  [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
+  (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
-(mu/defn insert-messages!
-  "Insert one MetabotMessage map or a sequence of them."
-  [messages :- [:or ::metabot.schema/metabot-message.update [:sequential ::metabot.schema/metabot-message.update]]]
-  (t2/insert! :model/MetabotMessage messages))
-
-(mu/defn update-message!
-  "Apply `changes` to the MetabotMessage with `message-id`."
-  [message-id :- ms/PositiveInt
-   changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage :id message-id changes))
-
-(mu/defn soft-delete-messages-where!
-  "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
-  rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
-  single MetabotMessage or, given a collection, any of several."
-  [conditions :- [:and
-                  [:map {:closed true}
-                   [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-                   [:channel_id   {:optional true} [:maybe :string]]
-                   [:slack_msg_id {:optional true} [:maybe :string]]
-                   [:role         {:optional true} [:maybe [:or :keyword :string]]]]
-                  [:fn {:error/message "must have at least one condition"} seq]]
-   deleted-by-user-id :- ::lib.schema.id/user]
+(mu/defn messages-matching
+  "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed as an
+  empty map would match every message, where `:id` matches a single MetabotMessage or, given a collection, any of
+  several."
+  [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions]
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
                        (coll? id) (assoc :id [:in id]))]
-    (t2/update! :model/MetabotMessage (h2x/assert-map-or-nil! conditions) {:deleted_at         [:now]
-                                                                           :deleted_by_user_id deleted-by-user-id})))
+    (apply t2/select [:model/MetabotMessage :id :deleted_by_user_id] (mapcat identity conditions))))
+
+(mu/defn soft-delete-messages! :- :int
+  "Stamp the deletion time on the MetabotMessages with `message-ids`, and `deleted-by-user-id` as their deleting User when
+  it is given, returning the number of rows updated."
+  [message-ids        :- [:sequential {:min 1} ms/PositiveInt]
+   deleted-by-user-id :- [:maybe ::lib.schema.id/user]]
+  (t2/update! :model/MetabotMessage :id [:in [:auto/param message-ids]]
+              (cond-> {:deleted_at [:now]}
+                deleted-by-user-id (assoc :deleted_by_user_id deleted-by-user-id))))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id {:optional true} ms/PositiveInt]
-                         [:message_id {:optional true} [:maybe ms/PositiveInt]]
-                         [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
-                         [:created_at {:optional true} [:maybe ms/TemporalInstant]]]]]
+  [rows :- [:sequential ::metabot.schema/metabot-used-table.create]]
   (t2/insert! :model/MetabotUsedTable rows))
+
+;;; -------------------------------------------------- AI usage --------------------------------------------------
+
+(mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLogs created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]})))
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
+(defn- upsert-row!
+  "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
+  columns to those of `row`, in one statement (`ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
+  MariaDB, `MERGE ... KEY` on H2), binding the values and taking every identifier from the constants of this
+  namespace."
+  [table key-columns row]
+  (let [columns     (vec (keys row))
+        names       (mapv name columns)
+        updated     (mapv name (remove (set key-columns) columns))
+        placeholder (str/join ", " (repeat (count columns) "?"))
+        column-list (str/join ", " names)
+        key-list    (str/join ", " (map name key-columns))
+        sql         (case (mdb/db-type)
+                      :postgres (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON CONFLICT (" key-list ") DO UPDATE SET "
+                                     (str/join ", " (map #(str % " = EXCLUDED." %) updated)))
+                      :mysql    (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON DUPLICATE KEY UPDATE "
+                                     (str/join ", " (map #(str % " = VALUES(" % ")") updated)))
+                      :h2       (str "MERGE INTO " (name table) " (" column-list ") KEY (" key-list ") VALUES ("
+                                     placeholder ")"))]
+    (t2/query (into [sql] (map #(if (keyword? %) (name %) %)) (map row columns)))
+    nil))
+
 (mu/defn upsert-feedback!
-  "Insert or update the MetabotFeedback row for the MetabotMessage with `message-id` and the User with
-  `submitter-user-id`. `update-fn` receives the existing row (or nil on insert) and must return the fields to
-  write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`, or update
+  its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotFeedback
-                         {:message_id message-id :user_id submitter-user-id}
-                         update-fn))
+   columns           :- (mut/dissoc ::metabot.schema/metabot-feedback.update :message_id :user_id)]
+  (upsert-row! :metabot_feedback [:message_id :user_id]
+               (assoc columns :message_id message-id :user_id submitter-user-id))
+  (t2/select-one-pk :model/MetabotFeedback :message_id message-id :user_id submitter-user-id))
 
 (mu/defn upsert-source-feedback!
-  "Insert or update the MetabotSourceFeedback row for the MetabotMessage with `message-id`, the User with
-  `submitter-user-id`, and the source with `source-id`/`source-type`. `update-fn` receives the existing row (or nil
-  on insert) and must return the fields to write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotSourceFeedback of the User with `submitter-user-id` on the source with `source-id` and
+  `source-type` of the MetabotMessage with `message-id`, or update its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   source-id :- ms/PositiveInt
-   source-type :- [:enum "table" "card" "model" "dashboard"]
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotSourceFeedback
-                         {:message_id  message-id
-                          :user_id     submitter-user-id
-                          :source_id   source-id
-                          :source_type source-type}
-                         update-fn))
+   source-id         :- ms/PositiveInt
+   source-type       :- [:enum "table" "card" "model" "dashboard"]
+   columns           :- (mut/select-keys ::metabot.schema/metabot-source-feedback.update [:positive :updated_at])]
+  (upsert-row! :metabot_source_feedback [:message_id :user_id :source_id :source_type]
+               (assoc columns :message_id message-id :user_id submitter-user-id
+                      :source_id source-id :source_type source-type))
+  (t2/select-one-pk :model/MetabotSourceFeedback
+                    :message_id message-id :user_id submitter-user-id :source_id source-id :source_type source-type))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
 
@@ -427,6 +427,11 @@
   [columns :- [:sequential :keyword]
    database-id :- ::lib.schema.id/database]
   (t2/select-one columns :id database-id))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -465,6 +470,17 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
+(mu/defn active-visible-tables-named
+  "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
+  `table-names`."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :id :schema :name]
+             :db_id database-id
+             :name [:in table-names]
+             :active true
+             :visibility_type nil))
+
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
   [columns :- [:sequential :keyword]
@@ -491,7 +507,7 @@
   user whose access comes through that path."
   [table-id]
   (when-let [table (t2/select-one :model/Table :id table-id :active true)]
-    (when (mi/can-read? table)
+    (when (mi/can-read? (t2/hydrate table :can_read))
       (:db_id table))))
 
 (mu/defn tables-by-id
@@ -531,18 +547,13 @@
              :visibility_type nil))
 
 (defn- current-user-visible-table-clause
-  "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
-  current user for querying."
+  "Honey SQL `{:where …}` restricting Tables to those visible to the current user for querying."
   []
-  (let [{table-where-clause :clause table-cte :with}
-        (mi/visible-filter-clause :model/Table
-                                  :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
-                                  {:perms/view-data      :unrestricted
-                                   :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
+  {:where (perms/visible-tables-filter-clause :id
+                                              (api/current-user-info)
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder-and-native}
+                                              {:active-only? false, :include-published-via-collection? false})})
 
 (mu/defn visible-table-summaries-for-current-user
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -715,6 +726,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn dashboard-questions
+  "The Cards among `card-ids` that are saved inside a dashboard, which is their `:dashboard_id`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
@@ -725,6 +741,11 @@
   [card-id :- ::lib.schema.id/card
    type :- [:enum :model :metric :question]]
   (t2/select-one :model/Card :id card-id :type type))
+
+(mu/defn card-types :- [:map-of ::lib.schema.id/card :keyword]
+  "The map from each of `card-ids` that is the ID of a Card to its type."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :type :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."
@@ -768,7 +789,7 @@
                                              [:in :report_card.type ["metric" "model"]]
                                              [:= :report_card.archived false]
                                              (when api/*current-user-id*
-                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
+                                               (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:root-namespace nil}))]}]
     (cond-> base-query
       verified?
       (update :left-join (fnil into []) [[:moderation_review :mr] [:and
@@ -826,15 +847,41 @@
             (t2/select [(t2/table-name :model/Card) :id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
-  "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
-  ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
+  "Return the source cards in `card-ids`, with their name and entity ID and the columns needed by `can-read?`."
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
+  (t2/select (into [:model/Card :name :entity_id] queries/card-read-check-columns) :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
+
+(mu/defn cards-with-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn cards-with-entity-ids
+  "The Cards with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (if (seq entity-ids)
+    (t2/select :model/Card :entity_id [:in entity-ids])
+    []))
+
+(mu/defn tables-with-ids
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table :id [:in table-ids])
+    []))
+
+(mu/defn cards-for-read-check
+  "The unarchived Cards with `card-ids`, with only the columns `mi/can-read?` needs to check a Card without another
+  query."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select (into [:model/Card] queries/card-read-check-columns) :id [:in card-ids] :archived false))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
@@ -877,13 +924,18 @@
              :archived false
              {:order-by [[:id :asc]]}))
 
-(mu/defn link-card-to-conversation!
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`."
-  [card-id :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
-                                                       :metabot_chart_id        chart-id}))
+(mu/defn conversation-dashboard-questions
+  "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
+  `conversation-id`, oldest first."
+  [conversation-id :- :string
+   chart-id        :- :string
+   dashboard-id    :- ::lib.schema.id/dashboard]
+  (t2/select :model/Card
+             :metabot_conversation_id conversation-id
+             :metabot_chart_id        chart-id
+             :dashboard_id            dashboard-id
+             :archived                false
+             {:order-by [[:id :asc]]}))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -891,6 +943,15 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id collection-id))
+
+(mu/defn collection-with-ancestors
+  "The Collection with `collection-id`, hydrated with the ancestors the current user can read, root first, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (some-> (t2/select-one [:model/Collection
+                          :id :name :location :namespace :personal_owner_id :type :archived :archived_directly
+                          :authority_level]
+                         :id [:auto/param collection-id])
+          (t2/hydrate :effective_ancestors)))
 
 (mu/defn collection-name
   "The name of the Collection with `collection-id`."
@@ -916,7 +977,8 @@
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
   Restricted to top-level Collections unless `include-nested?`."
   [include-nested? :- :boolean]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
@@ -927,7 +989,8 @@
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id :type :namespace
+              :is_remote_synced]
              :location location
              :archived false
              {:order-by [[:%lower.name :asc]]}))
@@ -945,9 +1008,12 @@
   (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, parameters, creator ID, creation time and archived flag of the Dashboard
+  with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at
+                  :archived]
+                 :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -970,10 +1036,11 @@
   (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashcards
-  "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
-  order."
+  "The ID, Card, action, tab, position, size, filter mappings, and settings of the DashboardCards of the Dashboard
+  with `dashboard-id`, in grid order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
+  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :row :col :size_x :size_y
+              :parameter_mappings :visualization_settings]
              :dashboard_id dashboard-id
              {:order-by [[:row :asc] [:col :asc]]}))
 
@@ -1059,10 +1126,51 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
+(mu/defn card-database-ids
+  "A map of Card ID to Database ID for the Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  ;; select only the two columns: a full Card row runs its query-dependent after-select hooks
+  (into {} (map (juxt :id :database_id)) (t2/select [:model/Card :id :database_id] :id [:in ids])))
+
 (mu/defn card-curation-rows
   "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
+
+(mu/defn database-card-read-rows
+  "The ID, Collection ID, and Document ID of the Cards of `database-id` with `ids`: the columns that the `:can_read`
+  hydration reads."
+  [database-id :- ::lib.schema.id/database
+   ids         :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in ids] :database_id [:auto/param database-id]))
+
+(mu/defn snippet-read-rows
+  "The ID and Collection ID of the NativeQuerySnippets with `ids`: the columns that the `:can_read` hydration reads."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/NativeQuerySnippet :id :collection_id] :id [:in ids]))
+
+(mu/defn database-table-names
+  "The schema and name of each active Table of `database-id` whose name case-insensitively is one of `table-names`,
+  whatever its visibility."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id [:auto/param database-id]
+             :active true
+             {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
+
+(mu/defn database-table-names-like
+  "The schema and name of each active Table of `database-id` whose name case-insensitively starts with one of
+  `prefixes`, whatever its visibility. As in SQL `LIKE`, a `_` or `%` in a prefix matches any character, so the
+  result can hold Tables whose names do not start with the prefix."
+  [database-id :- ::lib.schema.id/database
+   prefixes    :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id [:auto/param database-id]
+             :active true
+             {:where (into [:or]
+                           (map (fn [prefix] [:like [:lower :name] [:auto/param (str (u/lower-case-en prefix) "%")]]))
+                           prefixes)}))
 
 (mu/defn dashboard-curation-rows
   "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
@@ -1118,3 +1226,25 @@
   "A map of Segment ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
+
+(mu/defn insert-conversation-row!
+  "Insert the MetabotConversation `row`, which carries its own id and timestamps, returning the inserted row."
+  [row :- ::metabot.schema/metabot-conversation]
+  (first (mdb/insert-returning-instances! :model/MetabotConversation [row])))
+
+(mu/defn insert-usage-log-row!
+  "Insert the AiUsageLog `row`, timestamps and all."
+  [row :- ::metabot.schema/ai-usage-log.update]
+  (t2/insert! :model/AiUsageLog row))
+
+(mu/defn usage-log-ids-for-conversations :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLog rows of the conversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (if (seq conversation-ids)
+    (vec (t2/select-pks-vec :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+    []))
+
+(mu/defn conversation-ids-created-before :- [:sequential :string]
+  "The ids of the MetabotConversations created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (mapv :id (conversations-created-before cutoff)))

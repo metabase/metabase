@@ -28,6 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
@@ -805,6 +806,7 @@
                            :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
+  (mt/initialize-if-needed! :db)
   (or (t2/select-one :model/Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
@@ -824,7 +826,7 @@
               (log/infof "Inserted %d rows into %s collection %s."
                          (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
-          (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
+          (let [db (first (database/create-databases! [{:name database-name, :engine :mongo, :details details}]))]
             (sync/sync-database! (:id db))
             db)))))
 
@@ -926,16 +928,17 @@
   (mt/test-driver :mongo
     (mt/with-db (missing-fields-db)
       (sync/sync-database! (:id (missing-fields-db)))
-      (testing "Objects are formatted correctly as JSON in downloads"
-        (mt/with-temp [:model/Card card {:display       :table
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :coll)
-                                                                    :fields [(mt/id :coll :id)
-                                                                             (mt/id :coll :a)
-                                                                             (mt/id :coll :b)
-                                                                             (mt/id :coll :c)]}}}]
-          (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
+      (let [dataset-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :coll)
+                                      :fields [(mt/id :coll :id)
+                                               (mt/id :coll :a)
+                                               (mt/id :coll :b)
+                                               (mt/id :coll :c)]}}]
+        ;; object fields sync as details-only, which the table viz hides and a table export therefore drops (#70909);
+        ;; object detail shows them, so its export keeps them
+        (testing "Objects are formatted correctly as JSON in downloads"
+          (mt/with-temp [:model/Card card {:display :object, :dataset_query dataset-query}]
             (is (= [["ID" "A" "B" "C"]
                     ["1"
                      "a string"
@@ -947,7 +950,15 @@
                      ""]
                     ["3" "a string" "{\"b_e\":{}}" ""]
                     ["4" "a string" "null" ""]]
-                   results))))))))
+                   (downloads-test/card-download card {:export-format :csv :format-rows true})))))
+        (testing "A table export leaves object columns out, like the table viz does"
+          (mt/with-temp [:model/Card card {:display :table, :dataset_query dataset-query}]
+            (is (= [["ID" "A" "C"]
+                    ["1" "a string" ""]
+                    ["2" "a string" ""]
+                    ["3" "a string" ""]
+                    ["4" "a string" ""]]
+                   (downloads-test/card-download card {:export-format :csv :format-rows true})))))))))
 
 (deftest ^:parallel mongo-uuid-test
   (testing "mongo binData fields can be filtered and are readable"

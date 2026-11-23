@@ -105,6 +105,72 @@ describe("useBlockMenus", () => {
     });
     expect(result.current.shouldShowMenus).toBe(true);
   });
+
+  it("counts only the unresolved, undeleted comments of the node", async () => {
+    const deleted = { deleted_at: "2024-01-02T00:00:00Z" };
+    const resolved = { is_resolved: true };
+    const comment = (opts: Partial<Comment>) =>
+      createMockComment({ child_target_id: NODE_ID, ...opts });
+
+    const { result } = setup({
+      comments: [
+        // thread with the 1st comment deleted: 2
+        comment({ id: 1, ...deleted }),
+        comment({ id: 2, parent_comment_id: 1 }),
+        comment({ id: 3, parent_comment_id: 1 }),
+        // thread with the 2nd comment deleted: 2
+        comment({ id: 4 }),
+        comment({ id: 5, parent_comment_id: 4, ...deleted }),
+        comment({ id: 6, parent_comment_id: 4 }),
+        // resolved thread with the 1st comment deleted: 0
+        comment({ id: 7, ...deleted, ...resolved }),
+        comment({ id: 8, parent_comment_id: 7 }),
+        comment({ id: 9, parent_comment_id: 7 }),
+        // thread with all comments deleted: 0
+        comment({ id: 10, ...deleted }),
+        comment({ id: 11, parent_comment_id: 10, ...deleted }),
+        // resolved thread with all comments deleted: 0
+        comment({ id: 12, ...deleted, ...resolved }),
+        comment({ id: 13, parent_comment_id: 12, ...deleted }),
+      ],
+    });
+
+    setIntersecting(true);
+
+    await waitFor(() => {
+      expect(result.current.unresolvedCommentsCount).toBe(4);
+    });
+  });
+
+  it("counts no comments when all threads are resolved or deleted", async () => {
+    const { result } = setup({
+      comments: [
+        createMockComment({
+          id: 1,
+          child_target_id: NODE_ID,
+          is_resolved: true,
+        }),
+        createMockComment({
+          id: 2,
+          child_target_id: NODE_ID,
+          parent_comment_id: 1,
+        }),
+        createMockComment({
+          id: 3,
+          child_target_id: NODE_ID,
+          deleted_at: "2024-01-02T00:00:00Z",
+        }),
+      ],
+    });
+
+    setIntersecting(true);
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls()).toHaveLength(1);
+    });
+    await delay(0);
+    expect(result.current.unresolvedCommentsCount).toBe(0);
+  });
 });
 
 const schema = new Schema({

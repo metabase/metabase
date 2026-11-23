@@ -5,7 +5,7 @@ summary: How to add headings, lists, code blocks, images, and more to dashboard 
 
 # Format text with Markdown
 
-Use Markdown in Metabase to format text, add headings and lists, and insert links and images. In Metabase, you can use Markdown in:
+In Metabase, you can use Markdown in:
 
 - Dashboard header and text cards
 - Documents

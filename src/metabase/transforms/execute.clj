@@ -4,8 +4,6 @@
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
-   ;; load the `transforms.i/execute!` `:query` method
-   [metabase.transforms.query-impl]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -13,12 +11,28 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- resolve-target :- ::transforms-base.schema/transform
-  "Hydrates the declared indexes and their request ids onto the target so the base reads them off
+  "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
+  instance for `(:database target)`, the hook rewrites `:db`, `:schema` and `:name` to the
+  workspace copy, and the canonical target is stashed as `:workspace-canonical-target`.
+  Nothing is recorded here: the run records the TableRemapping only once its write has
+  returned (see [[transforms-base.u/record-workspace-target-remapping!]]).
+  Off-workspace and OSS: no-op pass-through.
+
+  Lives at the dispatch wrapper so every transform type (`:query`, `:python`, and
+  any future kind registered via `transforms.i/execute!`) inherits the gate. The
+  hook must run before per-type execution begins, since callees consume
+  `(:target transform)` to decide where to write.
+
+  When `target-db-id` returns nil (no per-type impl, or transform shape doesn't
+  identify a target DB), the rewrite is skipped — workspace rewriting requires a
+  known DB id to look up `db-workspace-namespace`.
+
+  Also hydrates the declared indexes and their request ids onto the target so the base reads them off
   `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam, and stashes
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform :- ::transforms.schema/transform]
   (let [requests (table-index/select-applicable-for-transform (:id transform))]
-    (-> transform
+    (-> (transforms-base.u/resolve-workspace-target transform)
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))

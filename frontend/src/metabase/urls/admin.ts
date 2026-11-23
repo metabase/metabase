@@ -57,6 +57,10 @@ export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
     : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
 }
 
+export function adminTenantGroup(groupId: GroupId) {
+  return `${getTenantsBasePath()}/groups/${groupId}`;
+}
+
 export function adminGroup(groupId: GroupId) {
   return `/admin/people/groups/${groupId}`;
 }
@@ -151,6 +155,10 @@ export const SETTINGS_INDEX_SLUG = "general";
 export function generalSettings() {
   return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
+
+export const authenticationSettings = () => "/admin/settings/authentication";
+
+export const updatesSettings = () => "/admin/settings/updates";
 
 export function domainsSettings() {
   return "/admin/settings/domains";

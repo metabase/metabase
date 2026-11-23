@@ -2,15 +2,21 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as app-db.query]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.tenants.core :as tenants]
@@ -18,11 +24,14 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -229,9 +238,10 @@
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
-    (mt/with-temp [:model/User user {:is_superuser true}]
-      (is (true?
-           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[user] (user/create-users! [{:email "new-admin-user-test-1@example.com" :is_superuser true}])]
+        (is (true?
+             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |
@@ -243,11 +253,11 @@
 
 (defn- do-with-group! [group-properties group-members f]
   (mt/with-temp [:model/PermissionsGroup group group-properties]
-    (perms/add-users-to-groups! (for [member group-members]
-                                  {:user (if (keyword? member)
-                                           (mt/user->id member)
-                                           (u/the-id member))
-                                   :group group}))
+    (perms-group-membership/add-users-to-groups! (for [member group-members]
+                                                   {:user (if (keyword? member)
+                                                            (mt/user->id member)
+                                                            (u/the-id member))
+                                                    :group group}))
     (f group)))
 
 (defmacro ^:private with-groups! [[group-binding group-properties members & more-groups] & body]
@@ -265,15 +275,21 @@
                      _ {:name "Group 3"} #{}]
         (is (= #{"All Users" "Group 2" "Group 1"}
                (group-names (user/group-ids (mt/user->id :lucky)))))))
-    (testing "should be a single DB call"
-      (with-groups! [_ {:name "Group 1"} #{:lucky}
+    (testing "should take the same number of DB calls for a User in 2 groups and in 6"
+      (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
                      _ {:name "Group 2"} #{:lucky}
-                     _ {:name "Group 3"} #{}]
-        (let [lucky-id (mt/user->id :lucky)]
-          (t2/with-call-count [call-count]
-            (user/group-ids lucky-id)
-            (is (= 1
-                   (call-count)))))))
+                     _ {:name "Group 3"} #{:lucky}
+                     _ {:name "Group 4"} #{:lucky}
+                     _ {:name "Group 5"} #{:lucky}]
+        (let [counted (fn [user-id]
+                        (t2/with-call-count [call-count]
+                          (let [group-ids (user/group-ids user-id)]
+                            [(count group-ids) (call-count)])))
+              _               (counted (mt/user->id :crowberto))
+              [small-groups small-calls] (counted (mt/user->id :rasta))
+              [large-groups large-calls] (counted (mt/user->id :lucky))]
+          (is (= [2 6] [small-groups large-groups]))
+          (is (= small-calls large-calls)))))
     (testing "shouldn't barf if passed `nil`"
       (is (= nil
              (user/group-ids nil))))))
@@ -304,15 +320,21 @@
                  (as-> (map test.users/fetch-user [:rasta :lucky]) users
                    (t2/hydrate users :group_ids)
                    (mapv :group_ids users)))))))
-    (testing "should be done in a single DB call"
+    (testing "should take the same number of DB calls for 2 Users and for 6"
       (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
                      _ {:name "Group 2"} #{:lucky}
                      _ {:name "Group 3"} #{}]
-        (let [users (mapv test.users/fetch-user [:lucky :rasta])]
-          (t2/with-call-count [call-count]
-            (dorun (user/add-group-ids users))
-            (is (= 1
-                   (call-count)))))))
+        (mt/with-temp [:model/User user-1 {}
+                       :model/User user-2 {}
+                       :model/User user-3 {}
+                       :model/User user-4 {}]
+          (let [users   (into (mapv test.users/fetch-user [:lucky :rasta]) [user-1 user-2 user-3 user-4])
+                counted (fn [users]
+                          (t2/with-call-count [call-count]
+                            (dorun (user/add-group-ids users))
+                            (call-count)))]
+            (counted (take 1 users))
+            (is (= (counted (take 2 users)) (counted users)))))))
     (testing "shouldn't barf if passed an empty seq"
       (is (= nil
              (user/add-group-ids []))))))
@@ -347,31 +369,34 @@
         (is (thrown? Exception
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
     (testing "should be able to add someone to the Admin group"
-      (mt/with-temp [:model/User user]
-        (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
-        (is (= #{"Administrators" "All Users"}
-               (user-group-names user)))
-        (testing "their is_superuser flag should be set to true"
-          (is (true?
-               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email "set-permissions-groups-test-1@example.com"}])]
+          (user/set-permissions-groups! user #{(perms-group/all-users) (perms-group/admin)})
+          (is (= #{"Administrators" "All Users"}
+                 (user-group-names user)))
+          (testing "their is_superuser flag should be set to true"
+            (is (true?
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
     (testing "should be able to remove someone from the Admin group"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (user/set-permissions-groups! user #{(perms-group/all-users)})
-        (is (= #{"All Users"}
-               (user-group-names user)))
-        (testing "their is_superuser flag should be set to false"
-          (is (= false
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email "set-permissions-groups-test-2@example.com" :is_superuser true}])]
+          (user/set-permissions-groups! user #{(perms-group/all-users)})
+          (is (= #{"All Users"}
+                 (user-group-names user)))
+          (testing "their is_superuser flag should be set to false"
+            (is (= false
+                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
         ;; User should not be removed from the admin group because the attempt to add them to the Integer/MAX_VALUE group
         ;; should fail, causing the entire transaction to fail
         (mt/test-helpers-set-global-values!
-          (mt/with-temp [:model/User user {:is_superuser true}]
-            (u/ignore-exceptions
-              (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
-            (is (true?
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+          (mt/with-model-cleanup [:model/User]
+            (let [[user] (user/create-users! [{:email "set-permissions-groups-test-3@example.com" :is_superuser true}])]
+              (u/ignore-exceptions
+                (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
+              (is (true?
+                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user))))))))
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
         (mt/with-temp [:model/User _]
@@ -382,29 +407,14 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest validate-locale-test
-  (testing "`:locale` should be validated"
-    (testing "creating a new User"
-      (testing "valid locale"
-        (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
-          (is (= "en_US"
-                 (t2/select-one-fn :locale :model/User :id user-id)))))
-      (testing "invalid locale"
-        (is (thrown-with-msg?
-             Throwable
-             #"Assert failed: Invalid locale: \"en_XX\""
-             (mt/with-temp [:model/User _ {:locale "en_XX"}])))))
-    (testing "updating a User"
-      (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
-        (testing "valid locale"
-          (t2/update! :model/User :id user-id {:locale "en_GB"})
-          (is (= "en_GB"
-                 (t2/select-one-fn :locale :model/User :id user-id))))
-        (testing "invalid locale"
-          (is (thrown-with-msg?
-               Throwable
-               #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
+(deftest store-locale-test
+  (testing "`:locale` is stored on creation and update"
+    (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
+      (is (= "en_US"
+             (t2/select-one-fn :locale :model/User :id user-id)))
+      (t2/update! :model/User :id user-id {:locale "en_GB"})
+      (is (= "en_GB"
+             (t2/select-one-fn :locale :model/User :id user-id))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -428,10 +438,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active true :first_name "New name"})))
+          (is (nil? (user/update-users! [{:id user-id :is_active true :first_name "New name"}])))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
+          (is (nil? (user/update-users! [{:id user-id :is_active false}]))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -455,6 +465,121 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
+
+(defn- group-ids-of
+  "The ids of the groups the User with `user-id` belongs to."
+  [user-id]
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+
+(deftest create-user-joins-default-groups-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "personal user joins All Users only"
+        (let [[{user-id :id}] (user/create-users! [{:email email}])]
+          (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
+      (finally
+        (t2/delete! :model/User :email email))))
+  (let [email (mt/random-email)]
+    (try
+      (testing "superuser joins All Users and Administrators"
+        (let [[{user-id :id}] (user/create-users! [{:email email :is_superuser true}])]
+          (is (= #{(:id (perms-group/all-users)) (:id (perms-group/admin))} (group-ids-of user-id)))
+          (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest create-user-refused-over-user-limit-test
+  (let [email (mt/random-email)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly 1)]
+      (testing "personal user over limit is refused"
+        (is (thrown-with-msg? Exception #"Adding another user would exceed the maximum"
+                              (first (user/create-users! [{:email email}]))))
+        (is (not (t2/exists? :model/User :email email))))
+      (testing "api-key user is not counted"
+        (try
+          (is (some? (first (user/create-users! [{:email email :type :api-key}]))))
+          (finally
+            (t2/delete! :model/User :email email)))))))
+
+(deftest create-users-with-different-columns-keeps-defaults-test
+  (mt/with-model-cleanup [:model/User]
+    (let [emails [(mt/random-email) (mt/random-email)]
+          users  (user/create-users! [{:email (first emails) :is_qbnewb false :type :api-key}
+                                      {:email (second emails)}])]
+      (testing "rows come back in order"
+        (is (= emails (map :email users))))
+      (testing "row without a column keeps its default"
+        (is (= [{:type :api-key :is_qbnewb false} {:type :personal :is_qbnewb true}]
+               (for [{id :id} users]
+                 (into {} (t2/select-one [:model/User :type :is_qbnewb] :id id)))))))))
+
+(deftest import-created-users-join-all-users-test
+  (let [emails [(mt/random-email) (mt/random-email)]]
+    (try
+      (let [users (serialization/insert-stub-users! (mapv #(hash-map :email % :is_active false) emails))]
+        (is (= (set emails) (set (map :email users))))
+        (doseq [{user-id :id} users]
+          (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
+      (finally
+        (t2/delete! :model/User :email [:in emails])))))
+
+(defn- same-change
+  "The update rows that give each of the Users with `user-ids` the same `changes`."
+  [user-ids changes]
+  (mapv (fn [row-id] (assoc changes :id row-id)) user-ids))
+
+(def ^:private per-row-update-statements
+  "The statements Toucan runs for each row it writes separately from the others of one update, because the row already
+  holds part of the changes: the SELECT for the before-update hook and the UPDATE, so 2."
+  2)
+
+(defn- grows-at-most-per-row?
+  "Whether the update count `six` at 6 rows in mixed stored state exceeds the count `two` at 2 rows by no more than the
+  per-row cost."
+  [two six]
+  (<= (- six two) (* 4 per-row-update-statements)))
+
+(deftest update-users-over-mixed-stored-state-test
+  (mt/with-model-cleanup [:model/User]
+    (let [users    (user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                      :is_superuser (odd? i)})
+                                             (range 6)))
+          user-ids (mapv :id users)]
+      (user/update-users! (same-change (take-nth 2 user-ids) {:is_active false}))
+      (let [stamps (t2/select-pk->fn :deactivated_at :model/User :id [:in (take-nth 2 user-ids)])]
+        (testing "deactivating and renaming Users, half of them inactive already and half of them admins"
+          (user/update-users! (same-change user-ids {:is_active false :first_name "Renamed"}))
+          (is (= #{[false "Renamed"]}
+                 (t2/select-fn-set (juxt :is_active :first_name) :model/User :id [:in user-ids])))
+          (is (every? some? (t2/select-fn-vec :deactivated_at :model/User :id [:in user-ids])))
+          (is (= stamps (t2/select-pk->fn :deactivated_at :model/User :id [:in (take-nth 2 user-ids)]))
+              "Users inactive already keep their stamp"))
+        (testing "reactivating them clears every stamp"
+          (user/update-users! (same-change user-ids {:is_active true}))
+          (is (= #{nil} (t2/select-fn-set :deactivated_at :model/User :id [:in user-ids]))))))))
+
+(deftest update-users-of-unguarded-columns-runs-fixed-statements-test
+  (mt/with-model-cleanup [:model/User]
+    (let [counted (fn [n]
+                    (let [user-ids (t2/insert-returning-pks! :model/User (repeatedly n #(mt/with-temp-defaults :model/User)))]
+                      (t2/with-call-count [call-count]
+                        (user/update-users! (same-change user-ids {:first_name "Renamed"}))
+                        (is (= #{"Renamed"} (t2/select-fn-set :first_name :model/User :id [:in user-ids])))
+                        (call-count))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest update-user-refuses-last-admin-test
+  (mt/with-model-cleanup [:model/User]
+    (let [[{user-id :id}] (user/create-users! [{:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true}])]
+      (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
+        (testing "deactivating"
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [{:id user-id :is_active false}])))
+          (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
+        (testing "demoting"
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [{:id user-id :is_superuser false}])))
+          (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
+          (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id))))))))
 
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
@@ -710,3 +835,250 @@
                                (str "Discarding unreadable settings for user " user-id)))
             (testing "without leaking the unreadable column contents, which are user data"
               (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))
+
+(deftest internal-user-update-test
+  (testing "internal user cannot be updated"
+    (let [before (t2/select-one :model/User :id config/internal-mb-user-id)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:first_name "Changed"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
+      (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
+
+(deftest schema-checks-type-test
+  (is (mr/validate ::users.schema/user.type :api-key))
+  (is (mr/validate ::users.schema/user.type "personal"))
+  (is (not (mr/validate ::users.schema/user.type :robot))))
+
+(deftest update-check-test
+  (mt/with-temp [:model/User {self-id :id}   {}
+                 :model/User other           {}
+                 :model/User {google-id :id} {:sso_source :google}]
+    (let [self   (t2/select-one [:model/User :id :email :sso_source] :id self-id)
+          google (t2/select-one [:model/User :id :email :sso_source] :id google-id)]
+      (testing "a user changes their own profile columns and nothing else"
+        (mt/with-current-user (:id self)
+          (is (api/update-check self {:first_name "Changed" :email "changed@example.com" :is_qbnewb false}))
+          (doseq [changes [{:is_superuser true} {:login_attributes {"key" "value"}} {:tenant_id 1}
+                           {:is_data_analyst true} {:is_active false}]]
+            (testing changes
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                    (api/update-check self changes)))))))
+      (testing "a user changes nothing of another user"
+        (mt/with-current-user (:id self)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check other {:first_name "Changed"})))))
+      (testing "a Google user does not change their own email"
+        (mt/with-current-user google-id
+          (is (api/update-check google {:email (:email google)}))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check google {:email "changed@example.com"})))))
+      (testing "a user selected without its SSO source does not change their email"
+        (mt/with-current-user google-id
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check (dissoc google :sso_source) {:email "changed@example.com"})))))
+      (testing "a superuser changes admin columns of another user"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (api/update-check google {:email "changed@example.com" :is_superuser true :login_attributes {}})))))))
+
+(deftest read-and-write-check-test
+  (mt/with-temp [:model/User self  {}
+                 :model/User other {}]
+    (mt/with-current-user (:id self)
+      (is (api/read-check self))
+      (is (api/write-check self))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/read-check other)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/write-check other))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (api/read-check other))
+      (is (api/write-check other)))))
+
+(deftest create-check-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                          (api/create-check :model/User {:email "user@example.com"}))))
+  (mt/with-current-user (mt/user->id :crowberto)
+    (is (api/create-check :model/User {:email "user@example.com"}))))
+
+(defn- bulk-write-counts!
+  "The number of statements that each bulk write of `n` new Users runs, but their deactivation, whose deletes of
+  subscription recipients go one User at a time."
+  [n]
+  (mt/with-model-cleanup [:model/User]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (let [rows  (vec (for [_ (range n)] {:email (mt/random-email) :first_name "Bulk" :last_name "User"}))
+            count (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))
+            ids   (atom nil)]
+        {:create     (count #(reset! ids (mapv :id (user/create-users! rows))))
+         :rename     (count #(user/update-users! (same-change @ids {:first_name "Renamed"})))
+         :join       (count #(perms-group-membership/add-users-to-groups! (for [id @ids] {:user id :group group-id})))
+         :promote    (count #(user/update-users! (same-change @ids {:is_superuser true})))
+         :demote     (count #(user/update-users! (same-change @ids {:is_superuser false})))}))))
+
+(deftest bulk-user-writes-run-fixed-statement-counts-test
+  (testing "after a first run that fills the caches"
+    (bulk-write-counts! 1)
+    (is (= (bulk-write-counts! 2) (bulk-write-counts! 6)))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [create! (fn [n]
+                    (user/create-users! (mapv (fn [i] (cond-> {:email      (str (mt/random-name) "@example.com")
+                                                               :first_name "Test"
+                                                               :last_name  "User"}
+                                                        (odd? i) (assoc :is_superuser true)))
+                                              (range n))))
+          counted (fn [prepare! changes n]
+                    (let [user-ids (mapv :id (create! n))]
+                      (prepare! (vec (take-nth 2 user-ids)))
+                      (events.tu/statement-count! #(user/update-users! (same-change user-ids changes)))))]
+      (testing "creating users and admins"
+        (events.tu/statement-count! #(create! 1))
+        (is (= (events.tu/statement-count! #(create! 2))
+               (events.tu/statement-count! #(create! 6)))))
+      (doseq [[description changes] [["renaming users, half of them with the new name already" {:first_name "Renamed"}]
+                                     ["deactivating users, half of them inactive already"      {:is_active false}]
+                                     ["making users admins, half of them admins already"       {:is_superuser true}]
+                                     ["demoting admins, half of them demoted already"          {:is_superuser false}]]]
+        (testing description
+          (let [prepare! #(user/update-users! (same-change % changes))]
+            (counted prepare! changes 1)
+            (is (grows-at-most-per-row? (counted prepare! changes 2) (counted prepare! changes 6)))))))))
+
+(deftest update-users-publishes-same-events-at-two-and-six-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [published (fn [n]
+                      (let [users (user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                                     :is_superuser (odd? i)})
+                                                            (range n)))
+                            rows  (vec (map-indexed (fn [i {id :id}]
+                                                      (if (odd? i)
+                                                        {:id id :is_superuser false}
+                                                        {:id id :is_active false :first_name "Renamed"}))
+                                                    users))]
+                        (events.tu/published-topics! #(user/update-users! rows))))]
+      (testing "rows with different changes publish one update event for the call"
+        (is (= 1 (count (filter #{:event/user-update} (published 2)))))
+        (is (= (published 2) (published 6)))))))
+
+(deftest create-users-publishes-same-events-at-two-and-six-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [published (fn [n]
+                      (events.tu/published-topics!
+                       #(user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                           :is_superuser (odd? i)})
+                                                  (range n)))))]
+      (is (= 1 (count (filter #{:event/user-create} (published 2)))))
+      (is (= (published 2) (published 6))))))
+
+(deftest update-users-across-partitions-test
+  (mt/with-model-cleanup [:model/User]
+    (let [users (user/create-users! (vec (for [_ (range 5)] {:email (str (random-uuid) "@example.com")})))
+          ids   (mapv :id users)]
+      (let [read-sizes (atom [])
+            read-users (mt/original-fn #'users.db/users-with-all-columns)]
+        (with-redefs [app-db.query/update-partition-size 2]
+          (mt/with-dynamic-fn-redefs [users.db/users-with-all-columns (fn [user-ids]
+                                                                        (swap! read-sizes conj (count user-ids))
+                                                                        (read-users user-ids))]
+            (let [topics (events.tu/published-topics!
+                          #(is (nil? (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
+                                                                {:id id :first_name (str "Test User " i)}))))))]
+              (testing "five rows in batches of two publish one event"
+                (is (= [:event/user-update] topics))))))
+        (testing "each of three batches reads its stored rows and rereads them after its write"
+          (is (= [2 2 2 2 1 1] @read-sizes))))
+      (testing "every row gets its own change"
+        (is (= (vec (for [i (range 5)] (str "Test User " i)))
+               (mapv #(t2/select-one-fn :first_name :model/User :id %) ids)))))))
+
+(deftest create-users-across-partitions-test
+  (mt/with-model-cleanup [:model/User]
+    (with-redefs [app-db.query/create-partition-size 2]
+      (let [emails      (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
+            created     (atom nil)
+            check-sizes (atom [])
+            read-emails (mt/original-fn #'users.db/user-ids-by-emails)
+            topics      (mt/with-dynamic-fn-redefs [users.db/user-ids-by-emails (fn [lower-case-emails]
+                                                                                  (swap! check-sizes conj (count lower-case-emails))
+                                                                                  (read-emails lower-case-emails))]
+                          (events.tu/published-topics!
+                           #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails)))))]
+        (testing "each of three batches checks its own emails"
+          (is (= [2 2 1] @check-sizes)))
+        (testing "rows come back in input order"
+          (is (= emails (mapv :email @created))))
+        (testing "five rows in batches of two publish one create event and one membership event"
+          (is (= [:event/user-create :event/group-membership-create] topics)))
+        (testing "every new User joins All Users"
+          (is (every? #(contains? (group-ids-of (:id %)) (:id (perms-group/all-users))) @created)))))))
+
+(deftest update-users-refuses-two-rows-for-one-user-test
+  (mt/with-model-cleanup [:model/User]
+    (let [[{id :id}] (user/create-users! [{:email (str (random-uuid) "@example.com") :first_name "Test"}])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only once"
+                            (user/update-users! [{:id id :first_name "One"} {:id id :first_name "Two"}])))
+      (is (= "Test" (t2/select-one-fn :first_name :model/User :id id))))))
+
+(deftest users-with-same-email-are-refused-test
+  (mt/with-model-cleanup [:model/User]
+    (let [email (str (random-uuid) "@example.com")]
+      (testing "creating"
+        (is (= 400 (:status-code (try (user/create-users! [{:email email} {:email (u/upper-case-en email)}])
+                                      nil
+                                      (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+        (is (not (t2/exists? :model/User :email email))))
+      (testing "updating"
+        (let [users (user/create-users! [{:email (str (random-uuid) "@example.com")}
+                                         {:email (str (random-uuid) "@example.com")}])]
+          (is (= 400 (:status-code (try (user/update-users! (for [{id :id} users] {:id id :email email}))
+                                        nil
+                                        (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+          (is (= (set (map :email users))
+                 (t2/select-fn-set :email :model/User :id [:in (map :id users)]))))))))
+
+(deftest create-users-counts-every-new-row-against-user-limit-test
+  (mt/with-model-cleanup [:model/User]
+    (let [stored (t2/count :model/User :is_active true :type "personal")
+          limit  (constantly (+ stored 2))
+          emails (vec (for [_ (range 3)] (str (random-uuid) "@example.com")))]
+      (mt/with-dynamic-fn-redefs [token-check/max-users-allowed       limit
+                                  premium-features/max-users-allowed limit]
+        (testing "third personal row is over limit, so no row is created"
+          (is (thrown-with-msg? Exception #"Adding another user would exceed the maximum"
+                                (user/create-users! (mapv #(hash-map :email %) emails))))
+          (is (not (t2/exists? :model/User :email [:in emails]))))
+        (testing "inactive rows before last personal row do not count"
+          (is (= 3 (count (user/create-users! [{:email (first emails) :is_active false}
+                                               {:email (second emails) :is_active false}
+                                               {:email (nth emails 2)}])))))))))
+
+(deftest users-with-malformed-email-or-unknown-locale-are-refused-test
+  (mt/with-temp [:model/User {user-id :id} {:email "stored@localhost" :locale nil}]
+    (mt/with-model-cleanup [:model/User]
+      (let [status #(:status-code (try (%) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+        (testing "creating"
+          (is (= 400 (status #(user/create-users! [{:email "not-an-email"}]))))
+          (is (= 400 (status #(user/create-users! [{:email "new-user@example.com" :locale "xx_YY_ZZ"}]))))
+          (is (not (t2/exists? :model/User :email [:in ["not-an-email" "new-user@example.com"]]))))
+        (testing "updating to new value"
+          (is (= 400 (status #(user/update-users! [{:id user-id :email "not-an-email"}]))))
+          (is (= 400 (status #(user/update-users! [{:id user-id :locale "xx_YY_ZZ"}]))))
+          (is (= "stored@localhost" (t2/select-one-fn :email :model/User :id user-id))))
+        (testing "updating with stored email given again"
+          (is (nil? (status #(user/update-users! [{:id user-id :email "stored@localhost" :first_name "Test"}]))))
+          (is (= "Test" (t2/select-one-fn :first_name :model/User :id user-id))))))))
+
+(deftest user-update-event-holds-only-columns-it-may-carry-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (t2/update! :core_user :id user-id {:password "stored-value" :password_salt "stored-value" :reset_token "stored-value"})
+    (let [events  (events.tu/published-events! #(user/update-users! [{:id user-id :first_name "Test"}]))
+          objects (for [[topic event] events
+                        :when         (= :event/user-update topic)
+                        change        (:changes event)
+                        object        [(:object change) (:previous-object change)]]
+                    object)]
+      (is (seq objects))
+      (is (every? #(empty? (select-keys % [:password :password_salt :reset_token :reset_triggered :settings])) objects)))))

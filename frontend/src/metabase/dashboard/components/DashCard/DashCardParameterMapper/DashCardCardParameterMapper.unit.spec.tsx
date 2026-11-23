@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadataFromState } from "__support__/metadata";
 import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -11,29 +15,38 @@ import {
   screen,
 } from "__support__/ui";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
+  createMockColumn,
+  createMockDashboard,
   createMockDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockMetricDimension,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
-  createMockTemplateTag,
   createMockTextDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  PRODUCTS,
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
+import { DashCardParameterMapper } from "./DashCardParameterMapper";
 
 const QUESTION_ID = 1;
+
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -56,6 +69,13 @@ const DEFAULT_MAPPING_OPTIONS: ParameterMappingOption[] = [
     name: "Name",
   },
 ];
+
+const TEXT_TAG_MAPPING_OPTION: ParameterMappingOption = {
+  name: "foo",
+  icon: "string",
+  isForeign: false,
+  target: ["text-tag", "foo"],
+};
 
 const getQuestion = (card: Card | VirtualCard) => {
   return card.name !== null ? new Question(card, metadata) : undefined;
@@ -108,18 +128,6 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe("DashCardCardParameterMapper", () => {
-  it("should render an unauthorized state for a card with no dataset query", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-    });
-    setup({ card });
-
-    expect(getIcon("key")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/permission to see this question/i),
-    ).toBeInTheDocument();
-  });
-
   describe("Action cards", () => {
     it("should render an informative error state for action cards", () => {
       setup({
@@ -158,6 +166,45 @@ describe("DashCardCardParameterMapper", () => {
         ),
       ).toBeInTheDocument();
     });
+
+    it.each(["text", "heading"] as const)(
+      "should offer the variables of %s cards as mapping targets",
+      async (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+        });
+
+        await userEvent.click(screen.getByText("Select…"));
+        expect(await screen.findByText("foo")).toBeInTheDocument();
+      },
+    );
+
+    it.each(["text", "heading"] as const)(
+      "should show the variable a %s card is mapped to",
+      (display) => {
+        const card = createMockVirtualCard({ display });
+        setup({
+          card,
+          dashcard: createMockVirtualDashCard({
+            card,
+            size_x: 4,
+            size_y: 4,
+          }),
+          mappingOptions: [TEXT_TAG_MAPPING_OPTION],
+          target: TEXT_TAG_MAPPING_OPTION.target,
+        });
+
+        expect(screen.getByText("foo")).toBeInTheDocument();
+        expect(screen.queryByText("Select…")).not.toBeInTheDocument();
+      },
+    );
 
     it("should render an informative parameter mapping state for iframe cards without variables", () => {
       const textCard = createMockIFrameDashboardCard({ size_x: 4, size_y: 4 });
@@ -237,11 +284,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should render mapping for a non-native, non-virtual, non-action card", () => {
     const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-        },
-      }),
+      dataset_query: ORDERS_QUERY,
     });
 
     setup({
@@ -254,7 +297,10 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   it("shows only curated metric dimensions", async () => {
-    const card = createMockCard({ type: "metric" });
+    const card = createMockCard({
+      type: "metric",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
     setupMetricDimensionsEndpoints(card.id, {
       added: [
         createMockMetricDimension({
@@ -304,6 +350,44 @@ describe("DashCardCardParameterMapper", () => {
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Product category");
     expect(options[1]).toHaveTextContent("Product title");
+    // Curated dimensions drop the table sections and the fields left out of the curation
+    expect(screen.queryByText("Product")).not.toBeInTheDocument();
+    expect(screen.queryByText("User")).not.toBeInTheDocument();
+    expect(screen.queryByText("Email")).not.toBeInTheDocument();
+  });
+
+  it("shows every mapping option under its table section for a question", async () => {
+    setup({
+      card: createMockCard({
+        type: "question",
+        dataset_query: Lib.createTestJsQuery(
+          SAMPLE_PROVIDER,
+          DEFAULT_TEST_QUERY,
+        ),
+      }),
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 2, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Category",
+        },
+        {
+          target: ["dimension", ["field", 3, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "User",
+          name: "Email",
+        },
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Select…"));
+
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("User")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Email/ })).toBeInTheDocument();
   });
 
   describe("Auto-connected hint", () => {
@@ -377,11 +461,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should render an error state when a field is not present in the list of options", () => {
     const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-        },
-      }),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -399,11 +479,12 @@ describe("DashCardCardParameterMapper", () => {
   it("should render an error state when mapping to a native model", () => {
     const card = createMockCard({
       type: "model",
-      dataset_query: createMockNativeDatasetQuery({
-        native: {
+      query_type: "native",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: "SELECT * FROM ORDERS",
-        },
-      }),
+        }),
+      ),
       display: "table",
     });
     setup({
@@ -418,7 +499,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should show header content when card is more than 2 units high", () => {
     const numberCard = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({}),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -434,7 +515,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should hide header content when card is less than 3 units high", () => {
     const numberCard = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({}),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -535,14 +616,14 @@ describe("DashCardCardParameterMapper", () => {
   describe("Native question", () => {
     it("should not show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
-            "template-tags": {
-              source: createMockTemplateTag({ name: "source" }),
+            templateTags: {
+              source: { type: "text", name: "source" },
             },
           }),
-        }),
+        ),
       });
       setup({
         card,
@@ -554,17 +635,14 @@ describe("DashCardCardParameterMapper", () => {
 
     it("should not show native question variable warning without single value explanation if parameter is date type", () => {
       const card = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
-            "template-tags": {
-              created_at: createMockTemplateTag({
-                name: "created_at",
-                type: "date",
-              }),
+            templateTags: {
+              created_at: { type: "date", name: "created_at" },
             },
           }),
-        }),
+        ),
       });
       setup({
         card,
@@ -579,7 +657,7 @@ describe("DashCardCardParameterMapper", () => {
   describe("mobile", () => {
     it("should show header content when card is more than 2 units high", () => {
       const numberCard = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({}),
+        dataset_query: ORDERS_QUERY,
         display: "scalar",
       });
       setup({
@@ -605,5 +683,123 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("DashCardParameterMapper connected to the dashboard store", () => {
+  const DASHBOARD_ID = 10;
+  const DASHCARD_ID = 20;
+  const MODEL_ID = 30;
+  const TEXT_PARAMETER = createMockParameter({
+    id: "text-param",
+    name: "Text",
+    slug: "text",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  // The model metadata maps CATEGORY to the Products.Category field, so its
+  // results metadata offers a column that a text filter could map to.
+  const MODEL_RESULT_METADATA = [
+    createMockColumn({
+      name: "ID",
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      field_ref: ["field", "ID", { "base-type": "type/BigInteger" }],
+    }),
+    createMockColumn({
+      id: PRODUCTS.CATEGORY,
+      name: "CATEGORY",
+      display_name: "Category",
+      base_type: "type/Text",
+      semantic_type: "type/Category",
+      field_ref: ["field", "CATEGORY", { "base-type": "type/Text" }],
+    }),
+  ];
+
+  const NATIVE_MODEL = createMockCard({
+    id: MODEL_ID,
+    name: "Native model",
+    type: "model",
+    query_type: "native",
+    display: "table",
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: "select *\nfrom products limit 5",
+      }),
+    ),
+    result_metadata: MODEL_RESULT_METADATA,
+  });
+
+  const STRUCTURED_MODEL = createMockCard({
+    ...NATIVE_MODEL,
+    name: "Structured model",
+    query_type: "query",
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      }),
+    ),
+  });
+
+  const setupConnected = (card: Card) => {
+    const dashcard = createMockDashboardCard({
+      id: DASHCARD_ID,
+      dashboard_id: DASHBOARD_ID,
+      card_id: card.id,
+      card,
+      size_x: 6,
+      size_y: 4,
+    });
+    const dashboard = createMockDashboard({
+      id: DASHBOARD_ID,
+      parameters: [TEXT_PARAMETER],
+    });
+
+    renderWithProviders(
+      <DashCardParameterMapper dashcard={dashcard} isMobile={false} />,
+      {
+        storeInitialState: createMockState({
+          entities: createMockEntitiesState({
+            databases: [createSampleDatabase()],
+            questions: [card],
+          }),
+          dashboard: createMockDashboardState({
+            dashboardId: DASHBOARD_ID,
+            dashboards: {
+              [DASHBOARD_ID]: createMockStoreDashboard({
+                ...dashboard,
+                dashcards: [DASHCARD_ID],
+              }),
+            },
+            dashcards: { [DASHCARD_ID]: dashcard },
+            editingDashboard: dashboard,
+            sidebar: {
+              name: "editParameter",
+              props: { parameterId: TEXT_PARAMETER.id },
+            },
+          }),
+        }),
+      },
+    );
+  };
+
+  it("should not let a dashboard filter map to a native model with columns mapped to database fields (metabase#23024)", () => {
+    setupConnected(NATIVE_MODEL);
+
+    expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
+    expect(screen.queryByText("Select…")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Column to filter on/)).not.toBeInTheDocument();
+  });
+
+  it("should let the same dashboard filter map to a structured model", async () => {
+    setupConnected(STRUCTURED_MODEL);
+
+    expect(screen.getByText(/Column to filter on/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Models are data sources/),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText("Select…"));
+    expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 });

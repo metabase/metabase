@@ -20,34 +20,17 @@
                                        [:like [:lower :term] pattern]
                                        [:like [:lower :definition] pattern]])))))
 
-(mu/defn insert-glossary-entry!
-  "Insert the Glossary `row` and return the inserted instance."
-  [row :- ::glossary.schema/glossary.update]
-  (t2/insert-returning-instance! :model/Glossary row))
-
 (mu/defn glossary-entry
   "The Glossary entry with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Glossary :id id))
-
-(mu/defn update-glossary-entry!
-  "Set the term and definition of the Glossary entry with `id`."
-  [id         :- ms/PositiveInt
-   term       :- :string
-   definition :- :string]
-  (t2/update! :model/Glossary :id id {:term term :definition definition}))
-
-(mu/defn delete-glossary-entry!
-  "Delete the Glossary entry with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Glossary :id id))
 
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn glossary-entry-by-term
-  "The Glossary entry for `term`, or nil."
-  [term :- :string]
-  (t2/select-one :model/Glossary :term term))
+(mu/defn synced-glossary-items :- [:sequential ::glossary.schema/glossary]
+  "The Glossary terms with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/Glossary :id :term] :id [:in ids]))

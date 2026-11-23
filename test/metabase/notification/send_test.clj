@@ -39,18 +39,16 @@
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
-        (let [n                 (models.notification/create-notification!
-                                 {:payload_type :notification/system-event}
-                                 nil
-                                 [{:channel_type notification.tu/test-channel-type
-                                   :channel_id   (:id chn-1)
-                                   :template_id  (:id tmpl)
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}
-                                  {:channel_type notification.tu/test-channel-type
-                                   :channel_id   (:id chn-2)
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :rasta)}]}])
+        (let [[n]                 (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                                           :channel_id   (:id chn-1)
+                                                                                           :template_id  (:id tmpl)
+                                                                                           :recipients   [{:type    :notification-recipient/user
+                                                                                                           :user_id (mt/user->id :crowberto)}]}
+                                                                                          {:channel_type notification.tu/test-channel-type
+                                                                                           :channel_id   (:id chn-2)
+                                                                                           :recipients   [{:type    :notification-recipient/user
+                                                                                                           :user_id (mt/user->id :rasta)}]}]}])
               notification-info (assoc n :payload {:event_info  {}
                                                    :event_topic :event/test})
               expected-notification-payload (mt/malli=?
@@ -116,12 +114,10 @@
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
     (notification.tu/with-notification-testing-setup!
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (t2/delete! :model/TaskHistory)
         (#'notification.send/send-notification-sync! n)
         (is (=? [{:task         "notification-send"
@@ -143,12 +139,10 @@
 (deftest notification-send-retrying-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing "send-notification! retries on failure"
           (testing "and record exception in task history"
             (let [retry-count (atom 0)
@@ -174,12 +168,10 @@
 (deftest notification-send-skip-retry-still-report-failed-task-history-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing (str "if channel/send! throws an exception and should-skip-retry? returns true"
                       "the task history should still be recorded and status is failed")
           (testing "and record exception in task history"
@@ -202,12 +194,10 @@
 (deftest notification-send-inactive-channel-humanized-error-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
           (t2/update! :model/Channel :id (:id chn) {:active false})
           (let [send-count (atom 0)]
@@ -504,12 +494,10 @@
   (mt/with-prometheus-system! [_ system]
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel ch notification.tu/default-can-connect-channel]
-        (let [n (models.notification/create-notification!
-                 {:payload_type :notification/testing}
-                 nil
-                 [{:channel_type notification.tu/test-channel-type
-                   :channel_id   (:id ch)
-                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])
+        (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                           :channel_id   (:id ch)
+                                                                           :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])
               original-render @#'channel/render-notification]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (testing "during execution of render-notification, concurrent-tasks metric is updated"
@@ -532,12 +520,10 @@
   (mt/with-prometheus-system! [_ system]
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-        (let [n (models.notification/create-notification!
-                 {:payload_type :notification/testing}
-                 nil
-                 [{:channel_type notification.tu/test-channel-type
-                   :channel_id   (:id chn)
-                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                           :channel_id   (:id chn)
+                                                                           :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
           (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
                                                                                   (throw (Exception. "test-exception")))]
             (is (thrown? Exception (#'notification.send/send-notification-sync! n)))
@@ -552,12 +538,10 @@
     (mt/with-prometheus-system! [_ system]
       (notification.tu/with-notification-testing-setup!
         (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-          (let [n (models.notification/create-notification!
-                   {:payload_type :notification/testing}
-                   nil
-                   [{:channel_type notification.tu/test-channel-type
-                     :channel_id   (:id chn)
-                     :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+          (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                 :handlers [{:channel_type notification.tu/test-channel-type
+                                                                             :channel_id   (:id chn)
+                                                                             :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-retries 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]

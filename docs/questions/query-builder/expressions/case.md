@@ -1,5 +1,6 @@
 ---
 title: Case
+summary: Return different values depending on which conditions a row meets, for bucketing data or labeling rows.
 ---
 
 # Case

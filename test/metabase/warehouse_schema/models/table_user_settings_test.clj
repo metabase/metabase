@@ -82,15 +82,26 @@
         (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
       (testing "both halves of the visibility choice move together"
-        (t2/update! :model/TableUserSettings :table_id table-id {:visibility_type :hidden})
+        (table-user-settings/update-table-user-settings!
+         [{:id (t2/select-one-pk :model/TableUserSettings :table_id table-id) :visibility_type :hidden}])
         (is (=? {:visibility_type :hidden :data_layer :hidden
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))
-      (testing "a change a user may not make is refused whoever writes it"
+      (testing "a change the Table refuses rolls back its settings too"
         (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative})
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
-                              (t2/update! :model/TableUserSettings :table_id table-id
-                                          {:data_authority :unconfigured})))))))
+                              (table-user-settings/upsert-table-user-settings! table {:data_authority :unconfigured})))
+        (is (= :authoritative (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)))
+        (is (= :authoritative (:data_authority (user-table table-id))))))))
+
+(deftest bulk-upsert-rolls-back-settings-test
+  (testing "a bulk change one Table refuses leaves the settings of every Table as they were"
+    (mt/with-temp [:model/Table {t1 :id} {:data_source :metabase-transform}
+                   :model/Table {t2 :id} {}]
+      (is (thrown-with-msg? Exception #"Cannot change data_source from metabase-transform"
+                            (table-user-settings/upsert-table-user-settings-for-tables! #{t1 t2} {:data_source :ingested})))
+      (is (empty? (warehouse-schema.db/table-ids-with-user-settings #{t1 t2})))
+      (is (= [:metabase-transform nil] (map (comp :data_source user-table) [t1 t2]))))))
 
 (deftest custom-order-fields-test
   (testing "a custom order is recorded as the Fields' user custom_position and applied to their position"
@@ -109,7 +120,7 @@
       (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative
                                                               :display_name   "User Name"
                                                               :description    "user description"})
-      (table-user-settings/delete-table-user-settings! [table-id])
+      (table-user-settings/delete-table-user-settings! (table-user-settings/ids-of-tables [table-id]))
       (is (=? {:data_authority :authoritative :description "user description" :display_name "User Name"}
               (user-table table-id)))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
@@ -120,3 +131,17 @@
       (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
+(deftest upsert-after-concurrent-insert-updates-stored-row-test
+  (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
+    (mt/with-temp [:model/Table {table-id :id :as table} {}]
+      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Other Writer"})
+      (let [reads (atom 0)
+            read  (mt/original-fn #'warehouse-schema.db/table-user-settings)]
+        (mt/with-dynamic-fn-redefs [warehouse-schema.db/table-user-settings (fn [id]
+                                                                              (when (> (swap! reads inc) 1)
+                                                                                (read id)))]
+          (table-user-settings/upsert-table-user-settings! table {:description "User Description"})))
+      (is (=? [{:display_name "Other Writer" :description "User Description" :description_set true}]
+              (t2/select :model/TableUserSettings :table_id table-id)))
+      (is (= "User Description" (:description (user-table table-id)))))))

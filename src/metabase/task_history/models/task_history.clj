@@ -5,6 +5,9 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -29,45 +32,25 @@
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set :model/TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskHistory rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
 
-(defn cleanup-task-history!
-  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
-  [num-rows-to-keep]
-  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
-  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
-  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
-  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
-  ;; disk.
-  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
-    (task-history.db/delete-task-history-ended-before! clean-before-date)))
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
 
-(def ^:private task-history-status #{:started :success :failed :unknown})
-
-(defn- assert-task-history-status
-  [status]
-  (assert (task-history-status (keyword status)) "Invalid task history status"))
-
-(t2/define-after-insert :model/TaskHistory
-  [task-history]
-  (assert-task-history-status (:status task-history))
-  task-history)
-
-(t2/define-before-update :model/TaskHistory
-  [task-history]
-  (assert-task-history-status (:status task-history))
-  task-history)
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
@@ -77,7 +60,7 @@
 (def FilterParams
   "Schema for filter for task history."
   [:map {:closed true}
-   [:status {:optional true} (into [:enum] task-history-status)]
+   [:status {:optional true} ::task-history.schema/task-history.status]
    [:task {:optional true} [:string {:min 1}]]])
 
 (def ^:private available-sort-columns
@@ -111,13 +94,23 @@
   []
   (vec (task-history.db/distinct-task-names)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            with-task-history macro                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;; TaskHistory can contain an exception for logging purposes, so use the built-in
+;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
+(json/add-encoder
+ Throwable
+ (fn [throwable json-generator]
+   (json/generate-map (Throwable->map throwable) json-generator)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn delete-task-histories! :- :nil
+  "Delete the TaskHistory rows with `ids` in one transaction."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/TaskHistory ids {}))
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}
-   [:status                        (into [:enum] task-history-status)]
+   [:status                        ::task-history.schema/task-history.status]
    [:task_details {:optional true} [:maybe :map]]])
 
 (def ^:private TaskHistoryInfo
@@ -131,15 +124,10 @@
                                                ::task-history.schema/task-history.update]]]
    [:task_details    {:optional true} [:maybe ::task-history.schema/task-history.task-details]]]) ; additional map of details to include in the recorded row
 
-(defn- ns->ms [nanoseconds]
-  (long (/ nanoseconds 1e6)))
-
 (defn- update-task-history!
-  [th-id startime-ns info]
-  (let [updated-info (merge {:ended_at (t/instant)
-                             :duration (ns->ms (- (System/nanoTime) startime-ns))}
-                            info)]
-    (task-history.db/update-task-history! th-id updated-info)))
+  "Record the end of the TaskHistory row with `th-id` with `info`, its end time and duration measured by the database."
+  [th-id info]
+  (task-history.db/end-task-history! th-id info))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Clock *log-capture-clock*
@@ -216,24 +204,21 @@
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)
-        start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
         th-id           (task-history.db/insert-task-history!
-                         (cond-> (assoc info
-                                        :status     :started
-                                        :started_at (t/instant))
+                         (cond-> (assoc info :status :started)
                            run-id (assoc :run_id run-id)))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
         (u/prog1 (f)
-          (update-task-history! th-id start-time-ns (on-success-info {:status       :success
-                                                                      :task_details (:task_details info)
-                                                                      :logs         (log-capture-entries @logs-atom)}
-                                                                     <>)))
+          (update-task-history! th-id (on-success-info {:status       :success
+                                                        :task_details (:task_details info)
+                                                        :logs         (log-capture-entries @logs-atom)}
+                                                       <>)))
         (catch Throwable e
-          (update-task-history! th-id start-time-ns
+          (update-task-history! th-id
                                 (on-fail-info {:task_details {:status        :failed
                                                               :exception     (class e)
                                                               :message       (.getMessage e)
@@ -265,9 +250,12 @@
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))
 
-;; TaskHistory can contain an exception for logging purposes, so use the built-in
-;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
-(json/add-encoder
- Throwable
- (fn [throwable json-generator]
-   (json/generate-map (Throwable->map throwable) json-generator)))
+(mu/defn mark-task-history-unknown-for-task-runs! :- :int
+  "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
+  [run-ids :- [:set ms/PositiveInt]]
+  (task-history.db/mark-started-tasks-unknown! run-ids))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskHistory [_model]
+  {:skip? true})

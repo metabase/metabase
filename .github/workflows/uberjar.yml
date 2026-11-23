@@ -133,12 +133,11 @@ jobs:
           unzip -l ./target/uberjar/metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
           unzip -l ./target/uberjar/metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
           echo "Both license files found in uberjar"
+      # Metabase starts in the background while the JAR uploads, and only then is it checked. An uploaded JAR that
+      # turns out not to start is deleted at the end, so `setup` never finds it and skips a rebuild.
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
-      - name: Wait for Metabase to start
-        timeout-minutes: 5
-        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       - name: Mark with the commit hash
         run: git rev-parse --short HEAD > COMMIT-ID
         shell: bash
@@ -146,6 +145,7 @@ jobs:
         run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
         shell: bash
       - name: Upload JARs as artifact
+        id: upload-jar
         uses: actions/upload-artifact@v7
         with:
           # Same key the artifact lookups use, so a build for an explicitly dispatched commit
@@ -155,3 +155,13 @@ jobs:
             ./target/uberjar/metabase.jar
             ./COMMIT-ID
             ./SHA256.sum
+          # The JAR is already compressed, so zipping it again only costs CPU while Metabase starts.
+          compression-level: 0
+      - name: Wait for Metabase to start
+        timeout-minutes: 5
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Delete the JAR artifact if Metabase did not start
+        if: ${{ (failure() || cancelled()) && steps.upload-jar.outputs.artifact-id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/${{ steps.upload-jar.outputs.artifact-id }}"

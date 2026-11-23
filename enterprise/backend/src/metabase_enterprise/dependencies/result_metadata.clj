@@ -2,9 +2,9 @@
   "Re-derives the result metadata of the MBQL cards whose ResultMetadataStatus a write marked stale, which a write of
   what they read does; native cards are left alone, since their result metadata comes from running them."
   (:require
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.models.analysis-finding-status :as models.analysis-finding-status]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
@@ -14,12 +14,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +55,7 @@
           (into {}
                 (keep (fn [k]
                         (when-some [v (get col k)]
-                          [k (walk/postwalk #(cond-> % (keyword? %) u/qualified-name) v)])))
+                          [k (match/replace-all v #'keyword? (u/qualified-name &match))])))
                 compared-column-keys))
         cols))
 
@@ -118,11 +120,11 @@
    state    :- ::dependencies.schema/card-state
    metadata :- ::lib.schema.metadata/card.result-metadata]
   (t2/with-transaction [_]
-    (dependencies.db/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
-    (dependencies.db/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
+    (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
+    (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
     (if (= state (dependencies.db/card-state card-id true))
-      (dependencies.db/set-card-result-metadata! card-id metadata)
-      (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
+      (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}] {:writer :sync})
+      (models.result-metadata-status/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!
   "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed."
@@ -141,19 +143,20 @@
   its failure, returning how many statuses it took, deleted ones included."
   [batch-size :- ms/PositiveInt]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
-        statuses    (dependencies.db/take-pending-result-metadata-statuses!
+        statuses    (models.result-metadata-status/take-pending-result-metadata-statuses!
                      batch-size models.result-metadata-status/current-result-metadata-version
                      models.dependency/current-dependency-analysis-version)]
     (when (seq deleted-ids)
-      (dependencies.db/delete-result-metadata-statuses! deleted-ids))
+      (models.result-metadata-status/delete-result-metadata-statuses! deleted-ids))
     (doseq [{card-id :entity_id, :keys [stale]} statuses]
       (try
         (rederive-card! card-id)
-        (dependencies.db/clear-result-metadata-status!
+        (models.result-metadata-status/clear-result-metadata-status!
          card-id stale models.result-metadata-status/current-result-metadata-version)
         (catch Throwable e
+          (dependencies.db/throw-unless-app-db-reachable! e)
           (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
-          (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
+          (when (models.result-metadata-status/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
             (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
           (when-not (instance? Exception e)
             (throw e)))))

@@ -57,6 +57,7 @@
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
   com.mchange/c3p0                          {:mvn/version "0.14.1"}             ; DB connection pool
+  com.metabase/sqlglot-core                 {:mvn/version "30.20.0.1-rc.7"}     ; Java port of sqlglot, opt-in via MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
@@ -162,7 +163,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.3"}
+  org.clojure/clojure                       {:mvn/version "1.12.7"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.memoize                  {:mvn/version "1.1.266"}            ; useful FIFO, LRU, etc. caching mechanisms
@@ -304,6 +305,9 @@
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
+    ;; starts the pinned server an app DB snapshot is generated from (metabase.app-db.snapshot-test-util.server);
+    ;; every other test DB is started outside the JVM and reached through MB_<DB>_TEST_*
+    org.testcontainers/testcontainers {:mvn/version "1.21.4"}
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
@@ -450,9 +454,9 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   ;;
-  ;; or run every documentation command in one JVM
+  ;; or run every documentation command in one JVM, with the driver modules for the database feature support page
   ;;
-  ;;    clojure -M:ee:doc all-documentation
+  ;;    clojure -M:ee:drivers:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
@@ -549,6 +553,7 @@
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
+    "modules/drivers/motherduck/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
     "modules/drivers/redshift/test"

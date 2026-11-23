@@ -5,10 +5,13 @@
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -126,6 +129,12 @@
     (is (= "Cannot enable database routing for a database with actions enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-additional-premium-features #{:workspaces}
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :settings {:database-enable-workspaces true}}]
+      (is (= "Cannot enable database routing for a database with workspaces enabled"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"})))))
   (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
@@ -140,11 +149,24 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Transform _ {:source_database_id db-id
+                 :model/Transform _ {:source {:type  :query
+                                              :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}
                                      :name "Test Transform"}]
     (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+                                 {:user_attribute "db_name"}))))
+  (testing "workspace rows refuse routing even with the setting off, since their teardown would follow routing"
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces false}}
+                   :model/Workspace {ws-id :id} {:name "w" :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {:user "mb__isolation_w" :password "secret"}
+                                               :output_namespace "mb__isolation_w"
+                                               :input_schemas    []
+                                               :status           :provisioned}]
+      (is (= "Cannot enable database routing for a database used by a workspace"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"}))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -257,11 +279,12 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
-    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
-      (testing "New group should have permissions for the router database"
-        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
-      (testing "New group should NOT have permissions for the destination database"
-        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+    (mt/with-model-cleanup [:model/PermissionsGroup]
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Test Group for Routing"}])]
+        (testing "New group should have permissions for the router database"
+          (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+        (testing "New group should NOT have permissions for the destination database"
+          (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id))))))))
 
 (deftest manage-db-user-can-update-destination-database-test
   (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"

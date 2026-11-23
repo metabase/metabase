@@ -3,7 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -31,10 +31,7 @@
                    :model/Table {table-id :id} {:name   "Custom Table"
                                                 :db_id  (mt/id)
                                                 :active true}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}]
+                   :model/Segment {segment-id :id} {:name "Test Segment"}]
       (let [entities          [[:card card-id-1]
                                [:card card-id-2]
                                [:table table-id]
@@ -106,12 +103,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query venues)}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}
-                   :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Measure"
+                   :model/Segment {segment-id :id} {:name "Test Segment"}
+                   :model/Measure {measure-id :id} {:name       "Test Measure"
                                                     :definition (let [mp (mt/metadata-provider)
                                                                       table-metadata (lib.metadata/table mp (mt/id :venues))]
                                                                   (-> (lib/query mp table-metadata)
@@ -187,8 +180,8 @@
                           :name          "Child Card"}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               ;; populate dependencies
-              (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
-              (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
+              (events/publish-event! :event/card-create {:changes [{:object old-card}] :user-id (mt/user->id :rasta)})
+              (events/publish-event! :event/card-create {:changes [{:object child-card}] :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-dependency-job!)
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
@@ -242,7 +235,7 @@
                           :name          "Child 2"}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
-                (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
+                (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (mt/user->id :rasta)}))
               (deps.test/synchronously-run-dependency-job!)
               (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
                 (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!

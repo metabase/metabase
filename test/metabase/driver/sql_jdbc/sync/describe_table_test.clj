@@ -511,14 +511,24 @@
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
-                (letfn [(do-with-removed-method [thunk]
-                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
-                            (if (= original-method (get-method driver.sql/json-field-length :default))
-                              (thunk)
-                              (do (remove-method driver.sql/json-field-length driver/*driver*)
-                                  (thunk)
-                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                                    (original-method driver field))))))]
+                (letfn [(registered-dispatch-value [driver]
+                          ;; remove-method needs the registered dispatch value. A child such as
+                          ;; :motherduck can inherit its method from :postgres. Search the driver
+                          ;; and then its parents, returning nil if no method is registered there.
+                          (loop [dispatch-values [driver]]
+                            (when (seq dispatch-values)
+                              (or (m/find-first #(contains? (methods driver.sql/json-field-length) %) dispatch-values)
+                                  (recur (into [] (mapcat #(parents driver/hierarchy %)) dispatch-values))))))
+                        (do-with-removed-method [thunk]
+                          (if-let [dispatch-value (registered-dispatch-value driver/*driver*)]
+                            (let [original-method (get-method driver.sql/json-field-length dispatch-value)]
+                              (remove-method driver.sql/json-field-length dispatch-value)
+                              (try
+                                (thunk)
+                                (finally
+                                  (defmethod driver.sql/json-field-length dispatch-value [driver field]
+                                    (original-method driver field)))))
+                            (thunk)))]
                   (do-with-removed-method
                    (fn []
                      (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}

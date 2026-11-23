@@ -3,10 +3,11 @@
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.queries.models.card :as card]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -14,9 +15,17 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
@@ -34,7 +43,7 @@
                    :name        "Test Name"
                    :description "Test Description"
                    :other-field "Other Value"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text with map format and transforms"
@@ -43,7 +52,7 @@
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text filters out blank values"
@@ -52,7 +61,7 @@
                    :name        "Test Name"
                    :description "  " ;; whitespace only
                    :empty-field nil}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
@@ -63,7 +72,7 @@
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text with map format"
@@ -72,7 +81,7 @@
           record  {:model       "dashboard"
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text filters out blank values"
@@ -81,14 +90,14 @@
                    :name        "Test Card"
                    :description "  "
                    :empty-field nil}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search"))))
@@ -98,7 +107,7 @@
           record  {:model    "document"
                    :name     "Q3 Planning"
                    :document "the full document body"}]
-      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
         (is (= "[document]\nname: Q3 Planning"
                (#'search.ingestion/embeddable-text record))
             "Excluded fields must not appear in the semantic-search embedding text")
@@ -139,17 +148,21 @@
             :type :metric
             :dataset_query (let [mp (mt/metadata-provider)]
                              (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count))
-                                 lib.convert/->legacy-MBQL))}
+                                 (lib/aggregate (lib/count))))}
            :model/Card
            {b-id :id}
            {:name "Metric B"
             :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
+            :dataset_query (metric-query a-id)}
+           :model/Card
+           {c-id :id}
+           {:name "Metric C"
+            :type :metric
+            :dataset_query (metric-query b-id)}]
+          ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
+          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
-                        (search.spec/spec "card")
+                        (search.spec/search-model-spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
                          :query_type    "query"})]
             (is (map? result))
@@ -249,21 +262,97 @@
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
 
+(deftest update!-reports-every-batch-test
+  (testing "the update counts cover every batch of documents, not just the last one"
+    (mt/with-prometheus-system! [_ system]
+      ;; The stubs are global, so count only this test's documents in case a background ingestion runs meanwhile.
+      (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/update!        (fn [_engine batch] {"ingestion-test" (count (filter ::doc batch))})]
+        (search.ingestion/update! (repeat 400 {::doc true}) [])
+        (is (== 400 (mt/metric-value system :metabase-search/index-updates {:model "ingestion-test"})))))))
+
+(deftest ^:synchronized tombstone-ordering-within-a-batch-test
+  (testing "a tombstone applies where it sits in the batch, not before or after every re-index in it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Tombstoneorderingprobe"}]
+        (let [indexed?  #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))
+              reindex   ["card" [:= id :this.id]]
+              tombstone (search.ingestion/tombstone "card" [id])]
+          (testing "a re-index queued before the tombstone does not resurrect the entry"
+            (search.ingestion/bulk-ingest! [reindex tombstone])
+            (is (false? (indexed?))))
+          (testing "a re-index queued after it is authoritative"
+            (search.ingestion/bulk-ingest! [tombstone reindex])
+            (is (true? (indexed?)))))))))
+
+(deftest ^:synchronized failing-run-keeps-later-tombstones-test
+  (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingrunprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (is (thrown? Exception
+                       (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
+                                                       (search.ingestion/tombstone "card" [id])]))
+              "the failure still reaches the caller")
+          (is (false? (indexed?)))))))
+  (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingassertprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
+            (is (thrown? AssertionError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))
+                "the error still reaches the caller"))
+          (is (false? (indexed?)))))))
+  (testing "any other Error is fatal, and stops the batch before the tombstone"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Fatalerrorprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
+            (is (thrown? LinkageError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))))
+          (is (true? (indexed?))))))))
+
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _ {:db_id          db-id
-                                     :name           "Curatedgoldtbl"
-                                     :active         true
-                                     :data_authority :authoritative
-                                     :data_layer     :final}]
-        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
-                          (filter (comp #{"table"} :model))
-                          first)]
-          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
-                  result)))))))
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-model-cleanup [:model/Table]
+          (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                        :db_id          db-id
+                                        :name           "Curatedgoldtbl"
+                                        :active         true
+                                        :data_authority :authoritative
+                                        :data_layer     :final)])
+          (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                            (filter (comp #{"table"} :model))
+                            first)]
+            (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                    result))))))))
 
 (defn- queued-updates!
   "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."
@@ -337,6 +426,59 @@
           (finally
             (queue/stop-listening! listener-name)))))))
 
+(deftest after-commit-runs-steps-on-the-committing-thread-test
+  (testing "after-commit! steps run on the thread that commits, before the transaction returns, and start no thread"
+    (let [ran-on (atom nil)]
+      (binding [search.ingestion/*force-sync* false]
+        (t2/with-transaction [_conn]
+          (search/after-commit! "probe" #(reset! ran-on (Thread/currentThread)))
+          (is (nil? @ran-on) "nothing runs before the commit")))
+      (is (identical? (Thread/currentThread) @ran-on)))))
+
+(deftest after-commit-stops-on-interrupt-test
+  (testing "an interrupted after-commit! step skips the steps after it and leaves the thread interrupted"
+    (let [ran (atom [])]
+      (t2/with-transaction [_conn]
+        (search/after-commit! "probe"
+                              #(throw (InterruptedException. "interrupted"))
+                              #(swap! ran conj :later-step)))
+      ;; Read, and clear, the status before asserting, since reporting an assertion clears it.
+      (let [interrupted? (Thread/interrupted)]
+        (is (= {:ran [], :interrupted? true}
+               {:ran @ran, :interrupted? interrupted?}))))))
+
+(def ^:private recorded-deletes (atom []))
+
+(defn- record-delete [engine search-model ids]
+  (swap! recorded-deletes conj [engine search-model (set ids)])
+  {search-model (count ids)})
+
+;; Engines that only record what they are asked to delete. A multimethod cannot be redefined in a test, so these are
+;; real methods under test-only dispatch values.
+(defmethod search.engine/delete! ::recording-engine-a [engine search-model ids]
+  (record-delete engine search-model ids))
+
+(defmethod search.engine/delete! ::recording-engine-b [engine search-model ids]
+  (record-delete engine search-model ids))
+
+(deftest ^:synchronized tombstones-reach-every-active-engine-test
+  (testing "a tombstone removes its documents from every active engine"
+    (reset! recorded-deletes [])
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [::recording-engine-a ::recording-engine-b])]
+      (search.ingestion/bulk-ingest! [(search.ingestion/tombstone "card" [1 2])]))
+    (is (= #{[::recording-engine-a "card" #{"1" "2"}]
+             [::recording-engine-b "card" #{"1" "2"}]}
+           (set @recorded-deletes)))))
+
+(deftest ^:parallel message-runs-test
+  (testing "re-index messages and tombstones coalesce with their neighbors, while each reconcile runs alone"
+    (let [reindex-1 ["card" [:= 1 :this.id]]
+          reindex-2 ["card" [:= 2 :this.id]]
+          tombstone (search.ingestion/tombstone "card" [3])
+          action    (search.ingestion/reconcile "action" #{4})
+          entity    (search.ingestion/reconcile "indexed-entity" #{"5:5"})]
+      (is (= [[reindex-1 reindex-2] [tombstone] [action] [entity] [reindex-1]]
+             (#'search.ingestion/message-runs [reindex-1 reindex-2 tombstone action entity reindex-1]))))))
 (deftest ingest-maybe-async!-queues-after-commit-test
   ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
   ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is

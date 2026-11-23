@@ -1,6 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { MultiSelect } from "@mantine/core";
 
-import { DefaultSelectItem, selectOverrides } from "../Select";
+import {
+  DefaultSelectItem,
+  selectClearButtonProps,
+  selectOverrides,
+} from "../Select";
 
 import S from "./MultiSelect.module.css";
 
@@ -20,15 +25,15 @@ export const multiSelectOverrides = {
         withinPortal: true,
         keepMounted: false,
       },
-      clearButtonProps: {
-        color: "text-primary",
-      },
+      clearButtonProps: selectClearButtonProps,
       "data-testid": "multi-select",
       inputWrapperOrder: ["label", "description", "input", "error"],
     },
     classNames: {
       ...(selectOverrides?.Select?.classNames ?? {}),
       input: S.MultiSelectInput,
+      pill: S.MultiSelectPill,
+      pillsList: S.MultiSelectPillsList,
     },
   }),
 };

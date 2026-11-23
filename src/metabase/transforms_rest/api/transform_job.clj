@@ -10,6 +10,7 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -111,16 +112,12 @@
    {:keys [name description schedule ui_display_type tag_ids]} :- [:map {:closed true}
                                                                    [:name ms/NonBlankString]
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:schedule ms/NonBlankString]
+                                                                   [:schedule ::transforms.schema/transform-job.schedule]
                                                                    [:ui_display_type
                                                                     {:default :cron/raw}
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job with schedule:" schedule)
-  ;; Validate cron expression
-  (api/check-400 (transforms.core/validate-cron-expression schedule)
-                 (deferred-tru "Invalid cron expression: {0}" schedule))
-  ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
     (let [existing-tags (transforms-rest.db/existing-tag-ids tag_ids)]
       (api/check-400 (= (set tag_ids) existing-tags)
@@ -129,17 +126,8 @@
                   :description     description
                   :schedule        schedule
                   :ui_display_type ui_display_type}
-        _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
-        job      (transforms-rest.db/insert-job! job-data)]
-    (transforms.core/initialize-job! job)
-    ;; Add tag associations if provided
-    (when (seq tag_ids)
-      (transforms-rest.db/insert-job-tags!
-       (map-indexed (fn [idx tag-id]
-                      {:job_id (:id job)
-                       :tag_id tag-id
-                       :position idx})
-                    tag_ids)))
+        _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
+        job      (first (transform-job/create-transform-jobs! [(cond-> job-data (seq tag_ids) (assoc :tag_ids tag_ids))]))]
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -156,7 +144,7 @@
    {:keys [active]} :- [:map {:closed true} [:active :boolean]]]
   (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
-  (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
+  (let [op         (if active transform-job/activate-job! transform-job/deactivate-job!)
         verb       (if active "activate" "deactivate")
         candidates (transforms-rest.db/jobs-with-active-flag (not active))
         try-op     (fn [job]
@@ -179,7 +167,7 @@
     :keys [name description schedule ui_display_type active]} :- [:map {:closed true}
                                                                   [:name {:optional true} ms/NonBlankString]
                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:schedule {:optional true} ms/NonBlankString]
+                                                                  [:schedule {:optional true} ::transforms.schema/transform-job.schedule]
                                                                   [:ui_display_type
                                                                    {:optional true}
                                                                    (ms/enum-decode-keyword ui-display-types)]
@@ -187,51 +175,32 @@
                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (let [existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
-    ;; Check write permission on both current state and final state (with new tags if provided)
-    (api/write-check existing-job)
-    (when (some? tag-ids)
-      (api/write-check (assoc existing-job :tag_ids tag-ids)))
-    ;; Validate cron expression if provided
-    (when schedule
-      (api/check-400 (transforms.core/validate-cron-expression schedule)
-                     (deferred-tru "Invalid cron expression: {0}" schedule)))
-    ;; Validate tag IDs if provided
+    (api/update-check (api/check-404 existing-job) (m/assoc-some nil :tag_ids tag-ids))
     (when (seq tag-ids)
       (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
-    (let [was-active     (:active existing-job)
-          will-be-active (if (some? active) active was-active)]
-      ;; DB writes that can fail commit before any Quartz side effect, so a tag FK race or
-      ;; non-toggle-update failure can't roll back state already written to the scheduler.
-      (t2/with-transaction [_conn]
-        (when-let [updates (m/assoc-some nil
-                                         :name name
-                                         :description description
-                                         :schedule schedule
-                                         :ui_display_type ui_display_type)]
-          (transforms-rest.db/update-job! job-id updates))
-        (when (some? tag-ids)
-          (transforms.core/update-job-tags! job-id tag-ids)))
-      (when (some? active)
-        (if active
-          (transforms.core/activate-job! job-id)
-          (transforms.core/deactivate-job! job-id)))
-      ;; A schedule edit on a job that stays active needs a separate trigger rebuild;
-      ;; activate-job! only runs when :active toggled false→true.
-      (when (and schedule was-active will-be-active)
-        (transforms.core/update-job! job-id schedule))
-      (-> (transforms-rest.db/job job-id)
-          (t2/hydrate :tag_ids :last_run)
-          (update :last_run transforms-base.u/present-run)))))
+    (when-let [updates (m/assoc-some nil
+                                     :name name
+                                     :description description
+                                     :schedule schedule
+                                     :ui_display_type ui_display_type
+                                     :tag_ids tag-ids)]
+      (transform-job/update-transform-job! job-id updates))
+    (when (some? active)
+      (if active
+        (transform-job/activate-job! job-id)
+        (transform-job/deactivate-job! job-id)))
+    (-> (transforms-rest.db/job job-id)
+        (t2/hydrate :tag_ids :last_run)
+        (update :last_run transforms-base.u/present-run))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
   [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
-  (transforms-rest.db/delete-job! job-id)
-  (transforms.core/delete-job! job-id)
+  (transform-job/delete-transform-jobs! [job-id])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map
@@ -279,7 +248,7 @@
   (log/info "Getting the transforms of transform job" job-id)
   (api/check-404 (transforms-rest.db/job-pk job-id))
   (-> (transforms.core/job-transforms job-id)
-      (#(do (api/check-403 (every? mi/can-read? %)) %))
+      (#(do (api/check-403 (every? mi/can-read? (t2/hydrate % :can_read))) %))
       (t2/hydrate :creator)
       transforms.u/add-source-readable))
 

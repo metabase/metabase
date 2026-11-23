@@ -1,5 +1,6 @@
 ---
 title: The dates and times in my questions and charts are wrong
+summary: Fix dates and times that show up wrong in your questions and charts.
 ---
 
 # The dates and times in my questions and charts are wrong

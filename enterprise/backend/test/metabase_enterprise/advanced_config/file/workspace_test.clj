@@ -1,0 +1,482 @@
+(ns metabase-enterprise.advanced-config.file.workspace-test
+  (:require
+   [clojure.java.io :as io]
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.app-db.setting :as mdb.setting]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.settings.core :as setting]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each
+  (fn [thunk]
+    ;; Several tests drive a `:workspace` section through `initialize!`, which
+    ;; requires the `:workspaces` feature; default it on here. Tests that assert
+    ;; the feature's *absence* override with their own `mt/with-premium-features`.
+    (mt/with-premium-features #{:workspaces}
+      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
+        (try
+          (thunk)
+          (finally
+            (ws/clear-instance-workspace!)))))))
+
+(defn- load-fixture-by-driver [driver]
+  (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
+      io/resource slurp yaml/parse-string))
+
+(defn- load-fixture
+  "Postgres-shaped fixture used by `fixture-parses-test` and the loader
+   round-trip tests. Sibling fixtures for other drivers live in the same
+   resources dir (see `per-driver-fixtures-test` below)."
+  []
+  (load-fixture-by-driver :postgres))
+
+(defn- workspace-section
+  "Pull just the `:workspace` section out of the fixture, with the database name
+   rewritten to point at the supplied `db-name` (so tests can use whatever DB
+   `mt/with-temp` creates rather than depending on the fixture's literal name)."
+  [db-name]
+  (let [section (-> (load-fixture) :config :workspace)]
+    (-> section
+        (assoc :databases
+               (into {} (map (fn [[_db-name-kw wsd-config]]
+                               [(keyword db-name) wsd-config])
+                             (:databases section)))))))
+
+(deftest fixture-parses-test
+  (testing "the checked-in fixture parses and has the expected top-level shape"
+    (let [parsed (load-fixture)]
+      (is (= 1 (:version parsed)))
+      (is (map? (:config parsed)))
+      (is (= "New workspace" (get-in parsed [:config :workspace :name])))
+      (testing "workspace.databases is keyed by database name"
+        (let [dbs (get-in parsed [:config :workspace :databases])]
+          (is (= 1 (count dbs)))
+          (let [[_db-name wsd] (first dbs)]
+            (is (= ["public"] (:input_schemas wsd)))
+            (is (= {:schema "mb__isolation_44490_1933"} (:output wsd)))))))))
+
+(deftest non-blank-string-spec-test
+  (testing "::non-blank-string rejects nil, non-strings, and whitespace-only strings,
+            and accepts any string with at least one non-whitespace character."
+    (let [spec :metabase-enterprise.advanced-config.file.workspace/non-blank-string]
+      (doseq [v ["" " " "  " "\t" "\n" "\t \n" nil 42 :foo]]
+        (is (not (s/valid? spec v))
+            (str "must reject " (pr-str v))))
+      (doseq [v ["a" "abc" " a" "a " " a " "non-blank with spaces"]]
+        (is (s/valid? spec v)
+            (str "must accept " (pr-str v)))))))
+
+(deftest apply-workspace-section-sets-the-settings-test
+  (testing "applying the :workspace section turns workspaces-enabled on and sets the database's database-workspace-schema"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (let [section (workspace-section "ws-test-db")
+              {:keys [workspace-name database-count]} (advanced-config.file.workspace/apply-workspace-section! section)]
+          (is (= "New workspace" workspace-name))
+          (is (= 1 database-count))
+          (testing "the settings hold the translated config; :name and :input_schemas are dropped"
+            (is (= {:databases {db-id "mb__isolation_44490_1933"}}
+                   (ws/instance-workspace)))))))))
+
+(deftest re-apply-replaces-the-settings-test
+  (testing "re-applying with a different config replaces the settings — no mismatch detection, file is the truth"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _               {:name "ws-test-db" :engine :postgres}
+                     :model/Database {db-2-id :id}  {:name "ws-test-db-2" :engine :postgres}]
+        (let [section-1 (workspace-section "ws-test-db")
+              section-2 (assoc section-1
+                               :name "Renamed Workspace"
+                               :databases {:ws-test-db-2 {:input_schemas ["public"]
+                                                          :output        {:schema "different_schema"}}})]
+          (advanced-config.file.workspace/apply-workspace-section! section-1)
+          (advanced-config.file.workspace/apply-workspace-section! section-2)
+          (is (= {:databases {db-2-id "different_schema"}}
+                 (ws/instance-workspace))
+              "settings reflect the new config, and the first database's schema is cleared"))))))
+
+(deftest unknown-database-name-throws-test
+  (testing "referencing a database that doesn't exist in app-db throws ex-info"
+    (mt/with-empty-h2-app-db!
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"Workspace config references unknown database"
+           (advanced-config.file.workspace/apply-workspace-section!
+            (workspace-section "nonexistent-db")))))))
+
+(deftest db-workspace-namespace-resolves-after-loading-test
+  (testing "after loading, db-workspace-namespace returns the configured output namespace"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (advanced-config.file.workspace/apply-workspace-section!
+         (workspace-section "ws-test-db"))
+        (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))
+
+(deftest db-workspace-namespace-returns-nil-when-no-load-test
+  (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
+    ;; This database has no `database-workspace-schema`, so `db-workspace-namespace` has
+    ;; nothing to derive a value from. The use-fixtures :each tear-down turns
+    ;; `workspaces-enabled` off and deletes the remap rows after each test.
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (is (nil? (ws/db-workspace-namespace db-id)))))))
+
+(deftest oss-rejects-workspace-section-without-premium-token-test
+  (testing "OSS instances need the :config-text-file token to load a :workspace section (no special bring-up carve-out)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Premium token with the :config-text-file feature"
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
+
+(deftest oss-rejects-non-settings-sections-without-premium-token-test
+  (testing "OSS instances always need the :config-text-file token for non-:settings sections"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Premium token with the :config-text-file feature"
+             (advanced-config.file/initialize!
+              {:version 1
+               :config {:users [{:first_name "X" :last_name "Y"
+                                 :email "x@example.com" :password "pw"}]}})))))))
+
+(deftest workspace-section-requires-workspaces-feature-test
+  (testing ":workspace section needs the :workspaces feature in addition to :config-text-file"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file}
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Workspaces is a paid feature"
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
+
+(deftest workspace-section-loads-with-workspaces-feature-test
+  (testing ":workspace section loads cleanly when both :config-text-file and :workspaces are present"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file :workspaces}
+          (advanced-config.file/initialize!
+           {:version 1
+            :config {:workspace (workspace-section "ws-test-db")}})
+          (is (true? (ws/workspace-mode?))
+              "the workspace section should have been applied")
+          (is (= {:schema "mb__isolation_44490_1933"}
+                 (ws/db-workspace-namespace db-id))))))))
+
+(deftest workspaces-gate-is-scoped-to-workspace-section-test
+  (testing "without :workspaces, other non-:workspace sections still load (gate is :workspace-scoped)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file}
+        (advanced-config.file/initialize!
+         {:version 1
+          :config {:users [{:first_name "X" :last_name "Y"
+                            :email "x@example.com" :password "pw"}]}})
+        (is (nil? (ws/instance-workspace))
+            "no workspace section means no workspace state was set")))))
+
+;;; ----------------------------------------- per-driver shapes -----------------------------------------
+;;;
+;;; Drivers with different cardinalities should round-trip through the wire format
+;;; without modification.
+
+(deftest mysql-cardinality-upgrade-section-test
+  (testing "MySQL workspace: `db-workspace-namespace` has only the `:db` slot (no schema layer)"
+    (testing "after the loader runs, `db-workspace-namespace` has the MySQL output namespace in its `:db` slot"
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:mysql-prod {:input_schemas ["prod_db"]
+                                     :output        {:db "ws_alice"}}}})
+          (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+
+(deftest bigquery-3-slot-section-test
+  (testing "BigQuery workspace: project + dataset in the :output map"
+    ;; db-workspace-namespace expands the stored schema through the driver, so it needs
+    ;; the driver on the classpath.
+    (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:bq-prod {:input_schemas ["core"]
+                                  :output        {:db "metabase-prod" :schema "ws_alice"}}}})
+          (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+
+;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
+;;;
+;;; The `resources/workspace_config_<driver>.yml` files are reference fixtures
+;;; - one per driver shape. They double as documentation (each is a complete
+;;; valid `config.yml` showing the per-driver wire format) and as test data.
+;;; This test parametrizes over all of them, asserting:
+;;;
+;;;   - the YAML parses
+;;;   - the `:workspace` section validates against the spec
+;;;   - after the loader applies it, `db-workspace-namespace` returns the per-driver
+;;;     expected output namespace
+;;;
+;;; If a driver's wire format drifts, the corresponding fixture and this test
+;;; both have to be updated together - keeps doc and code aligned.
+
+(def ^:private per-driver-fixture-expectations
+  "Per-driver fixture metadata: db-name + engine + connection details from the fixture,
+   the wire-shape `:input_schemas`, and the `:output` map (already expanded in the
+   YAML since `workspaces.config/build-workspace-config` emits the runtime shape
+   directly)."
+  {:postgres   {:db-name        "test-data (postgres)"
+                :engine         :postgres
+                :details        {}
+                :input_schemas  ["public"]
+                :output         {:schema "mb__isolation_44490_1933"}}
+   :redshift   {:db-name        "test-data (redshift)"
+                :engine         :redshift
+                :details        {}
+                :input_schemas  ["public"]
+                :output         {:schema "mb__isolation_44490_1933"}}
+   :mysql      {:db-name        "test-data (mysql)"
+                :engine         :mysql
+                :details        {:db "prod_db"}
+                :input_schemas  ["prod_db"]
+                :output         {:db "ws_alice"}}
+   :clickhouse {:db-name        "test-data (clickhouse)"
+                :engine         :clickhouse
+                :details        {}
+                :input_schemas  ["prod_events"]
+                :output         {:schema "ws_alice"}}
+   :sqlserver  {:db-name        "test-data (sqlserver)"
+                :engine         :sqlserver
+                :details        {:db "AnalyticsDB"}
+                :input_schemas  ["dbo"]
+                :output         {:db "AnalyticsDB" :schema "ws_alice"}}
+   :bigquery   {:db-name        "test-data (bigquery)"
+                :engine         :bigquery-cloud-sdk
+                :details        {:project-id "metabase-prod"}
+                :input_schemas  ["core"]
+                :output         {:db "metabase-prod" :schema "ws_alice"}}})
+
+(deftest per-driver-fixtures-parse-and-validate-test
+  (testing "Each per-driver fixture YAML parses, has the expected workspace section, and round-trips through the loader"
+    (doseq [[driver expectations] per-driver-fixture-expectations]
+      (testing (str driver " fixture")
+        (let [parsed  (load-fixture-by-driver driver)
+              section (get-in parsed [:config :workspace])
+              wsd     (-> section :databases vals first)]
+          (testing "parses to the expected wire shape"
+            (is (= 1 (:version parsed)))
+            (is (= "New workspace" (:name section)))
+            (is (= (:input_schemas expectations) (:input_schemas wsd))
+                (str driver " input_schemas matches expectation"))
+            (is (= (:output expectations) (:output wsd))
+                (str driver " :output matches expectation")))
+          (testing "validates against the workspace section spec"
+            (is (true? (s/valid? :metabase-enterprise.advanced-config.file.workspace/config-file-spec section))
+                (str driver " fixture must satisfy the section spec")))
+          ;; db-workspace-namespace expands the stored schema through the driver, so this
+          ;; part needs the driver on the classpath.
+          (when (workspaces.tu/driver-loadable? (:engine expectations))
+            (testing "after apply-workspace-section!, `db-workspace-namespace` returns the fixture's output namespace"
+              (mt/with-empty-h2-app-db!
+                (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
+                                                            :engine  (:engine expectations)
+                                                            :details (:details expectations)}]
+                  (advanced-config.file.workspace/apply-workspace-section! section)
+                  (is (= (:output expectations) (ws/db-workspace-namespace db-id))
+                      (str driver " db-workspace-namespace matches fixture")))))))))))
+
+;;; ----------------------------------------- settings form ----------------------------------------
+;;;
+;;; The same state as the `:workspace` section, as ordinary settings: `workspaces-enabled`
+;;; in the `:settings` section and `database-workspace-schema` in a database's `:settings`.
+
+(deftest settings-form-makes-instance-a-workspace-test
+  (testing "settings.workspaces-enabled plus databases[].settings.database-workspace-schema, with no :workspace section"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (advanced-config.file/initialize!
+         {:version 1
+          :config  {:settings  {:workspaces-enabled true}
+                    :databases [{:name     "ws-settings-db"
+                                 :engine   "postgres"
+                                 :details  {}
+                                 :is_stub  true
+                                 :settings {:database-workspace-schema "ws_alice"}}]}})
+        (let [db-id (t2/select-one-pk :model/Database :name "ws-settings-db")]
+          (is (true? (ws/workspace-mode?)))
+          (is (= {:schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+
+(deftest databases-section-schema-change-deletes-remappings-test
+  (testing "databases[].settings changing database-workspace-schema of an existing database deletes its remap rows"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2 :details (:details (mt/db))}]
+            (workspaces.tu/with-workspace-db! db-id "ws_old"
+              (fn []
+                (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
+                                                   :to_db "" :to_schema "ws_old" :to_table_name "PUBLIC__VENUES"})
+                (let [initialize! (fn [schema]
+                                    (advanced-config.file/initialize!
+                                     {:version 1
+                                      :config  {:databases [{:name     db-name
+                                                             :engine   "h2"
+                                                             :details  (:details (mt/db))
+                                                             :settings {:database-workspace-schema schema}}]}}))]
+                  (testing "unchanged schema keeps the rows"
+                    (initialize! "ws_old")
+                    (is (= 1 (t2/count :model/TableRemapping :database_id db-id))))
+                  (testing "changed schema deletes them"
+                    (initialize! "ws_new")
+                    (is (zero? (t2/count :model/TableRemapping :database_id db-id)))))))))))))
+
+(deftest config-file-sets-workspace-schema-under-env-var-test
+  (testing "while MB_WORKSPACES_ENABLED is set, config.yml still sets database-workspace-schema"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_old"}}]
+            (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
+              (let [stored #(get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])]
+                (testing "through databases[].settings"
+                  (is (= :ok (advanced-config.file/initialize!
+                              {:version 1
+                               :config  {:databases [{:name     db-name
+                                                      :engine   "h2"
+                                                      :details  (:details (mt/db))
+                                                      :settings {:database-workspace-schema "ws_settings"}}]}})))
+                  (is (= "ws_settings" (stored))))
+                (testing "through the workspace section"
+                  (advanced-config.file.workspace/apply-workspace-section!
+                   {:name      "W"
+                    :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                   :output        {:schema "ws_section"}}}})
+                  (is (= "ws_section" (stored))))))))))))
+
+(deftest databases-section-refuses-non-string-workspace-schema-test
+  (testing "databases[].settings.database-workspace-schema must be a string, which every read relies on"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2 :details (:details (mt/db))}]
+          (is (thrown? ExceptionInfo
+                       (advanced-config.file/initialize!
+                        {:version 1
+                         :config  {:databases [{:name     db-name
+                                                :engine   "h2"
+                                                :details  (:details (mt/db))
+                                                :settings {:database-workspace-schema 5}}]}})))
+          (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))))))
+
+(deftest first-boot-after-upgrade-keeps-remap-rows-of-unchanged-schema-test
+  (testing "the first boot after an upgrade, whose :workspace section names the schema the stored instance-workspace
+            held, keeps the remap rows"
+    (mt/with-premium-features #{:config-text-file :workspaces}
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-upgrade-db" :engine :postgres}]
+        (let [json (str "{\"name\":\"old\",\"databases\":{\"" db-id
+                        "\":{\"input_schemas\":[\"public\"],\"output\":{\"schema\":\"ws_old\"}}}}")
+              row  {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                    :to_db "" :to_schema "ws_old" :to_table_name "public__t"}
+              config {:version 1
+                      :config  {:workspace {:name      "old"
+                                            :databases {:ws-upgrade-db {:input_schemas ["public"]
+                                                                        :output        {:schema "ws_old"}}}}}}
+              boot!  #(with-redefs-fn {#'advanced-config.file/config-from-disk (constantly config)}
+                        advanced-config.file/boot-initialize!)]
+          (try
+            (t2/delete! :setting :key "workspaces-enabled")
+            (t2/insert! :setting {:key            "instance-workspace"
+                                  :value          json
+                                  :value_with_aad (encryption/maybe-encrypt
+                                                   json {:aad (mdb.setting/setting-aad "instance-workspace")})})
+            (setting/restore-cache!)
+            (t2/insert! :model/TableRemapping row)
+            (boot!)
+            (is (true? (ws/workspace-mode?)))
+            (is (= {:schema "ws_old"} (ws/db-workspace-namespace db-id)))
+            (is (= ["ws_old"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))
+            (testing "control: a later boot of the same config keeps a row"
+              (when-not (t2/exists? :model/TableRemapping :database_id db-id)
+                (t2/insert! :model/TableRemapping row))
+              (boot!)
+              (is (= ["ws_old"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
+            (finally
+              (t2/delete! :setting :key "instance-workspace")
+              (setting/restore-cache!)
+              (t2/delete! :model/TableRemapping :database_id db-id))))))))
+
+(deftest config-with-conflicting-schemas-is-refused-test
+  (testing "a config whose databases[].settings and :workspace section name different schemas for one database is
+            refused before anything is written, so no boot deletes the remap rows"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_l"}}]
+            (let [config (fn [settings-schema]
+                           {:version 1
+                            :config  {:databases [{:name     db-name
+                                                   :engine   "h2"
+                                                   :details  (:details (mt/db))
+                                                   :settings {:database-workspace-schema settings-schema}}]
+                                      :workspace {:name      "W"
+                                                  :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                                                 :output        {:schema "ws_l"}}}}}})]
+              (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC"
+                                                 :from_table_name "VENUES"
+                                                 :to_db "" :to_schema "ws_l" :to_table_name "PUBLIC__VENUES"})
+              (is (thrown-with-msg? ExceptionInfo #"two workspace schemas"
+                                    (advanced-config.file/initialize! (config "ws_s"))))
+              (is (= ["ws_l"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))
+              (is (= "ws_l" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))
+              (testing "control: a config whose two forms agree loads and keeps the row"
+                (is (= :ok (advanced-config.file/initialize! (config " ws_l "))))
+                (is (= ["ws_l"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))))))))))
+
+(deftest databases-settings-without-the-schema-keep-remappings-at-boot-test
+  (testing "a config whose :workspace section names a database's schema, and whose databases[].settings for it has no
+            database-workspace-schema, keeps the database's remap rows at boot"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_l"}}]
+            (let [config (fn [settings]
+                           {:version 1
+                            :config  {:databases [{:name     db-name
+                                                   :engine   "h2"
+                                                   :details  (:details (mt/db))
+                                                   :settings settings}]
+                                      :workspace {:name      "W"
+                                                  :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                                                 :output        {:schema "ws_l"}}}}}})
+                  rows   #(t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)]
+              (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC"
+                                                 :from_table_name "VENUES"
+                                                 :to_db "" :to_schema "ws_l" :to_table_name "PUBLIC__VENUES"})
+              (testing "control: settings that name the same schema keep the row"
+                (is (= :ok (advanced-config.file/initialize! (config {:database-workspace-schema "ws_l"}))))
+                (is (= ["ws_l"] (rows))))
+              (is (= :ok (advanced-config.file/initialize! (config {:database-enable-actions true}))))
+              (is (= {:schema "ws_l"} (ws/db-workspace-namespace db-id)) "premise: the boot leaves the section's schema")
+              (is (= ["ws_l"] (rows))))))))))

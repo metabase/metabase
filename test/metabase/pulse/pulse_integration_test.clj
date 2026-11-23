@@ -541,12 +541,13 @@
                                                          :visualization_settings viz-settings}
                        :model/Card {model-card-name :name
                                     model-card-id   :id
-                                    model-metadata  :result_metadata} {:name          "MODEL"
-                                                                       :type          :model
-                                                                       :dataset_query {:database (mt/id)
-                                                                                       :type     :query
-                                                                                       :query    {:source-table
-                                                                                                  (format "card__%s" base-card-id)}}}
+                                    model-metadata  :result_metadata} (mt/card-with-metadata
+                                                                       {:name          "MODEL"
+                                                                        :type          :model
+                                                                        :dataset_query {:database (mt/id)
+                                                                                        :type     :query
+                                                                                        :query    {:source-table
+                                                                                                   (format "card__%s" base-card-id)}}})
                        :model/Card {meta-model-card-name :name
                                     meta-model-card-id   :id} {:name            "MODEL_WITH_META"
                                                                :type            :model

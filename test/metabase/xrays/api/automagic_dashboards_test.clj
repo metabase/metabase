@@ -6,7 +6,10 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.models.collection :as collection]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -34,6 +37,13 @@
   (fn [thunk]
     (mt/id)
     (thunk)))
+
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
 
 (defn- dashcards-schema-check
   [dashcards]
@@ -125,8 +135,7 @@
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
 (deftest segment-xray-test
-  (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+  (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call! "segment/%s" [segment-id]))))
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
@@ -227,8 +236,7 @@
 
 (def ^:private segment
   (delay
-    {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (deftest comparisons-test
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
@@ -253,27 +261,33 @@
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
     (let [card-query (mt/native-query {:query "select * from people"})]
-      (mt/with-temp [:model/Collection {collection-id :id} {}
-                     :model/Card       {card-id :id} (merge
-                                                      (mt/card-with-source-metadata-for-query card-query)
-                                                      {:name            "15655_Q1"
-                                                       :collection_id   collection-id})]
-        (let [query      {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (format "card__%d" card-id)
-                                     :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
-                                     :aggregation  [[:count]]}}
-              cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
-          (testing "X-Ray"
-            (is (some? (api-call! "adhoc/%s/cell/%s"
-                                  (map magic.util/encode-base64-json [query cell-query])
-                                  #(revoke-collection-permissions! collection-id)))))
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
-          (testing "Compare"
-            (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
-                                  (concat (map magic.util/encode-base64-json [query cell-query])
-                                          [(format "card__%d" card-id)])
-                                  #(revoke-collection-permissions! collection-id))))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{collection-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+          (mt/with-temp [:model/Card {card-id :id} (merge
+                                                    (mt/card-with-source-metadata-for-query card-query)
+                                                    {:name            "15655_Q1"
+                                                     :collection_id   collection-id})]
+            (let [query      {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (format "card__%d" card-id)
+                                         :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                         :aggregation  [[:count]]}}
+                  cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+              (testing "X-Ray"
+                (is (some? (api-call! "adhoc/%s/cell/%s"
+                                      (map magic.util/encode-base64-json [query cell-query])
+                                      #(revoke-collection-permissions! collection-id)))))
+              (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+              (testing "Compare"
+                (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
+                                      (concat (map magic.util/encode-base64-json [query cell-query])
+                                              [(format "card__%d" card-id)])
+                                      #(revoke-collection-permissions! collection-id)))))
+              (testing "Compare with question"
+                (is (some? (api-call! "adhoc/%s/cell/%s/compare/question/%s"
+                                      (concat (map magic.util/encode-base64-json [query cell-query])
+                                              [card-id])
+                                      #(revoke-collection-permissions! collection-id))))))))))))
 
 ;;; ------------------- Transforms -------------------
 
@@ -328,10 +342,10 @@
   (mt/with-temp [:model/Card model {:type          :model
                                     :dataset_query query}]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [model-index (model-index/create {:model-id   (:id model)
-                                             :pk-ref     pk-ref
-                                             :value-ref  value-ref
-                                             :creator-id (mt/user->id :crowberto)})]
+      (let [model-index (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                    :pk-ref     pk-ref
+                                                                    :value-ref  value-ref
+                                                                    :creator-id (mt/user->id :crowberto)}]))]
         (model-index/add-values! model-index)
         (f {:model       model
             :model-index (t2/select-one :model/ModelIndex :id (:id model-index))
@@ -516,7 +530,7 @@
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
 
 (defn- linked-pk-filter-values
-  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-ids`
+  "For every query card in `dashcards` (MBQL 5 over the wire), the value its `=` filter on one of `fk-field-ids`
   compares against, or nil when it has no such filter."
   [dashcards fk-field-ids]
   (for [{:keys [card]} dashcards
@@ -530,13 +544,14 @@
 (deftest model-index-primary-key-endpoint-does-not-expose-indexed-values-test
   (testing "GET /api/automagic-dashboards/model_index/:model-index-id/primary_key/:pk-id"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card model {:type          :model
-                                        :dataset_query (mt/mbql-query products)}]
+      (mt/with-temp [:model/Card model (mt/card-with-metadata {:type          :model
+                                                               :table_id      (mt/id :products)
+                                                               :dataset_query (mt/mbql-query products)})]
         (mt/with-model-cleanup [:model/ModelIndex]
-          (let [model-index  (model-index/create {:model-id   (:id model)
-                                                  :pk-ref     (mt/$ids :products $id)
-                                                  :value-ref  (mt/$ids :products $title)
-                                                  :creator-id (mt/user->id :crowberto)})
+          (let [model-index  (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                         :pk-ref     (mt/$ids :products $id)
+                                                                         :value-ref  (mt/$ids :products $title)
+                                                                         :creator-id (mt/user->id :crowberto)}]))
                 ;; a value no warehouse row carries, so its presence anywhere in a response is unambiguous
                 sentinel     "SENTINEL-INDEXED-VALUE-7f3a"
                 url          (format "automagic-dashboards/model_index/%d/primary_key/1" (:id model-index))
@@ -590,8 +605,7 @@
 
 (deftest ^:parallel segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
-    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"

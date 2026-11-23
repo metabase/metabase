@@ -2,8 +2,10 @@
   "Tests for published tables appearing in collection items API."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -56,7 +58,7 @@
                        :model/Table      {table-id :id :as table} {:collection_id (u/the-id collection)
                                                                    :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (testing "with collection read but no view-data, user should not see published table"
@@ -95,7 +97,7 @@
                        :model/Table      table {:collection_id (u/the-id collection)
                                                 :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (perms/revoke-collection-permissions! (perms/all-users-group) collection)
           (data-perms/set-table-permission! group-id table :perms/view-data :unrestricted)
@@ -107,7 +109,7 @@
         (mt/with-temp [:model/Table {table-id :id :as table} {:collection_id nil
                                                               :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (t2/delete! :model/DataPermissions :db_id (mt/id))
           (testing "with no view-data, user should not see published table in root"
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
@@ -144,10 +146,9 @@
         (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      table     {:collection_id (u/the-id collection)
                                                     :is_published  true}
-                       :model/Table      _         {:collection_id (u/the-id collection)
-                                                    :is_published  false}
+                       :model/Table      _         {:is_published false}
                        :model/PermissionsGroup {group-id :id} {}]
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (let [metadata-url (str "collection/" (u/the-id collection) "/items/metadata")
                 items-url    (str "collection/" (u/the-id collection) "/items")
@@ -183,7 +184,7 @@
           (mt/with-temp [:model/Table table {:collection_id nil
                                              :is_published  true}
                          :model/PermissionsGroup {group-id :id} {}]
-            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
             (let [fetch (fn []
                           (mt/user-http-request :rasta :get 200 "collection/root/items/metadata" :models "table"))]
               (testing "with view-data blocked, no table is counted"
@@ -198,15 +199,16 @@
 (deftest collection-items-table-can-write-test
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "GET /api/collection/:id/items - table items have `can_write` from the table metadata permission"
-      (mt/with-temp [:model/Collection collection {:type "library-data"}
-                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
-                                                       :is_published  true}]
-        (let [table-item (fn [user]
-                           (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id collection) "/items"))
-                                :data
-                                (filter #(= "table" (:model %)))))]
-          (is (=? [{:id table-id :can_write true}] (table-item :crowberto)))
-          (is (=? [{:id table-id :can_write false}] (table-item :rasta)))
-          (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
-            (data-perms/set-table-permission! (perms/all-users-group) table-id :perms/manage-table-metadata :yes)
-            (is (=? [{:id table-id :can_write true}] (table-item :rasta)))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[collection] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
+          (mt/with-temp [:model/Table      {table-id :id} {:collection_id (u/the-id collection)
+                                                           :is_published  true}]
+            (let [table-item (fn [user]
+                               (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id collection) "/items"))
+                                    :data
+                                    (filter #(= "table" (:model %)))))]
+              (is (=? [{:id table-id :can_write true}] (table-item :crowberto)))
+              (is (=? [{:id table-id :can_write false}] (table-item :rasta)))
+              (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+                (data-perms/set-table-permission! (perms/all-users-group) table-id :perms/manage-table-metadata :yes)
+                (is (=? [{:id table-id :can_write true}] (table-item :rasta)))))))))))

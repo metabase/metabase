@@ -1,5 +1,6 @@
 ---
 title: Basic actions
+summary: Metabase-generated create, update, and delete forms that auto-track your model's schema, no SQL required.
 redirect_from:
   - /docs/latest/actions/basic
 ---

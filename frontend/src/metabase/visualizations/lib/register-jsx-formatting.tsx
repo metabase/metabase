@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import Mustache from "mustache";
 import type { ReactElement, ReactNode } from "react";

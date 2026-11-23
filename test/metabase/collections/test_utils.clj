@@ -7,11 +7,9 @@
    [toucan2.core :as t2]))
 
 (defn personal-collection
-  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
-  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
-  that failure poisons the surrounding transaction."
+  "The Personal Collection of a User, created with `user->personal-collection` when the User has none yet."
   [user-or-id]
-  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+  (collection/user->personal-collection (u/the-id user-or-id)))
 
 (defn personal-collection-id
   "The ID of a User's Personal Collection. See [[personal-collection]]."
@@ -52,44 +50,47 @@
                                  collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))
 
-(defn do-with-library-synced
-  "Implementation for with-library-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to true.
-   If no Library collection exists, creates a temporary one with is_remote_synced true."
+(defn do-with-library-synced!
+  "Implementation for with-library-synced macro: temporarily sets is_remote_synced to true on the Library collection,
+  creating a temporary one with is_remote_synced true when none exists."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced true}] nil)
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     ;; No library collection exists, create one for the test
-    (mt/with-temp [:model/Collection _ {:name "Library" :type collection/library-collection-type :is_remote_synced true :location "/"}]
+    (mt/with-temp [:model/Collection _ {:name             "Library"
+                                        :type             collection/library-collection-type
+                                        :entity_id        collection/library-entity-id
+                                        :is_remote_synced true
+                                        :location         "/"}]
       (f))))
 
 (defmacro with-library-synced
   "Sets up Library collection as remote-synced for the duration of body."
   [& body]
-  `(do-with-library-synced (fn [] ~@body)))
+  `(do-with-library-synced! (fn [] ~@body)))
 
-(defn do-with-library-not-synced
-  "Implementation for with-library-not-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to false."
+(defn do-with-library-not-synced!
+  "Implementation for with-library-not-synced macro: temporarily sets is_remote_synced to false on the Library
+  collection when one exists."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced false})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced false}] nil)
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     (f)))
 
 (defmacro with-library-not-synced
   "Ensures Library collection is not remote-synced for the duration of body."
   [& body]
-  `(do-with-library-not-synced (fn [] ~@body)))
+  `(do-with-library-not-synced! (fn [] ~@body)))
 
 (defn do-with-library
   "Implementation for [[with-library]]."

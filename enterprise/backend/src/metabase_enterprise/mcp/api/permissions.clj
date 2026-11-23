@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.mcp.models.mcp-group-permission :as mcp-group-permission]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
    [metabase.models.interface :as mi]
@@ -59,7 +60,7 @@
 (defn- permissions-response
   "The policy of every group, defaults filled in for groups without a row, with the tool catalog and the mode."
   []
-  (let [by-group (u/index-by :group_id (filter mi/can-read? (mcp.db/all-group-permissions)))
+  (let [by-group (u/index-by :group_id (mi/readable (mcp.db/all-group-permissions)))
         renamed  (mcp.v2.api/renamed-tool-names)]
     {:advanced    (mcp.db/advanced-mode?)
      :tools       (mcp.v2.api/tool-catalog)
@@ -80,7 +81,7 @@
   "Throw a 403 unless the current user may write the row of each group in `permissions`, or create one for a group
   that has none."
   [permissions]
-  (let [by-group (u/index-by :group_id (mcp.db/all-group-permissions))]
+  (let [by-group (u/index-by :group_id (t2/hydrate (mcp.db/all-group-permissions) :can_write))]
     (doseq [{:keys [group_id] :as permission} permissions]
       (if-let [row (by-group group_id)]
         (api/write-check row)
@@ -106,9 +107,7 @@
   (cluster-lock/with-cluster-lock policy-lock
     (check-writable permissions)
     (check-visible-groups permissions)
-    (t2/with-transaction [_conn]
-      (doseq [{:keys [group_id] :as permission} permissions]
-        (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access])))))
+    (mcp-group-permission/upsert-mcp-group-permissions! permissions))
   (permissions-response))
 
 (defn- switch-mode!
@@ -116,12 +115,12 @@
   groups it enables on entry that have no row yet."
   [advanced?]
   (cluster-lock/with-cluster-lock policy-lock
-    (run! api/write-check (mcp.db/hidden-group-permissions advanced?))
+    (run! api/write-check (t2/hydrate (mcp.db/hidden-group-permissions advanced?) :can_write))
     (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
-      (mcp.db/delete-hidden-group-permissions! advanced?)
-      (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
-        (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission)))))
+      (mcp-group-permission/delete-hidden-mcp-group-permissions! advanced?)
+      (mcp-group-permission/create-missing-mcp-group-permissions!
+       (mapv #(assoc seeded-permission :group_id %) (mcp.db/seeded-group-ids advanced?))))))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to group-level MCP tool access. Removes the rows of All Users and All tenant users, so access comes only

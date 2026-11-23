@@ -141,7 +141,7 @@
                                                                                  :display-name "Name"
                                                                                  :id           "_CARD_NAME_"
                                                                                  :type         :dimension
-                                                                                 :dimension    [:field (mt/id :categories :name) nil]
+                                                                                 :field-id     (mt/id :categories :name)
                                                                                  :widget-type  :string/=}}}}}]
     (f {:dashboard   dashboard
         :native-card native-card})))
@@ -464,8 +464,7 @@
   "The description a client sees for one argument, dug out of the published inputSchema rather than
    the Malli source — that string is what reaches the model."
   [arg]
-  (->> (get-in (tool-manifest-entry) [:inputSchema :properties arg :oneOf])
-       (some :description)))
+  (get-in (tool-manifest-entry) [:inputSchema :properties arg :description]))
 
 (deftest offset-description-test
   (testing "GHY-4141: the offset description names the source cap and points at query — an agent paging
@@ -771,7 +770,7 @@
                                                                        :display-name "Name"
                                                                        :id           "_PN_"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :name) nil]
+                                                                       :field-id     (mt/id :people :name)
                                                                        :widget-type  :string/=}}}}}]
       (mt/with-test-user :rasta
         (f card-id)))))

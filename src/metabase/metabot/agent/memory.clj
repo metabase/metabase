@@ -83,12 +83,18 @@
 ;;; Query Management
 
 (defn set-query
-  "Store a query in state by its query-id.
+  "Store a query in state by its query-id, and redraw every chart that holds a copy of the query under that id.
+  The SQL edit tools store an edited query under its old id, and a chart saved later must show the edited query.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (-> memory
-      (record [:queries query-id] query)
-      (record-client-id query-id)))
+  (reduce (fn [memory [chart-id chart]]
+            (cond-> memory
+              (and (= query-id (:query_id chart)) (seq (:queries chart)))
+              (record [:charts chart-id] (assoc chart :queries [query]))))
+          (-> memory
+              (record [:queries query-id] query)
+              (record-client-id query-id))
+          (get-in memory [:state :charts])))
 
 (defn find-query
   "Retrieve a query by its query-id. Throws if not found."
@@ -136,3 +142,28 @@
   (if (= (get-in memory [:state :link-registry] {}) link-registry)
     memory
     (record memory [:link-registry] link-registry)))
+
+(defn set-context-block
+  "Keep `block`, the `<context>` block rendered for this turn's user message, or nil when the message gets none.
+  The turn sends it with the message. The web chat also stores it, so that later turns send the same bytes. `full?`
+  tells whether the block holds all of the context, so that later web chat turns can send less. Slack Metabot does
+  not store the block."
+  [memory {:keys [block full?]}]
+  (assoc memory
+         :context-block       block
+         :context-block-full? (boolean full?)))
+
+(defn context-block
+  "The `<context>` block kept with [[set-context-block]], or nil."
+  [memory]
+  (:context-block memory))
+
+(defn context-block-full?
+  "Whether the `<context>` block kept with [[set-context-block]] holds all of the context."
+  [memory]
+  (boolean (:context-block-full? memory)))
+
+(defn context-block-rendered?
+  "Whether [[set-context-block]] has kept this turn's block, even a nil one."
+  [memory]
+  (contains? memory :context-block))

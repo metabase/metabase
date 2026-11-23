@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.db :as sample-data.db]
    [metabase.sync.core :as sync]
@@ -12,6 +13,8 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -21,7 +24,7 @@
 
 (def ^String sample-database-name
   "Canonical name of the bundled Sample Database. Shared with consumers that need to
-  identify or validate the sample DB."
+  identify or validate the sample DB (e.g. workspace-manager config import)."
   "Sample Database")
 
 (def ^:private ^String sqlite-sample-database-filename "sample-database.sqlite")
@@ -104,9 +107,13 @@
     (log/info "Loading sample database")
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
-          db (if (sample-data.db/sample-database-exists?)
-               (sample-data.db/database (first (sample-data.db/set-sample-database-details! details)))
-               (sample-data.db/insert-sample-database! sample-database-name details engine))]
+          db (if-let [db-id (sample-data.db/sample-database-id)]
+               (do (database/update-databases! [{:id db-id :details details}])
+                   (sample-data.db/database db-id))
+               (first (database/create-databases! [{:name      sample-database-name
+                                                    :details   details
+                                                    :engine    engine
+                                                    :is_sample true}])))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! (u/the-id db)))
     (log/debug "Finished adding Sample Database.")
@@ -155,14 +162,13 @@
   (let [details  (try-to-extract-sample-database! engine)
         settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (sample-data.db/update-database! (:id old-sample-db)
-                                       (cond-> {:engine engine, :details details}
-                                         settings (assoc :settings settings)))
-      (sample-data.db/set-database-tables-schema! (:id old-sample-db) (table-schema-for-engine engine))
+      (database/update-databases! [(assoc (cond-> {:engine engine, :details details}
+                                            settings (assoc :settings settings)) :id (:id old-sample-db))])
+      (table/update-tables! (for [id (vec (table/ids-of-database (:id old-sample-db)))] {:id id :schema (table-schema-for-engine engine)}))
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
-      (sample-data.db/set-database-table-permissions-schema-name! (:id old-sample-db) (table-schema-for-engine engine)))
+      (data-perms/update-data-permissions-for-database! (:id old-sample-db) (table-schema-for-engine engine)))
     (sync/sync-database! (:id old-sample-db))))
 
 (defn update-sample-database-if-needed!
@@ -180,4 +186,4 @@
          (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
-             (sample-data.db/update-database! (:id sample-db) {:details intended}))))))))
+             (database/update-databases! [{:id (:id sample-db) :details intended}]))))))))

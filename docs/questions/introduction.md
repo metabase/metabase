@@ -1,5 +1,6 @@
 ---
 title: Questions
+summary: Save a query, its results, and its visualization as a question you can organize, share, embed, and get alerts from.
 redirect_from:
   - /docs/latest/users-guide/04-asking-questions
   - /docs/latest/users-guide/06-sharing-answers
@@ -31,7 +32,9 @@ Once you've built your query and [visualized its results](./visualizations/visua
 
 ### Saving questions to dashboards
 
-Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tabs, then save the dashboard.
+Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. You also can't use them as the starting data for new questions, or add them to [documents](../documents/introduction.md). Existing questions that start from a dashboard question keep working. To reuse a question outside its dashboard, [move it to a collection](#moving-questions-from-collections-to-dashboards-and-vice-versa).
+
+When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tabs, then save the dashboard.
 
 ### Saving questions to collections
 
@@ -88,7 +91,7 @@ Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Boo
 
 ## Turning a question into a model
 
-You can turn a question saved to a collection into a model to let others know that the results make a good starting point for new questions. (You can't turn a question saved to a _dashboard_ into a model; you'll first need to move the question to a collection). See [models](../data-modeling/models/models.md).
+You can turn a question saved to a collection into a model to let others know that the results make a good starting point for new questions. You can't turn a question saved to a _dashboard_ into a model. You'll first need to [move the question to a collection](#moving-questions-from-collections-to-dashboards-and-vice-versa). See [models](../data-modeling/models/models.md).
 
 ## Caching question results
 
