@@ -116,9 +116,9 @@ describe("Entities > model-indexes > actions", () => {
       const indexFieldRef: FieldReference = ["field", 2, null];
 
       const model = createModelWithResultMetadata([
-        createMockColumn({ field_ref: fkFieldRef, semantic_type: "type/FK" }),
-        createMockColumn({ should_index: true, field_ref: indexFieldRef }),
-        createMockColumn(),
+        createMockField({ field_ref: fkFieldRef, semantic_type: "type/FK" }),
+        createMockField({ should_index: true, field_ref: indexFieldRef }),
+        createMockField(),
       ]);
 
       setupModelIndexEndpoints(model.id(), []);

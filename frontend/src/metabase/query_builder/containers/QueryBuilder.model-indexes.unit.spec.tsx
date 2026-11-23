@@ -11,7 +11,7 @@ import type { State } from "metabase/redux/store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, Field } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -24,6 +24,10 @@ import { setup, waitForQueryToFinish } from "./test-utils";
 const CREATED_INDEX_ID = 7;
 
 registerVisualizations();
+
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
 
 const MODEL_ID = 1;
 const MODEL_SLUG = `${MODEL_ID}-products-model`;
@@ -99,7 +103,7 @@ const PRODUCTS_MODEL = createMockCard({
       stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
     }),
   ),
-  result_metadata: COLUMNS,
+  result_metadata: toResultMetadata(COLUMNS),
 });
 
 const PRODUCTS_MODEL_DATASET = createMockDataset({
