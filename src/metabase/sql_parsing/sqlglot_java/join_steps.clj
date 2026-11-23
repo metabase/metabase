@@ -168,51 +168,55 @@
     (into (conjuncts (ast/this node)) (conjuncts (ast/arg node "expression")))
     [node]))
 
-(defn- on-columns
-  "The effective table names of the columns compared in the join condition `on`.
-  Returns nil unless `on` is an AND of comparisons between qualified columns and literals."
-  [on dialect]
-  (reduce (fn [tables conjunct]
-            (if-not (ast/instance-of-any? join-comparisons conjunct)
-              (reduced nil)
-              (reduce (fn [tables operand]
-                        (cond
-                          (and (instance? Expressions$Column operand)
-                               (instance? Expressions$Identifier (ast/arg operand "table")))
-                          (conj tables (effective-name (ast/arg operand "table") dialect))
+(defn- source-name
+  "The effective name a column calls the source `node` by, or nil for a source with no name.
+  Port of `_source_name`."
+  [node dialect]
+  (let [identifier (or (some-> (ast/arg node "alias") ast/this)
+                       (ast/this node))]
+    (when (instance? Expressions$Identifier identifier)
+      (effective-name identifier dialect))))
 
-                          (instance? Expressions$Literal operand)
-                          tables
+(defn- operand-column
+  "The source an operand of a join comparison names, `::literal` for a literal, or nil for anything else."
+  [operand names dialect]
+  (cond
+    (instance? Expressions$Literal operand)
+    ::literal
 
-                          :else
-                          (reduced nil)))
-                      tables
-                      [(ast/this conjunct) (ast/arg conjunct "expression")])))
-          []
-          (conjuncts on)))
+    (and (instance? Expressions$Column operand)
+         (instance? Expressions$Identifier (ast/arg operand "table")))
+    ;; A qualifier that names no source is a struct field, as in BigQuery's `b.payload.id`.
+    (names (effective-name (ast/arg operand "table") dialect))))
 
 (defn- on-counts-matches?
-  "Whether counting the rows where the join's ON clause holds counts exactly the rows that found a match.
-  The clause must be safe to evaluate again, and compare a column from each side that can be NULL-extended.
+  "Whether counting the rows where the last join's ON clause holds counts exactly the rows that found a match.
+  The clause must be an AND of comparisons between literals and columns that each name one source in the chain, and
+  compare a column from each side that can be NULL-extended.
   ClickHouse fills unmatched columns with defaults rather than NULL.
   Port of `_on_counts_matches`."
-  [join strategy dialect]
-  (let [on         (ast/arg join "on")
-        source     (ast/this join)
-        identifier (or (some-> (ast/arg source "alias") ast/this)
-                       (ast/this source))
-        columns    (when (and on
-                              (not= "clickhouse" dialect)
-                              (instance? Expressions$Identifier identifier))
-                     (on-columns on dialect))]
-    (when columns
-      (let [joined       (effective-name identifier dialect)
-            from-joined  (boolean (some #{joined} columns))
-            from-earlier (boolean (some #(not= joined %) columns))]
-        (case strategy
-          "left"  from-joined
-          "right" from-earlier
-          "full"  (and from-joined from-earlier))))))
+  [from-node chain strategy dialect]
+  (let [on    (ast/arg (peek chain) "on")
+        names (mapv #(source-name % dialect) (cons (ast/this from-node) (map ast/this chain)))]
+    (when (and on
+               (not= "clickhouse" dialect)
+               (every? some? names)
+               (apply distinct? names))
+      (let [parts    (conjuncts on)
+            operands (when (every? #(ast/instance-of-any? join-comparisons %) parts)
+                       (mapcat (fn [part]
+                                 [(operand-column (ast/this part) (set names) dialect)
+                                  (operand-column (ast/arg part "expression") (set names) dialect)])
+                               parts))]
+        (when (and (seq operands) (every? some? operands))
+          (let [joined       (peek names)
+                columns      (remove #{::literal} operands)
+                from-joined  (boolean (some #{joined} columns))
+                from-earlier (boolean (some #(not= joined %) columns))]
+            (case strategy
+              "left"  from-joined
+              "right" from-earlier
+              "full"  (and from-joined from-earlier))))))))
 
 (defn- on-counts
   "`SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from-node> <chain>`.
@@ -314,7 +318,7 @@
                                strategy (step-strategy join dialect)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
-                                          (if (on-counts-matches? join strategy dialect)
+                                          (if (on-counts-matches? from-node chain strategy dialect)
                                             (on-counts from-node chain with-node)
                                             (two-counts (count-select from-node chain)
                                                         (count-select from-node

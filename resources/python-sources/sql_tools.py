@@ -576,26 +576,37 @@ def _conjuncts(node):
     return [node]
 
 
-def _on_counts_matches(join, strategy, dialect):
-    """Whether counting the rows where the join's ON clause holds counts exactly the rows that found a match.
+def _source_name(node, dialect):
+    """The effective name a column calls the source `node` by, or None for a source with no name."""
+    alias = node.args.get("alias")
+    identifier = alias.this if alias is not None and alias.this is not None else node.this
+    return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
 
-    The clause must be an AND of comparisons between qualified columns and literals, so it is safe to evaluate again.
+
+def _on_counts_matches(from_, joins, strategy, dialect):
+    """Whether counting the rows where the last join's ON clause holds counts exactly the rows that found a match.
+
+    The clause must be an AND of comparisons between literals and columns that each name one source in the chain, so
+    it is safe to evaluate again.
     It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
     ClickHouse fills unmatched columns with defaults rather than NULL.
     """
-    on = join.args.get("on")
-    alias = join.this.args.get("alias")
-    identifier = alias.this if alias is not None and alias.this is not None else join.this.this
-    if on is None or dialect == "clickhouse" or not isinstance(identifier, exp.Identifier):
+    on = joins[-1].args.get("on")
+    names = [_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]]
+    if on is None or dialect == "clickhouse" or None in names or len(names) != len(set(names)):
         return False
-    joined = _effective_name(identifier, dialect)
+    joined = names[-1]
     columns = []
     for conjunct in _conjuncts(on):
         if not isinstance(conjunct, _JOIN_COMPARISONS):
             return False
         for operand in (conjunct.this, conjunct.expression):
             if isinstance(operand, exp.Column) and isinstance(operand.args.get("table"), exp.Identifier):
-                columns.append(_effective_name(operand.args["table"], dialect))
+                column = _effective_name(operand.args["table"], dialect)
+                # A qualifier that names no source is a struct field, as in BigQuery's `b.payload.id`.
+                if column not in names:
+                    return False
+                columns.append(column)
             elif not isinstance(operand, exp.Literal):
                 return False
     from_joined = joined in columns
@@ -694,7 +705,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
             strategy = _join_step_strategy(join, dialect)
             step = dict(source, strategy=strategy)
             if strategy in ("left", "right", "full"):
-                if _on_counts_matches(join, strategy, dialect):
+                if _on_counts_matches(from_, joins[:n], strategy, dialect):
                     query = _on_counts(from_, joins[:n], with_)
                 else:
                     inner = join.copy()

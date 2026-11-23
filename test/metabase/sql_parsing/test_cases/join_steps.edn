@@ -585,4 +585,46 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON id = b.a_id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON id = b.a_id) AS m"}]}}]}
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON id = b.a_id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON id = b.a_id) AS m"}]}}
+  {:name "an unsafe comparison before a safe one counts matches with the join made INNER",
+   :dialect "postgres",
+   :sql "SELECT * FROM a LEFT JOIN b ON b.r < random() AND b.a_id = a.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "left",
+      :sql
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON b.r < RANDOM() AND b.a_id = a.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON b.r < RANDOM() AND b.a_id = a.id) AS m"}]}}
+  {:name "a struct field in the condition counts matches with the join made INNER",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a RIGHT JOIN b ON b.payload.id = 1",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "right",
+      :sql
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a RIGHT JOIN b ON b.payload.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON b.payload.id = 1) AS m"}]}}
+  {:name "two sources with one name count matches with the join made INNER",
+   :dialect "postgres",
+   :sql "SELECT * FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil "s1" "orders"], :alias "orders"},
+    :base_sql "SELECT COUNT(*) AS n FROM s1.orders",
+    :steps
+    [{:source "table",
+      :table [nil "s2" "orders"],
+      :alias "orders",
+      :strategy "left",
+      :sql
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s1.orders JOIN s2.orders ON s1.orders.id = 1) AS m"}]}}]}
