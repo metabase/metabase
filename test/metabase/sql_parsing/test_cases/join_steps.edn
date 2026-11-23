@@ -537,4 +537,34 @@
   {:name "a comma join to a derived table is refused where commas parse as CROSS",
    :dialect "sqlite",
    :sql "SELECT * FROM a, (SELECT 1 AS x, 2 AS y) d WHERE a.id = d.x",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a sample inside a join condition is refused, since each step would sample different rows",
+   :dialect "postgres",
+   :sql "SELECT * FROM a JOIN b ON b.id IN (SELECT id FROM c TABLESAMPLE BERNOULLI (10))",
+   :expected {:status "unsupported", :reason "unsupported-source"}}
+  {:name "an unaliased derived table after a comma is refused where commas parse as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a, (SELECT 1 AS x) WHERE a.id = x",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a table function after a comma is refused where commas parse as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a, json_each(a.j) j WHERE a.id = j.key",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "quoted CTEs that differ only by case in nested scopes are both kept",
+   :dialect "postgres",
+   :sql "WITH \"C\" AS (SELECT 1 AS id) (WITH \"c\" AS (SELECT 2 AS id) SELECT * FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id) LIMIT 1",
+   :expected
+   {:status "ok",
+    :from {:source "cte", :table nil, :alias "C"},
+    :base_sql "WITH \"C\" AS (SELECT 1 AS id), \"c\" AS (SELECT 2 AS id) SELECT COUNT(*) AS n FROM \"C\"",
+    :steps
+    [{:source "cte",
+      :table nil,
+      :alias "c",
+      :strategy "inner",
+      :sql
+      "WITH \"C\" AS (SELECT 1 AS id), \"c\" AS (SELECT 2 AS id) SELECT COUNT(*) AS n FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id"}]}}
+  {:name "a comma and an explicit CROSS JOIN are told apart by position, past a DISTINCT FROM in the select list",
+   :dialect "sqlite",
+   :sql "SELECT a.x IS DISTINCT FROM 1 FROM a CROSS JOIN b, c WHERE b.id = c.id",
    :expected {:status "unsupported", :reason "comma-join"}}]}

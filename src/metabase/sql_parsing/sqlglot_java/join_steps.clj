@@ -7,7 +7,7 @@
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Lateral Expressions$Parameter
                              Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
-                             Expressions$Subquery Expressions$Table Expressions$Values)
+                             Expressions$Subquery Expressions$Table Expressions$TableSample Expressions$Values)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
    (java.util Collection)))
 
@@ -45,12 +45,10 @@
 (defn- step-source
   "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.
   Anything that is not a plain named table is `derived`.
-  Throws a refusal for a parenthesized join tree, a LATERAL or APPLY source, or a sampled source, whose rows differ
-  from one step query to the next.
+  Throws a refusal for a parenthesized join tree or a LATERAL or APPLY source.
   Port of `_join_step_source`."
   [node cte-names dialect]
-  (when (or (instance? Expressions$Lateral node)
-            (contains? (set-args node) "sample"))
+  (when (instance? Expressions$Lateral node)
     (throw (unsupported "unsupported-source")))
   (let [parts (when (and (instance? Expressions$Table node)
                          (instance? Expressions$Identifier (ast/this node)))
@@ -73,33 +71,44 @@
       :else
       {:source "derived", :table nil, :alias (alias-or-name node)})))
 
-(defn- join-tokens
-  "The `[type text start]` of each token in `sql`, or nothing for the default dialect, which parses a comma join with
-  no kind, so it never needs telling apart from a CROSS JOIN.
-  Port of `_join_tokens`."
-  [sql dialect]
-  (when dialect
-    (ast/tokenize sql dialect)))
-
-(defn- comma-join?
-  "Whether a join that parsed as CROSS was written with a comma, which some dialects parse that way.
-  Reads back from the source's name or alias to the nearest comma or JOIN outside any brackets.
-  Port of `_comma_join`."
-  [join tokens]
-  (let [source     (ast/this join)
-        identifier (if (instance? Expressions$Table source)
-                     (ast/this source)
-                     (some-> (ast/arg source "alias") ast/this))
-        start      (when (instance? Expressions$Identifier identifier)
-                     (get (.meta ^Expr identifier) "start"))]
-    (when start
-      (loop [tokens (rseq (filterv (fn [[_ _ token-start]] (< token-start start)) tokens))
-             depth  0]
-        (when-let [[token-type] (first tokens)]
-          (let [depth (+ depth (get {"R_PAREN" 1, "L_PAREN" -1} token-type 0))]
-            (if (and (zero? depth) (#{"COMMA" "JOIN"} token-type))
-              (= "COMMA" token-type)
-              (recur (next tokens) depth))))))))
+(defn- comma-joined
+  "For each of the first statement's joins, in order, whether it was written with a comma.
+  Some dialects parse a comma join as CROSS, so only the text tells them apart.
+  The separators are the commas and JOIN keywords at the bracket depth of the statement's own FROM.
+  A join with no separator found counts as a comma.
+  The default dialect parses a comma join with no kind, so it never needs this.
+  Port of `_comma_joined`."
+  [sql dialect join-count]
+  (if (nil? dialect)
+    (vec (repeat join-count false))
+    (let [entries    (loop [tokens (ast/tokenize sql dialect), depth 0, entries []]
+                       (if-let [[token-type] (first tokens)]
+                         (if (and (= "SEMICOLON" token-type) (zero? depth))
+                           entries
+                           (let [depth (cond-> depth (= "R_PAREN" token-type) dec)]
+                             (recur (next tokens)
+                                    (cond-> depth (= "L_PAREN" token-type) inc)
+                                    (conj entries [token-type depth]))))
+                         entries))
+          ;; `IS DISTINCT FROM` is not a FROM clause. A CTE's FROM can share the depth of a bracketed query's, and comes
+          ;; first.
+          froms      (filterv (fn [i]
+                                (and (= "FROM" (first (entries i)))
+                                     (not= "DISTINCT" (first (get entries (dec i))))))
+                              (range (count entries)))]
+      (if (empty? froms)
+        (vec (repeat join-count true))
+        (let [from-depth (apply min (map #(second (entries %)) froms))
+              from-index (apply max (filter #(= from-depth (second (entries %))) froms))
+              separators (into []
+                               (comp (filter (fn [[token-type depth]]
+                                               (and (= from-depth depth)
+                                                    (#{"COMMA" "JOIN" "STRAIGHT_JOIN"} token-type))))
+                                     (map first)
+                                     (take join-count))
+                               (subvec entries (inc from-index)))]
+          (into (mapv #(= "COMMA" %) separators)
+                (repeat (- join-count (count separators)) true)))))))
 
 (defn- upper-arg [join k]
   (u/upper-case-en (ast/text join k)))
@@ -108,7 +117,7 @@
   "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
   Throws a `comma-join` refusal for a comma join.
   Port of `_join_step_strategy`."
-  [join tokens]
+  [join comma?]
   (let [args   (set-args join)
         side   (upper-arg join "side")
         kind   (upper-arg join "kind")
@@ -118,7 +127,7 @@
     (when (or (and (= "" side kind method)
                    (not-any? args ["on" "using"]))
               (and (= "CROSS" kind)
-                   (comma-join? join tokens)))
+                   comma?))
       (throw (unsupported "comma-join")))
     (cond
       (= kind "CROSS")           "cross"
@@ -220,12 +229,14 @@
 
 (defn- merged-with
   "One WITH clause holding the CTEs of `withs`, outermost first, or nil for none."
-  [withs]
+  [withs dialect]
   (case (count withs)
     0 nil
     1 (first withs)
-    ;; One WITH list cannot hold a CTE and the inner one that shadows it.
-    (if-not (apply distinct? (map (comp ast/lower ast/node-alias) (mapcat ast/expressions withs)))
+    ;; One WITH list cannot hold a CTE and the inner one that shadows it, nor one scope's modifiers for all of them.
+    (if-not (and (apply distinct? (map #(effective-name (ast/this (ast/arg % "alias")) dialect)
+                                       (mapcat ast/expressions withs)))
+                 (every? (fn [with-node] (every? #{"expressions" "recursive"} (set-args with-node))) withs))
       (throw (unsupported "not-a-select"))
       (doto (ast/copy (first withs))
         (ast/set-arg! "expressions" (into [] (comp (mapcat ast/expressions) (map ast/copy)) withs))
@@ -235,7 +246,7 @@
   "`stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
   Throws a `not-a-select` refusal for brackets with a clause other than WITH, ORDER BY, LIMIT or OFFSET.
   Port of `_whole_query`."
-  [stmt]
+  [stmt dialect]
   (loop [stmt stmt, withs []]
     (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
       (do
@@ -244,7 +255,8 @@
         (recur (ast/this stmt) (cond-> withs (ast/arg stmt "with_") (conj (ast/arg stmt "with_")))))
       [stmt (merged-with (cond-> withs
                            (and (instance? Expressions$Select stmt) (ast/arg stmt "with_"))
-                           (conj (ast/arg stmt "with_"))))])))
+                           (conj (ast/arg stmt "with_")))
+                         dialect)])))
 
 (defn- parse-statement
   "The first statement in `sql`, without brackets around the whole of it, and its WITH clause, as `[stmt with-node]`.
@@ -255,7 +267,7 @@
                 (catch ParseError _
                   (throw (unsupported "unparseable"))))]
     (if (seq stmts)
-      (whole-query (first stmts))
+      (whole-query (first stmts) dialect)
       (throw (unsupported "unparseable")))))
 
 (defn- statement-refusal
@@ -288,18 +300,22 @@
           _            (when (some #(seq (ast/find-all % Expressions$Placeholder Expressions$Parameter))
                                    (cond-> (cons from-node joins) with-node (conj with-node)))
                          (throw (unsupported "parameters")))
+          ;; A sample in anything the steps keep would pick different rows in each step query.
+          _            (when (some #(seq (ast/find-all % Expressions$TableSample))
+                                   (cond-> (cons from-node joins) with-node (conj with-node)))
+                         (throw (unsupported "unsupported-source")))
           cte-names    (into #{}
                              (keep #(when (seq (ast/node-alias %))
                                       (effective-name (ast/this (ast/arg % "alias")) dialect)))
                              (some-> with-node ast/expressions))
-          tokens       (join-tokens sql dialect)]
+          commas       (comma-joined sql dialect (count joins))]
       {:status   "ok"
        :from     (step-source (ast/this from-node) cte-names dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
        :steps    (vec (map-indexed
                        (fn [i join]
                          (let [source   (step-source (ast/this join) cte-names dialect)
-                               strategy (step-strategy join tokens)
+                               strategy (step-strategy join (commas i))
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
                                           (or (when (= "left" strategy)

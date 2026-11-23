@@ -740,3 +740,15 @@
           (is (=? {:steps [{:strategy :inner-join
                             :sql      "SELECT COUNT(*) AS n FROM orders AS o JOIN people AS p ON p.id = o.user_id"}]}
                   (sql-tools/join-steps :h2 query))))))))
+
+(deftest join-steps-parser-failure-is-not-retried-test
+  (mt/test-driver :h2
+    (testing "a failure other than an unknown dialect propagates, with no second call in the default dialect"
+      (let [dialects (atom [])]
+        (mt/with-dynamic-fn-redefs [sql-tools.sqlglot/driver->dialect (constantly "postgres")
+                                    sql-parsing/join-steps            (fn [_parser dialect _sql]
+                                                                        (swap! dialects conj dialect)
+                                                                        (throw (ex-info "timed out" {})))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                                (sql-tools/join-steps :h2 (lib/native-query (mt/metadata-provider) "select 1"))))
+          (is (= ["postgres"] @dialects)))))))
