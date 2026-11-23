@@ -71,44 +71,15 @@
       :else
       {:source "derived", :table nil, :alias (alias-or-name node)})))
 
-(defn- comma-joined
-  "For each of the first statement's joins, in order, whether it was written with a comma.
-  Some dialects parse a comma join as CROSS, so only the text tells them apart.
-  The separators are the commas and JOIN keywords at the bracket depth of the statement's own FROM.
-  A join with no separator found counts as a comma.
-  The default dialect parses a comma join with no kind, so it never needs this.
-  Port of `_comma_joined`."
-  [sql dialect join-count]
-  (if (nil? dialect)
-    (vec (repeat join-count false))
-    (let [entries    (loop [tokens (ast/tokenize sql dialect), depth 0, entries []]
-                       (if-let [[token-type] (first tokens)]
-                         (if (and (= "SEMICOLON" token-type) (zero? depth))
-                           entries
-                           (let [depth (cond-> depth (= "R_PAREN" token-type) dec)]
-                             (recur (next tokens)
-                                    (cond-> depth (= "L_PAREN" token-type) inc)
-                                    (conj entries [token-type depth]))))
-                         entries))
-          ;; `IS DISTINCT FROM` is not a FROM clause. A CTE's FROM can share the depth of a bracketed query's, and comes
-          ;; first.
-          froms      (filterv (fn [i]
-                                (and (= "FROM" (first (entries i)))
-                                     (not= "DISTINCT" (first (get entries (dec i))))))
-                              (range (count entries)))]
-      (if (empty? froms)
-        (vec (repeat join-count true))
-        (let [from-depth (apply min (map #(second (entries %)) froms))
-              from-index (apply max (filter #(= from-depth (second (entries %))) froms))
-              separators (into []
-                               (comp (filter (fn [[token-type depth]]
-                                               (and (= from-depth depth)
-                                                    (#{"COMMA" "JOIN" "STRAIGHT_JOIN"} token-type))))
-                                     (map first)
-                                     (take join-count))
-                               (subvec entries (inc from-index)))]
-          (into (mapv #(= "COMMA" %) separators)
-                (repeat (- join-count (count separators)) true)))))))
+(def ^:private comma-as-cross-dialects
+  "The dialects that parse `FROM a, b` as a CROSS join, so a comma cannot be told from one."
+  #{"bigquery"
+    "clickhouse"
+    "databricks"
+    "hive"
+    "spark"
+    "spark2"
+    "sqlite"})
 
 (defn- upper-arg [join k]
   (u/upper-case-en (ast/text join k)))
@@ -117,7 +88,7 @@
   "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
   Throws a `comma-join` refusal for a comma join.
   Port of `_join_step_strategy`."
-  [join comma?]
+  [join dialect]
   (let [args   (set-args join)
         side   (upper-arg join "side")
         kind   (upper-arg join "kind")
@@ -127,7 +98,7 @@
     (when (or (and (= "" side kind method)
                    (not-any? args ["on" "using"]))
               (and (= "CROSS" kind)
-                   comma?))
+                   (contains? comma-as-cross-dialects dialect)))
       (throw (unsupported "comma-join")))
     (cond
       (= kind "CROSS")           "cross"
@@ -301,15 +272,14 @@
           cte-names    (into #{}
                              (keep #(when (seq (ast/node-alias %))
                                       (effective-name (ast/this (ast/arg % "alias")) dialect)))
-                             (some-> with-node ast/expressions))
-          commas       (comma-joined sql dialect (count joins))]
+                             (some-> with-node ast/expressions))]
       {:status   "ok"
        :from     (step-source (ast/this from-node) cte-names dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
        :steps    (vec (map-indexed
                        (fn [i join]
                          (let [source   (step-source (ast/this join) cte-names dialect)
-                               strategy (step-strategy join (commas i))
+                               strategy (step-strategy join dialect)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
                                           (or (when (= "left" strategy)

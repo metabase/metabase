@@ -490,39 +490,11 @@ def _join_step_source(node, cte_names, dialect):
     return {"source": "derived", "table": None, "alias": node.alias_or_name}
 
 
-def _comma_joined(sql, dialect, join_count):
-    """For each of the first statement's joins, in order, whether it was written with a comma.
-
-    Some dialects parse a comma join as CROSS, so only the text tells them apart. The separators are the commas and JOIN
-    keywords at the bracket depth of the statement's own FROM. A join with no separator found counts as a comma.
-    The default dialect parses a comma join with no kind, so it never needs this.
-    """
-    if dialect is None:
-        return [False] * join_count
-    entries = []
-    depth = 0
-    for token in sqlglot.Dialect.get_or_raise(dialect).tokenize(sql):
-        name = token.token_type.name
-        if name == "SEMICOLON" and depth == 0:
-            break
-        depth -= name == "R_PAREN"
-        entries.append((name, depth))
-        depth += name == "L_PAREN"
-    # `IS DISTINCT FROM` is not a FROM clause. A CTE's FROM can share the depth of a bracketed query's, and comes first.
-    froms = [i for i, (name, _) in enumerate(entries) if name == "FROM" and entries[i - 1][0] != "DISTINCT"]
-    if not froms:
-        return [True] * join_count
-    from_depth = min(entries[i][1] for i in froms)
-    from_index = max(i for i in froms if entries[i][1] == from_depth)
-    separators = [
-        name
-        for name, token_depth in entries[from_index + 1 :]
-        if token_depth == from_depth and name in ("COMMA", "JOIN", "STRAIGHT_JOIN")
-    ][:join_count]
-    return [name == "COMMA" for name in separators] + [True] * (join_count - len(separators))
+# The dialects that parse `FROM a, b` as a CROSS join, so a comma cannot be told from one.
+_COMMA_AS_CROSS_DIALECTS = {"bigquery", "clickhouse", "databricks", "hive", "spark", "spark2", "sqlite"}
 
 
-def _join_step_strategy(join, comma):
+def _join_step_strategy(join, dialect):
     """The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
 
     Raises `_JoinStepsUnsupported` for a comma join.
@@ -534,7 +506,7 @@ def _join_step_strategy(join, comma):
     # `FROM a, b` has its condition, if any, in the WHERE clause, which the step queries leave out, so they would count
     # the whole cross product.
     if (not side and not kind and not method and not args & {"on", "using"}) or (
-        kind == "CROSS" and comma
+        kind == "CROSS" and dialect in _COMMA_AS_CROSS_DIALECTS
     ):
         raise _JoinStepsUnsupported("comma-join")
     if kind == "CROSS":
@@ -708,12 +680,11 @@ def join_steps(sql: str, dialect: str = None) -> str:
         cte_names = {
             _effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else []) if cte.alias
         }
-        commas = _comma_joined(sql, dialect, len(joins))
         from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):
             source = _join_step_source(join.this, cte_names, dialect)
-            strategy = _join_step_strategy(join, commas[n - 1])
+            strategy = _join_step_strategy(join, dialect)
             step = dict(source, strategy=strategy)
             if strategy in ("left", "right", "full"):
                 query = _left_join_counts(from_, joins[:n], with_, dialect) if strategy == "left" else None
