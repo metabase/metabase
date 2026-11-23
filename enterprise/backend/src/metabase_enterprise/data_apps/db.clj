@@ -46,11 +46,6 @@
                          filter-column       (assoc :where [:in filter-column filter-ids])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn data-app-exists?
-  "Whether a DataApp named `slug` exists."
-  [slug :- :string]
-  (t2/exists? :model/DataApp :slug slug))
-
 (mu/defn collection-owned-by-data-app?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]

@@ -75,31 +75,9 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
-(def ^:private CreateDataAppRequest
-  [:map {:closed true}
-   [:slug          ::data-apps.schema/slug]
-   [:name          {:optional true} ::data-apps.schema/name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:enabled       {:optional true} :boolean]])
-
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
-   [:name          {:optional true} ::data-apps.schema/name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:enabled       {:optional true} :boolean]])
-
-(def ^:private create-defaults
-  "What a new app starts with unless its request says otherwise: enabled, with an empty bundle at the path the app
-  template builds to."
-  {:enabled     true
-   :bundle_path "dist/index.js"
-   :bundle      (byte-array 0)})
+   [:enabled :boolean]])
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
@@ -198,49 +176,18 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-(api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says otherwise."
-  [_route-params
-   _query-params
-   body :- CreateDataAppRequest]
-  (api/create-check :model/DataApp body)
-  (api/check (not (data-apps.db/data-app-exists? (:slug body)))
-             [409 (tru "A data app with this slug already exists.")])
-  (let [{:keys [id]} (first (data-app/create-data-apps! [(merge create-defaults {:name (:slug body)} body)]))]
-    (data-app-response (data-apps.db/data-app id))))
-
-(defn- update-app!
-  "Apply `changes` to the data app with `slug` and return the updated app."
-  [slug changes]
-  (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
-    (api/update-check app changes)
-    (when (seq changes)
-      (data-app/update-data-apps! [(assoc changes :id id)]))
-    (let [app (data-apps.db/data-app id)]
-      (data-app-response app))))
-
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
 ;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only."
+  "Enable or disable a data app. A disabled app is served to superusers only. Anything else about an app changes only
+  through a repository import."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   changes :- UpdateDataAppRequest]
-  (update-app! slug changes))
-
-(api.macros/defendpoint :put ["/:slug/bundle" :slug slug-regex] :- DataAppResponse
-  "Replace a data app's bundle."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
-   _query-params
-   {:keys [bundle]} :- [:map {:closed true} [:bundle ::data-apps.schema/bundle-text]]]
-  (update-app! slug {:bundle (data-app/file->bundle bundle)}))
-
-(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, and its collection with the grants on it."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
-    (data-app/delete-data-apps! [(:id app)]))
-  nil)
+   {:keys [enabled]} :- UpdateDataAppRequest]
+  (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (api/update-check app {:enabled enabled})
+    (data-app/update-data-apps! [{:id id :enabled enabled}])
+    (data-app-response (data-apps.db/data-app id))))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and

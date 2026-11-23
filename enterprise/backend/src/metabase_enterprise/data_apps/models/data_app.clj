@@ -105,27 +105,12 @@
 
 (methodical/defmethod t2/simple-hydrate [:model/DataApp :can_write]
   [_model k app]
-  (assoc app k
-         (boolean
-          (and api/*is-superuser?*
-               (not (remote-sync/read-only?))))))
-
-(defmethod mi/can-create? :model/DataApp
-  [_model _instance]
-  (and api/*is-superuser?*
-       (not (remote-sync/read-only?))))
-
-(defn- unsynced-change-writable?
-  "Whether the current user can apply `changes` that touch no synced column of `app`, which a read-only instance still
-  accepts."
-  [app changes]
-  (boolean (and api/*is-superuser?*
-                (not (remote-sync/synced-changes? :model/DataApp app changes)))))
+  (assoc app k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-update? :model/DataApp
   [app changes]
-  (or (mi/can-write? app)
-      (unsynced-change-writable? app changes)))
+  (boolean (and (mi/can-write? app)
+                (every? #{:enabled} (keys changes)))))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

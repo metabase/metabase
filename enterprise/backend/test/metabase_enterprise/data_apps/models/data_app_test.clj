@@ -4,11 +4,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -44,6 +47,8 @@
       (try
         (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
                 (t2/select-one :model/Collection :id resource_collection_id)))
+        (testing "which no group but Administrators reads"
+          (is (= #{} (perms/collection-read-access-group-ids resource_collection_id))))
         (finally
           (data-app/delete-data-apps! [id]))))))
 
@@ -74,10 +79,21 @@
     (data-app/update-data-apps! [{:id id :resource_collection_id other-id}])
     (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
-(deftest delete-removes-the-resource-collection-the-app-owns-test
-  (mt/with-temp [:model/DataApp {id :id collection-id :resource_collection_id} {}]
-    (data-app/delete-data-apps! [id])
-    (is (not (t2/exists? :model/Collection :id collection-id)))))
+(deftest delete-removes-collection-its-contents-and-grants-but-keeps-groups-test
+  (mt/with-premium-features #{:data-apps}
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-temp [:model/Collection       {coll-id :id}  {:namespace :data-apps}
+                     :model/DataApp          app            {:resource_collection_id coll-id}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/Card             {card-id :id}  {:collection_id coll-id
+                                                             :dataset_query (data-apps.tu/venues-query)}]
+        (group-access/add-groups! app [group-id])
+        (data-app/delete-data-apps! [(:id app)])
+        (is (not (t2/exists? :model/DataApp :id (:id app))))
+        (is (not (t2/exists? :model/Collection :id coll-id)))
+        (is (not (t2/exists? :model/Card :id card-id)))
+        (is (not (t2/exists? :model/Permissions :group_id group-id :object (perms/collection-read-path coll-id))))
+        (is (t2/exists? :model/PermissionsGroup :id group-id))))))
 
 (deftest writes-store-values-as-given-test
   (mt/with-temp [:model/DataApp {id :id} {:name          "M"
@@ -122,21 +138,47 @@
 
 (deftest permissions-test
   (mt/with-temp [:model/DataApp {id :id} {}]
-    (testing "a superuser can read, write, and create"
+    (testing "superuser can read and write"
       (mt/with-premium-features #{:data-apps}
         (binding [api/*is-superuser?* true]
           (is (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read)))
-          (is (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write)))
-          (is (mi/can-create? :model/DataApp {})))))
-    (testing "without the data apps feature, a superuser cannot read"
+          (is (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))))
+    (testing "without data apps feature, superuser cannot read"
       (mt/with-premium-features #{}
         (binding [api/*is-superuser?* true]
           (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read)))))))
-    (testing "a user without access to the app's collection cannot read, write, or create"
+    (testing "user without access to app's collection cannot read or write"
       (binding [api/*is-superuser?* false]
         (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read))))
-        (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))
-        (is (not (mi/can-create? :model/DataApp {})))))))
+        (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))))))
+
+(deftest can-update-allows-only-enabling-and-disabling-by-superuser-test
+  (mt/with-temp [:model/DataApp {id :id} {}]
+    (let [can-update? (fn [superuser? changes]
+                        (binding [api/*is-superuser?* superuser?]
+                          (mi/can-update? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write) changes)))]
+      (testing "superuser may change enabled and nothing else"
+        (is (true? (can-update? true {:enabled false})))
+        (is (true? (can-update? true {:enabled true})))
+        (doseq [changes [{:name "Renamed"}
+                         {:enabled false :name "Renamed"}
+                         {:bundle_path "other.js"}
+                         {:bundle (.getBytes "OTHER" "UTF-8")}
+                         {:allowed_hosts []}
+                         {:resource_collection_id 1}]]
+          (testing (pr-str (keys changes))
+            (is (false? (can-update? true changes))))))
+      (testing "non-superuser may change nothing"
+        (doseq [changes [{:enabled false} {:enabled true} {:name "Renamed"}]]
+          (testing (pr-str changes)
+            (is (false? (can-update? false changes))))))
+      (testing "superuser may still enable and disable on read-only remote-sync instance"
+        (mt/with-premium-features #{:data-apps :remote-sync}
+          (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                             remote-sync-type :read-only]
+            (is (true? (can-update? true {:enabled false})))
+            (is (false? (can-update? true {:name "Renamed"})))
+            (is (false? (can-update? false {:enabled false})))))))))
 
 (deftest two-data-apps-cannot-share-collection-test
   (testing "the database refuses a second app on a collection another app already owns"
