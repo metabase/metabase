@@ -7,13 +7,16 @@
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.query-processor :as qp]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
+   [next.jdbc]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -568,3 +571,50 @@
               (is (= expected (refusal #(data-testing.runner/validate-test :transform transform definition)))))
             (testing "saving a segment test"
               (is (= expected (refusal #(data-testing.runner/validate-test :segment segment definition)))))))))))
+
+(defn- execute-on-test-data!
+  "Executes `sql` on the Postgres test-data database, outside any data test, and returns its rows."
+  [sql]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :postgres (mt/id) nil
+   (fn [^java.sql.Connection conn]
+     (next.jdbc/execute! conn [sql]))))
+
+(defn- native-rows
+  "The rows of native `sql` run through the query processor on the Database `db-id`."
+  [db-id sql]
+  (mt/rows (qp/process-query {:database db-id :type :native :native {:query sql}})))
+
+(deftest run-reads-strings-with-standard-conforming-strings-on-test
+  (testing "with standard_conforming_strings off on the server, input SQL runs as the statement check read it"
+    (mt/test-driver :postgres
+      ;; Postgres 19 refuses a connection that turns standard_conforming_strings off.
+      (when (some-> (mt/db) :dbms_version :semantic-version first (< 19))
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                    :details (assoc (:details (mt/db))
+                                                                    :additional-options
+                                                                    "options=-c%20standard_conforming_strings%3Doff")}]
+          (let [sequence-name "data_test_string_setting_probe"
+                hidden-call   (str "SELECT 'a\\'' , setval($z$" sequence-name "$z$, 4242) --' AS id")
+                last-value    #(-> (execute-on-test-data! (str "SELECT last_value FROM " sequence-name)) first vals first)]
+            (execute-on-test-data! (str "CREATE SEQUENCE " sequence-name))
+            (try
+              (testing "premise: the database's connections read a backslash in a string as an escape"
+                (is (= [["off"]] (native-rows db-id "SHOW standard_conforming_strings"))))
+              (testing "control: run as a native query on such a connection, the SQL calls setval"
+                (native-rows db-id hidden-call)
+                (is (= 4242 (last-value)))
+                (execute-on-test-data! (str "SELECT setval('" sequence-name "', 7)")))
+              (testing "as a data test's input, the same SQL is a string, and setval does not run"
+                (mt/with-temp [:model/Card {card-id :id}
+                               {:dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id)
+                                                                 "SELECT id FROM public.people")}
+                               :model/CardTest card-test
+                               {:card_id      card-id
+                                :inputs       [{:table {:schema "public" :name "people"} :format :sql :sql hidden-call}]
+                                :expectations [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}]}]
+                  (is (= :passed (:status (data-testing.test-util/run-as-admin!
+                                           :card (t2/select-one :model/Card :id card-id) card-test))))
+                  (is (= 7 (last-value)))))
+              (finally
+                (execute-on-test-data! (str "DROP SEQUENCE " sequence-name))))))))))

@@ -1176,6 +1176,11 @@
      ;; the statement fails, so the statements after it run, and the temp tables created before it remain.
      (let [^PgConnection pg-conn (.unwrap conn PgConnection)
            autosave              (.getAutosave pg-conn)]
+       ;; The parser that checks a test's SQL reads string literals as Postgres does with `standard_conforming_strings`
+       ;; on, its default. With it off, a backslash escapes a quote, so a literal can end where the parser did not see it
+       ;; end, and text the parser took for a literal runs as SQL. `SET LOCAL` lasts until the transaction rolls back.
+       (with-open [stmt (.createStatement conn)]
+         (.execute stmt "SET LOCAL standard_conforming_strings = on"))
        (.setAutosave pg-conn AutoSave/ALWAYS)
        (try
          (f conn)
