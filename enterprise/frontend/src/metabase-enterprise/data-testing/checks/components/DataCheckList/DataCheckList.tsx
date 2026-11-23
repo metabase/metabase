@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   Box,
@@ -18,15 +18,20 @@ import {
 import { describeDataCheck } from "../../describe";
 import type { DataCheckRun } from "../../types";
 import {
-  DATA_CHECK_DISPLAY_STATUSES,
   type DataCheckDisplayStatus,
+  formatDataCheckStatusCount,
+  formatDataCheckTotal,
   getDataCheckDisplayStatus,
-  getDataCheckStatusPresentation,
+  getDataCheckProblem,
 } from "../../utils";
 import { DataCheckResultCard } from "../DataCheckResultCard";
 import { DataCheckStatus } from "../DataCheckStatus";
 
-type StatusFilter = DataCheckDisplayStatus | "all";
+type RanStatus = Exclude<DataCheckDisplayStatus, "unsupported">;
+
+type StatusFilter = RanStatus | "all";
+
+const RAN_STATUSES: readonly RanStatus[] = ["fail", "warn", "error", "pass"];
 
 type DataCheckListProps = {
   runs: readonly DataCheckRun[];
@@ -38,24 +43,42 @@ export function DataCheckList({ runs, defaultSelectedId }: DataCheckListProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedId, setSelectedId] = useState(defaultSelectedId);
 
-  const counts = useMemo(() => getStatusCounts(runs), [runs]);
-  const visibleRuns = useMemo(
-    () =>
-      sortByStatus(runs).filter(
-        (run) =>
-          matchesStatus(run, statusFilter) && matchesSearch(run, searchQuery),
-      ),
-    [runs, statusFilter, searchQuery],
+  const { ranRuns, waitingRuns, counts } = useMemo(
+    () => groupRuns(runs),
+    [runs],
   );
+  const visibleRuns = ranRuns.filter(
+    (run) =>
+      (statusFilter === "all" ||
+        getDataCheckDisplayStatus(run.result) === statusFilter) &&
+      matchesSearch(run, searchQuery),
+  );
+  const visibleWaitingRuns =
+    statusFilter === "all"
+      ? waitingRuns.filter((run) => matchesSearch(run, searchQuery))
+      : [];
   const selectedRun = runs.find((run) => run.result.id === selectedId);
+  const renderRow = (run: DataCheckRun) => (
+    <DataCheckListRow
+      key={run.result.id}
+      run={run}
+      isSelected={run.result.id === selectedId}
+      onSelect={() => setSelectedId(run.result.id)}
+    />
+  );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
+      <DataCheckSummary
+        counts={counts}
+        total={ranRuns.length}
+        waiting={waitingRuns.length}
+      />
       <Group justify="space-between" gap="md">
         <SegmentedControl
           value={statusFilter}
           onChange={setStatusFilter}
-          data={getFilterOptions(runs.length, counts)}
+          data={getFilterOptions(ranRuns.length, counts)}
         />
         <TextInput
           placeholder={t`Search...`}
@@ -66,23 +89,38 @@ export function DataCheckList({ runs, defaultSelectedId }: DataCheckListProps) {
         />
       </Group>
       <Flex gap="lg" align="start">
-        <Card withBorder shadow="none" p={0} flex="1 1 0" miw={0}>
-          <Box role="list" aria-label={t`Checks`}>
-            {visibleRuns.map((run) => (
-              <DataCheckListRow
-                key={run.result.id}
-                run={run}
-                isSelected={run.result.id === selectedId}
-                onSelect={() => setSelectedId(run.result.id)}
-              />
-            ))}
-            {visibleRuns.length === 0 && (
-              <Text c="text-secondary" p="lg" ta="center">
-                {t`No checks found`}
-              </Text>
-            )}
-          </Box>
-        </Card>
+        <Stack gap="lg" flex="1 1 0" miw={0}>
+          <Card withBorder shadow="none" p={0}>
+            <Box role="list" aria-label={t`Checks`}>
+              {visibleRuns.map(renderRow)}
+              {visibleRuns.length === 0 && (
+                <Text c="text-secondary" p="lg" ta="center">
+                  {t`No checks found`}
+                </Text>
+              )}
+            </Box>
+          </Card>
+          {visibleWaitingRuns.length > 0 && (
+            <Stack gap="sm">
+              <Stack gap="xs">
+                <Text fw="bold">
+                  {formatDataCheckStatusCount(
+                    "unsupported",
+                    visibleWaitingRuns.length,
+                  )}
+                </Text>
+                <Text c="text-secondary">
+                  {t`These checks need something that isn't available yet, such as earlier runs to compare with. They aren't counted above.`}
+                </Text>
+              </Stack>
+              <Card withBorder shadow="none" p={0}>
+                <Box role="list" aria-label={t`Checks that can't run yet`}>
+                  {visibleWaitingRuns.map(renderRow)}
+                </Box>
+              </Card>
+            </Stack>
+          )}
+        </Stack>
         {selectedRun != null && (
           <Box flex="1 1 0" miw={0} pos="sticky" top="1rem">
             <DataCheckResultCard {...selectedRun} />
@@ -90,6 +128,39 @@ export function DataCheckList({ runs, defaultSelectedId }: DataCheckListProps) {
         )}
       </Flex>
     </Stack>
+  );
+}
+
+type RanCounts = Record<RanStatus, number>;
+
+type DataCheckSummaryProps = {
+  counts: RanCounts;
+  total: number;
+  waiting: number;
+};
+
+function DataCheckSummary({ counts, total, waiting }: DataCheckSummaryProps) {
+  const notPassed = total - counts.pass;
+  const details = RAN_STATUSES.filter(
+    (status) => status !== "pass" && counts[status] > 0,
+  ).map((status) => formatDataCheckStatusCount(status, counts[status]));
+  if (waiting > 0) {
+    details.push(formatDataCheckStatusCount("unsupported", waiting));
+  }
+
+  return (
+    <Group gap="sm">
+      <DataCheckStatus
+        status={counts.fail > 0 ? "fail" : notPassed > 0 ? "warn" : "pass"}
+        withLabel={false}
+      />
+      <Text fw="bold">
+        {t`${counts.pass} of ${formatDataCheckTotal(total)} passed`}
+      </Text>
+      {details.length > 0 && (
+        <Text c="text-secondary">{details.join(" · ")}</Text>
+      )}
+    </Group>
   );
 }
 
@@ -106,6 +177,7 @@ function DataCheckListRow({
 }: DataCheckListRowProps) {
   const { definition, result } = run;
   const status = getDataCheckDisplayStatus(result);
+  const didNotRun = status === "error" || status === "unsupported";
 
   return (
     <UnstyledButton
@@ -124,13 +196,13 @@ function DataCheckListRow({
           <DataCheckStatus status={status} withLabel={false} />
         </Box>
         <Stack gap={2} flex="1 1 0" miw={0}>
-          <Group gap="sm" wrap="nowrap">
-            <Ellipsified fw="bold">
-              {definition.name ?? describeDataCheck(definition)}
-            </Ellipsified>
-          </Group>
+          <Ellipsified fw="bold">
+            {definition.name ?? describeDataCheck(definition)}
+          </Ellipsified>
           <Ellipsified c="text-secondary" fz="sm">
-            {result.message}
+            {didNotRun
+              ? getDataCheckProblem(result, status === "unsupported").title
+              : result.message}
           </Ellipsified>
         </Stack>
       </Group>
@@ -138,44 +210,39 @@ function DataCheckListRow({
   );
 }
 
-type StatusCounts = Record<DataCheckDisplayStatus, number>;
-
-function getStatusCounts(runs: readonly DataCheckRun[]): StatusCounts {
-  const counts: StatusCounts = {
-    pass: 0,
-    fail: 0,
-    warn: 0,
-    error: 0,
-    unsupported: 0,
-  };
+function groupRuns(runs: readonly DataCheckRun[]) {
+  const counts: RanCounts = { fail: 0, warn: 0, error: 0, pass: 0 };
+  const ranRuns: DataCheckRun[] = [];
+  const waitingRuns: DataCheckRun[] = [];
   for (const run of runs) {
-    counts[getDataCheckDisplayStatus(run.result)] += 1;
+    const status = getDataCheckDisplayStatus(run.result);
+    if (status === "unsupported") {
+      waitingRuns.push(run);
+    } else {
+      counts[status] += 1;
+      ranRuns.push(run);
+    }
   }
-  return counts;
+  const getRank = (run: DataCheckRun) =>
+    RAN_STATUSES.findIndex(
+      (status) => status === getDataCheckDisplayStatus(run.result),
+    );
+  ranRuns.sort((a, b) => getRank(a) - getRank(b));
+  return { ranRuns, waitingRuns, counts };
 }
 
-function getFilterOptions(total: number, counts: StatusCounts) {
+function getFilterOptions(total: number, counts: RanCounts) {
   const all: { value: StatusFilter; label: string } = {
     value: "all",
-    label: ngettext(msgid`${total} check`, `${total} checks`, total),
+    label: formatDataCheckTotal(total),
   };
-  const statuses = DATA_CHECK_DISPLAY_STATUSES.filter(
-    (status) => counts[status] > 0,
-  ).map((status): { value: StatusFilter; label: string } => ({
-    value: status,
-    label: `${getDataCheckStatusPresentation(status).label} ${counts[status]}`,
-  }));
+  const statuses = RAN_STATUSES.filter((status) => counts[status] > 0).map(
+    (status): { value: StatusFilter; label: string } => ({
+      value: status,
+      label: formatDataCheckStatusCount(status, counts[status]),
+    }),
+  );
   return [all, ...statuses];
-}
-
-function sortByStatus(runs: readonly DataCheckRun[]) {
-  const getRank = (run: DataCheckRun) =>
-    DATA_CHECK_DISPLAY_STATUSES.indexOf(getDataCheckDisplayStatus(run.result));
-  return [...runs].sort((a, b) => getRank(a) - getRank(b));
-}
-
-function matchesStatus(run: DataCheckRun, filter: StatusFilter) {
-  return filter === "all" || getDataCheckDisplayStatus(run.result) === filter;
 }
 
 function matchesSearch(run: DataCheckRun, query: string) {

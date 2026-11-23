@@ -16,7 +16,7 @@ import {
 } from "../../utils";
 
 import { FailingRowsView } from "./FailingRowsView";
-import { GenericResultView } from "./GenericResultView";
+import { ResultMessage } from "./ResultMessage";
 import type { DataCheckViewProps } from "./types";
 
 const MISMATCH_COLUMNS = ["value", "other_value"] as const;
@@ -28,7 +28,7 @@ export function TableComparisonView(props: DataCheckViewProps) {
   const hasRows = rows.length > 0;
   const oneSided = getOneSidedValues(definition, rows);
   if (sides == null && !hasRows) {
-    return <GenericResultView {...props} />;
+    return <ResultMessage {...props} />;
   }
   const { color } = getDataCheckStatusPresentation(
     getDataCheckDisplayStatus(result),

@@ -19,10 +19,9 @@ import { getDataCheckCatalogueEntry } from "../../catalogue";
 import { describeDataCheck } from "../../describe";
 import type { DataCheckResult, DataCheckRun } from "../../types";
 import {
-  type DataCheckDisplayStatus,
   formatDataCheckYaml,
   getDataCheckDisplayStatus,
-  getDataCheckErrorReasonLabel,
+  getDataCheckProblem,
 } from "../../utils";
 import { DataCheckStatus } from "../DataCheckStatus";
 import {
@@ -58,13 +57,23 @@ export function DataCheckResultCard({ definition, result }: DataCheckRun) {
           <DataCheckStatus status={status} />
         </Group>
         {couldNotRun ? (
-          <CouldNotRunMessage status={status} result={result} />
-        ) : (
-          <DataCheckEvidence
-            definition={definition}
+          <CouldNotRunMessage
             result={result}
-            entry={entry}
+            needsHistory={entry?.view === "history"}
           />
+        ) : (
+          <>
+            {status === "warn" && (
+              <Text c="text-secondary">
+                {t`This check is set to warn only, so it doesn't count as a failure.`}
+              </Text>
+            )}
+            <DataCheckEvidence
+              definition={definition}
+              result={result}
+              entry={entry}
+            />
+          </>
         )}
         <DataCheckDetails definition={definition} result={result} />
       </Stack>
@@ -102,22 +111,23 @@ function DataCheckEvidence(props: DataCheckViewProps) {
 }
 
 type CouldNotRunMessageProps = {
-  status: DataCheckDisplayStatus;
   result: DataCheckResult;
+  needsHistory: boolean;
 };
 
-function CouldNotRunMessage({ status, result }: CouldNotRunMessageProps) {
+function CouldNotRunMessage({ result, needsHistory }: CouldNotRunMessageProps) {
+  const problem = getDataCheckProblem(result, needsHistory);
+
   return (
     <Stack gap="sm" p="md" bdrs="md" bg="background_page-secondary">
-      <Text fw="bold">{getDataCheckErrorReasonLabel(result.reason)}</Text>
-      {result.message != null &&
-        (status === "unsupported" ? (
-          <Text c="text-secondary">{result.message}</Text>
-        ) : (
-          <Box ff="monospace" fz="sm" style={{ whiteSpace: "pre-wrap" }}>
-            {result.message}
-          </Box>
-        ))}
+      <Text fw="bold">{problem.title}</Text>
+      <Text>{problem.explanation}</Text>
+      {problem.showsEngineMessage && result.message != null && (
+        <Box ff="monospace" fz="sm" style={{ whiteSpace: "pre-wrap" }}>
+          {result.message}
+        </Box>
+      )}
+      <Text c="text-secondary">{problem.action}</Text>
     </Stack>
   );
 }

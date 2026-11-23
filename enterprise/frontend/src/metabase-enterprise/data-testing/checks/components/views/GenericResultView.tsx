@@ -11,7 +11,7 @@ export function GenericResultView(props: DataCheckViewProps) {
   const { metric, threshold } = props.result;
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" data-testid="data-check-generic-view">
       {(metric != null || threshold != null) && (
         <Group gap="xl">
           {metric != null && (

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
@@ -18,14 +18,6 @@ export type DataCheckDisplayStatus =
   | "warn"
   | "error"
   | "unsupported";
-
-export const DATA_CHECK_DISPLAY_STATUSES: readonly DataCheckDisplayStatus[] = [
-  "fail",
-  "warn",
-  "error",
-  "unsupported",
-  "pass",
-];
 
 export function getDataCheckDisplayStatus(
   result: Pick<DataCheckResult, "status" | "reason">,
@@ -63,7 +55,7 @@ export function getDataCheckStatusPresentation(
     },
     error: { label: t`Couldn't run`, icon: "unknown", color: "text-secondary" },
     unsupported: {
-      label: t`Not supported yet`,
+      label: t`Can't run yet`,
       icon: "hourglass",
       color: "text-secondary",
     },
@@ -71,19 +63,78 @@ export function getDataCheckStatusPresentation(
   return presentations[status];
 }
 
-export function getDataCheckErrorReasonLabel(reason: string | undefined) {
-  switch (reason) {
-    case "sql":
-      return t`The query failed`;
-    case "compile":
-      return t`The check could not be compiled`;
-    case "validation":
-      return t`The definition is not valid`;
+export type DataCheckProblem = {
+  title: string;
+  explanation: string;
+  action: string;
+  showsEngineMessage: boolean;
+};
+
+export function getDataCheckProblem(
+  result: Pick<DataCheckResult, "reason" | "message">,
+  needsHistory: boolean,
+): DataCheckProblem {
+  switch (result.reason) {
     case "unsupported":
-      return t`This check needs a run history`;
+      return {
+        title: t`This check can't run yet`,
+        explanation: needsHistory
+          ? t`It compares today's numbers with earlier runs, and earlier runs aren't stored yet.`
+          : (result.message ?? t`It needs something that isn't available yet.`),
+        action: t`Nothing is wrong with your data or with the check. It will start running once this is available.`,
+        showsEngineMessage: false,
+      };
+    case "sql":
+      return {
+        title: t`The database rejected this check's query`,
+        explanation: t`The check didn't finish, so it says nothing about your data yet.`,
+        action: t`Make sure the table and columns the check names still exist, then run it again.`,
+        showsEngineMessage: true,
+      };
+    case "validation":
+      return {
+        title: t`This check is written incorrectly`,
+        explanation: t`It was skipped before reaching the database, so it says nothing about your data yet.`,
+        action: t`Fix the definition, then run it again.`,
+        showsEngineMessage: true,
+      };
+    case "compile":
+      return {
+        title: t`This check uses an option that can't be run`,
+        explanation: t`It was skipped before reaching the database, so it says nothing about your data yet.`,
+        action: t`Change the definition, then run it again.`,
+        showsEngineMessage: true,
+      };
     default:
-      return t`The check could not run`;
+      return {
+        title: t`This check didn't finish`,
+        explanation: t`It says nothing about your data yet.`,
+        action: t`Run it again.`,
+        showsEngineMessage: true,
+      };
   }
+}
+
+export function formatDataCheckStatusCount(
+  status: DataCheckDisplayStatus,
+  count: number,
+) {
+  switch (status) {
+    case "pass":
+      return t`${count} passed`;
+    case "fail":
+      return t`${count} failed`;
+    case "warn":
+      return ngettext(msgid`${count} warning`, `${count} warnings`, count);
+    case "error":
+      return t`${count} couldn't run`;
+    case "unsupported":
+      return t`${count} can't run yet`;
+  }
+}
+
+export function formatDataCheckTotal(count: number) {
+  return ngettext(msgid`${count} check`, `${count} checks`, count);
 }
 
 const NUMBER_FORMAT = new Intl.NumberFormat("en-US", {
@@ -243,9 +294,11 @@ export function getDataCheckBand(
     band.minValue;
   const max =
     equals ??
-    (band.maxParam != null
-      ? getBandBound(params[band.maxParam], band.format)
-      : undefined);
+    [band.maxParam, band.maxParamFallback]
+      .map((name) =>
+        name != null ? getBandBound(params[name], band.format) : undefined,
+      )
+      .find((bound) => bound != null);
   if (min == null && max == null) {
     return null;
   }

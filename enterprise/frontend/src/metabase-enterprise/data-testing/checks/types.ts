@@ -96,6 +96,7 @@ export type DataCheckBandSpec = {
   format: DataCheckBandFormat;
   minParam?: string;
   maxParam?: string;
+  maxParamFallback?: string;
   equalsParam?: string;
   minValue?: number;
   unit?: string;

@@ -77,11 +77,10 @@ const TRANSFORM_TABS = [
 ];
 
 type DataStudioPageProps = {
-  summary: ReactNode;
   children: ReactNode;
 };
 
-function DataStudioPage({ summary, children }: DataStudioPageProps) {
+function DataStudioPage({ children }: DataStudioPageProps) {
   return (
     <Box h="100vh">
       <PageContainer>
@@ -129,10 +128,7 @@ function DataStudioPage({ summary, children }: DataStudioPageProps) {
             </Group>
           }
         />
-        <Stack gap="lg">
-          {summary}
-          {children}
-        </Stack>
+        {children}
       </PageContainer>
     </Box>
   );
@@ -140,15 +136,7 @@ function DataStudioPage({ summary, children }: DataStudioPageProps) {
 
 export const AllChecksPass: Story = {
   render: () => (
-    <DataStudioPage
-      summary={
-        <Group gap="sm">
-          <Icon name="check_filled" c="feedback-positive" />
-          <Text fw="bold">All 33 checks passed</Text>
-          <Text c="text-secondary">Checked 2 minutes ago</Text>
-        </Group>
-      }
-    >
+    <DataStudioPage>
       <DataCheckList runs={DQ_FIXTURE.ordersSuitePassing} />
     </DataStudioPage>
   ),
@@ -156,15 +144,7 @@ export const AllChecksPass: Story = {
 
 export const SomeChecksFail: Story = {
   render: () => (
-    <DataStudioPage
-      summary={
-        <Group gap="sm">
-          <Icon name="warning_round_filled" c="feedback-negative" />
-          <Text fw="bold">25 of 41 checks failed</Text>
-          <Text c="text-secondary">Checked 2 minutes ago</Text>
-        </Group>
-      }
-    >
+    <DataStudioPage>
       <DataCheckList
         runs={DQ_FIXTURE.ordersSuite}
         defaultSelectedId={DQ_FIXTURE.ordersSuite[0]?.result.id}
@@ -248,7 +228,7 @@ export const ResultKinds: Story = {
   ),
 };
 
-export const WarningAndCouldNotRun: Story = {
+export const StatesThatAreNotPassOrFail: Story = {
   render: () => (
     <Box bg="background_page-secondary" mih="100vh" p="xl">
       <SimpleGrid
@@ -260,6 +240,8 @@ export const WarningAndCouldNotRun: Story = {
       >
         <DataCheckResultCard {...extra("freshness_within", "warn")} />
         <DataCheckResultCard {...extra("not_null", "error")} />
+        <DataCheckResultCard {...extra("not_a_real_check", "error")} />
+        <DataCheckResultCard {...extra("row_count_change_within", "error")} />
       </SimpleGrid>
     </Box>
   ),

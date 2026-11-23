@@ -11,8 +11,8 @@ import {
 } from "../../utils";
 
 import { FailingRowsView } from "./FailingRowsView";
-import { GenericResultView } from "./GenericResultView";
 import S from "./MetricBandView.module.css";
+import { ResultMessage } from "./ResultMessage";
 import type { DataCheckViewProps } from "./types";
 
 const OUTSIDE_ZONE_PERCENT = 20;
@@ -21,7 +21,7 @@ export function MetricBandView(props: DataCheckViewProps) {
   const { definition, result, entry } = props;
   const band = entry ? getDataCheckBand(definition, result, entry) : null;
   if (band == null) {
-    return <GenericResultView {...props} />;
+    return <ResultMessage {...props} />;
   }
   const { color } = getDataCheckStatusPresentation(
     getDataCheckDisplayStatus(result),

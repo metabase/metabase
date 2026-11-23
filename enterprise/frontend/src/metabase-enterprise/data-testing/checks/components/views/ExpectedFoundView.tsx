@@ -9,7 +9,7 @@ import type {
 } from "../../types";
 
 import { FailingRowsView } from "./FailingRowsView";
-import { GenericResultView } from "./GenericResultView";
+import { ResultMessage } from "./ResultMessage";
 import type { DataCheckViewProps } from "./types";
 
 type ItemState = "matched" | "missing" | "unexpected";
@@ -29,11 +29,14 @@ type ExpectedFound = {
 export function ExpectedFoundView(props: DataCheckViewProps) {
   const comparison = getExpectedFound(props.definition, props.result);
   if (comparison == null) {
-    return <GenericResultView {...props} />;
+    return <ResultMessage {...props} />;
   }
 
   return (
     <Stack gap="md">
+      {props.result.status !== "pass" && props.result.message != null && (
+        <Text>{props.result.message}</Text>
+      )}
       <ItemRow label={comparison.expectedLabel} items={comparison.expected} />
       <ItemRow label={comparison.foundLabel} items={comparison.found} />
       <FailingRowsView {...props} />
