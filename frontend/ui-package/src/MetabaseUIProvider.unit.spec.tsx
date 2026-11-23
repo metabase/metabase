@@ -161,22 +161,29 @@ describe("MetabaseUIProvider", () => {
     target.remove();
   });
 
-  it("keeps an object-form primaryShade from the override", () => {
-    const primaryShade = { light: 4, dark: 6 } as const;
-    const Shade = () => (
-      <div data-testid="shade">
-        {JSON.stringify(useMantineTheme().primaryShade)}
-      </div>
-    );
+  it.each(["light", "dark"] as const)(
+    "uses the %s primary shade for theme color lookup",
+    (colorScheme) => {
+      const primaryShade = { light: 4, dark: 6 } as const;
+      const Shade = () => {
+        const theme = useMantineTheme();
+        return (
+          <output>
+            {theme.fn.themeColor("core-brand") ===
+            theme.colors["core-brand"][primaryShade[colorScheme]]
+              ? "Expected shade"
+              : "Unexpected shade"}
+          </output>
+        );
+      };
 
-    render(
-      <MetabaseUIProvider theme={{ primaryShade }}>
-        <Shade />
-      </MetabaseUIProvider>,
-    );
+      render(
+        <MetabaseUIProvider colorScheme={colorScheme} theme={{ primaryShade }}>
+          <Shade />
+        </MetabaseUIProvider>,
+      );
 
-    expect(screen.getByTestId("shade")).toHaveTextContent(
-      JSON.stringify(primaryShade),
-    );
-  });
+      expect(screen.getByRole("status")).toHaveTextContent(/^Expected shade$/);
+    },
+  );
 });
