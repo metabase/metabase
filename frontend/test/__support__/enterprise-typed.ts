@@ -58,6 +58,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   moderation: "metabase-enterprise/moderation",
   multi_factor_auth: "metabase-enterprise/multi_factor_auth",
   tenants: "metabase-enterprise/tenants",
+  workspaces: "metabase-enterprise/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

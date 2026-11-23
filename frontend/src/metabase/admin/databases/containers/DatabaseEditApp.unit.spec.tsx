@@ -1,18 +1,22 @@
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseEndpoints,
   setupDatabaseNotFoundEndpoint,
   setupDatabaseUsageInfoEndpoint,
   setupEnginesEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { Database, DatabaseId } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockEngines,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -28,9 +32,14 @@ const SAMPLE_DATABASE = createMockDatabase({
 interface SetupOpts {
   database: Database;
   hasNullDetails?: boolean;
+  hasWorkspacesFeature?: boolean;
 }
 
-const setup = ({ database, hasNullDetails = false }: SetupOpts) => {
+const setup = ({
+  database,
+  hasNullDetails = false,
+  hasWorkspacesFeature = false,
+}: SetupOpts) => {
   if (hasNullDetails) {
     // Registered before `setupDatabaseEndpoints` so that this route matches
     // first. The backend can send `details: null`, which `Database` does not allow.
@@ -50,10 +59,20 @@ const setup = ({ database, hasNullDetails = false }: SetupOpts) => {
     transform: 0,
   });
   fetchMock.get(`path:/api/database/${database.id}/settings-available`, {
-    settings: {},
+    settings: hasWorkspacesFeature
+      ? { "database-enable-workspaces": { enabled: true } }
+      : {},
   });
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      workspaces: hasWorkspacesFeature,
+    }),
+  });
+  if (hasWorkspacesFeature) {
+    setupEnterpriseOnlyPlugin("workspaces");
+  }
 
-  renderDatabaseEditApp(database.id);
+  renderDatabaseEditApp(database.id, settings);
 };
 
 const setupNonExistingDatabase = () => {
@@ -67,7 +86,10 @@ const setupNonExistingDatabase = () => {
   renderDatabaseEditApp(NON_EXISTING_DATABASE_ID);
 };
 
-const renderDatabaseEditApp = (databaseId: DatabaseId) => {
+const renderDatabaseEditApp = (
+  databaseId: DatabaseId,
+  settings: ReturnType<typeof mockSettings> = mockSettings(),
+) => {
   renderWithProviders(
     <Route path="/admin/databases/:databaseId" element={<DatabaseEditApp />} />,
     {
@@ -75,12 +97,17 @@ const renderDatabaseEditApp = (databaseId: DatabaseId) => {
       initialRoute: `/admin/databases/${databaseId}`,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
+        settings,
       }),
     },
   );
 };
 
 describe("DatabaseEditApp", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("shows every section for a regular database", async () => {
     setup({ database: createMockDatabase({ features: ["actions"] }) });
 
@@ -93,6 +120,25 @@ describe("DatabaseEditApp", () => {
     expect(
       screen.getByTestId("database-danger-zone-section"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Workspaces section with the workspaces feature", async () => {
+    setup({ database: createMockDatabase(), hasWorkspacesFeature: true });
+
+    expect(
+      await screen.findByTestId("workspace-database-section"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the Workspaces section without the workspaces feature", async () => {
+    setup({ database: createMockDatabase() });
+
+    expect(
+      await screen.findByTestId("database-connection-info-section"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-database-section"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows only the connection and danger zone sections for a stub database", async () => {

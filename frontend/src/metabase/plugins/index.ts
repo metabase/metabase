@@ -181,6 +181,10 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
+export {
+  PLUGIN_WORKSPACES,
+  type WorkspaceDatabaseSectionProps,
+} from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
