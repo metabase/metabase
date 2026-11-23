@@ -84,7 +84,7 @@
                          (collection/parent-or-root (:namespace collection-before-update) new-parent-id))]
       (when (not= (:location collection-before-update) new-location)
         (api/update-check collection-before-update {:parent_id new-parent-id})
-        (collection/update-collections! [(u/the-id collection-before-update)] {:location new-location} nil)))))
+        (collection/update-collections! [{:id (u/the-id collection-before-update) :location new-location}] nil)))))
 
 (defn- archive-or-restore!
   "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then
@@ -95,7 +95,7 @@
     (when-not archive?
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
-      (collection/update-collections! [id] {:archived archive?} nil)
+      (collection/update-collections! [{:id id :archived archive?}] nil)
       (delete-stopped-alerts! stopped)
       (when archive?
         (notify-stopped-alerts! stopped @api/*current-user*))
@@ -128,7 +128,7 @@
       (api/check-403 api/*is-superuser?*))
     (t2/with-transaction [_conn]
       (when (seq updates)
-        (collection/update-collections! [id] updates nil))
+        (collection/update-collections! [(assoc updates :id id)] nil))
       (if archived-change?
         (archive-or-restore! collection-before-update collection-updates)
         (move-collection! collection-before-update collection-updates)))

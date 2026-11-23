@@ -6,8 +6,6 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -50,10 +48,10 @@
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select :model/ApiKey :id [:in ids]))
 
-(mu/defn api-keys-with-scope
-  "The ApiKeys with `scope`."
+(mu/defn api-key-ids-with-scope :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeys with `scope`."
   [scope :- ::api-keys.schema/scope]
-  (t2/select :model/ApiKey :scope scope))
+  (t2/select-pks-vec :model/ApiKey :scope scope))
 
 (mu/defn delete-api-keys!
   "Delete the ApiKeys with `ids`, returning the number deleted."
@@ -76,6 +74,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
 
+(mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
+  "The map from id to `:type` of the Users with `user-ids`."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (into {} (map (juxt :id :type)) (t2/select [:model/User :id :type] :id [:in user-ids])))
+
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
   [prefix :- :string]
@@ -91,10 +94,15 @@
   [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
   (t2/insert! :model/ApiKeyUsageLog rows))
 
-(mu/defn delete-api-key-usage-logs-occurred-before!
-  "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
+(mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))
+  (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))
+
+(mu/defn delete-api-key-usage-logs!
+  "Delete the ApiKeyUsageLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/ApiKeyUsageLog :id [:in ids]))
 
 (mu/defn insert-api-keys! :- [:sequential ::api-keys.schema/api-key]
   "Insert the ApiKey `rows` in one statement and return the inserted instances in their order."
@@ -110,13 +118,10 @@
    [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
 
 (mu/defn update-api-keys!
-  "Apply `changes` to the ApiKeys with `ids`, one statement for each set of the changes that differ from the stored
-  rows, so that rows already holding one of the values do not make Toucan update row by row."
+  "Apply `changes` to the ApiKeys with `ids` in one statement."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- ::api-key-columns.update]
-  (let [stored (u/index-by :id (t2/select :model/ApiKey :id [:in [:auto/param (vec (distinct ids))]]))]
-    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
-      (t2/update! :model/ApiKey :id [:in [:auto/param ids]] changes))))
+  (t2/update! :model/ApiKey :id [:in [:auto/param (vec ids)]] changes))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

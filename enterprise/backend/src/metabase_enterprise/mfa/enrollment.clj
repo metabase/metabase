@@ -61,7 +61,7 @@
         (let [secret      (totp/generate-secret)
               credentials {:secret secret}]
           (if auth-identity
-            (models.auth-identity/update-auth-identities! [(:id auth-identity)] {:credentials credentials})
+            (models.auth-identity/update-auth-identities! [{:id (:id auth-identity) :credentials credentials}])
             (models.auth-identity/create-auth-identity! {:user_id     user-id
                                                          :provider    "totp"
                                                          :credentials credentials}))
@@ -89,11 +89,11 @@
            (when-let [secret (verification/stored-secret auth-identity)]
              (when-let [step (totp/matching-time-step secret code)]
                (let [codes (recovery-codes/generate-codes)]
-                 (models.auth-identity/update-auth-identities! [(:id auth-identity)]
-                                                               {:confirmed_at (t/instant)
-                                                                :credentials  (assoc (:credentials auth-identity)
-                                                                                     :last_used_step step
-                                                                                     :recovery_codes (mapv u.password/hash-bcrypt codes))})
+                 (models.auth-identity/update-auth-identities! [{:id           (:id auth-identity)
+                                                                 :confirmed_at (t/instant)
+                                                                 :credentials  (assoc (:credentials auth-identity)
+                                                                                      :last_used_step step
+                                                                                      :recovery_codes (mapv u.password/hash-bcrypt codes))}])
                  {:recovery-codes       codes
                   :mfa-auth-identity-id (:id auth-identity)})))))))))
 
@@ -101,7 +101,7 @@
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when
   something was removed."
   [user-id]
-  (pos? (models.auth-identity/delete-auth-identities-for-user! user-id "totp")))
+  (pos? (models.auth-identity/delete-auth-identities! (mfa.db/totp-identity-ids user-id))))
 
 ;;; -------------------------------------------------- Recovery-code management --------------------------------------------------
 
@@ -114,9 +114,9 @@
     (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]
-          (models.auth-identity/update-auth-identities! [(:id auth-identity)]
-                                                        {:credentials (assoc (:credentials auth-identity)
-                                                                             :recovery_codes (mapv u.password/hash-bcrypt codes))})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials (assoc (:credentials auth-identity)
+                                                                              :recovery_codes (mapv u.password/hash-bcrypt codes))}])
           codes)))))
 
 (defn recovery-codes-remaining

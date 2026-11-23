@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.audit-app.task.partitions :as partitions]
@@ -16,6 +17,7 @@
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
+   [metabase.view-log.core :as view-log.core]
    [metabase.view-log.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
@@ -27,8 +29,8 @@
   [model time-column cutoff batch-size]
   (case model
     :model/QueryExecution (query-execution/delete-older-than! time-column cutoff batch-size)
-    :model/AuditLog       (audit-log/delete-audit-logs-for-cleanup! time-column cutoff batch-size)
-    :model/ViewLog        (view-log/delete-view-logs-for-cleanup! time-column cutoff batch-size)))
+    :model/AuditLog       (audit-log/delete-audit-logs! (audit-app.db/audit-log-ids-before time-column cutoff batch-size))
+    :model/ViewLog        (view-log/delete-view-logs! (view-log.core/view-log-ids-before time-column cutoff batch-size))))
 
 (defn- truncate-table-batched!
   [model time-column]

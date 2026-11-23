@@ -632,7 +632,7 @@
                             (select-keys card-before-update [:collection_id :collection_position])
                             (select-keys card-updates [:collection_id :collection_position]))
                            (queries.card/place-updated-dashboard-question! card-before-update card-updates delete-old-dashcards?)
-                           (queries.card/update-cards! [id] row)
+                           (queries.card/update-cards! [(assoc row :id id)])
                            (queries-rest.db/card id))
             card         (-> card
                              hydrate-card-details
@@ -715,9 +715,8 @@
             (collection/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (queries.card/update-cards! [(u/the-id moved-card)]
-                                        {:collection_position idx
-                                         :collection_id       new-collection-id-or-nil}))
+            (queries.card/update-cards! [{:id (u/the-id moved-card) :collection_position idx
+                                         :collection_id       new-collection-id-or-nil}]))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
           ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
           ;; can avoid changing the index of cards we haven't yet updated
@@ -755,8 +754,7 @@
           ;; are gone and update the position in the new collection
           (when-let [cards-with-position (seq (filter :collection_position cards))]
             (update-collection-positions! new-collection-id-or-nil cards-with-position))
-          (queries.card/update-cards! (into [] (comp (remove :collection_position) (map u/the-id)) cards)
-                                      {:collection_id new-collection-id-or-nil})))
+          (queries.card/update-cards! (mapv (fn [id] {:id id :collection_id new-collection-id-or-nil}) (into [] (comp (remove :collection_position) (map u/the-id)) cards)))))
       nil))
 
   (when new-collection-id-or-nil
@@ -891,9 +889,8 @@
     (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
-                     (queries.card/update-cards! [card-id]
-                                                 {:public_uuid       <>
-                                                  :made_public_by_id api/*current-user-id*})))]
+                     (queries.card/update-cards! [{:id card-id :public_uuid       <>
+                                                  :made_public_by_id api/*current-user-id*}])))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -906,7 +903,7 @@
   (api/update-check (api/check-404 (queries-rest.db/card card-id)) {:public_uuid nil, :made_public_by_id nil})
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
-  (queries.card/update-cards! [card-id] {:public_uuid nil, :made_public_by_id nil})
+  (queries.card/update-cards! [{:id card-id :public_uuid nil, :made_public_by_id nil}])
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"

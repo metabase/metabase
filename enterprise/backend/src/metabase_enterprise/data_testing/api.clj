@@ -77,7 +77,7 @@
                                                       (data-testing.db/transform transform_id)
                                                       (data-testing.runner/test-definition merged)))))
     (when (seq body)
-      (data-testing.models/update-transform-tests! [id] body)))
+      (data-testing.models/update-transform-tests! [(assoc body :id id)])))
   (data-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

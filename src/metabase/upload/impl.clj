@@ -481,7 +481,7 @@
   [table-id field->display-name]
   (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))]
     (doseq [{:keys [id display_name]} (upload.db/field-display-name-changes table-id field->display-name)]
-      (field/update-fields! [id] {:display_name display_name}))))
+      (field/update-fields! [{:id id :display_name display_name}]))))
 
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
@@ -554,17 +554,17 @@
                                                        :schema       (not-empty schema)
                                                        :display_name display-name
                                                        :data_source  :upload})
-          _set_is_upload          (table/update-tables! [(:id table)] {:is_upload      true
-                                                                       :data_authority :authoritative
-                                                                       :data_source    :upload
-                                                                       :is_writable    true})
+          _set_is_upload          (table/update-tables! [{:id (:id table) :is_upload      true
+                                                          :data_authority :authoritative
+                                                          :data_source    :upload
+                                                          :is_writable    true}])
           _sync                   (scan-and-sync-table! table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                                      (field/update-fields! [(:id auto-pk-field)] {:display_name (:name auto-pk-field)})))]
+                                      (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))]
       {:table table
        :stats stats})))
 
@@ -764,7 +764,7 @@
             ;; the initial upload.
             fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (queries.card/update-cards! [id] {:result_metadata metadata} {:writer :sync})))))
+        (queries.card/update-cards! [{:id id :result_metadata metadata}] {:writer :sync})))))
 
 (defn- translate-type-keywords [m]
   (match/replace-all m
@@ -833,7 +833,7 @@
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                (field/update-fields! [(:id auto-pk-field)] {:display_name (:name auto-pk-field)})))
+                (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))
             (invalidate-cached-models! table)
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
@@ -900,7 +900,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (table/update-tables! [(:id table)] {:active false})
+    (table/update-tables! [{:id (:id table) :active false}])
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
@@ -914,7 +914,7 @@
     ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
-      (queries.card/update-cards! (upload.db/unarchived-card-ids-for-table (:id table)) {:archived true}))
+      (queries.card/update-cards! (mapv (fn [id] {:id id :archived true}) (upload.db/unarchived-card-ids-for-table (:id table)))))
     :done))
 
 (def update-action-schema

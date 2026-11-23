@@ -345,7 +345,7 @@
           (let [[warm-up & ids] @created
                 update!         (fn [ids]
                                   (events.tu/statement-count!
-                                   (fn [] (data-testing.models/update-transform-tests! ids {:description "same"}))))]
+                                   (fn [] (data-testing.models/update-transform-tests! (mapv (fn [row-id] (assoc {:description "same"} :id row-id)) ids)))))]
             (update! [warm-up])
             (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
         (testing "deleting a transform deletes its tests in a fixed number of statements"
@@ -377,7 +377,7 @@
                                       #(data-testing.models/create-transform-tests! (mapv (fn [s] (valid-row s [])) (take n subjects))))
                               ids    (make! n)
                               update (events.tu/statement-count!
-                                      #(data-testing.models/update-transform-tests! ids {:description "same"}))
+                                      #(data-testing.models/update-transform-tests! (mapv (fn [row-id] (assoc {:description "same"} :id row-id)) ids)))
                               delete (events.tu/statement-count!
                                       #(data-testing.models/delete-transform-tests-for-transforms! (vec (take n subjects))))]
                           [create update delete]))]

@@ -15,7 +15,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.interface :as mi]
    [metabase.queries.models.card :as queries.card]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
@@ -29,7 +28,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -85,7 +83,7 @@
   [ids]
   (t2/with-transaction [_conn]
     (events/publish-event! :event/moderation-review-delete
-                           {:changes (u.events/delete-changes (t2/select :model/ModerationReview :id [:in ids])) :user-id (mi/current-user-id)})
+                           (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
     (t2/delete! :model/ModerationReview :id [:in ids])))
 
 (defn- delete-cards-by-hand!
@@ -93,7 +91,7 @@
   the rows the database cascades to are left for the search capture."
   [ids]
   (t2/with-transaction [_conn]
-    (events/publish-event! :event/card-delete {:changes (u.events/delete-changes (t2/select :model/Card :id [:in ids])) :user-id (mi/current-user-id)})
+    (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
     (t2/delete! :model/Card :id [:in ids])))
 
 ;;; Capture wiring
@@ -113,7 +111,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (let [write (fn [ids]
                     (let [new-name (str (random-uuid))]
-                      (queries.card/update-cards! ids {:name new-name})))]
+                      (queries.card/update-cards! (mapv (fn [id] {:id id :name new-name}) ids))))]
         (search-statement-count! 1 write)
         (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
 
@@ -269,15 +267,15 @@
         ;; type, location and authority level.
         (is (= #{"collection"}
                (enqueued-search-models
-                (capture-enqueues! #(collection/update-collections! [coll-id] {:description "described"} nil)))))))))
+                (capture-enqueues! #(collection/update-collections! [{:id coll-id :description "described"}] nil)))))))))
 
 (deftest self-assigned-updated-at-enqueues-nothing-test
   (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
-        (is (= [] (capture-enqueues! #(queries.card/update-cards! [card-id] {:result_metadata [] :updated_at :updated_at}))))
-        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [card-id] {:name "renamed"}))))))))
+        (is (= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :result_metadata [] :updated_at :updated_at}]))))
+        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :name "renamed"}]))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"

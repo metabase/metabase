@@ -57,7 +57,7 @@
                                                                                     :name          "f"
                                                                                     :base_type     :type/Text
                                                                                     :database_type "TEXT"}]))))
-                                     (field/update-fields! [@id] {:name "g"})
+                                     (field/update-fields! [{:id @id :name "g"}])
                                      (field/delete-fields! [@id])))]
             (is (= [["metabase_field" @id "insert"]
                     ["metabase_field" @id "update"]
@@ -67,29 +67,29 @@
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [["metabase_field" (:id f) "update"]
                     ["metabase_field" (:id f) "delete"]]
-                   (logged-by #(do (field/update-fields! [(:id f)] {:name "h"})
+                   (logged-by #(do (field/update-fields! [{:id (:id f) :name "h"}])
                                    (field/delete-fields! [(:id f)])))))))
         (testing "an update that changes nothing logs nothing"
-          (is (= [] (logged-by #(table/update-tables! [(:id t)] {:name (:name t)}))))
-          (is (= [] (logged-by #(table/update-tables! (vec (table/ids-of-database (:id db))) {:active true})))))
+          (is (= [] (logged-by #(table/update-tables! [{:id (:id t) :name (:name t)}]))))
+          (is (= [] (logged-by #(table/update-tables! (for [id (vec (table/ids-of-database (:id db)))] {:id id :active true}))))))
         (testing "an update that changes one row of two logs the one it changes"
           (mt/with-temp [:model/Table other {:db_id (:id db), :active false}]
             (is (= #{["metabase_table" (:id other) "update"]}
-                   (set (logged-by #(table/update-tables! (vec (table/ids-of-database (:id db))) {:active true})))))))
+                   (set (logged-by #(table/update-tables! (for [id (vec (table/ids-of-database (:id db)))] {:id id :active true}))))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse pulse {:name "Before"}]
-            (is (= [] (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "Before"}))))
+            (is (= [] (logged-by #(models.pulse/update-pulses! [{:id (:id pulse) :name "Before"}]))))
             (is (= [["pulse" (:id pulse) "update"]]
-                   (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "After"}))))))
+                   (logged-by #(models.pulse/update-pulses! [{:id (:id pulse) :name "After"}]))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
-            (is (= [] (logged-by #(field/update-fields! [(:id f)] {:fingerprint_version 99}))))
+            (is (= [] (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 99}]))))
             (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))
             (testing "and one that also sets another column logs the row"
               (is (= [["metabase_field" (:id f) "update"]]
-                     (logged-by #(field/update-fields! [(:id f)] {:fingerprint_version 100, :description "d"})))))))
+                     (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 100, :description "d"}])))))))
         (testing "an update that matches no row logs nothing"
-          (is (= [] (logged-by #(table/update-tables! [Integer/MAX_VALUE] {:name "none"})))))
+          (is (= [] (logged-by #(table/update-tables! [{:id Integer/MAX_VALUE :name "none"}])))))
         (testing "a bulk insert logs the rows it inserts"
           (let [names #{"f1" "f2"}
                 n     (atom nil)
@@ -141,7 +141,7 @@
                                                                  :display                :table
                                                                  :visualization_settings {}
                                                                  :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}])))
-                                          (card/update-cards! [(:id @card)] {:name "renamed"})
+                                          (card/update-cards! [{:id (:id @card) :name "renamed"}])
                                           (reset! updated (t2/select-one-fn :updated_at :model/Card :id (:id @card)))
                                           (card/delete-cards! [(:id @card)])))]
               (is (= (for [action ["insert" "update" "delete"]]
@@ -164,7 +164,7 @@
           (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]
-                 (sort (logged-by #(field/update-fields! [(:id f1) (:id f2)] {:description "x"}))))))))))
+                 (sort (logged-by #(field/update-fields! (for [id [(:id f1) (:id f2)]] {:id id :description "x"})))))))))))
 
 (deftest transaction-test
   (when config/ee-available?
@@ -173,7 +173,7 @@
         (testing "a write rolled back takes its log row with it"
           (is (= [] (logged-by #(try
                                   (t2/with-transaction [_conn]
-                                    (perms-group/update-permissions-groups! [(:id group)] {:name "rolled back"})
+                                    (perms-group/update-permissions-groups! [{:id (:id group) :name "rolled back"}])
                                     (throw (ex-info "boom" {})))
                                   (catch Exception _))))))))))
 
@@ -610,7 +610,7 @@
                                        (repeatedly n #(mt/with-temp-defaults :model/Card))
                                        (fn [ids]
                                          (let [description (str (random-uuid))]
-                                           (card/update-cards! ids {:description description})))
+                                           (card/update-cards! (mapv (fn [id] {:id id :description description}) ids))))
                                        #(mt/with-premium-features #{:change-log} (%))
                                        #(mt/with-premium-features #{} (%))))
 
@@ -624,7 +624,7 @@
   (mt/with-temp [:model/PermissionsGroup group {}]
     (mt/with-premium-features #{}
       (testing "without the `:change-log` feature, nothing is logged"
-        (is (= [] (logged-by #(perms-group/update-permissions-groups! [(:id group)] {:name "unlicensed"})))))
+        (is (= [] (logged-by #(perms-group/update-permissions-groups! [{:id (:id group) :name "unlicensed"}])))))
       (testing "while the change log is off, `log-rows!` runs no query"
         (t2/with-call-count [calls]
           (is (nil? (change-log/log-rows! :model/PermissionsGroup :update :id (:id group))))

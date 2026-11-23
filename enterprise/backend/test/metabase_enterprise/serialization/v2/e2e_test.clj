@@ -1679,7 +1679,7 @@
             (is (zero? (t2/count :model/AuditLog :model "CardTest")))
             (testing "control: an edit through the write function writes both"
               (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-                (data-testing.models.card-test/update-card-tests! [(t2/select-one-pk :model/CardTest :name "Revenue ignores refunds")] {:description "Edited"}))
+                (data-testing.models.card-test/update-card-tests! [{:id (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") :description "Edited"}]))
               (is (= 1 (t2/count :model/Revision :model "CardTest")))
               (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
 

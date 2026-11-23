@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
@@ -581,14 +580,25 @@
   [rows :- [:sequential ::permissions.schema/permissions-group.create]]
   (mdb/insert-returning-instances! :model/PermissionsGroup rows))
 
+(mu/defn update-permissions-group!
+  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:name             {:optional true} [:maybe :string]]
+               [:entity_id        {:optional true} [:maybe :string]]
+               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
+               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
+  (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
+
 (mu/defn update-permissions-groups!
-  "Apply `changes` to the PermissionsGroups with `ids`, one statement for each set of the changes that differ from the
-  stored rows, so that rows already holding one of the values do not make Toucan update row by row."
+  "Apply `changes` to the PermissionsGroups with `ids`, returning the number updated."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::permissions.schema/permissions-group.update]
-  (let [stored (u/index-by :id (t2/select :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))]
-    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
-      (t2/update! :model/PermissionsGroup :id [:in [:auto/param ids]] changes))))
+   changes :- [:map {:closed true}
+               [:name             {:optional true} [:maybe :string]]
+               [:entity_id        {:optional true} [:maybe :string]]
+               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
+               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
+  (t2/update! :model/PermissionsGroup :id [:in [:auto/param (vec ids)]] changes))
 
 (mu/defn delete-permissions-groups!
   "Delete the PermissionsGroups with `ids`, returning the number deleted."
@@ -784,14 +794,18 @@
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
   (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
+(mu/defn collection-permission-graph-revisions-by-ids
+  "The CollectionPermissionGraphRevisions with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
+
 (mu/defn update-collection-permission-graph-revisions!
-  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`, one statement for each set of the changes that
-  differ from the stored rows, so that rows already holding one of the values do not make Toucan update row by row."
+  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::permissions.schema/collection-permission-graph-revision.update]
-  (let [stored (u/index-by :id (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))]
-    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) ids))]
-      (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param ids]] changes))))
+   changes :- [:map {:closed true}
+               [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
+               [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
+  (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec ids)]] changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

@@ -140,7 +140,7 @@
           stored   #(t2/select-fn-set (juxt :id :is_group_manager) :model/PermissionsGroupMembership :id [:in ids])
           before   (stored)
           refusal  (try
-                     (perms-group-membership/update-permissions-group-memberships! ids changes)
+                     (perms-group-membership/update-permissions-group-memberships! (mapv (fn [row-id] (assoc changes :id row-id)) ids))
                      nil
                      (catch clojure.lang.ExceptionInfo e
                        [(ex-message e) (dissoc (ex-data e) :toucan2/context-trace)]))]

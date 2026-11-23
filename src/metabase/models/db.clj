@@ -24,7 +24,7 @@
   of the generic entity helpers below (a literal keyword, not a `require`, to avoid a dependency cycle with the module
   that owns these models)."
   {:model/ChannelTemplate          :metabase.channel.schema/channel-template.update
-   :model/Notification             :metabase.notification.schema/notification.update
+   :model/Notification             :metabase.notification.schema/notification.changes
    :model/NotificationCard         :metabase.notification.schema/notification-card.update
    :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
    :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.update

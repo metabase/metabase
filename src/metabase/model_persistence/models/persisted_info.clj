@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -237,11 +238,13 @@
    error   :- [:maybe :string]]
   (model-persistence.db/end-persisted-info-refresh! id active? state error))
 
-(mu/defn delete-persisted-infos!
-  "Delete the PersistedInfos with `ids`."
+(mu/defn delete-persisted-infos! :- :nil
+  "Delete the PersistedInfos with `ids` in one transaction and batches of [[mdb/delete-partition-size]]."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (model-persistence.db/delete-persisted-infos! (vec ids))))
+    (t2/with-transaction [_conn]
+      (run! #(model-persistence.db/delete-persisted-infos! (vec %)) (partition-all mdb/delete-partition-size ids))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -261,7 +261,7 @@
       "dashboard" (dashboard/set-last-viewed-at! id date)
       "document"  (document/set-last-viewed-at! id date)
       "transform" (do
-                    (transform/update-transforms! [id] {:created_at date})
+                    (transform/update-transforms! [{:id id :created_at date}])
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
                     (transform-run/set-run-times! id date))
@@ -422,7 +422,7 @@
 
 (defn- delete-seeded-usage-auditing-data!
   []
-  (ai-usage-log/delete-ai-usage-logs-for-conversations! e2e-usage-auditing-conversation-ids)
+  (ai-usage-log/delete-ai-usage-logs! (ai-usage-log/ids-for-conversations e2e-usage-auditing-conversation-ids))
   (metabot-conversation/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
 
 (defn- insert-seeded-usage-auditing-conversation!
@@ -482,9 +482,9 @@
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
      (when tenant-id
-       (user/update-users! [user-id] {:tenant_id tenant-id}))
+       (user/update-users! [{:id user-id :tenant_id tenant-id}]))
      (when second-tenant-id
-       (user/update-users! [second-user-id] {:tenant_id second-tenant-id}))
+       (user/update-users! [{:id second-user-id :tenant_id second-tenant-id}]))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id

@@ -108,7 +108,7 @@
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
           db (if-let [db-id (sample-data.db/sample-database-id)]
-               (do (database/update-databases! [db-id] {:details details})
+               (do (database/update-databases! [{:id db-id :details details}])
                    (sample-data.db/database db-id))
                (first (database/create-databases! [{:name      sample-database-name
                                                     :details   details
@@ -162,10 +162,9 @@
   (let [details  (try-to-extract-sample-database! engine)
         settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (database/update-databases! [(:id old-sample-db)] (cond-> {:engine engine, :details details}
-                                                          settings (assoc :settings settings)))
-      (table/update-tables! (vec (table/ids-of-database (:id old-sample-db)))
-                            {:schema (table-schema-for-engine engine)})
+      (database/update-databases! [(assoc (cond-> {:engine engine, :details details}
+                                            settings (assoc :settings settings)) :id (:id old-sample-db))])
+      (table/update-tables! (for [id (vec (table/ids-of-database (:id old-sample-db)))] {:id id :schema (table-schema-for-engine engine)}))
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
@@ -187,4 +186,4 @@
          (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
-             (database/update-databases! [(:id sample-db)] {:details intended}))))))))
+             (database/update-databases! [{:id (:id sample-db) :details intended}]))))))))

@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card-series :as dashboard-card-series]
@@ -364,30 +365,53 @@
          {:dashboardcard_id dashcard-id, :card_id card-id, :position i})))
     (vec (keys changed))))
 
+(defn- dashcard-changes
+  "The `:id` and the changed columns of each of `rows`, updates of the `stored` DashboardCards, by id."
+  [rows stored]
+  (mapv (fn [row]
+          (assoc (shallow-updates (select-keys row updatable-columns) (get stored (:id row)))
+                 :id (:id row)))
+        rows))
+
+(defn- check-dashcard-updates
+  "Throw a 400 unless every one of `changed`, the changes of the `stored` DashboardCards, satisfies these rules, with one
+  read of the tabs:
+
+  - the tab it moves to belongs to its Dashboard"
+  [changed stored]
+  (check-dashcards (for [change changed
+                         :when  (contains? change :dashboard_tab_id)]
+                     {:dashboard_id     (:dashboard_id (get stored (:id change)))
+                      :dashboard_tab_id (:dashboard_tab_id change)})
+                   false))
+
+(defn- write-dashcard-updates!
+  "Writes `changed`, the changes of DashboardCards, with one statement for each distinct set of columns, replaces the series
+  of `rows` that hold one, and returns the ids of the DashboardCards that changed."
+  [rows changed]
+  (doseq [[updates group] (group-by #(dissoc % :id) changed)]
+    (dashboards.db/update-dashcards! (mapv :id group) updates))
+  (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
+        series-changed     (when (seq series-by-dashcard)
+                             (replace-series! series-by-dashcard))]
+    (into [] (distinct) (concat (map :id changed) series-changed))))
+
+(defn- update-dashcard-batch!
+  "Checks and writes the DashboardCards of `batch`, up to one partition of the call, and returns the ids that changed."
+  [batch]
+  (let [stored  (m/index-by :id (dashboards.db/dashcards-by-ids (mapv :id batch)))
+        rows    (filterv #(contains? stored (:id %)) batch)
+        changed (filterv #(seq (dissoc % :id)) (dashcard-changes rows stored))]
+    (check-dashcard-updates changed stored)
+    (write-dashcard-updates! rows changed)))
+
 (mu/defn update-dashboard-cards! :- [:sequential ::lib.schema.id/dashcard]
   "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCard, that differ from the stored ones, and
   replace its series by its `:series`, the ids of Cards, when it has one, and return the ids of the DashboardCards that
-  changed. The tab a DashboardCard moves to must belong to its Dashboard, which is read once for all of them, and the
-  DashboardCards with the same changes are one statement."
+  changed."
   [rows :- [:sequential DashboardCardWrite]]
-  (let [stored  (m/index-by :id (if (seq rows) (dashboards.db/dashcards-by-ids (mapv :id rows)) []))
-        rows    (filterv #(contains? stored (:id %)) rows)
-        changes (mapv (fn [row]
-                        (assoc (shallow-updates (select-keys row updatable-columns) (get stored (:id row)))
-                               :id (:id row)))
-                      rows)
-        changed (filterv #(seq (dissoc % :id)) changes)]
-    (check-dashcards (for [change changed
-                           :when  (contains? change :dashboard_tab_id)]
-                       {:dashboard_id     (:dashboard_id (get stored (:id change)))
-                        :dashboard_tab_id (:dashboard_tab_id change)})
-                     false)
-    (doseq [[updates group] (group-by #(dissoc % :id) changed)]
-      (dashboards.db/update-dashcards! (mapv :id group) updates))
-    (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
-          series-changed     (when (seq series-by-dashcard)
-                               (replace-series! series-by-dashcard))]
-      (into [] (distinct) (concat (map :id changed) series-changed)))))
+  (t2/with-transaction [_conn]
+    (into [] (mapcat update-dashcard-batch!) (partition-all app-db/update-partition-size rows))))
 
 (def ^:private NewDashboardCard
   [:merge
@@ -410,35 +434,45 @@
             :inline_parameters      []}
            (dissoc dashboard-card :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))
 
+(defn- insert-dashcards!
+  "Inserts `rows`, the checked DashboardCards of one batch, with their series, and returns the new DashboardCards,
+  hydrated with their series, or, for a `writer` that imports, as inserted."
+  [rows writer]
+  (let [inserted (dashboards.db/insert-dashcards! (mapv #(insert-row % writer) rows))]
+    (when-let [series (not-empty (for [[dashcard row] (map vector inserted rows)
+                                       [i card-id]    (map-indexed vector (:series row))]
+                                   {:dashboardcard_id (:id dashcard), :card_id card-id, :position i}))]
+      (dashboard-card-series/create-dashboard-card-series! series))
+    (if (= :import writer)
+      inserted
+      (-> (dashboards.db/dashcards-by-ids (mapv :id inserted))
+          (t2/hydrate :series)))))
+
+(defn- create-dashcard-batch!
+  "Checks and inserts the DashboardCards of `batch`, up to one partition of the call, and returns the new ones."
+  [batch writer]
+  (check-dashcards batch true)
+  (insert-dashcards! batch writer))
+
 (mu/defn create-dashboard-cards! :- [:sequential :map]
   "Insert the DashboardCards `rows` with their series, and return the new DashboardCards, hydrated with their series, or,
-  for an import, as inserted. The tabs of the DashboardCards must belong to their Dashboards, which is read once for all
-  of them."
+  for an import, as inserted."
   ([rows :- [:sequential NewDashboardCard]]
    (create-dashboard-cards! rows nil))
   ([rows :- [:sequential NewDashboardCard]
     opts :- [:maybe [:map {:closed true} [:writer {:optional true} [:= :import]]]]]
-   (if (empty? rows)
-     []
-     (do
-       (check-dashcards rows true)
-       (let [writer   (:writer opts)
-             inserted (dashboards.db/insert-dashcards! (mapv #(insert-row % writer) rows))]
-         (when-let [series (not-empty (for [[dashcard row] (map vector inserted rows)
-                                            [i card-id]    (map-indexed vector (:series row))]
-                                        {:dashboardcard_id (:id dashcard), :card_id card-id, :position i}))]
-           (dashboard-card-series/create-dashboard-card-series! series))
-         (if (= :import writer)
-           inserted
-           (-> (dashboards.db/dashcards-by-ids (mapv :id inserted))
-               (t2/hydrate :series))))))))
+   (t2/with-transaction [_conn]
+     (into [] (mapcat #(create-dashcard-batch! % (:writer opts)))
+           (partition-all app-db/create-partition-size rows)))))
 
 (mu/defn delete-dashboard-cards! :- :nil
   "Delete the DashboardCards with `dashboard-card-ids`, with their PulseCards and DashboardCardSeries."
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (when (seq dashboard-card-ids)
-    (pulse/delete-pulse-cards-for-dashcards! dashboard-card-ids)
-    (dashboards.db/delete-dashcards! (vec dashboard-card-ids)))
+  (t2/with-transaction [_conn]
+    (doseq [batch (partition-all app-db/delete-partition-size dashboard-card-ids)
+            :let  [ids (vec batch)]]
+      (pulse/delete-pulse-cards-for-dashcards! ids)
+      (dashboards.db/delete-dashcards! ids)))
   nil)
 
 (defn unarchive-internal-dashboard-questions!
@@ -446,14 +480,14 @@
   saved, which come before the dashcards that name them."
   [dashboard-id new-cards]
   (when-let [ids (seq (questions-to-unarchive dashboard-id new-cards))]
-    (card/update-cards! (mapv :id (dashboards.db/cards-to-set-archived (vec ids) false)) {:archived false})))
+    (card/update-cards! (mapv (fn [id] {:id id :archived false}) (mapv :id (dashboards.db/cards-to-set-archived (vec ids) false))))))
 
 (defn archive-internal-dashboard-questions!
   "Archives the dashboard questions of the Dashboard `dashboard-id`, which are internal to it and not displayed as part of a
   collection, that no card of `new-cards`, the dashcards saved, names, which come after the dashcards that named them."
   [dashboard-id new-cards]
   (when-let [ids (seq (questions-to-archive dashboard-id new-cards))]
-    (card/update-cards! (mapv :id (dashboards.db/cards-to-set-archived (vec ids) true)) {:archived true})))
+    (card/update-cards! (mapv (fn [id] {:id id :archived true}) (mapv :id (dashboards.db/cards-to-set-archived (vec ids) true))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

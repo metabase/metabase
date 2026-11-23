@@ -221,7 +221,7 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
                                                 (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
-          (field-values/delete-field-values-for-tables! [table-id]))
+          (field-values/delete-field-values! (field-values/ids-of-tables [table-id])))
         (is (contains? @deleted fv-id))))))
 
 (deftest bulk-discard-values-test

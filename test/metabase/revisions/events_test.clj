@@ -23,15 +23,15 @@
         (testing "the insert records a creation"
           (is (=? [{:is_creation true :user_id (mt/user->id :crowberto)}] (revisions-of "Card" card-id))))
         (testing "an update records a revision"
-          (card/update-cards! [card-id] {:name "renamed"})
+          (card/update-cards! [{:id card-id :name "renamed"}])
           (is (=? [{:is_creation true} {:is_creation false :object {:name "renamed"}}] (revisions-of "Card" card-id))))
         (testing "an update of what revisions leave out records none"
-          (card/update-cards! [card-id] {:collection_position 3})
+          (card/update-cards! [{:id card-id :collection_position 3}])
           (is (= 2 (count (revisions-of "Card" card-id)))))))))
 
 (deftest no-user-records-nothing-test
   (mt/with-temp [:model/Card {card-id :id} {}]
-    (card/update-cards! [card-id] {:name "renamed"})
+    (card/update-cards! [{:id card-id :name "renamed"}])
     (is (empty? (revisions-of "Card" card-id)))))
 
 (deftest dashboard-writes-are-one-revision-test
@@ -51,7 +51,7 @@
 (deftest segment-update-message-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment {segment-id :id} {}]
-      (segment/update-segments! [segment-id] {:name "renamed"} {:context {:revision-message "why"}})
+      (segment/update-segments! [{:id segment-id :name "renamed"}] {:context {:revision-message "why"}})
       (is (=? {:message "why"} (last (revisions-of "Segment" segment-id)))))))
 
 (defn- last-object [model model-id]
@@ -72,7 +72,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card {card-id :id} {:name "Card"}]
       (let [mp (mt/metadata-provider)]
-        (card/update-cards! [card-id] {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :users)))}))
+        (card/update-cards! [{:id card-id :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :users)))}]))
       (testing "the revision of a change of the query holds the columns the model derives from it"
         (is (=? {:table_id (mt/id :users) :database_id (mt/id) :query_type :query}
                 (last-object "Card" card-id)))))))
@@ -131,7 +131,7 @@
                                          (repeatedly n #(mt/with-temp-defaults :model/Dashboard))
                                          (fn [ids]
                                            (reset! dashboard-ids ids)
-                                           (dashboard/update-dashboards! ids {:description "Changed"}))
+                                           (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Changed"}) ids)))
                                          #(mt/with-current-user (mt/user->id :crowberto)
                                             (u/prog1 (%)
                                               (is (= (count @dashboard-ids)

@@ -540,7 +540,7 @@
             (load-dataset-data-if-needed! driver dbdef)
             ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
             ;; need to go thru this again.
-            (database/update-databases! [(u/the-id existing-database)] {:created_at (t/offset-date-time)})))
+            (database/update-databases! [{:id (u/the-id existing-database) :created_at (t/offset-date-time)}])))
         (finally
           (.. lock writeLock unlock))))))
 

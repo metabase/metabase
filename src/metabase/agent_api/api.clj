@@ -920,7 +920,7 @@
        (select-keys card-before-update [:collection_id :collection_position])
        (select-keys card-updates [:collection_id :collection_position]))
       (queries.card/place-updated-dashboard-question! card-before-update card-updates false)
-      (queries.card/update-cards! [id] (queries.card/card-changes card-updates)))
+      (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id id)]))
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request

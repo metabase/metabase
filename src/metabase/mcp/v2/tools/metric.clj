@@ -206,7 +206,7 @@
        (select-keys card-before [:collection_id :collection_position])
        (select-keys card-updates [:collection_id :collection_position]))
       (queries.card/place-updated-dashboard-question! card-before card-updates false)
-      (queries.card/update-cards! [card-id] (queries.card/card-changes card-updates)))
+      (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id card-id)]))
     (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------

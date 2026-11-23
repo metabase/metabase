@@ -17,7 +17,7 @@
                              "auth-identity-id"       auth-identity.db/auth-identity-id
                              "auth-identity-expiry"   auth-identity.db/auth-identity-expiry
                              "auth-identity-exists?"  auth-identity.db/auth-identity-exists?
-                             "delete-auth-identities!" auth-identity.db/delete-auth-identities!}]
+                             "auth-identity-ids"      auth-identity.db/auth-identity-ids}]
           (testing fn-name
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
                                   (f user-id [:like "%"])))))
@@ -40,9 +40,11 @@
       (is (false? (auth-identity.db/auth-identity-exists? user-id "password"))))
     (testing "a SQL-shaped provider is compared as a string, matching nothing"
       (is (false? (auth-identity.db/auth-identity-exists? user-id "google' OR '1'='1"))))
-    (testing "delete removes only the given user's identity at the given provider"
-      (is (= 0 (auth-identity.db/delete-auth-identities! user-id "password")))
-      (is (= 1 (auth-identity.db/delete-auth-identities! user-id "google")))
+    (testing "id read finds only the given user's identity at the given provider"
+      (is (= [] (auth-identity.db/auth-identity-ids user-id "password")))
+      (is (= [ai-id] (auth-identity.db/auth-identity-ids user-id "google"))))
+    (testing "delete removes only the identities with the given ids"
+      (is (= 1 (auth-identity.db/delete-auth-identities! [ai-id])))
       (is (t2/exists? :model/AuthIdentity :user_id other-id :provider "google")))
     (testing "an id-only lookup still finds the user"
       (is (true? (auth-identity.db/user-active? user-id))))))

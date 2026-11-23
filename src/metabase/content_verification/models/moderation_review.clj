@@ -10,7 +10,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -104,8 +103,7 @@
         (events/publish-event! :event/moderation-review-update
                                (events/update-event (m/index-by :id superseded)
                                                     (mapv (fn [review] {:id (:id review) :most_recent false}) superseded)))
-        (events/publish-event! :event/moderation-review-delete {:changes (u.events/delete-changes beyond)
-                            :user-id (mi/current-user-id)})
+        (events/publish-event! :event/moderation-review-delete (events/delete-event beyond))
         (when (seq beyond)
           (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
         reviews))))

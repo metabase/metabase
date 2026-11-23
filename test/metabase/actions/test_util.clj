@@ -15,7 +15,6 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.models.interface :as mi]
    [metabase.queries.models.card :as card]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
@@ -25,7 +24,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
@@ -107,7 +105,7 @@
           (when-let [{driver :engine, db-id :id} @db]
             (tx/destroy-db! driver dataset-definition)
             (when-let [database (t2/select-one :model/Database :id db-id)]
-              (events/publish-event! :event/database-delete {:changes (u.events/delete-changes [database]) :user-id (mi/current-user-id)})
+              (events/publish-event! :event/database-delete (events/delete-event [database]))
               (t2/delete! :model/Database :id db-id))))))))
 
 (defmacro with-actions-test-data

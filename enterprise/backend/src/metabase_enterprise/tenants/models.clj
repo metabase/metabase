@@ -4,6 +4,7 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
@@ -14,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -108,66 +108,109 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- check-new-tenants-free
+  "Throws a 400 unless the Tenant `rows` satisfy these rules:
+
+  - no existing Tenant has the name or the slug of a row"
+  [rows]
+  (when (tenants.db/tenant-name-or-slug-exists? (mapv :name rows) (mapv :slug rows))
+    (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
+
+(defn- insert-tenants!
+  "Insert the Tenant `rows`, each with a new Collection of its own, and return them in order."
+  [rows]
+  (let [collections (collection/create-collections!
+                     (for [{tenant-name :name} rows]
+                       {:type      collection/tenant-specific-root-collection-type
+                        :name      (format "Tenant Collection: %s" tenant-name)
+                        :namespace :tenant-specific}))]
+    (tenants.db/insert-tenants! (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections))))
+
 (mu/defn create-tenants! :- [:sequential ::tenants.schema/tenant]
-  "Insert the Tenant `rows`, each with a new Collection of its own, and return them in order, publishing the event of
-  the write; the name or slug of an existing Tenant is a 400."
+  "Insert the Tenant `rows`, each with a new Collection of its own, in one transaction and return them in order,
+  publishing their create event; the name or slug of an existing Tenant is a 400."
   [rows :- [:sequential ::tenants.schema/tenant.create]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (when (tenants.db/tenant-name-or-slug-exists? (mapv :name rows) (mapv :slug rows))
-        (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
-      (let [collections (collection/create-collections!
-                         (for [{tenant-name :name} rows]
-                           {:type      collection/tenant-specific-root-collection-type
-                            :name      (format "Tenant Collection: %s" tenant-name)
-                            :namespace :tenant-specific}))]
-        (u/prog1 (tenants.db/insert-tenants! (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections))
-          (events/publish-event! :event/tenant-create (events/create-event <>)))))))
+      (let [created (into []
+                          (mapcat (fn [batch]
+                                    (check-new-tenants-free batch)
+                                    (insert-tenants! batch)))
+                          (partition-all app-db/create-partition-size rows))]
+        (events/publish-event! :event/tenant-create (events/create-event created))
+        created))))
 
-(defn- check-names-free
-  "Throws a 400 unless `changes` to the Tenants with `ids`, whose stored rows `stored` holds by id, satisfy these rules,
-  in the order of `ids`:
+(defn- check-new-names-distinct
+  "Throws a 400 unless the rows of `updates` satisfy these rules:
 
-  - a rename does not take the name of another Tenant
-  - no second Tenant of the call is renamed"
-  [ids stored changes]
-  (when (contains? changes :name)
-    (reduce (fn [renamed? id]
-              (let [renames? (not= (:name changes) (:name (stored id)))]
-                (when (and renames? (or renamed? (tenants.db/other-tenant-named? (:name changes) id)))
-                  (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
-                (or renamed? (and renames? (contains? stored id)))))
-            false
-            ids)))
+  - no two rows set the same name, ignoring case"
+  [updates]
+  (let [new-names (into [] (comp (keep :name) (map u/lower-case-en)) updates)]
+    (when (not= (count new-names) (count (distinct new-names)))
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
+
+(defn- check-renames-free
+  "Throws a 400 unless every row of `updates`, whose stored Tenants `stored` holds by id, satisfies these rules:
+
+  - a rename does not take the name of another Tenant"
+  [stored updates]
+  (when-let [renames (not-empty (into []
+                                      (comp (filter #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))))
+                                            (map #(select-keys % [:id :name])))
+                                      updates))]
+    (when (tenants.db/other-tenants-named? renames)
+      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
+
+(defn- write-tenant-updates!
+  "Write `updates` over the `stored` Tenants, one statement per distinct change, and return each row with its stored
+  Tenant."
+  [stored updates]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
+    (tenants.db/update-tenants! ids changes))
+  (mapv (fn [row] [(stored (:id row)) row]) updates))
+
+(defn- update-tenant-batch!
+  "Check and apply the `batch` of updates whose Tenants exist, returning what [[write-tenant-updates!]] returns."
+  [batch]
+  (let [stored  (u/index-by :id (tenants.db/tenants-by-ids (mapv :id batch)))
+        updates (filterv (comp stored :id) batch)]
+    (check-renames-free stored updates)
+    (write-tenant-updates! stored updates)))
 
 (defn- cascade-activation!
-  "Deactivate the active Users of those of the Tenants with `ids` whose stored active flag in `stored` differs from
-  `active`, when it is false, or reactivate the Users deactivated with them, when it is true; nil `active` changes
-  nothing."
-  [ids stored active]
-  (when-let [flipped (when (some? active)
-                       (not-empty (filterv #(not= active (:is_active (stored %))) ids)))]
-    (if active
-      (user/update-users! (user/deactivated-with-tenant-user-ids flipped)
-                          {:is_active true :deactivated_with_tenant nil})
-      (user/update-users! (user/active-user-ids-of-tenant flipped)
-                          {:is_active false :deactivated_with_tenant true}))))
+  "Deactivate the active Users of the Tenants whose row of `written`, pairs of a stored Tenant and its update row, sets
+  `is_active` false over a stored true, and reactivate the Users deactivated with those that it sets true over a stored
+  false, in one write."
+  [written]
+  (let [flipped     (fn [active]
+                      (not-empty (into [] (comp (filter (fn [[stored row]]
+                                                          (and (= active (:is_active row))
+                                                               (not= active (:is_active stored)))))
+                                                (map (comp :id first)))
+                                       written)))
+        activated   (flipped true)
+        deactivated (flipped false)
+        user-rows   (concat (for [id (some-> activated user/deactivated-with-tenant-user-ids)]
+                              {:id id :is_active true :deactivated_with_tenant nil})
+                            (for [id (some-> deactivated user/active-user-ids-of-tenant)]
+                              {:id id :is_active false :deactivated_with_tenant true}))]
+    (when (seq user-rows)
+      (user/update-users! (vec user-rows)))))
 
 (mu/defn update-tenants! :- :nil
-  "Apply `changes` to the Tenants with `ids`, publishing the event of the write; the name of another Tenant is a 400,
-  deactivating a Tenant deactivates its active Users, and activating it reactivates the Users deactivated with it."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::tenants.schema/tenant.update]
+  "Apply `updates`, each the id of a Tenant and the columns to set, in one transaction, publishing their update event;
+  the name of another Tenant, or a name two rows set, is a 400, deactivating a Tenant deactivates its active Users, and
+  activating it reactivates the Users deactivated with it."
+  [updates :- [:sequential ::tenants.schema/tenant.update]]
   (t2/with-transaction [_conn]
-    (let [ids    (into [] (distinct) ids)
-          stored (if (seq ids) (u/index-by :id (tenants.db/tenants-by-ids ids)) {})]
-      (check-names-free ids stored changes)
-      (when-let [existing (not-empty (filterv stored ids))]
-        (tenants.db/update-tenants! existing changes)
+    (check-new-names-distinct updates)
+    (let [written (into [] (mapcat update-tenant-batch!) (partition-all app-db/update-partition-size updates))]
+      (when (seq written)
         (events/publish-event! :event/tenant-update
-                               (events/update-event stored (mapv #(assoc changes :id %) existing)))
-        (cascade-activation! existing stored (:is_active changes)))))
+                               (events/update-event (into {} (map (fn [[stored _]] [(:id stored) stored])) written)
+                                                    (mapv second written)))
+        (cascade-activation! written))))
   nil)
 
 (defenterprise deactivate-tenants!
@@ -182,8 +225,8 @@
       (events/publish-event! :event/tenant-update
                              (events/update-event (u/index-by :id tenants)
                                                   (mapv #(hash-map :id (:id %) :is_active false) tenants)))
-      (user/update-users! (user/active-tenant-user-ids)
-                          {:is_active false :deactivated_with_tenant true}))))
+      (user/update-users! (for [id (user/active-tenant-user-ids)]
+                            {:id id :is_active false :deactivated_with_tenant true})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

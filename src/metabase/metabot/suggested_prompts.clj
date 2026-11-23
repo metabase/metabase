@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.models.metabot-prompt :as metabot-prompt]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
@@ -104,4 +105,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (metabot-prompt/delete-metabot-prompts-for-metabots! [metabot-id]))
+  (metabot-prompt/delete-metabot-prompts! (metabot.db/prompt-ids-for-metabots [metabot-id])))

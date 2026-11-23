@@ -84,7 +84,7 @@
   [& colls]
   (mt/with-test-user :crowberto
     (doseq [coll colls]
-      (collection/update-collections! [(:id coll)] {:archived true} nil))))
+      (collection/update-collections! [{:id (:id coll) :archived true}] nil))))
 
 (def ^:private scenarios
   "The archives and restores that take down something a sandbox is built out of: a name, whether the scenario starts from

@@ -4,7 +4,6 @@
    on the `-rest` module."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -203,7 +202,7 @@
 (mr/def ::update-body
   "What updates a Transform: the columns to change and the `:tag_ids` to link."
   [:merge
-   (mut/dissoc ::transforms.schema/transform.update :id)
+   ::transforms.schema/transform.changes
    [:map {:closed true}
     [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 

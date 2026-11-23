@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
@@ -75,15 +76,23 @@
   [rows :- [:sequential ::explorations.schema/exploration-query.create]]
   (explorations.db/insert-queries! rows))
 
+(defn- write-query-updates!
+  "Writes `rows`, updates of ExplorationQueries, with one statement for each distinct set of columns, and returns the
+  number updated."
+  [rows]
+  (transduce (map (fn [[changes group]] (explorations.db/update-queries! (mapv :id group) changes)))
+             +
+             0
+             (group-by #(dissoc % :id) rows)))
+
 (mu/defn update-queries! :- :int
-  "Apply `changes` to the ExplorationQueries with `ids` and return the number updated."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:and
-               ::explorations.schema/exploration-query.update
-               ::explorations.schema/exploration-query.update.stamped-together]]
-  (if (seq ids)
-    (explorations.db/update-queries! ids changes)
-    0))
+  "Apply `updates`, each the `:id` of an ExplorationQuery with the columns to give it, in one transaction, and return the
+  number updated."
+  [updates :- [:sequential [:and
+                            ::explorations.schema/exploration-query.update-row
+                            ::explorations.schema/exploration-query.update.stamped-together]]]
+  (t2/with-transaction [_conn]
+    (transduce (map write-query-updates!) + 0 (partition-all app-db/update-partition-size updates))))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number

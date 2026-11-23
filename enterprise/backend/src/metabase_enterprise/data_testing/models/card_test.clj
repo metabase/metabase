@@ -133,23 +133,13 @@
   (data-testing.models/create-saved-tests! :model/CardTest rows))
 
 (mu/defn update-card-tests! :- :nil
-  "Apply the `changes` to the CardTests with `ids`, which the column transforms of the model normalize and validate,
-  publishing their update event."
-  ([ids     :- [:sequential ms/PositiveInt]
-    changes :- ::data-testing.schema/card-test.update]
-   (update-card-tests! ids changes nil))
-  ([ids     :- [:sequential ms/PositiveInt]
-    changes :- ::data-testing.schema/card-test.update
-    opts    :- ::data-testing.schema/write-opts]
-   (data-testing.models/update-saved-tests! :model/CardTest ids changes opts)))
-
-(mu/defn update-card-tests-for-import! :- :nil
-  "Apply each of `rows`, the id of a CardTest and the columns to change, as an import writes it, one row at a time. An
-  import runs rows with different values, which one change for all cannot express."
-  [rows :- [:sequential ::data-testing.schema/card-test.import-row]]
-  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
-    (update-card-tests! (mapv :id rows) changes {:writer :import}))
-  nil)
+  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms of
+  the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
+   (update-card-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]
+    opts :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
 
 (mu/defn delete-card-tests! :- :nil
   "Delete the CardTests with `ids`."
@@ -160,7 +150,7 @@
   "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
   [card-ids]
-  (data-testing.models/delete-saved-tests-for-subjects! :card :model/CardTest :card_id (vec card-ids)))
+  (delete-card-tests! (data-testing.db/saved-test-ids-of-subjects :model/CardTest :card_id (vec card-ids))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -169,7 +159,7 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (update-card-tests! [id] snapshot {:writer :revert}))
+  (update-card-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -188,7 +178,7 @@
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
    :insert!             create-card-tests!
-   :update!             update-card-tests-for-import!
+   :update!             #(update-card-tests! % {:writer :import})
    :delete!             delete-card-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)

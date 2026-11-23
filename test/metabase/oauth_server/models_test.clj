@@ -2,10 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.test-util :as events.tu]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
    [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
    [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/User {user-1 :id} {}
@@ -17,8 +20,29 @@
     (let [user-ids [user-1 user-2 user-3 user-4 user-5 user-6]]
       (doseq [write! [oauth-access-token/revoke-oauth-access-tokens-for-users!
                       oauth-refresh-token/revoke-oauth-refresh-tokens-for-users!
-                      oauth-authorization-code/delete-oauth-authorization-codes-for-users!]]
+                      (comp oauth-authorization-code/delete-oauth-authorization-codes!
+                            oauth-server.db/authorization-code-ids-of-users)]]
         (testing (str write!)
           (let [counted (fn [n] (events.tu/statement-count! #(write! (vec (take n user-ids)))))]
             (counted 1)
             (is (= (counted 2) (counted 6)))))))))
+
+(deftest delete-oauth-authorization-codes-removes-every-code-of-users-test
+  (mt/with-temp [:model/User {user-1 :id} {}
+                 :model/User {user-2 :id} {}
+                 :model/User {other :id}  {}]
+    (let [code! (fn [user-id]
+                  (oauth-authorization-code/create-oauth-authorization-code!
+                   {:code         (str (random-uuid))
+                    :user_id      user-id
+                    :client_id    "test-client"
+                    :redirect_uri "https://example.com/callback"
+                    :scope        []
+                    :nonce        nil
+                    :expiry       (+ (System/currentTimeMillis) 60000)}))]
+      (doseq [user-id [user-1 user-1 user-2 other]]
+        (code! user-id))
+      (is (= 3 (oauth-authorization-code/delete-oauth-authorization-codes!
+                (oauth-server.db/authorization-code-ids-of-users [user-1 user-2]))))
+      (is (empty? (oauth-server.db/authorization-code-ids-of-users [user-1 user-2])))
+      (is (= 1 (count (oauth-server.db/authorization-code-ids-of-users [other])))))))

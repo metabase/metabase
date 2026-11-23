@@ -23,7 +23,7 @@
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
-    (field-values/delete-field-values-for-fields! [(u/the-id field)])
+    (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
     ::field-values/fv-deleted))
 
 (defn- result->delta [result]
@@ -277,7 +277,7 @@
     (let [types        field-values/advanced-field-values-types
           max-age-days (t/as field-values/advanced-field-values-max-age :days)
           rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
-      (field-values/delete-field-values-for-cleanup! (:id field) types max-age-days)
+      (field-values/delete-field-values! (field-values/ids-older-than (:id field) types max-age-days))
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

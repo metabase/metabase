@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
@@ -27,7 +28,7 @@
       (do
         (log/infof "Trimming metabot_conversation rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (metabot-conversation/delete-metabot-conversations-for-cleanup! cutoff)]
+              deleted (metabot-conversation/delete-metabot-conversations! (metabot.db/conversation-ids-created-before cutoff))]
           (log/infof "Metabot conversation cleanup complete. Deleted %d conversations (messages/feedback removed by ON DELETE CASCADE)."
                      (or deleted 0)))))))
 

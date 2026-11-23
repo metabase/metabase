@@ -81,12 +81,12 @@
   (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
 (mu/defn update-test-suites!
-  "Apply `changes` to the TestSuites of `stored`, a map from id to the suite as read, with one statement for the rows that
-  get the same effective changes, which keeps the rows that already hold some of the values from making Toucan run one
-  statement per row."
-  [stored  :- [:map-of ms/PositiveInt :map]
-   changes :- ::data-testing.schema/test-suite.update]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+  "Apply to each TestSuite of `stored`, a map from id to the suite as read, its changes in `id->changes`, with one
+  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
+  from making Toucan run one statement per row."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/test-suite.changes]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
     (t2/update! :model/TestSuite :id [:in [:auto/param ids]] changes))
   nil)
 
@@ -207,13 +207,13 @@
   (t2/select model :id [:in [:auto/param ids]]))
 
 (mu/defn update-saved-tests! :- :nil
-  "Apply `changes` to the tests of `model` of `stored`, a map from id to the test as read, with one statement for the
-  rows that get the same effective changes, which keeps the rows that already hold some of the values from making
-  Toucan run one statement per row."
-  [model   :- saved-test-model
-   stored  :- [:map-of ms/PositiveInt :map]
-   changes :- ::data-testing.schema/saved-test.update]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+  "Apply to each test of `model` of `stored`, a map from id to the test as read, its changes in `id->changes`, with one
+  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
+  from making Toucan run one statement per row."
+  [model       :- saved-test-model
+   stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/saved-test.changes]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
     (t2/update! model :id [:in [:auto/param ids]] changes))
   nil)
 
@@ -223,12 +223,14 @@
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select model :id [:in [:auto/param ids]]))
 
-(mu/defn saved-test-keys-of-subjects :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
-  "The tests of `model` whose `subject-column` holds one of `subject-ids`."
+(mu/defn saved-test-ids-of-subjects :- [:sequential ms/PositiveInt]
+  "The ids of the tests of `model` whose `subject-column` holds one of `subject-ids`."
   [model          :- saved-test-model
    subject-column :- :keyword
-   subject-ids    :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select model subject-column [:in [:auto/param subject-ids]]))
+   subject-ids    :- [:sequential ms/PositiveInt]]
+  (if (seq subject-ids)
+    (vec (t2/select-pks-vec model subject-column [:in [:auto/param subject-ids]]))
+    []))
 
 (mu/defn delete-saved-tests! :- :nil
   "Delete the tests of `model` with `ids`."

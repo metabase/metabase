@@ -70,8 +70,8 @@
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                            (data-app/update-data-apps! [id] {:resource_collection_id taken-id}))))
-    (data-app/update-data-apps! [id] {:resource_collection_id other-id})
+                            (data-app/update-data-apps! [{:id id :resource_collection_id taken-id}]))))
+    (data-app/update-data-apps! [{:id id :resource_collection_id other-id}])
     (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
@@ -222,7 +222,7 @@
         (let [[warm-up & ids] @created
               update!         (fn [ids]
                                 (events.tu/statement-count!
-                                 (fn [] (data-app/update-data-apps! (vec ids) {:description "same"}))))]
+                                 (fn [] (data-app/update-data-apps! (mapv (fn [id] {:id id :description "same"}) (vec ids))))))]
           (update! [warm-up])
           (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
       (testing "deleting data apps that have no collection"

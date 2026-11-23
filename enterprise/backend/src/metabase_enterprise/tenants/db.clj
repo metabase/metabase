@@ -2,11 +2,10 @@
   "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -71,11 +70,13 @@
                                      [:in :slug slugs]
                                      [:in :name tenant-names]]}))
 
-(mu/defn other-tenant-named?
-  "Whether a Tenant other than `tenant-id` is named `tenant-name`."
-  [tenant-name :- :string
-   tenant-id   :- ms/PositiveInt]
-  (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
+(mu/defn other-tenants-named?
+  "Whether, for one of `renames`, each an `:id` and a `:name`, a Tenant other than that id has that name."
+  [renames :- [:sequential {:min 1} [:map {:closed true} [:id ms/PositiveInt] [:name :string]]]]
+  (t2/exists? :model/Tenant {:where (into [:or]
+                                          (map (fn [{id :id tenant-name :name}]
+                                                 [:and [:= :name [:auto/param tenant-name]] [:not= :id [:auto/param id]]]))
+                                          renames)}))
 
 (mr/def ::tenant.insert
   [:merge
@@ -94,13 +95,10 @@
   (t2/select :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
 
 (mu/defn update-tenants!
-  "Apply `changes` to the Tenants with `tenant-ids`, one statement for each set of the changes that differ from the
-  stored rows, so that rows already holding one of the values do not make Toucan update row by row."
+  "Apply `changes` to the Tenants with `tenant-ids` in one statement."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- ::tenants.schema/tenant.update]
-  (let [stored (u/index-by :id (tenants-by-ids tenant-ids))]
-    (doseq [[changes ids] (mi/group-ids-by-changes stored (map #(assoc changes :id %) tenant-ids))]
-      (t2/update! :model/Tenant :id [:in [:auto/param ids]] changes))))
+   changes    :- (mut/dissoc ::tenants.schema/tenant.update :id)]
+  (t2/update! :model/Tenant :id [:in [:auto/param (vec tenant-ids)]] changes))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."

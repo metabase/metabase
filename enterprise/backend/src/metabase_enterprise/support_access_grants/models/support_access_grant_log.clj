@@ -35,7 +35,7 @@
   []
   (if-let [user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
     (do
-      (user/update-users! [(:id user)] {:is_active true :is_superuser true})
+      (user/update-users! [{:id (:id user) :is_active true :is_superuser true}])
       (assoc user :is_active true :is_superuser true))
     (first (user/create-users! [{:email        (sag.settings/support-access-grant-email)
                                  :first_name   (sag.settings/support-access-grant-first-name)
@@ -60,13 +60,13 @@
   [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
-      (user/update-users! [support-user-id] {:is_superuser false})
+      (user/update-users! [{:id support-user-id :is_superuser false}])
       (catch Exception e
         ;; If the support user is somehow the last admin, we can't remove superuser.
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (models.auth-identity/update-auth-identities! auth-identity-ids {:expires_at ended-at}))
+      (models.auth-identity/update-auth-identities! (mapv #(hash-map :id % :expires_at ended-at) auth-identity-ids)))
     (models.session/end-sessions-for-users! [support-user-id] "support-grant-revoked" ended-by)))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------

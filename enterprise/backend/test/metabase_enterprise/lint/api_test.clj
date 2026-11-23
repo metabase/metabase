@@ -43,7 +43,7 @@
 (defn- update-card-query!
   [card query]
   (lib-be/with-metadata-provider-cache
-    (card/update-cards! [(:id card)] {:dataset_query query})))
+    (card/update-cards! [{:id (:id card) :dataset_query query}])))
 
 (defn- do-with-broken-model!
   "Call `f` with a model of the orders table and what `create-dependents!` builds on it, once the model is pointed at
@@ -166,7 +166,7 @@
        [(create-card-filtering-total! user model-card "Lint archived")
         (create-card-filtering-total! user model-card "Lint internal")])
      (fn [_model-card [archived-card internal-card]]
-       (card/update-cards! [(:id archived-card)] {:archived true})
+       (card/update-cards! [{:id (:id archived-card) :archived true}])
        (t2/update! :model/Card :id (:id internal-card) {:creator_id config/internal-mb-user-id})
        (let [report (lint-report)]
          (doseq [card [archived-card internal-card]]

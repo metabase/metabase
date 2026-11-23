@@ -83,7 +83,7 @@
       (is (not (t2/exists? :model/Timeline :name "T" :collection_id snippets-id))))
     (testing "a Timeline cannot move to a Collection of another namespace"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (timeline/update-timelines! [timeline-id] {:collection_id snippets-id} nil)))
+                            (timeline/update-timelines! [{:id timeline-id :collection_id snippets-id}] nil)))
       (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
 
 (deftest update-check-test
@@ -123,7 +123,7 @@
                                                     :timestamp (java.time.OffsetDateTime/now) :timezone "UTC" :time_matters true}))
                 (try
                   (t2/with-call-count [call-count]
-                    (timeline/update-timelines! (mapv :id timelines) {:archived true} nil)
+                    (timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) (mapv :id timelines)) nil)
                     (call-count))
                   (finally
                     (t2/delete! :model/Timeline :id [:in (map :id timelines)]))))))]
@@ -137,9 +137,9 @@
 (deftest archiving-timeline-archives-its-events-test
   (mt/with-temp [:model/Timeline      {timeline-id :id} {}
                  :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
-    (timeline/update-timelines! [timeline-id] {:archived true} nil)
+    (timeline/update-timelines! [{:id timeline-id :archived true}] nil)
     (is (true? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))
-    (timeline/update-timelines! [timeline-id] {:archived false} nil)
+    (timeline/update-timelines! [{:id timeline-id :archived false}] nil)
     (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))))
 
 (deftest create-timelines-with-different-columns-test
@@ -185,22 +185,22 @@
         (let [archive! (fn [n]
                          (let [ids (fresh! n)]
                            (events.tu/statement-count!
-                            #(timeline/update-timelines! ids {:archived true} nil))))]
+                            #(timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids) nil))))]
           (archive! 2)
           (is (= (archive! 2) (archive! 6)))))
       (testing "restoring timelines, some already live"
         (let [restore! (fn [n]
                          (let [ids (fresh! n archived-in-live)]
                            (events.tu/statement-count!
-                            #(timeline/update-timelines! ids {:archived false} nil))))]
+                            #(timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids) nil))))]
           (restore! 2)
           (is (= (restore! 2) (restore! 6)))))
       (testing "moving timelines, some already in the Collection"
         (let [move! (fn [n]
                       (let [ids (fresh! n live-rows)]
-                        (timeline/update-timelines! (take-nth 2 ids) {:collection_id other} nil)
+                        (timeline/update-timelines! (mapv (fn [id] {:id id :collection_id other}) (take-nth 2 ids)) nil)
                         (events.tu/statement-count!
-                         #(timeline/update-timelines! ids {:collection_id other} nil))))]
+                         #(timeline/update-timelines! (mapv (fn [id] {:id id :collection_id other}) ids) nil))))]
           (move! 2)
           (is (= (move! 2) (move! 6)))))
       (testing "deleting timelines"
@@ -219,9 +219,9 @@
           flags    (fn [ids] (mapv #(t2/select-one-fn :archived_directly :model/Timeline :id %) ids))]
       (testing "through the write function"
         (let [ids (make! live 2)]
-          (timeline/update-timelines! ids {:archived true} nil)
+          (timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids) nil)
           (is (= [true true] (flags ids)))
-          (timeline/update-timelines! ids {:archived false} nil)
+          (timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids) nil)
           (is (= [false false] (flags ids)))))
       (testing "through a plain update, a Timeline follows the Collection it is in"
         (let [in-live (make! live 1)
@@ -237,7 +237,7 @@
         (let [ids       (make! live 1)
               published (atom [])]
           (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-            (timeline/update-timelines! ids {:archived true} nil))
+            (timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids) nil))
           (is (= [true] (for [[topic event] @published
                               :when         (= :event/timeline-update topic)
                               change        (:changes event)]
@@ -245,9 +245,9 @@
       (testing "restoring rows of mixed stored state costs the same statements at two and six rows"
         (let [restore! (fn [n]
                          (let [ids (make! live n)]
-                           (timeline/update-timelines! ids {:archived true} nil)
+                           (timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids) nil)
                            (t2/update! :model/Timeline :id (first ids) {:archived_directly false})
                            (events.tu/statement-count!
-                            #(timeline/update-timelines! ids {:archived false} nil))))]
+                            #(timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids) nil))))]
           (restore! 2)
           (is (= (restore! 2) (restore! 6))))))))

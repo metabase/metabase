@@ -45,7 +45,7 @@
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
   (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
-  (models.transform-tag/update-transform-tags! [tag-id] {:name name})
+  (models.transform-tag/update-transform-tags! [{:id tag-id :name name}])
   (transforms-rest.db/tag tag-id))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil

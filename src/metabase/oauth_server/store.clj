@@ -141,7 +141,7 @@
               merged          (-> (merge existing-config updated-config)
                                   (assoc :client-id client-id))
               row             (client-config->db-row merged)]
-          (oauth-client/update-oauth-clients! [(:id existing)] row)
+          (oauth-client/update-oauth-clients! [(assoc row :id (:id existing))])
           merged)))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
@@ -167,13 +167,13 @@
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (oauth-authorization-code/delete-oauth-authorization-code! code)
+    (oauth-authorization-code/delete-oauth-authorization-codes! (oauth-server.db/authorization-code-ids-with-code code))
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
       (when-let [row (oauth-server.db/lock-authorization-code code)]
-        (oauth-authorization-code/delete-oauth-authorization-code! code)
+        (oauth-authorization-code/delete-oauth-authorization-codes! [(:id row)])
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------

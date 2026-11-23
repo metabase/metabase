@@ -332,7 +332,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (pos? (user/update-users! [user-id] {:is_active false}))))
+             (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -344,10 +344,10 @@
                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (pos? (user/update-users! [user-id] {:is_active false})))
+               (is (pos? (user/update-users! [{:id user-id :is_active false}])))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (user/update-users! [user-2-id] {:is_active false}))
+               (is (user/update-users! [{:id user-2-id :is_active false}]))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
@@ -360,7 +360,7 @@
                           :model/PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
                           :model/PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
-               (is (user/update-users! [user-id] {:is_active false})))
+               (is (user/update-users! [{:id user-id :is_active false}])))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -370,7 +370,7 @@
                                                  :details      {:channel "#general"}
                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (pos? (user/update-users! [user-id] {:is_active false}))))
+               (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
@@ -379,7 +379,7 @@
            (fn [{:keys [archived? user-id pulse-channel-id]}]
              (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (pos? (user/update-users! [user-id] {:is_active false}))))
+               (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -389,7 +389,7 @@
                                                    :details      {:emails ["foo@bar.com"]}
                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (pos? (user/update-users! [user-id] {:is_active false}))))
+                 (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
 
@@ -404,11 +404,11 @@
           (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                  (pulse-channel-test/send-pulse-triggers pulse-id)))
           (testing "archived pulse will disable pulse channels and remove triggers"
-            (models.pulse/update-pulses! [pulse-id] {:archived true})
+            (models.pulse/update-pulses! [{:id pulse-id :archived true}])
             (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
           (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-            (models.pulse/update-pulses! [pulse-id] {:archived false})
+            (models.pulse/update-pulses! [{:id pulse-id :archived false}])
             (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
             (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                    (pulse-channel-test/send-pulse-triggers pulse-id))))
@@ -534,7 +534,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
+             (models.pulse/update-pulses! [{:id card-id :collection_id collection-id}])))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -773,7 +773,7 @@
     (testing "the update event of the write function carries the stored value, never an expression"
       (let [published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
-          (models.pulse/update-pulses! [pulse-id] {:archived true}))
+          (models.pulse/update-pulses! [{:id pulse-id :archived true}]))
         (is (= [[true]]
                (into [] (comp (filter (comp #{:event/pulse-update} first))
                               (map (comp #(mapv (comp :archived_directly :object) %) :changes second)))
@@ -824,8 +824,8 @@
        (testing "archiving and restoring Pulses, some already archived"
          (let [counted (fn [n archived?]
                          (let [ids (create! n)]
-                           (models.pulse/update-pulses! (vec (take-nth 2 ids)) {:archived archived?})
-                           (events.tu/statement-count! #(models.pulse/update-pulses! ids {:archived archived?}))))]
+                           (models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:archived archived?} :id row-id)) (vec (take-nth 2 ids))))
+                           (events.tu/statement-count! #(models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:archived archived?} :id row-id)) ids)))))]
            (counted 2 true)
            (is (= (counted 2 true) (counted 6 true)))
            (is (= (counted 2 false) (counted 6 false)))))
@@ -833,7 +833,7 @@
          (let [counted (fn [n]
                          (let [ids (create! n)]
                            (events.tu/statement-count!
-                            #(models.pulse/update-pulses! ids {:collection_id collection-1}))))]
+                            #(models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:collection_id collection-1} :id row-id)) ids)))))]
            (counted 2)
            (is (= (counted 2) (counted 6)))))
        (testing "deleting Pulses"

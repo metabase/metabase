@@ -203,7 +203,7 @@
       (testing "updating configs, half of them due at that time already"
         (let [next-run (t/offset-date-time 2030 1 1)
               now      (t/offset-date-time 2029 1 1)
-              update!  #(cache-config/update-cache-configs! % {:next_run_at next-run :invalidated_at now})
+              update!  #(cache-config/update-cache-configs! (mapv (fn [id] {:id id :next_run_at next-run :invalidated_at now}) %))
               counted  (fn [n]
                          (let [ids (create! n)]
                            (update! (take-nth 2 ids))

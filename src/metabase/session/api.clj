@@ -322,11 +322,11 @@
     (let [grant-ends-at (get-in auth-identity [:credentials :grant_ends_at])]
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
-          (models.auth-identity/update-auth-identities! [(:id auth-identity)]
-                                                        {:credentials {:token_hash    (u.password/hash-bcrypt token)
-                                                                       :expires_at    (t/plus (t/instant) (t/hours 48))
-                                                                       :grant_ends_at grant-ends-at
-                                                                       :consumed_at   nil}})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials {:token_hash    (u.password/hash-bcrypt token)
+                                                                        :expires_at    (t/plus (t/instant) (t/hours 48))
+                                                                        :grant_ends_at grant-ends-at
+                                                                        :consumed_at   nil}}])
           token)))))
 
 (defn- forgot-password-impl

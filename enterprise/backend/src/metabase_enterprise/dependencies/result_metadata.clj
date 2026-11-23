@@ -123,7 +123,7 @@
     (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
     (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
     (if (= state (dependencies.db/card-state card-id true))
-      (queries.card/update-cards! [card-id] {:result_metadata metadata :updated_at :updated_at} {:writer :sync})
+      (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}] {:writer :sync})
       (models.result-metadata-status/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!

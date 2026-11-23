@@ -27,7 +27,7 @@
         (testing "without a definition"
           (let [counted (fn [n]
                           (events.tu/statement-count!
-                           #(segment/update-segments! (vec (take n ids)) {:name (str "Renamed " n)})))]
+                           #(segment/update-segments! (mapv (fn [id] {:id id :name (str "Renamed " n)}) (vec (take n ids))))))]
             (counted 1)
             (is (= (counted 2) (counted 6)))))
         (testing "with a definition"
@@ -36,7 +36,7 @@
                           (let [definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                        (lib/> (lib.metadata/field mp (mt/id :orders :total)) total))]
                             (events.tu/statement-count!
-                             #(segment/update-segments! (vec (take n ids)) {:definition definition}))))]
+                             #(segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 1)
             (is (= (counted 2 2) (counted 6 3)))))
         (testing "with a definition on the table that some of the segments are already on"
@@ -47,11 +47,11 @@
                 on-venues (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                       (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))
                 counted   (fn [n total]
-                            (segment/update-segments! (vec (take n ids)) {:definition on-venues})
+                            (segment/update-segments! (mapv (fn [id] {:id id :definition on-venues}) (vec (take n ids))))
                             (let [definition (on-orders total)]
-                              (segment/update-segments! (vec (take-nth 2 (take n ids))) {:definition definition}))
+                              (segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (vec (take-nth 2 (take n ids))))))
                             (let [definition (on-orders (inc total))]
-                              (events.tu/statement-count! #(segment/update-segments! (vec (take n ids)) {:definition definition}))))]
+                              (events.tu/statement-count! #(segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 10)
             (is (= (counted 2 20) (counted 6 30)))
             (testing "every segment is on the table of its new definition"
@@ -69,7 +69,7 @@
         (testing "an update without a definition"
           (let [counted (fn [n]
                           (events.tu/statement-count!
-                           #(measure/update-measures! (vec (take n ids)) {:name (str "Renamed " n)})))]
+                           #(measure/update-measures! (mapv (fn [id] {:id id :name (str "Renamed " n)}) (vec (take n ids))))))]
             (counted 1)
             (is (= (counted 2) (counted 6)))))
         (testing "an update with a definition"
@@ -78,7 +78,7 @@
                 counted (fn [n column]
                           (let [definition (lib/aggregate orders (lib/sum (lib.metadata/field mp (mt/id :orders column))))]
                             (events.tu/statement-count!
-                             #(measure/update-measures! (vec (take n ids)) {:definition definition}))))]
+                             #(measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 :total)
             (is (= (counted 2 :subtotal) (counted 6 :tax)))))
         (testing "an update with a definition on the table that some of the measures are already on"
@@ -89,11 +89,11 @@
                 on-venues (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                          (lib/sum (lib.metadata/field mp (mt/id :venues :price))))
                 counted   (fn [n column]
-                            (measure/update-measures! (vec (take n ids)) {:definition on-venues})
+                            (measure/update-measures! (mapv (fn [id] {:id id :definition on-venues}) (vec (take n ids))))
                             (let [definition (on-orders :total)]
-                              (measure/update-measures! (vec (take-nth 2 (take n ids))) {:definition definition}))
+                              (measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (vec (take-nth 2 (take n ids))))))
                             (let [definition (on-orders column)]
-                              (events.tu/statement-count! #(measure/update-measures! (vec (take n ids)) {:definition definition}))))]
+                              (events.tu/statement-count! #(measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 :subtotal)
             (is (= (counted 2 :tax) (counted 6 :discount)))
             (testing "every measure is on the table of its new definition"
@@ -118,7 +118,7 @@
       (testing "a transform update"
         (let [counted (fn [n]
                         (events.tu/statement-count!
-                         #(transform/update-transforms! (take n [t1 t2 t3 t4 t5 t6]) {:description (str "Described " n)})))]
+                         #(transform/update-transforms! (mapv (fn [row-id] (assoc {:description (str "Described " n)} :id row-id)) (take n [t1 t2 t3 t4 t5 t6])))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
 

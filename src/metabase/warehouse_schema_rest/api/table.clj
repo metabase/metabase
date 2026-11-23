@@ -364,7 +364,7 @@
                     [:id ms/PositiveInt]]]
   (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
-    (field-values/delete-field-values-for-fields! (vec field-ids)))
+    (field-values/delete-field-values! (field-values/ids-of-fields (vec field-ids))))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -38,8 +38,9 @@
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 
 (mr/def ::tenant.update
-  "The changes an update applies to each of its Tenants: a new name, attributes, or active flag."
+  "What an update of a Tenant takes: its `:id` and a new name, attributes, or active flag."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:name       {:optional true} ::tenant.name]
    [:is_active  {:optional true} [:maybe :boolean]]
    [:attributes {:optional true} [:maybe ::tenant.attributes]]])

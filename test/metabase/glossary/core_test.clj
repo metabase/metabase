@@ -51,7 +51,7 @@
     (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "old"}]
       (let [{rows :result events :events} (with-captured-events!
                                             user-id
-                                            #(glossary/update-glossaries! [id] {:term "NRR" :definition "new"}))
+                                            #(glossary/update-glossaries! [{:id id :term "NRR" :definition "new"}]))
             entry                         (t2/select-one :model/Glossary :id id)]
         (testing "the row is updated and nothing is returned"
           (is (nil? rows))
@@ -67,7 +67,7 @@
       (is (= {:result nil :events []}
              (with-captured-events!
                user-id
-               #(glossary/update-glossaries! [Integer/MAX_VALUE] {:term "x" :definition "y"})))))))
+               #(glossary/update-glossaries! [{:id Integer/MAX_VALUE :term "x" :definition "y"}])))))))
 
 (deftest delete-entry-test
   (let [user-id (mt/user->id :rasta)]

@@ -124,10 +124,12 @@
   (t2/insert-returning-instances! :model/TableIndex rows))
 
 (mu/defn update-table-indexes!
-  "Apply `changes` to the TableIndexes of `rows`, as stored."
+  "Apply `updates`, each the id of a TableIndex and the columns to change, over `rows`, the TableIndexes as stored, with
+  one statement for the rows that get the same effective changes."
   [rows    :- [:sequential {:min 1} :map]
-   changes :- ::indexes.schema/table-index.update]
-  (update-by-changes! rows changes nil))
+   updates :- [:sequential ::indexes.schema/table-index]]
+  (doseq [[changes ids] (mi/group-ids-by-changes (into {} (map (juxt :id identity)) rows) updates)]
+    (t2/update! :model/TableIndex {:id [:in ids]} changes)))
 
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."

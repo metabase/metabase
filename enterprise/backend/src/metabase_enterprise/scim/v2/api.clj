@@ -298,7 +298,7 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (user/update-users! [(u/the-id current-user)] updates)
+            (user/update-users! [(assoc updates :id (u/the-id current-user))])
             (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
@@ -361,7 +361,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (user/update-users! [(u/the-id user)] updates)
+        (user/update-users! [(assoc updates :id (u/the-id user))])
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -509,7 +509,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (permissions-group/update-permissions-groups! [(u/the-id group)] {:name group-name})
+          (permissions-group/update-permissions-groups! [{:id (u/the-id group) :name group-name}])
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)

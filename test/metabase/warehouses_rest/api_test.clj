@@ -1078,13 +1078,13 @@
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
             (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings-for-fields! [field-id]))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))
         (testing "a user-set sensitive visibility_type hides the Field"
           (try
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
             (is (nil? (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings-for-fields! [field-id]))))))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1809,7 +1809,7 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
                                                 (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
-          (field-values/delete-field-values-for-database! db-id))
+          (field-values/delete-field-values! (field-values/ids-of-database db-id)))
         (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test

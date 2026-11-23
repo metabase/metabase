@@ -71,7 +71,7 @@
 
 (defn toggle-data-editing-enabled! [db-id on-or-off]
   (let [current-settings (t2/select-one-fn :settings :model/Database :id db-id)]
-    (database/update-databases! [db-id] {:settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))})))
+    (database/update-databases! [{:id db-id :settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))}])))
 
 (defmacro with-data-editing-enabled! [on-or-off & body]
   `(mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing ~on-or-off}}
@@ -124,8 +124,8 @@
       ...)"
   [[table-binding table-spec & more] & body]
   `(mt/with-empty-db
-     (database/update-databases! [(mt/id)] {:settings {:database-enable-table-editing true
-                                                       :database-enable-actions       true}})
+     (database/update-databases! [{:id (mt/id) :settings {:database-enable-table-editing true
+                                                          :database-enable-actions       true}}])
      (do-with-test-tables!
       ~table-spec
       (fn [~table-binding]
@@ -146,6 +146,6 @@
   "Like [[actions.tu/with-actions-temp-db]] but with table editing enabled"
   [dataset-definition & body]
   `(actions.tu/with-actions-temp-db ~dataset-definition
-     (database/update-databases! [(mt/id)] {:settings {:database-enable-table-editing true
-                                                       :database-enable-actions       true}})
+     (database/update-databases! [{:id (mt/id) :settings {:database-enable-table-editing true
+                                                          :database-enable-actions       true}}])
      ~@body))

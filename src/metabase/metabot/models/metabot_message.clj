@@ -2,6 +2,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
@@ -9,9 +10,9 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -83,12 +84,19 @@
   [rows :- [:sequential ::metabot.schema/metabot-message.create]]
   (metabot.db/insert-messages! rows))
 
+(defn- update-batch!
+  "Apply the changes in `rows`, the id of a MetabotMessage and the columns to set."
+  [rows]
+  (let [stored    (u/index-by :id (metabot.db/messages-by-ids (mapv :id rows)))
+        requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
+    (metabot.db/update-messages! stored requested)))
+
 (mu/defn update-metabot-messages! :- :nil
-  "Apply the one `changes` map to every MetabotMessage of `ids`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
-  (when (seq ids)
-    (metabot.db/update-messages! ids changes))
+  "Apply the changes in each of `rows`, the id of a MetabotMessage and the columns to set, in batches in one
+  transaction."
+  [rows :- [:sequential ::metabot.schema/metabot-message.update]]
+  (t2/with-transaction [_conn]
+    (run! (comp update-batch! vec) (partition-all mdb/update-partition-size rows)))
   nil)
 
 (mu/defn soft-delete-metabot-messages! :- :int

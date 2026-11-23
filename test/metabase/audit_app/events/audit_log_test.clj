@@ -80,7 +80,7 @@
       (testing card-type
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card card {:name "Old Name", :type :question}]
-            (card/update-cards! [(:id card)] {:name "My Cool Card" :type card-type})
+            (card/update-cards! [{:id (:id card) :name "My Cool Card" :type card-type}])
             (is (partial=
                  {:topic    :card-update
                   :user_id  (mt/user->id :rasta)
@@ -279,7 +279,7 @@
   (testing :segment-update
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
-        (segment/update-segments! [(:id segment)] {:name "Renamed segment"} {:context {:revision-message "update this mofo"}})
+        (segment/update-segments! [{:id (:id segment) :name "Renamed segment"}] {:context {:revision-message "update this mofo"}})
         (is (= {:topic       :segment-update
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -342,7 +342,7 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/User user {:last_name "Charms"}]
-        (user/update-users! [(:id user)] {:last_name "Pigeon"})
+        (user/update-users! [{:id (:id user) :last_name "Pigeon"}])
         (is (partial=
              {:model_id (:id user)
               :user_id  (mt/user->id :rasta)
@@ -407,7 +407,7 @@
                   :model    "Channel"}
                  (mt/latest-audit-log-entry :channel-create (:id channel)))))
         (testing :event/channel-update
-          (models.channel/update-channels! [(:id channel)] {:name "New Name"})
+          (models.channel/update-channels! [{:id (:id channel) :name "New Name"}])
           (is (= {:model_id (:id channel)
                   :user_id  (mt/user->id :rasta)
                   :details  {:previous {:name "Test channel"}
@@ -455,7 +455,7 @@
                    :model "Document"}
                   (mt/latest-audit-log-entry :document-create (:id document)))))
          (testing :event/document-update
-           (document/update-documents! [(:id document)] {:name "Updated Document"})
+           (document/update-documents! [{:id (:id document) :name "Updated Document"}])
            (is (= {:model_id (:id document)
                    :user_id (mt/user->id :rasta)
                    :details {:previous {:name "Test Document"}
@@ -493,7 +493,7 @@
                      :model "Comment"}
                     (mt/latest-audit-log-entry :comment-create (:id comment)))))
            (testing :event/comment-update
-             (comment/update-comments! [(:id comment)] {:content {:type "doc", :content [{:type "paragraph"}]}})
+             (comment/update-comments! [{:id (:id comment) :content {:type "doc", :content [{:type "paragraph"}]}}])
              (is (=? {:model_id (:id comment)
                       :user_id (mt/user->id :rasta)
                       :details {}
@@ -532,7 +532,7 @@
                  :model "Transform"}
                 (mt/latest-audit-log-entry :transform-create (:id transform)))))
          (testing :event/transform-update
-           (transform/update-transforms! [(:id transform)] {:name "Updated Transform"})
+           (transform/update-transforms! [{:id (:id transform) :name "Updated Transform"}])
            (is (partial=
                 {:model_id (:id transform)
                  :user_id (mt/user->id :rasta)
@@ -565,7 +565,7 @@
                   :model "Glossary"}
                  (mt/latest-audit-log-entry :glossary-create id))))
         (testing :event/glossary-update
-          (glossary/update-glossaries! [id] {:term "Updated Term"})
+          (glossary/update-glossaries! [{:id id :term "Updated Term"}])
           (is (= {:model_id id
                   :user_id (mt/user->id :rasta)
                   :details {:previous {:term "Test Term"}
@@ -711,7 +711,7 @@
         (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
                                                                       (fn [rows] (swap! inserts inc) (f rows)))]
           (mt/with-current-user (mt/user->id :rasta)
-            (doseq [[id name] [[b "B2"] [c "C2"] [a "A2"]]] (card/update-cards! [id] {:name name}))))
+            (doseq [[id name] [[b "B2"] [c "C2"] [a "A2"]]] (card/update-cards! [{:id id :name name}]))))
         (is (= 1 @inserts))
         (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
                (mapv (juxt :topic :model_id)
@@ -723,10 +723,10 @@
 (deftest user-activation-is-recorded-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
-      (user/update-users! [user-id] {:is_active false})
+      (user/update-users! [{:id user-id :is_active false}])
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
              (mt/latest-audit-log-entry :user-deactivated user-id)))
-      (user/update-users! [user-id] {:is_active true})
+      (user/update-users! [{:id user-id :is_active true}])
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 
@@ -734,7 +734,7 @@
   (mt/with-temp [:model/Table table {:name "My Cool Table"}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
-        (table/update-tables! [(:id table)] {:is_published published?})
+        (table/update-tables! [{:id (:id table) :is_published published?}])
         (is (=? {:topic    topic
                  :user_id  (mt/user->id :rasta)
                  :model    "Table"
@@ -746,8 +746,8 @@
   "Apply `changes` to the Card or Dashboard `id` through the write function of its model, which publishes the event."
   [model id changes]
   (case model
-    :model/Card      (card/update-cards! [id] changes)
-    :model/Dashboard (dashboard/update-dashboards! [id] changes)))
+    :model/Card      (card/update-cards! [(assoc changes :id id)])
+    :model/Dashboard (dashboard/update-dashboards! [(assoc changes :id id)])))
 
 (deftest public-links-are-recorded-test
   (mt/with-temp [:model/Card      {card-id :id}      {}
@@ -841,7 +841,7 @@
                                          (repeatedly n #(mt/with-temp-defaults model))
                                          (fn [ids]
                                            (if (= model :model/Card)
-                                             (card/update-cards! ids {column (str (random-uuid))})
+                                             (card/update-cards! (mapv (fn [id] {:id id column (str (random-uuid))}) ids))
                                              (t2/update! model :id [:in ids] {column (str (random-uuid))})))
                                          #(mt/with-premium-features #{:audit-app} (%))
                                          #(mt/with-premium-features #{} (%)))))

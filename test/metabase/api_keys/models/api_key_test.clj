@@ -5,6 +5,7 @@
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -31,7 +32,7 @@
   (mt/with-model-cleanup [:model/ApiKey :model/User]
     (let [{key-id :id user-id :user_id} (mt/with-current-user (mt/user->id :crowberto)
                                           (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)}))]
-      (api-key/update-api-keys! [key-id] {:name "Renamed key"})
+      (api-key/update-api-keys! [{:id key-id :name "Renamed key"}])
       (is (= "Renamed key" (t2/select-one-fn :name :model/ApiKey :id key-id)))
       (is (= "Renamed key" (t2/select-one-fn :first_name :model/User :id user-id))))))
 
@@ -64,6 +65,23 @@
                           (events.tu/statement-count! #(api-key/delete-api-keys! ids))))]
           (counted 1)
           (is (= (counted 2) (counted 6)))))
+      (testing "renaming keys to one name, half of them with a user of their own"
+        (let [counted (fn [n]
+                        (let [ids (mt/with-current-user admin-id
+                                    (mapv (fn [i]
+                                            (if (even? i)
+                                              (:id (api-key/create-api-key-with-new-user! {:key-name (mt/random-name)}))
+                                              (:id (first (api-key/create-api-keys!
+                                                           [{::api-keys/unhashed-key (api-key/key-with-unique-prefix)
+                                                             :name                  (mt/random-name)
+                                                             :user_id               admin-id
+                                                             :creator_id            admin-id
+                                                             :updated_by_id         admin-id}])))))
+                                          (range n)))
+                              new-name (mt/random-name)]
+                          (events.tu/statement-count! #(api-key/update-api-keys! (mapv (fn [id] {:id id :name new-name}) ids)))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6)))))
       (testing "recording key usage"
         (let [[{api-key-id :id}] (api-key/create-api-keys! [{::api-keys/unhashed-key (api-key/key-with-unique-prefix)
                                                              :name                  (mt/random-name)
@@ -86,3 +104,29 @@
                                                       :embedding_hostname nil})))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
+
+(deftest update-and-delete-api-keys-publish-one-event-test
+  (mt/with-temp [:model/User {admin-id :id} {:is_superuser true}]
+    (mt/with-model-cleanup [:model/ApiKey]
+      (let [create!   (fn [n]
+                        (mapv :id (api-key/create-api-keys!
+                                   (vec (repeatedly n #(hash-map ::api-keys/unhashed-key (api-key/key-with-unique-prefix)
+                                                                 :name                  (mt/random-name)
+                                                                 :user_id               admin-id
+                                                                 :creator_id            admin-id
+                                                                 :updated_by_id         admin-id))))))
+            published (fn [write!]
+                        (let [events (atom [])]
+                          (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic (count (:changes event))]) event)]
+                            (write!))
+                          @events))]
+        (testing "an update of n keys publishes one update event with a change for each"
+          (doseq [n [2 6]]
+            (let [ids (create! n)]
+              (is (= [[:event/api-key-update n]]
+                     (published #(api-key/update-api-keys! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))))))
+        (testing "a delete of n keys publishes one delete event with a change for each"
+          (doseq [n [2 6]]
+            (let [ids (create! n)]
+              (is (= [[:event/api-key-delete n]]
+                     (published #(api-key/delete-api-keys! ids)))))))))))

@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
@@ -65,12 +66,17 @@
   [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
   (explorations.db/insert-threads! rows))
 
+(defn- write-thread-updates!
+  "Writes `rows`, updates of ExplorationThreads, with one statement for each distinct set of columns."
+  [rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (explorations.db/update-threads! (mapv :id group) changes)))
+
 (mu/defn update-threads! :- :nil
-  "Apply `changes` to the ExplorationThreads with `ids`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::explorations.schema/exploration-thread.update]
-  (when (seq ids)
-    (explorations.db/update-threads! ids changes))
+  "Apply `updates`, each the `:id` of an ExplorationThread with the columns to give it, in one transaction."
+  [updates :- [:sequential ::explorations.schema/exploration-thread.update-row]]
+  (t2/with-transaction [_conn]
+    (run! write-thread-updates! (partition-all app-db/update-partition-size updates)))
   nil)
 
 (mu/defn cancel-thread!

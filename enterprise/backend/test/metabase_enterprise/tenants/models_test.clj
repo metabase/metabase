@@ -5,6 +5,7 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
@@ -141,7 +142,7 @@
               (is (thrown-with-msg?
                    Exception
                    #"You are not allowed to change the owner of a Tenant Collection."
-                   (collection/update-collections! [tenant-collection-id] {:personal_owner_id user-id} nil))))))))))
+                   (collection/update-collections! [{:id tenant-collection-id :personal_owner_id user-id}] nil))))))))))
 
 (deftest cannot-change-namespace-after-creation-test
   (testing "Cannot change namespace of tenant collection after creation"
@@ -152,7 +153,7 @@
             (is (thrown-with-msg?
                  Exception
                  #"cannot move a Collection to a different namespace"
-                 (collection/update-collections! [tenant-collection-id] {:namespace nil} nil)))))))))
+                 (collection/update-collections! [{:id tenant-collection-id :namespace nil}] nil)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Tenant Collection Name Localization                                       |
@@ -235,7 +236,7 @@
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                            (tenants.model/update-tenants! [id] {:name "Taken Tenant"}))))
+                            (tenants.model/update-tenants! [{:id id :name "Taken Tenant"}]))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))
@@ -246,16 +247,16 @@
                  :model/User   {user-id :id}         {:tenant_id tenant-id}
                  :model/User   {inactive-id :id}     {:tenant_id tenant-id}
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
-    (user/update-users! [inactive-id] {:is_active false})
+    (user/update-users! [{:id inactive-id :is_active false}])
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
-      (tenants.model/update-tenants! [tenant-id] {:is_active false})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
       (testing "active users of tenant are deactivated with it"
         (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
       (testing "users deactivated before tenant are not marked"
         (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
       (testing "users of other tenants stay active"
         (is (=? {:is_active true} (state other-id))))
-      (tenants.model/update-tenants! [tenant-id] {:is_active true})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active true}])
       (testing "reactivating tenant reactivates only users deactivated with it"
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
@@ -268,7 +269,7 @@
                  :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
                  :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id user-id}
                  :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id other-id}]
-    (tenants.model/update-tenants! [tenant-id] {:is_active false})
+    (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
     (is (not (t2/exists? :model/PulseChannelRecipient :user_id user-id)))
     (is (t2/exists? :model/PulseChannelRecipient :user_id other-id))))
 
@@ -282,7 +283,7 @@
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
         (finally
-          (run! #(tenants.model/update-tenants! [%] {:is_active true}) active-ids))))))
+          (tenants.model/update-tenants! (mapv #(hash-map :id % :is_active true) active-ids)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Tenant Permissions                                               |
@@ -351,17 +352,17 @@
               counted (fn [n]
                         (let [ids (create! n)]
                           (user/create-users! (mapv #(hash-map :email (str (mt/random-name) "@example.com") :tenant_id %) ids))
-                          (tenants.model/update-tenants! (take-nth 2 ids) {:attributes {"env" "prod"}})
+                          (tenants.model/update-tenants! (mapv #(hash-map :id % :attributes {"env" "prod"}) (take-nth 2 ids)))
                           (events.tu/statement-count!
-                           #(tenants.model/update-tenants! ids {:attributes {"env" "prod"} :is_active false}))))]
+                           #(tenants.model/update-tenants! (mapv (fn [id] {:id id :attributes {"env" "prod"} :is_active false}) ids)))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
 
-(deftest update-tenants-refuses-a-second-rename-to-one-name-test
+(deftest update-tenants-refuses-two-renames-to-one-name-test
   (mt/with-temp [:model/Tenant {first-id :id}  {:name "First Tenant" :slug "first-tenant"}
                  :model/Tenant {second-id :id} {:name "Second Tenant" :slug "second-tenant"}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                          (tenants.model/update-tenants! [first-id second-id] {:name "Shared Tenant"})))
+                          (tenants.model/update-tenants! [{:id first-id :name "Shared Tenant"} {:id second-id :name "Shared Tenant"}])))
     (is (= ["First Tenant" "Second Tenant"]
            (mapv #(t2/select-one-fn :name :model/Tenant :id %) [first-id second-id])))))
 
@@ -370,8 +371,22 @@
                  :model/Tenant {inactive-id :id} {:name "Inactive Tenant" :slug "inactive-tenant" :is_active false}
                  :model/User   {user-1 :id}      {:tenant_id active-id}
                  :model/User   {user-2 :id}      {:tenant_id inactive-id :is_active true}]
-    (tenants.model/update-tenants! [active-id inactive-id] {:is_active false})
+    (tenants.model/update-tenants! [{:id active-id :is_active false} {:id inactive-id :is_active false}])
     (is (=? {:is_active false :deactivated_with_tenant true}
             (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-1)))
     (testing "a Tenant that was inactive already does not cascade"
       (is (true? (t2/select-one-fn :is_active :model/User :id user-2))))))
+
+(deftest update-tenants-publishes-one-event-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-model-cleanup [:model/Tenant :model/Collection]
+        (doseq [n [2 6]]
+          (let [ids    (mapv :id (tenants.model/create-tenants!
+                                  (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                              {:name tenant-name :slug (u/lower-case-en tenant-name)}))))))
+                events (atom [])]
+            (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic (count (:changes event))]) event)]
+              (tenants.model/update-tenants! (mapv (fn [id] {:id id :name (mt/random-name)}) ids)))
+            (testing "an update of n tenants with distinct names publishes one update event with a change for each"
+              (is (= [[:event/tenant-update n]] @events)))))))))

@@ -244,9 +244,8 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (exploration-thread/update-threads! [thread-id]
-                                        {:analysis_started_at now
-                                         :completed_at        now})))
+    (exploration-thread/update-threads! [{:id thread-id :analysis_started_at now
+                                         :completed_at        now}])))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -262,7 +261,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (exploration-thread/update-threads! [thread-id] {:query_plan_transcript transcript})
+    (exploration-thread/update-threads! [{:id thread-id :query_plan_transcript transcript}])
     (catch Throwable e
       (when (schema-violation? e)
         (throw e))

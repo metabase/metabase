@@ -6,11 +6,11 @@
    [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -92,48 +92,56 @@
     []))
 
 (defn- write-custom-viz-plugin-updates!
-  "Applies `rows`, each the `:id` of a CustomVizPlugin with the changes it gets, which may differ from row to row, in one
-  transaction with one statement for each distinct set of changes, publishing one update event for all of them, and
-  returns `rows`."
-  [rows]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [stored (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (mapv :id rows)))]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)
-                :when (seq changes)]
-          (custom-viz-plugin.db/update-plugins! (mapv :id group) changes))
-        (events/publish-event! :event/custom-viz-plugin-update
-                               (events/update-event stored
-                                                    rows
-                                                    {:objects (into {}
-                                                                    (keep (fn [{:keys [id] :as row}]
-                                                                            (when-let [previous (stored id)]
-                                                                              [id (merge previous (with-bundle-hash (dissoc row :id)))])))
-                                                                    rows)})))))
-  (vec rows))
+  "Writes `rows`, updates of the `stored` CustomVizPlugins, with one statement for each distinct set of changes, and
+  returns what the event needs, the changes of each row and the plugins as they are after the write."
+  [stored rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)
+          :when (seq changes)]
+    (custom-viz-plugin.db/update-plugins! (mapv :id group) changes))
+  {:stored  stored
+   :rows    rows
+   :objects (into {}
+                  (keep (fn [{:keys [id] :as row}]
+                          (when-let [previous (stored id)]
+                            [id (merge previous (with-bundle-hash (dissoc row :id)))])))
+                  rows)})
+
+(defn- update-custom-viz-plugin-batch!
+  "Writes the CustomVizPlugins of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch]
+  (write-custom-viz-plugin-updates!
+   (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (mapv :id batch)))
+   batch))
+
+(defn- publish-custom-viz-plugin-updates!
+  "Publishes the update event of the CustomVizPlugins that `batches`, what [[update-custom-viz-plugin-batch!]] returned,
+  wrote."
+  [batches]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/custom-viz-plugin-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                {:objects (into {} (map :objects) batches)}))))
 
 (mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]
-  "Apply `changes`, one change to the columns, to each of the CustomVizPlugins with `ids` in one statement, publishing
-  their update event. Returns the updated rows."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (write-custom-viz-plugin-updates! (mapv #(assoc changes :id %) ids)))
+  "Apply `updates`, each the `:id` of a CustomVizPlugin with the columns to give it, in one transaction, publishing their
+  update event. Returns `updates`."
+  [updates :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]]
+  (t2/with-transaction [_conn]
+    (publish-custom-viz-plugin-updates!
+     (mapv update-custom-viz-plugin-batch! (partition-all app-db/update-partition-size updates))))
+  (vec updates))
 
-(mu/defn update-custom-viz-plugins-for-import!
-  "Apply each of `rows`, the id of a CustomVizPlugin and the columns to change, in one pass over all of them, publishing
-  one update event, as an import does because every row holds its own values. Returns `rows`."
-  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]]
-  (write-custom-viz-plugin-updates! rows))
-
-(mu/defn delete-custom-viz-plugins!
-  "Delete the CustomVizPlugins with `ids`, publishing their delete event."
+(mu/defn delete-custom-viz-plugins! :- :nil
+  "Delete the CustomVizPlugins with `ids` in one transaction, publishing their delete event right before the first
+  statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/custom-viz-plugin-delete
-                             {:changes (u.events/delete-changes (custom-viz-plugin.db/non-blob-plugins-by-ids (vec ids)))
-                            :user-id (mi/current-user-id)})
-      (custom-viz-plugin.db/delete-plugins! (vec ids))))
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/custom-viz-plugin-delete
+                               (events/delete-event (into [] (mapcat #(custom-viz-plugin.db/non-blob-plugins-by-ids (vec %))) batches))))
+      (run! #(custom-viz-plugin.db/delete-plugins! (vec %)) batches)))
   nil)
 
 (mu/defn insert-bundle!
@@ -150,7 +158,7 @@
   refreshed plugin without its bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    validated    :- :map]
-  (update-custom-viz-plugins! [id] (cache/derived-columns validated))
+  (update-custom-viz-plugins! [(assoc (cache/derived-columns validated) :id id)])
   (cache/purge-plugin-cache! {:id id})
   (custom-viz-plugin.db/non-blob-plugin id))
 
@@ -160,7 +168,7 @@
    dev-bundle-url :- [:maybe :string]]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (cache/validate-url! "Dev bundle URL"))
-    (update-custom-viz-plugins! [id] {:dev_bundle_url url})))
+    (update-custom-viz-plugins! [{:id id :dev_bundle_url url}])))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -175,7 +183,7 @@
    :defaults      {:enabled true}
    :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
    :insert!       create-custom-viz-plugins!
-   :update!       update-custom-viz-plugins-for-import!
+   :update!       update-custom-viz-plugins!
    :delete!       delete-custom-viz-plugins!
    :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
    :storage-paths custom-viz-plugin.serialization/storage-paths

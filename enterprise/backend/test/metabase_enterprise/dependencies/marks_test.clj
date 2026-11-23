@@ -153,28 +153,28 @@
         (testing "a query change marks the card's own dependency and analysis, and through the result metadata it
                 derives, what reads it"
           (is (= (marked {:dependency [:card-a] :analysis [:card-a :card-b] :result-metadata [:card-b]})
-                 (marks! world #(card/update-cards! [(id-of world :card-a)] {:dataset_query (deps.test/table-query :orders)})))))
+                 (marks! world #(card/update-cards! [{:id (id-of world :card-a) :dataset_query (deps.test/table-query :orders)}])))))
         (testing "a question rename marks nothing and triggers nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(card/update-cards! [(id-of world :card-b)] {:name "Renamed"})))))
+                 (marks! world #(card/update-cards! [{:id (id-of world :card-b) :name "Renamed"}])))))
         (testing "a metric rename marks the result metadata and analysis of its direct dependents"
           (is (= (marked {:analysis [:card-c] :result-metadata [:card-c]})
-                 (marks! world #(card/update-cards! [(id-of world :metric)] {:name "Renamed metric"})))))
+                 (marks! world #(card/update-cards! [{:id (id-of world :metric) :name "Renamed metric"}])))))
         (testing "a result metadata change dependents see marks them"
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:analysis [:card-b] :result-metadata [:card-b]})
-                   (marks! world #(card/update-cards! [(id-of world :card-a)] {:result_metadata (mapv (fn [col] (assoc col :display_name "Renamed"))
-                                                                                                      metadata)}))))))
+                   (marks! world #(card/update-cards! [{:id (id-of world :card-a) :result_metadata (mapv (fn [col] (assoc col :display_name "Renamed"))
+                                                                                                      metadata)}]))))))
         (testing "a result metadata change dependents don't see marks nothing"
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:triggers? false})
-                   (marks! world #(card/update-cards! [(id-of world :card-a)] {:result_metadata (mapv (fn [col]
+                   (marks! world #(card/update-cards! [{:id (id-of world :card-a) :result_metadata (mapv (fn [col]
                                                                                                         (assoc col :fingerprint
                                                                                                                {:global {:distinct-count 3}}))
-                                                                                                      metadata)}))))))
+                                                                                                      metadata)}]))))))
         (testing "a card type change marks its own dependency and analysis, and what reads it"
           (is (= (marked {:dependency [:card-a] :analysis [:card-a :card-b] :result-metadata [:card-b]})
-                 (marks! world #(card/update-cards! [(id-of world :card-a)] {:type :model})))))
+                 (marks! world #(card/update-cards! [{:id (id-of world :card-a) :type :model}])))))
         (testing "creating a card marks nothing but triggers the jobs"
           (is (= (marked {})
                  (marks! world #(card/delete-cards! [(t2/insert-returning-pk!
@@ -196,20 +196,20 @@
                 analysis"
           (is (= (marked {:dependency [:card-native :snippet-inner :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(snippet/update-snippets! [(id-of world :snippet-inner)] {:content "ORDERS"} nil)))))
+                 (marks! world #(snippet/update-snippets! [{:id (id-of world :snippet-inner) :content "ORDERS"}] nil)))))
         (testing "a measure definition change marks its own dependency and every transitive dependent's result
                 metadata and analysis"
           (is (= (marked {:dependency      [:measure]
                           :analysis        [:card-d :card-e]
                           :result-metadata [:card-d :card-e]})
-                 (marks! world #(measure/update-measures! [(id-of world :measure)] {:definition (lib/aggregate (deps.test/table-query :orders)
-                                                                                                               (lib/count)) :name "Renamed measure"})))))
+                 (marks! world #(measure/update-measures! [{:id (id-of world :measure) :definition (lib/aggregate (deps.test/table-query :orders)
+                                                                                                               (lib/count)) :name "Renamed measure"}])))))
         (testing "a segment definition change marks its own dependency and analysis and its direct dependents"
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
                           :result-metadata [:card-g]})
-                 (marks! world #(segment/update-segments! [(id-of world :segment)] {:definition (lib/filter (deps.test/table-query :checkins)
-                                                                                                            (lib/= 2 2))})))))
+                 (marks! world #(segment/update-segments! [{:id (id-of world :segment) :definition (lib/filter (deps.test/table-query :checkins)
+                                                                                                            (lib/= 2 2))}])))))
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
@@ -226,18 +226,18 @@
           (testing "a table rename marks its direct dependents"
             (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:display_name "Venues"}
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(table/update-tables! [(mt/id :venues)] {:display_name "Places"}))))))
+                     (marks! world #(table/update-tables! [{:id (mt/id :venues) :display_name "Places"}]))))))
           (testing "a table description change marks nothing"
             (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:description "Venues"}
               (is (= (marked {:triggers? false})
-                     (marks! world #(table/update-tables! [(mt/id :venues)] {:description "Places"}))))))
+                     (marks! world #(table/update-tables! [{:id (mt/id :venues) :description "Places"}]))))))
           (testing "a field rename marks its table's direct dependents"
             (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:display_name "Price"}
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(field/update-fields! [(mt/id :venues :price)] {:display_name "Cost"}))))))
+                     (marks! world #(field/update-fields! [{:id (mt/id :venues :price) :display_name "Cost"}]))))))
           (testing "a field fingerprint marks nothing"
             (is (= (marked {:triggers? false})
-                   (marks! world #(field/update-fields! [(mt/id :venues :price)] {:last_analyzed (t/offset-date-time)})))))
+                   (marks! world #(field/update-fields! [{:id (mt/id :venues :price) :last_analyzed (t/offset-date-time)}])))))
           (testing "creating and deleting a field marks its table's direct dependents"
             (let [field-id (atom nil)]
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
@@ -253,14 +253,14 @@
                      (marks! world #(table-user-settings/create-table-user-settings! [{:table_id     (mt/id :venues)
                                                                                        :display_name "Places"}]))))
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(table-user-settings/delete-table-user-settings-for-tables! [(mt/id :venues)]))))))
+                     (marks! world #(table-user-settings/delete-table-user-settings! (table-user-settings/ids-of-tables [(mt/id :venues)])))))))
           (testing "field user settings mark the field's table's direct dependents"
             (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:display_name "Price"}
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
                      (marks! world #(field-user-settings/create-field-user-settings! [{:field_id     (mt/id :venues :price)
                                                                                        :display_name "Cost"}]))))
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(field-user-settings/delete-field-user-settings-for-fields! [(mt/id :venues :price)])))))))))))
+                     (marks! world #(field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [(mt/id :venues :price)]))))))))))))
 
 (deftest remap-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -280,14 +280,14 @@
                 (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
                   (is (= (marked {:analysis        (conj orders-transitive :card-f)
                                   :result-metadata (conj orders-transitive :card-f)})
-                         (marks! world #(field/update-fields! [(mt/id :products :title)] {:display_name "Name"}))))))
+                         (marks! world #(field/update-fields! [{:id (mt/id :products :title) :display_name "Name"}]))))))
               (testing "and a user setting of its human-readable field"
                 (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
                   (is (= (marked {:analysis        (conj orders-transitive :card-f)
                                   :result-metadata (conj orders-transitive :card-f)})
                          (marks! world #(field-user-settings/create-field-user-settings! [{:field_id     (mt/id :products :title)
                                                                                            :display_name "Item"}]))))
-                  (field-user-settings/delete-field-user-settings-for-fields! [(mt/id :products :title)])))
+                  (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [(mt/id :products :title)]))))
               (testing "and deleting it"
                 (is (= (marked {:analysis orders-transitive :result-metadata orders-transitive})
                        (marks! world #(dimension/delete-dimensions! [@dimension-id])))))))
@@ -298,11 +298,10 @@
                                                   :values                [1 2 3 4]
                                                   :human_readable_values []}]
               (is (= (marked {:triggers? false})
-                     (marks! world #(field-values/update-field-values! [(:id fv)] {:values [1 2 3 4 5]}))))
+                     (marks! world #(field-values/update-field-values! [{:id (:id fv) :values [1 2 3 4 5]}]))))
               (is (= (marked {:analysis venues-transitive :result-metadata venues-transitive})
                      (marks! world #(field-values/update-field-values!
-                                     [(:id fv)]
-                                     {:human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]})))))))))))
+                                     [{:id (:id fv) :human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]}])))))))))))
 
 (deftest dashboard-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -312,7 +311,7 @@
               dashcard-id  (atom nil)]
           (testing "a parameter change marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(dashboard/update-dashboards! [dashboard-id] {:parameters [{:id "p" :name "P" :slug "p" :type :category}]})))))
+                   (marks! world #(dashboard/update-dashboards! [{:id dashboard-id :parameters [{:id "p" :name "P" :slug "p" :type :category}]}])))))
           (testing "a dashboard card marks the dashboard's dependency when it is created, changed or deleted"
             (is (= (marked {:dependency [:dashboard]})
                    (marks! world #(reset! dashcard-id (:id (first (dashboard/add-dashcards!
@@ -342,11 +341,11 @@
       (fn [world]
         (testing "a transform source change marks its own dependency and analysis"
           (is (= (marked {:dependency [:transform] :analysis [:transform]})
-                 (marks! world #(transform.model/update-transforms! [(id-of world :transform)] {:source {:type  :query
-                                                                                                         :query (lib/native-query (mt/metadata-provider) "SELECT 2")}})))))
+                 (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :source {:type  :query
+                                                                                                         :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}])))))
         (testing "a transform rename marks nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(transform.model/update-transforms! [(id-of world :transform)] {:name "Renamed"})))))
+                 (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :name "Renamed"}])))))
         (mt/with-temp [:model/Action      {action-id :id} {:type :query :name "Marks action"}
                        :model/QueryAction _               {:action_id     action-id
                                                            :database_id   (mt/id)
@@ -379,9 +378,9 @@
                   card-id (id-of world :card-f)]
               (testing "moving a card into and out of an app's resource collection marks the app's dependency"
                 (is (= (marked {:dependency [:data-app]})
-                       (marks! world #(card/update-cards! [card-id] {:collection_id collection-id}))))
+                       (marks! world #(card/update-cards! [{:id card-id :collection_id collection-id}]))))
                 (is (= (marked {:dependency [:data-app]})
-                       (marks! world #(card/update-cards! [card-id] {:collection_id other-id})))))
+                       (marks! world #(card/update-cards! [{:id card-id :collection_id other-id}])))))
               (testing "moving a card between other collections marks nothing, but triggers the jobs"
                 (is (= (marked {})
-                       (marks! world #(card/update-cards! [card-id] {:collection_id nil}))))))))))))
+                       (marks! world #(card/update-cards! [{:id card-id :collection_id nil}]))))))))))))

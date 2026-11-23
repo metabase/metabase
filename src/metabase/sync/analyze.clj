@@ -61,15 +61,13 @@
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
   (let [now (t/offset-date-time)]
-    (field/update-fields! (vec (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*))
-                          {:last_analyzed now})))
+    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
   (let [now (t/offset-date-time)]
-    (field/update-fields! (vec (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*))
-                          {:last_analyzed now})))
+    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

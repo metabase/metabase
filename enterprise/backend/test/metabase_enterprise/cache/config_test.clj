@@ -195,7 +195,7 @@
         (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
                        :model/Card     card {:database_id (u/the-id db)}]
           (mt/with-current-user (mt/user->id :rasta)
-            (card/update-cards! [(u/the-id card)] {:name "renamed"})
+            (card/update-cards! [{:id (u/the-id card) :name "renamed"}])
             (is (zero? (count (t2/select :model/PersistedInfo :card_id (u/the-id card)))))
-            (card/update-cards! [(u/the-id card)] {:type :model}))
+            (card/update-cards! [{:id (u/the-id card) :type :model}]))
           (is (= "off" (:state (t2/select-one :model/PersistedInfo :card_id (u/the-id card))))))))))

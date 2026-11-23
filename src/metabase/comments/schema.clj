@@ -92,6 +92,13 @@
     [:deleted_at   {:optional true} [:maybe ms/TemporalInstant]]
     [:content_html {:optional true} [:maybe :string]]]])
 
+(mr/def ::comment.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::comment.update])
+
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge

@@ -314,7 +314,7 @@
                  :fv {:values ["a" "b" "c"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After clearing and querying use long field values"
-        (field-values/delete-field-values-for-fields! [(u/the-id field)])
+        (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
         (get-or-create-vals ["a" "b" "c" (apply str (map str (range 100000)))])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}

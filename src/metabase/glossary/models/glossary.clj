@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
@@ -10,7 +11,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -86,28 +86,30 @@
         (events/publish-event! :event/glossary-create (events/create-event <>))))))
 
 (mu/defn update-glossaries! :- :nil
-  "Apply `changes` to the Glossary entries with `ids`, publishing one update event."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::glossary.schema/glossary.update]
-  (let [stored (glossary.db/glossaries-by-id ids)
-        ids    (filterv stored ids)]
-    (when (seq ids)
+  "Apply `updates`, each the `:id` of a Glossary entry with the columns to give it, publishing one update event for all
+  of them."
+  [updates :- [:sequential ::glossary.schema/glossary.update-row]]
+  (let [stored (glossary.db/glossaries-by-id (mapv :id updates))
+        rows   (filterv #(contains? stored (:id %)) updates)]
+    (when (seq rows)
       (t2/with-transaction [_conn]
-        (glossary.db/update-glossaries! ids changes)
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (glossary.db/update-glossaries! (mapv :id group) changes))
         (events/publish-event! :event/glossary-update
-                               (events/update-event stored (mapv #(assoc changes :id %) ids)
-                                                    {:objects (glossary.db/glossaries-by-id ids)})))))
+                               (events/update-event stored rows
+                                                    {:objects (glossary.db/glossaries-by-id (mapv :id rows))})))))
   nil)
 
 (mu/defn delete-glossaries! :- :nil
-  "Delete the Glossary entries with `ids`, publishing their delete event."
+  "Delete the Glossary entries with `ids` in one transaction, publishing their delete event right before the first
+  statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (let [stored (vals (glossary.db/glossaries-by-id ids))]
-    (when (seq stored)
-      (t2/with-transaction [_conn]
-        (events/publish-event! :event/glossary-delete {:changes (u.events/delete-changes (vec stored))
-                            :user-id (mi/current-user-id)})
-        (glossary.db/delete-glossaries! (mapv :id stored)))))
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/glossary-delete
+                               (events/delete-event (into [] (mapcat #(vals (glossary.db/glossaries-by-id (vec %)))) batches))))
+      (run! #(glossary.db/delete-glossaries! (vec %)) batches)))
   nil)
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

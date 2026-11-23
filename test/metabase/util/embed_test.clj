@@ -13,8 +13,8 @@
   "Apply `rows`, each the `:id` of a Card or Dashboard of `model` and its changes, through the model's write function."
   [model rows]
   (case model
-    :model/Card      (card/update-cards! (mapv :id rows) (dissoc (first rows) :id))
-    :model/Dashboard (dashboard/update-dashboards! (mapv :id rows) (dissoc (first rows) :id))))
+    :model/Card      (card/update-cards! (mapv (fn [row-id] (assoc (dissoc (first rows) :id) :id row-id)) (mapv :id rows)))
+    :model/Dashboard (dashboard/update-dashboards! (mapv (fn [row-id] (assoc (dissoc (first rows) :id) :id row-id)) (mapv :id rows)))))
 
 (deftest maybe-populate-initially-published-at-test
   (let [now #t "2022-09-01T12:34:56Z"]

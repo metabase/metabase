@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.models.oauth-access-token
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.oauth-server.db :as oauth-server.db]
@@ -38,15 +39,13 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
   (oauth-server.db/revoke-access-tokens-for-users! user-ids))
 
-(mu/defn delete-oauth-access-tokens-for-expiry-cleanup!
-  "Delete the OAuthAccessTokens that expired before `now`, in epoch milliseconds, returning the number deleted."
-  [now :- ms/PositiveInt]
-  (oauth-server.db/delete-access-tokens-expired-before! now))
-
-(mu/defn delete-oauth-access-tokens-for-revocation-cleanup!
-  "Delete the revoked OAuthAccessTokens, returning the number deleted."
-  []
-  (oauth-server.db/delete-revoked-access-tokens!))
+(mu/defn delete-oauth-access-tokens! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the OAuthAccessTokens with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp oauth-server.db/delete-access-tokens! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

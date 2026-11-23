@@ -136,14 +136,14 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (segment/update-segments! [segment-id] {:definition (segment-filter-definition (mt/id :venues) 99999)})))))
+           (segment/update-segments! [{:id segment-id :definition (segment-filter-definition (mt/id :venues) 99999)}])))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :definition (price-definition)}]
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (segment/update-segments! [segment-id] {:definition (segment-filter-definition (mt/id :venues) segment-id)})))))
+           (segment/update-segments! [{:id segment-id :definition (segment-filter-definition (mt/id :venues) segment-id)}])))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :definition (price-definition)}
@@ -152,7 +152,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (segment/update-segments! [segment-1-id] {:definition (segment-filter-definition (mt/id :venues) segment-2-id)}))))))
+           (segment/update-segments! [{:id segment-1-id :definition (segment-filter-definition (mt/id :venues) segment-2-id)}]))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
@@ -249,7 +249,7 @@
                   ids      (mapv :id segments)]
               (try
                 (t2/with-call-count [call-count]
-                  (segment/update-segments! ids {:archived true})
+                  (segment/update-segments! (mapv (fn [id] {:id id :archived true}) ids))
                   (call-count))
                 (finally
                   (segment/delete-segments! ids)))))]
@@ -259,21 +259,21 @@
 (deftest update-segments-mixed-stored-state-test
   (mt/with-temp [:model/Segment {a :id} {:name "A" :archived true :definition (price-definition)}
                  :model/Segment {b :id} {:name "B" :archived false :definition (price-definition)}]
-    (segment/update-segments! [a b] {:archived true :name "Same"})
+    (segment/update-segments! (mapv (fn [id] {:id id :archived true :name "Same"}) [a b]))
     (is (= [[true "Same"] [true "Same"]]
            (mapv (juxt :archived :name) (t2/select :model/Segment :id [:in [a b]] {:order-by [:id]}))))))
 
 (deftest update-segments-for-import-test
   (mt/with-temp [:model/Segment {a :id} {:name "A" :definition (price-definition)}
                  :model/Segment {b :id} {:name "B" :definition (price-definition)}]
-    (segment/update-segments-for-import! [{:id a :name "A2"} {:id b :name "B2"}])
+    (segment/update-segments! [{:id a :name "A2"} {:id b :name "B2"}] {:writer :import})
     (is (= ["A2" "B2"] (mapv :name (t2/select :model/Segment :id [:in [a b]] {:order-by [:id]}))))))
 
 (deftest revert-goes-through-update-test
   (mt/with-temp [:model/Segment {id :id} {:name "Reverted" :definition (price-definition)}]
     (let [snapshot (select-keys (t2/select-one :model/Segment :id id) [:name :description :definition :archived :table_id
                                                                        :caveats :points_of_interest :show_in_getting_started])]
-      (segment/update-segments! [id] {:name "Changed"})
+      (segment/update-segments! [{:id id :name "Changed"}])
       (is (= "Changed" (t2/select-one-fn :name :model/Segment :id id)))
       (#'segment/revert-segment! id (mt/user->id :rasta) snapshot)
       (is (= "Reverted" (t2/select-one-fn :name :model/Segment :id id))))))

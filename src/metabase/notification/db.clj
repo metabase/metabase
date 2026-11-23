@@ -5,11 +5,11 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -209,10 +209,13 @@
   (mdb/insert-returning-instances! :model/Notification rows))
 
 (mu/defn update-notifications!
-  "Apply `changes` to the Notifications with `notification-ids`, returning the number updated."
-  [notification-ids :- [:sequential ms/PositiveInt]
-   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
-  (t2/update! :model/Notification :id [:in notification-ids] changes))
+  "Apply to each Notification of `stored`, a map from id to the Notification as read, its changes in `id->changes`, with
+  one statement for the rows that get the same effective changes."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt NotificationRow]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/Notification :id [:in [:auto/param ids]] changes))
+  nil)
 
 (mu/defn update-notification-columns!
   "Apply `changes` to the Notification with `notification-id`, returning the number updated."

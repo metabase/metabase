@@ -294,10 +294,12 @@
   [parent-ids :- [:set ::lib.schema.id/field]]
   (set (t2/select-pks-set :model/Field :parent_id [:in parent-ids])))
 
-(mu/defn field-parent-ids-for-tables
-  "The id and parent id of every Field of the Tables with `table-ids`."
+(mu/defn field-ids-for-tables :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Field :id :parent_id] :table_id [:in table-ids]))
+  (if (seq table-ids)
+    (set (t2/select-pks-set :model/Field :table_id [:in table-ids]))
+    #{}))
 
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
@@ -407,13 +409,6 @@
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
   (t2/update! :model/FieldUserSettings :field_id [:in (keys field-id->position)]
               {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :field_id id] position])) field-id->position)}))
-
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
-    0))
 
 (mu/defn unset-user-settings-fk-target!
   "Unset the user-set FK target of the ::warehouse-schema.schema/field with `field-id` in its settings, returning the
@@ -580,13 +575,6 @@
    changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
   (t2/update! :model/TableUserSettings :table_id table-id changes))
 
-(mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/delete! :model/TableUserSettings :table_id [:in table-ids])
-    0))
-
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
 (mu/defn field-values-of-type
@@ -668,10 +656,11 @@
   (app-db/insert-returning-instances! :model/Dimension rows))
 
 (mu/defn update-dimensions!
-  "Apply `changes` to the Dimensions in `stored`, a map from id to the Dimension as read."
-  [stored  :- [:map-of ::lib.schema.id/dimension :map]
-   changes :- (mut/dissoc ::warehouse-schema.schema/dimension.update :id)]
-  (update-stored! :model/Dimension stored (mapv #(assoc changes :id %) (keys stored)) true))
+  "Apply `rows`, each the id of a Dimension in `stored`, a map from id to the Dimension as read, and the columns to
+  change."
+  [stored :- [:map-of ::lib.schema.id/dimension :map]
+   rows   :- [:sequential ::warehouse-schema.schema/dimension.update]]
+  (update-stored! :model/Dimension stored rows true))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, returning the number deleted."
@@ -702,10 +691,11 @@
   (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
-  "Apply `changes` to the FieldValues in `stored`, a map from id to the FieldValues as read."
-  [stored  :- [:map-of ms/PositiveInt :map]
-   changes :- (mut/dissoc ::warehouse-schema.schema/field-values.update :id)]
-  (update-stored! :model/FieldValues stored (mapv #(assoc changes :id %) (keys stored)) true))
+  "Apply `rows`, each the id of a FieldValues in `stored`, a map from id to the FieldValues as read, and the columns to
+  change."
+  [stored :- [:map-of ms/PositiveInt :map]
+   rows   :- [:sequential ::warehouse-schema.schema/field-values.update]]
+  (update-stored! :model/FieldValues stored rows true))
 
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -765,62 +755,33 @@
   [:field_id field-id :type [:in types]
    :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]])
 
-(mu/defn field-values-of-fields
-  "Every FieldValues of the Fields with `field-ids`."
+(mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
+  "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (apply t2/select :model/FieldValues (field-values-of-fields-kvs field-ids)))
+  (apply t2/select-pks-vec :model/FieldValues (field-values-of-fields-kvs field-ids)))
 
-(mu/defn delete-field-values-for-fields!
-  "Delete every FieldValues of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (apply t2/delete! :model/FieldValues (field-values-of-fields-kvs field-ids)))
-
-(mu/defn field-values-of-types
-  "The FieldValues of `types` of the Fields with `field-ids`."
+(mu/defn field-values-ids-of-types :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of `types` of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]
    types     :- [:set :keyword]]
-  (apply t2/select :model/FieldValues (field-values-of-types-kvs field-ids types)))
+  (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-kvs field-ids types)))
 
-(mu/defn delete-field-values-of-types!
-  "Delete the FieldValues of `types` of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]
-   types     :- [:set :keyword]]
-  (apply t2/delete! :model/FieldValues (field-values-of-types-kvs field-ids types)))
-
-(mu/defn field-values-of-tables
-  "The FieldValues of the Fields of the Tables with `table-ids`."
+(mu/defn field-values-ids-of-tables :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (apply t2/select :model/FieldValues (field-values-of-tables-kvs table-ids)))
+  (apply t2/select-pks-vec :model/FieldValues (field-values-of-tables-kvs table-ids)))
 
-(mu/defn delete-field-values-for-tables!
-  "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (apply t2/delete! :model/FieldValues (field-values-of-tables-kvs table-ids)))
-
-(mu/defn field-values-of-database
-  "The FieldValues of every Field of the Database with `database-id`."
+(mu/defn field-values-ids-of-database :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of every Field of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (apply t2/select :model/FieldValues (field-values-of-database-kvs database-id)))
+  (apply t2/select-pks-vec :model/FieldValues (field-values-of-database-kvs database-id)))
 
-(mu/defn delete-field-values-for-database!
-  "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (apply t2/delete! :model/FieldValues (field-values-of-database-kvs database-id)))
-
-(mu/defn field-values-of-types-before
-  "The FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
+(mu/defn field-values-ids-of-types-before :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (apply t2/select :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
-
-(mu/defn delete-field-values-for-cleanup!
-  "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago,
-  returning the number deleted."
-  [field-id     :- ::lib.schema.id/field
-   types        :- [:set :keyword]
-   max-age-days :- :int]
-  (apply t2/delete! :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
+  (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -1107,34 +1068,12 @@
   [database-ids]
   ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:in :db_id database-ids]})
 
-(mu/defn fields-exist-for-databases?
-  "Whether any Field belongs to a Table of the Databases with `database-ids`."
+(mu/defn field-ids-of-databases :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of the Tables of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/exists? :model/Field :table_id [:in (table-ids-of-databases-query database-ids)]))
-
-(mu/defn delete-childless-fields-for-databases!
-  "Delete the childless Fields of the Tables of the Databases with `database-ids`, returning the number deleted."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (let [table-ids-query (table-ids-of-databases-query database-ids)
-        extra-clause    (if (= (app-db/db-type) :mysql)
-                          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
-                          ;; DELETE target
-                          [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                         :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                     :from   [(t2/table-name :model/Field)]
-                                                                                     :where  [:and
-                                                                                              [:not= :parent_id nil]
-                                                                                              [:in :table_id table-ids-query]]}
-                                                                   :parent_fields]]}]
-                          [:not [:exists ^:allow-subquery {:select [1]
-                                                           :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
-    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
-    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
-    (t2/query-one {:delete-from (t2/table-name :model/Field)
-                   :where       [:and
-                                 [:in :table_id table-ids-query]
-                                 extra-clause]})))
+  (if (seq database-ids)
+    (set (t2/select-pks-set :model/Field :table_id [:in (table-ids-of-databases-query database-ids)]))
+    #{}))
 
 (mu/defn increment-table-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one raw

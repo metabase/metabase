@@ -2155,7 +2155,7 @@
             (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
             (mt/with-current-user (mt/user->id :crowberto)
-              (collection/update-collections! [collection-id] {:archived true} nil))
+              (collection/update-collections! [{:id collection-id :archived true}] nil))
             (testing "Sanity check: Lucky should not be able to write our test Collection"
               (mt/with-test-user :lucky
                 (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))
@@ -2762,13 +2762,13 @@
             (is (=? [{:name measure-name :model "measure"}]
                     (search-request-data :crowberto :q measure-name))))
           (testing "after archiving, measure disappears from default results"
-            (measure/update-measures! [measure-id] {:archived true})
+            (measure/update-measures! [{:id measure-id :archived true}])
             (is (= [] (search-request-data :crowberto :q measure-name))))
           (testing "archived measure appears in archived=true results"
             (is (=? [{:name measure-name :model "measure" :archived true}]
                     (search-request-data :crowberto :q measure-name :archived "true"))))
           (testing "after unarchiving, measure returns to default results"
-            (measure/update-measures! [measure-id] {:archived false})
+            (measure/update-measures! [{:id measure-id :archived false}])
             (is (=? [{:name measure-name :model "measure"}]
                     (search-request-data :crowberto :q measure-name)))))))))
 

@@ -54,12 +54,12 @@
   (app-db/insert-returning-instances! :model/PythonLibrary rows))
 
 (mu/defn update-python-libraries!
-  "Apply `changes` to the PythonLibraries of `stored`, a map from id to the library as read, with one statement for the
-  rows that get the same effective changes, which keeps the rows that already hold some of the values from making
-  Toucan run one statement per row."
-  [stored  :- [:map-of ms/PositiveInt :map]
-   changes :- ::transforms-python.schema/python-library.update]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) (keys stored)))]
+  "Apply to each PythonLibrary of `stored`, a map from id to the library as read, its changes in `id->changes`, with one
+  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
+  from making Toucan run one statement per row."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ::transforms-python.schema/python-library.changes]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
     (t2/update! :model/PythonLibrary :id [:in [:auto/param ids]] changes))
   nil)
 

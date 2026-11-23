@@ -2,13 +2,13 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -169,42 +169,52 @@
         timeline-events))))
 
 (defn- write-timeline-event-updates!
-  "Applies `rows`, each the `:id` of a TimelineEvent with the changes it gets, which may differ from row to row, in one
-  transaction with one statement for each distinct set of changes, publishing one update event for all of them with the
-  `:context` of `opts`."
-  [rows opts]
-  (let [stored (when (seq rows) (timeline.db/timeline-events-by-id (mapv :id rows)))
-        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) rows)]
-    (when (seq rows)
-      (t2/with-transaction [_conn]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-          (timeline.db/update-timeline-events! (mapv :id group) changes))
-        (events/publish-event! :event/timeline-event-update (events/update-event stored rows opts))))))
+  "Writes `rows`, updates of TimelineEvents, with one statement for each distinct set of changes."
+  [rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (timeline.db/update-timeline-events! (mapv :id group) changes)))
+
+(defn- update-timeline-event-batch!
+  "Writes the TimelineEvents of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch]
+  (let [stored (timeline.db/timeline-events-by-id (mapv :id batch))
+        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) batch)]
+    (write-timeline-event-updates! rows)
+    {:stored stored :rows rows}))
+
+(defn- publish-timeline-event-updates!
+  "Publishes the update event of the TimelineEvents that `batches`, what [[update-timeline-event-batch!]] returned,
+  wrote."
+  [batches opts]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/timeline-event-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                opts))))
 
 (mu/defn update-timeline-events! :- :nil
-  "Applies `changes` to each TimelineEvent of `ids`, publishing one update event with the `:context` of `opts`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::timeline.schema/timeline-event.changes
-   opts    :- ::timeline.schema/write-opts]
-  (write-timeline-event-updates! (mapv #(assoc changes :id %) ids) opts)
-  nil)
+  "Applies `updates`, each the `:id` of a TimelineEvent with the changes it gets, in one transaction, publishing their
+  update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::timeline.schema/timeline-event.update]]
+   (update-timeline-events! updates nil))
+  ([updates :- [:sequential ::timeline.schema/timeline-event.update]
+    opts    :- ::timeline.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv update-timeline-event-batch! (partition-all app-db/update-partition-size updates))]
+       (publish-timeline-event-updates! batches opts)))
+   nil))
 
-(mu/defn update-timeline-events-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values, in one pass over all of them, publishing one
-  update event, as an import writes different values for each."
-  [rows :- [:sequential ::timeline.schema/timeline-event.update]]
-  (write-timeline-event-updates! rows nil)
-  nil)
-
-(mu/defn delete-timeline-events!
-  "Delete the TimelineEvents with `ids`, in one statement, publishing their delete event."
+(mu/defn delete-timeline-events! :- :nil
+  "Delete the TimelineEvents with `ids` in one transaction, publishing their delete event right before the first
+  statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/timeline-event-delete
-                             {:changes (u.events/delete-changes (vec (vals (timeline.db/timeline-events-by-id ids))))
-                            :user-id (mi/current-user-id)})
-      (timeline.db/delete-timeline-events! ids))))
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/timeline-event-delete
+                               (events/delete-event (into [] (mapcat #(vals (timeline.db/timeline-events-by-id (vec %)))) batches))))
+      (run! #(timeline.db/delete-timeline-events! (vec %)) batches)))
+  nil)
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 
@@ -220,7 +230,7 @@
                :timestamp  serialization/date-transform}
    :defaults  {:archived false}
    :insert!   create-timeline-events!
-   :update!   update-timeline-events-for-import!
+   :update!   #(update-timeline-events! % {:writer :import})
    :delete!   delete-timeline-events!})
 
 (defmethod remote-sync/spec :model/TimelineEvent

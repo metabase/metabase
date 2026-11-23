@@ -73,17 +73,17 @@
                                 (upstream-of :card (:id card1))))))))
                 (testing "when updating an existing card"
                   (testing "to add a new table dep"
-                    (card/update-cards! [(:id card1)] {:dataset_query (let [mp (mt/metadata-provider)]
+                    (card/update-cards! [{:id (:id card1) :dataset_query (let [mp (mt/metadata-provider)]
                                                                         (lib/join (deps.test/table-query :orders)
                                                                                   (lib/join-clause (lib.metadata/table mp (mt/id :products))
                                                                                                    [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                                                                                           (lib.metadata/field mp (mt/id :products :id)))])))})
+                                                                                                           (lib.metadata/field mp (mt/id :products :id)))])))}])
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
                               (depends-on-> :card (:id card1) :table (mt/id :products))}
                             (upstream-of :card (:id card1)))))
                   (testing "to remove a table dep"
-                    (card/update-cards! [(:id (t2/select-one :model/Card :id (:id card1)))] {:dataset_query (deps.test/table-query :products)})
+                    (card/update-cards! [{:id (:id (t2/select-one :model/Card :id (:id card1))) :dataset_query (deps.test/table-query :products)}])
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                             (upstream-of :card (:id card1))))))))))))))
@@ -196,19 +196,19 @@
             (mt/with-temp [:model/Card card {}]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
               (computed! :card (:id card))
-              (card/update-cards! [(:id card)] {:dataset_query (deps.test/table-query :orders)})
+              (card/update-cards! [{:id (:id card) :dataset_query (deps.test/table-query :orders)}])
               (is (pending? :card (:id card)))))
           (testing "transforms"
             (mt/with-temp [:model/Transform transform]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
               (computed! :transform (:id transform))
-              (transform.model/update-transforms! [(:id transform)] {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})
+              (transform.model/update-transforms! [{:id (:id transform) :source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}])
               (is (pending? :transform (:id transform)))))
           (testing "snippets"
             (mt/with-temp [:model/NativeQuerySnippet snippet]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
               (computed! :snippet (:id snippet))
-              (snippet/update-snippets! [(:id snippet)] {:content "new content"} nil)
+              (snippet/update-snippets! [{:id (:id snippet) :content "new content"}] nil)
               (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test

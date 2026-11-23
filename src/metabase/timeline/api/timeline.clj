@@ -115,7 +115,7 @@
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)
-    (timeline/update-timelines! [id] changes nil)
+    (timeline/update-timelines! [(assoc changes :id id)] nil)
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content

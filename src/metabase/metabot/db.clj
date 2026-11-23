@@ -57,13 +57,12 @@
   (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
 
 (mu/defn update-metabots!
-  "Apply `changes` to the Metabots with `metabot-ids`, in one statement for each distinct set of columns that differ
-  from the stored ones, so that Toucan runs no statement for each row."
-  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (let [stored (u/index-by :id (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))]
-    (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) metabot-ids))]
-      (t2/update! :model/Metabot :id [:in [:auto/param ids]] effective)))
+  "Apply to each Metabot of `stored`, a map from id to the Metabot as read, its changes in `id->changes`, in one statement
+  for each distinct set of columns that differ from the stored ones, so that Toucan runs no statement for each row."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]]
+  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/Metabot :id [:in [:auto/param ids]] effective))
   nil)
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
@@ -144,11 +143,18 @@
   (t2/select :model/MetabotPrompt :id [:in [:auto/param prompt-ids]]))
 
 (mu/defn update-prompts! :- :nil
-  "Apply `changes` to the MetabotPrompts with `prompt-ids`."
-  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]
-  (t2/update! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]] changes)
+  "Apply to each MetabotPrompt of `stored`, a map from id to the prompt as read, its changes in `id->changes`, in one
+  statement for each distinct set of columns that differ from the stored ones."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]]
+  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/MetabotPrompt :id [:in [:auto/param ids]] effective))
   nil)
+
+(mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
+  "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (vec (t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])))
 
 (mu/defn delete-prompts-for-metabots! :- :nil
   "Delete the MetabotPrompts of the Metabots with `metabot-ids`."
@@ -385,13 +391,12 @@
   (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
 
 (mu/defn update-messages! :- :nil
-  "Apply `changes` to the MetabotMessages with `message-ids`, in one statement for each distinct set of columns that
-  differ from the stored ones, so that Toucan runs no statement for each row."
-  [message-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- (mut/dissoc ::metabot.schema/metabot-message.update :id)]
-  (let [stored (u/index-by :id (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))]
-    (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) message-ids))]
-      (t2/update! :model/MetabotMessage :id [:in [:auto/param ids]] effective)))
+  "Apply to each MetabotMessage of `stored`, a map from id to the message as read, its changes in `id->changes`, in one
+  statement for each distinct set of columns that differ from the stored ones."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-message.update :id)]]
+  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/MetabotMessage :id [:in [:auto/param ids]] effective))
   nil)
 
 (mu/defn messages-matching
@@ -424,10 +429,16 @@
   [rows :- [:sequential ::metabot.schema/ai-usage-log.create]]
   (t2/insert! :model/AiUsageLog rows))
 
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
+(mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-usage-logs! :- :nil
+  "Delete the AiUsageLogs with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/AiUsageLog :id [:in [:auto/param ids]])
+  nil)
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
@@ -1300,17 +1311,24 @@
   [row :- ::metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
 
-(mu/defn delete-usage-logs-for-conversations!
-  "Delete the AiUsageLog rows of the conversations with `conversation-ids`."
+(mu/defn usage-log-ids-for-conversations :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLog rows of the conversations with `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+  (if (seq conversation-ids)
+    (vec (t2/select-pks-vec :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+    []))
 
 (mu/defn conversations-by-ids
   "The MetabotConversations with `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
   (t2/select :model/MetabotConversation :id [:in conversation-ids]))
 
+(mu/defn conversation-ids-created-before :- [:sequential :string]
+  "The ids of the MetabotConversations created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (mapv :id (conversations-created-before cutoff)))
+
 (mu/defn delete-conversations!
   "Delete the MetabotConversations with `conversation-ids`."
-  [conversation-ids :- [:sequential :string]]
+  [conversation-ids :- [:sequential {:min 1} :string]]
   (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))

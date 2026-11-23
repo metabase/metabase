@@ -517,7 +517,7 @@
                                                                         :database_id   (mt/id)
                                                                         :dataset_query (lib/native-query (mt/metadata-provider) "select 1")}])))))))
         (testing "moving the model moves its actions"
-          (queries.card/update-cards! [model-id] {:collection_id other-id})
+          (queries.card/update-cards! [{:id model-id :collection_id other-id}])
           (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest model-action-has-no-table-test
@@ -536,7 +536,7 @@
                                                        :collection_id other-coll}]
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
-        (action/update-actions-for-import! [{:id action-id :model_id other-id :collection_id other-coll}])
+        (action/update-actions! [{:id action-id :model_id other-id :collection_id other-coll}] {:writer :import})
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 
@@ -576,13 +576,13 @@
           (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
             (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-            (queries.card/update-cards! [model-id] {:type :question})
+            (queries.card/update-cards! [{:id model-id :type :question}])
             (is (not (t2/exists? :model/Action :id action-id)))
             (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-          (queries.card/update-cards! [model-id] {:type :question})
+          (queries.card/update-cards! [{:id model-id :type :question}])
           (is (false? (t2/exists? :model/Action :id action-id))))))))
 
 (deftest model-to-saved-question-test-2
@@ -795,7 +795,7 @@
                                                          :collection_id coll-id :creator_id (mt/user->id :crowberto)}))]
                   (search.tu/with-index-disabled
                     (t2/with-call-count [call-count]
-                      (action/update-actions! (mapv :id actions) {:description "described"} nil)
+                      (action/update-actions! (mapv (fn [id] {:id id :description "described"}) (mapv :id actions)) nil)
                       (call-count)))))))]
     (testing "creating actions runs one statement count whatever their number"
       (creating 1)
@@ -829,7 +829,7 @@
             (action/update-action! action-id {:kind :row/update} nil)
             (is (= [:event/action-create :event/action-update] @published)))
           (testing "an import that wrote the details on their own touches the action"
-            (action/update-actions-for-import! [{:id action-id}])
+            (action/update-actions! [{:id action-id}] {:writer :import})
             (is (= [:event/action-create :event/action-update :event/action-update] @published))))))))
 
 (deftest create-actions-with-different-columns-test
@@ -861,7 +861,7 @@
             update!   (fn [prepare changes n]
                         (let [ids (fresh! n)]
                           (prepare (take-nth 2 ids))
-                          (events.tu/statement-count! #(action/update-actions! ids changes nil))))
+                          (events.tu/statement-count! #(action/update-actions! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted   (fn [f]
                         (f 1)
                         (is (= (f 2) (f 6))))]
@@ -869,11 +869,11 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (action/update-actions! ids {:description "Same"} nil))
+                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
                             {:description "Same"})))
         (testing "archiving actions, some already archived"
           (counted (partial update!
-                            (fn [ids] (action/update-actions! ids {:archived true} nil))
+                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) nil))
                             {:archived true})))
         (testing "deleting actions"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(action/delete-actions! ids))))))
@@ -917,9 +917,9 @@
             cascade {:writer :cascade}]
         (testing "through the write function"
           (let [ids (make! live 2)]
-            (action/update-actions! ids {:archived true} cascade)
+            (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) cascade)
             (is (= [true true] (flags ids)))
-            (action/update-actions! ids {:archived false} cascade)
+            (action/update-actions! (mapv (fn [id] {:id id :archived false}) ids) cascade)
             (is (= [false false] (flags ids)))))
         (testing "through a plain update, an Action follows the Collection it is in"
           (let [ids (into (make! live 1) (make! archived 1))]
@@ -931,7 +931,7 @@
           (let [ids       (make! live 1)
                 published (atom [])]
             (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-              (action/update-actions! ids {:archived true} cascade))
+              (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) cascade))
             (is (= [true] (for [[topic event] @published
                                 :when         (= :event/action-update topic)
                                 change        (:changes event)]
@@ -939,9 +939,9 @@
         (testing "restoring rows of mixed stored state costs the same statements at two and six rows"
           (let [restore! (fn [n]
                            (let [ids (make! live n)]
-                             (action/update-actions! ids {:archived true} cascade)
+                             (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) cascade)
                              (t2/update! :model/Action :id (first ids) {:archived_directly false})
                              (events.tu/statement-count!
-                              #(action/update-actions! ids {:archived false} cascade))))]
+                              #(action/update-actions! (mapv (fn [id] {:id id :archived false}) ids) cascade))))]
             (restore! 2)
             (is (= (restore! 2) (restore! 6)))))))))

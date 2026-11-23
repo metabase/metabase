@@ -10,10 +10,8 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -108,20 +106,6 @@
         1)
       0)))
 
-(defn- delete-conversation-rows!
-  "Delete the MetabotConversation `rows`, publish their delete, and return how many there were."
-  [rows]
-  (when (seq rows)
-    (events/publish-event! :event/metabot-conversation-delete {:changes (u.events/delete-changes rows) :user-id (mi/current-user-id)})
-    (metabot.db/delete-conversations! (mapv :id rows)))
-  (count rows))
-
-(mu/defn delete-metabot-conversations-for-cleanup!
-  "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/with-transaction [_conn]
-    (delete-conversation-rows! (metabot.db/conversations-created-before cutoff))))
-
 (mu/defn seed-metabot-conversation!
   "Insert the MetabotConversation `row` as given, its id and timestamps included, which the testing API seeds."
   [row :- ::metabot.schema/metabot-conversation]
@@ -129,11 +113,17 @@
     (u/prog1 (metabot.db/insert-conversation-row! row)
       (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
 
-(mu/defn delete-metabot-conversations!
-  "Delete the MetabotConversations with `conversation-ids`."
+(mu/defn delete-metabot-conversations! :- :int
+  "Delete the MetabotConversations with `conversation-ids`, in batches in one transaction, publishing one delete event
+  for all right before the first statement, and return the number deleted."
   [conversation-ids :- [:sequential :string]]
   (t2/with-transaction [_conn]
-    (delete-conversation-rows! (metabot.db/conversations-by-ids conversation-ids))))
+    (let [batches (mapv vec (partition-all mdb/delete-partition-size conversation-ids))
+          rows    (into [] (mapcat metabot.db/conversations-by-ids) batches)]
+      (when (seq batches)
+        (events/publish-event! :event/metabot-conversation-delete (events/delete-event rows)))
+      (run! metabot.db/delete-conversations! batches)
+      (count rows))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

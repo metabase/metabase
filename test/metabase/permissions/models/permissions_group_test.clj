@@ -50,7 +50,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (perms-group/update-permissions-groups! [(u/the-id group)] {:name "Cool People"}))))))))
+               (perms-group/update-permissions-groups! [{:id (u/the-id group) :name "Cool People"}]))))))))
 
 (deftest new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
@@ -136,7 +136,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> true should add user to Admin"
       (mt/with-temp [:model/User {user-id :id}]
-        (user/update-users! [user-id] {:is_superuser true})
+        (user/update-users! [{:id user-id :is_superuser true}])
         (is (true? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest add-remove-from-admin-group-test-4
@@ -144,7 +144,7 @@
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-model-cleanup [:model/User]
         (let [[{user-id :id}] (user/create-users! [{:email "demoted-admin@example.com" :is_superuser true}])]
-          (user/update-users! [user-id] {:is_superuser false})
+          (user/update-users! [{:id user-id :is_superuser false}])
           (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin))))))))))
 
 (deftest data-graph-for-group-check-all-groups-test
@@ -274,9 +274,9 @@
         (events.tu/statement-count! #(create! 1))
         (is (= (events.tu/statement-count! #(create! 2))
                (events.tu/statement-count! #(create! 6)))))
-      (testing "updating groups with a change they hold already"
+      (testing "updating groups that keep their names"
         (let [update! (fn [groups]
-                        (perms-group/update-permissions-groups! (mapv :id groups) {:magic_group_type nil}))]
+                        (perms-group/update-permissions-groups! (mapv #(select-keys % [:id :name]) groups)))]
           (counted update! 1)
           (is (= (counted update! 2) (counted update! 6)))))
       (testing "deleting groups, some of them in the LDAP group mappings"
@@ -325,16 +325,17 @@
 (deftest update-permissions-groups-refuses-in-input-order-test
   (mt/with-model-cleanup [:model/PermissionsGroup]
     (let [[group taken] (perms-group/create-permissions-groups! [{:name (mt/random-name)} {:name (mt/random-name)}])]
-      (testing "the first refused group gives the message"
+      (testing "the first refused row gives the message"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tenant group"
-                              (perms-group/update-permissions-groups! [(:id group) (:id taken)]
-                                                                      {:name (:name group) :is_tenant_group true})))
+                              (perms-group/update-permissions-groups! [{:id (:id group) :is_tenant_group true}
+                                                                       {:id (:id taken) :name (:name group)}])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
-                              (perms-group/update-permissions-groups! [(:id taken) (:id group)]
-                                                                      {:name (:name group) :is_tenant_group true}))))
-      (testing "renaming a second group to the same name writes nothing"
+                              (perms-group/update-permissions-groups! [{:id (:id taken) :name (:name group)}
+                                                                       {:id (:id group) :is_tenant_group true}]))))
+      (testing "a rename sees the rename of an earlier row"
         (let [new-name (mt/random-name)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A group with that name already exists"
-                                (perms-group/update-permissions-groups! [(:id group) (:id taken)] {:name new-name})))
+                                (perms-group/update-permissions-groups! [{:id (:id group) :name new-name}
+                                                                         {:id (:id taken) :name new-name}])))
           (is (= [(:name group) (:name taken)]
                  (mapv #(t2/select-one-fn :name :model/PermissionsGroup :id (:id %)) [group taken]))))))))

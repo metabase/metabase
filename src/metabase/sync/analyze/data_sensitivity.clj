@@ -52,7 +52,7 @@
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
     (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (field/update-fields! [(:id field)] {:data_sensitivity (or category :PUBLIC)} {:fields [field]})
+      (field/update-fields! [{:id (:id field) :data_sensitivity (or category :PUBLIC)}] {:fields [field]})
       category)))
 
 (mu/defn scan-table! :- Stats
@@ -107,8 +107,7 @@
   scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
   a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
   [database-id :- ::lib.schema.id/database]
-  (let [n (count (field/update-fields! (vec (sync.db/classifier-data-sensitivity-field-ids-of-database database-id))
-                                       {:data_sensitivity nil}))]
+  (let [n (count (field/update-fields! (for [id (vec (sync.db/classifier-data-sensitivity-field-ids-of-database database-id))] {:id id :data_sensitivity nil})))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s"
                n (sync-util/name-for-logging (driver.u/lib-database database-id)))
     n))
@@ -116,8 +115,7 @@
 (mu/defn reset-table-data-sensitivity! :- :int
   "Like [[reset-data-sensitivity!]], for a single `table`."
   [table :- i/TableInstance]
-  (let [n (count (field/update-fields! (vec (sync.db/classifier-data-sensitivity-field-ids-of-table (u/the-id table)))
-                                       {:data_sensitivity nil}))]
+  (let [n (count (field/update-fields! (for [id (vec (sync.db/classifier-data-sensitivity-field-ids-of-table (u/the-id table)))] {:id id :data_sensitivity nil})))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging table))
     n))
 

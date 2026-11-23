@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.validation :as validation]
@@ -131,13 +132,32 @@
    provider :- :string]
   (auth-identity.db/select-or-insert-auth-identity! user-id provider))
 
+(defn- statement-groups
+  "The `[changes ids]` pairs to write the `batch` of updates with: rows with the same changes share one statement, but
+  each row that sets `:credentials` is written alone, so its credentials go through the hooks for it alone."
+  [batch]
+  (into []
+        (mapcat (fn [[changes rows]]
+                  (if (contains? changes :credentials)
+                    (map (fn [row] [changes [(:id row)]]) rows)
+                    [[changes (mapv :id rows)]])))
+        (group-by #(dissoc % :id) batch)))
+
+(defn- write-auth-identity-batch!
+  "Write the `batch` of updates, returning the number of rows updated."
+  [batch]
+  (transduce (map (fn [[changes ids]] (auth-identity.db/update-auth-identities! ids changes)))
+             + 0
+             (statement-groups batch)))
+
 (mu/defn update-auth-identities! :- ms/IntGreaterThanOrEqualToZero
-  "Apply `changes` to the AuthIdentities with `ids`, returning the number updated; an empty `ids` updates nothing."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::auth-identity.schema/auth-identity.update]
-  (if (seq ids)
-    (auth-identity.db/update-auth-identities! ids changes)
-    0))
+  "Apply `updates`, each the id of an AuthIdentity and the columns to set, in one transaction, returning the number
+  updated."
+  [updates :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
+  (if (empty? updates)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map write-auth-identity-batch!) + 0 (partition-all app-db/update-partition-size updates)))))
 
 (mu/defn touch-auth-identity!
   "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no
@@ -145,11 +165,13 @@
   [id :- [:maybe ms/PositiveInt]]
   (auth-identity.db/touch-auth-identity! id))
 
-(mu/defn delete-auth-identities-for-user!
-  "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (auth-identity.db/delete-auth-identities! user-id provider))
+(mu/defn delete-auth-identities! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the AuthIdentities with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map auth-identity.db/delete-auth-identities!) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
@@ -184,9 +206,9 @@
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
        (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
-         (update-auth-identities! [(u/the-id pw-auth-identity)] attrs)
+         (update-auth-identities! [(assoc attrs :id (u/the-id pw-auth-identity))])
          (create-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
-     (delete-auth-identities-for-user! user-id "emailed-secret-password-reset")
+     (delete-auth-identities! (auth-identity.db/auth-identity-ids user-id "emailed-secret-password-reset"))
      (models.session/end-sessions-for-users! [user-id] "password-change" (:ended-by opts)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

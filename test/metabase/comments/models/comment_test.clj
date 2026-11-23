@@ -115,7 +115,7 @@
                             (range n)))
             fresh!  (fn [n]
                       (let [ids (mapv :id (comment/create-comments! (rows n)))]
-                        (comment/update-comments! (take-nth 2 ids) {:is_resolved true})
+                        (comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) (take-nth 2 ids)))
                         ids))]
         (testing "creating comments"
           (events.tu/statement-count! #(comment/create-comments! (rows 1)))
@@ -125,7 +125,7 @@
           (let [update! (fn [n]
                           (let [ids (fresh! n)]
                             (events.tu/statement-count!
-                             #(comment/update-comments! ids {:is_resolved true}))))]
+                             #(comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) ids)))))]
             (update! 1)
             (is (= (update! 2) (update! 6)))))
         (testing "deleting comments, some already deleted"

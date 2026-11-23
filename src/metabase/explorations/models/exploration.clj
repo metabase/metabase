@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as document]
@@ -15,7 +16,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -165,55 +165,87 @@
   Exploration."
   [ids archived? opts]
   (when-let [document-ids (not-empty (mapv :id (explorations.db/summary-documents-following-explorations ids archived?)))]
-    (document/update-documents! document-ids {:archived archived?}
-                                {:context (or (:context opts) {:archived-with [:model/Exploration (first ids)]})})))
+    (document/update-documents! (mapv (fn [id] {:id id :archived archived?}) document-ids) {:context (or (:context opts) {:archived-with [:model/Exploration (first ids)]})})))
+
+(defn- set-summaries-archived-of!
+  "Archives or restores the Summary Documents of the Explorations of `rows`, which change `archived`, with one write for
+  each direction."
+  [rows opts]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)]
+    (set-summary-documents-archived! (mapv :id group) archived? opts)))
+
+(defn- derive-archived-directly
+  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
+  Explorations by id after the write."
+  [rows updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
+        rows))
+
+(defn- check-exploration-updates
+  "Throw a 400 unless every one of `rows`, updates of the `stored` Explorations that move, satisfies these rules:
+
+  - its Collection is not archived, unless the Exploration is"
+  [stored rows]
+  (check-explorations
+   (for [row   (filterv #(changed? (get stored (:id %)) % :collection_id) rows)]
+     {:collection_id (:collection_id row)
+      :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))})))
+
+(defn- write-exploration-updates!
+  "Writes `rows`, updates of the `stored` Explorations, archives or restores their Summary Documents, and returns what the
+  event needs, the changes of each row."
+  [stored rows opts]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)
+          :when           (seq changes)]
+    (explorations.db/update-explorations! (mapv :id group) changes))
+  (set-summaries-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) opts)
+  {:stored stored
+   :rows   (derive-archived-directly rows (u/index-by :id (explorations.db/rows :model/Exploration (mapv :id rows))))})
+
+(defn- update-exploration-batch!
+  "Checks and writes the Explorations of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch opts]
+  (let [stored (u/index-by :id (explorations.db/rows :model/Exploration (mapv :id batch)))
+        rows   (filterv #(contains? stored (:id %)) batch)]
+    (check-exploration-updates stored rows)
+    (write-exploration-updates! stored rows opts)))
+
+(defn- publish-exploration-updates!
+  "Publishes the update event of the Explorations that `batches`, what [[update-exploration-batch!]] returned, wrote."
+  [batches opts]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/exploration-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                opts))))
 
 (mu/defn update-explorations! :- :nil
-  "Apply `changes` to the Explorations with `ids` in one transaction, publishing one update event with the `:context` of
-  `opts`. An Exploration moved into an archived Collection throws unless it is archived, a change of `archived` gives its
-  `archived_directly` and archives or restores its Summary Documents."
-  ([ids :- [:sequential ms/PositiveInt]
-    changes :- ::explorations.schema/exploration.update]
-   (update-explorations! ids changes nil))
-  ([ids :- [:sequential ms/PositiveInt]
-    changes :- ::explorations.schema/exploration.update
-    opts :- ::write-opts]
-   (let [stored (u/index-by :id (explorations.db/rows :model/Exploration ids))
-         ids    (filterv stored ids)]
-     (when (seq ids)
-       (t2/with-transaction [_conn]
-         (let [moved            (filterv #(changed? (get stored %) changes :collection_id) ids)
-               archived-changed (filterv #(changed? (get stored %) changes :archived) ids)]
-           (check-explorations
-            (for [id moved]
-              {:collection_id (:collection_id changes)
-               :archived      (if (contains? changes :archived) (:archived changes) (:archived (get stored id)))}))
-           (when (seq changes)
-             (explorations.db/update-explorations! ids changes))
-           (when (seq archived-changed)
-             (set-summary-documents-archived! archived-changed (boolean (:archived changes)) opts))
-           (events/publish-event! :event/exploration-update
-                                  (events/update-event stored
-                                                       (let [updated (u/index-by :id (explorations.db/rows :model/Exploration ids))]
-                                                         (mapv #(cond-> (assoc changes :id %)
-                                                                  (contains? changes :archived)
-                                                                  (assoc :archived_directly (:archived_directly (get updated %))))
-                                                               ids))
-                                                       opts))))))
+  "Apply `updates`, each the `:id` of an Exploration with the columns to give it, in one transaction, publishing their
+  update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::explorations.schema/exploration.update-row]]
+   (update-explorations! updates nil))
+  ([updates :- [:sequential ::explorations.schema/exploration.update-row]
+    opts    :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv #(update-exploration-batch! % opts) (partition-all app-db/update-partition-size updates))]
+       (publish-exploration-updates! batches opts)))
    nil))
 
 (mu/defn delete-explorations! :- :nil
-  "Delete the Explorations with `exploration-ids`, publishing their delete event."
-  [exploration-ids :- [:sequential ms/PositiveInt]]
-  (when (seq exploration-ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/exploration-delete
-                             {:changes (u.events/delete-changes (explorations.db/rows :model/Exploration (vec exploration-ids)))
-                            :user-id (mi/current-user-id)})
-      (explorations.db/delete-explorations! exploration-ids)))
+  "Delete the Explorations with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/exploration-delete
+                               (events/delete-event (into [] (mapcat #(explorations.db/rows :model/Exploration (vec %))) batches))))
+      (run! #(explorations.db/delete-explorations! (vec %)) batches)))
   nil)
 
-(mu/defn update-explorations-for-revert! :- :int
+(mu/defn revert-exploration! :- :int
   "Write the revision `snapshot` to the Exploration with `id` in one statement without the cascades of an update."
   [id        :- ms/PositiveInt
    _user-id  :- [:maybe ::lib.schema.id/user]
@@ -230,12 +262,12 @@
 (defmethod collection/archive-in-collections! :model/Exploration
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-explorations! ids {:archived true} opts)))
+    (update-explorations! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Exploration
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-explorations! ids {:archived false} opts)))
+    (update-explorations! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------
 
@@ -246,7 +278,7 @@
   {:track   [:name :description :collection_id :archived]
    :skip    [:archived_directly :collection_position :creator_id :entity_id]
    :schema  ::explorations.schema/exploration.revision
-   :revert! update-explorations-for-revert!})
+   :revert! revert-exploration!})
 
 (defmethod search/spec :model/Exploration
   [_model]

@@ -86,17 +86,17 @@
   (testing "editing the source query (output schema may change) marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (transform/update-transforms! [transform-id] {:source {:type :query :query (query-test-util/make-query :source-table "checkins")}})
+       (transform/update-transforms! [{:id transform-id :source {:type :query :query (query-test-util/make-query :source-table "checkins")}}])
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (transform/update-transforms! [transform-id] {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
+       (transform/update-transforms! [{:id transform-id :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}}])
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (transform/update-transforms! [transform-id] {:name "renamed"})
+       (transform/update-transforms! [{:id transform-id :name "renamed"}])
        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id index-id)))))))
 
 (mt/when-ee-evailable
@@ -217,8 +217,8 @@
        (is (= 400 (status-code-of #(transform/create-transforms! [(python-transform-writing-to dest-db)])))))
      (testing "retargeting an existing transform onto such a database"
        (mt/with-temp [:model/Transform {id :id} (python-transform-writing-to (mt/id))]
-         (is (= 400 (status-code-of #(transform/update-transforms! [id] {:target {:type "table" :name "retargeted" :database audit-db}}))))
-         (is (= 400 (status-code-of #(transform/update-transforms! [id] {:target {:type "table" :name "retargeted" :database dest-db}})))))))))
+         (is (= 400 (status-code-of #(transform/update-transforms! [{:id id :target {:type "table" :name "retargeted" :database audit-db}}]))))
+         (is (= 400 (status-code-of #(transform/update-transforms! [{:id id :target {:type "table" :name "retargeted" :database dest-db}}])))))))))
 
 (deftest schema-checks-source-and-target-test
   (testing "target without a name"
@@ -238,15 +238,15 @@
                                               :target {:type "table" :schema schema :name "cycle_table_2"}
                                               :target_table_id table2}]
       (testing "retargeting a transform onto its own source table"
-        (is (= 400 (status-code-of #(transform/update-transforms! [id] {:target {:type "table" :schema schema :name "cycle_table_1"}})))))
+        (is (= 400 (status-code-of #(transform/update-transforms! [{:id id :target {:type "table" :schema schema :name "cycle_table_1"}}])))))
       (testing "an update that leaves the source and target alone checks no cycle"
-        (is (nil? (status-code-of #(transform/update-transforms! [id] {:name "renamed"}))))))))
+        (is (nil? (status-code-of #(transform/update-transforms! [{:id id :name "renamed"}]))))))))
 
 (deftest collection-is-checked-on-update-test
   (mt/with-temp [:model/Collection {transforms-id :id} {:namespace collection/transforms-ns}
                  :model/Collection {regular-id :id} {}
                  :model/Transform {id :id} {:collection_id transforms-id}]
-    (is (= 400 (status-code-of #(transform/update-transforms! [id] {:collection_id regular-id}))))
+    (is (= 400 (status-code-of #(transform/update-transforms! [{:id id :collection_id regular-id}]))))
     (is (= transforms-id (t2/select-one-fn :collection_id :model/Transform :id id)))))
 
 (deftest model-writes-publish-lifecycle-events-test
@@ -254,7 +254,7 @@
     (with-redefs [events/publish-event! (fn [topic _event]
                                           (swap! events-published conj topic))]
       (let [{transform-id :id} (first (transform/create-transforms! [(mt/with-temp-defaults :model/Transform)]))]
-        (transform/update-transforms! [transform-id] {:name "Updated Name"})
+        (transform/update-transforms! [{:id transform-id :name "Updated Name"}])
         (transform/delete-transforms! [transform-id])))
     (is (= [:event/transform-create :event/transform-update :event/transform-delete]
            (filterv #{:event/transform-create :event/transform-update :event/transform-delete} @events-published)))))
@@ -492,7 +492,7 @@
                                                          (Thread/sleep 1500))
                                                        (apply search-update! instance more))]
             (let [run     (future
-                            (transform/update-transforms! [transform-id] {:target_table_id (mt/id :venues)}))
+                            (transform/update-transforms! [{:id transform-id :target_table_id (mt/id :venues)}]))
                   delete  (future
                             (deref run-updated 30000 nil)
                             (t2/delete! :model/Transform :id transform-id))
@@ -543,17 +543,17 @@
     (let [schema "PUBLIC"]
       (testing "an update that leaves the definition alone scans nothing"
         (is (zero? (with-cycle-scan-count
-                     (transform/update-transforms! [reader] {:name "renamed" :description "described"})
-                     (transform/update-transforms! [reader] {:last_checkpoint_value "5"})))))
+                     (transform/update-transforms! [{:id reader :name "renamed" :description "described"}])
+                     (transform/update-transforms! [{:id reader :last_checkpoint_value "5"}])))))
       (testing "closing a loop from the target side, with the source untouched, is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
-                              (transform/update-transforms! [reader] {:target {:schema schema :name "cycle_1" :type "table"}}))))
+                              (transform/update-transforms! [{:id reader :target {:schema schema :name "cycle_1" :type "table"}}]))))
       (testing "closing a loop from the source side is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
-                              (transform/update-transforms! [writer] {:source {:type :query :query (cycle-table-query table-2)}}))))
+                              (transform/update-transforms! [{:id writer :source {:type :query :query (cycle-table-query table-2)}}]))))
       (testing "an update of the source scans once"
         (is (= 1 (with-cycle-scan-count
-                   (transform/update-transforms! [reader] {:source {:type :query :query (cycle-table-query table-3)}}))))))))
+                   (transform/update-transforms! [{:id reader :source {:type :query :query (cycle-table-query table-3)}}]))))))))
 
 (deftest cycle-check-runs-once-per-update-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
@@ -571,7 +571,7 @@
             (testing "writing the stored definition again, as a SerDes reimport does, scans nothing"
               (let [stored (t2/select-one :model/Transform :id id)]
                 (is (zero? (with-cycle-scan-count
-                             (transform/update-transforms! [id] (select-keys stored [:name :source :target])))))))))))))
+                             (transform/update-transforms! [(assoc (select-keys stored [:name :source :target]) :id id)]))))))))))))
 
 (defn- transform-rows
   "`n` Transform rows with distinct names and targets, whose sources hold no query: a query is normalized against the
@@ -593,7 +593,7 @@
       (testing "updating transforms with one change set"
         (let [update! (fn [ids]
                         (events.tu/statement-count!
-                         (fn [] (transform/update-transforms! ids {:description "described"}))))
+                         (fn [] (transform/update-transforms! (mapv (fn [row-id] (assoc {:description "described"} :id row-id)) ids)))))
               ids     @created]
           (update! (take 1 ids))
           (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
@@ -603,6 +603,28 @@
               ids     @created]
           (delete! (take 1 ids))
           (is (= (delete! (take 2 (drop 1 ids))) (delete! (take 6 (drop 3 ids)))))))
+      (finally
+        (t2/delete! :model/Transform :id [:in @created])))))
+
+(deftest update-transforms-with-different-rows-test
+  (let [created (atom [])]
+    (try
+      (reset! created (mapv :id (transform/create-transforms! (transform-rows 10))))
+      (let [update! (fn [ids]
+                      (let [published (atom [])]
+                        (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
+                          {:statements (events.tu/statement-count!
+                                        (fn [] (transform/update-transforms! (map-indexed (fn [i id] {:id id :description (str "described " i " " (mt/random-name))}) ids))))
+                           :events     @published})))
+            ids     @created
+            _warm   (update! (take 1 ids))
+            small   (update! (take 2 (drop 1 ids)))
+            large   (update! (take 6 (drop 3 ids)))]
+        (testing "one update event for all rows whatever their number"
+          (is (= [:event/transform-update] (:events small)))
+          (is (= (:events small) (:events large))))
+        (testing "rows that all differ cost at most one UPDATE and one before-update read for each extra row"
+          (is (<= (- (:statements large) (:statements small)) (* 2 4)))))
       (finally
         (t2/delete! :model/Transform :id [:in @created])))))
 
@@ -637,7 +659,7 @@
         (testing "moving transforms of several Collections, one already in the target, and describing them"
           (let [move! (fn [ids]
                         (events.tu/statement-count!
-                         #(transform/update-transforms! ids {:collection_id target :description "moved"})))]
+                         #(transform/update-transforms! (mapv (fn [row-id] (assoc {:collection_id target :description "moved"} :id row-id)) ids))))]
             (move! (make! 1))
             (is (= (move! (make! 2)) (move! (make! 6))))))))))
 
@@ -646,7 +668,7 @@
     (let [counted (fn [n body]
                     (let [ids (mapv :id (transform/create-transforms! (transform-rows n)))]
                       (events.tu/statement-count!
-                       #(transform/update-transforms! ids {:source {:type :python :source-tables [] :body body :source-database (mt/id)}}))))]
+                       #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :python :source-tables [] :body body :source-database (mt/id)}} :id row-id)) ids)))))]
       (counted 1 "print(2)")
       (is (= (counted 2 "print(3)") (counted 6 "print(4)"))))))
 
@@ -699,6 +721,6 @@
           counted (fn [n limit]
                     (let [ids (mapv :id (transform/create-transforms!
                                          (mapv (fn [_] (cycle-transform (query 1) (mt/random-name))) (range n))))]
-                      (statements-outside-query-analysis! #(transform/update-transforms! ids {:source {:type :query :query (query limit)}}))))]
+                      (statements-outside-query-analysis! #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :query :query (query limit)}} :id row-id)) ids)))))]
       (counted 1 2)
       (is (= (counted 2 3) (counted 6 4))))))

@@ -11,6 +11,7 @@
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -24,7 +25,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -205,16 +205,15 @@
                          :delete :event/segment-test-delete}})
 
 (mu/defn create-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
-  "Insert the `rows` of the saved tests of `model` in one transaction, publishing their create event, and return the
-  inserted tests."
+  "Insert the `rows` of the saved tests of `model` in batches in one transaction, publishing one create event for all,
+  and return the inserted tests."
   [model :- :keyword
    rows  :- [:sequential ::data-testing.schema/saved-test.create]]
-  (if (seq rows)
-    (t2/with-transaction [_conn]
-      (let [tests (data-testing.db/insert-saved-tests! model rows)]
-        (events/publish-event! (get-in saved-test-topics [model :create]) (events/create-event tests))
-        tests))
-    []))
+  (t2/with-transaction [_conn]
+    (let [tests (into [] (mapcat #(data-testing.db/insert-saved-tests! model %)) (map vec (partition-all mdb/create-partition-size rows)))]
+      (when (seq tests)
+        (events/publish-event! (get-in saved-test-topics [model :create]) (events/create-event tests)))
+      tests)))
 
 (defn- normalized-changes
   "`changes` to a saved test with the columns that the transforms of its model normalize on their way out."
@@ -224,56 +223,57 @@
     (contains? changes :expectations) (update :expectations #(lib/normalize ::data-testing.schema/expectations %))
     (contains? changes :now)          (update :now #(some->> % (lib/normalize ::data-testing.schema/now)))))
 
+(defn- update-batch!
+  "Apply the changes in `rows`, the id of a test of `model` and the columns to change, and return the tests as read and
+  their changes, each a map from id."
+  [model rows]
+  (let [stored    (u/index-by :id (data-testing.db/saved-tests-by-ids model (mapv :id rows)))
+        requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
+    (when (seq requested)
+      (data-testing.db/update-saved-tests! model stored requested))
+    {:stored stored :requested requested}))
+
 (mu/defn update-saved-tests! :- :nil
-  "Apply the `changes` to the tests of `model` with `ids` in one transaction, publishing their update event."
-  [model   :- :keyword
-   ids     :- [:sequential ms/PositiveInt]
-   changes :- ::data-testing.schema/saved-test.update
-   opts    :- ::data-testing.schema/write-opts]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (data-testing.db/saved-tests-by-ids model (vec ids)))]
-        (when (seq stored)
-          (data-testing.db/update-saved-tests! model stored changes)
-          (events/publish-event! (get-in saved-test-topics [model :update])
-                                 (events/update-event stored
-                                                      (mapv #(assoc changes :id %) (filter stored ids))
-                                                      (assoc opts :objects (update-vals stored #(merge % (normalized-changes changes))))))))))
+  "Apply the changes in each of `rows`, the id of a test of `model` and the columns to change, in batches in one
+  transaction, publishing one update event for all."
+  [model :- :keyword
+   rows  :- [:sequential ::data-testing.schema/saved-test.update]
+   opts  :- ::data-testing.schema/write-opts]
+  (t2/with-transaction [_conn]
+    (let [batches   (mapv #(update-batch! model (vec %)) (partition-all mdb/update-partition-size rows))
+          stored    (into {} (mapcat :stored) batches)
+          requested (into {} (mapcat :requested) batches)]
+      (when (seq requested)
+        (events/publish-event! (get-in saved-test-topics [model :update])
+                               (events/update-event stored
+                                                    (mapv (fn [[id changes]] (assoc changes :id id)) requested)
+                                                    (assoc opts :objects (into {}
+                                                                               (map (fn [[id changes]] [id (merge (stored id) (normalized-changes changes))]))
+                                                                               requested)))))))
   nil)
 
-(mu/defn- delete-saved-test-rows! :- :nil
-  "Delete the tests of `model` among `tests`, in one transaction, publishing their delete event: set the test id of
-  their runs to nil and remove them from the suites first."
-  [test-type :- ::data-testing.schema/test-type
-   model     :- :keyword
-   tests     :- [:sequential :map]]
-  (when (seq tests)
-    (t2/with-transaction [_conn]
-      (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
-      (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests))
-      (events/publish-event! (get-in saved-test-topics [model :delete]) {:changes (u.events/delete-changes tests) :user-id (mi/current-user-id)})
-      (data-testing.db/delete-saved-tests! model (mapv :id tests))))
-  nil)
+(defn- cascade-delete!
+  "Set the test id of the runs of the deleted `test-type` `tests` to nil and remove them from the suites."
+  [test-type tests]
+  (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
+  (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests)))
 
 (mu/defn delete-saved-tests! :- :nil
-  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one transaction. A run of a deleted test
-  no longer names it, and a suite no longer holds it."
+  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in batches in one transaction, publishing one
+  delete event for all right before the first statement. A run of a deleted test no longer names it, and a suite no
+  longer holds it."
   [test-type :- ::data-testing.schema/test-type
    model     :- :keyword
    ids       :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (delete-saved-test-rows! test-type model (data-testing.db/saved-test-keys model (vec ids)))))
-
-(mu/defn delete-saved-tests-for-subjects! :- :nil
-  "Delete the saved tests of `model`, a `test-type` test, whose `subject-column` holds one of `subject-ids` (see
-  [[delete-saved-tests!]])."
-  [test-type      :- ::data-testing.schema/test-type
-   model          :- :keyword
-   subject-column :- :keyword
-   subject-ids    :- [:sequential ms/PositiveInt]]
-  (when (seq subject-ids)
-    (delete-saved-test-rows! test-type model
-                             (data-testing.db/saved-test-keys-of-subjects model subject-column (vec subject-ids)))))
+  (t2/with-transaction [_conn]
+    (let [batches (into [] (comp (map vec) (map #(data-testing.db/saved-test-keys model %)) (filter seq))
+                        (partition-all mdb/delete-partition-size ids))]
+      (run! #(cascade-delete! test-type %) batches)
+      (when (seq batches)
+        (events/publish-event! (get-in saved-test-topics [model :delete])
+                               (events/delete-event (into [] cat batches))))
+      (run! #(data-testing.db/delete-saved-tests! model (mapv :id %)) batches)))
+  nil)
 
 (mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
   "Insert the TransformTests `rows`, returning the inserted tests. The column transforms of the model normalize and
@@ -282,23 +282,13 @@
   (create-saved-tests! :model/TransformTest rows))
 
 (mu/defn update-transform-tests! :- :nil
-  "Apply the `changes` to the TransformTests with `ids`, which the column transforms of the model normalize and
-  validate, publishing their update event."
-  ([ids     :- [:sequential ms/PositiveInt]
-    changes :- ::data-testing.schema/transform-test.update]
-   (update-transform-tests! ids changes nil))
-  ([ids     :- [:sequential ms/PositiveInt]
-    changes :- ::data-testing.schema/transform-test.update
-    opts    :- ::data-testing.schema/write-opts]
-   (update-saved-tests! :model/TransformTest ids changes opts)))
-
-(mu/defn update-transform-tests-for-import! :- :nil
-  "Apply each of `rows`, the id of a TransformTest and the columns to change, as an import writes it, one row at a time.
-  An import runs rows with different values, which one change for all cannot express."
-  [rows :- [:sequential ::data-testing.schema/transform-test.import-row]]
-  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
-    (update-transform-tests! (mapv :id rows) changes {:writer :import}))
-  nil)
+  "Apply the changes in each of `rows`, the id of a TransformTest and the columns to change, which the column
+  transforms of the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]]
+   (update-transform-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]
+    opts :- ::data-testing.schema/write-opts]
+   (update-saved-tests! :model/TransformTest rows opts)))
 
 (mu/defn delete-transform-tests! :- :nil
   "Delete the TransformTests with `ids`."
@@ -310,7 +300,7 @@
   since the rows outlive the feature."
   :feature :none
   [transform-ids]
-  (delete-saved-tests-for-subjects! :transform :model/TransformTest :transform_id transform-ids))
+  (delete-transform-tests! (data-testing.db/saved-test-ids-of-subjects :model/TransformTest :transform_id (vec transform-ids))))
 
 (defmethod data-testing.test-type/spec :transform [_test-type]
   {:model      :model/TransformTest
@@ -350,7 +340,7 @@
 
 (defn- revert-transform-test!
   [id _user-id snapshot]
-  (update-transform-tests! [id] snapshot {:writer :revert}))
+  (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -372,7 +362,7 @@
 (defmethod serialization/spec :model/TransformTest [_]
   {:schema              ::data-testing.schema/external-transform-test
    :insert!             create-transform-tests!
-   :update!             update-transform-tests-for-import!
+   :update!             #(update-transform-tests! % {:writer :import})
    :delete!             delete-transform-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:transform_id (serialization/fk-transform :model/Transform)

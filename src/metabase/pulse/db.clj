@@ -240,7 +240,7 @@
 (mu/defn insert-pulses!
   "Insert the Pulse `pulses` with one statement per distinct set of columns and return the inserted instances in their
   order."
-  [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.update]]
+  [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.changes]]
   (app-db/insert-returning-instances! :model/Pulse pulses))
 
 (mu/defn collections-for-content-checks
@@ -259,7 +259,7 @@
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse
-   changes  :- ::pulse.schema/pulse.update]
+   changes  :- ::pulse.schema/pulse.changes]
   (t2/update! :model/Pulse :id pulse-id changes))
 
 (mu/defn archived-directly-clause
@@ -282,14 +282,12 @@
     false))
 
 (mu/defn update-pulses!
-  "Apply `changes` to the Pulses with `pulse-ids`, with one statement for each distinct set of columns the Pulses change."
-  [pulse-ids :- [:sequential ::lib.schema.id/pulse]
-   changes   :- ::pulse.schema/pulse.update]
-  (when (seq pulse-ids)
-    (doseq [[group-changes ids] (mi/group-ids-by-changes
-                                 (u/index-by :id (t2/select :model/Pulse :id [:in pulse-ids]))
-                                 (map #(assoc changes :id %) pulse-ids))]
-      (t2/update! :model/Pulse :id [:in ids] group-changes)))
+  "Apply to each Pulse of `stored`, a map from id to the Pulse as read, its changes in `id->changes`, with one statement
+  for each distinct set of columns the Pulses change."
+  [stored      :- [:map-of ::lib.schema.id/pulse :map]
+   id->changes :- [:map-of ::lib.schema.id/pulse ::pulse.schema/pulse.changes]]
+  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/Pulse :id [:in ids] changes))
   nil)
 
 (mu/defn delete-pulses!
@@ -300,7 +298,7 @@
 (mu/defn update-pulses-for-dashboards!
   "Apply the changes of each Dashboard in `changes-by-dashboard`, a map of Dashboard id to changes with the same keys,
   to the Pulses of that Dashboard in one statement, leaving `updated_at` untouched."
-  [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard ::pulse.schema/pulse.update]]
+  [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard ::pulse.schema/pulse.changes]]
   (let [columns (vec (distinct (mapcat keys (vals changes-by-dashboard))))
         value-of (fn [column]
                    (into [:case]

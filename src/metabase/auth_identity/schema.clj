@@ -62,6 +62,13 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
+(mr/def ::auth-identity.update-row
+  "What an update of an AuthIdentity takes: its `:id` and the columns to set."
+  [:merge
+   ::auth-identity.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::auth-identity.create
   "What [[metabase.auth-identity.models.auth-identity/create-auth-identity!]] takes: the columns of a new AuthIdentity
   a caller gives."

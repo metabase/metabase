@@ -416,10 +416,10 @@
       (testing "sanity check that it has a trigger to begin with"
         (is (= 2 (count (notification.tu/notification-triggers id)))))
       (testing "disabled notification should remove triggers"
-        (models.notification/update-notifications! [id] {:active false})
+        (models.notification/update-notifications! [{:id id :active false}])
         (is (empty? (notification.tu/notification-triggers id))))
       (testing "activate notification should restore triggers"
-        (models.notification/update-notifications! [id] {:active true})
+        (models.notification/update-notifications! [{:id id :active true}])
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
 (deftest v-alerts-schedule-type-test
@@ -494,16 +494,16 @@
      (testing "updating Notifications, some of them already inactive"
        (let [counted (fn [n]
                        (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
-                         (models.notification/update-notifications! (vec (take-nth 2 ids)) {:active false})
-                         (events.tu/statement-count! #(models.notification/update-notifications! ids {:active false}))))]
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (vec (take-nth 2 ids))))
+                         (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) ids)))))]
          (counted 2)
          (is (= (counted 2) (counted 6)))))
      (testing "reactivating Notifications, some of them already active"
        (let [counted (fn [n]
                        (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
-                         (models.notification/update-notifications! ids {:active false})
-                         (models.notification/update-notifications! (vec (take-nth 2 ids)) {:active true})
-                         (events.tu/statement-count! #(models.notification/update-notifications! ids {:active true}))))]
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) ids))
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) (vec (take-nth 2 ids))))
+                         (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) ids)))))]
          (counted 2)
          (is (= (counted 2) (counted 6)))))
      (testing "deleting Notifications"

@@ -125,7 +125,7 @@
                                                                                    resolved-source-ids)
                                    :resolved_source_ids (query-perms/stamped-resolved-source-ids dq
                                                                                                  resolved-source-ids)}]
-          (exploration-query/update-queries! [(:id row)] stamp)
+          (exploration-query/update-queries! [(assoc stamp :id (:id row))])
           (merge row stamp))))))
 
 (defn- safe-chart-config
@@ -350,10 +350,9 @@
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
         (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id
                                                         :exploration_id   (exploration-id row)}])
-        (exploration-query/update-queries! [(:id row)]
-                                           {:status      "done"
+        (exploration-query/update-queries! [{:id (:id row) :status      "done"
                                             :started_at  started
-                                            :finished_at (OffsetDateTime/now)})))
+                                            :finished_at (OffsetDateTime/now)}])))
     true
     (catch Exception e
       (if (explorations.db/query-result-exists? (:id row))

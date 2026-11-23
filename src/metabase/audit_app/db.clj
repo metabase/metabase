@@ -2,7 +2,6 @@
   "Application database queries for the audit app module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -46,10 +45,16 @@
                          [:user_id  [:maybe ::lib.schema.id/user]]]]]
   (t2/insert! :model/AuditLog rows))
 
-(mu/defn delete-audit-logs-before!
-  "Delete up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, returning the number
-  deleted."
+(mu/defn audit-log-ids-before :- [:sequential ms/PositiveInt]
+  "The ids of up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, lowest first."
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (mdb/delete-oldest-rows! :model/AuditLog time-column cutoff batch-size))
+  (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
+                                    :order-by [[:id :asc]]
+                                    :limit    batch-size}))
+
+(mu/defn delete-audit-logs!
+  "Delete the AuditLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/AuditLog :id [:in ids]))

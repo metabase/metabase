@@ -14,10 +14,10 @@
     (doseq [k (keys stamp)]
       (testing (str "rejects " k " without the rest of the stamp")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"go together"
-                              (exploration-query/update-queries! [Integer/MAX_VALUE] (select-keys stamp [k])))))
+                              (exploration-query/update-queries! [(assoc (select-keys stamp [k]) :id Integer/MAX_VALUE)]))))
       (testing (str "rejects the stamp without " k)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"go together"
-                              (exploration-query/update-queries! [Integer/MAX_VALUE] (dissoc stamp k))))))
+                              (exploration-query/update-queries! [(assoc (dissoc stamp k) :id Integer/MAX_VALUE)])))))
     (testing "accepts the whole stamp, or none of it"
-      (is (= 0 (exploration-query/update-queries! [Integer/MAX_VALUE] stamp)))
-      (is (= 0 (exploration-query/update-queries! [Integer/MAX_VALUE] {:status "done"}))))))
+      (is (= 0 (exploration-query/update-queries! [(assoc stamp :id Integer/MAX_VALUE)])))
+      (is (= 0 (exploration-query/update-queries! [{:id Integer/MAX_VALUE :status "done"}]))))))

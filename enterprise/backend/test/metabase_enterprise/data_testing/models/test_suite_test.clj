@@ -82,7 +82,7 @@
                       :model    "TestSuite"}
                      (mt/latest-audit-log-entry :test-suite-create suite-id))))
             (testing "update names the acting user, and the changed columns"
-              (test-suite/update-test-suites! [suite-id] {:name "Renamed"})
+              (test-suite/update-test-suites! [{:id suite-id :name "Renamed"}])
               (is (= {:model_id suite-id
                       :user_id  (mt/user->id :rasta)
                       :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
@@ -295,7 +295,7 @@
                        (let [create (events.tu/statement-count! #(test-suite/create-test-suites! (rows n)))
                              suites (test-suite/create-test-suites! (rows n))
                              update (events.tu/statement-count!
-                                     #(test-suite/update-test-suites! (mapv :id suites) {:description "d"}))
+                                     #(test-suite/update-test-suites! (mapv (fn [row-id] (assoc {:description "d"} :id row-id)) (mapv :id suites))))
                              delete (events.tu/statement-count! #(test-suite/delete-test-suites! (mapv :id suites)))]
                          [create update delete]))]
       (counted 1)

@@ -35,6 +35,6 @@
         (let [counted (fn [n]
                         (let [ids (vec (repeatedly n #(str (random-uuid))))]
                           (ai-usage-log/create-ai-usage-logs! (mapv usage-row ids))
-                          (events.tu/statement-count! #(ai-usage-log/delete-ai-usage-logs-for-conversations! ids))))]
+                          (events.tu/statement-count! #(ai-usage-log/delete-ai-usage-logs! (ai-usage-log/ids-for-conversations ids)))))]
           (counted 1)
           (is (= (counted 2) (counted 6))))))))

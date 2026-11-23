@@ -81,21 +81,20 @@
       (u/prog1 (database-routing.db/insert-routers! rows)
         (events/publish-event! :event/database-router-create (events/create-event <>))))))
 
-(mu/defn update-database-routers! :- [:sequential ms/PositiveInt]
-  "Apply `changes` to the DatabaseRouters with `ids` and return the ids of those that exist, publishing the event of
-  the write; moving a router to another Database is a 400."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::database-routing.schema/database-router.update]
+(mu/defn update-database-routers! :- [:sequential ::database-routing.schema/database-router.update]
+  "Apply the `rows`, each an `:id` and its changes, to their DatabaseRouters and return the rows that exist, publishing
+  the event of the write."
+  [rows :- [:sequential ::database-routing.schema/database-router.update]]
   (t2/with-transaction [_conn]
-    (let [stored (if (seq ids) (u/index-by :id (database-routing.db/routers-by-ids (vec ids))) {})
-          ids    (into [] (comp (distinct) (filter stored)) ids)]
-      (when (seq ids)
-        (doseq [id ids]
-          (t2.before-update/before-update :model/DatabaseRouter (merge (stored id) changes)))
-        (database-routing.db/update-routers! ids changes)
-        (events/publish-event! :event/database-router-update
-                               (events/update-event stored (mapv #(assoc changes :id %) ids))))
-      ids)))
+    (let [stored (if (seq rows) (u/index-by :id (database-routing.db/routers-by-ids (mapv :id rows))) {})
+          rows   (filterv (comp stored :id) rows)]
+      (doseq [{id :id :as row} rows]
+        (t2.before-update/before-update :model/DatabaseRouter (merge (stored id) (dissoc row :id))))
+      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+        (database-routing.db/update-routers! ids changes))
+      (when (seq rows)
+        (events/publish-event! :event/database-router-update (events/update-event stored rows)))
+      rows)))
 
 (mu/defn delete-database-routers! :- :nil
   "Delete the DatabaseRouters with `ids`, publishing the event of the write."

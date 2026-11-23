@@ -3,6 +3,7 @@
   call, also when the rows differ in stored state."
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -12,6 +13,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -58,7 +60,7 @@
                                    :model/Table {table-id :id} {:db_id (:id db)}]
                       (let [ids         (insert-fields! table-id "F" n {})
                             [target-id] (insert-fields! table-id "Target" 1 {})]
-                        (counted! #(field/update-fields! ids {:description "x" :semantic_type :type/FK :fk_target_field_id target-id})))))]
+                        (counted! #(field/update-fields! (for [id ids] {:id id :description "x" :semantic_type :type/FK :fk_target_field_id target-id}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "renaming the Fields of Dimensions"
@@ -67,7 +69,7 @@
                                    :model/Table {table-id :id} {:db_id (:id db)}]
                       (let [ids (insert-fields! table-id "F" n {})]
                         (t2/insert! :model/Dimension (for [id ids] {:field_id id :type :internal :name "D"}))
-                        (counted! #(field/update-fields! ids {:display_name "Renamed"})))))]
+                        (counted! #(field/update-fields! (for [id ids] {:id id :display_name "Renamed"}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "deactivating Fields that foreign keys and Dimensions point at"
@@ -81,7 +83,7 @@
                           (t2/update! :model/Field :id source {:semantic_type :type/FK :fk_target_field_id target}))
                         (t2/insert! :model/Dimension (for [[other target] (map vector others targets)]
                                                        {:field_id other :type :external :name "D" :human_readable_field_id target}))
-                        (counted! #(field/update-fields! targets {:active false})))))]
+                        (counted! #(field/update-fields! (for [id targets] {:id id :active false}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6))))))
 
@@ -94,7 +96,7 @@
                         (t2/insert! :model/Field (for [i (range n)]
                                                    {:table_id table-id :name (str "J" i " → a") :nfc_path [(str "J" i) "a"]
                                                     :base_type :type/Integer :database_type "INTEGER" :position 0}))
-                        (counted! #(field/update-fields! parents {:json_unfolding false})))))]
+                        (counted! #(field/update-fields! (for [id parents] {:id id :json_unfolding false}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "changing the case of names"
@@ -126,7 +128,7 @@
                         (counted! #(field/delete-fields! ids)))))]
       (delete! 1)
       (is (= (delete! 2) (delete! 6)))))
-  (testing "deleting the Fields of Tables"
+  (testing "deleting Tables with their Fields, some nested"
     (let [delete! (fn [n]
                     (mt/with-temp [:model/Database {db-id :id} {}]
                       (let [table-ids (insert-tables! db-id n)]
@@ -135,7 +137,7 @@
                             (when (even? i)
                               (t2/insert! :model/Field {:table_id table-id :parent_id (first ids) :name "C" :base_type :type/Integer
                                                         :database_type "INTEGER" :position 0}))))
-                        (counted! #(field/delete-fields-for-tables! table-ids)))))]
+                        (counted! #(table/delete-tables! table-ids)))))]
       (delete! 1)
       (is (= (delete! 2) (delete! 6))))))
 
@@ -169,7 +171,7 @@
                               collection-id (t2/insert-returning-pk! :model/Collection {:name "C" :slug "c"})]
                           (doseq [table-id table-ids] (insert-fields! table-id "F" 2 {}))
                           (t2/update! :model/Table :id [:in (vec (take-nth 2 table-ids))] {:field_order :alphabetical})
-                          (counted! #(table/update-tables! table-ids {:field_order :alphabetical :collection_id collection-id :is_published true}))))))]
+                          (counted! #(table/update-tables! (for [id table-ids] {:id id :field_order :alphabetical :collection_id collection-id :is_published true})))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "deactivating Tables, some already inactive"
@@ -177,7 +179,7 @@
                     (mt/with-temp [:model/Database {db-id :id} {}]
                       (let [table-ids (insert-tables! db-id n)]
                         (t2/update! :model/Table :id [:in (vec (take-nth 2 table-ids))] {:active false})
-                        (counted! #(table/update-tables! table-ids {:active false})))))]
+                        (counted! #(table/update-tables! (for [id table-ids] {:id id :active false}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6))))))
 
@@ -232,7 +234,7 @@
                             dim-ids  (t2/insert-returning-pks! :model/Dimension
                                                                (for [id ids] {:field_id id :type :external :name "D" :human_readable_field_id target}))]
                         (t2/update! :model/Dimension :id [:in (vec (take-nth 2 dim-ids))] {:name "E"})
-                        (counted! #(dimension/update-dimensions! dim-ids {:name "E" :human_readable_field_id target})))))]
+                        (counted! #(dimension/update-dimensions! (for [id dim-ids] {:id id :name "E" :human_readable_field_id target}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "deleting Dimensions"
@@ -272,7 +274,7 @@
                             fv-ids (t2/insert-returning-pks! :model/FieldValues (for [id ids] {:field_id id :type :full :values [1]}))]
                         (t2/insert! :model/FieldValues (for [id (take-nth 2 ids)] {:field_id id :type :advanced :hash_key (str "k" id) :values [1]}))
                         (t2/update! :model/FieldValues :id [:in (vec (take-nth 2 fv-ids))] {:values [3]})
-                        (counted! #(field-values/update-field-values! fv-ids {:values [3]})))))]
+                        (counted! #(field-values/update-field-values! (for [id fv-ids] {:id id :values [3]}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "deleting FieldValues by id, of Fields, of Tables"
@@ -283,8 +285,8 @@
                             fv-ids    (t2/insert-returning-pks! :model/FieldValues (for [id ids] {:field_id id :type :full :values [1]}))]
                         (counted! (fn []
                                     (field-values/delete-field-values! fv-ids)
-                                    (field-values/delete-field-values-for-fields! ids)
-                                    (field-values/delete-field-values-for-tables! table-ids))))))]
+                                    (field-values/delete-field-values! (field-values/ids-of-fields ids))
+                                    (field-values/delete-field-values! (field-values/ids-of-tables table-ids)))))))]
       (delete! 1)
       (is (= (delete! 2) (delete! 6))))))
 
@@ -309,7 +311,7 @@
                             settings-ids (t2/insert-returning-pks! :model/FieldUserSettings
                                                                    (for [id ids] {:field_id id :description "d" :description_set true}))]
                         (t2/update! :model/FieldUserSettings :id [:in (vec (take-nth 2 settings-ids))] {:description "e"})
-                        (counted! #(field-user-settings/update-field-user-settings-for-import!
+                        (counted! #(field-user-settings/update-field-user-settings!
                                     (mapv (fn [id] {:id id :description "e"}) settings-ids))))))]
       (update! 1)
       (is (= (update! 2) (update! 6))))))
@@ -330,7 +332,7 @@
                                    :model/Table {table-id :id} {:db_id (:id db)}]
                       (let [ids (insert-fields! table-id "F" n {})]
                         (t2/insert! :model/FieldUserSettings (for [id (take-nth 2 ids)] {:field_id id :description "d" :description_set true}))
-                        (counted! #(field-user-settings/delete-field-user-settings-for-fields! ids)))))]
+                        (counted! #(field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields ids))))))]
       (delete! 1)
       (is (= (delete! 2) (delete! 6)))))
   (testing "clearing the foreign keys to deactivated Fields"
@@ -344,7 +346,7 @@
                                      (cond-> {:field_id source :semantic_type :type/FK :semantic_type_set true :description_set false
                                               :fk_target_field_id target :fk_target_field_id_set true}
                                        (odd? i) (assoc :description "d" :description_set true))))
-                       (counted! #(field-user-settings/update-field-user-settings-for-deactivated-fields! targets)))))]
+                       (counted! #(field/clear-for-deactivated-fields! :model/FieldUserSettings targets)))))]
       (clear! 1)
       (is (= (clear! 2) (clear! 6))))))
 
@@ -367,7 +369,7 @@
                             settings-ids (t2/insert-returning-pks! :model/TableUserSettings
                                                                    (for [id ids] {:table_id id :caveats "c" :caveats_set true}))]
                         (t2/update! :model/TableUserSettings :id [:in (vec (take-nth 2 settings-ids))] {:caveats "e"})
-                        (counted! #(table-user-settings/update-table-user-settings! settings-ids {:caveats "e"})))))]
+                        (counted! #(table-user-settings/update-table-user-settings! (for [id settings-ids] {:id id :caveats "e"}))))))]
       (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "upserting one value for Tables, some with settings"
@@ -383,7 +385,7 @@
                     (mt/with-temp [:model/Database {db-id :id} {}]
                       (let [ids (insert-tables! db-id n)]
                         (t2/insert! :model/TableUserSettings (for [id (take-nth 2 ids)] {:table_id id :caveats "c" :caveats_set true}))
-                        (counted! #(table-user-settings/delete-table-user-settings-for-tables! ids)))))]
+                        (counted! #(table-user-settings/delete-table-user-settings! (table-user-settings/ids-of-tables ids))))))]
       (delete! 1)
       (is (= (delete! 2) (delete! 6))))))
 
@@ -417,9 +419,9 @@
                       (let [field-ids (insert-fields! table-id "S" n {})
                             table-ids (insert-tables! (:id db) n)]
                         (counted! (fn []
-                                    (field/update-fields-for-sync! (mapv (fn [id] {:id id :description "same" :database_type "SAME"}) field-ids))
-                                    (field/update-fields-for-import! (mapv (fn [id] {:id id :description "imported"}) field-ids))
-                                    (table/update-tables-for-import! (mapv (fn [id] {:id id :description "imported"}) table-ids)))))))]
+                                    (field/update-fields! (mapv (fn [id] {:id id :description "same" :database_type "SAME"}) field-ids))
+                                    (field/update-fields! (mapv (fn [id] {:id id :description "imported"}) field-ids))
+                                    (table/update-tables! (mapv (fn [id] {:id id :description "imported"}) table-ids)))))))]
       (counted 1)
       (is (= (counted 2) (counted 6)))))
   (testing "the same with a value of its own for each row: one UPDATE and the SELECT of the before-update hook for each
@@ -430,12 +432,35 @@
                       (let [field-ids (insert-fields! table-id "D" n {})
                             table-ids (insert-tables! (:id db) n)]
                         (counted! (fn []
-                                    (field/update-fields-for-sync!
+                                    (field/update-fields!
                                      (vec (map-indexed (fn [i id] {:id id :description (str "described " i) :database_type (str "TYPE" i)}) field-ids)))
-                                    (field/update-fields-for-import!
+                                    (field/update-fields!
                                      (vec (map-indexed (fn [i id] {:id id :description (str "imported " i)}) field-ids)))
-                                    (table/update-tables-for-import!
+                                    (table/update-tables!
                                      (vec (map-indexed (fn [i id] {:id id :description (str "imported " i)}) table-ids))))))))
           per-row 6]
       (counted 1)
       (is (<= (- (counted 6) (counted 2)) (* per-row 4))))))
+
+(defn- published-count!
+  "The number of events `thunk` publishes."
+  [thunk]
+  (let [published (atom 0)]
+    (mt/with-dynamic-fn-redefs [events/publish-event! (fn [_topic event] (swap! published inc) event)]
+      (thunk))
+    @published))
+
+(deftest update-functions-publish-same-events-at-two-and-six-rows-test
+  (testing "the update functions of Fields, Tables and Databases publish as many events for 2 rows as for 6"
+    (let [published! (fn [n]
+                       (mt/with-temp [:model/Database {db-id :id} {}
+                                      :model/Table {table-id :id} {:db_id db-id}]
+                         (let [field-ids (insert-fields! table-id "E" n {})
+                               table-ids (insert-tables! db-id n)]
+                           (published-count!
+                            (fn []
+                              (field/update-fields! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) field-ids)))
+                              (table/update-tables! (vec (map-indexed (fn [i id] {:id id :description (str "e" i)}) table-ids)))
+                              (database/update-databases! [{:id db-id :description (str "e" n)}])
+                              (field/delete-fields! field-ids))))))]
+      (is (= (published! 2) (published! 6))))))

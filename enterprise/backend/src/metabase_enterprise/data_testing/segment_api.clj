@@ -97,7 +97,7 @@
     (api/update-check segment-test body)
     (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-tests! [id] body)))
+      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

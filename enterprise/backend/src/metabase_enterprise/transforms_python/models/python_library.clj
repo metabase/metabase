@@ -7,11 +7,9 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -76,14 +74,13 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-python-libraries! :- [:sequential ::transforms-python.schema/python-library]
-  "Insert the PythonLibrary `rows`, publishing their create event, and return the inserted libraries."
+  "Insert the PythonLibrary `rows` in batches in one transaction, publishing one create event for all, and return the inserted libraries."
   [rows :- [:sequential ::transforms-python.schema/python-library.create]]
-  (if (seq rows)
-    (t2/with-transaction [_conn]
-      (let [libraries (transforms-python.db/insert-python-libraries! rows)]
-        (events/publish-event! :event/python-library-create (events/create-event libraries))
-        libraries))
-    []))
+  (t2/with-transaction [_conn]
+    (let [libraries (into [] (mapcat transforms-python.db/insert-python-libraries!) (map vec (partition-all mdb/create-partition-size rows)))]
+      (when (seq libraries)
+        (events/publish-event! :event/python-library-create (events/create-event libraries)))
+      libraries)))
 
 (defn- updated-library
   "The PythonLibrary `stored` as the update `changes` leaves it, with what the update hook sets."
@@ -93,37 +90,51 @@
       (seq (dissoc differing :updated_at :is_default)) (assoc :is_default false)
       (:path changes)                                 (update :path normalize-path))))
 
-(mu/defn update-python-libraries! :- :nil
-  "Apply the `changes` to the PythonLibraries with `ids` in one transaction, publishing their update event."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::transforms-python.schema/python-library.update]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [stored (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (vec ids)))]
-        (when (seq stored)
-          (transforms-python.db/update-python-libraries! stored changes)
-          (events/publish-event! :event/python-library-update
-                                 (events/update-event stored
-                                                      (mapv #(assoc changes :id %) (filter stored ids))
-                                                      {:objects (update-vals stored #(updated-library % changes))}))))))
-  nil)
+(defn- requested-changes
+  "A map from id to the changes of each of `rows`, the id of a PythonLibrary and its columns to change, for the
+  libraries in `stored`."
+  [rows stored]
+  (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows))
 
-(mu/defn update-python-libraries-for-import! :- :nil
-  "Apply each of `rows`, the id of a PythonLibrary and the columns to change, as an import writes it, one row at a time.
-  An import runs rows with different values, which one change for all cannot express."
-  [rows :- [:sequential ::transforms-python.schema/python-library.import-row]]
-  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
-    (update-python-libraries! (mapv :id rows) changes))
+(defn- update-event
+  "The update event of the libraries of `stored` that `requested`, a map from id to its changes, changes."
+  [stored requested]
+  (events/update-event stored
+                       (mapv (fn [[id changes]] (assoc changes :id id)) requested)
+                       {:objects (into {} (map (fn [[id changes]] [id (updated-library (stored id) changes)])) requested)}))
+
+(defn- update-batch!
+  "Apply the changes in `rows`, the id of a PythonLibrary and the columns to change, and return the libraries as read
+  and their changes, each a map from id."
+  [rows]
+  (let [stored    (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (mapv :id rows)))
+        requested (requested-changes rows stored)]
+    (when (seq requested)
+      (transforms-python.db/update-python-libraries! stored requested))
+    {:stored stored :requested requested}))
+
+(mu/defn update-python-libraries! :- :nil
+  "Apply the changes in each of `rows`, the id of a PythonLibrary and the columns to change, in one transaction, in
+  batches with one statement per distinct change set, publishing one update event for all."
+  [rows :- [:sequential ::transforms-python.schema/python-library.update]]
+  (t2/with-transaction [_conn]
+    (let [batches   (mapv (comp update-batch! vec) (partition-all mdb/update-partition-size rows))
+          stored    (into {} (mapcat :stored) batches)
+          requested (into {} (mapcat :requested) batches)]
+      (when (seq requested)
+        (events/publish-event! :event/python-library-update (update-event stored requested)))))
   nil)
 
 (mu/defn delete-python-libraries!
-  "Delete the PythonLibraries with `ids`, publishing their delete event."
+  "Delete the PythonLibraries with `ids`, in batches in one transaction, publishing one delete event for all right
+  before the first statement."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/python-library-delete
-                             {:changes (u.events/delete-changes (transforms-python.db/python-libraries-by-ids (vec ids))) :user-id (mi/current-user-id)})
-      (transforms-python.db/delete-python-libraries! (vec ids))))
+  (t2/with-transaction [_conn]
+    (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))]
+      (when (seq batches)
+        (events/publish-event! :event/python-library-delete
+                               (events/delete-event (into [] (mapcat transforms-python.db/python-libraries-by-ids) batches))))
+      (run! transforms-python.db/delete-python-libraries! batches)))
   nil)
 
 (mu/defn update-python-library-source!
@@ -134,7 +145,7 @@
     (mdb/with-conflict-retry
       (t2/with-transaction [_conn]
         (if-let [existing (transforms-python.db/python-library-by-path normalized-path)]
-          (do (update-python-libraries! [(:id existing)] {:path normalized-path :source source})
+          (do (update-python-libraries! [{:id (:id existing) :path normalized-path :source source}])
               (transforms-python.db/python-library (:id existing)))
           (first (create-python-libraries!
                   [{:path normalized-path :source source :entity_id builtin-entity-id :is_default (str/blank? source)}])))))))
@@ -158,7 +169,7 @@
    :copy          [:path :source :entity_id]
    :skip          [:is_default]
    :insert!       create-python-libraries!
-   :update!       update-python-libraries-for-import!
+   :update!       update-python-libraries!
    :delete!       delete-python-libraries!
    :storage-paths storage-paths})
 

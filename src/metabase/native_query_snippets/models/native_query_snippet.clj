@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -20,7 +21,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -248,13 +248,14 @@
           (not= tags (:template_tags stored)) (assoc :template_tags tags)))
       changes)))
 
-(defn- check-update-content
-  "Throw a 400 unless `changes` leave the content to one snippet:
-
-  - a change of `:content` applies to one snippet"
-  [ids changes]
-  (when (and (contains? changes :content) (next ids))
-    (throw (ex-info (tru "The content of more than one snippet cannot be changed at once.") {:status-code 400}))))
+(defn- derive-archived-directly
+  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
+  snippets by id after the write."
+  [rows updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
+        rows))
 
 (defn- assoc-snippet-template-tags
   "`rows`, updates of the snippets `stored`, each with the template tags of its content, reading the snippets that the
@@ -265,85 +266,83 @@
             (assoc (assoc-template-tags (dissoc row :id) (get stored id) name-ids) :id id))
           rows)))
 
-(defn- derive-archived-directly
-  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
-  snippets by id after the write."
-  [rows updated]
-  (mapv (fn [{:keys [id] :as row}]
-          (cond-> row
-            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
-        rows))
+(defn- check-snippet-updates
+  "Throw a 400 unless every one of `rows`, updates of the `stored` snippets that move, satisfies these rules:
+
+  - its Collection is in the snippets namespace
+  - its Collection is not archived, unless the snippet is"
+  [stored rows]
+  (check-snippets (for [row rows
+                        :when (contains? row :collection_id)]
+                    (update (merge (get stored (:id row)) row) :archived boolean))))
 
 (defn- write-snippet-updates!
-  "Applies `rows`, each the `:id` of a snippet with the changes it gets, which may differ from row to row, in one
-  transaction, and publishes one update event for all of them with the `:context` of `opts`."
-  [rows opts]
-  (let [stored (when (seq rows) (native-query-snippets.db/snippets-by-id (mapv :id rows)))
-        rows   (filterv #(contains? stored (:id %)) rows)]
-    (when (seq rows)
-      (t2/with-transaction [_conn]
-        (let [rows (assoc-snippet-template-tags rows stored)]
-          (check-snippets (for [row rows
-                                :when (contains? row :collection_id)]
-                            (update (merge (get stored (:id row)) row) :archived boolean)))
-          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-            (native-query-snippets.db/update-snippets! (mapv :id group) changes))
-          (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
-            (events/publish-event! :event/snippet-update
-                                   (events/update-event stored (derive-archived-directly rows updated) (assoc opts :objects updated)))))))))
+  "Writes `rows`, updates of the `stored` snippets, and returns what the event needs, the changes of each row and the
+  snippets after the write."
+  [stored rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (native-query-snippets.db/update-snippets! (mapv :id group) changes))
+  (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
+    {:stored stored :rows (derive-archived-directly rows updated) :updated updated}))
+
+(defn- update-snippet-batch!
+  "Checks and writes the snippets of `batch`, up to one partition of the call, and returns what the event needs. With
+  `:writer :import` each is renamed with ` (copy)` suffixes until no other snippet, or earlier row, holds its name."
+  [batch opts]
+  (let [stored (native-query-snippets.db/snippets-by-id (mapv :id batch))
+        rows   (cond-> (filterv #(contains? stored (:id %)) batch)
+                 (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names stored))
+        rows   (assoc-snippet-template-tags rows stored)]
+    (check-snippet-updates stored rows)
+    (write-snippet-updates! stored rows)))
+
+(defn- publish-snippet-updates!
+  "Publishes the update event of the snippets that `batches`, what [[update-snippet-batch!]] returned, wrote."
+  [batches opts]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/snippet-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                (assoc opts :objects (into {} (map :updated) batches))))))
 
 (mu/defn update-snippets! :- :nil
-  "Applies `changes` to each NativeQuerySnippet of `ids`, publishing one update event with the `:context` of `opts`. A
-  change of `archived` gives their `archived_directly`, a move into a Collection that cannot hold them throws, and a
-  `:content` gives the template tags of it and is for one snippet only."
-  [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
-   changes :- ::native-query-snippets.schema/native-query-snippet.changes
-   opts    :- ::write-opts]
-  (when (and (contains? changes :content) (next ids))
-    (check-update-content (filterv (set (keys (native-query-snippets.db/snippets-by-id ids))) ids) changes))
-  (write-snippet-updates! (mapv #(assoc changes :id %) ids) opts)
-  nil)
+  "Applies `updates`, each the `:id` of a NativeQuerySnippet with the columns to give it, in one transaction, publishing
+  their update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
+   (update-snippets! updates nil))
+  ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]
+    opts    :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv #(update-snippet-batch! % opts) (partition-all app-db/update-partition-size updates))]
+       (publish-snippet-updates! batches opts)))
+   nil))
 
-(mu/defn update-snippets-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values, in one pass over all of them, publishing one
-  update event, as an import writes different values for each, renaming each with ` (copy)` suffixes until no other
-  snippet, or earlier row, holds its name."
-  [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
-  (write-snippet-updates!
-   (native-query-snippets.serialization/rename-to-free-names
-    rows (native-query-snippets.db/snippets-by-id (mapv :id rows)))
-   nil)
-  nil)
-
-(mu/defn delete-snippets!
-  "Delete the NativeQuerySnippets with `ids`, in one statement, publishing their delete event right before it."
+(mu/defn delete-snippets! :- :nil
+  "Delete the NativeQuerySnippets with `ids` in one transaction, publishing their delete event right before the first
+  statement."
   [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/snippet-delete
-                             {:changes (u.events/delete-changes (vec (vals (native-query-snippets.db/snippets-by-id ids))))
-                            :user-id (mi/current-user-id)})
-      (native-query-snippets.db/delete-snippets! ids))))
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/snippet-delete
+                               (events/delete-event (into [] (mapcat #(vals (native-query-snippets.db/snippets-by-id (vec %)))) batches))))
+      (run! #(native-query-snippets.db/delete-snippets! (vec %)) batches)))
+  nil)
 
 (defmethod collection/archive-in-collections! :model/NativeQuerySnippet
   [_model collection-ids opts]
-  (update-snippets! (mapv :id (native-query-snippets.db/unarchived-snippets-in-collections (vec collection-ids)))
-                    {:archived true :archived_directly false}
-                    opts))
+  (update-snippets! (mapv (fn [id] {:id id :archived true :archived_directly false}) (mapv :id (native-query-snippets.db/unarchived-snippets-in-collections (vec collection-ids)))) opts))
 
 (defmethod collection/restore-in-collections! :model/NativeQuerySnippet
   [_model collection-ids opts]
-  (update-snippets! (mapv :id (native-query-snippets.db/restorable-snippets-in-collections (vec collection-ids)))
-                    {:archived false :archived_directly false}
-                    opts))
+  (update-snippets! (mapv (fn [id] {:id id :archived false :archived_directly false}) (mapv :id (native-query-snippets.db/restorable-snippets-in-collections (vec collection-ids)))) opts))
 
 (defmethod collection/delete-in-collections! :model/NativeQuerySnippet
   [_model collection-ids _opts]
   (when (seq collection-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/snippet-delete
-                             {:changes (u.events/delete-changes (native-query-snippets.db/snippets-in-collections (vec collection-ids)))
-                            :user-id (mi/current-user-id)})
+                             (events/delete-event (native-query-snippets.db/snippets-in-collections (vec collection-ids))))
       (native-query-snippets.db/delete-snippets-in-collections! (vec collection-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
@@ -368,7 +367,7 @@
    :import-dependencies native-query-snippets.serialization/import-dependencies
    :export-dependencies native-query-snippets.serialization/export-dependencies
    :insert!             #(create-snippets! % {:writer :import})
-   :update!             update-snippets-for-import!
+   :update!             #(update-snippets! % {:writer :import})
    :delete!             delete-snippets!})
 
 (defmethod remote-sync/spec :model/NativeQuerySnippet

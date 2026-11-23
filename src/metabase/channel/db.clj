@@ -2,7 +2,6 @@
   "Application database queries for the channel module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,7 +12,7 @@
 
 (def ^:private ChannelRow
   "A whole Channel row for insert or update."
-  ::channel.schema/channel.update)
+  ::channel.schema/channel.changes)
 
 (def ^:private ChannelTemplateRow
   "A whole ChannelTemplate row for insert."
@@ -50,20 +49,13 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Channel :id [:auto/param id]))
 
-(defn- uniform-groups
-  "The Channels with `ids` that `changes` would change, as `[changes ids]` pairs in which every Channel in a pair changes
-  the same columns, since Toucan splits an update into one statement per Channel otherwise."
-  [ids changes]
-  (mi/group-ids-by-changes (m/index-by :id (t2/select :model/Channel :id [:in [:auto/param ids]]))
-                           (map #(assoc changes :id %) ids)))
-
 (mu/defn update-channels!
-  "Apply `changes` to the Channels with `ids`, one statement for each distinct set of columns they change."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ChannelRow]
-  (when (seq ids)
-    (doseq [[effective group] (uniform-groups ids changes)]
-      (t2/update! :model/Channel :id [:in [:auto/param group]] effective)))
+  "Apply to each Channel of `stored`, a map from id to the Channel as read, its changes in `id->changes`, one statement for
+  each distinct set of columns they change."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ChannelRow]]
+  (doseq [[effective group] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
+    (t2/update! :model/Channel :id [:in [:auto/param group]] effective))
   nil)
 
 (defn- text-type

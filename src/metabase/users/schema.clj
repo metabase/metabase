@@ -102,6 +102,13 @@
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])
 
+(mr/def ::user.update-row
+  "What one row of an update of Users takes: the id of a User and the columns to set."
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/user]]])
+
 (mr/def ::user.create
   "What a caller gives to create a User: its email and any other column of `:core_user` except `id`."
   [:merge

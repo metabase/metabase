@@ -2,6 +2,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.change-log.core :as change-log]
    [metabase.dependencies.core :as dependencies]
@@ -11,7 +12,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -100,20 +100,21 @@
                          writes
                          rows)]
       (events/publish-event! :event/field-user-settings-delete
-                             {:changes (u.events/delete-changes (into [] (keep #(:before (get writes (:id %)))) rows)) :user-id (mi/current-user-id)})
+                             (events/delete-event (into [] (keep #(:before (get writes (:id %)))) rows)))
       writes)))
 
 (defn- delete-empty!
-  "Delete the settings, among those of the Fields with `field-ids`, that hold no user value and no true flag,
-  returning `writes` with their deletes."
+  "Delete the settings, among those of the Fields with `field-ids`, that hold no user value and no true flag, in batches
+  of [[mdb/delete-partition-size]] Fields, returning `writes` with their deletes."
   [writes field-ids]
-  (if (empty? field-ids)
-    writes
-    (let [field-ids (into [] (distinct) field-ids)
-          rows      (warehouse-schema.db/empty-field-user-settings field-ids)]
-      (u/prog1 (publish-deletes! writes rows)
-        (when (seq rows)
-          (warehouse-schema.db/delete-empty-field-user-settings! field-ids))))))
+  (reduce (fn [writes batch]
+            (let [field-ids (vec batch)
+                  rows      (warehouse-schema.db/empty-field-user-settings field-ids)]
+              (u/prog1 (publish-deletes! writes rows)
+                (when (seq rows)
+                  (warehouse-schema.db/delete-empty-field-user-settings! field-ids)))))
+          writes
+          (partition-all mdb/delete-partition-size (distinct field-ids))))
 
 (defn- publish-writes!
   "Publish the creates and the updates that change something of `writes`, whose deletes were published as they were
@@ -169,15 +170,16 @@
       writes)))
 
 (defn- mirror-onto-fields!
-  "Write the columns each of the settings `rows` says a user set onto its Field."
+  "Write the columns each of the settings `rows` says a user set onto its Field, in one update."
   [rows]
-  (doseq [[changes field-ids] (u/group-by first second
-                                          (keep (fn [{:keys [field_id] :as settings}]
-                                                  (when-let [changes (not-empty
-                                                                      (select-keys settings (user-settings/user-set-field-columns settings)))]
-                                                    [changes field_id]))
-                                                rows))]
-    (field/update-fields! field-ids changes)))
+  (when-let [field-rows (not-empty
+                         (into []
+                               (keep (fn [{:keys [field_id] :as settings}]
+                                       (when-let [changes (not-empty
+                                                           (select-keys settings (user-settings/user-set-field-columns settings)))]
+                                         (assoc changes :id field_id))))
+                               rows))]
+    (field/update-fields! field-rows)))
 
 (mu/defn create-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "Insert the FieldUserSettings `rows`, write the columns they say a user set onto their Fields, and return the
@@ -186,32 +188,47 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
-      (let [inserted (vec (warehouse-schema.db/insert-field-user-settings-returning-instances! rows))
+      (let [inserted (into []
+                           (mapcat #(warehouse-schema.db/insert-field-user-settings-returning-instances! (vec %)))
+                           (partition-all mdb/create-partition-size rows))
             writes   (delete-empty! (add-created {} inserted) (map :field_id inserted))]
         (mirror-onto-fields! inserted)
         (publish-writes! writes)
         inserted))))
 
-(mu/defn update-field-user-settings-for-import! :- [:sequential ::warehouse-schema.schema/field-user-settings.update]
-  "Apply each of `rows`, the id of a FieldUserSettings and the columns to change, write the columns the updated
-  settings say a user set onto their Fields, and return the rows of the settings that exist: one read and one
-  statement per distinct set of changes."
+(defn- settings-by-id
+  "The FieldUserSettings with `ids`, `{id row}`, read in batches of [[mdb/delete-partition-size]] ids."
+  [ids]
+  (into {}
+        (comp (mapcat #(warehouse-schema.db/field-user-settings-by-ids (vec %))) (map (juxt :id identity)))
+        (partition-all mdb/delete-partition-size ids)))
+
+(defn- write-settings-updates!
+  "Write each of `rows`, the id of one of the `stored` FieldUserSettings, `{id row}`, and the columns to change, with
+  one statement per distinct set of changes, and delete the settings it leaves without a user value, returning `writes`
+  with these writes."
+  [writes stored rows]
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)
+          :when (seq changes)]
+    (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id rows) changes))
+  (let [by-id (u/index-by :id rows)]
+    (-> writes
+        (add-updated (map (comp stored :id) rows) #(dissoc (by-id (:id %)) :id))
+        (delete-empty! (map (comp :field_id stored :id) rows)))))
+
+(mu/defn update-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings.update]
+  "Apply each of `rows`, the id of a FieldUserSettings and the columns to change, in one transaction and batches of
+  [[mdb/update-partition-size]], write the columns the updated settings say a user set onto their Fields, publish one
+  create and one update event, and return them."
   [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
-  (if (empty? rows)
-    []
+  (when (seq rows)
     (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (warehouse-schema.db/field-user-settings-by-ids (mapv :id rows)))
-            rows   (filterv #(contains? stored (:id %)) rows)
-            by-id  (u/index-by :id rows)]
-        (doseq [[changes rows] (group-by #(dissoc % :id) rows)
-                :when (seq changes)]
-          (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id rows) changes))
-        (let [writes (-> {}
-                         (add-updated (map (comp stored :id) rows) #(dissoc (by-id (:id %)) :id))
-                         (delete-empty! (map (comp :field_id stored :id) rows)))]
-          (mirror-onto-fields! (map #(merge (stored (:id %)) %) rows))
-          (publish-writes! writes))
-        rows))))
+      (let [stored  (settings-by-id (map :id rows))
+            written (filterv #(contains? stored (:id %)) rows)
+            writes  (reduce #(write-settings-updates! %1 stored (vec %2)) {} (partition-all mdb/update-partition-size written))]
+        (mirror-onto-fields! (map #(merge (stored (:id %)) %) written))
+        (publish-writes! writes))))
+  (vec rows))
 
 (defn- duplicate-key?
   "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
@@ -248,7 +265,7 @@
                         (add-updated writes [stored] (constantly changes))
                         (add-created writes [inserted]))
               writes   (delete-empty! writes [id])]
-          (u/prog1 (count (field/update-fields! [id] settings))
+          (u/prog1 (count (field/update-fields! [(assoc settings :id id)]))
             (publish-writes! writes)))))))
 
 (mu/defn set-custom-positions!
@@ -304,10 +321,10 @@
                              (add-updated stored (constantly changes))
                              (delete-empty! (mapv :field_id stored))))))))
 
-(mu/defn update-field-user-settings-for-deactivated-fields!
+(defn- clear-fk-targets-to-fields!
   "Unset the user-set foreign keys to the Fields with `field-ids` in the settings of the Fields that target them,
   deleting the settings left without a user value."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
+  [field-ids]
   (when (seq field-ids)
     (t2/with-transaction [_conn]
       (let [targeting (warehouse-schema.db/field-user-settings-targeting field-ids)]
@@ -319,31 +336,26 @@
 
 (defmethod field/clear-for-deactivated-fields! :model/FieldUserSettings
   [_model field-ids]
-  (update-field-user-settings-for-deactivated-fields! field-ids))
+  (clear-fk-targets-to-fields! field-ids))
 
-(mu/defn delete-field-user-settings-for-fields!
-  "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
+(mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
+  "The ids of the FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (when (seq field-ids)
-    (t2/with-transaction [_conn]
-      (publish-writes!
-       (reduce (fn [writes batch]
-                 (let [rows (warehouse-schema.db/field-user-settings-for-fields (vec batch))]
-                   (u/prog1 (publish-deletes! writes rows)
-                     (when (seq rows)
-                       (warehouse-schema.db/delete-field-user-settings! batch)))))
-               {}
-               (partition-all 1000 field-ids))))))
+  (if (seq field-ids)
+    (mapv :id (warehouse-schema.db/field-user-settings-for-fields (vec field-ids)))
+    []))
 
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings with `ids`, as remote sync and an import delete them."
+(mu/defn delete-field-user-settings! :- :nil
+  "Delete the FieldUserSettings with `ids` in one transaction, leaving their Fields as they are for sync to take over:
+  one event for all of them before the statements, which run in batches of [[mdb/delete-partition-size]]."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (publish-writes! (let [rows (warehouse-schema.db/field-user-settings-by-ids (vec ids))]
-                         (u/prog1 (publish-deletes! {} rows)
-                           (when (seq rows)
-                             (warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids)))))))))
+      (when-let [rows (not-empty (vec (vals (settings-by-id ids))))]
+        (events/publish-event! :event/field-user-settings-delete (events/delete-event rows))
+        (run! #(warehouse-schema.db/delete-field-user-settings-by-ids! (mapv :id %))
+              (partition-all mdb/delete-partition-size rows)))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -371,7 +383,7 @@
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
    :insert!       create-field-user-settings!
-   :update!       update-field-user-settings-for-import!
+   :update!       update-field-user-settings!
    :delete!       delete-field-user-settings!
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 

@@ -17,12 +17,12 @@
 (mr/def ::python-library
   "A PythonLibrary as selected from the app DB: every column of `:python_library`."
   [:merge
-   ::python-library.update
+   ::python-library.changes
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
-(mr/def ::python-library.update
-  "What an update of a PythonLibrary takes: the columns to change, every column of `:python_library`."
+(mr/def ::python-library.changes
+  "The columns to change of a PythonLibrary, every column of `:python_library`."
   [:map {:closed true}
    [:path       {:optional true} [:maybe :string]]
    [:source     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
@@ -31,10 +31,10 @@
    [:entity_id  {:optional true} [:maybe :string]]
    [:is_default {:optional true} [:maybe :boolean]]])
 
-(mr/def ::python-library.import-row
-  "What an import writes to update a PythonLibrary: its `:id` and the columns to change."
+(mr/def ::python-library.update
+  "What an update of a PythonLibrary takes: its `:id` and the columns to change."
   [:merge
-   ::python-library.update
+   ::python-library.changes
    [:map {:closed true}
     [:id ms/PositiveInt]]])
 

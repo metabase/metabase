@@ -3,6 +3,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -40,13 +41,13 @@
   [views :- [:sequential ::view-log.schema/view-log.create]]
   (view-log.db/insert-view-logs! views))
 
-(mu/defn delete-view-logs-for-cleanup! :- [:maybe :int]
-  "Delete up to `batch-size` of the ViewLogs whose `time-column` is at or before `cutoff`, in one statement, as the
-  retention policy trims them; returns the number deleted."
-  [time-column :- :keyword
-   cutoff      :- ms/TemporalInstant
-   batch-size  :- ms/PositiveInt]
-  (view-log.db/delete-view-logs-before! time-column cutoff batch-size))
+(mu/defn delete-view-logs! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the ViewLogs with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp view-log.db/delete-view-logs! vec)) + 0 (partition-all mdb/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

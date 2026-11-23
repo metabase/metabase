@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.ai-usage-log
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.util.malli :as mu]
@@ -21,20 +22,22 @@
   (when (seq rows)
     (metabot.db/insert-usage-logs! rows)))
 
-(mu/defn delete-ai-usage-logs-for-cleanup!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (metabot.db/delete-usage-logs-created-before! cutoff))
+(mu/defn ids-for-conversations :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLogs of the conversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (metabot.db/usage-log-ids-for-conversations conversation-ids))
+
+(mu/defn delete-ai-usage-logs! :- :int
+  "Delete the AiUsageLogs with `ids`, in batches in one transaction, and return the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (run! metabot.db/delete-usage-logs! (map vec (partition-all mdb/delete-partition-size ids))))
+  (count ids))
 
 (mu/defn seed-ai-usage-log!
   "Insert the AiUsageLog `row` as given, its timestamps included, which the testing API seeds."
   [row :- ::metabot.schema/ai-usage-log.update]
   (metabot.db/insert-usage-log-row! row))
-
-(mu/defn delete-ai-usage-logs-for-conversations!
-  "Delete the AiUsageLogs of the conversations with `conversation-ids`."
-  [conversation-ids :- [:sequential :string]]
-  (metabot.db/delete-usage-logs-for-conversations! conversation-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -75,7 +75,8 @@
   the successful verification — otherwise it would stay valid for its remaining ~10-minute TTL,
   including as re-auth for disable/regenerate."
   [auth-identity credentials jti]
-  (models.auth-identity/update-auth-identities! [(:id auth-identity)] {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
+  (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                  :credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}]))
 
 (defn- totp-attempt!
   "When `code` is a valid, not-yet-used TOTP code: consume its time step (RFC 6238 §5.2) and return
@@ -147,9 +148,9 @@
     (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
-          (models.auth-identity/update-auth-identities! [(:id auth-identity)]
-                                                        {:credentials (assoc (:credentials auth-identity)
-                                                                             :email_otp {:hash (u.password/hash-bcrypt code)
-                                                                                         :exp  (+ (quot (System/currentTimeMillis) 1000)
-                                                                                                  (* 10 60))})})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials (assoc (:credentials auth-identity)
+                                                                              :email_otp {:hash (u.password/hash-bcrypt code)
+                                                                                          :exp  (+ (quot (System/currentTimeMillis) 1000)
+                                                                                                   (* 10 60))})}])
           code)))))

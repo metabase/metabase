@@ -2,7 +2,6 @@
   "Application database queries for the view log module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,10 +19,16 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type :model/Card :id card-id))
 
-(mu/defn delete-view-logs-before!
-  "Delete up to `batch-size` of the ViewLogs whose `time-column` is at or before `cutoff`, returning the number
-  deleted."
+(mu/defn view-log-ids-before :- [:sequential ms/PositiveInt]
+  "The ids of up to `batch-size` of the ViewLogs whose `time-column` is at or before `cutoff`, lowest first."
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (mdb/delete-oldest-rows! :model/ViewLog time-column cutoff batch-size))
+  (t2/select-pks-vec :model/ViewLog {:where    [:<= time-column [:auto/param cutoff]]
+                                    :order-by [[:id :asc]]
+                                    :limit    batch-size}))
+
+(mu/defn delete-view-logs!
+  "Delete the ViewLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/ViewLog :id [:in ids]))

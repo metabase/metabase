@@ -65,7 +65,7 @@
                         updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
                         updates  (cond-> (select-keys updated [:document])
                                    (:is_placeholder document) (assoc :is_placeholder false))]
-                    (m.document/update-documents! [document-id] updates)
+                    (m.document/update-documents! [(assoc updates :id document-id)])
                     (merge document updates)))]
     updated))
 
@@ -188,9 +188,8 @@
     (reduce (fn [accum [card source]]
               (let [new-card (m.document/clone-card! source @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
-                  (queries.card/update-cards! [(:id new-card)]
-                                              {:archived          (boolean (:archived card))
-                                               :archived_directly (boolean (:archived_directly card))}))
+                  (queries.card/update-cards! [{:id (:id new-card) :archived          (boolean (:archived card))
+                                               :archived_directly (boolean (:archived_directly card))}]))
                 (assoc accum (:id card) (:id new-card))))
             {}
             (map vector cards-to-copy sources))))
@@ -216,11 +215,10 @@
                        (let [new-document-id (:id (first (m.document/create-documents! [document-data])))
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
-                           (m.document/update-documents! [new-document-id]
-                                                         (m.document/update-cards-in-ast
+                           (m.document/update-documents! [(assoc (m.document/update-cards-in-ast
                                                           {:document (:document existing-document)
                                                            :content_type (:content_type existing-document)}
-                                                          card-id-map)))
+                                                          card-id-map) :id new-document-id)]))
                          (m.document/get-document new-document-id)))]
     new-document))
 
@@ -260,9 +258,8 @@
     (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
       {:uuid existing-uuid}
       (do
-        (m.document/update-documents! [document-id]
-                                      {:public_uuid       (str (random-uuid))
-                                       :made_public_by_id api/*current-user-id*})
+        (m.document/update-documents! [{:id document-id :public_uuid       (str (random-uuid))
+                                       :made_public_by_id api/*current-user-id*}])
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
@@ -280,9 +277,8 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
-  (m.document/update-documents! [document-id]
-                                {:public_uuid       nil
-                                 :made_public_by_id nil})
+  (m.document/update-documents! [{:id document-id :public_uuid       nil
+                                 :made_public_by_id nil}])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map

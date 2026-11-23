@@ -275,7 +275,7 @@
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
     (with-collection-hierarchy! [a b c d e f g]
-      (collection/update-collections! [(u/the-id a)] {:location (collection/children-location personal-collection)} nil)
+      (collection/update-collections! [{:id (u/the-id a) :location (collection/children-location personal-collection)}] nil)
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
             response-lucky      (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -1498,7 +1498,7 @@
       (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:name "Renamed" :archived true})
       (is (= "Folder" (t2/select-one-fn :name :model/Collection :id folder-id))))
     (testing "an already archived transforms folder can still be unarchived"
-      (collection/update-collections! [folder-id] {:archived true :archived_directly true :archive_operation_id (str (random-uuid))} nil)
+      (collection/update-collections! [{:id folder-id :archived true :archived_directly true :archive_operation_id (str (random-uuid))}] nil)
       (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived false})
       (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))))
 

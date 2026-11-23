@@ -193,10 +193,10 @@
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
     (check-can-point-at-field human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
-      (dimension/update-dimensions! [(u/the-id dimension)]
-                                    {:type                    dimension-type
-                                     :name                    dimension-name
-                                     :human_readable_field_id human-readable-field-id})
+      (dimension/update-dimensions! [{:id                      (u/the-id dimension)
+                                      :type                    dimension-type
+                                      :name                    dimension-name
+                                      :human_readable_field_id human-readable-field-id}])
       (first (dimension/create-dimensions! [{:field_id                id
                                              :type                    dimension-type
                                              :name                    dimension-name
@@ -274,7 +274,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (field-values/delete-field-values-for-fields! [(u/the-id (api/write-check (warehouse-schema-rest.db/field id)))])
+  (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id (api/write-check (warehouse-schema-rest.db/field id)))]))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------

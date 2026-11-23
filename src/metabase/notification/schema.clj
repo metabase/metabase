@@ -8,11 +8,18 @@
 (mr/def ::notification
   "A Notification as selected from the app DB: every column of `:notification`."
   [:merge
-   ::notification.update
+   ::notification.changes
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
 (mr/def ::notification.update
+  "What an update of a Notification takes: its `:id` and the columns to change."
+  [:merge
+   ::notification.changes
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::notification.changes
   "What an update (or insert) of a Notification accepts: every column of `:notification` except `id`, all optional."
   [:map {:closed true}
    [:payload_type {:optional true} [:maybe [:or :keyword :string]]]

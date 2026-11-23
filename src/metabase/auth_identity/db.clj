@@ -66,11 +66,16 @@
   [id :- [:maybe ms/PositiveInt]]
   (t2/update! :model/AuthIdentity :id [:auto/param id] {:last_used_at :%now}))
 
-(mu/defn delete-auth-identities!
-  "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
+(mu/defn auth-identity-ids :- [:sequential ms/PositiveInt]
+  "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
+  (t2/select-pks-vec :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
+
+(mu/defn delete-auth-identities!
+  "Delete the AuthIdentities with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/AuthIdentity :id [:in [:auto/param (vec ids)]]))
 
 (mu/defn user
   "The User with `user-id`, or nil."

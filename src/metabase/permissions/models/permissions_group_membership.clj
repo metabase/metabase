@@ -14,7 +14,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]))
@@ -312,38 +311,26 @@
                           opts))
    nil))
 
-(defn- check-membership-update
-  "Throws a 400 unless `changes` to the PermissionsGroupMembership stored as `before`, of the User `member`, satisfy
-  these rules, in this order:
-
-  - a tenant user is not made a group manager
-  - an admin is not made a group manager
-  - the membership moves to no other user or group"
-  [before changes member]
-  (when (:is_group_manager changes)
-    (check-group-manager-member (merge before changes) member))
-  (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
-
-(mu/defn update-permissions-group-memberships! :- :nil
-  "Apply `changes` to the PermissionsGroupMemberships with `ids`, publishing the event of the write; making a tenant
-  user or an admin a group manager is a 400. The refusal of the first refused membership in the order of `ids` is the
-  one thrown."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::permissions.schema/permissions-group-membership.update]
+(mu/defn update-permissions-group-memberships! :- [:sequential ::permissions.schema/permissions-group-membership.update]
+  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroupMemberships and return the rows that exist,
+  publishing the events of the writes; making a tenant user or an admin a group manager is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
   (t2/with-transaction [_conn]
-    (let [stored  (if (seq ids) (u/index-by :id (permissions.db/group-memberships-by-ids ids)) {})
-          ids     (into [] (comp (distinct) (filter stored)) ids)
-          members (if (and (:is_group_manager changes) (seq ids))
-                    (u/index-by :id (permissions.db/member-flags (into #{} (map (comp :user_id stored)) ids)))
-                    {})]
-      (doseq [id ids
-              :let [before (stored id)]]
-        (check-membership-update before changes (get members (:user_id before))))
-      (when (seq ids)
-        (permissions.db/update-group-memberships! ids changes)
-        (events/publish-event! :event/group-membership-update
-                               (events/update-event stored (mapv #(assoc changes :id %) ids))))))
-  nil)
+    (let [stored   (if (seq rows) (u/index-by :id (permissions.db/group-memberships-by-ids (mapv :id rows))) {})
+          rows     (filterv (comp stored :id) rows)
+          user-ids (into #{} (keep (fn [{id :id :as row}] (when (:is_group_manager row) (:user_id (stored id))))) rows)
+          members  (if (seq user-ids) (u/index-by :id (permissions.db/member-flags user-ids)) {})]
+      (doseq [{id :id :as row} rows
+              :let [changes (dissoc row :id)
+                    before  (stored id)]]
+        (when (:is_group_manager changes)
+          (check-group-manager-member (merge before changes) (get members (:user_id before))))
+        (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
+      (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
+        (permissions.db/update-group-memberships! ids changes))
+      (when (seq rows)
+        (events/publish-event! :event/group-membership-update (events/update-event stored rows)))
+      rows)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

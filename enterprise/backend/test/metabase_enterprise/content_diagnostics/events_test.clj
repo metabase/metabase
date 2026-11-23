@@ -71,19 +71,19 @@
       (testing "card archive invalidates; a non-archive update does not"
         (mt/with-temp [:model/Card card {}]
           (let [f (mk-finding! :card (:id card))]
-            (card/update-cards! [(:id card)] {:name "renamed"})
+            (card/update-cards! [{:id (:id card) :name "renamed"}])
             (is (not (invalidated? f)) "still active after a non-archive update")
-            (card/update-cards! [(:id card)] {:archived true})
+            (card/update-cards! [{:id (:id card) :archived true}])
             (is (invalidated? f) "invalidated once archived"))))
       (testing "dashboard archive invalidates"
         (mt/with-temp [:model/Dashboard {id :id} {}]
           (let [f (mk-finding! :dashboard id)]
-            (dashboard/update-dashboards! [id] {:archived true})
+            (dashboard/update-dashboards! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "document archive invalidates"
         (mt/with-temp [:model/Document {id :id} {}]
           (let [f (mk-finding! :document id)]
-            (document/update-documents! [id] {:archived true})
+            (document/update-documents! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "transform hard delete invalidates"
         (mt/with-temp [:model/Transform {id :id} {}]
@@ -102,7 +102,7 @@
         (let [self-finding  (mk-finding! :collection (:id parent))
               child-finding (mk-finding! :card child-card-id (:id child))
               outside       (mk-finding! :card other-card-id)]
-          (collection/update-collections! [(:id parent)] {:archived true} nil)
+          (collection/update-collections! [{:id (:id parent) :archived true}] nil)
           (is (invalidated? self-finding) "the archived collection's own finding")
           (is (invalidated? child-finding) "a finding for a card in a descendant collection")
           (is (not (invalidated? outside)) "an unrelated finding is untouched"))))))
@@ -120,7 +120,7 @@
                   updates  (atom 0)]
               (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (let [f (mt/original-fn #'cd.db/invalidate-findings-where!)]
                                                                              (fn [where] (swap! updates inc) (f where)))]
-                (collection/update-collections! [coll-id] {:archived true} nil))
+                (collection/update-collections! [{:id coll-id :archived true}] nil))
               (is (every? invalidated? findings))
               (is (= 2 @updates) "one statement for the collection event and one for the cards it carries"))))))))
 
@@ -129,5 +129,5 @@
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (let [f (mk-finding! :dashboard id)]
-          (dashboard/update-dashboards! [id] {:archived true})
+          (dashboard/update-dashboards! [{:id id :archived true}])
           (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))

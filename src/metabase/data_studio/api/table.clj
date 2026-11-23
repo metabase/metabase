@@ -241,7 +241,7 @@
    body :- ::table-selectors]
   (api/check-data-studio-access)
   (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
-    (field-values/delete-field-values-for-tables! (mapv :id tables))
+    (field-values/delete-field-values! (field-values/ids-of-tables (mapv :id tables)))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

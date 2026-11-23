@@ -137,7 +137,7 @@
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (table-index/update-table-indexes! [id] {:structured structured})
+      (table-index/update-table-indexes! [{:id id :structured structured}])
       (indexes-rest.db/table-index id))))
 
 (api.macros/defendpoint :delete "/request/:id" :- ::api/generic-204-no-content
@@ -146,5 +146,5 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (table-index/update-table-indexes! [id] {:status :delete-pending}))
+    (table-index/update-table-indexes! [{:id id :status :delete-pending}]))
   api/generic-204-no-content)

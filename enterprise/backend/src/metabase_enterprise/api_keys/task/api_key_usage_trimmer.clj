@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
@@ -26,7 +27,8 @@
       (log/info "Skipping API key usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))]
         (log/infof "Trimming API key usage log rows older than %d days." (long retention-days))
-        (let [rows (api-key-usage-log/delete-api-key-usage-logs-for-cleanup! cutoff)]
+        (let [rows (api-key-usage-log/delete-api-key-usage-logs!
+                    (api-keys/api-key-usage-log-ids-occurred-before cutoff))]
           (log/infof "API key usage log cleanup complete. Deleted %d rows." (or rows 0)))))))
 
 (task/defjob ApiKeyUsageTrimmer

@@ -4510,7 +4510,7 @@
           (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
                          :model/Database {other-db-id :id} {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
                          :model/Table {table-id :id} {:db_id db-id, :is_upload true}]
-            (database/update-databases! [other-db-id] {:uploads_enabled true})
+            (database/update-databases! [{:id other-db-id :uploads_enabled true}])
             (let [card-defaults {:collection_id collection-id
                                  :type          :model
                                  :dataset_query {:type     :query
@@ -5633,7 +5633,7 @@
         (snippet/create-snippets! [{:name       "snippet-2"
                                     :content    "AND price > 100 {{snippet: snippet-1}}"
                                     :creator_id (mt/user->id :crowberto)}])
-        (snippet/update-snippets! [(:id snippet-1)] {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"} nil)
+        (snippet/update-snippets! [{:id (:id snippet-1) :content "WHERE category = 'Electronics' {{snippet: snippet-2}}"}] nil)
         ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
         ;; This should fail even though the card doesn't exist yet
         (is (= "Cannot save card with cycles."

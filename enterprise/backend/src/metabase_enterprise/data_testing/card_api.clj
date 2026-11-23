@@ -98,7 +98,7 @@
     (api/update-check card-test body)
     (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-tests! [id] body)))
+      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

@@ -150,8 +150,8 @@
                                                 :name "broken_on_update"
                                                 :base_type :type/Number
                                                 :effective_type :type/Number}]
-      (field/update-fields! [field-id] {:effective_type    :type/Text
-                                        :coercion_strategy nil})
+      (field/update-fields! [{:id field-id :effective_type    :type/Text
+                              :coercion_strategy nil}])
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
               (t2/select-one :model/Field :id field-id))))))
@@ -165,8 +165,8 @@
                                                 :name "with_coercion"
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
-      (field/update-fields! [field-id] {:effective_type    :type/Number
-                                        :coercion_strategy :Coercion/String->Float})
+      (field/update-fields! [{:id field-id :effective_type    :type/Number
+                              :coercion_strategy :Coercion/String->Float}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
                :coercion_strategy :Coercion/String->Float}
@@ -183,7 +183,7 @@
                                                 :effective_type    :type/Number
                                                 :coercion_strategy :Coercion/String->Float}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
-      (field/update-fields! [field-id] {:coercion_strategy nil})
+      (field/update-fields! [{:id field-id :coercion_strategy nil}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
@@ -242,7 +242,7 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (field/update-fields! [id] {:effective_type :type/Text})
+                  (field/update-fields! [{:id id :effective_type :type/Text}])
                   id))]
              ["update-fields! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
@@ -257,7 +257,7 @@
                                   :coercion_strategy :Coercion/String->Float
                                   :position          0
                                   :database_position 0}))]
-                  (field/update-fields! [id] {:coercion_strategy nil})
+                  (field/update-fields! [{:id id :coercion_strategy nil}])
                   id))]
              ["update-fields! changes base_type but leaves effective_type stale"
               (fn [table-id]
@@ -271,7 +271,7 @@
                                   :effective_type    :type/Text
                                   :position          0
                                   :database_position 0}))]
-                  (field/update-fields! [id] {:base_type :type/Number})
+                  (field/update-fields! [{:id id :base_type :type/Number}])
                   id))]
              ["update-fields! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
@@ -285,8 +285,8 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (field/update-fields! [id] {:effective_type    :type/Text
-                                              :coercion_strategy nil})
+                  (field/update-fields! [{:id id :effective_type    :type/Text
+                                          :coercion_strategy nil}])
                   id))]]]
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}
@@ -307,7 +307,7 @@
                                                                             :database_type "TEXT" :position 0 :database_position 0})))))
             counted (fn [ids]
                       (t2/update! :metabase_field :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
-                      (events.tu/statement-count! #(field/update-fields! ids {:description "x"})))
+                      (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :description "x"}))))
             six     (fields 6)]
         (counted (fields 1))
         (is (= (counted (fields 2)) (counted six)))
@@ -375,7 +375,7 @@
       (field-user-settings/upsert-field-user-settings! field {:semantic_type    :type/Email
                                                               :visibility_type  :sensitive
                                                               :display_name     "User Name"})
-      (field-user-settings/delete-field-user-settings-for-fields! [field-id])
+      (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id]))
       (is (=? {:semantic_type :type/Email :visibility_type :sensitive :display_name "User Name"}
               (t2/select-one :model/Field :id field-id)))
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))))
@@ -412,23 +412,23 @@
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK :fk_target_field_id target-id})
-      (field/update-fields! [target-id] {:active false})
+      (field/update-fields! [{:id target-id :active false}])
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field also drops a user-set FK semantic type whose target sync set"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK})
-      (field/update-fields! [source-id] {:fk_target_field_id target-id})
-      (field/update-fields! [target-id] {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (not (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field keeps a user-set semantic type other than FK on a Field sync pointed at it"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/Category})
-      (field/update-fields! [source-id] {:fk_target_field_id target-id})
-      (field/update-fields! [target-id] {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))

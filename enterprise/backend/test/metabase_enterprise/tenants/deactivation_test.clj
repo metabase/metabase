@@ -42,4 +42,4 @@
               (is (= access.tu/live (access.tu/access-state internal-access))
                   "a User outside any Tenant keeps its access")
               (finally
-                (run! #(tenants.model/update-tenants! [%] {:is_active true}) active-ids)))))))))
+                (tenants.model/update-tenants! (mapv #(hash-map :id % :is_active true) active-ids))))))))))

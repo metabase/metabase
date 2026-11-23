@@ -3,6 +3,7 @@
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -16,14 +17,18 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-api-key-usage-logs!
-  "Insert the ApiKeyUsageLog `rows` as one batch."
+  "Insert the ApiKeyUsageLog `rows` in one transaction."
   [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
-  (api-keys.db/insert-api-key-usage-logs! rows))
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (run! (comp api-keys.db/insert-api-key-usage-logs! vec) (partition-all mdb/create-partition-size rows)))))
 
-(mu/defn delete-api-key-usage-logs-for-cleanup!
-  "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
-  [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (api-keys.db/delete-api-key-usage-logs-occurred-before! cutoff))
+(mu/defn delete-api-key-usage-logs! :- :int
+  "Delete the ApiKeyUsageLogs with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (transduce (map (comp api-keys.db/delete-api-key-usage-logs! vec)) + 0
+               (partition-all mdb/delete-partition-size ids))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

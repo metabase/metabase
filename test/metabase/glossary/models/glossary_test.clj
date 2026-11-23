@@ -90,7 +90,7 @@
   (mt/with-current-user (mt/user->id :rasta)
     (let [{:keys [id]} (first (glossary/create-glossaries! [{:term "Published" :definition "Definition" :creator_id (mt/user->id :rasta)}]))]
       (try
-        (glossary/update-glossaries! [id] {:definition "Changed"})
+        (glossary/update-glossaries! [{:id id :definition "Changed"}])
         (glossary/delete-glossaries! [id])
         (is (=? [[:event/glossary-create {:changes [{:object {:id id :term "Published"}}]
                                           :user-id (mt/user->id :rasta)}]
@@ -114,11 +114,11 @@
           fresh!  (fn [n]
                     (let [ids (mapv :id (glossary/create-glossaries!
                                          (mapv (fn [_] {:term (mt/random-name) :definition "Definition" :creator_id (mt/user->id :rasta)}) (range n))))]
-                      (glossary/update-glossaries! (take-nth 2 ids) {:definition "Same"})
+                      (glossary/update-glossaries! (mapv (fn [id] {:id id :definition "Same"}) (take-nth 2 ids)))
                       ids))
           update! (fn [n]
                     (let [ids (fresh! n)]
-                      (events.tu/statement-count! #(glossary/update-glossaries! ids {:definition "Same"}))))
+                      (events.tu/statement-count! #(glossary/update-glossaries! (mapv (fn [id] {:id id :definition "Same"}) ids)))))
           delete! (fn [n]
                     (let [ids (fresh! n)]
                       (events.tu/statement-count! #(glossary/delete-glossaries! ids))))]

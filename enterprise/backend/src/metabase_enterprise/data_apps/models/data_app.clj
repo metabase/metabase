@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.dependencies :as data-apps.dependencies]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.dependencies.core :as dependencies]
@@ -15,7 +16,6 @@
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -295,40 +295,47 @@
     (check-resource-collections (into {} pairs))))
 
 (defn- write-data-app-updates!
-  "Applies `rows`, each the `:id` of a DataApp with the changes it gets, which may differ from row to row, which the hooks
-  of the model normalize, in one transaction with one statement for each distinct set of changes, publishing one update
-  event for all of them, and returns `rows`."
-  [rows]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [ids    (mapv :id rows)
-            stored (u/index-by :id (data-apps.db/data-apps-by-ids ids))]
-        (check-new-resource-collections rows stored)
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)
-                :when (seq changes)]
-          (data-apps.db/update-data-apps! (mapv :id group) changes))
-        (events/publish-event! :event/data-app-update
-                               (events/update-event stored
-                                                    rows
-                                                    {:objects (u/index-by :id (data-apps.db/data-apps-by-ids ids))})))))
-  (vec rows))
+  "Writes `rows`, updates of the `stored` DataApps, with one statement for each distinct set of changes, and returns what
+  the event needs, the changes of each row and the apps as they are after the write."
+  [stored rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)
+          :when (seq changes)]
+    (data-apps.db/update-data-apps! (mapv :id group) changes))
+  {:stored stored
+   :rows   rows
+   :objects (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))})
+
+(defn- update-data-app-batch!
+  "Writes the DataApps of `batch`, up to one partition of the call, without the bundles that the stored app already holds
+  for an import, and returns what the event needs."
+  [batch opts]
+  (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id batch)))]
+    (write-data-app-updates! stored (cond-> batch
+                                      (= :import (:writer opts)) (without-held-bundles stored)))))
+
+(defn- publish-data-app-updates!
+  "Publishes the update event of the DataApps that `batches`, what [[update-data-app-batch!]] returned, wrote."
+  [batches]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/data-app-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                {:objects (into {} (map :objects) batches)}))))
 
 (mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
-  "Apply `changes`, one change to the columns, which the hooks of the model normalize, to each of the DataApps with
-  `ids` in one transaction, publishing their update event. Throws unless a new resource collection can be one, which
-  it cannot for several apps. Returns the updated rows."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::data-apps.schema/data-app.update]
-  (write-data-app-updates! (mapv #(assoc changes :id %) ids)))
-
-(mu/defn update-data-apps-for-import!
-  "Apply each of `rows`, the id of a DataApp and the columns to change, in one pass over all of them, publishing one
-  update event, as an import does because every row holds its own values, without a bundle that the stored app already
-  holds. Returns `rows`."
-  [rows :- [:sequential ::data-apps.schema/data-app.update-row]]
-  (write-data-app-updates!
-   (without-held-bundles rows (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))))
-  (vec rows))
+  "Apply `updates`, each the `:id` of a DataApp with the columns to give it, which the hooks of the model normalize, in
+  one transaction, publishing their update event. Throws unless a new resource collection can be one, which it cannot
+  for several apps. With `:writer :import` an app does not write a bundle that the stored app already holds. Returns
+  `updates`."
+  ([updates :- [:sequential ::data-apps.schema/data-app.update-row]]
+   (update-data-apps! updates nil))
+  ([updates :- [:sequential ::data-apps.schema/data-app.update-row]
+    opts    :- [:maybe [:map {:closed true} [:writer {:optional true} [:enum :import]]]]]
+   (t2/with-transaction [_conn]
+     (check-new-resource-collections updates (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id updates))))
+     (publish-data-app-updates!
+      (mapv #(update-data-app-batch! % opts) (partition-all app-db/update-partition-size updates))))
+   (vec updates)))
 
 (mu/defn delete-data-apps! :- :nil
   "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, publishing their
@@ -340,8 +347,7 @@
             collection-ids (into [] (keep :resource_collection_id) apps)]
         (when (seq collection-ids)
           (collection/delete-collections! collection-ids))
-        (events/publish-event! :event/data-app-delete {:changes (u.events/delete-changes apps)
-                            :user-id (mi/current-user-id)})
+        (events/publish-event! :event/data-app-delete (events/delete-event apps))
         (data-apps.db/delete-data-apps! (vec data-app-ids)))))
   nil)
 
@@ -368,7 +374,7 @@
                                                   :import import-bundles}}
    :before-load         default-versions
    :insert!             create-data-apps!
-   :update!             update-data-apps-for-import!
+   :update!             #(update-data-apps! % {:writer :import})
    :delete!             delete-data-apps!
    :storage-paths       storage-paths
    :resource-paths      resource-paths

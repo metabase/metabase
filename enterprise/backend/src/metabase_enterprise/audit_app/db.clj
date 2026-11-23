@@ -148,10 +148,10 @@
 (mu/defn archive-pulses-of-creator!
   "Archive the unarchived Pulses created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (pulse/update-pulses! (t2/select-pks-vec :model/Pulse :creator_id user-id :archived false) {:archived true}))
+  (pulse/update-pulses! (mapv #(hash-map :id % :archived true) (t2/select-pks-vec :model/Pulse :creator_id user-id :archived false))))
 
 (mu/defn deactivate-notifications-of-creator!
   "Deactivate the active Notifications created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (models.notification/update-notifications! (vec (t2/select-pks-vec :model/Notification :creator_id user-id :active true))
-                                             {:active false}))
+  (models.notification/update-notifications! (mapv #(hash-map :id % :active false)
+                                                  (t2/select-pks-vec :model/Notification :creator_id user-id :active true))))

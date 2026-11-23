@@ -137,10 +137,15 @@
                                                   :offset   offset
                                                   :order-by [[:ended_at :desc]]}))
 
-(mu/defn delete-task-history-ended-before!
-  "Delete the TaskHistory rows that ended at or before `ended-before`."
+(mu/defn task-history-ids-ended-before :- [:sequential ms/PositiveInt]
+  "The ids of the TaskHistory rows that ended at or before `ended-before`."
   [ended-before :- ms/TemporalInstant]
-  (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= ended-before]))
+  (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before]))
+
+(mu/defn delete-task-histories!
+  "Delete the TaskHistory rows with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TaskHistory :id [:in ids]))
 
 (def ^:private join-sort-columns
   "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."

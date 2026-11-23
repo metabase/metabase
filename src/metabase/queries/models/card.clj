@@ -66,7 +66,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -134,8 +133,8 @@
 (defmethod metrics/save-dimensions! :metadata/metric
   [metric dimensions dimension-mappings]
   (when-let [metric-id (:id metric)]
-    (update-cards! [metric-id] {:dimensions         dimensions
-                                :dimension_mappings dimension-mappings})))
+    (update-cards! [{:id metric-id :dimensions         dimensions
+                                :dimension_mappings dimension-mappings}])))
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
   [metric]
@@ -1539,44 +1538,68 @@
            [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
+(defn- derive-new-card-rows
+  "`rows`, the new Cards of one batch, with the columns that their queries, their metadata and their Dashboards give
+  each, and the `dashboards` they go in by id."
+  [rows dashboards]
+  (->> (assoc-source-card-tables rows)
+       (mapv #(assoc-inferred-result-metadata % nil))
+       (mapv #(dashboard-question-collection % dashboards))))
+
+(defn- check-new-cards
+  "Throw unless every one of `rows`, the new Cards of one batch, with the `placement` they read, satisfies these rules:
+
+  - it can go where it is put
+  - a native query that filters on Fields filters on Fields of its Database"
+  [rows placement]
+  (run! #(check-new-card-placement % placement) rows)
+  (check-field-filter-fields-are-from-correct-database
+   (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows)))
+
+(defn- insert-cards!
+  "Inserts `rows`, the checked new Cards of one batch, and what depends on them, and returns the new Cards."
+  [rows]
+  (let [cards (queries.db/insert-cards! rows)]
+    (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
+    (when-let [objects (seq (card-sourced-parameter-objects cards))]
+      (parameter-card/sync-parameter-cards! "card" (vec objects)))
+    cards))
+
+(defn- create-card-batch!
+  "Checks and inserts the Cards of `batch`, up to one partition of the call, and returns the new Cards."
+  [batch importing?]
+  (let [rows       (cond->> batch importing? (mapv queries.serialization/new-card-row))
+        dashboards (queries.db/dashboards-for-placement (into #{} (keep :dashboard_id) rows))
+        rows       (derive-new-card-rows rows dashboards)
+        placement  (load-placement rows dashboards)]
+    (check-new-cards rows placement)
+    (insert-cards! rows)))
+
 (mu/defn create-cards! :- [:sequential :map]
   "Creates a Card from each of `rows` and returns the new Cards in order, after checking that each can go where it is
   put and that its Field filters are on Fields of its Database. A user's write computes the result metadata of each
-  query first and saves what is not ready soon enough afterwards on one background thread. Reads what it checks for all
-  the Cards at once and inserts them with one statement for each set of columns they give, so the statements do not grow
-  with their number. Publishes the creation of the Cards as the last step."
+  query first and saves what is not ready soon enough afterwards on one background thread. Publishes the creation of
+  the Cards as the last step."
   ([rows :- [:sequential ::queries.schema/card.create]]
    (create-cards! rows nil))
   ([rows :- [:sequential ::queries.schema/card.create]
     opts :- WriteOpts]
-   (if (empty? rows)
-     []
-     (let [importing?       (= :import (:writer opts))
-           rows             (cond->> rows
-                              (not importing?) (mapv new-row-with-defaults))
-           [rows futures]   (if (nil? (:writer opts))
-                              (assoc-new-result-metadata rows)
-                              [(vec rows) {}])
-           cards            (t2/with-transaction [_conn]
-                              (let [rows       (cond->> rows
-                                                 importing? (mapv queries.serialization/new-card-row))
-                                    rows       (mapv #(assoc-inferred-result-metadata % nil) (assoc-source-card-tables rows))
-                                    dashboards (queries.db/dashboards-for-placement (into #{} (keep :dashboard_id) rows))
-                                    rows       (mapv #(dashboard-question-collection % dashboards) rows)
-                                    placement  (load-placement rows dashboards)]
-                                (run! #(check-new-card-placement % placement) rows)
-                                (check-field-filter-fields-are-from-correct-database
-                                 (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows))
-                                (let [cards (queries.db/insert-cards! rows)]
-                                  (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
-                                  (when-let [objects (seq (card-sourced-parameter-objects cards))]
-                                    (parameter-card/sync-parameter-cards! "card" (vec objects)))
-                                  (events/publish-event! :event/card-create (events/create-event cards opts))
-                                  cards)))]
-       (when (seq futures)
-         (log/info "Metadata not available soon enough. Saving new cards and asynchronously updating metadata")
-         (save-metadata-async! (mapv (fn [[i metadata-future]] {:future metadata-future :card (nth cards i)}) futures)))
-       cards))))
+   (let [importing?     (= :import (:writer opts))
+         rows           (cond->> rows
+                          (not importing?) (mapv new-row-with-defaults))
+         [rows futures] (if (nil? (:writer opts))
+                          (assoc-new-result-metadata rows)
+                          [(vec rows) {}])
+         cards          (t2/with-transaction [_conn]
+                          (let [cards (into [] (mapcat #(create-card-batch! % importing?))
+                                            (partition-all mdb/create-partition-size rows))]
+                            (when (seq cards)
+                              (events/publish-event! :event/card-create (events/create-event cards opts)))
+                            cards))]
+     (when (seq futures)
+       (log/info "Metadata not available soon enough. Saving new cards and asynchronously updating metadata")
+       (save-metadata-async! (mapv (fn [[i metadata-future]] {:future metadata-future :card (nth cards i)}) futures)))
+     cards)))
 
 (defn- changing-values
   "The entries of `update`, an `:id` and columns, that change `card`, with the values the Card stores them as. A
@@ -2105,17 +2128,20 @@
                     [id (t2/instance :model/Card (merge before changes))]))))
         changed))
 
-(defn- publish-card-update!
-  "Publishes the update event of the Cards of `entries`, `before` being the Cards by id and `after` as they are after
-  their writes."
-  [before entries after opts]
-  (let [changed (filterv (comp seq :changes) entries)]
-    (events/publish-event!
-     :event/card-update
-     (events/update-event
-      before
-      (mapv (fn [{:keys [before changes]}] (assoc changes :id (:id before))) changed)
-      (assoc opts :objects (updated-card-objects changed after))))))
+(defn- publish-card-updates!
+  "Publishes the update event of the Cards that `batches`, what [[update-card-batch!]] returned, wrote."
+  [batches opts]
+  (let [changed (into [] (mapcat (fn [{:keys [entries]}] (filterv (comp seq :changes) entries))) batches)]
+    (when (seq changed)
+      (events/publish-event!
+       :event/card-update
+       (events/update-event
+        (into {} (map :before) batches)
+        (mapv (fn [{:keys [before changes]}] (assoc changes :id (:id before))) changed)
+        (assoc opts :objects (into {}
+                                   (mapcat (fn [{:keys [entries after]}]
+                                             (updated-card-objects (filterv (comp seq :changes) entries) after)))
+                                   batches)))))))
 
 (defn- cascade-card-changes!
   "Updates the Cards that use the Cards of `entries` and the parameter mappings of their DashboardCards, as far as a
@@ -2139,24 +2165,29 @@
                       (assoc changes :id id))))))
         updates))
 
-(defn- write-card-entries!
-  "Writes `updates`, each the `:id` of a Card with the columns to give it, in the current transaction: the checks, the
-  write, what depends on the Cards and the update event, as the last step."
-  [updates opts]
-  (let [before     (u/index-by :id (queries.db/cards (into #{} (map :id) updates)))
-        entries    (card-entries (cond->> updates (= :import (:writer opts)) (import-updates before)) before)
-        placement  (load-update-placement entries)
-        writer     (:writer opts)
+(defn- write-card-updates!
+  "Writes `entries`, the updates of one batch with the Cards they change, after what a Card that `opts` says changes needs,
+  and returns the Cards before and after the writes."
+  [before entries opts]
+  (let [writer     (:writer opts)
         following? (not (contains? #{:import :cascade :sync} writer))
         actor      @api/*current-user*
         stopping   (when (not= :import writer) (notifications-of-changing-cards entries))]
-    (check-card-updates entries placement)
     (write-card-changes! entries writer actor following?)
     (let [after (cards-after entries)]
       (keep-dependents-in-step! entries after stopping writer actor)
-      (publish-card-update! before entries after opts))
-    (when following?
-      (cascade-card-changes! entries))))
+      (when following?
+        (cascade-card-changes! entries))
+      {:before before :entries entries :after after})))
+
+(defn- update-card-batch!
+  "Checks and writes the Cards of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch opts]
+  (let [before    (u/index-by :id (queries.db/cards (into #{} (map :id) batch)))
+        entries   (card-entries (cond->> batch (= :import (:writer opts)) (import-updates before)) before)
+        placement (load-update-placement entries)]
+    (check-card-updates entries placement)
+    (write-card-updates! before entries opts)))
 
 (defn- save-pending-metadata!
   "Saves, once their futures are ready, the result metadata of the Cards by id of `futures` that was not ready in time."
@@ -2186,9 +2217,23 @@
                                (assoc-updated-result-metadata updates)
                                [updates {}])]
        (t2/with-transaction [_conn]
-         (write-card-entries! updates opts))
+         (let [batches (mapv #(update-card-batch! % opts) (partition-all mdb/update-partition-size updates))]
+           (publish-card-updates! batches opts)))
        (save-pending-metadata! futures)
        nil))))
+
+(defn- delete-card-batch!
+  "Deletes the Cards with the ids of `batch`, after the rows that depend on them."
+  [batch]
+  (let [card-ids (vec batch)]
+    (delete-card-tests-for-cards! card-ids)
+    (actions.models/delete-actions-for-models! card-ids)
+    (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
+    (moderation-review/delete-moderation-reviews-for-cards! card-ids)
+    (revision/delete-revisions-for-entities! "Card" card-ids)
+    (cache-config/delete-cache-configs-for-deleted-targets! "question" card-ids)
+    (delete-notifications-of-cards! card-ids)
+    (queries.db/delete-cards! card-ids)))
 
 (mu/defn delete-cards! :- :nil
   "Deletes the Cards with `card-ids` after the rows that depend on them, one statement for each kind of row, so the
@@ -2197,23 +2242,13 @@
    (delete-cards! card-ids nil))
   ([card-ids :- [:sequential ::lib.schema.id/card]
     opts     :- WriteOpts]
-   (let [card-ids (vec (distinct card-ids))]
-     (when (seq card-ids)
-       (t2/with-transaction [_conn]
-         (let [cards (vec (queries.db/cards card-ids))]
-           (delete-card-tests-for-cards! card-ids)
-           (actions.models/delete-actions-for-models! card-ids)
-           (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
-           (moderation-review/delete-moderation-reviews-for-cards! card-ids)
-           (revision/delete-revisions-for-entities! "Card" card-ids)
-           (cache-config/delete-cache-configs-for-deleted-targets! "question" card-ids)
-           (delete-notifications-of-cards! card-ids)
-           (events/publish-event! :event/card-delete (cond-> {:changes (u.events/delete-changes cards)
-                          :user-id (mi/current-user-id)}
-               (seq (:context opts)) (assoc :context (:context opts))
-               (:writer opts)        (assoc :writer (:writer opts))))
-           (queries.db/delete-cards! card-ids))))
-     nil)))
+   (t2/with-transaction [_conn]
+     (let [batches (partition-all mdb/delete-partition-size (distinct card-ids))]
+       (when (seq batches)
+         (events/publish-event! :event/card-delete
+                                (events/delete-event (into [] (mapcat #(queries.db/cards (vec %))) batches) opts)))
+       (run! delete-card-batch! batches)))
+   nil))
 
 (def ^:private tombstone-chunk-size
   "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
@@ -2329,7 +2364,7 @@
 
 (defmethod qp.card-writes/save-result-metadata! :model/Card
   [_model card-id metadata]
-  (update-cards! [card-id] {:result_metadata metadata :updated_at :updated_at} {:writer :sync}))
+  (update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}] {:writer :sync}))
 
 (defmethod database/delete-for-databases! :model/Card
   [_model databases]
@@ -2491,17 +2526,17 @@
 (defn- revert-card!
   "Returns the Card `card-id` to the `snapshot` of a Card that a revision recorded, as an update."
   [card-id _user-id snapshot]
-  (update-cards! [card-id] (dissoc snapshot :id) {:writer :revert}))
+  (update-cards! [(assoc (dissoc snapshot :id) :id card-id)] {:writer :revert}))
 
 (defmethod collection/archive-in-collections! :model/Card
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-cards! ids {:archived true} opts)))
+    (update-cards! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Card
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-cards! ids {:archived false} opts)))
+    (update-cards! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 (defmethod collection/delete-in-collections! :model/Card
   [model collection-ids opts]

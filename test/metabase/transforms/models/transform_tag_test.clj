@@ -26,7 +26,7 @@
 (deftest initial-tags-translated-on-update
   (doseq [type ["hourly" "daily" "weekly" "monthly"]]
     (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-      (transform-tag/update-transform-tags! [(:id tag)] {:name "default2"})
+      (transform-tag/update-transform-tags! [{:id (:id tag) :name "default2"}])
       (is (= "default2"
              (:name (t2/select-one :model/TransformTag :id (:id tag)))))
       (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag)))))))
@@ -35,7 +35,7 @@
   (testing "An update that only touches the timestamp leaves a tag built in"
     (doseq [type ["hourly" "daily" "weekly" "monthly"]]
       (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-        (transform-tag/update-transform-tags! [(:id tag)] {:updated_at (mi/current-timestamp)})
+        (transform-tag/update-transform-tags! [{:id (:id tag) :updated_at (mi/current-timestamp)}])
         (is (= type (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag))))))))
 
 (deftest data-analyst-tag-access-follows-the-advanced-permissions-feature-test
@@ -103,8 +103,8 @@
         (is (thrown? Exception (transform-tag/create-transform-tags! [{:name tag-name} {:name tag-name}])))
         (is (zero? (t2/count :model/TransformTag :name tag-name)))))
     (testing "renaming a tag to a taken name fails, and to its own name does not"
-      (is (thrown? Exception (transform-tag/update-transform-tags! [(:id other)] {:name (:name tag)})))
-      (is (nil? (transform-tag/update-transform-tags! [(:id other)] {:name (:name other)}))))))
+      (is (thrown? Exception (transform-tag/update-transform-tags! [{:id (:id other) :name (:name tag)}])))
+      (is (nil? (transform-tag/update-transform-tags! [{:id (:id other) :name (:name other)}]))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (let [created (atom [])
@@ -139,9 +139,27 @@
           counted (fn [built-in custom]
                     (let [ids (tags built-in custom)]
                       (events.tu/statement-count!
-                       #(transform-tag/update-transform-tags! ids {:built_in_type nil}))))]
+                       #(transform-tag/update-transform-tags! (mapv (fn [row-id] (assoc {:built_in_type nil} :id row-id)) ids)))))]
       (counted 1 0)
       (is (= (counted 1 1) (counted 3 3))))))
+
+(deftest update-transform-tags-with-different-rows-test
+  (mt/with-model-cleanup [:model/TransformTag]
+    (let [ids      (mapv :id (transform-tag/create-transform-tags! (mapv #(hash-map :name %) (tag-names 10))))
+          update!  (fn [ids]
+                     (let [published (atom [])]
+                       (with-redefs [events/publish-event! (fn [topic _event] (swap! published conj topic))]
+                         {:statements (events.tu/statement-count!
+                                       (fn [] (transform-tag/update-transform-tags! (mapv #(hash-map :id % :name (str "Renamed " % " " (mt/random-name))) ids))))
+                          :events     @published})))
+          _warm    (update! (take 1 ids))
+          small    (update! (take 2 (drop 1 ids)))
+          large    (update! (take 6 (drop 3 ids)))]
+      (testing "one update event for all rows whatever their number"
+        (is (= [:event/transform-tag-update] (:events small)))
+        (is (= (:events small) (:events large))))
+      (testing "rows that all differ cost at most one UPDATE and one before-update read for each extra row"
+        (is (<= (- (:statements large) (:statements small)) (* 2 4)))))))
 
 (defn- do-with-built-in-names-freed!
   "Calls `thunk` with the names of the built-in TransformTags set aside, since a tag made custom takes its translated name,
@@ -176,7 +194,7 @@
                             (doseq [[id built-in-type] (map vector (take built-in ids) ["hourly" "daily" "weekly"])]
                               (t2/update! :model/TransformTag :id id {:built_in_type built-in-type}))
                             (u/prog1 (events.tu/statement-count!
-                                      #(transform-tag/update-transform-tags! ids {:created_at (mi/current-timestamp)}))
+                                      #(transform-tag/update-transform-tags! (mapv (fn [row-id] (assoc {:created_at (mi/current-timestamp)} :id row-id)) ids)))
                               (t2/delete! :model/TransformTag :id [:in ids]))))]
             (counted 1 0)
             (is (= (counted 1 1) (counted 3 3)))))))))
@@ -188,7 +206,7 @@
             published (atom [])]
         (t2/update! :model/TransformTag :id id {:built_in_type "monthly"})
         (with-redefs [events/publish-event! (fn [_topic event] (swap! published conj event))]
-          (transform-tag/update-transform-tags! [id] {:created_at (mi/current-timestamp)}))
+          (transform-tag/update-transform-tags! [{:id id :created_at (mi/current-timestamp)}]))
         (let [object (-> @published first :changes first :object)]
           (is (= (str (i18n/trs "monthly")) (str (:name object))))
           (is (nil? (:built_in_type object)))

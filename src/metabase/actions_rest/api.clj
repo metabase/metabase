@@ -135,7 +135,7 @@
     {:uuid (or (:public_uuid action)
                (let [uuid (str (random-uuid))]
                  (api/update-check action {:public_uuid uuid, :made_public_by_id api/*current-user-id*})
-                 (actions.models/update-actions! [id] {:public_uuid uuid :made_public_by_id api/*current-user-id*} nil)
+                 (actions.models/update-actions! [{:id id :public_uuid uuid :made_public_by_id api/*current-user-id*}] nil)
                  uuid))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -150,7 +150,7 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions.models/update-actions! [id] {:public_uuid nil :made_public_by_id nil} nil)
+  (actions.models/update-actions! [{:id id :public_uuid nil :made_public_by_id nil}] nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]

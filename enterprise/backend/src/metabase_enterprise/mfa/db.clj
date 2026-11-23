@@ -76,6 +76,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
 
+(mu/defn totp-identity-ids :- [:sequential ms/PositiveInt]
+  "The ids of every TOTP AuthIdentity of the User with `user-id`."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider totp-provider))
+
 (mu/defn lock-totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
   [user-id :- ::lib.schema.id/user]

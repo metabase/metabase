@@ -188,14 +188,14 @@
     (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
 
-(deftest delete-field-values-for-fields!-test
+(deftest delete-field-values-of-fields-test
   (mt/with-temp [:model/Database    {database-id :id} {}
                  :model/Table       {table-id :id} {:db_id database-id}
                  :model/Field       {field-id :id} {:table_id table-id}
                  :model/FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
-    (field-values/delete-field-values-for-fields! [field-id])
+    (field-values/delete-field-values! (field-values/ids-of-fields [field-id]))
     (is (= nil
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
 
@@ -639,7 +639,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (field-values/update-field-values! [(:id fv)] {:values [1 2 3]})
+    (field-values/update-field-values! [{:id (:id fv) :values [1 2 3]}])
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -648,7 +648,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (field-values/update-field-values! [(:id fv)] {:has_more_values true})
+    (field-values/update-field-values! [{:id (:id fv) :has_more_values true}])
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (defn- field-values-write-call-counts!
@@ -666,7 +666,7 @@
                                                   field-ids))
          (call-count))
        (t2/with-call-count [call-count]
-         (field-values/update-field-values! ids {:values ["b"]})
+         (field-values/update-field-values! (for [id ids] {:id id :values ["b"]}))
          (call-count))])))
 
 (deftest bulk-field-values-writes-call-count-test

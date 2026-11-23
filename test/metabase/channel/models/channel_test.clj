@@ -56,11 +56,11 @@
                                          :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (models.channel/update-channels! [id] {:name "New name"})
-      (models.channel/update-channels! [id] {:active true})
+      (models.channel/update-channels! [{:id id :name "New name"}])
+      (models.channel/update-channels! [{:id id :active true}])
       (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (models.channel/update-channels! [id] {:active false})
+      (models.channel/update-channels! [{:id id :active false}])
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
@@ -92,7 +92,7 @@
         (let [{:keys [id name]} (create! (mt/random-name))
               published         (atom [])]
           (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
-            (models.channel/update-channels! [id] {:active false}))
+            (models.channel/update-channels! [{:id id :active false}]))
           (is (= [(format "DEACTIVATED_%d %s" id name)]
                  (into [] (comp (filter (comp #{:event/channel-update} first))
                                 (mapcat (comp :changes second))
@@ -115,8 +115,8 @@
                      (:id inactive) (:name inactive)
                      (:id renamed)  (format "DEACTIVATED_%d New name" (:id renamed))}]
       (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
-        (models.channel/update-channels! (mapv :id [short-ch long-ch inactive]) {:active false})
-        (models.channel/update-channels! [(:id renamed)] {:active false :name "New name"}))
+        (models.channel/update-channels! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (mapv :id [short-ch long-ch inactive])))
+        (models.channel/update-channels! [{:id (:id renamed) :active false :name "New name"}]))
       (testing "each deactivated channel stores its own name, cut to 254 characters"
         (is (= expected (t2/select-pk->fn :name :model/Channel :id [:in (keys expected)]))))
       (testing "the update event shows the stored names of the channels it changes"
@@ -315,7 +315,7 @@
                                                                :name (mt/random-name) :active false)))))
               _          (swap! created into inactive)
               statements (fn [ids]
-                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (vec ids) {:active false}))))]
+                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (vec ids))))))]
           (statements [(first active)])
           (is (= (statements [(nth active 1) (first inactive)])
                  (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))))))

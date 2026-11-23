@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -102,17 +103,14 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn delete-task-history-for-cleanup!
-  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
-  [num-rows-to-keep :- ms/IntGreaterThanOrEqualToZero]
-  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
-  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
-  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
-  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
-  ;; disk.
-  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
-    (task-history.db/delete-task-history-ended-before! clean-before-date)))
+(mu/defn delete-task-histories! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the TaskHistory rows with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp task-history.db/delete-task-histories! vec)) + 0
+                 (partition-all mdb/delete-partition-size ids)))))
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}

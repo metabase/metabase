@@ -53,7 +53,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (transform-job/update-transform-jobs! [(:id job)] {:name "default2"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :name "default2"}])
         (is (= "default2"
                (str (:name (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:description translations))
@@ -65,7 +65,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (transform-job/update-transform-jobs! [(:id job)] {:description "default description 2"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :description "default description 2"}])
         (is (= "default description 2"
                (str (:description (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:name translations))
@@ -77,7 +77,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (transform-job/update-transform-jobs! [(:id job)] {:schedule "0 0 1 * * ?"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :schedule "0 0 1 * * ?"}])
         (is (= (str (:description translations))
                (str (:description (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:name translations))
@@ -116,14 +116,14 @@
       (testing "a created job is scheduled"
         (is (= "0 0 0 * * ? *" (trigger-schedule))))
       (testing "a schedule change moves the trigger"
-        (transform-job/update-transform-jobs! [job-id] {:schedule "0 0 1 * * ? *"})
+        (transform-job/update-transform-jobs! [{:id job-id :schedule "0 0 1 * * ? *"}])
         (is (= "0 0 1 * * ? *" (trigger-schedule))))
       (testing "deactivating removes the trigger, and activating restores it"
-        (transform-job/update-transform-jobs! [job-id] {:active false})
+        (transform-job/update-transform-jobs! [{:id job-id :active false}])
         (is (nil? (trigger-schedule)))
-        (transform-job/update-transform-jobs! [job-id] {:schedule "0 0 2 * * ? *"})
+        (transform-job/update-transform-jobs! [{:id job-id :schedule "0 0 2 * * ? *"}])
         (is (nil? (trigger-schedule)))
-        (transform-job/update-transform-jobs! [job-id] {:active true})
+        (transform-job/update-transform-jobs! [{:id job-id :active true}])
         (is (= "0 0 2 * * ? *" (trigger-schedule))))
       (testing "deleting the job removes the trigger"
         (transform-job/delete-transform-jobs! [job-id])
@@ -157,7 +157,7 @@
         (testing "updating jobs"
           (let [update! (fn [ids]
                           (events.tu/statement-count!
-                           (fn [] (transform-job/update-transform-jobs! ids {:schedule "0 0 1 * * ? *"}))))
+                           (fn [] (transform-job/update-transform-jobs! (mapv (fn [row-id] (assoc {:schedule "0 0 1 * * ? *"} :id row-id)) ids)))))
                 ids     @created]
             (update! (take 1 ids))
             (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
@@ -180,7 +180,7 @@
                       (t2/update! :model/TransformJob :id [:in ids] {:built_in_type built-in-type})
                       ids)
             counted (fn [ids]
-                      (events.tu/statement-count! #(transform-job/update-transform-jobs! ids {:schedule "0 0 1 * * ? *"})))
+                      (events.tu/statement-count! #(transform-job/update-transform-jobs! (mapv (fn [row-id] (assoc {:schedule "0 0 1 * * ? *"} :id row-id)) ids))))
             warm-up (jobs 1)
             two     (into (built (jobs 1) "hourly") (jobs 1))
             six     (into (built (jobs 3) "hourly") (jobs 3))]
@@ -229,7 +229,7 @@
             published (atom [])]
         (t2/update! :model/TransformJob :id id {:built_in_type "hourly"})
         (with-redefs [events/publish-event! (fn [_topic event] (swap! published conj event))]
-          (transform-job/update-transform-jobs! [id] {:schedule "0 0 1 * * ? *"}))
+          (transform-job/update-transform-jobs! [{:id id :schedule "0 0 1 * * ? *"}]))
         (let [object (-> @published first :changes first :object)]
           (is (= (str (get-in values ["hourly" :name])) (str (:name object))))
           (is (nil? (:built_in_type object)))
@@ -267,6 +267,6 @@
             counted (fn [n]
                       (let [ids (jobs n (cons "0 0 1 * * ? *" (repeat "0 0 0 * * ? *")))]
                         (events.tu/statement-count!
-                         #(transform-job/update-transform-jobs! ids {:schedule "0 0 1 * * ? *" :description "d"}))))]
+                         #(transform-job/update-transform-jobs! (mapv (fn [row-id] (assoc {:schedule "0 0 1 * * ? *" :description "d"} :id row-id)) ids)))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))

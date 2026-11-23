@@ -958,8 +958,8 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (database/update-databases! [(:id existing-database)] (cond-> updates
-                                                                (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) {:databases [existing-database]})
+        (database/update-databases! [(assoc (cond-> updates
+                                              (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) :id (:id existing-database))] {:databases [existing-database]})
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -1028,7 +1028,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (table/update-tables! (vec (distinct table-ids)) {:initial_sync_status "complete"})))
+      (table/update-tables! (for [id (vec (distinct table-ids))] {:id id :initial_sync_status "complete"}))))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1067,7 +1067,7 @@
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (field-values/delete-field-values-for-database! (u/the-id database-or-id)))
+  (field-values/delete-field-values! (field-values/ids-of-database (u/the-id database-or-id))))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;

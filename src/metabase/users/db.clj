@@ -11,7 +11,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -124,11 +123,19 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :settings [:model/User :settings] :id user-id))
 
-(mu/defn group-member-ids
+(defn- by-id-partitions
+  "The concatenated results of `f` called on each partition of `ids`, so that no statement binds more ids than the
+  app DBs allow."
+  [f ids]
+  (into [] (mapcat f) (partition-all app-db/update-partition-size ids)))
+
+(mu/defn group-member-ids :- [:set ::lib.schema.id/user]
   "The ids of those of the Users with `user-ids` who are members of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
    user-ids :- [:set {:min 1} ::lib.schema.id/user]]
-  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
+  (set (by-id-partitions #(t2/select-fn-set :user_id :model/PermissionsGroupMembership
+                                            :group_id group-id :user_id [:in (vec %)])
+                         user-ids)))
 
 (mu/defn user-group-ids
   "The ids of the PermissionsGroups the User with `user-id` belongs to."
@@ -151,6 +158,11 @@
   []
   (t2/count :model/User))
 
+(mu/defn active-personal-user-count :- :int
+  "The number of active personal Users, counted on the table so that no after-select of the model runs."
+  []
+  (t2/count (t2/table-name :model/User) :is_active true :type "personal"))
+
 (mu/defn tenant-collection-ids
   "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
   [tenant-ids :- [:set ms/PositiveInt]]
@@ -164,23 +176,26 @@
 (mu/defn users-by-ids
   "The Users with `user-ids`, with every column of `:core_user`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (if (seq user-ids)
-    (t2/select [:model/User :*] :id [:in user-ids])
-    []))
+  (by-id-partitions #(t2/select [:model/User :*] :id [:in (vec %)]) user-ids))
 
-(mu/defn update-users!
-  "Apply `changes` to the Users whose stored rows, read with every column as Toucan compares them, are `users`, one
-  statement for each set of the changes that differ from those rows, so that Users already holding one of the values
-  do not make Toucan update row by row, returning the number updated."
-  [users   :- [:sequential [:map [:id ::lib.schema.id/user]]]
-   changes :- ::users.schema/user.update]
-  (if (empty? users)
-    0
-    (transduce (map (fn [[changes ids]]
-                      (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
-               +
-               0
-               (mi/group-ids-by-changes (u/index-by :id users) (map #(assoc changes :id (:id %)) users)))))
+(defn- update-ids!
+  "Apply `changes` to the Users with `ids`, one statement per partition of them, returning the number updated."
+  [ids changes]
+  (transduce (map #(t2/update! :model/User :id [:in [:auto/param (vec %)]] changes))
+             +
+             0
+             (partition-all app-db/update-partition-size ids)))
+
+(mu/defn update-users! :- :int
+  "Apply `updates`, each the id of a User and its columns to set, over `stored`, a map from id to the User read with
+  every column as Toucan compares them, one statement for each distinct change that differs from the stored rows,
+  returning the number updated."
+  [stored  :- [:map-of ::lib.schema.id/user :map]
+   updates :- [:sequential ::users.schema/user.update-row]]
+  (transduce (map (fn [[changes ids]] (update-ids! ids changes)))
+             +
+             0
+             (mi/group-ids-by-changes stored updates)))
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

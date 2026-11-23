@@ -2,6 +2,7 @@
   "Behavior of the bulk write functions of the warehouse-schema models."
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.dimension :as dimension]
@@ -26,10 +27,10 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
       (let [[target-id source-id remapped-id] (mapv :id (field/create-fields! (field-rows table-id 3)))]
-        (field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id target-id})
+        (field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id target-id}])
         (dimension/create-dimensions! [{:field_id remapped-id :type :external :name "D"
                                         :human_readable_field_id target-id}])
-        (field/update-fields! [target-id] {:active false})
+        (field/update-fields! [{:id target-id :active false}])
         (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))
         (is (nil? (t2/select-one :model/Dimension :field_id remapped-id)))))))
 
@@ -45,7 +46,8 @@
 
 (def ^:private published (atom []))
 
-(doseq [topic [:event/table-update :event/field-update :event/field-delete]]
+(doseq [topic [:event/table-create :event/table-update :event/table-delete
+               :event/field-create :event/field-update :event/field-delete]]
   (events/derive! topic ::published))
 
 (methodical/defmethod events/publish-event! ::published
@@ -58,18 +60,18 @@
                    :model/Table    {table-id :id} {:db_id db-id}]
       (let [ids (mapv :id (field/create-fields! (field-rows table-id 3)))]
         (reset! published [])
-        (field/update-fields! ids {:description "D"})
+        (field/update-fields! (for [id ids] {:id id :description "D"}))
         (is (=? [[:event/field-update {:changes [{:object {:description "D"} :previous-object {:description nil}}
                                                  {:object {:description "D"}}
                                                  {:object {:description "D"}}]}]]
                 @published))
         (testing "an update that changes nothing publishes no change"
           (reset! published [])
-          (field/update-fields! ids {:description "D"})
+          (field/update-fields! (for [id ids] {:id id :description "D"}))
           (is (empty? @published)))
         (testing "the deactivation of a Table publishes one event"
           (reset! published [])
-          (table/update-tables! [table-id] {:active false})
+          (table/update-tables! [{:id table-id :active false}])
           (is (=? [[:event/table-update {:changes [{:object {:active false :deactivated_at some?}
                                                     :previous-object {:active true}}]}]]
                   @published)))
@@ -78,6 +80,54 @@
           (field/delete-fields! ids)
           (is (= [:event/field-delete] (map first @published)))
           (is (= (set ids) (set (map (comp :id :previous-object) (:changes (second (first @published))))))))))))
+
+(defn- topics-and-row-counts
+  "The topics published so far, each with the number of rows its event carries."
+  []
+  (mapv (fn [[topic event]] [topic (count (:changes event))]) @published))
+
+(deftest writes-across-partitions-publish-one-event-test
+  (testing "Fields and Tables written in batches of two publish one event per call, carrying every row"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (mt/with-model-cleanup [:model/Table]
+        (with-redefs [mdb/create-partition-size 2
+                      mdb/update-partition-size 2
+                      mdb/delete-partition-size 2]
+          (reset! published [])
+          (let [fields (field/create-fields! (field-rows table-id 5))
+                ids    (mapv :id fields)]
+            (testing "creating Fields returns them in input order"
+              (is (= ["F0" "F1" "F2" "F3" "F4"] (mapv :name fields)))
+              (is (= [[:event/field-create 5]] (topics-and-row-counts))))
+            (testing "updating Fields with a value of their own"
+              (reset! published [])
+              (field/update-fields! (vec (map-indexed (fn [i id] {:id id :description (str "D" i)}) ids)))
+              (is (= [[:event/field-update 5]] (topics-and-row-counts)))
+              (is (= ["D0" "D1" "D2" "D3" "D4"]
+                     (t2/select-fn-vec :description :model/Field :id [:in ids] {:order-by [:id]}))))
+            (testing "deleting Fields"
+              (reset! published [])
+              (field/delete-fields! ids)
+              (is (= [[:event/field-delete 5]] (topics-and-row-counts)))
+              (is (not (t2/exists? :model/Field :id [:in ids])))))
+          (reset! published [])
+          (let [tables (table/create-tables! (vec (for [i (range 5)] {:db_id db-id :name (str "P" i) :active true})))
+                ids    (mapv :id tables)]
+            (testing "creating Tables returns them in input order"
+              (is (= ["P0" "P1" "P2" "P3" "P4"] (mapv :name tables)))
+              (is (= [[:event/table-create 5]] (topics-and-row-counts))))
+            (testing "updating Tables with a value of their own"
+              (reset! published [])
+              (table/update-tables! (vec (map-indexed (fn [i id] {:id id :description (str "D" i)}) ids)))
+              (is (= [[:event/table-update 5]] (topics-and-row-counts)))
+              (is (= ["D0" "D1" "D2" "D3" "D4"]
+                     (t2/select-fn-vec :description :model/Table :id [:in ids] {:order-by [:id]}))))
+            (testing "deleting Tables"
+              (reset! published [])
+              (table/delete-tables! ids)
+              (is (= [[:event/table-delete 5]] (topics-and-row-counts)))
+              (is (not (t2/exists? :model/Table :id [:in ids]))))))))))
 
 (deftest bulk-creates-keep-defaults-of-left-out-columns-test
   (testing "a bulk create of rows with different columns keeps the default of each column a row leaves out"
@@ -140,13 +190,13 @@
           (is (refused? #(field/create-fields! [(assoc (first (field-rows table-id 1)) :name "X" :fk_target_field_id other-id)])))
           (is (not (t2/exists? :model/Field :table_id table-id :name "X"))))
         (testing "Field update"
-          (is (refused? #(field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id other-id})))
+          (is (refused? #(field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id other-id}])))
           (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id source-id)))
-          (field/update-fields! [source-id] {:semantic_type :type/FK :fk_target_field_id same-id})
+          (field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id same-id}])
           (is (= same-id (t2/select-one-fn :fk_target_field_id :model/Field :id source-id))))
         (testing "Dimension creation and update"
           (is (refused? #(dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id other-id}])))
           (is (not (t2/exists? :model/Dimension :field_id source-id)))
           (let [[dimension] (dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id same-id}])]
-            (is (refused? #(dimension/update-dimensions! [(:id dimension)] {:human_readable_field_id other-id})))
+            (is (refused? #(dimension/update-dimensions! [{:id (:id dimension) :human_readable_field_id other-id}])))
             (is (= same-id (t2/select-one-fn :human_readable_field_id :model/Dimension :id (:id dimension))))))))))

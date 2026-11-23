@@ -625,7 +625,7 @@
         (is (= (mt/id :people :name)
                (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))
         (finally
-          (field-user-settings/delete-field-user-settings-for-fields! [(mt/id :orders :user_id)]))))))
+          (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [(mt/id :orders :user_id)])))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
@@ -978,7 +978,7 @@
             (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full)))))
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           ;; warm up the cache
           (chain-filter categories.name {venues.price 4})
           (mt/with-dynamic-fn-redefs [params.field-values/prepare-advanced-field-values (fn [& _args]
@@ -1000,7 +1000,7 @@
                    (chain-filter-search categories.name2 nil "oooood")))))
         (testing "search with constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})

@@ -4,6 +4,7 @@
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -36,7 +37,6 @@
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -430,7 +430,7 @@
   "Moves the cards of the Documents with `ids` to `collection-id`."
   [ids collection-id]
   (when-let [card-ids (not-empty (documents.db/card-ids-of-documents ids))]
-    (queries.card/update-cards! card-ids {:collection_id collection-id})))
+    (queries.card/update-cards! (mapv (fn [id] {:id id :collection_id collection-id}) card-ids))))
 
 (defn- set-cards-archived!
   "Archives the cards of the Documents with `ids`, which the Document archives, when `archived?`, and restores those that
@@ -439,8 +439,7 @@
   (when-let [card-ids (not-empty (if archived?
                                    (documents.db/card-ids-archived-with-documents ids)
                                    (documents.db/card-ids-restored-with-documents ids)))]
-    (queries.card/update-cards! card-ids {:archived archived?}
-                                {:context (or context {:archived-with [:model/Document (first ids)]})})))
+    (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids) {:context (or context {:archived-with [:model/Document (first ids)]})})))
 
 (defn- move-cards-of-moved!
   "Moves the cards of the Documents of `moved`, rows holding the new `:collection_id`, to it, with one write for each
@@ -464,57 +463,71 @@
             (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
         rows))
 
+(defn- moved-documents
+  "The rows of `rows`, updates of the `stored` Documents, that change `:collection_id`, each with the `archived` state the
+  Document is about to have."
+  [stored rows]
+  (for [row   (filterv #(changed? (get stored (:id %)) % :collection_id) rows)]
+    (assoc row :archived (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))))))
+
+(defn- check-document-updates
+  "Throw a 400 unless every one of `rows`, updates of the `stored` Documents that move, satisfies these rules:
+
+  - its Collection is in a namespace that holds Documents
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the Document is"
+  [stored rows]
+  (check-documents (moved-documents stored rows)))
+
 (defn- write-document-updates!
-  "Applies `rows`, each the `:id` of a Document with the changes it gets, which may differ from row to row, in one
-  transaction, and publishes one update event for all of them with the `:context` of `opts`."
-  [rows opts]
-  (let [stored (m/index-by :id (documents.db/documents (mapv :id rows)))
-        rows   (filterv #(contains? stored (:id %)) rows)]
-    (when (seq rows)
-      (t2/with-transaction [_conn]
-        (let [moved            (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
-              archived-changed (filterv #(changed? (get stored (:id %)) % :archived) rows)]
-          (check-documents
-           (for [row moved]
-             {:collection_id (:collection_id row)
-              :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row)))))}))
-          (move-cards-of-moved! moved)
-          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-            (documents.db/update-documents! (mapv :id group) changes))
-          (set-cards-archived-of! archived-changed (:context opts))
-          (events/publish-event! :event/document-update
-                                 (events/update-event stored
-                                                      (derive-archived-directly rows (m/index-by :id (documents.db/documents (mapv :id rows))))
-                                                      opts)))))))
+  "Writes `rows`, updates of the `stored` Documents: moves their cards, writes the columns and archives or restores their
+  cards, and returns what the event needs, the changes of each row and the Documents after the write."
+  [stored rows opts]
+  (move-cards-of-moved! (moved-documents stored rows))
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (documents.db/update-documents! (mapv :id group) changes))
+  (set-cards-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
+  (let [updated (m/index-by :id (documents.db/documents (mapv :id rows)))]
+    {:stored stored :rows (derive-archived-directly rows updated)}))
+
+(defn- update-document-batch!
+  "Checks and writes the Documents of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch opts]
+  (let [stored (m/index-by :id (documents.db/documents (mapv :id batch)))
+        rows   (filterv #(contains? stored (:id %)) batch)]
+    (check-document-updates stored rows)
+    (write-document-updates! stored rows opts)))
+
+(defn- publish-document-updates!
+  "Publishes the update event of the Documents that `batches`, what [[update-document-batch!]] returned, wrote."
+  [batches opts]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/document-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                opts))))
 
 (mu/defn update-documents! :- :nil
-  "Apply `changes` to the Documents with `ids`, publishing one update event with the `:context` of `opts`. Documents
-  moved to another Collection move their cards along and the new Collection must be able to hold them, and a change of
-  `archived` gives their `archived_directly`."
-  ([ids :- [:sequential ms/PositiveInt]
-    changes :- ::documents.schema/document.update]
-   (update-documents! ids changes nil))
-  ([ids :- [:sequential ms/PositiveInt]
-    changes :- ::documents.schema/document.update
-    opts :- ::write-opts]
-   (write-document-updates! (mapv #(assoc changes :id %) ids) opts)
+  "Apply `updates`, each the `:id` of a Document with the columns to give it, in one transaction, publishing their update
+  event with the `:context` of `opts`."
+  ([updates :- [:sequential ::documents.schema/document.import-row]]
+   (update-documents! updates nil))
+  ([updates :- [:sequential ::documents.schema/document.import-row]
+    opts    :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv #(update-document-batch! % opts) (partition-all app-db/update-partition-size updates))]
+       (publish-document-updates! batches opts)))
    nil))
 
-(mu/defn update-documents-for-import! :- [:sequential ::documents.schema/document.import-row]
-  "Apply the changes in `rows`, each the `:id` of a Document and its columns, in one pass over all of them, publishing one
-  update event, and return `rows`: an import writes different values for each Document."
-  [rows :- [:sequential ::documents.schema/document.import-row]]
-  (write-document-updates! rows nil)
-  rows)
-
 (mu/defn delete-documents! :- :nil
-  "Delete the Documents with `document-ids`, publishing their delete event."
-  [document-ids :- [:sequential ms/PositiveInt]]
-  (when (seq document-ids)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/document-delete {:changes (u.events/delete-changes (documents.db/documents (vec document-ids)))
-                            :user-id (mi/current-user-id)})
-      (documents.db/delete-documents! document-ids)))
+  "Delete the Documents with `ids` in one transaction, publishing their delete event right before the first statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/document-delete
+                               (events/delete-event (into [] (mapcat #(documents.db/documents (vec %))) batches))))
+      (run! #(documents.db/delete-documents! (vec %)) batches)))
   nil)
 
 (def CardCreateSchema
@@ -669,11 +682,10 @@
                                         (when-not (empty? cards)
                                           (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
       (when (seq cards-to-update-in-ast)
-        (update-documents! [document-id]
-                           (update-cards-in-ast
+        (update-documents! [(assoc (update-cards-in-ast
                             {:document document
                              :content_type prose-mirror/prose-mirror-content-type}
-                            cards-to-update-in-ast)))
+                            cards-to-update-in-ast) :id document-id)]))
       document-id)))
 
 (mu/defn update-document-with-cards!
@@ -715,8 +727,7 @@
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
-        (update-documents! [document-id]
-                           (cond-> document-updates
+        (update-documents! [(assoc (cond-> document-updates
                              document (merge (update-cards-in-ast
                                               {:document document
                                                :content_type (:content_type existing-document)}
@@ -726,7 +737,7 @@
                              ;; First body save clears the auto-created Summary placeholder flag.
                              (and (:is_placeholder existing-document)
                                   (contains? body :document))
-                             (assoc :is_placeholder false)))
+                             (assoc :is_placeholder false)) :id document-id)])
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
@@ -754,7 +765,7 @@
   [_model collection-id positions direction]
   (documents.db/shift-document-positions! collection-id positions direction))
 
-(mu/defn update-documents-for-revert! :- :int
+(mu/defn revert-document! :- :int
   "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update."
   [id        :- ms/PositiveInt
    _user-id  :- [:maybe ::lib.schema.id/user]
@@ -771,12 +782,12 @@
 (defmethod collection/archive-in-collections! :model/Document
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-documents! ids {:archived true} opts)))
+    (update-documents! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Document
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-documents! ids {:archived false} opts)))
+    (update-documents! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 ;;; ---------- Specs ---------------------------------------------------------------------------------------------
 
@@ -796,7 +807,7 @@
    :import-dependencies documents.serialization/import-dependencies
    :export-dependencies documents.serialization/export-dependencies
    :insert!             create-documents!
-   :update!             update-documents-for-import!
+   :update!             #(update-documents! % {:writer :import})
    :delete!             delete-documents!})
 
 (defmethod remote-sync/spec :model/Document
@@ -809,7 +820,7 @@
    :skip    [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
              :public_uuid :public_uuid_prefix :view_count]
    :schema  ::documents.schema/document.revision
-   :revert! update-documents-for-revert!})
+   :revert! revert-document!})
 
 (defmethod audit/spec :model/Document [_model]
   {:track          [:name :collection_id]

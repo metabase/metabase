@@ -438,8 +438,8 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (metabot-message/update-metabot-messages! [assistant-msg-id]
-                                              (cond-> {:data           content
+    (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
+                                                       :data           content
                                                        :data_version   schema.v2/current-data-version
                                                        :usage          usage
                                                        :total_tokens   (->> (vals usage)
@@ -459,7 +459,7 @@
                                                 channel-id   (assoc :channel_id channel-id)
                                                 ;; Set only on a full turn, so every other row keeps NULL.
                                                 (filled-context-window? finish-reason context-tokens context-window-tokens)
-                                                (assoc :context_window_full true)))
+                                                (assoc :context_window_full true))])
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -598,7 +598,7 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (metabot-message/update-metabot-messages! [msg-id] {:slack_msg_id slack-msg-id})))
+    (metabot-message/update-metabot-messages! [{:id msg-id :slack_msg_id slack-msg-id}])))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."

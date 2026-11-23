@@ -81,7 +81,7 @@
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
           (if-let [auth-identity-id (support-access-grants.db/support-access-auth-identity-id user-id)]
-            (models.auth-identity/update-auth-identities! [auth-identity-id] auth-identity)
+            (models.auth-identity/update-auth-identities! [(assoc auth-identity :id auth-identity-id)])
             (models.auth-identity/create-auth-identity! auth-identity)))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
@@ -106,8 +106,7 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (models.auth-identity/update-auth-identities! [(:id auth-identity)]
-                                                      (dissoc (auth-identity/mark-token-consumed auth-identity) :id))
+        (models.auth-identity/update-auth-identities! [(assoc (auth-identity/mark-token-consumed auth-identity) :id (:id auth-identity))])
         ;; the support user is who is changing their own password here, so they are who ends their sessions
         (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at, :ended-by (:id user)}))))
   result)

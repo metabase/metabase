@@ -56,7 +56,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (collection/update-collections! [(:id collection)] {:name new-collection-name} nil))))))
+          (collection/update-collections! [{:id (:id collection) :name new-collection-name}] nil))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -546,7 +546,7 @@
                     "email" (tru "Email address already associated to another user.")))
       (t2/with-transaction [_conn]
         (when (seq changes)
-          (user/update-users! [id] changes)
+          (user/update-users! [(assoc changes :id id)])
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -567,15 +567,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (user/update-users! [(u/the-id existing-user)]
-                      {:is_active     true
-                       :is_superuser  false
-                       ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-                       ;; (see metabase#3323)
-                       :sso_source   (case (:sso_source existing-user)
-                                       :google (when (sso/google-auth-enabled) :google)
-                                       :ldap   (when (sso/ldap-enabled) :ldap)
-                                       (:sso_source existing-user))})
+  (user/update-users! [{:id            (u/the-id existing-user)
+                        :is_active     true
+                        :is_superuser  false
+                        ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                        ;; (see metabase#3323)
+                        :sso_source   (case (:sso_source existing-user)
+                                        :google (when (sso/google-auth-enabled) :google)
+                                        :ldap   (when (sso/ldap-enabled) :ldap)
+                                        (:sso_source existing-user))}])
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -686,7 +686,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (when (= :personal (:type (api/check-404 (users-rest.db/user-active-type-and-sso-source id))))
-    (user/update-users! [id] {:is_active false}))
+    (user/update-users! [{:id id :is_active false}]))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -708,5 +708,5 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
     (check-not-internal-user id)
-    (api/check-500 (pos? (user/update-users! (user/user-ids-of-type [id] :personal) {k false}))))
+    (api/check-500 (pos? (user/update-users! (for [user-id (user/user-ids-of-type [id] :personal)] {:id user-id k false})))))
   {:success true})

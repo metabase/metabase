@@ -183,6 +183,6 @@
       (doseq [user-id [user-1 user-2 user-3 user-4 user-5 user-6]]
         (auth-identity.model/create-auth-identity! {:user_id user-id :provider "emailed-secret-password-reset"}))
       (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
-            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (vec (take n ids)) {:expires_at (t/instant)})))]
+            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (let [now (t/instant)] (mapv (fn [id] {:id id :expires_at now}) (take n ids))))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))

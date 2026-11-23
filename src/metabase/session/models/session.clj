@@ -7,6 +7,7 @@
    [clojure.core.memoize :as memo]
    [environ.core :as env]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.request.core :as request]
@@ -199,14 +200,15 @@
    (end-sessions-in-batches! ids reason ended-by batch-size)))
 
 (mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
-  "[[end-sessions!]] for every Session of the Users with `user-ids`, returning the number ended; an empty `user-ids`
-  ends nothing."
+  "[[end-sessions!]] for every Session of the Users with `user-ids`, one statement per partition of the ids, returning
+  the number ended; an empty `user-ids` ends nothing."
   [user-ids :- [:sequential ::lib.schema.id/user]
    reason   :- ::session.schema/end-reason
    ended-by :- ::session.schema/ended-by]
-  (if (empty? user-ids)
-    0
-    (session.db/end-sessions-for-users! (vec user-ids) reason (db-ended-by ended-by))))
+  (transduce (map #(session.db/end-sessions-for-users! (vec %) reason (db-ended-by ended-by)))
+             +
+             0
+             (partition-all app-db/update-partition-size user-ids)))
 
 (mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
   "[[end-sessions!]] for the Session with `key-hashed`, returning the number ended."

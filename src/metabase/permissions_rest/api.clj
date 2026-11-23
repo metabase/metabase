@@ -238,7 +238,7 @@
                       [:name ms/NonBlankString]]]
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (permissions-group/update-permissions-groups! [group-id] {:name name})
+  (permissions-group/update-permissions-groups! [{:id group-id :name name}])
   (permissions-rest.db/permissions-group group-id))
 
 (api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
@@ -309,7 +309,7 @@
   (let [old (api/check-404 (permissions-rest.db/group-membership id))]
     (perms/check-tenant-groups-visible [(:group_id old)])
     (api/write-check old)
-    (permissions-group-membership/update-permissions-group-memberships! [(:id old)] {:is_group_manager is_group_manager})
+    (permissions-group-membership/update-permissions-group-memberships! [{:id (:id old) :is_group_manager is_group_manager}])
     (permissions-rest.db/group-membership (:id old))))
 
 (api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content

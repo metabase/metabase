@@ -74,7 +74,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (models.notification/update-notifications! [(:id notification-info)] {:active false}))
+    (models.notification/update-notifications! [{:id (:id notification-info) :active false}]))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

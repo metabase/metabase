@@ -47,8 +47,8 @@
       (testing "updating pages, some already holding the new value"
         (counted (fn [n]
                    (let [ids (fresh! n)]
-                     (exploration-page/update-pages! (take-nth 2 ids) {:starred true})
+                     (exploration-page/update-pages! (mapv (fn [id] {:id id :starred true}) (take-nth 2 ids)))
                      (events.tu/statement-count!
-                      #(exploration-page/update-pages! ids {:starred true}))))))
+                      #(exploration-page/update-pages! (mapv (fn [id] {:id id :starred true}) ids)))))))
       (testing "deleting pages"
         (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration-page/delete-pages! ids)))))))))

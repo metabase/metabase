@@ -6,6 +6,7 @@
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.change-log.core :as change-log]
@@ -52,7 +53,6 @@
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -383,7 +383,7 @@
   (doseq [[collection-id moved-rows] (group-by :collection_id moved)
           :let [question-ids (dashboards.db/question-ids-of-dashboards (mapv :id moved-rows))]
           :when (seq question-ids)]
-    (card/update-cards! question-ids {:collection_id collection-id})))
+    (card/update-cards! (mapv (fn [id] {:id id :collection_id collection-id}) question-ids))))
 
 (defn- set-questions-archived!
   "Archives the dashboard questions of the Dashboards of `rows`, update rows that change `archived`, which the Dashboard
@@ -395,8 +395,7 @@
                                (dashboards.db/question-ids-archived-with-dashboards ids)
                                (dashboards.db/question-ids-restored-with-dashboards ids))]
           :when (seq question-ids)]
-    (card/update-cards! question-ids {:archived archived?}
-                        {:context {:archived-with [:model/Dashboard (first ids)]}})))
+    (card/update-cards! (mapv (fn [id] {:id id :archived archived?}) question-ids) {:context {:archived-with [:model/Dashboard (first ids)]}})))
 
 (mu/defn parameters-without-orphans :- [:maybe [:sequential :map]]
   "The `parameters` of a Dashboard without the inline parameters that `dashcards` of it, which are being deleted, held,
@@ -411,17 +410,12 @@
 (defn- write-columns!
   "Apply the columns of `rows`, each holding the `:id` of one of the Dashboards of `stored`, a map from id to the instance
   read before, and return the rows with the `archived_directly` that the database gave to those that change `archived`. A
-  Dashboard moved to another Collection moves its dashboard questions along and the new Collection must be able to hold
-  it, a change of `parameters` updates its ParameterCards, and a change of `archived` archives or restores its dashboard
+  Dashboard moved to another Collection moves its dashboard questions along, a change of `parameters` updates its ParameterCards, and a change of `archived` archives or restores its dashboard
   questions. The rows that get the same changes against `stored` are one statement."
   [stored rows]
   (let [moved           (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
         reparameterised (filterv #(changed? (get stored (:id %)) % :parameters) rows)
         archived        (filterv #(changed? (get stored (:id %)) % :archived) rows)]
-    (check-dashboards
-     (for [row moved]
-       {:collection_id (:collection_id row)
-        :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row)))))}))
     (move-questions! moved)
     (when (seq reparameterised)
       (parameter-card/sync-parameter-cards!
@@ -516,43 +510,78 @@
     [:tabs      {:optional true} [:maybe [:sequential TabPart]]]
     [:dashcards {:optional true} [:maybe [:sequential DashcardPart]]]]])
 
+(defn- check-dashboard-updates
+  "Throw a 400 unless every one of `rows`, updates of the `stored` Dashboards that move, satisfies these rules:
+
+  - its Collection is in a namespace that holds Dashboards
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the Dashboard is"
+  [stored rows]
+  (check-dashboards
+   (for [row (filterv #(changed? (get stored (:id %)) % :collection_id) rows)]
+     {:collection_id (:collection_id row)
+      :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row)))))})))
+
+(defn- write-dashboard-updates!
+  "Writes `rows`, updates of the `stored` Dashboards, with the parts each holds in `parts`, and returns what the events
+  need: the Dashboards `:stored` and as they are `:after`, the `:rows` with their `archived_directly`, and what the
+  parts `:replaced`."
+  [stored rows parts]
+  (let [replaced (replace-parts! (select-keys parts (map :id rows)))
+        rows     (mapv (fn [row]
+                         (let [cleaned (parameters-without-orphans
+                                        (if (contains? row :parameters)
+                                          (:parameters row)
+                                          (:parameters (get stored (:id row))))
+                                        (:removed (get replaced (:id row))))]
+                           (cond-> row cleaned (assoc :parameters cleaned))))
+                       rows)
+        rows     (write-columns! stored rows)]
+    {:stored   stored
+     :rows     rows
+     :after    (into {} (map (fn [row] [(:id row) (merge (get stored (:id row)) row)])) rows)
+     :replaced replaced}))
+
+(defn- update-dashboard-batch!
+  "Checks and writes the Dashboards of `batch`, up to one partition of the call, and returns what the events need."
+  [batch]
+  (let [parts  (into {} (keep (fn [row]
+                                (when (or (contains? row :tabs) (contains? row :dashcards))
+                                  [(:id row) (select-keys row [:tabs :dashcards])])))
+                     batch)
+        rows   (mapv #(normalize-columns (dissoc % :tabs :dashcards)) batch)
+        stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (check-dashboard-updates stored rows)
+    (write-dashboard-updates! stored rows parts)))
+
+(defn- publish-dashboard-updates!
+  "Publishes the events of the Dashboards that `batches`, what [[update-dashboard-batch!]] returned, wrote: the audit
+  events of their dashcards and one update event, with a touch of each Dashboard an import leaves unchanged."
+  [batches opts]
+  (let [replaced (into {} (map :replaced) batches)
+        rows     (into [] (mapcat :rows) batches)]
+    (publish-cards! (into {} (map :after) batches)
+                    (into [] (mapcat (comp :added val)) replaced)
+                    (into [] (mapcat (comp :removed val)) replaced))
+    (when (seq rows)
+      (publish-update! (into {} (map :stored) batches)
+                       rows
+                       (into (if (= :import (:writer opts)) (mapv :id rows) [])
+                             (comp (filter (comp :changed? val)) (map key))
+                             replaced)
+                       opts))))
+
 (mu/defn- write-updates! :- [:sequential ::dashboards.schema/dashboard.update]
   "Apply the columns of each of `rows` to the Dashboard with its `:id`, replace the parts a row holds, and return the rows
   of the Dashboards that exist without their parts, publishing last one update event for all the Dashboards whose columns or
   parts it changes, and for an import a touch of each one it leaves unchanged. See [[write-columns!]] for the columns."
   [rows :- [:sequential UpdateDashboard]
    opts :- ::dashboards.schema/write-opts]
-  (let [parts  (into {} (keep (fn [row]
-                                (when (or (contains? row :tabs) (contains? row :dashcards))
-                                  [(:id row) (select-keys row [:tabs :dashcards])])))
-                     rows)
-        rows   (mapv #(normalize-columns (dissoc % :tabs :dashcards)) rows)
-        stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
-        rows   (filterv #(contains? stored (:id %)) rows)]
-    (if (empty? rows)
-      rows
-      (t2/with-transaction [_conn]
-        (let [replaced (replace-parts! (select-keys parts (map :id rows)))
-              rows     (mapv (fn [row]
-                               (let [cleaned (parameters-without-orphans
-                                              (if (contains? row :parameters)
-                                                (:parameters row)
-                                                (:parameters (get stored (:id row))))
-                                              (:removed (get replaced (:id row))))]
-                                 (cond-> row cleaned (assoc :parameters cleaned))))
-                             rows)
-              rows     (write-columns! stored rows)
-              after    (merge stored (into {} (map (fn [row] [(:id row) (merge (get stored (:id row)) row)])) rows))]
-          (publish-cards! after
-                          (into [] (mapcat (comp :added val)) replaced)
-                          (into [] (mapcat (comp :removed val)) replaced))
-          (publish-update! stored
-                           rows
-                           (into (if (= :import (:writer opts)) (mapv :id rows) [])
-                                 (comp (filter (comp :changed? val)) (map key))
-                                 replaced)
-                           opts)
-          rows)))))
+  (t2/with-transaction [_conn]
+    (let [batches (mapv update-dashboard-batch! (partition-all app-db/update-partition-size rows))]
+      (publish-dashboard-updates! batches opts)
+      (into [] (mapcat :rows) batches))))
 
 (def ^:private DashboardChangesWithParts
   (mut/dissoc UpdateDashboard :id))
@@ -639,26 +668,30 @@
            (publish-update! stored rows (keys stored) opts)))))
    nil))
 
+(defn- delete-dashboard-batch!
+  "Deletes the Dashboards with the ids of `batch`, after the rows that depend on them."
+  [batch]
+  (let [ids (vec batch)]
+    (parameter-card/delete-parameter-cards-for-objects! "dashboard" ids [])
+    (revision/delete-revisions-for-entities! "Dashboard" ids)
+    (cache-config/delete-cache-configs-for-deleted-targets! "dashboard" ids)
+    (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards ids))
+    (dashboards.db/delete-dashboards! ids)))
+
 (mu/defn delete-dashboards! :- :nil
-  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses,
-  publishing their delete event right before the statement. The Pulses go through their model, so the triggers of their
-  subscriptions are removed too."
+  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses in one
+  transaction, publishing their delete event right before the first statement. The Pulses go through their model, so the
+  triggers of their subscriptions are removed too."
   ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
    (delete-dashboards! dashboard-ids nil))
   ([dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
     opts          :- ::dashboards.schema/write-opts]
-   (when (seq dashboard-ids)
-     (t2/with-transaction [_conn]
-       (let [dashboards (dashboards.db/dashboards (vec dashboard-ids))]
-         (parameter-card/delete-parameter-cards-for-objects! "dashboard" dashboard-ids [])
-         (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
-         (cache-config/delete-cache-configs-for-deleted-targets! "dashboard" dashboard-ids)
-         (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-         (events/publish-event! :event/dashboard-delete (cond-> {:changes (u.events/delete-changes dashboards)
-                          :user-id (mi/current-user-id)}
-               (seq (:context opts)) (assoc :context (:context opts))
-               (:writer opts)        (assoc :writer (:writer opts))))
-         (dashboards.db/delete-dashboards! dashboard-ids))))
+   (t2/with-transaction [_conn]
+     (let [batches (partition-all app-db/delete-partition-size (distinct dashboard-ids))]
+       (when (seq batches)
+         (events/publish-event! :event/dashboard-delete
+                                (events/delete-event (into [] (mapcat #(dashboards.db/dashboards (vec %))) batches) opts)))
+       (run! delete-dashboard-batch! batches)))
    nil))
 
 (mu/defn revert-dashboard! :- :map
@@ -748,12 +781,12 @@
 (defmethod collection/archive-in-collections! :model/Dashboard
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-dashboards! ids {:archived true} opts)))
+    (update-dashboards! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Dashboard
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-dashboards! ids {:archived false} opts)))
+    (update-dashboards! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 (defmethod collection/delete-in-collections! :model/Dashboard
   [model collection-ids opts]

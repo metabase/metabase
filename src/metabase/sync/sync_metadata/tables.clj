@@ -124,7 +124,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (database/update-databases! [(u/the-id database)] {:details (assoc (:details database) :version (:version db-metadata))}))
+  (database/update-databases! [{:id (u/the-id database) :details (assoc (:details database) :version (:version db-metadata))}]))
 
 (mu/defn- cruft-dependent-cols :- :map
   [{table-name :name :as table} :- TableMetadataOrInstance
@@ -275,7 +275,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (table/update-tables! (vec table-ids) {:active false})))
+    (table/update-tables! (for [id (vec table-ids)] {:id id :active false}))))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -393,7 +393,7 @@
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
-    (table/update-tables! (vec (sync.db/table-ids-with-schema (:id database) schema)) {:schema new-schema})))
+    (table/update-tables! (for [id (vec (sync.db/table-ids-with-schema (:id database) schema))] {:id id :schema new-schema}))))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -426,7 +426,7 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(count (table/update-tables! [(:id table)] {:archived_at (t/offset-date-time) :name new-name}
+                  [(count (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}]
                                                 {:tables [table]}))]
                   (catch Throwable t
                     [0 t]))]

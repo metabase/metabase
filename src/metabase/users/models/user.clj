@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
@@ -422,11 +423,41 @@
   (when (and (some :sso_source rows) (not (setup/has-user-setup)))
     (throw (Exception. (trs "Metabase instance has not been initialized")))))
 
-(defn- check-user-limit
-  "Throws when one of `rows` is a personal user and the plan allows no more users."
+(defn- personal?
+  "Whether the new User `row` is a personal user."
+  [{user-type :type}]
+  (or (nil? user-type) (= user-type :personal)))
+
+(defn- active-personal-rows-before-last
+  "The number of the personal rows of `rows` before the last personal one that create active Users."
   [rows]
-  (when (some (fn [{user-type :type}] (or (nil? user-type) (= user-type :personal))) rows)
-    (premium-features/assert-airgap-allows-user-creation!)))
+  (count (remove #(false? (:is_active %)) (butlast (filter personal? rows)))))
+
+(defn- check-user-limit
+  "Throws unless the plan's limit leaves room for every personal user of `rows`, created in their order, by these rules:
+
+  - a personal row needs fewer active personal Users than the limit
+  - the active personal rows before it count as active personal Users"
+  [rows]
+  (when (some personal? rows)
+    (premium-features/assert-airgap-allows-user-creation!)
+    (let [earlier   (active-personal-rows-before-last rows)
+          max-users (when (pos? earlier) (premium-features/max-users-allowed))]
+      (when (and max-users (>= (+ (users.db/active-personal-user-count) earlier) max-users))
+        (throw (Exception.
+                (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                     max-users)))))))
+
+(defn- check-emails-unique
+  "Throws a 400 unless `rows` satisfy these rules:
+
+  - no two rows give the same email, ignoring case"
+  [rows]
+  (let [emails (into [] (keep #(some-> (:email %) u/lower-case-en)) rows)]
+    (when (not= (count emails) (count (set emails)))
+      (throw (ex-info (tru "Email address already in use.")
+                      {:status-code 400
+                       :errors      {:email (tru "Email address already in use.")}})))))
 
 (defn- default-group-ids
   "The ids of the groups a new `user` joins: All Users, or All tenant users for a tenant user, and Administrators for a
@@ -436,25 +467,29 @@
     superuser? (conj (:id (perms/admin-group)))))
 
 (defn- add-to-default-groups!
-  "Add each of the new `users` to its default groups, publishing the events of the writes."
+  "Add each of the new `users` to its default groups, one partition of them at a time, publishing the events of the
+  writes."
   [users]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
      (perms/without-is-superuser-sync-on-add-to-admin-group
-      (perms-group-membership/add-users-to-groups! (for [user     users
-                                                         group-id (default-group-ids user)]
-                                                     {:user (:id user) :group group-id}))))))
+      (doseq [batch (partition-all app-db/create-partition-size users)]
+        (perms-group-membership/add-users-to-groups! (for [user     batch
+                                                           group-id (default-group-ids user)]
+                                                       {:user (:id user) :group group-id})))))))
 
 (mu/defn create-users! :- [:sequential ::users.schema/user]
-  "Insert the User `rows` and return them in order, each in its default groups, publishing the events of the writes; an
-  SSO user before the initial setup or a personal user over the plan's limit throws."
+  "Insert the User `rows` in one transaction and return them in order, each in its default groups, publishing their
+  create event; an SSO user before the initial setup, a personal user over the plan's limit or two rows with one email
+  throw."
   [rows :- [:sequential ::users.schema/user.create]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
       (check-sso-setup rows)
       (check-user-limit rows)
-      (let [users (users.db/insert-users! rows)]
+      (check-emails-unique rows)
+      (let [users (into [] (mapcat (comp users.db/insert-users! vec)) (partition-all app-db/create-partition-size rows))]
         (events/publish-event! :event/user-create (events/create-event users))
         (add-to-default-groups! users)
         users))))
@@ -472,30 +507,26 @@
   [:map {:closed true}
    [:context {:optional true} :metabase.events.schema/context]])
 
-(defn- write-users!
-  "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `opts` and returning
-  the number updated."
-  [users changes opts]
-  (u/prog1 (users.db/update-users! users changes)
-    (events/publish-event! :event/user-update
-                           (events/update-event (u/index-by :id users)
-                                                (mapv #(assoc changes :id (:id %)) users)
-                                                (assoc opts :objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users))))))
+(defn- users-after
+  "A map from id to the User as the update leaves it, for each of `updates` over `stored`, a map from id to User."
+  [stored updates]
+  (into {} (map (fn [{:keys [id] :as row}] [id (user-after (stored id) (dissoc row :id))])) updates))
+
+(defn- ids-of-rows
+  "The ids of the rows of `updates` that satisfy `pred`."
+  [pred updates]
+  (into [] (comp (filter pred) (map :id)) updates))
 
 (defn- set-admin-memberships!
-  "Add the Users with `user-ids` to Administrators when `superuser?`, else remove them, leaving their `is_superuser`
+  "Add the Users of `updates` that set `is_superuser` to Administrators and remove those that unset it, leaving their
   flag alone; `admin-ids` holds those already in it. Publishes the events of the writes with `opts`."
-  [user-ids admin-ids superuser? opts]
-  (let [admin-group-id (:id (perms/admin-group))]
+  [updates admin-ids opts]
+  (let [admin-group-id (:id (perms/admin-group))
+        promoted       (ids-of-rows #(and (true? (:is_superuser %)) (not (contains? admin-ids (:id %)))) updates)
+        demoted        (ids-of-rows #(and (false? (:is_superuser %)) (contains? admin-ids (:id %))) updates)]
     (perms/without-is-superuser-sync-on-add-to-admin-group
-     (if superuser?
-       (perms-group-membership/add-users-to-groups! (for [user-id user-ids
-                                                          :when   (not (contains? admin-ids user-id))]
-                                                      {:user user-id :group admin-group-id})
-                                                    opts)
-       (perms-group-membership/remove-users-from-groups! (filterv #(contains? admin-ids %) user-ids)
-                                                         [admin-group-id]
-                                                         opts)))))
+     (perms-group-membership/add-users-to-groups! (for [user-id promoted] {:user user-id :group admin-group-id}) opts)
+     (perms-group-membership/remove-users-from-groups! demoted [admin-group-id] opts))))
 
 (defmulti delete-for-users!
   "Deletes the rows of `model` that belong to the deactivated Users with `user-ids`, which a model that follows its
@@ -527,44 +558,86 @@
   users.db/active-tenant-user-ids)
 
 (defn- admin-or-activity-change?
-  "Whether `changes` set the superuser flag or deactivate Users, which cascades to memberships and subscriptions."
-  [changes]
-  (or (some? (:is_superuser changes)) (false? (:is_active changes))))
+  "Whether the update `row` sets the superuser flag or deactivates its User, which cascades to memberships and
+  subscriptions."
+  [row]
+  (or (some? (:is_superuser row)) (false? (:is_active row))))
 
-(defn- write-admin-or-activity-change!
-  "Apply `changes`, which set the superuser flag or deactivate Users, to the Users whose stored rows are `users`:
-  refuse deactivating or demoting the last admin, write and publish, then add or remove the Administrators membership
-  and delete the subscriptions of deactivated Users, publishing the events of the writes with `opts`. Returns the number
-  updated."
-  [users changes opts]
-  (let [superuser?   (:is_superuser changes)
-        deactivates? (false? (:is_active changes))
-        user-ids     (into #{} (map :id) users)
-        admin-ids    (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
-    (when (or deactivates? (false? superuser?))
-      (perms-group-membership/throw-if-last-admins! admin-ids))
-    (u/prog1 (write-users! users changes opts)
-      (when (some? superuser?)
-        (set-admin-memberships! user-ids admin-ids superuser? opts))
-      (when deactivates?
-        (delete-subscriptions! user-ids opts)))))
+(defn- demotes-or-deactivates?
+  "Whether the update `row` unsets the superuser flag or deactivates its User."
+  [row]
+  (or (false? (:is_active row)) (false? (:is_superuser row))))
+
+(defn- admin-member-ids
+  "The ids of the Users of `updates` that are members of Administrators, read once when some row sets the superuser
+  flag or deactivates its User."
+  [updates]
+  (if-let [user-ids (not-empty (set (ids-of-rows admin-or-activity-change? updates)))]
+    (users.db/group-member-ids (:id (perms/admin-group)) user-ids)
+    #{}))
+
+(defn- check-ids-distinct
+  "Throws a 400 unless `updates` satisfy these rules:
+
+  - no two rows have the same id"
+  [updates]
+  (when (not= (count updates) (count (into #{} (map :id) updates)))
+    (throw (ex-info (tru "A User can be updated only once in a call.") {:status-code 400}))))
+
+(defn- check-admins-remain
+  "Throws a 400 unless `updates`, over every row of the call together and with `admin-ids` the Administrators members
+  among their Users, satisfy these rules:
+
+  - an active superuser member of Administrators remains besides the members whose rows deactivate or demote them"
+  [updates admin-ids]
+  (when-let [losing-admin-ids (not-empty (filterv admin-ids (ids-of-rows demotes-or-deactivates? updates)))]
+    (perms-group-membership/throw-if-last-admins! losing-admin-ids)))
+
+(defn- write-user-batch!
+  "Write the `batch` of updates over the Users it names and return their stored rows, the rows of Users that exist and
+  the number updated."
+  [batch]
+  (let [stored  (u/index-by :id (users.db/users-by-ids (mapv :id batch)))
+        updates (filterv (comp stored :id) batch)]
+    {:stored  stored
+     :updates updates
+     :count   (users.db/update-users! stored updates)}))
+
+(defn- publish-user-updates!
+  "Publish one update event with `opts` for every row of `written`, the results of the batches."
+  [written opts]
+  (let [stored  (into {} (map :stored) written)
+        updates (into [] (mapcat :updates) written)]
+    (when (seq updates)
+      (events/publish-event! :event/user-update
+                             (events/update-event stored updates (assoc opts :objects (users-after stored updates)))))))
+
+(defn- cascade-user-updates!
+  "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one partition at a
+  time, with `admin-ids` the Administrators members among them, publishing the events of the writes with `opts`."
+  [updates admin-ids opts]
+  (doseq [batch (partition-all app-db/update-partition-size updates)]
+    (set-admin-memberships! batch admin-ids opts)
+    (when-let [deactivated (not-empty (ids-of-rows #(false? (:is_active %)) batch))]
+      (delete-subscriptions! deactivated opts))))
 
 (mu/defn update-users! :- :int
-  "Apply `changes` to the Users with `user-ids` and return the number updated, publishing the events of the writes with
-  `opts`; deactivating or demoting the last admin throws, a change of `is_superuser` adds or removes the
-  Administrators membership, and deactivating a User deletes its subscriptions."
-  ([user-ids :- [:sequential ::lib.schema.id/user]
-    changes  :- ::users.schema/user.update]
-   (update-users! user-ids changes nil))
-  ([user-ids :- [:sequential ::lib.schema.id/user]
-    changes  :- ::users.schema/user.update
-    opts     :- [:maybe ::write-opts]]
+  "Apply `updates`, each the id of a User and the columns to set, in one transaction and return the number updated,
+  publishing their update event with `opts`; deactivating or demoting the last admin throws, a change of
+  `is_superuser` adds or removes the Administrators membership, and deactivating a User deletes its subscriptions."
+  ([updates :- [:sequential ::users.schema/user.update-row]]
+   (update-users! updates nil))
+  ([updates :- [:sequential ::users.schema/user.update-row]
+    opts    :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
-     (let [users (users.db/users-by-ids user-ids)]
-       (cond
-         (empty? users)                     0
-         (admin-or-activity-change? changes) (write-admin-or-activity-change! users changes opts)
-         :else                              (write-users! users changes opts))))))
+     (let [admin-ids (admin-member-ids updates)]
+       (check-ids-distinct updates)
+       (check-emails-unique updates)
+       (check-admins-remain updates admin-ids)
+       (let [written (mapv write-user-batch! (partition-all app-db/update-partition-size updates))]
+         (publish-user-updates! written opts)
+         (cascade-user-updates! (into [] (mapcat :updates) written) admin-ids opts)
+         (transduce (map :count) + 0 written))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only
@@ -598,18 +671,20 @@
   [_model user-id settings-json]
   (set-settings! user-id settings-json))
 
+(defn- set-member-flag!
+  "Apply the flag `changes` to the Users with `user-ids` over `stored`, a map from id to User, publishing the update event
+  with `opts`, and return `stored` with the rows after the update."
+  [stored [user-ids changes] opts]
+  (let [updates (into [] (comp (filter stored) (map #(assoc changes :id %))) user-ids)
+        event   (events/update-event stored updates (assoc opts :objects (users-after stored updates)))]
+    (users.db/update-users! stored updates)
+    (events/publish-event! :event/user-update event)
+    (into stored (map (juxt (comp :id :object) :object)) (:changes event))))
+
 (defmethod perms-group-membership/set-member-flags-of! :model/User
   [_model flag-changes opts]
   (let [stored (u/index-by :id (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes)))]
-    (reduce (fn [rows [user-ids changes]]
-              (users.db/update-users! (into [] (keep rows) user-ids) changes)
-              (let [event (events/update-event rows
-                                               (mapv #(assoc changes :id %) user-ids)
-                                               (assoc opts :objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)))]
-                (events/publish-event! :event/user-update event)
-                (into rows (map (juxt (comp :id :object) :object)) (:changes event))))
-            stored
-            flag-changes)
+    (reduce #(set-member-flag! %1 %2 opts) stored flag-changes)
     nil))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

@@ -12,11 +12,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.events :as u.events]
    [metabase.util.yaml :as yaml]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
@@ -248,7 +246,7 @@
              (events/publish-event! :event/table-user-settings-update
                                     (events/update-event (u/index-by :id (vals stored)) rows))
              (when (seq to-publish)
-               (events/publish-event! :event/table-user-settings-delete {:changes (u.events/delete-changes (vec empty)) :user-id (mi/current-user-id)})
+               (events/publish-event! :event/table-user-settings-delete (events/delete-event (vec empty)))
                (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish))))))))))
 
 (defmacro with-published-tables!

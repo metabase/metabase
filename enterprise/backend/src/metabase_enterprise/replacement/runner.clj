@@ -194,4 +194,4 @@
      (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
        (persisted-info/mark-persisted-infos-for-pruning! [(:id persisted-info)] "off"))
      ;; phase 4: convert the model to a saved question
-     (queries.card/update-cards! [card-id] {:type :question}))))
+     (queries.card/update-cards! [{:id card-id :type :question}]))))

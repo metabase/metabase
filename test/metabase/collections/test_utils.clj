@@ -58,10 +58,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (collection/update-collections! [(:id library)] {:is_remote_synced true} nil)
+        (collection/update-collections! [{:id (:id library) :is_remote_synced true}] nil)
         (f)
         (finally
-          (collection/update-collections! [(:id library)] {:is_remote_synced (boolean original-synced)} nil))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     ;; No library collection exists, create one for the test
     (mt/with-temp [:model/Collection _ {:name             "Library"
                                         :type             collection/library-collection-type
@@ -82,10 +82,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (collection/update-collections! [(:id library)] {:is_remote_synced false} nil)
+        (collection/update-collections! [{:id (:id library) :is_remote_synced false}] nil)
         (f)
         (finally
-          (collection/update-collections! [(:id library)] {:is_remote_synced (boolean original-synced)} nil))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     (f)))
 
 (defmacro with-library-not-synced

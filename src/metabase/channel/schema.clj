@@ -110,6 +110,13 @@
    ::channel.details-by-type])
 
 (mr/def ::channel.update
+  "What an update of a Channel takes: its `:id` and the columns to change."
+  [:merge
+   ::channel.changes
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::channel.changes
   "What an update (or insert) of a Channel accepts: every column of `:channel` except `id`, all optional."
   [:map {:closed true}
    [:name        {:optional true} [:maybe :string]]

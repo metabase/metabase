@@ -471,7 +471,7 @@
          (select-keys card-before [:collection_id :collection_position])
          (select-keys card-updates [:collection_id :collection_position]))
         (queries.card/place-updated-dashboard-question! card-before card-updates false)
-        (queries.card/update-cards! [(:id card-before)] (queries.card/card-changes card-updates))))
+        (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id (:id card-before))])))
     (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema

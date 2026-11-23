@@ -2,6 +2,7 @@
   "Model for embedding themes for use in the embedding theme editor."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.embedding.db :as embedding.db]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
@@ -41,14 +42,21 @@
   [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
   (if (seq rows) (embedding.db/insert-embedding-themes! rows) []))
 
+(defn- write-theme-updates!
+  "Writes `rows`, updates of EmbeddingThemes, with one statement for each distinct set of columns."
+  [rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (embedding.db/update-embedding-themes! (mapv :id group) changes)))
+
 (mu/defn update-embedding-themes! :- :nil
-  "Apply `changes` to the EmbeddingThemes with `ids`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:name     {:optional true} :string]
-               [:settings {:optional true} ::embedding.schema/embedding-theme.settings]]]
-  (when (seq ids)
-    (embedding.db/update-embedding-themes! ids changes))
+  "Apply `updates`, each the `:id` of an EmbeddingTheme with the columns to give it, in one transaction."
+  [updates :- [:sequential [:merge
+                            [:map {:closed true} [:id ms/PositiveInt]]
+                            [:map {:closed true}
+                             [:name     {:optional true} :string]
+                             [:settings {:optional true} ::embedding.schema/embedding-theme.settings]]]]]
+  (t2/with-transaction [_conn]
+    (run! write-theme-updates! (partition-all app-db/update-partition-size updates)))
   nil)
 
 (mu/defn delete-embedding-themes! :- :nil

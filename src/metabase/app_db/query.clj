@@ -187,6 +187,18 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
+(def create-partition-size
+  "The number of rows one pass of a create write function takes."
+  1000)
+
+(def delete-partition-size
+  "The number of ids one DELETE statement of a write function takes, below the parameter limit of every app DB."
+  10000)
+
+(def update-partition-size
+  "The number of rows one pass of an update write function takes."
+  1000)
+
 (defn insert-returning-instances!
   "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in
   the order of `rows`, read back with one select; Toucan's function of this name returns them in any order."

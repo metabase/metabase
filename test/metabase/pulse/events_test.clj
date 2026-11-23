@@ -12,7 +12,7 @@
                  :model/Card      {card-id :id}      {}
                  :model/Pulse     {pulse-id :id}     {:dashboard_id dashboard-id}]
     (testing "renaming the dashboard renames its subscriptions"
-      (dashboard/update-dashboards! [dashboard-id] {:name "After"})
+      (dashboard/update-dashboards! [{:id dashboard-id :name "After"}])
       (is (= "After" (t2/select-one-fn :name :model/Pulse :id pulse-id))))
     (testing "adding a dashcard adds its card to the subscriptions"
       (dashboard/update-dashboard! dashboard-id {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})

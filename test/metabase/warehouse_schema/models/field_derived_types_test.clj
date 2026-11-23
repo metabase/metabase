@@ -109,7 +109,7 @@
                   ["type/Text" "Coercion/String->Integer" nil]
                   ["type/Text" nil nil]]
           ids    (vec (map-indexed #(insert-with-types! table-id %1 %2) states))]
-      (field/update-fields! ids {:base_type :type/Integer :description "d"})
+      (field/update-fields! (for [id ids] {:id id :base_type :type/Integer :description "d"}))
       (doseq [[id state] (map vector ids states)]
         (is (= (expected-types state {:base_type :type/Integer :description "d"}) (raw-types id))
             (str "stored " (pr-str state)))))))
@@ -123,7 +123,7 @@
                                                    ["type/Text" nil "type/Integer"]
                                                    ["type/Text" nil "type/Text"]]))
                             ids    (vec (map-indexed #(insert-with-types! table-id %1 %2) states))]
-                        (events.tu/statement-count! #(field/update-fields! ids {:base_type :type/Float :description "d"})))))]
+                        (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :base_type :type/Float :description "d"}))))))]
       (counted 1)
       (is (= (counted 2) (counted 6))))))
 
@@ -133,7 +133,7 @@
                    :model/Table {table-id :id} {:db_id db-id}]
       (let [[id] [(insert-with-types! table-id 0 ["type/Text" "Coercion/UNIXSeconds->DateTime" "type/Instant"])]]
         (reset! published [])
-        (field/update-fields! [id] {:base_type :type/Float})
+        (field/update-fields! [{:id id :base_type :type/Float}])
         (let [objects (->> @published (filter #(= :event/field-update (first %))) first second :changes (map :object))]
           (is (seq objects))
           (is (every? #(not-any? vector? (vals %)) objects))

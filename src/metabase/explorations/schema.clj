@@ -35,6 +35,13 @@
   "The columns to change of Explorations."
   ::exploration.create)
 
+(mr/def ::exploration.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::exploration.update])
+
 (mr/def ::exploration.revision
   "An Exploration as a Revision stores it: its tracked columns."
   [:select-keys ::exploration [:name :description :collection_id :archived]])
@@ -120,6 +127,13 @@
   "The columns to change of ExplorationPages."
   ::exploration-page.create)
 
+(mr/def ::exploration-page.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::exploration-page.update])
+
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
   ::lib.schema.visualization/visualization-settings)
@@ -179,6 +193,13 @@
 (mr/def ::exploration-query.update
   "The columns to change of ExplorationQueries."
   ::exploration-query.create)
+
+(mr/def ::exploration-query.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::exploration-query.update])
 
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
@@ -309,6 +330,13 @@
 (mr/def ::exploration-thread.update
   "The columns to change of ExplorationThreads."
   ::exploration-thread.create)
+
+(mr/def ::exploration-thread.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::exploration-thread.update])
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."

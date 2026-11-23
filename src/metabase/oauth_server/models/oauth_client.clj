@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.models.oauth-client
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.schema :as oauth-server.schema]
@@ -29,14 +30,21 @@
   [row :- ::oauth-server.schema/oauth-client.create]
   (oauth-server.db/insert-oauth-client! row))
 
-(mu/defn update-oauth-clients!
-  "Apply `changes` to the OAuthClients with primary keys `ids`, returning the number updated; an empty `ids` updates
-  nothing."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::oauth-server.schema/oauth-client.update]
-  (if (seq ids)
-    (oauth-server.db/update-oauth-clients! ids changes)
-    0))
+(defn- write-oauth-client-batch!
+  "Write the `batch` of updates, one statement per distinct change, returning the number of rows updated."
+  [batch]
+  (transduce (map (fn [[changes rows]] (oauth-server.db/update-oauth-clients! (mapv :id rows) changes)))
+             + 0
+             (group-by #(dissoc % :id) batch)))
+
+(mu/defn update-oauth-clients! :- ms/IntGreaterThanOrEqualToZero
+  "Apply `updates`, each the primary key of an OAuthClient and the columns to set, in one transaction, returning the
+  number updated."
+  [updates :- [:sequential ::oauth-server.schema/oauth-client.update-row]]
+  (if (empty? updates)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map write-oauth-client-batch!) + 0 (partition-all app-db/update-partition-size updates)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

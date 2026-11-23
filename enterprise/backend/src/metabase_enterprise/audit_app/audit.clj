@@ -91,7 +91,7 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (database/update-databases! [audit-db-id] {:engine :postgres})
+  (database/update-databases! [{:id audit-db-id :engine :postgres}])
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -99,7 +99,7 @@
   ;; has different syntax on different appdbs
   (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (table/update-tables! (vec table-ids-to-update) {:schema "public"})
+      (table/update-tables! (for [id (vec table-ids-to-update)] {:id id :schema "public"}))
       (table/change-case! (vec table-ids-to-update) :lower [:name])))
   (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
@@ -126,10 +126,10 @@
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (database/update-databases! [audit-db-id] {:engine (mdb/db-type)})
+    (database/update-databases! [{:id audit-db-id :engine (mdb/db-type)}])
     (case (mdb/db-type)
       :mysql
-      (table/update-tables! (vec (table/ids-of-database audit-db-id)) {:schema nil})
+      (table/update-tables! (for [id (vec (table/ids-of-database audit-db-id))] {:id id :schema nil}))
 
       :h2
       (do
@@ -391,13 +391,11 @@
   [orphan-table-id survivor-table-id]
   (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
     (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
-      (queries.card/update-cards!
-       [(:id card)]
-       (cond-> {:dataset_query (-> (:dataset_query card)
+      (queries.card/update-cards! [(assoc (cond-> {:dataset_query (-> (:dataset_query card)
                                    (lib/replace-table-ids {orphan-table-id survivor-table-id})
                                    (lib/replace-field-ids field-id-remap))}
          (:result_metadata card)
-         (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
+         (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card)))) :id (:id card))]))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
@@ -433,7 +431,7 @@
             (table/delete-tables! [orphan-id]))
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
-          (table/update-tables! [(:id survivor)] {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (table/update-tables! [{:id (:id survivor) :active true :name c-name :schema c-schema :is_defective_duplicate false}])
           (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                      (count orphans) (:id survivor)))))))
 

@@ -32,11 +32,18 @@
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
   [:merge
-   ::pulse.update
+   ::pulse.changes
    [:map {:closed true}
     [:id                  ::lib.schema.id/pulse]]])
 
 (mr/def ::pulse.update
+  "What an update of a Pulse takes: its `:id` and the columns to change."
+  [:merge
+   ::pulse.changes
+   [:map {:closed true}
+    [:id ::lib.schema.id/pulse]]])
+
+(mr/def ::pulse.changes
   "What an update (or insert) of a Pulse accepts: every column of `:pulse` except `id`, all optional, a dashboard
   subscription leaving the alert columns and the collection position nil when it holds them all."
   [:map {:closed true :decode/normalize {:leave check-dashboard-subscription}}

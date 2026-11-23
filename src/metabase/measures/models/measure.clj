@@ -3,6 +3,7 @@
    exactly one aggregation expression."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
@@ -25,7 +26,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -167,69 +167,54 @@
     [:writer  {:optional true} [:enum :revert]]
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mu/defn update-measures! :- [:sequential ::measures.schema/measure.update-row]
-  "Apply `changes`, one change to the columns, to each of the Measures with `ids` in one transaction, publishing their
-  update events. A new definition that makes a cycle of Measures throws. Returns the updated rows."
-  ([ids     :- [:sequential ::lib.schema.id/measure]
-    changes :- ::measures.schema/measure.update]
-   (update-measures! ids changes nil))
-  ([ids     :- [:sequential ::lib.schema.id/measure]
-    changes :- ::measures.schema/measure.update
-    opts    :- ::write-opts]
-   (if (empty? ids)
-     []
-     (t2/with-transaction [_conn]
-       (let [stored   (measures.db/measures-by-id (vec ids))
-             ids*     (filterv stored ids)
-             rows*    (mapv #(assoc changes :id %) ids*)
-             changes* (cond-> changes
-                        (contains? changes :definition) (assoc :table_id (definition-table-id (:definition changes))))]
-         (check-changed-definition ids changes stored)
-         (measures.db/update-measures! ids* changes* stored)
-         (events/publish-event! :event/measure-update
-                                (events/update-event stored
-                                                     rows*
-                                                     (assoc opts :objects (into {}
-                                                                                (map (fn [id] [id (updated-measure (stored id) changes)]))
-                                                                                ids*))))
-         (mapv #(assoc changes :id %) ids))))))
+(defn- check-measure-updates
+  "Throw a 400 unless every one of `rows`, updates of the `stored` Measures, satisfies these rules:
+
+  - a new definition does not refer to the Measure itself or make a cycle of Measures"
+  [stored rows]
+  (doseq [{:keys [id] :as row} rows]
+    (check-changed-definition [id] (dissoc row :id) stored)))
 
 (defn- write-measure-updates!
-  "Apply each of `rows`, the id of a Measure and the columns to change, which differ from row to row, in one pass: the
-  stored Measures are read once, each new definition is checked and gives its table, and the update event is published
-  once for all of them. Returns `rows`."
-  [rows]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [stored (measures.db/measures-by-id (mapv :id rows))
-            rows*  (filterv #(contains? stored (:id %)) rows)]
-        (doseq [{:keys [id] :as row} rows*]
-          (check-changed-definition [id] (dissoc row :id) stored))
-        (doseq [{:keys [id] :as row} rows*
-                :let [changes (cond-> (dissoc row :id)
-                                (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]]
-          (measures.db/update-measures! [id] changes stored))
-        (events/publish-event! :event/measure-update
-                               (events/update-event stored
-                                                    rows*
-                                                    {:objects (into {}
-                                                                    (map (fn [{:keys [id] :as row}]
-                                                                           [id (updated-measure (stored id) (dissoc row :id))]))
-                                                                    rows*)}))
-        (vec rows)))))
+  "Writes `rows`, updates of the `stored` Measures, each with the table its new definition gives, and returns what the
+  event needs, the changes of each row and the Measures as they are after the write."
+  [stored rows]
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (cond-> (dissoc row :id)
+                          (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]]
+    (measures.db/update-measures! [id] changes stored))
+  {:stored  stored
+   :rows    rows
+   :objects (into {} (map (fn [{:keys [id] :as row}] [id (updated-measure (stored id) (dissoc row :id))])) rows)})
 
-(mu/defn update-measures-for-import!
-  "Apply each of `rows`, the id of a Measure and the columns to change, as an import does, in one pass over all of them
-  because every row holds its own values. Returns `rows`."
-  [rows :- [:sequential ::measures.schema/measure.update-row]]
-  (write-measure-updates! rows))
+(defn- update-measure-batch!
+  "Checks and writes the Measures of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch]
+  (let [stored (measures.db/measures-by-id (mapv :id batch))
+        rows   (filterv #(contains? stored (:id %)) batch)]
+    (check-measure-updates stored rows)
+    (write-measure-updates! stored rows)))
 
-(mu/defn update-measures-for-replacement!
-  "Apply each of `rows`, the id of a Measure and the columns to change, as a replacement does, in one pass over all of
-  them because every row holds its own definition. Returns `rows`."
-  [rows :- [:sequential ::measures.schema/measure.update-row]]
-  (write-measure-updates! rows))
+(defn- publish-measure-updates!
+  "Publishes the update event of the Measures that `batches`, what [[update-measure-batch!]] returned, wrote."
+  [batches opts]
+  (when (some (comp seq :rows) batches)
+    (events/publish-event! :event/measure-update
+                           (events/update-event (into {} (map :stored) batches)
+                                                (into [] (mapcat :rows) batches)
+                                                (assoc opts :objects (into {} (map :objects) batches))))))
+
+(mu/defn update-measures! :- [:sequential ::measures.schema/measure.update-row]
+  "Apply `updates`, each the `:id` of a Measure with the columns to give it, in one transaction, publishing their update
+  event with the `:writer` and `:context` of `opts`. Returns `updates`."
+  ([updates :- [:sequential ::measures.schema/measure.update-row]]
+   (update-measures! updates nil))
+  ([updates :- [:sequential ::measures.schema/measure.update-row]
+    opts    :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv update-measure-batch! (partition-all app-db/update-partition-size updates))]
+       (publish-measure-updates! batches opts)))
+   (vec updates)))
 
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`, publishing its update event."
@@ -243,16 +228,16 @@
                              (events/update-event {id previous}
                                                   [{:id id :dimensions dimensions :dimension_mappings dimension-mappings}])))))
 
-(mu/defn delete-measures!
-  "Delete the Measures with `ids`, in one transaction, publishing their delete event."
+(mu/defn delete-measures! :- :nil
+  "Delete the Measures with `ids` in one transaction, publishing their delete event right before the first statement."
   [ids :- [:sequential ::lib.schema.id/measure]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [measures (vec (vals (measures.db/measures-by-id (vec ids))))]
-        (events/publish-event! :event/measure-delete {:changes (u.events/delete-changes measures)
-                            :user-id (mi/current-user-id)})
-        (measures.db/delete-measures! ids)))
-    nil))
+  (t2/with-transaction [_conn]
+    (let [batches (partition-all app-db/delete-partition-size ids)]
+      (when (seq batches)
+        (events/publish-event! :event/measure-delete
+                               (events/delete-event (into [] (mapcat #(vals (measures.db/measures-by-id (vec %)))) batches))))
+      (run! #(measures.db/delete-measures! (vec %)) batches)))
+  nil)
 
 (def ^:private revision-columns
   "The columns of a Measure that its Revisions track and a revert restores."
@@ -261,7 +246,7 @@
 (defn- revert-measure!
   "Return the Measure with `id` to the `snapshot` of a Measure that a Revision recorded."
   [id _user-id snapshot]
-  (update-measures! [id] snapshot {:writer :revert}))
+  (update-measures! [(assoc snapshot :id id)] {:writer :revert}))
 
 ;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
@@ -285,7 +270,7 @@
    :import-dependencies measures.serialization/import-dependencies
    :storage-paths       measures.serialization/storage-paths
    :insert!             create-measures!
-   :update!             update-measures-for-import!
+   :update!             #(update-measures! % {:writer :import})
    :delete!             delete-measures!})
 
 (defmethod remote-sync/spec :model/Measure
@@ -349,7 +334,7 @@
 (defmethod replacement/spec :model/Measure [_model]
   {:upgrade-field-refs measures.replacement/upgrade-field-refs
    :swap-source        measures.replacement/swap-source
-   :update!            update-measures-for-replacement!})
+   :update!            #(update-measures! % {:writer :replacement})})
 
 (defmethod eid-translation/spec :model/Measure [_model]
   {:names [:measure]})

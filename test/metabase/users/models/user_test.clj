@@ -8,10 +8,12 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
    [metabase.serialization.core :as serialization]
@@ -435,10 +437,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (user/update-users! [user-id] {:is_active true :first_name "New name"})))
+          (is (pos? (user/update-users! [{:id user-id :is_active true :first_name "New name"}])))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (user/update-users! [user-id] {:is_active false}))))
+          (is (pos? (user/update-users! [{:id user-id :is_active false}]))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -520,6 +522,11 @@
       (finally
         (t2/delete! :model/User :email [:in emails])))))
 
+(defn- same-change
+  "The update rows that give each of the Users with `user-ids` the same `changes`."
+  [user-ids changes]
+  (mapv (fn [row-id] (assoc changes :id row-id)) user-ids))
+
 (deftest update-users-over-mixed-stored-state-runs-fixed-statements-test
   (mt/with-model-cleanup [:model/User]
     (let [counted (fn [n]
@@ -527,9 +534,9 @@
                                                                       :is_superuser (odd? i)})
                                                              (range n)))
                           user-ids (mapv :id users)]
-                      (user/update-users! (vec (take-nth 2 user-ids)) {:is_active false})
+                      (user/update-users! (same-change (take-nth 2 user-ids) {:is_active false}))
                       (events.tu/statement-count!
-                       #(user/update-users! user-ids {:is_active false :first_name "Renamed"}))))]
+                       #(user/update-users! (same-change user-ids {:is_active false :first_name "Renamed"})))))]
       (testing "deactivating and renaming Users, half of them inactive already and half of them admins"
         (counted 1)
         (is (= (counted 2) (counted 6)))))))
@@ -539,7 +546,7 @@
     (let [counted (fn [n]
                     (let [user-ids (t2/insert-returning-pks! :model/User (repeatedly n #(mt/with-temp-defaults :model/User)))]
                       (t2/with-call-count [call-count]
-                        (user/update-users! user-ids {:first_name "Renamed"})
+                        (user/update-users! (same-change user-ids {:first_name "Renamed"}))
                         (is (= #{"Renamed"} (t2/select-fn-set :first_name :model/User :id [:in user-ids])))
                         (call-count))))]
       (counted 1)
@@ -550,10 +557,10 @@
     (let [[{user-id :id}] (user/create-users! [{:email "update-user-refuses-last-admin-test-1@example.com" :is_superuser true}])]
       (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
         (testing "deactivating"
-          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_active false})))
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [{:id user-id :is_active false}])))
           (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
         (testing "demoting"
-          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [user-id] {:is_superuser false})))
+          (is (thrown-with-msg? Exception #"last admin" (user/update-users! [{:id user-id :is_superuser false}])))
           (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
           (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id))))))))
 
@@ -888,10 +895,10 @@
             count (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))
             ids   (atom nil)]
         {:create     (count #(reset! ids (mapv :id (user/create-users! rows))))
-         :rename     (count #(user/update-users! @ids {:first_name "Renamed"}))
+         :rename     (count #(user/update-users! (same-change @ids {:first_name "Renamed"})))
          :join       (count #(perms-group-membership/add-users-to-groups! (for [id @ids] {:user id :group group-id})))
-         :promote    (count #(user/update-users! @ids {:is_superuser true}))
-         :demote     (count #(user/update-users! @ids {:is_superuser false}))}))))
+         :promote    (count #(user/update-users! (same-change @ids {:is_superuser true})))
+         :demote     (count #(user/update-users! (same-change @ids {:is_superuser false})))}))))
 
 (deftest bulk-user-writes-run-fixed-statement-counts-test
   (testing "after a first run that fills the caches"
@@ -909,7 +916,7 @@
           counted (fn [prepare! changes n]
                     (let [user-ids (mapv :id (create! n))]
                       (prepare! (vec (take-nth 2 user-ids)))
-                      (events.tu/statement-count! #(user/update-users! user-ids changes))))]
+                      (events.tu/statement-count! #(user/update-users! (same-change user-ids changes)))))]
       (testing "creating users and admins"
         (events.tu/statement-count! #(create! 1))
         (is (= (events.tu/statement-count! #(create! 2))
@@ -919,6 +926,109 @@
                                      ["making users admins, half of them admins already"       {:is_superuser true}]
                                      ["demoting admins, half of them demoted already"          {:is_superuser false}]]]
         (testing description
-          (let [prepare! #(user/update-users! % changes)]
+          (let [prepare! #(user/update-users! (same-change % changes))]
             (counted prepare! changes 1)
             (is (= (counted prepare! changes 2) (counted prepare! changes 6)))))))))
+
+(defn- published-topics!
+  "The topics `thunk` publishes, in order, with the last event of `topic` under `:event`."
+  [topic thunk]
+  (let [published (atom [])]
+    (mt/with-dynamic-fn-redefs [events/publish-event! (fn [t event] (swap! published conj [t event]) event)]
+      (thunk))
+    {:topics (mapv first @published)
+     :event  (last (keep (fn [[t event]] (when (= t topic) event)) @published))}))
+
+(deftest update-users-publishes-same-events-at-two-and-six-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [published (fn [n]
+                      (let [users (user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                                     :is_superuser (odd? i)})
+                                                            (range n)))
+                            rows  (vec (map-indexed (fn [i {id :id}]
+                                                      (if (odd? i)
+                                                        {:id id :is_superuser false}
+                                                        {:id id :is_active false :first_name "Renamed"}))
+                                                    users))]
+                        (:topics (published-topics! :event/user-update #(user/update-users! rows)))))]
+      (testing "rows with different changes publish one update event for the call"
+        (is (= 1 (count (filter #{:event/user-update} (published 2)))))
+        (is (= (published 2) (published 6)))))))
+
+(deftest create-users-publishes-same-events-at-two-and-six-rows-test
+  (mt/with-model-cleanup [:model/User]
+    (let [published (fn [n]
+                      (:topics (published-topics! :event/user-create
+                                                  #(user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                                                      :is_superuser (odd? i)})
+                                                                             (range n))))))]
+      (is (= 1 (count (filter #{:event/user-create} (published 2)))))
+      (is (= (published 2) (published 6))))))
+
+(deftest update-users-across-partitions-test
+  (mt/with-model-cleanup [:model/User]
+    (let [users (user/create-users! (vec (for [_ (range 5)] {:email (str (random-uuid) "@example.com")})))
+          ids   (mapv :id users)]
+      (with-redefs [mdb/update-partition-size 2]
+        (let [{:keys [topics event]} (published-topics! :event/user-update
+                                                       #(is (= 5 (user/update-users! (vec (for [[i id] (map-indexed vector ids)]
+                                                                                            {:id id :first_name (str "Test User " i)}))))))]
+          (testing "five rows in batches of two publish one event carrying every row"
+            (is (= 1 (count (filter #{:event/user-update} topics))))
+            (is (= (set ids) (set (map (comp :id :object) (:changes event))))))))
+      (testing "every row gets its own change"
+        (is (= (vec (for [i (range 5)] (str "Test User " i)))
+               (mapv #(t2/select-one-fn :first_name :model/User :id %) ids)))))))
+
+(deftest create-users-across-partitions-test
+  (mt/with-model-cleanup [:model/User]
+    (with-redefs [mdb/create-partition-size 2]
+      (let [emails                (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
+            created               (atom nil)
+            {:keys [topics event]} (published-topics! :event/user-create
+                                                     #(reset! created (user/create-users! (mapv (fn [email] {:email email}) emails))))]
+        (testing "rows come back in input order"
+          (is (= emails (mapv :email @created))))
+        (testing "five rows in batches of two publish one create event carrying every row"
+          (is (= 1 (count (filter #{:event/user-create} topics))))
+          (is (= 5 (count (:changes event)))))))))
+
+(deftest update-users-refuses-two-rows-for-one-user-test
+  (mt/with-model-cleanup [:model/User]
+    (let [[{id :id}] (user/create-users! [{:email (str (random-uuid) "@example.com") :first_name "Test"}])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only once"
+                            (user/update-users! [{:id id :first_name "One"} {:id id :first_name "Two"}])))
+      (is (= "Test" (t2/select-one-fn :first_name :model/User :id id))))))
+
+(deftest users-with-same-email-are-refused-test
+  (mt/with-model-cleanup [:model/User]
+    (let [email (str (random-uuid) "@example.com")]
+      (testing "creating"
+        (is (= 400 (:status-code (try (user/create-users! [{:email email} {:email (u/upper-case-en email)}])
+                                      nil
+                                      (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+        (is (not (t2/exists? :model/User :email email))))
+      (testing "updating"
+        (let [users (user/create-users! [{:email (str (random-uuid) "@example.com")}
+                                         {:email (str (random-uuid) "@example.com")}])]
+          (is (= 400 (:status-code (try (user/update-users! (for [{id :id} users] {:id id :email email}))
+                                        nil
+                                        (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+          (is (= (set (map :email users))
+                 (t2/select-fn-set :email :model/User :id [:in (map :id users)]))))))))
+
+(deftest create-users-counts-every-new-row-against-user-limit-test
+  (mt/with-model-cleanup [:model/User]
+    (let [stored (t2/count :model/User :is_active true :type "personal")
+          limit  (constantly (+ stored 2))
+          emails (vec (for [_ (range 3)] (str (random-uuid) "@example.com")))]
+      (mt/with-dynamic-fn-redefs [token-check/max-users-allowed       limit
+                                  premium-features/max-users-allowed limit]
+        (testing "third personal row is over limit, so no row is created"
+          (is (thrown-with-msg? Exception #"Adding another user would exceed the maximum"
+                                (user/create-users! (mapv #(hash-map :email %) emails))))
+          (is (not (t2/exists? :model/User :email [:in emails]))))
+        (testing "inactive rows before last personal row do not count"
+          (is (= 3 (count (user/create-users! [{:email (first emails) :is_active false}
+                                               {:email (second emails) :is_active false}
+                                               {:email (nth emails 2)}])))))))))

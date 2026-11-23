@@ -77,8 +77,10 @@
   spec]
  [metabase.app-db.query
   compile
+  create-partition-size
   current-timestamp-string
   delete-oldest-rows!
+  delete-partition-size
   increment-counts!
   insert-returning-instances!
   isa
@@ -90,6 +92,7 @@
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
+  update-partition-size
   with-conflict-retry]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]

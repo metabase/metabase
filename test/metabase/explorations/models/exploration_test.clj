@@ -224,7 +224,7 @@
             update! (fn [prepare changes n]
                       (let [ids (fresh! n)]
                         (prepare (take-nth 2 ids))
-                        (events.tu/statement-count! #(exploration/update-explorations! ids changes))))
+                        (events.tu/statement-count! #(exploration/update-explorations! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted (fn [f]
                       (f 1)
                       (is (= (f 2) (f 6))))]
@@ -232,19 +232,19 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! ids {:description "Same"}))
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
                             {:description "Same"})))
         (testing "archiving explorations and their summary documents, some already archived"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! ids {:archived true}))
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived true})))
         (testing "restoring explorations and their summary documents, some already live"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! ids {:archived true}))
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived false})))
         (testing "moving explorations, some already in the Collection"
           (counted (partial update!
-                            (fn [ids] (exploration/update-explorations! ids {:collection_id other}))
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
                             {:collection_id other})))
         (testing "deleting explorations"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))
@@ -272,9 +272,9 @@
                           (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
           (is (= before (t2/count :model/Exploration)))))
       (testing "moving one into an archived Collection throws a 400 and leaves it where it is"
-        (is (= 400 (try (exploration/update-explorations! [id] {:collection_id archived-id})
+        (is (= 400 (try (exploration/update-explorations! [{:id id :collection_id archived-id}])
                         (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
         (is (= live-id (stored))))
       (testing "an archived Exploration may go into an archived Collection"
-        (exploration/update-explorations! [id] {:archived true :collection_id archived-id})
+        (exploration/update-explorations! [{:id id :archived true :collection_id archived-id}])
         (is (= archived-id (stored)))))))

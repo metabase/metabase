@@ -113,7 +113,7 @@
 (mu/defn update-transforms! :- :nil
   "Apply to each Transform of `stored`, a map from id to the Transform as read, its changes in `id->changes`."
   [stored      :- [:map-of ::lib.schema.id/transform :map]
-   id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.update]]
+   id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.changes]]
   (update-grouped! :model/Transform stored id->changes)
   nil)
 
@@ -180,10 +180,10 @@
                 [:else column])))
 
 (mu/defn update-tags! :- :nil
-  "Apply `changes` to the TransformTags of `stored`, a map from id to the tag as read."
-  [stored  :- [:map-of ms/PositiveInt :map]
-   changes :- ::transforms.schema/transform-tag.update]
-  (update-grouped! :model/TransformTag stored (update-vals stored (constantly changes)))
+  "Apply to each TransformTag of `stored`, a map from id to the tag as read, its changes in `id->changes`."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-tag.changes]]
+  (update-grouped! :model/TransformTag stored id->changes)
   nil)
 
 (mu/defn delete-tags! :- :nil
@@ -286,10 +286,10 @@
   (mdb/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil
-  "Apply `changes` to the TransformJobs of `stored`, a map from id to the job as read."
-  [stored  :- [:map-of ms/PositiveInt :map]
-   changes :- ::transforms.schema/transform-job.update]
-  (update-grouped! :model/TransformJob stored (update-vals stored (constantly changes)))
+  "Apply to each TransformJob of `stored`, a map from id to the job as read, its changes in `id->changes`."
+  [stored      :- [:map-of ms/PositiveInt :map]
+   id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.changes]]
+  (update-grouped! :model/TransformJob stored id->changes)
   nil)
 
 (mu/defn delete-jobs! :- :nil

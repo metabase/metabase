@@ -1272,7 +1272,7 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (database/update-databases! [db-id] {:details updated-details})
+      (database/update-databases! [{:id db-id :details updated-details}])
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])

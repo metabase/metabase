@@ -339,53 +339,57 @@
     [:creator_id {:optional true} ::lib.schema.id/user]
     [:entity_id  {:optional true} [:maybe :string]]]])
 
-(defn- import-row
-  "What an import writes to update a test: its `:id` and the columns to change, as `update-schema` gives them."
-  [update-schema]
+(defn- update-row
+  "What an update of a test takes: its `:id` and the columns to change, as `changes-schema` gives them."
+  [changes-schema]
   [:merge
-   update-schema
+   changes-schema
    [:map {:closed true}
     [:id ms/PositiveInt]]])
 
-(mr/def ::transform-test.import-row
-  "What an import writes to update a transform test: its `:id` and the columns to change."
-  (import-row ::transform-test.update))
+(mr/def ::transform-test.update
+  "What an update of a transform test takes: its `:id` and the columns to change."
+  (update-row ::transform-test.changes))
 
 (mr/def ::transform-test.create
   "What creating a transform test takes."
   (write-create :transform_id ::lib.schema.id/transform))
 
-(mr/def ::transform-test.update
-  "What an update of a transform test takes: the columns to change."
+(mr/def ::transform-test.changes
+  "The columns to change of a transform test."
   (write-update :transform_id ::lib.schema.id/transform))
 
-(mr/def ::card-test.import-row
-  "What an import writes to update a card test: its `:id` and the columns to change."
-  (import-row ::card-test.update))
+(mr/def ::card-test.update
+  "What an update of a card test takes: its `:id` and the columns to change."
+  (update-row ::card-test.changes))
 
 (mr/def ::card-test.create
   "What creating a card test takes."
   (write-create :card_id ::lib.schema.id/card))
 
-(mr/def ::card-test.update
-  "What an update of a card test takes: the columns to change."
+(mr/def ::card-test.changes
+  "The columns to change of a card test."
   (write-update :card_id ::lib.schema.id/card))
 
-(mr/def ::segment-test.import-row
-  "What an import writes to update a segment test: its `:id` and the columns to change."
-  (import-row ::segment-test.update))
+(mr/def ::segment-test.update
+  "What an update of a segment test takes: its `:id` and the columns to change."
+  (update-row ::segment-test.changes))
 
 (mr/def ::segment-test.create
   "What creating a segment test takes."
   (write-create :segment_id ::lib.schema.id/segment))
 
-(mr/def ::segment-test.update
-  "What an update of a segment test takes: the columns to change."
+(mr/def ::segment-test.changes
+  "The columns to change of a segment test."
   (write-update :segment_id ::lib.schema.id/segment))
 
 (mr/def ::saved-test.create
   "What creating a saved test of any subject type takes."
   [:or ::transform-test.create ::card-test.create ::segment-test.create])
+
+(mr/def ::saved-test.changes
+  "The columns to change of a saved test of any subject type."
+  [:or ::transform-test.changes ::card-test.changes ::segment-test.changes])
 
 (mr/def ::saved-test.update
   "What an update of a saved test of any subject type takes."
@@ -489,15 +493,15 @@
    [:creator_id  ::lib.schema.id/user]
    [:entity_id   {:optional true} [:maybe :string]]])
 
-(mr/def ::test-suite.update
+(mr/def ::test-suite.changes
   "What an update of a test suite takes, without its members: the columns to change."
   [:map {:closed true}
    [:name        {:optional true} ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]])
 
-(mr/def ::test-suite.import-row
-  "What an import writes to update a test suite: its `:id` and the columns to change."
-  (import-row ::test-suite.update))
+(mr/def ::test-suite.update
+  "What an update of a test suite takes, without its members: its `:id` and the columns to change."
+  (update-row ::test-suite.changes))
 
 (mr/def ::test-suite-member.create
   "A member of a test suite as it is stored: its suite, its test, by type and entity id, and its position."

@@ -144,15 +144,15 @@
       (perms-group-membership/add-users-to-groups! [{:user admin-id :group group-id}])
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
                             (perms-group-membership/update-permissions-group-memberships!
-                             [(t2/select-one-pk :model/PermissionsGroupMembership :user_id admin-id :group_id group-id)]
-                             {:is_group_manager true})))
+                             [{:id               (t2/select-one-pk :model/PermissionsGroupMembership :user_id admin-id :group_id group-id)
+                               :is_group_manager true}])))
       (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
                                     :user_id admin-id :group_id group-id))))
     (testing "user who is not an admin can be made group manager"
       (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
       (perms-group-membership/update-permissions-group-memberships!
-       [(t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
-       {:is_group_manager true})
+       [{:id               (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+         :is_group_manager true}])
       (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
                                    :user_id user-id :group_id group-id))))))
 
@@ -327,7 +327,7 @@
                           (let [memberships (t2/select :model/PermissionsGroupMembership
                                                        :group_id group-id :user_id [:in user-ids])]
                             (perms-group-membership/update-permissions-group-memberships!
-                             (mapv :id memberships) {:is_group_manager true})))
+                             (mapv #(hash-map :id (:id %) :is_group_manager true) memberships))))
                 counted (fn [n]
                           (let [user-ids (users! n)]
                             (add! user-ids)
@@ -342,17 +342,22 @@
                  :model/User             {admin-id :id}  {:is_superuser true}
                  :model/PermissionsGroupMembership {member :id} {:user_id member-id :group_id group-id}
                  :model/PermissionsGroupMembership {admin :id}  {:user_id admin-id :group_id group-id}]
-    (testing "the first refused membership gives the message and nothing is written"
+    (testing "the first refused row gives the message and nothing is written"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"move a group membership to another user"
                             (perms-group-membership/update-permissions-group-memberships!
-                             [member admin] {:user_id admin-id :is_group_manager true})))
+                             [{:id member :user_id admin-id}
+                              {:id admin :is_group_manager true}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
                             (perms-group-membership/update-permissions-group-memberships!
-                             [admin member] {:user_id admin-id :is_group_manager true})))
+                             [{:id admin :is_group_manager true}
+                              {:id member :user_id admin-id}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
                             (perms-group-membership/update-permissions-group-memberships!
-                             [member admin] {:is_group_manager true})))
+                             [{:id member :is_group_manager true}
+                              {:id admin :is_group_manager true}])))
       (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id member))))
-    (testing "ids that do not exist are skipped"
-      (perms-group-membership/update-permissions-group-memberships! [member Integer/MAX_VALUE] {:is_group_manager true})
+    (testing "the rows that exist are returned"
+      (is (= [{:id member :is_group_manager true}]
+             (perms-group-membership/update-permissions-group-memberships!
+              [{:id member :is_group_manager true} {:id Integer/MAX_VALUE :is_group_manager true}])))
       (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id member))))))

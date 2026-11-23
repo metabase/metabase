@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as app-db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -591,6 +592,21 @@
                        (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
         (testing "deleting dashcards"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-card/delete-dashboard-cards! ids))))))))))
+
+(deftest dashboard-card-writes-across-partitions-test
+  (testing "a create, update and delete that cross the partition size write every DashboardCard"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card {card-id :id} {}]
+      (with-redefs [app-db/create-partition-size 2
+                    app-db/update-partition-size 2
+                    app-db/delete-partition-size 2]
+        (let [ids (mapv :id (dashboard-card/create-dashboard-cards!
+                             (mapv (fn [i] {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}) (range 5))))]
+          (is (= 5 (count ids)))
+          (is (= (set ids) (set (dashboard-card/update-dashboard-cards! (mapv (fn [id] {:id id :size_x 7}) ids)))))
+          (is (= #{7} (set (t2/select-fn-vec :size_x :model/DashboardCard :id [:in ids]))))
+          (dashboard-card/delete-dashboard-cards! ids)
+          (is (zero? (t2/count :model/DashboardCard :id [:in ids]))))))))
 
 (deftest internal-dashboard-question-checks-test
   (mt/with-temp [:model/Collection {collection-id :id} {}

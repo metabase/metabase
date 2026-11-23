@@ -9,6 +9,7 @@
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -123,24 +124,34 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-table-indexes! :- [:sequential ::schema/table-index]
-  "Insert the TableIndex `models` and return them."
+  "Insert the TableIndex `models` in batches of [[mdb/create-partition-size]] and return them."
   [models :- [:sequential ::schema/table-index.create]]
   (if (seq models)
-    (indexes.db/insert-table-indexes! models)
+    (t2/with-transaction [_conn]
+      (into [] (mapcat #(indexes.db/insert-table-indexes! (vec %))) (partition-all mdb/create-partition-size models)))
     []))
 
+(defn- write-table-index-updates!
+  "Write each of `rows`, the id of a TableIndex and the columns to change, over the TableIndexes as stored, read once."
+  [rows]
+  (when-let [stored (not-empty (indexes.db/table-index-statuses (mapv :id rows)))]
+    (indexes.db/update-table-indexes! stored rows)))
+
 (mu/defn update-table-indexes! :- :nil
-  "Apply `changes` to the TableIndexes with `ids`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::schema/table-index.update]
-  (when (seq ids)
-    (indexes.db/update-table-indexes! (indexes.db/table-index-statuses (vec ids)) changes))
+  "Apply each of `rows`, the id of a TableIndex and the columns to change, in one transaction and batches of
+  [[mdb/update-partition-size]]."
+  [rows :- [:sequential ::schema/table-index]]
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (run! #(write-table-index-updates! (vec %)) (partition-all mdb/update-partition-size rows))))
   nil)
 
 (mu/defn delete-table-indexes! :- :nil
-  "Delete the TableIndexes with `ids`."
+  "Delete the TableIndexes with `ids` in one transaction and batches of [[mdb/delete-partition-size]]."
   [ids :- [:sequential ms/PositiveInt]]
-  (indexes.db/delete-table-indexes! ids)
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (run! #(indexes.db/delete-table-indexes! (vec %)) (partition-all mdb/delete-partition-size ids))))
   nil)
 
 (mu/defn mark-table-index-failed! :- [:maybe :int]

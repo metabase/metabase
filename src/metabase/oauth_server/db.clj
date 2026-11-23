@@ -79,10 +79,10 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
   (t2/update! :model/OAuthRefreshToken {:user_id [:in user-ids], :revoked_at nil} {:revoked_at :%now}))
 
-(mu/defn delete-authorization-codes-for-users!
-  "Delete the OAuthAuthorizationCodes of the Users with `user-ids`, returning the number deleted."
+(mu/defn authorization-code-ids-of-users :- [:sequential ms/PositiveInt]
+  "The ids of every OAuthAuthorizationCode of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (t2/delete! :model/OAuthAuthorizationCode :user_id [:in user-ids]))
+  (t2/select-pks-vec :model/OAuthAuthorizationCode :user_id [:in user-ids]))
 
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."
@@ -130,10 +130,15 @@
   [code :- :string]
   (t2/select-one :model/OAuthAuthorizationCode :code code {:for :update}))
 
-(mu/defn delete-authorization-code!
-  "Delete the OAuthAuthorizationCode `code`, returning the number deleted."
+(mu/defn authorization-code-ids-with-code :- [:sequential ms/PositiveInt]
+  "The ids of every OAuthAuthorizationCode `code`."
   [code :- :string]
-  (t2/delete! :model/OAuthAuthorizationCode :code code))
+  (t2/select-pks-vec :model/OAuthAuthorizationCode :code code))
+
+(mu/defn delete-authorization-codes!
+  "Delete the OAuthAuthorizationCodes with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/OAuthAuthorizationCode :id [:in ids]))
 
 (mu/defn insert-access-token!
   "Insert the OAuthAccessToken `row`, returning the number inserted."
@@ -165,27 +170,37 @@
   [token :- :string]
   (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now}))
 
-(mu/defn delete-authorization-codes-expired-before!
-  "Delete the OAuthAuthorizationCodes that expired before `now`, returning the number deleted."
+(mu/defn authorization-code-ids-expired-before :- [:sequential ms/PositiveInt]
+  "The ids of the OAuthAuthorizationCodes that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthAuthorizationCode :expiry [:< now]))
+  (t2/select-pks-vec :model/OAuthAuthorizationCode :expiry [:< now]))
 
-(mu/defn delete-access-tokens-expired-before!
-  "Delete the OAuthAccessTokens that expired before `now`, returning the number deleted."
+(mu/defn access-token-ids-expired-before :- [:sequential ms/PositiveInt]
+  "The ids of the OAuthAccessTokens that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthAccessToken :expiry [:< now]))
+  (t2/select-pks-vec :model/OAuthAccessToken :expiry [:< now]))
 
-(mu/defn delete-revoked-access-tokens!
-  "Delete the revoked OAuthAccessTokens, returning the number deleted."
+(mu/defn revoked-access-token-ids :- [:sequential ms/PositiveInt]
+  "The ids of the revoked OAuthAccessTokens."
   []
-  (t2/delete! :model/OAuthAccessToken :revoked_at [:not= nil]))
+  (t2/select-pks-vec :model/OAuthAccessToken :revoked_at [:not= nil]))
 
-(mu/defn delete-refresh-tokens-expired-before!
-  "Delete the OAuthRefreshTokens that expired before `now`, returning the number deleted."
+(mu/defn delete-access-tokens!
+  "Delete the OAuthAccessTokens with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/OAuthAccessToken :id [:in ids]))
+
+(mu/defn refresh-token-ids-expired-before :- [:sequential ms/PositiveInt]
+  "The ids of the OAuthRefreshTokens that expired before `now`."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthRefreshToken :expiry [:< now]))
+  (t2/select-pks-vec :model/OAuthRefreshToken :expiry [:< now]))
 
-(mu/defn delete-revoked-refresh-tokens!
-  "Delete the revoked OAuthRefreshTokens, returning the number deleted."
+(mu/defn revoked-refresh-token-ids :- [:sequential ms/PositiveInt]
+  "The ids of the revoked OAuthRefreshTokens."
   []
-  (t2/delete! :model/OAuthRefreshToken :revoked_at [:not= nil]))
+  (t2/select-pks-vec :model/OAuthRefreshToken :revoked_at [:not= nil]))
+
+(mu/defn delete-refresh-tokens!
+  "Delete the OAuthRefreshTokens with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/OAuthRefreshToken :id [:in ids]))

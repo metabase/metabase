@@ -28,6 +28,13 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::embedding-theme.update-row
+  "What an update of the row names: its `:id` and the columns to change."
+  [:merge
+   [:map {:closed true}
+    [:id ms/PositiveInt]]
+   ::embedding-theme.update])
+
 (mr/def ::embedding-theme.create
   "What a caller gives to create a EmbeddingTheme: its name and settings, and whether it is a seeded default."
   [:map {:closed true}

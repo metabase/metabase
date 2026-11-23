@@ -33,7 +33,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (field/update-fields! [(:id field)] (merge (incomplete-analysis-kvs) {:fingerprint fingerprint}) {:fields [field]}))
+  (field/update-fields! [(assoc (merge (incomplete-analysis-kvs) {:fingerprint fingerprint}) :id (:id field))] {:fields [field]}))
 
 (mu/defn- mark-fingerprinting-failed!
   "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
@@ -42,7 +42,7 @@
   left untouched so they are retried."
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (when-let [ids (seq (map u/the-id fields))]
-    (field/update-fields! (vec ids) {:fingerprint_version i/*latest-fingerprint-version*} {:fields fields})))
+    (field/update-fields! (for [id (vec ids)] {:id id :fingerprint_version i/*latest-fingerprint-version*}) {:fields fields})))
 
 (mr/def ::FingerprintStats
   [:map {:closed true}

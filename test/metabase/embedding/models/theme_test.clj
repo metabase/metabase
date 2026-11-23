@@ -21,7 +21,7 @@
           (is (= ["First" "Second" "Third"] (map :name created)))))
       (testing "updating and deleting themes by id"
         (let [ids (mapv :id (embedding-theme/create-embedding-themes! (rows 2)))]
-          (embedding-theme/update-embedding-themes! ids {:name "Renamed"})
+          (embedding-theme/update-embedding-themes! (mapv (fn [id] {:id id :name "Renamed"}) ids))
           (is (= ["Renamed" "Renamed"] (mapv #(t2/select-one-fn :name :model/EmbeddingTheme :id %) ids)))
           (embedding-theme/delete-embedding-themes! ids)
           (is (zero? (t2/count :model/EmbeddingTheme :id [:in ids]))))))))

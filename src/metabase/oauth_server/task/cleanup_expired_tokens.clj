@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
    [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
    [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
@@ -21,11 +22,16 @@
     ;; Issue expiry- and revocation-based deletes as separate statements so each can use the appropriate
     ;; index (expiry / revoked_at). A combined `OR` predicate would prevent the planner from using either
     ;; index and degrade into a table scan as these tables grow.
-    {:authorization-codes-expired (oauth-authorization-code/delete-oauth-authorization-codes-for-cleanup! now)
-     :access-tokens-expired       (oauth-access-token/delete-oauth-access-tokens-for-expiry-cleanup! now)
-     :access-tokens-revoked       (oauth-access-token/delete-oauth-access-tokens-for-revocation-cleanup!)
-     :refresh-tokens-expired      (oauth-refresh-token/delete-oauth-refresh-tokens-for-expiry-cleanup! now)
-     :refresh-tokens-revoked      (oauth-refresh-token/delete-oauth-refresh-tokens-for-revocation-cleanup!)}))
+    {:authorization-codes-expired (oauth-authorization-code/delete-oauth-authorization-codes!
+                                   (oauth-server.db/authorization-code-ids-expired-before now))
+     :access-tokens-expired       (oauth-access-token/delete-oauth-access-tokens!
+                                   (oauth-server.db/access-token-ids-expired-before now))
+     :access-tokens-revoked       (oauth-access-token/delete-oauth-access-tokens!
+                                   (oauth-server.db/revoked-access-token-ids))
+     :refresh-tokens-expired      (oauth-refresh-token/delete-oauth-refresh-tokens!
+                                   (oauth-server.db/refresh-token-ids-expired-before now))
+     :refresh-tokens-revoked      (oauth-refresh-token/delete-oauth-refresh-tokens!
+                                   (oauth-server.db/revoked-refresh-token-ids))}))
 
 (task/defjob CleanupExpiredOAuthTokens
   "Delete expired and revoked OAuth tokens and authorization codes."

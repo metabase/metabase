@@ -94,9 +94,9 @@
       (testing "updating threads, some already holding the new value"
         (counted (fn [n]
                    (let [ids (fresh! n)]
-                     (exploration-thread/update-threads! (take-nth 2 ids) {:started_at started-at})
+                     (exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) (take-nth 2 ids)))
                      (events.tu/statement-count!
-                      #(exploration-thread/update-threads! ids {:started_at started-at})))))))))
+                      #(exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) ids))))))))))
 
 (deftest thread-without-position-goes-after-the-last-one-test
   (mt/with-temp [:model/Exploration {exploration-id :id} {}
