@@ -3411,6 +3411,373 @@
         },
         "additionalProperties" : false
       },
+      "metabase-enterprise.data-testing.schema..test-suite-run.error" : {
+        "description" : "Why a member did not pass or fail: the `:error_code` of a refusal, as the test's own run endpoint gives it, and a\n  message.",
+        "type" : "object",
+        "properties" : {
+          "error_code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "message" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-run.member" : {
+        "description" : "The outcome of one member of a suite run, as the run endpoint returns it to the user who ran it: with the test's id\n  and name when that user may read the test, and the test's own run result when the member passed or failed.",
+        "type" : "object",
+        "properties" : {
+          "data_test_run_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.error"
+          },
+          "test_entity_id" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "test_type" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.member-status"
+          },
+          "test_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+          }
+        },
+        "required" : [ "test_type", "test_entity_id", "position", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-run.member-status" : {
+        "description" : "The outcome of one member of a suite run. The suite passes only when every member is `:passed`.\n\n  `:missing`: no test has the member's type and entity id, its type is one this version does not know, or the thing it\n  tests is gone. `:forbidden`: the user who ran the suite may not run the test. `:refused`: the test's own run endpoint\n  would have refused the run, before or after it started. `:error`: loading the test's subject, checking the user's\n  permission, or the run failed for any other reason.",
+        "type" : "string",
+        "enum" : [ "passed", "failed", "refused", "error", "forbidden", "missing" ]
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-run.result" : {
+        "description" : "The outcome of a suite run as the run endpoint returns it. `:status` is `:timeout` when the cluster reaper timed the\n  run out while it ran, which happens only when the process running it stopped heartbeating it.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.member"
+            }
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "passed", "failed", "timeout" ]
+          },
+          "suite_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id", "suite_id", "status", "members" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-run.stored-member" : {
+        "description" : "The outcome of one member of a suite run as the run history keeps it: no name and no result, which the reader of the\n  history may not be allowed to see.",
+        "type" : "object",
+        "properties" : {
+          "data_test_run_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.error"
+          },
+          "position" : {
+            "type" : "integer"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.member-status"
+          },
+          "test_entity_id" : {
+            "type" : "string"
+          },
+          "test_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "test_type", "test_entity_id", "position", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-run.stored-members" : {
+        "description" : "The outcomes of the members of a suite run, in order.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.stored-member"
+        }
+      },
+      "metabase-enterprise.data-testing.schema..test-suite-runs.response" : {
+        "description" : "A page of the runs of a suite, each with the user who started it.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "description" : "A run of a test suite. `:members` is nil while the run is started, and stays nil when it ends in `:error`, or in\n  `:timeout` because the process running it stopped. `:suite_id` is nil once the suite is deleted.",
+              "type" : "object",
+              "properties" : {
+                "members" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.stored-members"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "initiated_by" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "status" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-status"
+                },
+                "end_time" : {
+                  "anyOf" : [ {
+                    "description" : "value must be a valid date/time/datetime",
+                    "type" : "string",
+                    "format" : "date-time"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "suite_id" : {
+                  "anyOf" : [ {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "last_heartbeat" : {
+                  "description" : "value must be a valid date/time/datetime",
+                  "type" : "string",
+                  "format" : "date-time"
+                },
+                "initiated_by_user" : {
+                  "anyOf" : [ {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.user"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "start_time" : {
+                  "description" : "value must be a valid date/time/datetime",
+                  "type" : "string",
+                  "format" : "date-time"
+                }
+              },
+              "required" : [ "id", "suite_id", "initiated_by", "status", "start_time", "end_time", "last_heartbeat", "members", "initiated_by_user" ],
+              "additionalProperties" : false
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "offset" : {
+            "type" : "integer"
+          },
+          "total" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "data", "limit", "offset", "total" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.create" : {
+        "description" : "What a client sends to create a test suite. The members are in the order the suite runs them.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.member.request"
+            }
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "members" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.member.request" : {
+        "description" : "A test in a suite, as a client names it: by its type and either its id or its entity id.",
+        "type" : "object",
+        "properties" : {
+          "test_entity_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "test_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "test_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
+          }
+        },
+        "required" : [ "test_type" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.member.response" : {
+        "description" : "A test in a suite as the API returns it. `:status` says whether the test exists and the caller can read it; only a\n  `:readable` member has its `:test_id` and `:name`.",
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "readable", "unreadable", "missing" ]
+          },
+          "test_entity_id" : {
+            "type" : "string"
+          },
+          "test_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "test_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "test_type", "test_entity_id", "position", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.response" : {
+        "description" : "A test suite as the API returns it, with its members in order.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.member.response"
+            }
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "entity_id", "name", "description", "creator_id", "created_at", "updated_at", "members" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.synced-item" : {
+        "description" : "A test suite as remote sync lists it.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..test-suite.update" : {
+        "description" : "What a client sends to update a test suite. Omitted fields are left unchanged; `:members` replaces every member.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.member.request"
+            }
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-testing.schema..transform-test.create" : {
         "description" : "What a client sends to create a transform test.",
         "type" : "object",
@@ -3931,6 +4298,103 @@
           }
         },
         "required" : [ "name" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema.test-suite" : {
+        "description" : "A saved test suite, without its members.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "entity_id", "name", "description", "creator_id", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema.test-suite-run" : {
+        "description" : "A run of a test suite. `:members` is nil while the run is started, and stays nil when it ends in `:error`, or in\n  `:timeout` because the process running it stopped. `:suite_id` is nil once the suite is deleted.",
+        "type" : "object",
+        "properties" : {
+          "end_time" : {
+            "anyOf" : [ {
+              "description" : "value must be a valid date/time/datetime",
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "initiated_by" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_heartbeat" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "members" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.stored-members"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "start_time" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-status"
+          },
+          "suite_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "suite_id", "initiated_by", "status", "start_time", "end_time", "last_heartbeat", "members" ],
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
@@ -4642,6 +5106,40 @@
         "type" : "integer",
         "minimum" : 1
       },
+      "metabase-enterprise.dependencies.findings.analyzed-type" : {
+        "description" : "A type of entity the analysis checks.",
+        "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+      },
+      "metabase-enterprise.dependencies.findings.cause" : {
+        "description" : "The entity an error is traced to. `entity_id` and `name` are nil once the entity is deleted; `entity_id` is always\n  nil for a table.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.source-entity-type"
+          }
+        },
+        "required" : [ "type", "id", "entity_id", "name" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.dependencies.models.analysis-finding-error.analysis-finding-error" : {
         "description" : "Schema for an AnalysisFindingError record.",
         "type" : "object",
@@ -4890,6 +5388,137 @@
           }
         },
         "required" : [ "nodes", "edges" ]
+      },
+      "metabase-enterprise.lint.api.entity" : {
+        "description" : "An entity a result names, keyed by its serialization `entity_id`.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "collection_id" : {
+                "anyOf" : [ {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "name" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "name", "collection_id" ],
+            "additionalProperties" : false
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.findings.analyzed-type"
+          }
+        },
+        "required" : [ "id", "type", "data" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.lint.api.report" : {
+        "type" : "object",
+        "properties" : {
+          "entities" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.lint.api.entity"
+            }
+          },
+          "results" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.lint.api.result"
+            }
+          },
+          "rules" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.lint.api.rule"
+            }
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "passed", "failed" ]
+          },
+          "summary" : {
+            "type" : "object",
+            "properties" : {
+              "entities" : {
+                "type" : "integer",
+                "minimum" : 0
+              },
+              "errors" : {
+                "type" : "integer",
+                "minimum" : 0
+              },
+              "warnings" : {
+                "type" : "integer",
+                "minimum" : 0
+              }
+            },
+            "required" : [ "errors", "warnings", "entities" ],
+            "additionalProperties" : false
+          }
+        },
+        "required" : [ "status", "summary", "entities", "rules", "results" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.lint.api.result" : {
+        "description" : "One error; `entity_id` keys into `entities`.",
+        "type" : "object",
+        "properties" : {
+          "cause" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.findings.cause"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "detail" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "ruleId" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
+          }
+        },
+        "required" : [ "ruleId", "entity_id", "message", "detail", "cause" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.lint.api.rule" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.lint.api.severity"
+          }
+        },
+        "required" : [ "severity", "description" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.lint.api.severity" : {
+        "type" : "string",
+        "enum" : [ "error", "warning" ]
       },
       "metabase-enterprise.metabot.schema..metabot-limit.max-usage" : {
         "description" : "The `:max_usage` of a Metabot usage limit: a non-negative integer, or nil for no limit.",
@@ -5416,6 +6045,35 @@
             },
             "model" : {
               "const" : "action"
+            },
+            "name" : {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "sync_status" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "id", "model", "name", "sync_status", "data" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "data" : {
+              "anyOf" : [ {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.synced-item"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "type" : "integer"
+            },
+            "model" : {
+              "const" : "testsuite"
             },
             "name" : {
               "anyOf" : [ {
@@ -38694,6 +39352,105 @@
           "$ref" : "#/components/schemas/metabase.security-center.schema.download-jar-url"
         }
       },
+      "metabase.security-center.schema.health-check" : {
+        "description" : "A check as the API returns it. `items` has at least one entry, so a check always reports something.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-id"
+          },
+          "checked_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "requires_restart" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-item"
+            },
+            "minItems" : 1
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-status"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "remediation" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.severity"
+          },
+          "docs" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-docs"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "severity", "title", "description", "remediation", "docs", "requires_restart", "status", "checked_at", "items" ],
+        "additionalProperties" : false
+      },
+      "metabase.security-center.schema.health-check-docs" : {
+        "description" : "`page` and `anchor` are what the frontend's `useDocsUrl` takes.",
+        "type" : "object",
+        "properties" : {
+          "anchor" : {
+            "type" : "string"
+          },
+          "page" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "page" ],
+        "additionalProperties" : false
+      },
+      "metabase.security-center.schema.health-check-entity-type" : {
+        "type" : "string",
+        "enum" : [ "database", "collection", "group" ]
+      },
+      "metabase.security-center.schema.health-check-id" : {
+        "type" : "string",
+        "enum" : [ "supported-version", "encryption-secret-key", "session-secret-key", "legacy-startup-encryption", "https-site-url", "https-redirect", "sso-login", "scim-provisioning", "mfa-required", "read-only-connections", "all-users-permissions" ]
+      },
+      "metabase.security-center.schema.health-check-item" : {
+        "description" : "The `entity_` keys are named as in task runs. `entity_id` is `\"root\"` for the root collection.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "const" : "root"
+            } ]
+          },
+          "entity_name" : {
+            "type" : "string"
+          },
+          "entity_type" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-entity-type"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.health-check-status"
+          }
+        },
+        "required" : [ "status" ],
+        "additionalProperties" : false
+      },
+      "metabase.security-center.schema.health-check-status" : {
+        "type" : "string",
+        "enum" : [ "pass", "fail", "unknown" ]
+      },
       "metabase.security-center.schema.match-status" : {
         "type" : "string",
         "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
@@ -58436,7 +59193,7 @@
       "get" : {
         "operationId" : "get-api-ee-card-test",
         "summary" : "GET /api/ee/card-test",
-        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. The tests of\n  archived cards are left out unless `include-archived` is true. Needs Data Studio access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
         "parameters" : [ {
           "in" : "query",
           "name" : "card-id",
@@ -58446,6 +59203,19 @@
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
               "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "anyOf" : [ {
+              "description" : "value must be a valid boolean string ('true' or 'false').",
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -58477,7 +59247,7 @@
       "post" : {
         "operationId" : "post-api-ee-card-test",
         "summary" : "POST /api/ee/card-test",
-        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  An input that gives rows must declare every column that the card's query reads from the input's table. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.",
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  An input that gives rows must declare every column that the card's query reads from the input's table. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.\n\n  A test of an archived card is refused.\n\n  A test of a card with no query is refused as one whose query cannot be compiled.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -58547,7 +59317,7 @@
       "put" : {
         "operationId" : "put-api-ee-card-test-id",
         "summary" : "PUT /api/ee/card-test/{id}",
-        "description" : "Update a card test.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "description" : "Update a card test. The update is refused when it leaves the test on an archived card.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -58626,7 +59396,7 @@
       "post" : {
         "operationId" : "post-api-ee-card-test-id-run",
         "summary" : "POST /api/ee/card-test/{id}/run",
-        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.\n\n  A run of a test whose card is archived is refused. A run of a test of a card with no query is refused as one whose\n  query cannot be compiled.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -63233,6 +64003,33 @@
         "tags" : [ "/api/ee/library" ]
       }
     },
+    "/api/ee/lint" : {
+      "post" : {
+        "operationId" : "post-api-ee-lint",
+        "summary" : "POST /api/ee/lint",
+        "description" : "Lint report of the instance's cards, transforms and segments, for superusers, leaving out archived and\n  Metabase-managed content. Each entry of `results` is one error the query analysis found, with its rule and, when\n  traced, the entity that caused it. Pending analysis runs first. Fails with a 503 when the analysis can't run: a job\n  is disabled or Metabase is in read-only mode.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.lint.api.report"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/lint" ]
+      }
+    },
     "/api/ee/logs/query_execution/{yyyy-mm}" : {
       "get" : {
         "operationId" : "get-api-ee-logs-query_execution-yyyy-mm",
@@ -66181,10 +66978,10 @@
         "tags" : [ "/api/ee/scim/v2" ]
       }
     },
-    "/api/ee/security-center" : {
+    "/api/ee/security-center/advisories" : {
       "get" : {
-        "operationId" : "get-api-ee-security-center",
-        "summary" : "GET /api/ee/security-center",
+        "operationId" : "get-api-ee-security-center-advisories",
+        "summary" : "GET /api/ee/security-center/advisories",
         "description" : "List all security advisories with match status.",
         "parameters" : [ ],
         "responses" : {
@@ -66315,10 +67112,10 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
-    "/api/ee/security-center/acknowledge" : {
+    "/api/ee/security-center/advisories/acknowledge" : {
       "post" : {
-        "operationId" : "post-api-ee-security-center-acknowledge",
-        "summary" : "POST /api/ee/security-center/acknowledge",
+        "operationId" : "post-api-ee-security-center-advisories-acknowledge",
+        "summary" : "POST /api/ee/security-center/advisories/acknowledge",
         "description" : "Acknowledge multiple security advisories. Skips already-acknowledged advisories.",
         "parameters" : [ ],
         "responses" : {
@@ -66408,10 +67205,10 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
-    "/api/ee/security-center/sync" : {
+    "/api/ee/security-center/advisories/sync" : {
       "post" : {
-        "operationId" : "post-api-ee-security-center-sync",
-        "summary" : "POST /api/ee/security-center/sync",
+        "operationId" : "post-api-ee-security-center-advisories-sync",
+        "summary" : "POST /api/ee/security-center/advisories/sync",
         "description" : "Trigger an async advisory sync + re-evaluation.\n   Returns immediately. If a sync is already running, the request is a no-op.",
         "parameters" : [ ],
         "responses" : {
@@ -66443,10 +67240,10 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
-    "/api/ee/security-center/test-notification" : {
+    "/api/ee/security-center/advisories/test-notification" : {
       "post" : {
-        "operationId" : "post-api-ee-security-center-test-notification",
-        "summary" : "POST /api/ee/security-center/test-notification",
+        "operationId" : "post-api-ee-security-center-advisories-test-notification",
+        "summary" : "POST /api/ee/security-center/advisories/test-notification",
         "description" : "Send a test notification through the given Security Center channels.\n\n   The request body lets callers pass the unsaved notification config from the\n   dialog so the test reflects current form state, not the persisted settings.\n   Both fields are optional; when omitted, the saved setting is used.",
         "parameters" : [ ],
         "responses" : {
@@ -66505,10 +67302,10 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
-    "/api/ee/security-center/{advisory-id}/acknowledge" : {
+    "/api/ee/security-center/advisories/{advisory-id}/acknowledge" : {
       "post" : {
-        "operationId" : "post-api-ee-security-center-advisory-id-acknowledge",
-        "summary" : "POST /api/ee/security-center/{advisory-id}/acknowledge",
+        "operationId" : "post-api-ee-security-center-advisories-advisory-id-acknowledge",
+        "summary" : "POST /api/ee/security-center/advisories/{advisory-id}/acknowledge",
         "description" : "Acknowledge a security advisory. Stops repeat notifications.",
         "parameters" : [ {
           "in" : "path",
@@ -66583,11 +67380,83 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
+    "/api/ee/security-center/health-checks" : {
+      "get" : {
+        "operationId" : "get-api-ee-security-center-health-checks",
+        "summary" : "GET /api/ee/security-center/health-checks",
+        "description" : "The health checks that apply to this instance, each with its current result.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "checks" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.health-check"
+                      }
+                    }
+                  },
+                  "required" : [ "checks" ]
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/health-checks/recheck" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-health-checks-recheck",
+        "summary" : "POST /api/ee/security-center/health-checks/recheck",
+        "description" : "Refresh every background health check that applies, wait for it, then run every health check that applies.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "checks" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.health-check"
+                      }
+                    }
+                  },
+                  "required" : [ "checks" ]
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
     "/api/ee/segment-test" : {
       "get" : {
         "operationId" : "get-api-ee-segment-test",
         "summary" : "GET /api/ee/segment-test",
-        "description" : "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data\n  Studio access.\n\n  A segment test, with its inputs and expectations, is readable by every user who can read its segment.",
+        "description" : "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. The tests\n  of archived segments are left out unless `include-archived` is true. Needs Data Studio access.\n\n  A segment test, with its inputs and expectations, is readable by every user who can read its segment.",
         "parameters" : [ {
           "in" : "query",
           "name" : "segment-id",
@@ -66597,6 +67466,19 @@
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
               "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "anyOf" : [ {
+              "description" : "value must be a valid boolean string ('true' or 'false').",
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -66628,7 +67510,7 @@
       "post" : {
         "operationId" : "post-api-ee-segment-test",
         "summary" : "POST /api/ee/segment-test",
-        "description" : "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's\n  filter. Expectation SQL names the output `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is\n  refused. The test needs an input for the segment's table, and one for each table that the filter reads through a\n  foreign key.\n\n  The output has the columns of the segment's table that its input declares. When that input is SQL, the output has\n  every column of the table.\n\n  An input that gives rows must declare every column that the segment's query reads from the input's table: for the\n  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.",
+        "description" : "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's\n  filter. Expectation SQL names the output `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is\n  refused. The test needs an input for the segment's table, and one for each table that the filter reads through a\n  foreign key.\n\n  The output has the columns of the segment's table that its input declares. When that input is SQL, the output has\n  every column of the table.\n\n  An input that gives rows must declare every column that the segment's query reads from the input's table: for the\n  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.\n\n  A test of an archived segment is refused.\n\n  A test of a segment whose definition is empty, cannot be read, names no table, or names a table that no longer\n  exists is refused as one whose query cannot be compiled.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -66698,7 +67580,7 @@
       "put" : {
         "operationId" : "put-api-ee-segment-test-id",
         "summary" : "PUT /api/ee/segment-test/{id}",
-        "description" : "Update a segment test.",
+        "description" : "Update a segment test. The update is refused when it leaves the test on an archived segment.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -66777,7 +67659,7 @@
       "post" : {
         "operationId" : "post-api-ee-segment-test-id-run",
         "summary" : "POST /api/ee/segment-test/{id}/run",
-        "description" : "Run a segment test. Needs read access to the test, permission to run its segment's definition, and native query\n  access to the segment's database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "description" : "Run a segment test. Needs read access to the test, permission to run its segment's definition, and native query\n  access to the segment's database. These are checked before any refusal of the test; only an admin has them for a\n  segment whose definition is empty.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.\n\n  A run of a test whose segment is archived is refused. A run of a test of a segment whose definition is empty,\n  cannot be read, names no table, or names a table that no longer exists is refused as one whose query cannot be\n  compiled.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -67744,6 +68626,255 @@
           }
         },
         "tags" : [ "/api/ee/tenant" ]
+      }
+    },
+    "/api/ee/test-suite" : {
+      "get" : {
+        "operationId" : "get-api-ee-test-suite",
+        "summary" : "GET /api/ee/test-suite",
+        "description" : "List the test suites, in name order, with their members.\n\n  A member's `status` is `readable`, `unreadable` when the caller cannot read its test, or `missing` when this instance\n  lacks the test; only a `readable` member has `test_id` and `name`.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.response"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-test-suite",
+        "summary" : "POST /api/ee/test-suite",
+        "description" : "Create a test suite. Its members run in the order given. Each member names a test the caller can read, by\n  `test_type` and either `test_id` or `test_entity_id`; a test can be in a suite at most once.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.response"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.create"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      }
+    },
+    "/api/ee/test-suite/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-test-suite-id",
+        "summary" : "GET /api/ee/test-suite/{id}",
+        "description" : "Get a test suite with its members. A member's `status` is `readable`, `unreadable` when the caller cannot read its\n  test, or `missing` when this instance lacks the test; only a `readable` member has `test_id` and `name`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.response"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-test-suite-id",
+        "summary" : "PUT /api/ee/test-suite/{id}",
+        "description" : "Update a test suite. `members`, when given, replaces every member, in the order given. Each member names a test by\n  `test_type` and either `test_id` or `test_entity_id`, and the caller must be able to read the test, with one\n  exception: a current member that the caller cannot read, or whose test is missing, is kept when named by `test_type`\n  and `test_entity_id`. A test can be in a suite at most once.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.response"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite.update"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-test-suite-id",
+        "summary" : "DELETE /api/ee/test-suite/{id}",
+        "description" : "Delete a test suite. The tests in it are not deleted.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      }
+    },
+    "/api/ee/test-suite/{id}/run" : {
+      "post" : {
+        "operationId" : "post-api-ee-test-suite-id-run",
+        "summary" : "POST /api/ee/test-suite/{id}/run",
+        "description" : "Run the members of a test suite, in order, within the request, and record the run.\n\n  Each member runs as its own run endpoint would run it, under the same permission rule, and reports its `status`:\n  `passed` or `failed` with its `result`; `refused` with the `error` its run endpoint would have returned; `error`\n  when loading the test's subject or checking the caller's permission threw, or the run threw an exception that is not\n  a refusal; `forbidden` when the caller may not run it (with no name when the caller cannot read it); `missing` when\n  this instance has no such test, or the thing the test tests is gone.\n\n  The suite's `status` is `timeout` when the server timed the run out while it ran, because its heartbeat stopped;\n  otherwise `passed` when every member passed, and `failed` when not.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-run.result"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
+      }
+    },
+    "/api/ee/test-suite/{id}/runs" : {
+      "get" : {
+        "operationId" : "get-api-ee-test-suite-id-runs",
+        "summary" : "GET /api/ee/test-suite/{id}/runs",
+        "description" : "List the runs of a test suite, newest first. A member's outcome has no `test_id`, `name`, or `result`. It has an\n  `error` only when the member's test exists and the caller may run it. Every member's `status` is shown, even to a\n  caller who cannot read the member's test.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test-suite-runs.response"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/test-suite" ]
       }
     },
     "/api/ee/transform-test" : {
