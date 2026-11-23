@@ -36,6 +36,7 @@ import {
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
+import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -72,6 +73,8 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import { getIsRunning } from "../store/selectors";
 
 import { QueryBuilder } from "./QueryBuilder";
 
@@ -388,6 +391,26 @@ export const setup = async ({
   await waitForLoaderToBeRemoved();
 
   return result;
+};
+
+const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
+
+/**
+ * A saved question runs its query as it opens. The loader can be gone before
+ * the question is even loaded, so this waits for the run's request and then for
+ * the run to end, and the result cannot update the page after the test.
+ */
+export const waitForQueryToFinish = async (store: {
+  getState: () => State;
+}) => {
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory
+        .calls()
+        .some((call) => QUERY_RUN_PATH.test(new URL(call.url).pathname)),
+    ).toBe(true),
+  );
+  await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 };
 
 export const triggerNativeQueryChange = async () => {

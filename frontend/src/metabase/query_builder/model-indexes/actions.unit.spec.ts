@@ -111,6 +111,28 @@ describe("Entities > model-indexes > actions", () => {
       expect(body.value_ref).toEqual(indexFieldRef);
     });
 
+    it("should not make a POST call when the model has no primary key", async () => {
+      const fkFieldRef: FieldReference = ["field", 1, null];
+      const indexFieldRef: FieldReference = ["field", 2, null];
+
+      const model = createModelWithResultMetadata([
+        createMockField({ field_ref: fkFieldRef, semantic_type: "type/FK" }),
+        createMockField({ should_index: true, field_ref: indexFieldRef }),
+        createMockField(),
+      ]);
+
+      setupModelIndexEndpoints(model.id(), []);
+
+      const { dispatch } = setup();
+
+      await updateModelIndexes(model)(dispatch);
+
+      expect(
+        fetchMock.callHistory.calls(`getModelIndexes-${model.id()}`),
+      ).toHaveLength(1);
+      expect(fetchMock.callHistory.calls("createModelIndex")).toHaveLength(0);
+    });
+
     it("should make a DELETE call to remove an index field", async () => {
       const pkFieldRef: FieldReference = ["field", 1, null];
       const indexFieldRef: FieldReference = ["field", 2, null];
