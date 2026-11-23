@@ -318,6 +318,14 @@
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
 
+(defn- live-app-by-slug
+  "The app with `slug`, read-checked. A disabled app is a 404 to non-superusers, like a missing one, so its embed
+  says the app isn't live rather than that the user lacks access."
+  [slug]
+  (let [app (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (api/check-404 (or api/*is-superuser?* (:enabled app)))
+    (api/read-check app)))
+
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
 ;; what iframe to render, before any data-app realm exists, so the request never carries the
@@ -325,7 +333,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
+  (let [app (live-app-by-slug slug)]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
@@ -339,7 +347,7 @@
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
+    (let [row  (check-not-outdated (live-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
