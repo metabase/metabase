@@ -82,8 +82,7 @@ const toResultMetadata = (columns: DatasetColumn[]) =>
 
 const getResultColumns = (card: Card) =>
   // The API returns dataset columns as the model metadata, which `Field` does not type.
-  (card.result_metadata as unknown as DatasetColumn[] | null) ??
-  ORDERS_COLUMNS;
+  (card.result_metadata as unknown as DatasetColumn[] | null) ?? ORDERS_COLUMNS;
 
 const createModel = ({
   result_metadata = ORDERS_COLUMNS,
