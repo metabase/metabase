@@ -162,6 +162,7 @@
    :visualization_settings lib-be/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
+   :product_analysis       mi/transform-json
    :type                   mi/transform-keyword
    :dimensions             metrics/transform-dimensions
    :dimension_mappings     metrics/transform-dimension-mappings})
@@ -468,7 +469,7 @@
 (defn- check-dashboard-internal-card-shape
   "Throws unless the new Card `card`, which is in a Dashboard, is a question with no position in a Collection."
   [card]
-  (when (or (not (contains? #{:question "question" nil} (:type card)))
+  (when (or (not (contains? #{:question "question" nil :product-analysis} (:type card)))
             (some? (:collection_position card)))
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
@@ -2617,7 +2618,7 @@
   [card creator-id]
   (->> (-> (select-keys card [:dataset_query :description :display :name :visualization_settings :parameters
                               :parameter_mappings :collection_id :collection_position :cache_ttl :type :dashboard_id
-                              :document_id :result_metadata])
+                              :document_id :product_analysis :result_metadata])
            (assoc :creator_id creator-id))
        (lib/normalize ::queries.schema/card.create)))
 
@@ -2669,7 +2670,7 @@
   `:collection_id` and a few others even when nil and the rest only when not nil."
   [changes]
   (u/select-keys-when changes
-                      :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type}
+                      :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type :product_analysis}
                       :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                  :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                  :result_metadata :verified-result-metadata?}))

@@ -225,6 +225,7 @@
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
    [:dimensions                                {:optional true} [:maybe [:sequential ::card.dimension]]]
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
+   [:product_analysis                          {:optional true} [:maybe :map]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
    [:verified-result-metadata?                 {:optional true} :boolean]])

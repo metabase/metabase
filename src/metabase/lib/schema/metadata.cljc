@@ -741,7 +741,7 @@
 
 (def card-types
   "Valid Card `:type`s."
-  #{:question :model :metric})
+  #{:question :model :metric :product-analysis})
 
 (mr/def ::card.type
   "All acceptable card types.
