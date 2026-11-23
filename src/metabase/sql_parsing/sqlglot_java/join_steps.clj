@@ -5,8 +5,8 @@
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expr Expressions$Column Expressions$Identifier Expressions$Parameter Expressions$Placeholder
-                             Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
+   (com.metabase.sqlglot.ast Expr Expressions$Column Expressions$Identifier Expressions$Parameter
+                             Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
    (java.util Collection)))
@@ -207,6 +207,7 @@
                   (nil? id)
                   (schema-qualified-column? (ast/arg join "on")))
       (let [column (fn [this] (ast/create "Column" {"this" this, "table" (ast/copy id)}))
+            marker (column (ast/to-identifier "mb_matched"))
             marked (ast/create "Select"
                                {"expressions" [(column (ast/create "Star"))
                                                (ast/create "Alias" {"this"  (ast/create "Literal" {"this"      "1"
@@ -221,8 +222,7 @@
           (ast/create "Select"
                       {"expressions" [(count-star-as-n)
                                       (ast/create "Alias"
-                                                  {"this"  (ast/create "Count"
-                                                                       {"this" (column (ast/to-identifier "mb_matched"))})
+                                                  {"this"  (ast/create "Count" {"this" marker})
                                                    "alias" (ast/to-identifier "m")})]
                        "from_"       (ast/copy from-node)
                        "joins"       (conj (mapv ast/copy (pop chain)) last')})
@@ -297,7 +297,8 @@
                                           (or (when (= "left" strategy)
                                                 (left-join-counts from-node chain with-node dialect))
                                               (two-counts (count-select from-node chain)
-                                                          (count-select from-node (conj (pop chain) (inner-variant join)))
+                                                          (count-select from-node
+                                                                        (conj (pop chain) (inner-variant join)))
                                                           with-node))
                                           (count-select from-node chain with-node))]
                            (assoc source :strategy strategy :sql (ast/sql query dialect))))
