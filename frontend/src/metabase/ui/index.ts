@@ -4,6 +4,7 @@ export {
   useComputedColorScheme,
   useMantineTheme,
   useMatches,
+  useSafeMantineTheme,
 } from "@mantine/core";
 export type {
   MenuDropdownProps,

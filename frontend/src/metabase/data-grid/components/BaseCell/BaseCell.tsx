@@ -2,8 +2,12 @@ import cx from "classnames";
 import type React from "react";
 import { memo, useMemo } from "react";
 
+import { useDataGridTheme } from "metabase/data-grid/hooks";
 import type { CellAlign } from "metabase/data-grid/types";
+import { useSafeMantineTheme } from "metabase/ui";
+import { getAccessibleCellColors } from "metabase/ui/colors/accessible-cell-colors";
 import { tryIsDark } from "metabase/ui/colors/palette";
+import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
 
 import styles from "./BaseCell.module.css";
 
@@ -26,33 +30,54 @@ export const BaseCell = memo(function BaseCell({
   style,
   ...rest
 }: BaseCellProps) {
-  const cellStyle = useMemo(() => {
+  const getColor = useSafeMantineTheme().fn?.themeColor;
+  const dataGridTheme = useDataGridTheme();
+  const cellStyle = useMemo<
+    React.CSSProperties & Record<`--cell-${string}`, string | undefined>
+  >(() => {
     if (isSelected) {
-      // Unjustified type cast. FIXME
       return {
         "--cell-bg-color": `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)`,
         "--cell-hover-bg-color": hasHover
           ? `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)`
           : undefined,
-      } as React.CSSProperties;
+      };
     }
     if (!backgroundColor) {
-      // Unjustified type cast. FIXME
       return {
         "--cell-hover-bg-color": hasHover
           ? `color-mix(in srgb, var(--mb-color-core-brand), transparent 90%)`
           : undefined,
-      } as React.CSSProperties;
+      };
     }
 
-    const hoverColor = getHoverColor(backgroundColor);
+    const accessibleColors = getColor
+      ? getAccessibleCellColors(
+          backgroundColor,
+          resolveColorFromCssVariable(
+            dataGridTheme?.cell?.backgroundColor ??
+              getColor("background_page-primary"),
+            getColor,
+          ),
+          resolveColorFromCssVariable(
+            dataGridTheme?.cell?.textColor ?? getColor("text-primary"),
+            getColor,
+          ),
+        )
+      : undefined;
 
-    // Unjustified type cast. FIXME
     return {
-      "--cell-bg-color": backgroundColor,
-      "--cell-hover-bg-color": hasHover ? hoverColor : undefined,
-    } as React.CSSProperties;
-  }, [backgroundColor, hasHover, isSelected]);
+      "--cell-bg-color": accessibleColors?.backgroundColor ?? backgroundColor,
+      "--cell-text-color": accessibleColors?.color,
+      "--cell-hover-bg-color": hasHover
+        ? (accessibleColors?.hoverBackgroundColor ??
+          getHoverColor(backgroundColor))
+        : undefined,
+      "--cell-hover-text-color": hasHover
+        ? accessibleColors?.hoverColor
+        : undefined,
+    };
+  }, [backgroundColor, hasHover, isSelected, dataGridTheme, getColor]);
 
   return (
     <div

@@ -11,6 +11,8 @@ import {
   useMantineTheme,
 } from "metabase/ui";
 import { adjustBrightness, alpha, lighten } from "metabase/ui/colors";
+import { getAccessibleCellColors } from "metabase/ui/colors/accessible-cell-colors";
+import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
 import type { RowValue, VisualizationSettings } from "metabase-types/api";
 
 import S from "./PivotTable.module.css";
@@ -157,6 +159,21 @@ export function Cell({
   const cellId = useId();
   const theme = useMantineTheme();
   const colorProps = { theme, isEmphasized, isTransparent };
+  const cellColor = getCellColor(theme);
+  const formattedColors = backgroundColor
+    ? getAccessibleCellColors(
+        backgroundColor,
+        resolveColorFromCssVariable(
+          theme.other.table.cell.backgroundColor ??
+            theme.fn.themeColor("background_page-primary"),
+          theme.fn.themeColor,
+        ),
+        resolveColorFromCssVariable(
+          cellColor ?? theme.fn.themeColor("text-primary"),
+          theme.fn.themeColor,
+        ),
+      )
+    : undefined;
 
   return (
     <Box
@@ -170,8 +187,13 @@ export function Cell({
       data-testid="pivot-table-cell"
       style={{
         ...style,
-        ...(backgroundColor ? { backgroundColor } : {}),
-        "--pivot-cell-color": getCellColor(theme),
+        ...(backgroundColor
+          ? {
+              backgroundColor:
+                formattedColors?.backgroundColor ?? backgroundColor,
+            }
+          : {}),
+        "--pivot-cell-color": formattedColors?.color ?? cellColor,
         "--pivot-cell-bg": getCellBackgroundColor(colorProps),
         "--pivot-cell-hover-bg": getCellHoverBackgroundColor(colorProps),
       }}
