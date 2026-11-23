@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -109,7 +110,8 @@
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (request/with-current-user nil
-          (query-processor.db/set-card-result-metadata! card-id actual-metadata))))
+          (query-processor.db/resolve-model! :model/Card)
+          (qp.card-writes/save-result-metadata! :model/Card card-id actual-metadata))))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

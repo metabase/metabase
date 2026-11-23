@@ -2,7 +2,6 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -38,16 +37,25 @@
   [snippet-name :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name))
 
-(mu/defn insert-snippet!
-  "Insert the NativeQuerySnippet `row` and return the inserted instance."
-  [row :- ::native-query-snippets.schema/native-query-snippet.update]
-  (t2/insert-returning-instance! :model/NativeQuerySnippet row))
+(mu/defn unarchived-snippets-in-collections
+  "The unarchived NativeQuerySnippets in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived false))
 
-(mu/defn update-snippet!
-  "Apply `changes` to the NativeQuerySnippet with `id`."
-  [id :- ::lib.schema.id/native-query-snippet
-   changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
-  (t2/update! :model/NativeQuerySnippet :id id changes))
+(mu/defn restorable-snippets-in-collections
+  "The NativeQuerySnippets in the Collections with `collection-ids` that were archived along with them."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived true :archived_directly false))
+
+(mu/defn snippets-in-collections
+  "The NativeQuerySnippets in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids]))
+
+(mu/defn delete-snippets-in-collections!
+  "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
 
 (mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
   "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."

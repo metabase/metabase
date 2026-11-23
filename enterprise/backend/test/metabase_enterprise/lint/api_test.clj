@@ -25,14 +25,13 @@
 
 (defn- create-card!
   [user card-name card-type query]
-  (card/create-card! {:name                   card-name
-                      :database_id            (mt/id)
-                      :display                :table
-                      :query_type             :query
-                      :type                   card-type
-                      :dataset_query          query
-                      :visualization_settings {}}
-                     user))
+  (first (card/create-cards! [(assoc {:name                   card-name
+                                      :database_id            (mt/id)
+                                      :display                :table
+                                      :query_type             :query
+                                      :type                   card-type
+                                      :dataset_query          query
+                                      :visualization_settings {}} :creator_id (:id user))])))
 
 (defn- create-card-filtering-total!
   "A question on `source-card` that filters on its TOTAL column, which only the orders table has."
@@ -44,7 +43,7 @@
 (defn- update-card-query!
   [card query]
   (lib-be/with-metadata-provider-cache
-    (card/update-card! {:card-before-update card :card-updates {:dataset_query query}})))
+    (card/update-cards! [{:id (:id card) :dataset_query query}])))
 
 (defn- do-with-broken-model!
   "Call `f` with a model of the orders table and what `create-dependents!` builds on it, once the model is pointed at
@@ -66,7 +65,7 @@
   (mt/with-premium-features #{:dependencies}
     (mt/with-model-cleanup cleanup-models
       (mt/with-temp [:model/Card native-card {:name          "Lint native"
-                                              :dataset_query (mt/native-query {:query sql})}]
+                                              :dataset_query (lib/native-query (mt/metadata-provider) sql)}]
         (f native-card)))))
 
 (defn- do-with-broken-native-card!
@@ -167,7 +166,7 @@
        [(create-card-filtering-total! user model-card "Lint archived")
         (create-card-filtering-total! user model-card "Lint internal")])
      (fn [_model-card [archived-card internal-card]]
-       (card/update-card! {:card-before-update archived-card :card-updates {:archived true}})
+       (card/update-cards! [{:id (:id archived-card) :archived true}])
        (t2/update! :model/Card :id (:id internal-card) {:creator_id config/internal-mb-user-id})
        (let [report (lint-report)]
          (doseq [card [archived-card internal-card]]
@@ -272,7 +271,7 @@
   (do-with-uncomputable-dependencies!
    card
    (fn []
-     (update-card-query! card (mt/native-query {:query "SELECT * FROM orderz"}))
+     (update-card-query! card (lib/native-query (mt/metadata-provider) "SELECT * FROM orderz"))
      (deps.findings/drain-pending!)))
   (is (:terminal (t2/select-one :model/DependencyStatus :entity_type :card :entity_id (:id card)))))
 

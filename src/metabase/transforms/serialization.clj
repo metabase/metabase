@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.log :as log]))
 
@@ -133,15 +132,6 @@
                  entity_id))
     (vec resolved)))
 
-(defn transform-job-before-load
-  "The TransformJob load `items`, a built-in job keeping its local name and description."
-  [items]
-  (mapv (fn [{:keys [local row] :as item}]
-          (cond-> item
-            (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
-            (update :row assoc :name (:name local) :description (:description local))))
-        items))
-
 (defn transform-job-storage-paths
   "The storage path of each of the TransformJob `entities`, under `transforms/transform_jobs/` by name."
   [entities _ctx]
@@ -157,34 +147,21 @@
                  [:model/TransformTag tag-id])))
         entities))
 
-(defn- built-in-name-kept
-  "`item`, a load item, with the name of the built-in tag it updates."
-  [{:keys [local row] :as item}]
-  (cond-> item
-    (and (some? (:built_in_type local)) (= (:built_in_type local) (:built_in_type row)))
-    (update :row assoc :name (:name local))))
-
-(defn- free-name-taken
-  "`item`, a load item, with the first of its name, then the name followed by \" (2)\", \" (3)\" and so on, that no other
-  tag has, `taken` being the names the items before it took, each with its entity id."
-  [taken {{:keys [entity_id] tag-name :name} :row, :keys [local] :as item}]
-  (let [own?  (fn [owner] (or (nil? owner) (= owner entity_id) (= owner (:entity_id local))))
-        free? (fn [candidate] (own? (or (get taken candidate) (transforms.db/tag-entity-id-by-name candidate))))
-        n     (first (filter free? (cons tag-name (map #(str tag-name " (" % ")") (iterate inc 2)))))]
-    [(assoc-in item [:row :name] n) (assoc taken n entity_id)]))
-
-(defn transform-tag-before-load
-  "The TransformTag load `items`, a built-in tag keeping its local name and the others renamed until no other tag holds
-  their name."
-  [items]
+(defn rename-taken-tag-names
+  "`rows`, TransformTag rows, with each name that another tag holds replaced by the first of the name followed by
+  ` (2)`, ` (3)` and so on that none holds, `taken` mapping each name in the app DB to the id of its tag, a row owning
+  the name held by its own `:id` and a name an earlier row took being held by that row."
+  [rows taken]
   (first
-   (reduce (fn [[items taken] item]
-             (if (not (string? (not-empty (get-in item [:row :name]))))
-               [(conj items item) taken]
-               (let [[item taken] (free-name-taken taken item)]
-                 [(conj items item) taken])))
-           [[] {}]
-           (map built-in-name-kept items))))
+   (reduce (fn [[renamed taken] {tag-name :name :as row}]
+             (if-not (string? (not-empty tag-name))
+               [(conj renamed row) taken]
+               (let [own   (or (:id row) (:entity_id row))
+                     free? (fn [candidate] (let [owner (get taken candidate)] (or (nil? owner) (= owner own))))
+                     n     (first (filter free? (cons tag-name (map #(str tag-name " (" % ")") (iterate inc 2)))))]
+                 [(conj renamed (assoc row :name n)) (assoc taken n own)])))
+           [[] taken]
+           rows)))
 
 (defn transform-tag-storage-paths
   "The storage path of each of the TransformTag `entities`, under `transforms/transform_tags/` by name."

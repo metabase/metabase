@@ -425,13 +425,20 @@
                api/*current-user-id*)
     (swap! user-local-values vary-meta dissoc unreadable-user-settings-key)))
 
+(defmulti store-user-local-values!
+  "Store `settings-json`, the user-local setting values, on the row of `model` with `user-id`. The User model, whose
+  namespace requires this one, implements it with its own write function."
+  {:arglists '([model user-id settings-json])}
+  (fn [model _user-id _settings-json] model))
+
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     (warn-discarding-unreadable-settings! @*user-local-values*)
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
+    (t2/resolve-model :model/User)
+    (store-user-local-values! :model/User api/*current-user-id* (json/encode @@*user-local-values*))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
@@ -857,16 +864,12 @@
 ;;; |                                                      set!                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- update-setting!
-  "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
-  [setting-name new-value]
-  ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (settings.db/update-setting-value! setting-name new-value))
+(declare create-setting! update-setting! delete-setting!)
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (settings.db/insert-setting! setting-name new-value)
+  (try (create-setting! setting-name new-value)
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
@@ -935,11 +938,11 @@
             (cond
               (nil? new-value)
               (do
-                (settings.db/delete-setting! setting-name)
+                (delete-setting! setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (settings.db/delete-setting! deprecated-key)
+                    (delete-setting! deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
@@ -1022,6 +1025,21 @@
        (u.date/format timestamp)
        (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
+(defn csv-string-entries
+  "The entries in `csv-string`, a CSV string of one line, without surrounding spaces or blank entries.
+   This is how a `:csv` setting reads a string it is given to store, so a custom setter can check the entries first.
+   Throws a 400 for a string that is not valid CSV or spans several lines."
+  [csv-string]
+  (let [rows (try
+               (doall (csv-rows csv-string))
+               (catch Exception _
+                 ;; Leave the parse error out: it can quote part of the value, which may be secret.
+                 (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
+    ;; Every read of a `:csv` value parses only its first line, so storing more would silently drop the rest.
+    (when (next rows)
+      (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
+    (csv-entries (first rows))))
+
 (defn- serialize-csv
   "The stored form of `value`, a list of entries or a CSV string of one line.
    Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]` or `,`.
@@ -1030,14 +1048,7 @@
   [value]
   (cond
     (string? value)
-    (let [rows (try
-                 (doall (csv-rows value))
-                 (catch Exception _
-                   ;; Leave the parse error out: it can quote part of the value, which may be secret.
-                   (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
-      (when (next rows)
-        (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
-      (serialize-csv (first rows)))
+    (serialize-csv (csv-string-entries value))
 
     (sequential? value)
     (let [entries (csv-entries value)]
@@ -1838,13 +1849,16 @@
                :parse-error parse-error
                :env-var? env-var?)))))
 
-(defn- warn-about-ignored-csv-lines!
-  "Logs a warning when `setting` is a `:csv` setting whose env var has lines after the first, which are not read."
-  [setting]
-  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
-  (when-let [[env-var value] (and (= :csv (:type setting))
-                                  (not (:custom-getter? setting))
-                                  (env-var-source setting))]
+(defn warn-about-ignored-csv-lines!
+  "Logs a warning when `setting-definition-or-name`, a `:csv` setting, has an env var with lines after the first,
+   which are not read.
+   [[validate-settings-formatting!]] calls this for every `:csv` setting without a custom getter. A setting whose
+   custom getter reads its value with `get-value-of-type :csv` also ignores later lines, so its startup logic can call
+   this too."
+  [setting-definition-or-name]
+  (when-let [[env-var value] (let [setting (resolve-setting setting-definition-or-name)]
+                               (and (= :csv (:type setting))
+                                    (env-var-source setting)))]
     ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
     ;; they parse, so a parse error after the first line counts as one.
     (let [rows               (csv-rows value)
@@ -1858,7 +1872,8 @@
 
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
-  (run! warn-about-ignored-csv-lines! (vals @registered-settings))
+  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
+  (run! warn-about-ignored-csv-lines! (remove :custom-getter? (vals @registered-settings)))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
@@ -1935,6 +1950,25 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-setting! :- :map
+  "Insert a Setting row for `setting-key` holding `value` and return it."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/insert-setting! setting-key value))
+
+(mu/defn update-setting! :- :int
+  "Set the value of the Setting with `setting-key` to `value`, returning the number updated."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/update-setting-value! setting-key value))
+
+(mu/defn delete-setting! :- :int
+  "Delete the Setting with `setting-key`, returning the number deleted."
+  [setting-key :- [:or :keyword :string]]
+  (settings.db/delete-setting! setting-key))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

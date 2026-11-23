@@ -1,6 +1,8 @@
 (ns metabase.metabot.models.metabot-conversation-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -37,9 +39,37 @@
             (is (= {originated true participated false unrelated false} (by-id mi/can-write?))))
           (mt/with-current-user (mt/user->id :crowberto)
             (is (= {originated false participated false unrelated false} (by-id mi/can-write?)))))
-        (testing "a list is read in one query"
-          (mt/with-current-user rasta-id
-            (let [rows (conversations)]
-              (t2/with-call-count [call-count]
-                (t2/hydrate rows :can_read)
-                (is (= 1 (call-count)))))))))))
+        (testing "a list is read in the same number of queries for any number of conversations"
+          (mt/with-temp [:model/MetabotConversation {fourth :id} {:user_id lucky-id}
+                         :model/MetabotConversation {fifth :id}  {:user_id lucky-id}
+                         :model/MetabotConversation {sixth :id}  {:user_id rasta-id}]
+            (mt/with-current-user rasta-id
+              (let [counted (fn [ids]
+                              (let [rows (t2/select :model/MetabotConversation :id [:in ids])]
+                                (t2/with-call-count [call-count]
+                                  (t2/hydrate rows :can_read)
+                                  (call-count))))]
+                (counted [originated])
+                (is (= (counted [originated participated])
+                       (counted [originated participated unrelated fourth fifth sixth])))))))))))
+
+(deftest delete-by-ids-statement-count-does-not-grow-with-rows-test
+  (let [make! (fn [n]
+                (vec (repeatedly n (fn []
+                                     (let [id (str (random-uuid))]
+                                       (metabot-conversation/create-metabot-conversations! [{:id id :user_id (mt/user->id :rasta)}])
+                                       id)))))
+        counted (fn [n]
+                  (let [ids (make! n)]
+                    (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! ids))))]
+    (counted 1)
+    (is (= (counted 2) (counted 6)))))
+
+(deftest create-metabot-conversations-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/MetabotConversation]
+    (let [counted (fn [n]
+                    (events.tu/statement-count!
+                     #(metabot-conversation/create-metabot-conversations!
+                       (vec (repeatedly n (fn [] {:id (str (random-uuid)) :user_id (mt/user->id :rasta)}))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

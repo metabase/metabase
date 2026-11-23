@@ -3,9 +3,10 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -27,9 +28,9 @@
     (is (thrown-with-msg?
          Exception
          #"does not exist"
-         (t2/insert! :model/Measure {:name       "Bad Measure"
-                                     :creator_id (mt/user->id :rasta)
-                                     :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
+         (first (measure/create-measures! [{:name       "Bad Measure"
+                                            :creator_id (mt/user->id :rasta)
+                                            :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])}]))))
     (is (not (t2/exists? :model/Measure :name "Bad Measure")))))
 
 (deftest insert-measure-referencing-measure-test
@@ -57,7 +58,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing 99999)})))))
+           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing 99999)}])))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :creator_id (mt/user->id :rasta)
@@ -65,7 +66,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing measure-id)})))))
+           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing measure-id)}])))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :creator_id (mt/user->id :rasta)
@@ -76,7 +77,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure :id measure-1-id {:definition (measure-definition-referencing measure-2-id)}))))))
+           (measure/update-measures! [{:id measure-1-id :definition (measure-definition-referencing measure-2-id)}]))))))
 
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
@@ -174,7 +175,7 @@
   (testing "Insert"
     (is (thrown-with-msg?
          Exception
-         #"Measure definition must be a full query"
+         #"Query must include :lib/type or :type"
          (t2/insert! :model/Measure
                      {:name       "Bad Measure"
                       :creator_id (mt/user->id :rasta)
@@ -186,7 +187,7 @@
                                                     :definition (measure-definition (lib/count))}]
       (is (thrown-with-msg?
            Exception
-           #"Measure definition must be a full query"
+           #"Query must include :lib/type or :type"
            (t2/update! :model/Measure :id measure-id
                        {:definition {:aggregation [[:count]]}}))))))
 
@@ -212,7 +213,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -256,7 +257,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
         (session/with-current-user user-id
@@ -270,7 +271,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/manage-table-metadata :yes)
         (session/with-current-user user-id
           (is (true? (mi/can-read? (t2/hydrate measure :can_read)))))))))
@@ -293,7 +294,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user user-id
           (is (false? (mi/can-read? (t2/hydrate measure :can_read)))))))))
@@ -309,7 +310,7 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -338,3 +339,54 @@
 (deftest serialization-skips-computed-dimensions-test
   (testing "the dimensions of a measure are recomputed whenever it is read, so serialization carries none"
     (is (every? (set (:skip (serialization/spec :model/Measure))) [:dimensions :dimension_mappings]))))
+
+(deftest update-measures-runs-fixed-statements-test
+  (letfn [(archiving [n]
+            (let [measures (doall (for [i (range n)]
+                                    (first (measure/create-measures! [{:name (str "archived " i) :creator_id (mt/user->id :rasta)
+                                                                       :definition (measure-definition (lib/count))}]))))
+                  ids      (mapv :id measures)]
+              (try
+                (t2/with-call-count [call-count]
+                  (measure/update-measures! (mapv (fn [id] {:id id :archived true}) ids))
+                  (call-count))
+                (finally
+                  (measure/delete-measures! ids)))))]
+    (archiving 1)
+    (is (= (archiving 2) (archiving 6)))))
+
+(deftest update-measures-mixed-stored-state-test
+  (mt/with-temp [:model/Measure {a :id} {:name "A" :archived true :creator_id (mt/user->id :rasta)
+                                         :definition (measure-definition (lib/count))}
+                 :model/Measure {b :id} {:name "B" :archived false :creator_id (mt/user->id :rasta)
+                                         :definition (measure-definition (lib/count))}]
+    (measure/update-measures! (mapv (fn [id] {:id id :archived true :name "Same"}) [a b]))
+    (is (= [[true "Same"] [true "Same"]]
+           (mapv (juxt :archived :name) (t2/select :model/Measure :id [:in [a b]] {:order-by [:id]}))))))
+
+(deftest update-measures-for-import-test
+  (mt/with-temp [:model/Measure {a :id} {:name "A" :creator_id (mt/user->id :rasta) :definition (measure-definition (lib/count))}
+                 :model/Measure {b :id} {:name "B" :creator_id (mt/user->id :rasta) :definition (measure-definition (lib/count))}]
+    (measure/update-measures! [{:id a :name "A2"} {:id b :name "B2"}] {:writer :import})
+    (is (= ["A2" "B2"] (mapv :name (t2/select :model/Measure :id [:in [a b]] {:order-by [:id]}))))))
+
+(deftest revert-goes-through-update-test
+  (mt/with-temp [:model/Measure {id :id} {:name "Reverted" :creator_id (mt/user->id :rasta)
+                                          :definition (measure-definition (lib/count))}]
+    (let [snapshot (select-keys (t2/select-one :model/Measure :id id) [:name :description :definition :archived :table_id])]
+      (measure/update-measures! [{:id id :name "Changed"}])
+      (is (= "Changed" (t2/select-one-fn :name :model/Measure :id id)))
+      (#'measure/revert-measure! id (mt/user->id :rasta) snapshot)
+      (is (= "Reverted" (t2/select-one-fn :name :model/Measure :id id))))))
+
+(deftest create-measures-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/Measure]
+    (let [creator-id       (mt/user->id :rasta)
+          [plain archived] (measure/create-measures! [{:name "Plain" :creator_id creator-id :definition (measure-definition (lib/count))}
+                                                      {:name "Archived" :creator_id creator-id :definition (measure-definition (lib/count))
+                                                       :archived true :description "Described"}])]
+      (is (= ["Plain" "Archived"] (map :name [plain archived])))
+      (is (=? {:archived false :description nil}
+              (t2/select-one :model/Measure :id (:id plain))))
+      (is (=? {:archived true :description "Described"}
+              (t2/select-one :model/Measure :id (:id archived)))))))

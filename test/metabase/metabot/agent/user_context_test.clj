@@ -264,7 +264,6 @@
   (testing "enriches context with all template variables (legacy type: native)"
     (mt/with-dynamic-fn-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
       (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
-                     :first_day_of_week "Monday"
                      :user_is_viewing [{:type "adhoc"
                                         :sql_engine "PostgreSQL"
                                         :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
@@ -278,13 +277,11 @@
         (is (contains? result :viewing_context))
         (is (contains? result :recent_views))
         (is (string? (:current_time result)))
-        (is (= "Monday" (:first_day_of_week result)))
         (is (= "<user>Jane Doe</user>" (:current_user_info result)))
         (is (string? (:viewing_context result)))
         (is (string? (:recent_views result))))))
   (testing "enriches context from frontend adhoc native query payload"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
-                   :first_day_of_week "Monday"
                    :user_is_viewing [{:type       "adhoc"
                                       :sql_engine "PostgreSQL"
                                       :query      (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
@@ -305,6 +302,18 @@
       (is (= "Sunday" (:first_day_of_week result)))
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
+
+(deftest time-context-first-day-of-week-from-setting-test
+  (doseq [[day expected] {:monday    "Monday"
+                          :tuesday   "Tuesday"
+                          :wednesday "Wednesday"
+                          :thursday  "Thursday"
+                          :friday    "Friday"
+                          :saturday  "Saturday"
+                          :sunday    "Sunday"}]
+    (testing (str "start-of-week " day " gives " expected)
+      (mt/with-temporary-setting-values [start-of-week day]
+        (is (= expected (:first_day_of_week (user-context/time-context {}))))))))
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test
   (testing "table viewing context includes measures and segments when present"

@@ -1,6 +1,7 @@
 (ns metabase.model-persistence.schema
   "Malli schemas for the model-persistence module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
@@ -12,14 +13,12 @@
 
 (mr/def ::persisted-info
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."
-  [:merge
-   ::persisted-info.update
-   [:map {:closed true}
-    [:id              ms/PositiveInt]]])
+  ::persisted-info.update)
 
 (mr/def ::persisted-info.update
-  "What an update (or insert) of a PersistedInfo accepts: every column of `:persisted_info` except `id`, all optional."
+  "What an update of a PersistedInfo takes: its `:id` and the columns of `:persisted_info` to change, each optional."
   [:map {:closed true}
+   [:id              ms/PositiveInt]
    [:database_id     {:optional true} [:maybe ::lib.schema.id/database]]
    [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
    [:question_slug   {:optional true} [:maybe :string]]
@@ -34,3 +33,12 @@
    [:error           {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id      {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::persisted-info.create
+  "What a caller gives to create a PersistedInfo: the columns of an update without the `:id`, and its Database and
+  Card."
+  [:merge
+   (mut/dissoc ::persisted-info.update :id)
+   [:map
+    [:database_id ::lib.schema.id/database]
+    [:card_id     ::lib.schema.id/card]]])
