@@ -292,6 +292,24 @@
         (is (= "15:30:45Z"
                (format-temporal-str "UTC" "15:30:45Z" col nil)))))))
 
+(deftest format-time-role-semantic-types-test
+  (mt/with-temporary-setting-values [site-locale "en"
+                                     custom-formatting nil]
+    (testing "time-role semantic types format like the existing timestamp semantic types"
+      (doseq [[base-type temporal-str] [[:type/DateTime now]
+                                        [:type/Date "2020-07-16"]]
+              semantic-type            [:type/EventTimestamp :type/ValidFrom :type/LastActivityTimestamp]
+              :let [col (fn [semantic-type]
+                          {:base_type base-type :effective_type base-type :semantic_type semantic-type})]]
+        (testing [base-type semantic-type]
+          (is (= (format-temporal-str "UTC" temporal-str (col :type/CreationTimestamp))
+                 (format-temporal-str "UTC" temporal-str (col semantic-type)))))))
+    (testing "a DateTime column keeps its time"
+      (is (= "July 16, 2020, 6:04 PM"
+             (format-temporal-str "UTC" now {:base_type      :type/DateTime
+                                             :effective_type :type/DateTime
+                                             :semantic_type  :type/EventTimestamp}))))))
+
 (deftest ^:parallel year-in-dates-near-start-or-end-of-year-is-correct-test
   (testing "When the date is at the start/end of the year, the year is formatted properly. (#40306)"
     ;; Our datetime formatter relies on the `java-time.api`, for which there are many different, sometimes confusing,

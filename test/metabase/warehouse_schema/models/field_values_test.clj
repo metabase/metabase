@@ -83,7 +83,6 @@
     :type/EndTimestamp
     :type/ValidFrom
     :type/ValidTo
-    :type/PeriodKey
     :type/LoadTimestamp
     :type/LastActivityTimestamp})
 

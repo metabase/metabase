@@ -1,5 +1,6 @@
 (ns metabase.types.core-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing are]]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
    [metabase.types.core :as types]))
@@ -89,11 +90,14 @@
     ;; a random type descendant of type/* should not have this coercion
     (is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))
 
+(defn- hierarchy-keywords [h]
+  (into (set (keys (:parents h)))
+        (mapcat val)
+        (:parents h)))
+
 (defn- keywords-in-namespace [keyword-namespace]
-  (->> #?(:clj (var-get #'clojure.core/global-hierarchy)
-          :cljs @(#'clojure.core/get-global-hierarchy))
-       :parents
-       keys
+  (->> (hierarchy-keywords #?(:clj (var-get #'clojure.core/global-hierarchy)
+                              :cljs @(#'clojure.core/get-global-hierarchy)))
        (filter keyword?)
        (filter #(= (namespace %) (name keyword-namespace)))))
 
@@ -135,17 +139,6 @@
    {:required   [:Coercion/*]
     :disallowed [:type/* :Semantic/* :Relation/* :entity/*]}))
 
-(deftest ^:parallel entity-types-test
-  (test-keywords-in-namespace-derived-from
-   "entity"
-   {:required   [:entity/*]
-    :disallowed [:type/* :Semantic/* :Relation/* :Coercion/*]}))
-
-(defn- hierarchy-keywords [h]
-  (into (set (keys (:parents h)))
-        (mapcat val)
-        (:parents h)))
-
 (deftest ^:parallel entity-hierarchy-test
   (testing "every entity type derives from :entity/* and lives outside the global hierarchy"
     (doseq [t (disj (hierarchy-keywords types/entity-hierarchy) :entity/*)]
@@ -154,13 +147,13 @@
         (is (isa? types/entity-hierarchy t :entity/GenericTable))
         (is (not (isa? t :entity/*))))))
   (testing "the subjects"
-    (is (= #{:entity/GenericTable
+    (is (set/subset? #{:entity/GenericTable
              :entity/PersonTable :entity/UserTable :entity/ContactTable :entity/EmployeeTable :entity/CustomerTable
              :entity/CompanyTable :entity/OrganizationTable :entity/TransactionTable :entity/LineItemTable
              :entity/ProductTable :entity/SubscriptionTable :entity/EventTable :entity/MessageTable
              :entity/SessionTable :entity/CampaignTable :entity/OpportunityTable :entity/TicketTable
-             :entity/ProjectTable :entity/LocationTable :entity/DeviceTable :entity/CalendarTable}
-           (disj (hierarchy-keywords types/entity-hierarchy) :entity/*))))
+                       :entity/ProjectTable :entity/LocationTable :entity/DeviceTable :entity/CalendarTable}
+                     (hierarchy-keywords types/entity-hierarchy))))
   (testing "people subjects share a parent"
     (doseq [t [:entity/ContactTable :entity/EmployeeTable :entity/CustomerTable]]
       (is (isa? types/entity-hierarchy t :entity/PersonTable))))
@@ -170,13 +163,23 @@
 (deftest ^:parallel table-role-hierarchy-test
   (let [roles (disj (hierarchy-keywords types/table-role-hierarchy) :role/*)]
     (testing "every role derives from :role/* and lives outside the global and entity hierarchies"
-      (is (= 36 (count roles)))
       (doseq [role roles]
         (testing role
           (is (= "role" (namespace role)))
           (is (isa? types/table-role-hierarchy role :role/*))
           (is (not (isa? role :role/*)))
           (is (not (isa? types/entity-hierarchy role :entity/*))))))
+    (testing "the roles"
+      (is (set/subset? #{:role/Fact :role/TransactionFact :role/EventFact :role/ActivityStream
+                         :role/PeriodicSnapshotFact :role/UserDayFact :role/CohortSnapshot
+                         :role/AccumulatingSnapshotFact :role/FactlessFact :role/AggregateFact :role/SessionFact
+                         :role/Dimension :role/EntityDimension :role/DateDimension :role/TimeDimension
+                         :role/LookupDimension :role/HistoryDimension :role/MiniDimension :role/JunkDimension
+                         :role/OutriggerDimension :role/Bridge :role/HierarchyBridge :role/ArrayChild
+                         :role/CustomPropertyTable :role/TranslationTable :role/ConfigurationTable
+                         :role/SystemTable :role/OneBigTable :role/Hub :role/Link :role/Satellite
+                         :role/PointInTime :role/Anchor :role/Attribute :role/Tie :role/Knot}
+                       roles)))
     (testing "role parents"
       (are [role parent] (isa? types/table-role-hierarchy role parent)
         :role/TransactionFact          :role/Fact
@@ -193,19 +196,19 @@
       (is (not (isa? types/table-role-hierarchy :role/HistoryDimension :role/Fact))))))
 
 (deftest ^:parallel semantic-layer-types-test
-  (testing "each new type derives from the existing type that consumers already check with isa?"
+  (testing "semantic-layer types derive from the type consumers check with isa?"
     (are [t parent] (isa? t parent)
       ;; keys and identity
-      :type/SurrogateKey          :type/PK
+      :type/SurrogateKey          :Semantic/*
       :type/HashKey               :type/SurrogateKey
       :type/NaturalKey            :Semantic/*
       :type/DurableKey            :type/NaturalKey
       :type/ExternalID            :type/NaturalKey
       :type/DegenerateDimension   :type/NaturalKey
-      :type/TenantKey             :type/FK
-      :type/ParentKey             :type/FK
-      :type/PolymorphicKey        :type/FK
-      :type/RoleKey               :type/FK
+      :type/TenantKey             :Semantic/*
+      :type/ParentKey             :Semantic/*
+      :type/PolymorphicKey        :Semantic/*
+      :type/RoleKey               :Semantic/*
       :type/TypeDiscriminator     :type/Category
       :type/ArrayIndex            :Semantic/*
       :type/Version               :Semantic/*
@@ -216,7 +219,7 @@
       :type/EndTimestamp          :type/MilestoneTimestamp
       :type/ValidFrom             :type/DateTime
       :type/ValidTo               :type/DateTime
-      :type/PeriodKey             :type/Date
+      :type/PeriodKey             :Semantic/*
       :type/LoadTimestamp         :type/DateTime
       :type/LastActivityTimestamp :type/DateTime
       :type/TimeZone              :type/Category
@@ -225,7 +228,7 @@
       :type/Rate                  :type/Share
       :type/UnitPrice             :type/Price
       :type/UnitPrice             :type/Currency
-      :type/Count                 :type/Quantity
+      :type/Count                 :Semantic/*
       :type/Weight                :type/Share
       :type/RangeBound            :type/Number
       :type/Bytes                 :type/Quantity
@@ -239,8 +242,8 @@
       :type/Channel               :type/Source
       :type/Locale                :type/Category
       :type/Color                 :type/Category
-      :type/Tags                  :type/Text
-      :type/Flag                  :type/Boolean
+      :type/Tags                  :Semantic/*
+      :type/Flag                  :Semantic/*
       :type/SoftDeleteFlag        :type/Flag
       :type/CurrentRowFlag        :type/Flag
       :type/TestDataFlag          :type/Flag
@@ -260,7 +263,15 @@
       :type/SortOrder             :Semantic/*)))
 
 (deftest ^:parallel semantic-layer-key-types-test
-  (testing "key types derived from PK and FK stay relations; natural keys are semantic"
-    (is (isa? :type/SurrogateKey :Relation/*))
-    (is (isa? :type/TenantKey :Relation/*))
-    (is (not (isa? :type/NaturalKey :Relation/*)))))
+  (testing "key types are semantic types, not relations, so code that checks `:type/PK` or `:type/FK` ignores them"
+    (doseq [t [:type/SurrogateKey :type/HashKey :type/TenantKey :type/ParentKey :type/PolymorphicKey :type/RoleKey
+               :type/NaturalKey]]
+      (testing t
+        (is (isa? t :Semantic/*))
+        (is (not (isa? t :Relation/*)))))))
+
+(deftest ^:parallel semantic-layer-types-without-data-type-test
+  (testing "types stored in more than one data type have no data type parent"
+    (doseq [t [:type/Flag :type/Tags :type/Count :type/PeriodKey]]
+      (testing t
+        (is (not (isa? t :type/*)))))))

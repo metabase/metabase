@@ -97,10 +97,9 @@
 ;;; Table Roles
 
 (def table-role-hierarchy
-  "Hierarchy of table roles: how a table is built, i.e. whether its rows can be counted, its columns summed, or the
-  table joined through. A role is independent of the table's subject in [[entity-hierarchy]]: a history of users has
-  the role `:role/HistoryDimension` and the subject `:entity/UserTable`. Not part of Clojure's global hierarchy, so
-  `isa?` on these keywords must be passed this hierarchy explicitly."
+  "Hierarchy of table roles: how a table is built, independent of its subject in [[entity-hierarchy]]. For example, a
+  history of users has the role `:role/HistoryDimension` and the subject `:entity/UserTable`. Not part of Clojure's
+  global hierarchy, so `isa?` on these keywords must be passed this hierarchy explicitly."
   (-> (make-hierarchy)
       ;; a measurement
       (derive :role/Fact :role/*)
@@ -423,24 +422,21 @@
 (derive :type/FK :Relation/*)
 (derive :type/PK :Relation/*)
 
-;;; Semantic layer types. Each derives from an existing type, so `isa?` checks against that parent keep working, e.g.
-;;; a `:type/Balance` column is still a `:type/Number`. Roles a column plays besides its meaning (a time role, a key
-;;; role, a structure role, a lifecycle role) are meant to be facets in the column metadata
-;;; (`metabase.lib.schema.metadata`) next to its single semantic type; the keywords live here so `isa?` works on
-;;; facet values too.
+;;; Semantic layer types. Each descends from an existing type, so `isa?` checks against that ancestor keep working,
+;;; e.g. a `:type/Balance` column is still a `:type/Number`.
 
 ;;; Keys and identity: how rows join and what makes a row unique
 
-(derive :type/SurrogateKey :type/PK)        ; warehouse-generated key with no business meaning
+(derive :type/SurrogateKey :Semantic/*)     ; warehouse-generated key with no business meaning
 (derive :type/HashKey :type/SurrogateKey)   ; hash of the natural key (Data Vault)
 (derive :type/NaturalKey :Semantic/*)       ; business key from the source system: SKU, customer number
 (derive :type/DurableKey :type/NaturalKey)  ; the key that is stable across SCD2 versions of a row
 (derive :type/ExternalID :type/NaturalKey)  ; an ID from another system; not joinable here
 (derive :type/DegenerateDimension :type/NaturalKey) ; an identifier kept on a fact, e.g. an order number
-(derive :type/TenantKey :type/FK)           ; the scope every query should filter on: account, organization
-(derive :type/ParentKey :type/FK)           ; a self-reference; one edge of a hierarchy
-(derive :type/PolymorphicKey :type/FK)      ; target table is named by a sibling `:type/TypeDiscriminator`
-(derive :type/RoleKey :type/FK)             ; one of several FKs to the same table (role-playing dimension)
+(derive :type/TenantKey :Semantic/*)        ; the scope every query should filter on: account, organization
+(derive :type/ParentKey :Semantic/*)        ; a self-reference; one edge of a hierarchy
+(derive :type/PolymorphicKey :Semantic/*)   ; target table is named by a sibling `:type/TypeDiscriminator`
+(derive :type/RoleKey :Semantic/*)          ; one of several FKs to the same table (role-playing dimension)
 (derive :type/TypeDiscriminator :type/Category)
 (derive :type/ArrayIndex :Semantic/*)       ; position inside the parent row's list
 (derive :type/Version :Semantic/*)          ; version or revision counter
@@ -458,7 +454,6 @@
 (derive :type/ValidTo :Semantic/*)
 (derive :type/ValidTo :type/DateTime)
 (derive :type/PeriodKey :Semantic/*)        ; the period of a snapshot row
-(derive :type/PeriodKey :type/Date)
 (derive :type/LoadTimestamp :Semantic/*)    ; when the loader wrote the row
 (derive :type/LoadTimestamp :type/DateTime)
 (derive :type/LastActivityTimestamp :Semantic/*)
@@ -471,7 +466,7 @@
 (derive :type/Balance :type/Number)
 (derive :type/Rate :type/Share)             ; a ratio stored as a number: exchange_rate, tax_rate, ctr
 (derive :type/UnitPrice :type/Price)        ; multiply by a quantity; never sum
-(derive :type/Count :type/Quantity)         ; an integer count of things: impressions, clicks
+(derive :type/Count :Semantic/*)            ; an integer count of things: impressions, clicks
 (derive :type/Weight :type/Share)           ; allocation factor on a bridge row, sums to 1 per parent
 (derive :type/RangeBound :Semantic/*)       ; min/max/floor/ceiling of a range; aggregate with min or max
 (derive :type/RangeBound :type/Number)
@@ -489,9 +484,7 @@
 (derive :type/Locale :type/Category)
 (derive :type/Color :type/Category)
 (derive :type/Tags :Semantic/*)             ; multi-valued labels in one cell
-(derive :type/Tags :type/Text)
 (derive :type/Flag :Semantic/*)
-(derive :type/Flag :type/Boolean)
 (derive :type/SoftDeleteFlag :type/Flag)
 (derive :type/CurrentRowFlag :type/Flag)    ; marks the current SCD2 version of a row
 (derive :type/TestDataFlag :type/Flag)
