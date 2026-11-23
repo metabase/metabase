@@ -3,6 +3,7 @@ import type {
   EventTableColumnRole,
   EventTableSettingKey,
   Field,
+  FieldVisibilityType,
   Table,
 } from "metabase-types/api";
 
@@ -33,13 +34,23 @@ export function getColumnRoleKey(
   return `columns.${role}`;
 }
 
-/** The table's columns that can play `role`. */
+const EXCLUDED_VISIBILITY_TYPES: ReadonlySet<FieldVisibilityType> = new Set([
+  "sensitive",
+  "retired",
+]);
+
+/**
+ * The table's columns that can play `role`. Sensitive ("Do not include") and
+ * retired columns can't play any role, because queries can't use them.
+ */
 export function getColumnRoleFields(
   table: Pick<Table, "fields">,
   role: EventTableColumnRole,
 ): Field[] {
   const fields = (table.fields ?? []).filter(
-    (field) => field.parent_id == null,
+    (field) =>
+      field.parent_id == null &&
+      !EXCLUDED_VISIBILITY_TYPES.has(field.visibility_type),
   );
   return role === "timestamp" ? fields.filter(isDate) : fields;
 }
