@@ -4985,6 +4985,7 @@
                              :dashboard_card_id dash-card-id}
          :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                      :pulse_id     bad-pulse-id
+                                                     :details      {:emails ["yo@broken.sub"]}
                                                      :enabled      true}
          :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                          :user_id          (mt/user->id :lucky)}
@@ -5046,7 +5047,7 @@
             (testing "The unbroken pulse is still active"
               (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
             (testing "The dashboard creator, pulse creator, and recipients were emailed about the removed pulse"
-              (is (= #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com"}
+              (is (= #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "yo@broken.sub"}
                      (set (keys inbox)))))
             (testing "Notification emails were sent to the dashboard and pulse creators"
               (email-pulse-email-received? "trashbird@metabase.com")
@@ -5055,7 +5056,8 @@
               (slack-pulse-email-received? "rasta@metabase.com"))
             (testing "Notification emails were sent to email subscribers"
               (email-pulse-email-received? "lucky@metabase.com")
-              (email-pulse-email-received? "crowberto@metabase.com"))))))))
+              (email-pulse-email-received? "crowberto@metabase.com")
+              (email-pulse-email-received? "yo@broken.sub"))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"

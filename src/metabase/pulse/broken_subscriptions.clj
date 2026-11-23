@@ -27,16 +27,21 @@
                             (filter #(contains? #{:email :slack} (:channel_type %)))
                             (mapcat (fn [{pulse-channel-id  :id
                                           channel-type      :channel_type
-                                          {:keys [channel]} :details}]
+                                          {:keys [channel emails]} :details}]
                                       (case channel-type
                                         :email (let [pulse-channel-recipient-ids (map :user_id (pulse.db/pulse-channel-recipient-rows pulse-channel-id))
                                                      pulse-channel-recipients (when (seq pulse-channel-recipient-ids)
                                                                                 (pulse.db/users-names-and-emails pulse-channel-recipient-ids))]
-                                                 (map (fn [{:keys [common_name] :as recipient}]
-                                                        (assoc recipient
-                                                               :notification-type channel-type
-                                                               :recipient common_name))
-                                                      pulse-channel-recipients))
+                                                 (concat
+                                                  (map (fn [{:keys [common_name] :as recipient}]
+                                                         (assoc recipient
+                                                                :notification-type channel-type
+                                                                :recipient common_name))
+                                                       pulse-channel-recipients)
+                                                  (map (fn [email] {:notification-type channel-type
+                                                                    :email email
+                                                                    :recipient email})
+                                                       emails)))
                                         :slack [{:notification-type channel-type
                                                  :recipient         channel}]))))
                            bad-pulse-channels)}))
