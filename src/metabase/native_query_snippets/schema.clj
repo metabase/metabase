@@ -1,5 +1,6 @@
 (ns metabase.native-query-snippets.schema
   (:require
+   [malli.util :as mut]
    [metabase.collections.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -15,25 +16,40 @@
   [:merge
    ::native-query-snippet.update
    [:map {:closed true}
-    [:id            ::lib.schema.id/native-query-snippet]
+    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]
     [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
     [:can_write     {:optional true} [:maybe :boolean]]
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]]])
 
+(mr/def ::template-tags.given
+  "The `:template_tags` a caller gives with a snippet, which its write completes with those of its content: those of a
+  snippet it refers to by name keep the ids given here when no stored snippet has the name."
+  [:maybe [:map-of :string :map]])
+
 (mr/def ::native-query-snippet.update
-  "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."
+  "A NativeQuerySnippet by its `id` with the columns to change, each optional, its template tags as given."
   [:map {:closed true}
-   [:name          {:optional true} [:maybe :string]]
-   [:description   {:optional true} [:maybe :string]]
-   [:content       {:optional true} [:maybe :string]]
-   [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:archived      {:optional true} [:maybe :boolean]]
+   [:id                ::lib.schema.id/native-query-snippet]
+   [:name              {:optional true} :string]
+   [:content           {:optional true} [:maybe :string]]
+   [:description       {:optional true} [:maybe :string]]
+   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
+   [:archived          {:optional true} [:maybe :boolean]]
    [:archived_directly {:optional true} [:maybe :boolean]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:entity_id     {:optional true} [:maybe :string]]
-   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
+   [:collection_id     {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:entity_id         {:optional true} [:maybe :string]]
+   [:template_tags     {:optional true} ::template-tags.given]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::native-query-snippet.create
+  "What a caller gives to create a NativeQuerySnippet: the columns of an update without the `:id` and the columns the
+  product sets, and its name and content."
+  [:merge
+   (reduce mut/dissoc ::native-query-snippet.update [:id :created_at :updated_at])
+   [:map {:closed true}
+    [:name    :string]
+    [:content :string]]])
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."

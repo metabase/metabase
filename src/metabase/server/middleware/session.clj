@@ -31,6 +31,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.server.db :as server.db]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -360,7 +361,7 @@
   [session-key-hash]
   (when (session/record-session-activity-update! session-key-hash)
     (try
-      (server.db/touch-session! session-key-hash)
+      (models.session/touch-session! session-key-hash)
       (catch Exception e
         (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))
 

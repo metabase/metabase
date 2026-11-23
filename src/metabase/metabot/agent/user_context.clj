@@ -603,12 +603,22 @@
 
 ;;; Context Enrichment
 
+(defn time-context
+  "The template variables for the date lines of the message-injection template: `:current_time` and
+  `:first_day_of_week`.
+
+  `:current_time` comes from `context`. `:first_day_of_week` comes from the `start-of-week` setting, so that it
+  matches how queries group weeks. A `:first_day_of_week` in `context` has no effect."
+  [context]
+  {:current_time      (format-current-time context)
+   :first_day_of_week (-> (lib-be/start-of-week) (or :sunday) name u/capitalize-en)})
+
 (defn enrich-context-for-template
   "Enrich context with all necessary variables for rendering the message-injection template.
 
   Takes raw context from API and returns map suitable for template rendering:
   - :current_time - Formatted user time string
-  - :first_day_of_week - Calendar week start (default 'Sunday')
+  - :first_day_of_week - Calendar week start, from the `start-of-week` setting
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views
@@ -617,8 +627,7 @@
   content is contributed separately, via a profile's `:system-prompt-context` hook (see
   `metabase.metabot.agent.messages/build-system-message`)."
   [context]
-  {:current_time (format-current-time context)
-   :first_day_of_week (get context :first_day_of_week "Sunday")
-   :current_user_info (format-current-user-info context)
-   :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)})
+  (merge (time-context context)
+         {:current_user_info (format-current-user-info context)
+          :viewing_context (format-viewing-context context)
+          :recent_views (format-recent-views context)}))

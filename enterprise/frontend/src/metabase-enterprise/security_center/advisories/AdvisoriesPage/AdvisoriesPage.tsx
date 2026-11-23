@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -22,6 +23,7 @@ import { useSyncSecurityAdvisoriesMutation } from "../../api";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
 import { NotificationChannelConfigModal } from "../NotificationChannelConfigModal/NotificationChannelConfigModal";
+import { NotificationConfigBanner } from "../NotificationConfigBanner/NotificationConfigBanner";
 import { UpgradeBanner } from "../UpgradeBanner/UpgradeBanner";
 import {
   NotificationConfigProvider,
@@ -53,9 +55,8 @@ export function AdvisoriesPage() {
   const [syncAdvisories, { isLoading: isSyncing }] =
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
-  const [settingsOpen, setSettingsOpen] = useState(
-    () => searchParams.get("open") === "notifications",
-  );
+  const [settingsOpen, { open: openSettings, close: closeSettings }] =
+    useDisclosure(searchParams.get("open") === "notifications");
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
   const [sendToast] = useToast();
@@ -157,7 +158,7 @@ export function AdvisoriesPage() {
             <Button
               variant="subtle"
               leftSection={<Icon name="gear" />}
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => openSettings()}
               data-testid="notification-config-toggle"
             >
               {isSmallScreen ? null : t`Notification settings`}
@@ -167,6 +168,7 @@ export function AdvisoriesPage() {
             {t`Current version`}: {currentVersion}
           </Text>
           <UpgradeBanner targetVersion={targetVersion} />
+          <NotificationConfigBanner onConfigureClick={openSettings} />
         </Stack>
         <Stack gap="xxl" className={S.content}>
           <AdvisoryFilterBar
@@ -183,7 +185,7 @@ export function AdvisoriesPage() {
         </Stack>
         <NotificationChannelConfigModal
           opened={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
+          onClose={closeSettings}
         />
       </Box>
     </NotificationConfigProvider>

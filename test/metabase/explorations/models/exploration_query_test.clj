@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-query-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-query :as exploration-query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -40,3 +42,29 @@
         (is (= [{:id (:id q-seg)  :segment_id (:id s) :segment_name "my-seg"}
                 {:id (:id q-bare) :segment_id nil     :segment_name nil}]
                (mapv #(select-keys % [:id :segment_id :segment_name]) hyd)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card                {card-id :id}        {:type :metric}
+                 :model/Exploration         {exploration-id :id} {}
+                 :model/ExplorationThread   {thread-id :id}      {:exploration_id exploration-id}
+                 :model/ExplorationBlock    {block-id :id}       {:exploration_thread_id thread-id}
+                 :model/ExplorationPage     {page-id :id}        {:exploration_block_id block-id :card_id card-id
+                                                                  :dimension_id "d1" :query_type "default"}]
+    (let [rows    (fn [n]
+                    (mapv (fn [i] {:exploration_thread_id thread-id :card_id card-id :page_id page-id
+                                   :database_id (mt/id) :dimension_id (str "d" i) :position i})
+                          (range n)))
+          fresh!  (fn [n] (mapv :id (exploration-query/create-queries! (rows n))))
+          counted (fn [f]
+                    (f 1)
+                    (is (= (f 2) (f 6))))]
+      (testing "creating queries"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration-query/create-queries! rows))))))
+      (testing "updating queries, some already holding the new value"
+        (counted (fn [n]
+                   (let [ids (fresh! n)]
+                     (exploration-query/update-queries! (mapv (fn [id] {:id id :status "canceled"}) (take-nth 2 ids)))
+                     (events.tu/statement-count!
+                      #(exploration-query/update-queries! (mapv (fn [id] {:id id :status "canceled"}) ids)))))))
+      (testing "canceling queries"
+        (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration-query/cancel-queries! ids)))))))))

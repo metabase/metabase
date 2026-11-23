@@ -705,8 +705,8 @@
                                                         :archived          true
                                                         :archived_directly true}
                    :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
-      (t2/update! :model/Collection :id (:id emea) {:archived true})
-      (t2/update! :model/Collection :id (:id ops) {:archived true})
+      (collection/update-collections! [{:id (:id emea) :archived true}] nil)
+      (collection/update-collections! [{:id (:id ops) :archived true}] nil)
       (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
         (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
           (let [output (read-dashboard trashed-id)]
@@ -1677,7 +1677,7 @@
             [[:model/Card {:type :question :dataset_query query} "question"]
              [:model/Card {:type :model :dataset_query query} "model"]
              [:model/Card {:type :metric :dataset_query (lib/aggregate query (lib/count))} "metric"]
-             [:model/Table {:db_id (mt/id)} "table"]
+             [:model/Table {:db_id (mt/id) :display_name "Recent item"} "table"]
              [:model/Dashboard {} "dashboard"]
              [:model/Collection {} "collection"]
              [:model/Document {:document {:type "doc" :content []}} "document"]]]
@@ -2190,10 +2190,9 @@
 (deftest pagination-copied-xml-uri-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Paging" :location "/"}]
-      (t2/insert! :model/Collection
-                  (for [i (range 60)]
-                    {:name     (format "Child-%02d" i)
-                     :location (str "/" parent-id "/")}))
+      (collection/create-collections! (vec (for [i (range 60)]
+                                             {:name     (format "Child-%02d" i)
+                                              :location (str "/" parent-id "/")})))
       (let [read-page     (fn [uri] (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
             page-1        (read-page "metabase://collections?tree=true")
             next-page-uri (second (re-find #"Fetch (\S+) for the next page" (:output page-1)))
@@ -2339,29 +2338,30 @@
       (is (not (error? (read-uris {:uris [(str "metabase://database/" db-id "/schemas/PUBLIC/tables")]})))))))
 
 (deftest root-collection-resources-test
-  (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}
-                 :model/Card {card-id :id} {:collection_id nil}
-                 :model/Dashboard {dash-id :id} {:collection_id nil}
-                 :model/Document {doc-id :id} {:collection_id nil}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (doseq [[suffix ids] [["" #{["collection" "root"]}]
-                            ["/items" #{["collection" coll-id] ["question" card-id]
-                                        ["dashboard" dash-id] ["document" doc-id]}]
-                            ["/subcollections" #{["collection" coll-id]}]]]
-        (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
-              structured (get-in result [:resources 0 :content :structured-output])]
-          (is (not (error? result)))
-          (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (error? (read-uris {:uris ["metabase://collection/root"]})))
-        (doseq [suffix ["/items" "/subcollections"]]
-          (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
-                         :resources first :content :structured-output :items
-                         (map (juxt :type :id))
-                         set)]
-            (is (contains? ids ["collection" coll-id]))
-            (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name) :location "/"}])]
+      (mt/with-temp [:model/Card {card-id :id} {:collection_id nil}
+                     :model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Document {doc-id :id} {:collection_id nil}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (doseq [[suffix ids] [["" #{["collection" "root"]}]
+                                ["/items" #{["collection" coll-id] ["question" card-id]
+                                            ["dashboard" dash-id] ["document" doc-id]}]
+                                ["/subcollections" #{["collection" coll-id]}]]]
+            (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                  structured (get-in result [:resources 0 :content :structured-output])]
+              (is (not (error? result)))
+              (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (error? (read-uris {:uris ["metabase://collection/root"]})))
+            (doseq [suffix ["/items" "/subcollections"]]
+              (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                             :resources first :content :structured-output :items
+                             (map (juxt :type :id))
+                             set)]
+                (is (contains? ids ["collection" coll-id]))
+                (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))))
 
 (deftest root-navigation-excludes-other-namespaces-and-trash-test
   (mt/with-temp [:model/Collection {root-id :id} {:name "Default root" :location "/"}

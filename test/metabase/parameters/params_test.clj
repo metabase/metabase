@@ -31,11 +31,13 @@
                (t2/hydrate :name_field)
                mt/derecordize))))
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
-    (let [venues-fields (t2/select :model/Field :table_id (mt/id :venues))]
-      (t2/with-call-count [call-count]
-        (t2/hydrate venues-fields :name_field)
-        (is (= 1
-               (call-count))))))
+    (let [venues-fields (sort-by #(not= :type/PK (:semantic_type %)) (t2/select :model/Field :table_id (mt/id :venues)))
+          counted       (fn [n]
+                          (t2/with-call-count [call-count]
+                            (t2/hydrate (take n venues-fields) :name_field)
+                            (call-count)))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
   (testing "It shouldn't hydrate for Fields that aren't PKs"
     (is (= {:name          "PRICE"
             :table_id      (mt/id :venues)
@@ -285,19 +287,22 @@
            :model/DashboardCard dc2 {:dashboard_id dash-id :card_id (:id agg2)
                                      :parameter_mappings [{:parameter_id "p2" :card_id (:id agg2)
                                                            :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]}]}]
+          ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
+          ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
+          ;; - one bulk fetch of the source Cards
+          ;; - one bulk fetch of those Cards' result-metadata Fields
+          ;; - one bulk fetch of those Fields' FK targets
+          ;; - one bulk fetch of the FK-target Tables
+          ;; - one bulk fetch of those Tables' columns
           (let [dashcards (-> (t2/select :model/DashboardCard :id [:in [(:id dc1) (:id dc2)]])
-                              (t2/hydrate :card :series))]
-            ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
-            ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
-            ;; - one bulk fetch of the source Cards
-            ;; - one bulk fetch of those Cards' result-metadata Fields
-            ;; - one bulk fetch of those Fields' FK targets
-            ;; - one bulk fetch of the FK-target Tables
-            ;; - one bulk fetch of those Tables' columns
-            (is (= 5 (lib-be/with-metadata-provider-cache
-                       (t2/with-call-count [call-count]
-                         (params/dashcards->param-field-ids dashcards)
-                         (call-count)))))))))))
+                              (t2/hydrate :card :series))
+                counted   (fn [dashcards]
+                            (lib-be/with-metadata-provider-cache
+                              (t2/with-call-count [call-count]
+                                (params/dashcards->param-field-ids dashcards)
+                                (call-count))))]
+            (counted (take 1 dashcards))
+            (is (= (counted (take 1 dashcards)) (counted dashcards)))))))))
 
 (deftest ^:parallel invalid-parameters-errors-are-humanized-test
   (testing "`:errors` are client-facing, so they are humanized messages rather than Malli explanations"

@@ -1,9 +1,11 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [medley.core :as m]
+   [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.collection-items.spec :as collection-items]
@@ -11,6 +13,7 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -22,19 +25,23 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
-;;; --------------------------------------------------- Definition ---------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
@@ -106,7 +113,6 @@
 (doto :model/Table
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -164,24 +170,11 @@
   "How should we order fields."
   warehouse-schema.db/field-order-rule)
 
-(defn update-field-positions!
-  "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
-  [table]
-  (doall
-   (map-indexed (fn [new-position field]
-                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
-                ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (warehouse-schema.db/field-ids-for-table-ordered
-                 (u/the-id table)
-                 (:field_order table)))))
-
 (defn- check-changes
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
   [changes original]
   (when (contains? changes :db_id)
     (throw (ex-info (tru "You cannot move a Table to another Database.") {:status-code 400})))
-  (when (:collection_id changes)
-    (collection/check-allowed-content :table (:collection_id changes)))
   (when (and (not= (keyword (:data_authority original :unconfigured)) :unconfigured)
              (= (keyword (:data_authority changes)) :unconfigured))
     (throw (ex-info (tru "Cannot set data_authority back to unconfigured once it has been configured")
@@ -227,13 +220,9 @@
 (t2/define-before-insert :model/Table
   [table]
   (check-publication table)
-  (collection/check-allowed-content :table (:collection_id table))
   (merge table
          (apply dissoc
                 {:display_name   (humanization/name->human-readable-name (:name table))
-                 :field_order    (or (:field_order table)
-                                     (driver/default-field-order
-                                      (some-> (:db_id table) warehouse-schema.db/database-engine)))
                  :data_layer     :internal
                  :data_authority :unconfigured}
                 (keys table))))
@@ -245,16 +234,7 @@
     (check-changes changes original)
     (when (some #(contains? changes %) [:is_published :collection_id])
       (check-publication table))
-    (when (contains? changes :field_order)
-      (update-field-positions! table))
     (merge table (visibility-changes changes original) (activity-changes changes original))))
-
-(t2/define-before-delete :model/Table
-  [table]
-  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table))
-  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (defn- group-perm-defaults
   "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
@@ -304,11 +284,6 @@
                                                              non-admin-groups)])
                                    tables)]
         (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
-
-(t2/define-after-insert :model/Table
-  [table]
-  (u/prog1 table
-    (set-new-table-permissions! table)))
 
 (t2/define-after-select :model/Table
   [table]
@@ -514,6 +489,200 @@
   [table]
   (warehouse-schema.db/database (:db_id table)))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-allowed-contents
+  "Throws unless each Collection among `collection-ids` can hold Tables, all read in one query and checked in the order
+  of their first appearance."
+  [collection-ids]
+  (when-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (warehouse-schema.db/collections-for-content-checks (set ids))]
+      (run! #(collection/check-allowed-content :table (collections %)) ids))))
+
+(defn- add-default-field-orders
+  "Each of the Table `rows` with the default field order of its Database's driver unless it has one, the engines of
+  the Databases read in one query."
+  [rows]
+  (let [engines (when-let [db-ids (not-empty (into #{} (comp (remove :field_order) (keep :db_id)) rows))]
+                  (warehouse-schema.db/database-engines db-ids))]
+    (mapv (fn [{:keys [db_id field_order] :as row}]
+            (cond-> row
+              (nil? field_order) (assoc :field_order (driver/default-field-order (get engines db_id)))))
+          rows)))
+
+(defn- set-new-permissions!
+  "Give the new `tables` their default permissions, those of each Database at once."
+  [tables]
+  (doseq [[db-id tables] (group-by :db_id tables)]
+    (if (= 1 (count tables))
+      (set-new-table-permissions! (first tables))
+      (set-new-tables-permissions! db-id tables))))
+
+(defn- check-new-tables
+  "Throw unless every one of the new Table `rows` satisfies this rule:
+
+  - its Collection, if it has one, can hold Tables"
+  [rows]
+  (check-allowed-contents (map :collection_id rows)))
+
+(defn- prepare-new-tables
+  "Check the new Table `rows` and return them with the default field order of their driver."
+  [rows]
+  (check-new-tables rows)
+  (add-default-field-orders rows))
+
+(defn- tables-created!
+  "Give the new `tables` the default permissions of a new Table and publish their create event."
+  [tables]
+  (set-new-permissions! tables)
+  (events/publish-event! :event/table-create (events/create-event tables)))
+
+(mu/defn create-tables! :- [:sequential ::warehouse-schema.schema/table]
+  "Insert the Table `rows` in one transaction, publishing their create event, and return the inserted Tables, with the
+  default field order of their driver and the default permissions of a new Table; a Collection that cannot hold Tables
+  throws."
+  [rows :- [:sequential ::warehouse-schema.schema/table.create]]
+  (mdb/create-batched! :model/Table rows
+                       {:before-create prepare-new-tables
+                        :after-create  tables-created!}))
+
+(defn- ordered-field-positions
+  "The position of each Field of the `tables`, which share `field-order`, in that order: one read."
+  [field-order tables]
+  (for [[_table-id fields] (group-by :table_id (warehouse-schema.db/field-ids-for-tables-ordered
+                                                (into #{} (map :id) tables)
+                                                field-order))
+        [position field]   (map-indexed vector fields)]
+    [(:id field) position]))
+
+(mu/defn update-field-positions!
+  "Set the `:position` of the Fields of each of `tables` to their place in its `:field_order`: one read per distinct
+  field order and batch of [[mdb/update-partition-size]] Tables, and one event."
+  [tables :- [:sequential [:map [:id ::lib.schema.id/table] [:field_order {:optional true} [:maybe :keyword]]]]]
+  (field/set-positions!
+   (into {}
+         (for [[field-order tables] (group-by (comp keyword :field_order) tables)
+               batch                (partition-all mdb/update-partition-size tables)
+               entry                (ordered-field-positions field-order batch)]
+           entry))))
+
+(defn- updated-table
+  "The Table `previous`, an instance as the function read it, as an update of `changes` leaves it, with the columns its
+  before-update derives and the `:updated_at` it had."
+  [previous changes]
+  (-> (t2.before-update/before-update :model/Table (merge previous changes))
+      (assoc :updated_at (:updated_at previous))))
+
+(defn- publish-table-updates!
+  "Publish the `:event/table-update` event of `updates` over the `id->stored` Tables with the `:context` and `:writer` of
+  `opts`, leaving out the rows that change nothing."
+  [opts updates id->stored _id->updated]
+  (events/publish-event! :event/table-update
+                         (events/update-event id->stored
+                                              updates
+                                              (assoc opts :objects (into {}
+                                                                         (keep (fn [{:keys [id] :as row}]
+                                                                                 (when-let [previous (id->stored id)]
+                                                                                   [id (updated-table previous (dissoc row :id))])))
+                                                                         updates)))))
+
+(defn- moved-collection-ids
+  "The ids of the Collections that `rows`, the id of a Table of `stored`, `{id row}`, and its changes, move Tables to."
+  [stored rows]
+  (for [{:keys [id collection_id]} rows
+        :when (and collection_id (not= collection_id (:collection_id (stored id))))]
+    collection_id))
+
+(defn- reordered-tables
+  "The id and new field order of each of `rows` that gives its Table, one of `stored`, another field order."
+  [stored rows]
+  (for [{:keys [id field_order] :as row} rows
+        :when (and (contains? row :field_order)
+                   (contains? stored id)
+                   (not= (some-> field_order keyword) (:field_order (stored id))))]
+    {:id id :field_order (some-> field_order keyword)}))
+
+(defn- tables-by-ids
+  "The Tables with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids, so that any number of them stays
+  under the parameter limit of a statement."
+  [ids]
+  (into {} (map #(warehouse-schema.db/tables-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
+
+(defn- check-table-updates
+  "Throw unless every one of `updates`, the id of one of the `id->stored` Tables and its changes, satisfies this rule:
+
+  - the Collection it moves the Table to can hold Tables"
+  [updates id->stored]
+  (check-allowed-contents (moved-collection-ids id->stored updates)))
+
+(defn- prepare-table-updates!
+  "Check `updates` over the `id->stored` Tables, set the positions of the Fields of the Tables they give another field
+  order, and return `updates`."
+  [updates id->stored]
+  (check-table-updates updates id->stored)
+  (update-field-positions! (reordered-tables id->stored updates))
+  updates)
+
+(mu/defn update-tables! :- :nil
+  "Apply `updates`, each the `:id` of a Table and the columns to change, in one transaction, publishing their update
+  event with the `:context` and `:writer` of `opts`; a Collection that cannot hold Tables throws, and a new field order
+  sets the positions of their Fields."
+  ([updates :- [:sequential ::warehouse-schema.schema/table.update]]
+   (update-tables! updates nil))
+  ([updates :- [:sequential ::warehouse-schema.schema/table.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (mdb/update-batched! :model/Table updates
+                        {:before-update prepare-table-updates!
+                         :after-update  (partial publish-table-updates! opts)})))
+
+(mu/defn change-case!
+  "Set each of `columns`, such as `:name` and `:schema`, of the Tables with `table-ids` to its value in `kase`, `:lower`
+  or `:upper` case, which the database computes: one read before, one statement per batch of
+  [[mdb/update-partition-size]] Tables, and one read after, for the event."
+  [table-ids :- [:sequential ::lib.schema.id/table]
+   kase      :- [:enum :lower :upper]
+   columns   :- [:sequential [:enum :name :schema :display_name]]]
+  (when (seq table-ids)
+    (t2/with-transaction [_conn]
+      (let [stored (tables-by-ids table-ids)]
+        (run! #(warehouse-schema.db/change-tables-case! (vec %) kase columns)
+              (partition-all mdb/update-partition-size table-ids))
+        (events/publish-event! :event/table-update
+                               (events/update-event stored
+                                                    (mapv #(hash-map :id %) (keys stored))
+                                                    {:objects (tables-by-ids (keys stored))}))))))
+
+(mu/defn ids-of-database :- [:set ::lib.schema.id/table]
+  "The ids of the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/table-ids-of-database database-id))
+
+(defn- delete-table-content-and-publish!
+  "Delete the Fields of the Table rows `tables`, nested ones first, and the implicit Actions that write to them, then
+  publish the Tables' delete event."
+  [tables]
+  (let [batches (partition-all mdb/delete-partition-size (map :id tables))]
+    (field/delete-fields! (into [] (mapcat #(warehouse-schema.db/field-ids-for-tables (vec %))) batches))
+    (actions.models/delete-actions! (into [] (mapcat #(actions.models/action-ids-of-tables (vec %))) batches)))
+  (events/publish-event! :event/table-delete (events/delete-event tables)))
+
+(mu/defn delete-tables! :- :nil
+  "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them, in one
+  transaction, publishing their delete event after those and before the Tables' own statements."
+  [ids :- [:sequential ::lib.schema.id/table]]
+  (mdb/delete-batched! :model/Table ids {:before-delete delete-table-content-and-publish!}))
+
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain
+  statement that publishes no event, for a usage stat no rule reads, returning the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (warehouse-schema.db/increment-table-view-counts! count->ids))
+
+(defmethod collection/archive-in-collections! :model/Table
+  [_model collection-ids opts]
+  (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
+    (update-tables! (for [id (distinct table-ids)] {:id id :collection_id nil :is_published false}) opts)))
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- import-owner-ids
@@ -542,12 +711,6 @@
         entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Table
-  [_model]
-  {:create :event/table-create
-   :update :event/table-update
-   :delete :event/table-delete})
 
 (defmethod app-db-copy/spec :model/Table [_model]
   {:skip?     false
@@ -580,6 +743,9 @@
                          :show_in_getting_started false}
    :storage-paths       storage-paths
    :import-dependencies import-dependencies
+   :insert!             create-tables!
+   :update!             #(do (update-tables! %) %)
+   :delete!             delete-tables!
    :rows-by-refs        serialization/table-rows-by-refs})
 
 (defmethod audit/spec :model/Table [_model]

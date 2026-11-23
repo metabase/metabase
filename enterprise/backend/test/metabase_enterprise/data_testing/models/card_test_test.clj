@@ -4,12 +4,14 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,7 +71,7 @@
                  :model/DataTestRun {other-run :id} {:test_type :transform, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :card test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/CardTest :id test-id)
+      (data-testing.models.card-test/delete-card-tests! [test-id])
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a transform test with the same id keeps its test id"
@@ -87,11 +89,11 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/card-test-delete topic)
-                                                (swap! published conj (:id (:previous-object event)))))]
-          (t2/delete! :model/Card :id card-id))
+                                                (swap! published into (map (comp :id :previous-object) (:changes event)))))]
+          (queries.card/delete-cards! [card-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
-        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+        (testing "runs of deleted tests stay with no test id"
           (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
           (is (= [test-id other-id] (sort @published))))
@@ -198,3 +200,14 @@
         (is (= {:run false :write false}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
                 :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))))
+
+(deftest create-card-tests-with-different-key-sets-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (mt/with-model-cleanup [:model/CardTest]
+      (let [row                (fn [test-name] {:card_id card-id :name test-name :creator_id (mt/user->id :crowberto)
+                                                :inputs (lib/normalize ::data-testing.schema/inputs inputs)
+                                                :expectations (lib/normalize ::data-testing.schema/expectations expectations)})
+            [plain described]  (data-testing.models.card-test/create-card-tests! [(row "Plain")
+                                                                                  (assoc (row "Described") :description "About")])]
+        (is (nil? (t2/select-one-fn :description :model/CardTest :id (:id plain))))
+        (is (= "About" (t2/select-one-fn :description :model/CardTest :id (:id described))))))))

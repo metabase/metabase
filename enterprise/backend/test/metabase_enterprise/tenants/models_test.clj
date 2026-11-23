@@ -5,8 +5,10 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.db :as permissions.db]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -18,26 +20,28 @@
   (testing "Creating a Tenant automatically creates a dedicated collection"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
-          (testing "tenant_collection_id is set and references a valid collection"
-            (is (some? tenant-collection-id))
-            (is (t2/exists? :model/Collection :id tenant-collection-id)))
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
-            (testing "collection has correct namespace"
-              (is (= :tenant-specific (:namespace coll))))
-            (testing "collection has correct type"
-              (is (= "tenant-specific-root-collection" (:type coll))))
-            (testing "collection has correct name"
-              (is (= "Tenant Collection: TestyLilTenant" (:name coll))))
-            (testing "collection location is at root"
-              (is (= "/" (:location coll))))))))))
+        (mt/with-model-cleanup [:model/Tenant :model/Collection]
+          (let [[{tenant-collection-id :tenant_collection_id}] (tenants.model/create-tenants! [{:name "TestyLilTenant" :slug "test"}])]
+            (testing "tenant_collection_id is set and references a valid collection"
+              (is (some? tenant-collection-id))
+              (is (t2/exists? :model/Collection :id tenant-collection-id)))
+            (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+              (testing "collection has correct namespace"
+                (is (= :tenant-specific (:namespace coll))))
+              (testing "collection has correct type"
+                (is (= "tenant-specific-root-collection" (:type coll))))
+              (testing "collection has correct name"
+                (is (= "Tenant Collection: TestyLilTenant" (:name coll))))
+              (testing "collection location is at root"
+                (is (= "/" (:location coll)))))))))))
 
 (deftest tenant-collection-name-follows-tenant-name-test
   (testing "Tenant collection name includes the tenant name"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "My Company Inc" :slug "mycompany"}]
-          (let [coll (t2/select-one :model/Collection :id tenant-collection-id)]
+        (mt/with-model-cleanup [:model/Tenant :model/Collection]
+          (let [[{tenant-collection-id :tenant_collection_id}] (tenants.model/create-tenants! [{:name "My Company Inc" :slug "mycompany"}])
+                coll                                         (t2/select-one :model/Collection :id tenant-collection-id)]
             (is (= "Tenant Collection: My Company Inc" (:name coll)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -137,8 +141,7 @@
               (is (thrown-with-msg?
                    Exception
                    #"You are not allowed to change the owner of a Tenant Collection."
-                   (t2/update! :model/Collection :id tenant-collection-id
-                               {:personal_owner_id user-id}))))))))))
+                   (collection/update-collections! [{:id tenant-collection-id :personal_owner_id user-id}] nil))))))))))
 
 (deftest cannot-change-namespace-after-creation-test
   (testing "Cannot change namespace of tenant collection after creation"
@@ -149,8 +152,7 @@
             (is (thrown-with-msg?
                  Exception
                  #"cannot move a Collection to a different namespace"
-                 (t2/update! :model/Collection :id tenant-collection-id
-                             {:namespace nil})))))))))
+                 (collection/update-collections! [{:id tenant-collection-id :namespace nil}] nil)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Tenant Collection Name Localization                                       |
@@ -203,23 +205,23 @@
 
 (deftest tenant-schema-checks-columns-test
   (testing "slug must be lower-case letters, digits, dashes and underscores"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:slug "UPPER"}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :slug "UPPER"}))))
   (testing "name cannot be blank"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:name " "}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :name " "}))))
   (testing "attribute keys cannot start with @"
-    (is (not (mr/validate ::tenants.schema/tenant.update {:attributes {"@tenant.slug" "other"}}))))
+    (is (not (mr/validate ::tenants.schema/tenant {:id 1 :attributes {"@tenant.slug" "other"}}))))
   (testing "valid columns pass"
-    (is (mr/validate ::tenants.schema/tenant.update {:name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
+    (is (mr/validate ::tenants.schema/tenant {:id 1 :name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
 
-(deftest insert-checks-name-and-slug-uniqueness-test
+(deftest create-tenant-checks-name-and-slug-uniqueness-test
   (mt/with-temp [:model/Tenant _ {:name "Unique Tenant" :slug "unique-tenant"}]
     (mt/with-model-cleanup [:model/Tenant]
       (testing "name of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (t2/insert! :model/Tenant {:name "Unique Tenant" :slug "other-unique-tenant"}))))
+                              (tenants.model/create-tenants! [{:name "Unique Tenant" :slug "other-unique-tenant"}]))))
       (testing "slug of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (t2/insert! :model/Tenant {:name "Other Unique Tenant" :slug "unique-tenant"})))))))
+                              (tenants.model/create-tenants! [{:name "Other Unique Tenant" :slug "unique-tenant"}])))))))
 
 (deftest update-checks-tenant-columns-test
   (mt/with-temp [:model/Tenant {id :id} {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
@@ -233,7 +235,7 @@
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                            (t2/update! :model/Tenant :id id {:name "Taken Tenant"}))))
+                            (tenants.model/update-tenants! [{:id id :name "Taken Tenant"}]))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))
@@ -244,31 +246,43 @@
                  :model/User   {user-id :id}         {:tenant_id tenant-id}
                  :model/User   {inactive-id :id}     {:tenant_id tenant-id}
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
-    (t2/update! :model/User :id inactive-id {:is_active false})
+    (user/update-users! [{:id inactive-id :is_active false}])
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
-      (t2/update! :model/Tenant :id tenant-id {:is_active false})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
       (testing "active users of tenant are deactivated with it"
         (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
       (testing "users deactivated before tenant are not marked"
         (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
       (testing "users of other tenants stay active"
         (is (=? {:is_active true} (state other-id))))
-      (t2/update! :model/Tenant :id tenant-id {:is_active true})
+      (tenants.model/update-tenants! [{:id tenant-id :is_active true}])
       (testing "reactivating tenant reactivates only users deactivated with it"
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
+
+(deftest deactivating-tenant-deletes-subscriptions-of-its-users-test
+  (mt/with-temp [:model/Tenant                {tenant-id :id}        {}
+                 :model/User                  {user-id :id}          {:tenant_id tenant-id}
+                 :model/User                  {other-id :id}         {}
+                 :model/Pulse                 {pulse-id :id}         {}
+                 :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                 :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id user-id}
+                 :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id other-id}]
+    (tenants.model/update-tenants! [{:id tenant-id :is_active false}])
+    (is (not (t2/exists? :model/PulseChannelRecipient :user_id user-id)))
+    (is (t2/exists? :model/PulseChannelRecipient :user_id other-id))))
 
 (deftest deactivating-all-tenants-deactivates-their-users-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {}
                  :model/User   {user-id :id}   {:tenant_id tenant-id}]
     (let [active-ids (t2/select-pks-set :model/Tenant :is_active true)]
       (try
-        (permissions.db/deactivate-all-tenants!)
+        (tenants.model/deactivate-tenants!)
         (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
         (finally
-          (t2/update! :model/Tenant :id [:in active-ids] {:is_active true}))))))
+          (tenants.model/update-tenants! (mapv #(hash-map :id % :is_active true) active-ids)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Tenant Permissions                                               |
@@ -313,3 +327,73 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
                             (t2/update! :model/User :id user-id {:is_superuser true})))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
+
+(deftest create-tenants-statement-count-does-not-grow-with-rows-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-model-cleanup [:model/Tenant :model/Collection]
+        (let [counted (fn [n]
+                        (events.tu/statement-count!
+                         #(tenants.model/create-tenants!
+                           (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                       {:name tenant-name :slug (u/lower-case-en tenant-name)})))))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
+
+(deftest update-tenants-statement-count-grows-by-row-statements-only-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
+        (let [create! (fn [n]
+                        (mapv :id (tenants.model/create-tenants!
+                                   (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                               {:name tenant-name :slug (u/lower-case-en tenant-name)})))))))
+              counted (fn [n]
+                        (let [ids (create! n)]
+                          (user/create-users! (mapv #(hash-map :email (str (mt/random-name) "@example.com") :tenant_id %) ids))
+                          (tenants.model/update-tenants! (mapv #(hash-map :id % :attributes {"env" "prod"}) (take-nth 2 ids)))
+                          (events.tu/statement-count!
+                           #(tenants.model/update-tenants! (mapv (fn [id] {:id id :attributes {"env" "prod"} :is_active false}) ids)))))]
+          (counted 1)
+          (testing "half the rows hold the attributes already, so Toucan writes the rows in mixed state apart: at most 2
+                    statements per row"
+            (is (<= (- (counted 6) (counted 2)) (* 2 (- 6 2))))))))))
+
+(deftest update-tenants-refuses-two-renames-to-one-name-test
+  (mt/with-temp [:model/Tenant {first-id :id}  {:name "First Tenant" :slug "first-tenant"}
+                 :model/Tenant {second-id :id} {:name "Second Tenant" :slug "second-tenant"}]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
+                          (tenants.model/update-tenants! [{:id first-id :name "Shared Tenant"} {:id second-id :name "Shared Tenant"}])))
+    (is (= ["First Tenant" "Second Tenant"]
+           (mapv #(t2/select-one-fn :name :model/Tenant :id %) [first-id second-id])))))
+
+(deftest update-tenants-deactivates-users-of-every-flipped-tenant-test
+  (mt/with-temp [:model/Tenant {active-id :id}   {:name "Active Tenant" :slug "active-tenant"}
+                 :model/Tenant {inactive-id :id} {:name "Inactive Tenant" :slug "inactive-tenant" :is_active false}
+                 :model/User   {user-1 :id}      {:tenant_id active-id}
+                 :model/User   {user-2 :id}      {:tenant_id inactive-id :is_active true}]
+    (tenants.model/update-tenants! [{:id active-id :is_active false} {:id inactive-id :is_active false}])
+    (is (=? {:is_active false :deactivated_with_tenant true}
+            (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-1)))
+    (testing "a Tenant that was inactive already does not cascade"
+      (is (true? (t2/select-one-fn :is_active :model/User :id user-2))))))
+
+(deftest update-tenants-publishes-one-event-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-model-cleanup [:model/Tenant :model/Collection]
+        (doseq [n [2 6]]
+          (let [ids (mapv :id (tenants.model/create-tenants!
+                               (vec (repeatedly n (fn [] (let [tenant-name (mt/random-name)]
+                                                           {:name tenant-name :slug (u/lower-case-en tenant-name)}))))))]
+            (testing (str "update of " n " tenants with distinct names publishes one update event")
+              (is (= [:event/tenant-update]
+                     (events.tu/published-topics!
+                      #(tenants.model/update-tenants! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))))))))))
+
+(deftest update-tenants-frees-name-renamed-away-in-same-call-test
+  (mt/with-temp [:model/Tenant {first-id :id}  {:name "Chain First" :slug "chain-first"}
+                 :model/Tenant {second-id :id} {:name "Chain Second" :slug "chain-second"}]
+    (tenants.model/update-tenants! [{:id first-id :name "Chain Second"} {:id second-id :name "Chain Third"}])
+    (is (= ["Chain Second" "Chain Third"]
+           (mapv #(t2/select-one-fn :name :model/Tenant :id %) [first-id second-id])))))

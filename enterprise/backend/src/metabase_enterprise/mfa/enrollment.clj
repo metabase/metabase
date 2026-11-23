@@ -18,6 +18,7 @@
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.appearance.core :as appearance]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -60,10 +61,10 @@
         (let [secret      (totp/generate-secret)
               credentials {:secret secret}]
           (if auth-identity
-            (mfa.db/update-auth-identity! (:id auth-identity) {:credentials credentials})
-            (mfa.db/insert-auth-identity! {:user_id     user-id
-                                           :provider    "totp"
-                                           :credentials credentials}))
+            (models.auth-identity/update-auth-identities! [{:id (:id auth-identity) :credentials credentials}])
+            (models.auth-identity/create-auth-identity! {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials}))
           {:secret      secret
            :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
                                            :account (:email user)
@@ -88,11 +89,11 @@
            (when-let [secret (verification/stored-secret auth-identity)]
              (when-let [step (totp/matching-time-step secret code)]
                (let [codes (recovery-codes/generate-codes)]
-                 (mfa.db/update-auth-identity! (:id auth-identity)
-                                               {:confirmed_at (t/instant)
-                                                :credentials  (assoc (:credentials auth-identity)
-                                                                     :last_used_step step
-                                                                     :recovery_codes (mapv u.password/hash-bcrypt codes))})
+                 (models.auth-identity/update-auth-identities! [{:id           (:id auth-identity)
+                                                                 :confirmed_at (t/instant)
+                                                                 :credentials  (assoc (:credentials auth-identity)
+                                                                                      :last_used_step step
+                                                                                      :recovery_codes (mapv u.password/hash-bcrypt codes))}])
                  {:recovery-codes       codes
                   :mfa-auth-identity-id (:id auth-identity)})))))))))
 
@@ -100,7 +101,9 @@
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when
   something was removed."
   [user-id]
-  (pos? (mfa.db/delete-totp-identity! user-id)))
+  (let [ids (mfa.db/totp-identity-ids user-id)]
+    (models.auth-identity/delete-auth-identities! ids)
+    (boolean (seq ids))))
 
 ;;; -------------------------------------------------- Recovery-code management --------------------------------------------------
 
@@ -113,9 +116,9 @@
     (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]
-          (mfa.db/update-auth-identity! (:id auth-identity)
-                                        {:credentials (assoc (:credentials auth-identity)
-                                                             :recovery_codes (mapv u.password/hash-bcrypt codes))})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials (assoc (:credentials auth-identity)
+                                                                              :recovery_codes (mapv u.password/hash-bcrypt codes))}])
           codes)))))
 
 (defn recovery-codes-remaining

@@ -7,12 +7,10 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 
@@ -20,33 +18,23 @@ const DISMISSED_KEY = "security-center-promo-dismissed";
 
 interface SetupOpts {
   isAdmin?: boolean;
-  isProSelfHosted?: boolean;
   emailConfigured?: boolean;
   slackConfigured?: boolean;
-  advisories?: Advisory[];
 }
 
 function setup({
   isAdmin = true,
-  isProSelfHosted = true,
   emailConfigured = false,
   slackConfigured = false,
-  advisories = [],
 }: SetupOpts = {}) {
-  const tokenFeatures = createMockTokenFeatures(
-    isProSelfHosted
-      ? { advanced_permissions: true, hosting: false }
-      : { hosting: false },
-  );
+  const tokenFeatures = createMockTokenFeatures({
+    advanced_permissions: true,
+    hosting: false,
+  });
 
   setupNotificationChannelsEndpoints({
     email: { configured: emailConfigured },
     slack: { configured: slackConfigured },
-  });
-
-  fetchMock.get("path:/api/ee/security-center/advisories", {
-    last_checked_at: null,
-    advisories,
   });
 
   const state = createMockState({
@@ -132,26 +120,6 @@ describe("SecurityCenterPromoCard", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/pulse/form_input"),
     ).toHaveLength(0);
-  });
-
-  it("does not render for non-pro-self-hosted plans", async () => {
-    setup({ isProSelfHosted: false });
-
-    await waitForRequests();
-    expect(
-      screen.queryByText(/Stay safe with security alerts/),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not render when there is an active advisory (red banner takes over)", async () => {
-    setup({
-      advisories: [createAdvisory({ match_status: "active" })],
-    });
-
-    await waitForRequests();
-    expect(
-      screen.queryByText(/Stay safe with security alerts/),
-    ).not.toBeInTheDocument();
   });
 
   it("is dismissible", async () => {

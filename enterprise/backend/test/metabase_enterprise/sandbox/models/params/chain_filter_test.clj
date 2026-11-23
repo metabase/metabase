@@ -13,7 +13,7 @@
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (t2/with-transaction [_conn nil {:rollback-only true}]
       (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
-        (field-values/clear-advanced-field-values-for-field! (mt/id :categories :name))
+        (field-values/delete-field-values! (field-values/advanced-ids-of-fields [(mt/id :categories :name)]))
         (testing "values"
           (is (= {:values          [["African"] ["American"]]
                   :has_more_values false}
