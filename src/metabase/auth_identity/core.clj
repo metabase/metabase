@@ -15,7 +15,6 @@
 (p/import-vars
  [auth-identity
   force-password-reset!
-  password-reset-required?
   hash-password-credentials
   set-password!
   reset-token-hash])
@@ -58,6 +57,7 @@
   underive!]
  [provider
   authenticate
+  password-reset-required?
   login!
   provider-string->keyword
   provider-keyword->string]

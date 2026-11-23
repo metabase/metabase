@@ -163,7 +163,7 @@
   (and expires-at
        (t/before? (t/offset-date-time expires-at) (t/offset-date-time))))
 
-(mu/defn password-reset-required? :- :boolean
+(mu/defn- password-auth-identity-reset-required? :- :boolean
   "Whether `password-auth-identity` is expired because an admin forced its user to set a new password. A password
   only expires two ways: a forced reset, or the end of a support-access grant, whose user always holds a
   `support-access-grant` AuthIdentity; so an expired password without one was a forced reset. Setting a new password
@@ -172,6 +172,12 @@
   (boolean (and user_id
                 (expired? expires_at)
                 (not (auth-identity.db/auth-identity-exists? user_id "support-access-grant")))))
+
+(mu/defn password-reset-required? :- :boolean
+  "Whether an admin has forced `user-id` to set a new password (see
+  [[metabase.auth-identity.models.auth-identity/force-password-reset!]]) and they have not yet."
+  [user-id :- ms/PositiveInt]
+  (password-auth-identity-reset-required? (auth-identity.db/auth-identity user-id "password")))
 
 (methodical/defmethod authenticate :after ::provider
   [_provider result]
@@ -182,7 +188,7 @@
         ;; an admin forced a reset: the credential was right, but only a new one will do. Reported apart from an
         ;; ordinary expiry so sign-in can tell the user why and send them to set a new password.
         (and (= "password" (:provider auth-identity))
-             (password-reset-required? auth-identity))
+             (password-auth-identity-reset-required? auth-identity))
         (assoc result
                :success? false
                :error :password-reset-required
