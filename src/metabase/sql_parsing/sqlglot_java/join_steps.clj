@@ -205,7 +205,9 @@
     ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on.
     (seq (ast/find-all stmt Expressions$Placeholder Expressions$Parameter)) "parameters"
     ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
-    (contains? (set-args stmt) "laterals")                                 "unsupported-join"))
+    (contains? (set-args stmt) "laterals")                                 "unsupported-join"
+    ;; ClickHouse's SETTINGS can change what a join returns, and the step queries would leave them out.
+    (contains? (set-args stmt) "settings")                                 "unsupported-join"))
 
 (defn- steps
   "The `ok` result of [[join-steps]].

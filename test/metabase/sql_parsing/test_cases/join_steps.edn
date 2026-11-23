@@ -249,4 +249,8 @@
   {:name "brackets with a trailing clause of their own are refused",
    :dialect "postgres",
    :sql "(SELECT * FROM a JOIN b ON a.id = b.id) LIMIT 5",
-   :expected {:status "unsupported", :reason "not-a-select"}}]}
+   :expected {:status "unsupported", :reason "not-a-select"}}
+  {:name "ClickHouse SETTINGS are refused, since they can change what a join returns",
+   :dialect "clickhouse",
+   :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id SETTINGS join_use_nulls = 0",
+   :expected {:status "unsupported", :reason "unsupported-join"}}]}
