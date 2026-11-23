@@ -105,6 +105,37 @@ describe("TemporalUnitSettings", () => {
     );
   });
 
+  it("should toggle units with the arrow keys, Enter and Space", async () => {
+    const { onChangeTemporalUnits } = setup({
+      parameter: createMockParameter({
+        type: "temporal-unit",
+        temporal_units: ["day", "year"],
+      }),
+    });
+    await userEvent.click(await screen.findByText("Day, Year"));
+    expect(
+      await screen.findByRole("listbox", { name: "Time grouping options" }),
+    ).toHaveFocus();
+
+    // "Select all" comes first, then Minute
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    expect(onChangeTemporalUnits).toHaveBeenLastCalledWith([
+      "minute",
+      "day",
+      "year",
+    ]);
+
+    // Hour, then Day
+    await userEvent.keyboard("{ArrowDown}{ArrowDown} ");
+    expect(onChangeTemporalUnits).toHaveBeenLastCalledWith(["year"]);
+    expect(onChangeTemporalUnits).toHaveBeenCalledTimes(2);
+
+    // The keyboard highlight moving on doesn't hide which units are ticked
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("option", { name: "Day" })).toBeChecked();
+    expect(screen.getByRole("option", { name: "Hour" })).not.toBeChecked();
+  });
+
   it("should select none when deselecting all the units", async () => {
     const { onChangeTemporalUnits } = setup({
       parameter: createMockParameter({
