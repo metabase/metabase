@@ -5513,4 +5513,26 @@
                               (concat table-columns table-flags))))
           (is (= (merge (nils field-columns) (unset field-flags))
                  (select-keys (t2/select-one :metabase_field_user_settings :field_id field-id)
-                              (concat field-columns field-flags)))))))))
+                              (concat field-columns field-flags))))
+          (testing "user settings rows inserted after the migration default their flags to false"
+            (let [new-table-id (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                         :db_id        db-id
+                                                                         :name         "line_items"
+                                                                         :display_name "Line Items"
+                                                                         :created_at   :%now
+                                                                         :updated_at   :%now})
+                  new-field-id (t2/insert-returning-pk! :metabase_field {:table_id      new-table-id
+                                                                         :name          "id"
+                                                                         :display_name  "ID"
+                                                                         :active        true
+                                                                         :base_type     "type/Integer"
+                                                                         :database_type "INTEGER"
+                                                                         :created_at    :%now
+                                                                         :updated_at    :%now})]
+              (t2/insert! :metabase_table_user_settings {:table_id new-table-id :display_name "Line Items"})
+              (t2/insert! :metabase_field_user_settings {:field_id new-field-id :display_name "ID"})
+              (is (= (unset table-flags)
+                     (select-keys (t2/select-one :metabase_table_user_settings :table_id new-table-id) table-flags)))
+              (is (= (unset field-flags)
+                     (select-keys (t2/select-one :metabase_field_user_settings :field_id new-field-id)
+                                  field-flags))))))))))
