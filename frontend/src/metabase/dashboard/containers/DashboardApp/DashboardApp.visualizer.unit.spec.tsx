@@ -692,7 +692,10 @@ function setupEndpoints({
         .filter((card) => isNativeCard(card))
         .map((card) => ({
           ...card,
-          result_metadata: datasets[card.id]?.data.cols ?? null,
+          result_metadata:
+            // The API returns dataset columns as the card metadata, which `Field` does not type.
+            (datasets[card.id]?.data.cols as unknown as Field[] | undefined) ??
+            null,
         })),
     }),
   );
@@ -1077,7 +1080,7 @@ async function findDrilledQuestion(router: TestRouter) {
   return {
     originalCardId: card.original_card_id,
     display: card.display,
-    sourceTableId: Lib.primarySourceTableId(query),
+    sourceTableId: Lib.sourceTableOrCardId(query),
     filters: getNames(Lib.filters(query, -1)),
     aggregations: getNames(Lib.aggregations(query, -1)),
     breakouts: getNames(Lib.breakouts(query, -1)),
