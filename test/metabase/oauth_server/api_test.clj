@@ -2369,8 +2369,8 @@
 
 (deftest dynamic-client-ceiling-still-bounds-requests-test
   (testing (str "GHY-4543: a narrow registration is widened to the default ceiling, not beyond it. GHY-4969: a client "
-                "that omits the resource indicator asks for a REST token, so only the MCP scopes are dropped, and the "
-                "ceiling is what refuses these.")
+                "that omits the resource indicator and asks for a non-MCP scope asks for a REST token, so only the "
+                "MCP scopes are dropped, and the ceiling is what refuses these.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -2379,15 +2379,13 @@
                           {:scope "agent:content:read agent:query:run"}
                           (first-non-mcp-default-scope))]
             (is (= 200 (:status response)) (pr-str (:body response)))))
-        (testing "GHY-4969: an MCP scope inside the ceiling is dropped without the MCP resource, which leaves nothing"
+        (testing "an MCP scope inside the ceiling, asked for alone without a resource, defaults to the MCP resource"
           (let [response (register-then-authorize-without-resource!
                           {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
-            (is (= {:error             "invalid_scope"
-                    :error_description (str "No resource was requested, so no MCP scopes can be granted. "
-                                            "Send the MCP server's resource URL, which is http://localhost:3000"
-                                            (mcp/mcp-canonical-path) ".")}
-                   (:body response)))))
+            (when (is (= 200 (:status response)) (pr-str (:body response)))
+              (is (= ["agent:content:write"] (offered-scopes response)))
+              (is (= (mcp-resource-uri) (extract-hidden-field "resource" (:body response)))))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
@@ -2614,20 +2612,22 @@
 
 (defn- consent-page-at!
   "GET `/oauth/authorize` as `user` for `client-id` redirecting to `redirect-uri`, requesting `scope` (every v2 scope by
-  default) against the canonical MCP resource. Returns the full 200 response."
+  default) against `resource` (the canonical MCP resource by default, none when nil).
+  Returns the full 200 response."
   ([user client-id redirect-uri]
    (consent-page-at! user client-id redirect-uri all-v2-scopes))
-  ([user client-id redirect-uri scope]
+  ([user client-id redirect-uri scope & {:keys [resource] :or {resource (mcp-resource-uri)}}]
    ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
    (mt/user-http-request user :get 200 "api/user/current")
-   (mt/user-http-request-full-response
-    user :get 200 "oauth/authorize"
-    :client_id     client-id
-    :redirect_uri  redirect-uri
-    :response_type "code"
-    :scope         scope
-    :resource      (mcp-resource-uri)
-    :state         "test-state")))
+   ;; the test client sends a nil query parameter as an empty one, so a missing resource leaves the key out
+   (apply mt/user-http-request-full-response
+          user :get 200 "oauth/authorize"
+          (mapcat identity (cond-> {:client_id     client-id
+                                    :redirect_uri  redirect-uri
+                                    :response_type "code"
+                                    :scope         scope
+                                    :state         "test-state"}
+                             resource (assoc :resource resource))))))
 
 (defn- insert-token!
   "Insert a `model` (`:model/OAuthAccessToken` or `:model/OAuthRefreshToken`) row for `user` on `client-id` holding
@@ -2683,10 +2683,11 @@
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
 
 (defn- authorize-at!
-  "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` and ticking
-  exactly `granted`, then exchange the code. Returns the token response."
-  [client redirect-uri scope granted]
-  (let [consent  (consent-page-at! :crowberto (:client_id client) redirect-uri scope)
+  "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` against
+  `resource` (as [[consent-page-at!]] takes it) and ticking exactly `granted`, then exchange the code.
+  Returns the token response."
+  [client redirect-uri scope granted & {:keys [resource] :or {resource (mcp-resource-uri)}}]
+  (let [consent  (consent-page-at! :crowberto (:client_id client) redirect-uri scope :resource resource)
         body     (:body consent)
         decision (form-post-decision!
                   :crowberto
@@ -2697,15 +2698,16 @@
                            :redirect_uri  redirect-uri
                            :response_type "code"
                            :scope         (extract-hidden-field "scope" body)
-                           :resource      (mcp-resource-uri)
                            :state         "test-state"}
-                    (seq granted) (assoc :granted_scope (vec granted)))
+                    ;; posted back from the page, as a browser would, so a resource the server added round-trips too
+                    (extract-hidden-field "resource" body) (assoc :resource (extract-hidden-field "resource" body))
+                    (seq granted)                          (assoc :granted_scope (vec granted)))
                   302
                   :csrf-cookie (extract-csrf-cookie consent))]
-    (token-request! {:grant_type   "authorization_code"
-                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
-                     :redirect_uri redirect-uri
-                     :resource     (mcp-resource-uri)}
+    (token-request! (cond-> {:grant_type   "authorization_code"
+                             :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                             :redirect_uri redirect-uri}
+                      resource (assoc :resource resource))
                     :authorization (basic-auth-header (:client_id client) (:client_secret client)))))
 
 (defn- access-token-scopes
@@ -2964,3 +2966,217 @@
           (testing "the session really authenticates, so the refusal is about who, not whether"
             (client/client session-key :get 200 "api/user/current"))
           (refused-like-anonymous! {"x-metabase-session" session-key} (:client_id (create-test-client!))))))))
+
+;;; ------------------------------------------ Refresh scope vs. the grant -------------------------------------------
+
+(defn- refresh-with-scope!
+  "Refresh `token-response` as `client`, sending `scope` and, when given, `resource`. Returns the response body."
+  [client token-response scope & {:keys [resource expected-status] :or {expected-status 200}}]
+  (token-request! (cond-> {:grant_type    "refresh_token"
+                           :refresh_token (:refresh_token token-response)
+                           :scope         scope}
+                    resource (assoc :resource resource))
+                  :expected-status expected-status
+                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+
+(deftest refresh-drops-unregistered-scopes-and-narrows-to-resource-test
+  (testing (str "A refresh that names a `scope` gets the same treatment as an authorization request: unregistered "
+                "scopes are dropped and the rest narrowed to the resource. A client may refresh with the `scope` it "
+                "registered with, which can be every supported scope, so a refresh that only checked the request "
+                "against the grant would refuse every scope the authorization request had narrowed away.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              tokens   (atom (authorize-at! client redirect all-v2-scopes (vec v2-scope-set)))
+              wide     (str/join " " (conj (oauth-server/supported-scopes) "mb:full"))]
+          (is (= v2-scope-set (token-scope-set @tokens)))
+          (doseq [[label scope resource]
+                  [["unregistered scopes alongside the grant"
+                    (str "offline_access " all-v2-scopes " *")
+                    nil]
+                   ["scopes the MCP resource does not accept, narrowed to the resource the refresh token was issued for"
+                    wide
+                    nil]
+                   ["scopes the MCP resource does not accept, narrowed to the resource the request names"
+                    wide
+                    (mcp-resource-uri)]
+                   ["a repeated scope"
+                    (str all-v2-scopes " " all-v2-scopes)
+                    nil]]]
+            (testing label
+              (let [response (refresh-with-scope! client @tokens scope :resource resource)]
+                (reset! tokens response)
+                (is (= (str/split all-v2-scopes #" ") (str/split (:scope response) #" "))
+                    "the token carries each surviving scope once, in the requested order")
+                (is (= v2-scope-set (access-token-scopes response)))
+                (is (= #{v2-scope-set} (live-refresh-scopes client))
+                    "the rotated refresh token holds no dropped scope")))))))))
+
+(deftest refresh-grants-the-held-part-of-the-requested-scope-test
+  (testing (str "RFC 6749 section 3.3: a refresh asking for scopes the refresh token does not hold is granted the ones "
+                "it does hold, and the response's `scope` says which. A client that always refreshes with the same "
+                "`scope` would otherwise stop working once the user declined part of it at consent.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              held     (conj v2-baseline-scope-set "agent:content:write")
+              tokens   (authorize-at! client redirect all-v2-scopes ["agent:content:write"])
+              response (refresh-with-scope! client tokens all-v2-scopes)]
+          (is (= held (token-scope-set tokens)))
+          (is (= (filter held (str/split all-v2-scopes #" ")) (str/split (:scope response) #" ")))
+          (is (= held (access-token-scopes response)))
+          (is (= #{held} (live-refresh-scopes client))))))))
+
+(deftest refresh-scope-rejection-is-invalid-scope-test
+  (testing (str "RFC 6749 section 5.2: a refresh whose `scope` cannot be granted at all is `invalid_scope`, not "
+                "`invalid_request`. That tells the client the scope is at fault, so it can retry without `scope`, "
+                "which RFC 6749 section 6 treats as the original grant, rather than discarding a refresh token that "
+                "still works.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              held     (conj v2-baseline-scope-set "agent:content:write")
+              tokens   (authorize-at! client redirect all-v2-scopes ["agent:content:write"])
+              not-mcp  (first-non-mcp-default-scope)]
+          (is (some? not-mcp) "a supported scope the MCP surface does not accept")
+          (doseq [[label scope description]
+                  [["only unregistered scopes"
+                    "offline_access *"
+                    (str "None of the requested scopes are supported. Request only scopes listed in "
+                         "scopes_supported at http://localhost:3000/.well-known/oauth-authorization-server")]
+                   ["only scopes the resource the refresh token was issued for does not accept"
+                    (str not-mcp " mb:full")
+                    (str "The requested scopes are not accepted by the requested resource. "
+                         "The MCP server's resource URL is http://localhost:3000" (mcp/mcp-canonical-path) ".")]
+                   ["only scopes the refresh token does not hold"
+                    "agent:sql:run agent:delivery:write"
+                    (str "None of the requested scopes were granted to this refresh token. "
+                         "Omit scope to refresh with the original grant.")]]]
+            (testing label
+              (is (= {:error             "invalid_scope"
+                      :error_description description}
+                     (refresh-with-scope! client tokens scope :expected-status 400)))))
+          (testing "a rejected refresh leaves the refresh token live, so retrying without `scope` gets the original grant"
+            (is (= held (token-scope-set (refresh! client tokens))))))))))
+
+(deftest refresh-blank-scope-keeps-the-original-grant-test
+  (testing (str "RFC 6749 section 6: a refresh with a blank `scope` gets the original grant. oidc-provider reads a "
+                "whitespace-only `scope` as asking for no scopes, and rotation revokes the old refresh token, so it "
+                "would mint a token that can do nothing and leave the user to sign in again.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              tokens   (atom (authorize-at! client redirect all-v2-scopes (vec v2-scope-set)))]
+          (doseq [scope ["" "   "]]
+            (testing (pr-str scope)
+              (let [response (refresh-with-scope! client @tokens scope)]
+                (reset! tokens response)
+                (is (= v2-scope-set (token-scope-set response)))
+                (is (= v2-scope-set (access-token-scopes response)))))))))))
+
+(deftest refresh-scope-keeps-the-answer-for-a-refresh-that-fails-anyway-test
+  (testing (str "A refresh that oidc-provider refuses before it looks at the scope gets the same answer whatever "
+                "`scope` it sends: a dead or misused refresh token is `invalid_grant`, which tells the client the user "
+                "must sign in again, and bad client credentials never get as far as a scope check against a live "
+                "token. Sent with a `scope` no refresh could be granted, so trimming it first would answer "
+                "`invalid_scope`.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              issue!   (fn []
+                         (let [client (register-app-client! "MCP Client" redirect)]
+                           [client (authorize-at! client redirect all-v2-scopes (vec v2-scope-set))]))
+              refresh  (fn [client tokens scope]
+                         (token-request! (cond-> {:grant_type    "refresh_token"
+                                                  :refresh_token (:refresh_token tokens)}
+                                           scope (assoc :scope scope))
+                                         :expected-status 400
+                                         :authorization (basic-auth-header (:client_id client) (:client_secret client))))]
+          (doseq [[label error setup]
+                  [["an unknown refresh token"
+                    "invalid_grant"
+                    (fn [] (let [[client] (issue!)] [client {:refresh_token "not-a-refresh-token"}]))]
+                   ["an expired refresh token still stored"
+                    "invalid_grant"
+                    (fn [] (let [[client tokens] (issue!)]
+                             (t2/update! :model/OAuthRefreshToken {:client_id (:client_id client) :revoked_at nil}
+                                         {:expiry 1})
+                             [client tokens]))]
+                   ["another client's refresh token"
+                    "invalid_grant"
+                    (fn [] (let [[_ tokens] (issue!)
+                                 [other]    (issue!)]
+                             [other tokens]))]
+                   ["a wrong client secret"
+                    "invalid_request"
+                    (fn [] (let [[client tokens] (issue!)]
+                             [(assoc client :client_secret "wrong-secret") tokens]))]]]
+            (testing label
+              (let [[client tokens] (setup)
+                    response        (refresh client tokens "offline_access *")]
+                (is (= error (:error response)))
+                (is (= (refresh client tokens nil) response)
+                    "the same answer as the refresh without `scope`")))))))))
+
+;;; ------------------------------------ Clients that omit the resource indicator ------------------------------------
+
+;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without the default such a request
+;; reads as one for a REST token, every scope is dropped, and the user sees `invalid_scope` instead of the consent page.
+(deftest authorize-without-resource-defaults-to-mcp-for-mcp-only-scopes-test
+  (testing "BOT-2689: a request with no resource that asks only for MCP scopes is a request for the MCP server"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "Copilot Studio" redirect)
+              consent  (consent-page-at! :crowberto (:client_id client) redirect all-v2-scopes :resource nil)]
+          ;; the client has already failed the test on any other status, and the page's fields are not there to read
+          (when (= 200 (:status consent))
+            (testing "the consent page offers the MCP scopes, signed with the MCP resource"
+              (is (= v2-scope-set (set (offered-scopes consent))))
+              (is (= (mcp-resource-uri) (extract-hidden-field "resource" (:body consent)))))
+            (let [tokens (authorize-at! client redirect all-v2-scopes (vec v2-scope-set) :resource nil)]
+              (testing "the code exchange, which names no resource either, yields a token bound to the MCP resource"
+                (is (=? {:resource [(mcp-resource-uri)]} tokens))
+                (is (= v2-scope-set (token-scope-set tokens) (access-token-scopes tokens))))
+              (testing "a refresh that names the MCP scopes but no resource narrows to the token's resource"
+                (let [refreshed (refresh-with-scope! client tokens all-v2-scopes)]
+                  (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))))))
+
+;; The default needs every scope to be an MCP scope, so MCP and REST tokens stay separate.
+(deftest authorize-without-resource-stays-rest-for-mixed-scopes-test
+  (testing "BOT-2689: a request with no resource that also asks for a non-MCP scope stays a REST request"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [not-mcp  (first-non-mcp-default-scope)
+              response (register-then-authorize-without-resource! {} (str all-v2-scopes " " not-mcp))]
+          (when (is (= 200 (:status response)) (pr-str (:body response)))
+            (is (= [not-mcp] (offered-scopes response)))
+            (is (nil? (extract-hidden-field "resource" (:body response))))))))))
+
+;; A token issued before MCP and REST tokens were separated holds MCP scopes but no resource. A refresh naming those
+;; scopes and no resource would read as a REST request and narrow every scope away.
+(deftest refresh-of-a-token-without-resource-defaults-to-mcp-test
+  (testing "BOT-2689: refreshing a resource-less MCP token keeps its scopes and binds it to the MCP resource"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client        (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refresh-token (str (random-uuid))
+              _             (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) v2-scope-set
+                                           :token (oidc-util/hash-token refresh-token))
+              refreshed     (refresh-with-scope! client {:refresh_token refresh-token} all-v2-scopes)]
+          (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
+          (testing "the next refresh narrows to the resource the new token carries"
+            (is (= v2-scope-set (token-scope-set (refresh-with-scope! client refreshed all-v2-scopes))))))))))
