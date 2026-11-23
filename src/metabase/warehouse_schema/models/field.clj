@@ -587,7 +587,8 @@
         nested (keep #(when-some [active? (active %)] [% active?]) nested)]
     (doseq [[active? pairs] (group-by second nested)]
       (warehouse-schema.db/set-fields-active! (mapv (comp :id first) pairs) active?))
-    (reduce (fn [changes [field active?]] (add-change changes field {:active active?})) changes nested)))
+    (-> (reduce (fn [changes [field active?]] (add-change changes field {:active active?})) changes nested)
+        (deactivated! (into [] (keep (fn [[field active?]] (when (and (not active?) (:active field)) (:id field)))) nested)))))
 
 (defn- add-derived-types
   "`row`, an update of the Field `stored`, with the `:coercion_strategy` and `:effective_type` that the row it leaves

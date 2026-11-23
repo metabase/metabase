@@ -1549,13 +1549,35 @@
        (mapv #(assoc-inferred-result-metadata % nil))
        (mapv #(dashboard-question-collection % dashboards))))
 
+(defn- check-id-setting
+  "Throws a 400 with `message` unless the value under `k` in `visibility`, when there is one, is a sequence of
+  positive integers."
+  [visibility k message]
+  (when-some [ids (get visibility k)]
+    (api/check-400 (and (sequential? ids) (every? pos-int? ids)) message)))
+
+(defn- check-timeline-settings
+  "Throws a 400 unless the timeline ids in the `visualization_settings` of `card` are sequences of positive integers."
+  [card]
+  (let [visibility (select-keys (:visualization_settings card) timeline-visibility-keys)]
+    (check-id-setting visibility :timeline.excluded_timeline_event_ids
+                      (tru "Excluded timeline event IDs must be a sequence of positive integers."))
+    (check-id-setting visibility :timeline.selected_timeline_ids
+                      (tru "Selected timeline IDs must be a sequence of positive integers."))))
+
 (defn- check-new-cards
   "Throw unless every one of `rows`, the new Cards of one batch, with the `placement` they read, satisfies these rules:
 
   - it can go where it is put
+  - its timeline ids are sequences of positive integers
+  - its parameters and parameter mappings are well formed
   - a native query that filters on Fields filters on Fields of its Database"
   [rows placement]
   (run! #(check-new-card-placement % placement) rows)
+  (doseq [row rows]
+    (check-timeline-settings row)
+    (params/assert-valid-parameters row)
+    (params/assert-valid-parameter-mappings row))
   (check-field-filter-fields-are-from-correct-database
    (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows)))
 
@@ -1915,12 +1937,9 @@
              verified)))))
 
 (defn- invalidate-cached-results-of-changed-cards!
-  "Invalidates the cached results of each Card among `entries` that its change changes."
+  "Invalidates the cached results of each Card among `entries`, whether or not its update changes anything."
   [entries]
-  (when-let [ids (not-empty (into []
-                                  (comp (filter (comp seq :changes))
-                                        (map (comp :id :before)))
-                                  entries))]
+  (when-let [ids (not-empty (into [] (map (comp :id :before)) entries))]
     (cache-config/invalidate! {:questions ids :with-overrides? true})))
 
 (defn- notifications-of-changing-cards
@@ -2061,11 +2080,20 @@
   "Throw unless every one of `entries`, with the `placement` it reads, satisfies these rules:
 
   - a Card that moves, changes type or goes in a Dashboard or Document can go where it is put
+  - a change of the visualization settings keeps the timeline ids sequences of positive integers
+  - a change of the parameters or parameter mappings keeps them well formed
   - a native query that filters on Fields filters on Fields of its Database
   - a change of the result metadata is allowed by the sandboxes"
   [entries placement]
   (doseq [{:keys [before changes]} (filterv (comp placement-needed? :changes) entries)]
     (check-card-update-placement (merge before changes) changes placement))
+  (doseq [{:keys [changes]} entries]
+    (when (contains? changes :visualization_settings)
+      (check-timeline-settings changes))
+    (when (contains? changes :parameters)
+      (params/assert-valid-parameters changes))
+    (when (contains? changes :parameter_mappings)
+      (params/assert-valid-parameter-mappings changes)))
   (check-field-filter-fields-are-from-correct-database
    (into [] (keep #(when-let [query (:dataset_query (:changes %))] {:dataset_query query})) entries))
   (doseq [{:keys [before changes]} entries

@@ -397,8 +397,8 @@
         new-tab-ids          (into #{} (map :id) tabs)
         created-tab-ids      (remove current-tab-ids new-tab-ids)
         deleted-tab-ids      (remove new-tab-ids current-tab-ids)]
-    (doseq [{:keys [card_id]} dashcards
-            :when             (and (pos-int? card_id) (not (contains? current-dashcard-ids card_id)))]
+    (doseq [{:keys [id card_id]} dashcards
+            :when                (and (pos-int? card_id) (not (contains? current-dashcard-ids id)))]
       (analytics/track-event! :snowplow/dashboard
                               {:event        :question-added-to-dashboard
                                :dashboard-id dashboard-id

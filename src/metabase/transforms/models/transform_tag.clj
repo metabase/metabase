@@ -117,15 +117,28 @@
   [rows]
   (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids)))
 
+(defn- check-names-free
+  "Throw a 400 for the first of `rows` whose name a TransformTag other than it and the ones `rows` rename holds."
+  [rows]
+  (let [renamed (into #{} (comp (filter :name) (keep :id)) rows)
+        taken   (into {} (remove (comp renamed val)) (transforms.db/tag-names-to-ids))]
+    (doseq [{tag-name :name, :keys [id]} rows
+            :let [taken-by (some->> tag-name str not-empty taken)]
+            :when (and taken-by (not= taken-by id))]
+      (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400})))))
+
 (mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
   "Insert the TransformTag `rows` in one transaction, publishing their create event, and return the inserted tags. A name
-  another tag holds is refused by the unique index of the name; an import makes each such name unique instead."
+  another tag holds is refused; an import makes each such name unique instead."
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]]
    (create-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.create]
     opts :- ::transforms.schema/write-opts]
    (mdb/create-batched! :model/TransformTag rows
-                        {:before-create #(cond-> % (= :import (:writer opts)) rename-taken-names)
+                        {:before-create (fn [rows]
+                                          (if (= :import (:writer opts))
+                                            (rename-taken-names rows)
+                                            (check-names-free rows)))
                          :after-create #(events/publish-event! :event/transform-tag-create (events/create-event % opts))})))
 
 (defn- without-built-in-names
@@ -167,7 +180,7 @@
 (mu/defn update-transform-tags! :- :nil
   "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction,
   publishing their update event. A built-in tag that changes becomes a custom one that keeps its name. A new name
-  another tag holds is refused by the unique index of the name; an import makes each such name unique instead."
+  another tag holds is refused; an import makes each such name unique instead."
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]]
    (update-transform-tags! rows nil))
   ([rows :- [:sequential ::transforms.schema/transform-tag.update]
@@ -175,6 +188,8 @@
    (mdb/update-batched! :model/TransformTag rows
                         {:before-update (fn [rows id->stored]
                                           (let [rows (filterv (comp id->stored :id) rows)]
+                                            (when-not (= :import (:writer opts))
+                                              (check-names-free rows))
                                             (rename-order (cond-> rows (= :import (:writer opts)) (import-rows id->stored))
                                                           id->stored)))
                          :reread?    true

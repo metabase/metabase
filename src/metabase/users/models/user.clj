@@ -464,13 +464,27 @@
                         {:status-code 400
                          :errors      {:email (tru "Email address already in use.")}}))))))
 
+(defn- check-emails-and-locales
+  "Throws a 400 unless each of `rows` satisfies these rules:
+
+  - an email it gives is well formed
+  - a locale it gives is available"
+  [rows]
+  (doseq [{:keys [email locale] :as row} rows]
+    (when (and (contains? row :email) (not (u/email? email)))
+      (throw (ex-info (tru "Invalid email: {0}" (pr-str email)) {:status-code 400})))
+    (when (and locale (not (i18n/available-locale? locale)))
+      (throw (ex-info (tru "Invalid locale: {0}" (pr-str locale)) {:status-code 400})))))
+
 (defn- check-new-users
   "Throws unless the new User `rows` of one batch satisfy these rules, against the Users stored by earlier batches:
 
   - an SSO user needs the initial setup to be complete, see [[check-sso-setup]]
   - the plan's limit leaves room for every personal user, see [[check-user-limit]]
-  - each email is free, see [[check-emails-free]]"
+  - each email is free, see [[check-emails-free]]
+  - each email is well formed and each locale available, see [[check-emails-and-locales]]"
   [rows]
+  (check-emails-and-locales rows)
   (check-sso-setup rows)
   (check-user-limit rows)
   (check-emails-free rows))
@@ -604,10 +618,12 @@
   "Throws a 400 unless the `updates` of one batch satisfy these rules, against the Users stored by earlier batches:
 
   - no two rows have the same id
-  - each email is free, see [[check-emails-free]]"
+  - each email is free, see [[check-emails-free]]
+  - each email is well formed and each locale available, see [[check-emails-and-locales]]"
   [updates]
   (when (not= (count updates) (count (into #{} (map :id) updates)))
     (throw (ex-info (tru "A User can be updated only once in a call.") {:status-code 400})))
+  (check-emails-and-locales updates)
   (check-emails-free updates))
 
 (defn- update-user-batch!

@@ -169,12 +169,13 @@
   (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
 
 (mu/defn users-with-all-columns :- [:sequential :map]
-  "The Users with `user-ids`, at most one partition of them, with every column of `:core_user`."
+  "The Users with `user-ids`, at most one partition of them, with every column of `:core_user` that an event may carry."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :*] :id [:in [:auto/param (vec user-ids)]]))
+  (mapv #(dissoc % :password :password_salt :reset_token :reset_triggered :settings)
+        (t2/select [:model/User :*] :id [:in [:auto/param (vec user-ids)]])))
 
 (mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
-  "A map from id to the User, with every column of `:core_user`, for each of the Users with `user-ids`."
+  "A map from id to the User, as [[users-with-all-columns]] reads it, for each of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (into {} (map (juxt :id identity)) (by-id-partitions users-with-all-columns user-ids)))
 

@@ -300,9 +300,11 @@
 
   - its Collection is in a namespace that holds Dashboards
   - its Collection is not the library, its Data or its Metrics collection
-  - its Collection is not archived, unless the Dashboard is"
+  - its Collection is not archived, unless the Dashboard is
+  - its parameters, when it has any, are well formed"
   [rows]
-  (collection/check-collections-for-model! :model/Dashboard rows))
+  (collection/check-collections-for-model! :model/Dashboard rows)
+  (run! params/assert-valid-parameters rows))
 
 (def ^:private TabPart
   [:map {:closed true}
@@ -526,8 +528,11 @@
 
   - its Collection is in a namespace that holds Dashboards
   - its Collection is not the library, its Data or its Metrics collection
-  - its Collection is not archived, unless the Dashboard is"
+  - its Collection is not archived, unless the Dashboard is
+  - a change of its parameters keeps them well formed"
   [id->stored rows]
+  (doseq [row rows :when (contains? row :parameters)]
+    (params/assert-valid-parameters row))
   (check-dashboards
    (for [row (filterv #(changed? (get id->stored (:id %)) % :collection_id) rows)]
      {:collection_id (:collection_id row)
