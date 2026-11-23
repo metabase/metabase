@@ -558,6 +558,17 @@
             data)
     (map vector data)))
 
+(defn- part->llm-messages
+  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil."
+  [part]
+  (cond
+    (schema.v2/text-part? part)
+    (when-not (str/blank? (:text part))
+      [{:role :assistant :content (:text part)}])
+
+    (schema.v2/tool-part? part)
+    (tool-part->llm-messages part)))
+
 (defn- step->llm-messages
   "The LLM history messages for the `parts` of one step: its text and tool calls in order, then the results of those
   calls in the same order. This is how the agent loop sends a step, because the tools of a step run in parallel and
@@ -565,20 +576,45 @@
   puts each result after its call, a step with parallel calls replays in a different order, and the next turn's
   request does not start with the bytes that this turn sent."
   [parts]
-  (let [replayed (keep (fn [part]
-                         (cond
-                           (schema.v2/text-part? part)
-                           (when-not (str/blank? (:text part))
-                             [{:role :assistant :content (:text part)}])
-
-                           (schema.v2/tool-part? part)
-                           (tool-part->llm-messages part)))
-                       parts)]
+  (let [replayed (keep part->llm-messages parts)]
     (concat (map first replayed) (keep second replayed))))
 
+(defn- agent-text-after-results?
+  "Whether the assistant `row` can hold text that the agent added after the results of its last step, `last-step`.
+
+  [[metabase.metabot.agent.core/ended-loop-state]] adds such text in two cases. For a terminal error it adds the error
+  message, and `last-step` holds a failed call. At the step limit it can add a notice, and the row stores the finish
+  reason `tool-calls`, unless the last call was cut short."
+  [row last-step]
+  (boolean (or (= "tool-calls" (:finish_reason row))
+               (some #(= "output-error" (:state %)) last-step))))
+
+(defn- last-step->llm-messages
+  "The LLM history messages for `parts`, the last step of the assistant `row`.
+
+  The step replays as [[step->llm-messages]] replays it. When [[agent-text-after-results?]] is true, the last text part
+  that follows the last tool part replays after the results instead. In both cases of that function, this part is the
+  text that the agent added. No request of the turn sent that text, so the move keeps the prefix that the turn sent."
+  [row parts]
+  (let [index-of   (fn [pred] (last (keep-indexed #(when (pred %2) %1) parts)))
+        text-index (index-of schema.v2/text-part?)
+        tool-index (index-of schema.v2/tool-part?)]
+    (if (and text-index tool-index (< tool-index text-index) (agent-text-after-results? row parts))
+      (concat (step->llm-messages (concat (take text-index parts) (drop (inc text-index) parts)))
+              (part->llm-messages (nth parts text-index)))
+      (step->llm-messages parts))))
+
 (defn- assistant-row->llm-messages
-  [{:keys [data]}]
-  (into [] (mapcat step->llm-messages) (row-steps data)))
+  "The LLM history messages for the assistant `row`, step by step.
+
+  Each step before the last replays as [[step->llm-messages]] replays it, and the last as [[last-step->llm-messages]]
+  replays it."
+  [{:keys [data] :as row}]
+  (let [steps (row-steps data)]
+    (into []
+          cat
+          [(mapcat step->llm-messages (butlast steps))
+           (last-step->llm-messages row (vec (last steps)))])))
 
 (defn- rows->turns
   [rows]
