@@ -183,8 +183,11 @@ export const setupListDatabaseSchemasEndpoint = (
 
 export function setupDatabaseIdFieldsEndpoints({
   database: { id, tables = [] },
+  delay,
 }: {
   database: Database;
+  /** Holds the response for this many milliseconds */
+  delay?: number;
 }) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
@@ -197,6 +200,7 @@ export function setupDatabaseIdFieldsEndpoints({
 
   fetchMock.get(`path:/api/database/${id}/idfields`, fields, {
     name,
+    delay,
   });
 }
 
