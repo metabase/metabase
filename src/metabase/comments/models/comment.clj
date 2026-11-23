@@ -2,12 +2,18 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.audit :as comments.audit]
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -16,14 +22,7 @@
 
 (doto :model/Comment
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/Comment
-  [_model]
-  {:create :event/comment-create
-   :update :event/comment-update
-   :delete :event/comment-delete})
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON
@@ -235,3 +234,48 @@
   [document-id]
   (->> (comments.db/document-child-target-counts document-id)
        (mapv #(select-keys % [:child_target_id :comment_count]))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-comments! :- [:sequential (ms/InstanceOf :model/Comment)]
+  "Insert the Comment `rows` and return the inserted instances, in the order of `rows`, in one transaction, publishing
+  their create event."
+  [rows :- [:sequential ::comments.schema/comment.create]]
+  (app-db/create-batched! :model/Comment rows
+                          {:after-create #(events/publish-event! :event/comment-create (events/create-event %))}))
+
+(mu/defn update-comments! :- :nil
+  "Apply `updates`, each the `:id` of a Comment with the columns to give it, in one transaction, publishing one update
+  event for all of them."
+  [updates :- [:sequential ::comments.schema/comment.update]]
+  (app-db/update-batched! :model/Comment updates
+                          {:before-update (fn [updates _id->stored] (filterv #(seq (dissoc % :id)) updates))
+                           :after-update  (fn [updates id->stored _id->updated]
+                                            (when (seq updates)
+                                              (events/publish-event! :event/comment-update
+                                                                     (events/update-event id->stored updates))))}))
+
+(mu/defn soft-delete-comments! :- :nil
+  "Mark the Comments with `ids` deleted now in one transaction, publishing their update event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/update-batched! :model/Comment (mapv (fn [id] {:id id :deleted_at [:now]}) (distinct ids))
+                          {:reread?      true
+                           :after-update (fn [_updates id->stored id->updated]
+                                           (when (seq id->stored)
+                                             (events/publish-event! :event/comment-update
+                                                                    (events/update-event id->stored
+                                                                                         (mapv (fn [id] {:id id}) (keys id->stored))
+                                                                                         {:objects id->updated}))))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Comment [_model]
+  {:skip? false})
+
+(defmethod audit/spec :model/Comment [_model]
+  {:track          [:target_type :target_id :child_target_id :parent_comment_id]
+   :track-redacted [:content :content_html :context :creator_id :deleted_at :is_resolved]
+   :skip           []
+   :topics         {:create :comment-create
+                    :update comments.audit/update-topic
+                    :delete :comment-delete}})

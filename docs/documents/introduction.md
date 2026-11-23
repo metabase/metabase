@@ -30,7 +30,7 @@ You can type `@` to mention items from your Metabase (mentions get a fancy littl
 
 ## Add charts to documents
 
-You can add [questions](../questions/start.md) and [models](../data-modeling/models/models.md) to a document. You can either insert existing questions from your collections or create new questions directly in the document.
+You can add [questions](../questions/start.md) and [models](../data-modeling/models/models.md) to a document. You can either insert existing questions from your collections or create new questions directly in the document. You can't add questions that are [saved to a dashboard](../questions/introduction.md#saving-questions-to-dashboards).
 
 ### Creating new questions in documents
 

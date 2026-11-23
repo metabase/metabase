@@ -76,9 +76,9 @@
     (mt/with-dynamic-fn-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
                                                                     (swap! step-info-atom conj operation-metadata)
                                                                     (orig-log-fn operation database operation-metadata))
-                                task-history/update-task-history! (fn [th-id startime-ms info]
+                                task-history/update-task-history! (fn [th-id info]
                                                                     (swap! created-task-history-ids conj th-id)
-                                                                    (origin-update-th! th-id startime-ms info))]
+                                                                    (origin-update-th! th-id info))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))

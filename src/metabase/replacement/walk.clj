@@ -1,0 +1,148 @@
+(ns metabase.replacement.walk
+  (:require
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.lib.util :as lib.util]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
+
+(mu/defn parameter-source-card-ids :- [:set ::lib.schema.id/card]
+  "Get all card IDs referenced by `:values_source_config` in the given parameters."
+  [parameters :- [:sequential ::parameters.schema/parameter]]
+  (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
+
+(mu/defn walk-parameter-source-card-ids :- [:sequential :map]
+  "Walk the parameters and update the card IDs in `:values_source_config` using the provided function.
+
+  `card-id-fn` will be called with a card ID and should return a new card ID."
+  [parameters :- [:sequential ::parameters.schema/parameter]
+   card-id-fn :- fn?]
+  (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
+
+(mu/defn walk-parameter-source-card-refs :- [:sequential :map]
+  "Walk the parameters and update the refs in `:value_field` and `:label_field`
+  in the `:values_source_config` using the provided function.
+
+  `ref-fn` will be called with a ref and a card ID and should return a new ref."
+  [parameters :- [:sequential ::parameters.schema/parameter]
+   ref-fn       :- fn?]
+  (letfn [(update-legacy-ref [legacy-ref card-id]
+            (try
+              ;; `value_field` and `label_field` are legacy refs
+              (-> legacy-ref lib/->mbql5 (ref-fn card-id) lib/->legacy-MBQL-ref)
+              (catch Exception _
+                legacy-ref)))]
+    (mapv (fn [parameter]
+            (if-some [card-id (-> parameter :values_source_config :card_id)]
+              (-> parameter
+                  (m/update-existing-in [:values_source_config :value_field] #(update-legacy-ref % card-id))
+                  (m/update-existing-in [:values_source_config :label_field] #(update-legacy-ref % card-id)))
+              parameter))
+          parameters)))
+
+(mu/defn parameter-mapping-card-ids :- [:set ::lib.schema.id/card]
+  "Get all card IDs referenced by the parameter mappings."
+  [parameter-mappings :- [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+  (into #{} (keep :card_id) parameter-mappings))
+
+(mu/defn walk-parameter-mapping-targets :- [:sequential :map]
+  "Walk the parameter mappings and update the targets using the provided function.
+
+  `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
+  [parameter-mappings :- [:maybe [:sequential ::parameters.schema/parameter-mapping]]
+   target-fn          :- fn?]
+  (mapv (fn [mapping]
+          (or (when-some [card-id (:card_id mapping)]
+                (when-some [target' (target-fn (:target mapping) card-id)]
+                  (assoc mapping :target target')))
+              mapping))
+        parameter-mappings))
+
+(mu/defn walk-viz-settings-refs :- :map
+  "Walk the viz settings and update the refs using the provided function.
+
+  `ref-fn` will be called with a ref and should return either a string to be used as a column name."
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
+   ref-fn       :- fn?]
+  (letfn [(update-legacy-ref-or-name [ref-or-name]
+            (or (when (vector? ref-or-name)
+                  (when-some [ref (try (lib/->mbql5 ref-or-name) (catch Exception _ nil))]
+                    (when-some [ref-or-name' (ref-fn ref)]
+                      (when (string? ref-or-name')
+                        ref-or-name'))))
+                ref-or-name))
+          (update-legacy-refs-or-names [refs-or-names]
+            (into [] (keep update-legacy-ref-or-name) refs-or-names))
+          (column-setting-ref [{:keys [field-id field-options]}]
+            (-> (lib/normalize :mbql.clause/field [:field (or field-options {}) field-id])
+                lib/ensure-uuid))
+          (update-column-setting [k v]
+            (or (when-some [parsed-key (lib/parse-column-settings-key k)]
+                  (when-some [new-ref-or-name (when (:field-id parsed-key)
+                                                (ref-fn (column-setting-ref parsed-key)))]
+                    (cond
+                      (string? new-ref-or-name)
+                      [(lib/column-name->column-settings-key new-ref-or-name) v]
+                      (lib.util/field-clause? new-ref-or-name)
+                      [(lib/ref->column-settings-key new-ref-or-name) v])))
+                [k v]))
+          (update-column-settings [column-settings]
+            (m/map-kv update-column-setting column-settings))
+          (update-column-formatting [column-formatting]
+            (into [] (map #(m/update-existing % :columns update-legacy-refs-or-names)) column-formatting))]
+    (-> viz-settings
+        (m/update-existing :column_settings update-column-settings)
+        (m/update-existing :table.column_formatting update-column-formatting)
+        (m/update-existing-in [:pivot_table.column_split :rows] update-legacy-refs-or-names)
+        (m/update-existing-in [:pivot_table.column_split :columns] update-legacy-refs-or-names)
+        (m/update-existing-in [:pivot_table.column_split :values] update-legacy-refs-or-names)
+        (m/update-existing-in [:pivot_table.collapsed_rows :rows] update-legacy-refs-or-names))))
+
+(mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
+  "Returns the card ID from a click behavior if it links to a card."
+  [click-behavior :- ::lib.schema.visualization/visualization-settings]
+  (when (= "question" (:linkType click-behavior))
+    (:targetId click-behavior)))
+
+(mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
+  "Get all card IDs referenced by the click behaviors in the viz settings."
+  [viz-settings :- ::lib.schema.visualization/visualization-settings]
+  (into #{}
+        (concat
+         ;; global click behavior (non-table cards)
+         (when-some [id (some-> viz-settings :click_behavior click-behavior-card-id)]
+           [id])
+         ;; per-column click behaviors
+         (keep (fn [[_col-key col-viz]]
+                 (some-> col-viz :click_behavior click-behavior-card-id))
+               (:column_settings viz-settings)))))
+
+(mu/defn walk-viz-settings-click-behaviors :- :map
+  "Walk the click behaviors in the viz settings and update the targets using the provided function.
+
+  `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
+   target-fn    :- fn?]
+  (letfn [(update-mapping [card-id mapping]
+            (or (when-some [target (some->> mapping :target :dimension
+                                            (lib/normalize ::lib.schema.parameter/target))]
+                  (when-some [target' (target-fn target card-id)]
+                    (assoc-in mapping [:target :dimension] target')))
+                mapping))
+          (update-click-behavior [click-behavior]
+            (or (when-some [card-id (some-> click-behavior click-behavior-card-id)]
+                  (m/update-existing click-behavior :parameterMapping
+                                     (fn [mappings]
+                                       (m/map-vals #(update-mapping card-id %) mappings))))
+                click-behavior))
+          (update-column-settings [col-settings]
+            (m/map-vals #(m/update-existing % :click_behavior update-click-behavior)
+                        col-settings))]
+    (-> viz-settings
+        (m/update-existing :click_behavior update-click-behavior)
+        (m/update-existing :column_settings update-column-settings))))

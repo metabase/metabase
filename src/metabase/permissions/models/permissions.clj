@@ -158,12 +158,15 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -213,14 +216,6 @@
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
                     {:status-code 400, :path object}))))
-
-(defn- assert-valid
-  "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
-   path and it's not for the admin group)."
-  [permissions]
-  (doseq [f [assert-not-admin-group
-             assert-valid-object]]
-    (f permissions)))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -272,18 +267,10 @@
          (not= object (permissions.path/application-perms-path :subscription)))
     (tru "Cannot grant application permission to a tenant group.")))
 
-(defn- check-tenant-group-grant
-  "Throws a 400 when `permission` grants a tenant group what tenant groups cannot hold."
-  [{:keys [group_id object]}]
-  (when-let [error (tenant-group-grant-error object)]
-    (when (get (permissions.db/group-tenant-flags #{group_id}) group_id)
-      (throw (ex-info error {:status-code 400 :group-id group_id :object object})))))
-
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
-    (assert-valid permissions)
+    (assert-valid-object permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/deftransforms :model/Permissions
@@ -294,12 +281,9 @@
   [_]
   (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
 
-(t2/define-before-delete :model/Permissions
-  [permissions]
-  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
-  (assert-not-admin-group permissions))
-
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
+
+(declare create-permissions! delete-permissions!)
 
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
@@ -321,15 +305,15 @@
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths))))
+      (delete-permissions! (permissions.db/related-permission-ids group-id path paths)))))
 
 (defn grant-permissions!
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
-    (permissions.db/insert-permissions! (map (fn [path-object]
-                                               {:group_id (u/the-id group-or-id) :object path-object})
-                                             (distinct (conj (perms.u/->v2-path path) path))))
+    (create-permissions! (map (fn [path-object]
+                                {:group_id (u/the-id group-or-id) :object path-object})
+                              (distinct (conj (perms.u/->v2-path path) path))))
     nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -428,3 +412,65 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-tenant-group-grants
+  "Throws a 400 unless every one of `rows` satisfies these rules, with the groups read once and the message of the
+  first that breaks one:
+
+  - a tenant group holds no write access to a Collection
+  - a tenant group holds no application permission other than subscriptions"
+  [rows]
+  (when-let [refusable (seq (filter (comp tenant-group-grant-error :object) rows))]
+    (let [group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) refusable))]
+      (doseq [{:keys [group_id object]} refusable]
+        (when (get group-id->tenant? group_id)
+          (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
+
+(defn- create-permissions-batch!
+  "Check and insert `rows`, one batch of a call, returning the number inserted."
+  [rows]
+  (check-tenant-group-grants rows)
+  (run! assert-not-admin-group rows)
+  (permissions.db/insert-permissions! rows))
+
+(mu/defn create-permissions! :- ms/IntGreaterThanOrEqualToZero
+  "Insert the Permissions `rows` in one transaction and return the number inserted; a row for the Admin group, or one
+  granting a tenant group what tenant groups cannot hold, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions.create]]
+  (t2/with-transaction [_conn]
+    (transduce (map (comp create-permissions-batch! vec)) + 0 (partition-all app-db/create-partition-size rows))))
+
+(defn- check-permissions-deletable
+  "Throws a 400 when one of the Permissions `rows` is a row of the Admin group."
+  [rows]
+  (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) rows)))
+
+(mu/defn delete-permissions! :- :nil
+  "Delete the Permissions rows with `ids` in one transaction; a row of the Admin group among them is a 400 and deletes
+  nothing."
+  [ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (app-db/delete-batched! :model/Permissions ids {:before-delete check-permissions-deletable}))
+
+(def collection-permission-ids
+  "The ids of the Permissions rows of a Collection, see [[permissions.db/collection-permission-ids]]."
+  permissions.db/collection-permission-ids)
+
+(def database-permission-ids
+  "The ids of the Permissions rows under a Database, see [[permissions.db/database-permission-ids]]."
+  permissions.db/database-permission-ids)
+
+(mu/defn delete-permissions-for-objects! :- [:maybe :int]
+  "Delete every Permissions row for `objects`, in one raw statement per `app-db/delete-partition-size` objects,
+  returning the number deleted; unlike [[delete-permissions!]] it deletes the Admin group's rows too, since a
+  Collection that moves into the tenant-specific namespace keeps no Permissions rows at all."
+  [objects :- [:sequential :string]]
+  (t2/with-transaction [_conn]
+    (transduce (map (comp permissions.db/delete-permissions-with-objects! vec)) + 0
+               (partition-all app-db/delete-partition-size objects))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Permissions [_model]
+  {:skip? false})

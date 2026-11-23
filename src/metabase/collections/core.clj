@@ -2,6 +2,7 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.db]
    [metabase.collections.models.collection]
    [metabase.collections.update]
    [metabase.collections.util]
@@ -9,6 +10,7 @@
 
 (comment
   metabase.collections.create/keep-me
+  metabase.collections.db/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.update/keep-me
   metabase.collections.util/keep-me)
@@ -41,4 +43,6 @@
   data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
-  annotate-dashboards])
+  annotate-dashboards
+  present-collection
+  with-effective-ancestors])

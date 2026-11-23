@@ -15,6 +15,7 @@
    ;; back into this module. `notification.card` requires only events, the notification models,
    ;; and toucan.
    [metabase.notification.card :as notification.card]
+   [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -48,7 +49,7 @@
   own hooks leave their alerts."
   [stopped]
   (when-let [notification-ids (seq (for [[_card notifications] stopped, notification notifications] (:id notification)))]
-    (collections.db/delete-notifications! (vec notification-ids))))
+    (models.notification/delete-notifications! (vec notification-ids))))
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
@@ -83,7 +84,7 @@
                          (collection/parent-or-root (:namespace collection-before-update) new-parent-id))]
       (when (not= (:location collection-before-update) new-location)
         (api/update-check collection-before-update {:parent_id new-parent-id})
-        (collection/move-collection! collection-before-update new-location)))))
+        (collection/update-collections! [{:id (u/the-id collection-before-update) :location new-location}] nil)))))
 
 (defn- archive-or-restore!
   "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then
@@ -94,7 +95,7 @@
     (when-not archive?
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
-      (collections.db/update-collection! id {:archived archive?})
+      (collection/update-collections! [{:id id :archived archive?}] nil)
       (delete-stopped-alerts! stopped)
       (when archive?
         (notify-stopped-alerts! stopped @api/*current-user*))
@@ -125,9 +126,9 @@
                      (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when (seq updates)
-        (collections.db/update-collection! id updates))
+        (collection/update-collections! [(assoc updates :id id)] nil))
       (if archived-change?
         (archive-or-restore! collection-before-update collection-updates)
         (move-collection! collection-before-update collection-updates)))

@@ -53,7 +53,7 @@ Set up a realm, user, and client in Keycloak for Metabase.
 
 ## Set up OIDC in Metabase
 
-If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-set-an-encryption-key) for details.
+If you're self-hosting Metabase, make sure you've set [`MB_ENCRYPTION_SECRET_KEY`](../configuring-metabase/environment-variables.md#mb_encryption_secret_key) before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-set-an-encryption-key) for details.
 
 Go to **Admin settings** > **Authentication** > **OIDC** and enter:
 

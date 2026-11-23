@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -45,14 +46,32 @@
    force? :- [:maybe :boolean]]
   (sync.db/fields-to-scan-for-data-sensitivity (u/the-id table) force?))
 
-(mu/defn- classify-and-save!
-  "Returns the inferred category, nil when no rule matched (in which case `:PUBLIC` was written), or the Exception."
+(mu/defn- classify
+  "The inferred category of `field`, nil when no rule matched, or the Exception classifying it threw, which is logged."
   [field :- i/FieldInstance
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
-    (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (sync.db/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
-      category)))
+    (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})))
+
+(defn- save-categories!
+  "Write the category of each of `results`, `[field category]` pairs, `:PUBLIC` for nil, in one update, leaving out the
+  Fields whose classification threw."
+  [results]
+  (when-let [rows (not-empty (into []
+                                   (keep (fn [[field category]]
+                                           (when-not (instance? Exception category)
+                                             {:id (:id field) :data_sensitivity (or category :PUBLIC)})))
+                                   results))]
+    (field/update-fields! rows {:fields (mapv first results)})))
+
+(defn- add-result
+  "`stats` with the classification `result` of `field` counted and logged."
+  [stats [field result]]
+  (log/debugf "Data sensitivity for %s: %s" (sync-util/name-for-logging field)
+              (if (instance? Exception result) "failed" (or result :PUBLIC)))
+  (cond-> (update stats :fields-scanned inc)
+    (instance? Exception result) (update :fields-failed inc)
+    (keyword? result)            (update :fields-labeled inc)))
 
 (mu/defn scan-table! :- Stats
   "Label every unscanned Field in `table`. `fields-scanned` counts every selected field, `fields-labeled` those that
@@ -61,15 +80,9 @@
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats
-    (let [stats (reduce (fn [stats field]
-                          (let [result (classify-and-save! field table)]
-                            (log/debugf "Data sensitivity for %s: %s" (sync-util/name-for-logging field)
-                                        (if (instance? Exception result) "failed" (or result :PUBLIC)))
-                            (cond-> (update stats :fields-scanned inc)
-                              (instance? Exception result) (update :fields-failed inc)
-                              (keyword? result)            (update :fields-labeled inc))))
-                        zero-stats
-                        (fields-to-scan table force?))]
+    (let [results (mapv (fn [field] [field (classify field table)]) (fields-to-scan table force?))
+          _       (save-categories! results)
+          stats   (reduce add-result zero-stats results)]
       (when (pos? (:fields-scanned stats))
         (log/infof "Data sensitivity scanned %d fields in %s: %d labeled, %d failed"
                    (:fields-scanned stats) (sync-util/name-for-logging table)
@@ -101,12 +114,18 @@
                    zero-stats
                    (sync.db/tables-by-schema-and-name-reducible table-ids))))))
 
+(defn- clear-classifier-labels!
+  "Clear the `data_sensitivity` of the Fields with `field-ids` in one update and return their number."
+  [field-ids]
+  (field/update-fields! (for [id field-ids] {:id id :data_sensitivity nil}))
+  (count field-ids))
+
 (mu/defn reset-data-sensitivity! :- :int
   "REPL entry point: clear every classifier-written `data_sensitivity` in the Database with `database-id` so the next
   scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
   a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
   [database-id :- ::lib.schema.id/database]
-  (let [n (sync.db/reset-classifier-data-sensitivity-for-database! database-id)]
+  (let [n (clear-classifier-labels! (sync.db/classifier-data-sensitivity-field-ids-of-database database-id))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s"
                n (sync-util/name-for-logging (driver.u/lib-database database-id)))
     n))
@@ -114,7 +133,7 @@
 (mu/defn reset-table-data-sensitivity! :- :int
   "Like [[reset-data-sensitivity!]], for a single `table`."
   [table :- i/TableInstance]
-  (let [n (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id table))]
+  (let [n (clear-classifier-labels! (sync.db/classifier-data-sensitivity-field-ids-of-table (u/the-id table)))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging table))
     n))
 

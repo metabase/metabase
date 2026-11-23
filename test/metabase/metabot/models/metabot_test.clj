@@ -1,11 +1,17 @@
 (ns metabase.metabot.models.metabot-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.models.metabot]
+   [metabase.events.test-util :as events.tu]
+   [metabase.metabot.models.metabot :as metabot]
    [metabase.metabot.models.metabot-prompt]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(def ^:private per-row-update-growth
+  "The statements an update of one more row adds when the rows are in different stored states, so that Toucan writes
+  them one at a time: the before-update SELECT and the UPDATE, 2 for each of the 4 rows between 2 and 6."
+  8)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -38,3 +44,24 @@
           (testing "should return empty list for metabots without prompts"
             (let [metabot2 (first (filter #(= (:id %) metabot2-id) hydrated-metabots))]
               (is (= [] (:prompts metabot2))))))))))
+
+(deftest update-metabots-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Metabot    {m1 :id} {:name "Metabot 1" :use_verified_content true}
+                 :model/Metabot    {m2 :id} {:name "Metabot 2" :collection_id collection-id}
+                 :model/Metabot    {m3 :id} {:name "Metabot 3" :use_verified_content true}
+                 :model/Metabot    {m4 :id} {:name "Metabot 4" :collection_id collection-id}
+                 :model/Metabot    {m5 :id} {:name "Metabot 5" :use_verified_content true}
+                 :model/Metabot    {m6 :id} {:name "Metabot 6" :collection_id collection-id}
+                 :model/Metabot    {m7 :id} {:name "Metabot 7" :use_verified_content true}
+                 :model/Metabot    {m8 :id} {:name "Metabot 8" :collection_id collection-id}
+                 :model/Metabot    {m9 :id} {:name "Metabot 9"}]
+    (let [counted (fn [ids]
+                    (events.tu/statement-count!
+                     #(metabot/update-metabots! (mapv (fn [row-id] (assoc {:use_verified_content true :collection_id collection-id} :id row-id)) ids))))]
+      (counted [m9])
+      (is (<= (counted [m3 m4 m5 m6 m7 m8]) (+ (counted [m1 m2]) per-row-update-growth)))
+      (testing "every Metabot ends with the changes"
+        (is (= #{[true collection-id]}
+               (set (map (juxt :use_verified_content :collection_id)
+                         (t2/select :model/Metabot :id [:in [m1 m2 m3 m4 m5 m6 m7 m8]])))))))))

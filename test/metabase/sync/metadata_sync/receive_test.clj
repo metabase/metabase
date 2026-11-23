@@ -14,6 +14,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -593,15 +595,15 @@
   the values the seed wrote that a sync sets, and return the new Table's id."
   [db-id table-id]
   (let [table     (t2/select-one :model/Table :id table-id)
-        new-id    (t2/insert-returning-pk! :model/Table (-> (apply dissoc table :data_layer :data_authority
-                                                                   instance-columns)
-                                                            (dissoc :display_name)
-                                                            (assoc :db_id db-id)
-                                                            u/remove-nils))]
-    (doseq [field (t2/select :model/Field :table_id table-id)]
-      (t2/insert! :model/Field (-> (apply dissoc field :display_name instance-columns)
-                                   (assoc :table_id new-id)
-                                   u/remove-nils)))
+        new-id    (:id (first (table/create-tables! [(-> (apply dissoc table :data_layer :data_authority
+                                                                instance-columns)
+                                                         (dissoc :display_name)
+                                                         (assoc :db_id db-id)
+                                                         u/remove-nils)])))]
+    (field/create-fields! (for [field (t2/select :model/Field :table_id table-id)]
+                            (-> (apply dissoc field :display_name instance-columns)
+                                (assoc :table_id new-id)
+                                u/remove-nils)))
     new-id))
 
 (defn- row-columns

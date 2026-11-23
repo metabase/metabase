@@ -37,6 +37,10 @@ Generates a markdown file containing documentation for all CLI commands. This is
 
 Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults. Metabase will save the template as `docs/configuring-metabase/config-template.md`.
 
+## `driver-features-documentation`
+
+Generates `docs/databases/feature-support.md`, which shows which officially supported database supports which feature. Needs the driver modules on the classpath: `clojure -M:ee:drivers:doc driver-features-documentation`.
+
 ## `driver-methods | driver-methods _docs`
 
 Print a list of all multimethods available for a driver to implement, optionally with their docstrings.

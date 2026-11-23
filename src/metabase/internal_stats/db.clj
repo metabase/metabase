@@ -200,7 +200,7 @@
                               [(u/count-case [:and (contains-embedding-param "disabled")
                                               embedding-on])
                                :with_disabled_params])))
-     {:where (mi/exclude-internal-content-hsql :model/Card)})))
+     {:where (mi/non-internal-filter-clause :model/Card :report_card)})))
 
 (mu/defn active-personal-user-email-domain-count
   "The `:count` of distinct email domains of active personal Users."

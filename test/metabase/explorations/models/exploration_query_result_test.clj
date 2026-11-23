@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-query-result :as exploration-query-result]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -179,3 +181,27 @@
                          :set    {:chart_stats "{not json ]["}
                          :where  [:= :id id]})
           (is (nil? (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card                {card-id :id}        {:type :metric}
+                 :model/Exploration         {exploration-id :id} {}
+                 :model/ExplorationThread   {thread-id :id}      {:exploration_id exploration-id}
+                 :model/ExplorationBlock    {block-id :id}       {:exploration_thread_id thread-id}
+                 :model/ExplorationPage     {page-id :id}        {:exploration_block_id block-id :card_id card-id
+                                                                  :dimension_id "d1" :query_type "default"}]
+    (mt/with-model-cleanup [:model/StoredResult]
+      (let [rows (fn [n]
+                   (mapv (fn [i]
+                           {:stored_result_id     (t2/insert-returning-pk! :model/StoredResult
+                                                                           {:result_data   (byte-array [1 2 3])
+                                                                            :database_id   (mt/id)
+                                                                            :dataset_query (venues-count-query)})
+                            :exploration_query_id (t2/insert-returning-pk! :model/ExplorationQuery
+                                                                           {:exploration_thread_id thread-id :card_id card-id :page_id page-id
+                                                                            :database_id (mt/id) :dimension_id (str "d" i) :position i})})
+                         (range n)))]
+        (exploration-query-result/create-query-results! (rows 1))
+        (let [small (rows 2)
+              large (rows 6)]
+          (is (= (events.tu/statement-count! #(exploration-query-result/create-query-results! small))
+                 (events.tu/statement-count! #(exploration-query-result/create-query-results! large)))))))))

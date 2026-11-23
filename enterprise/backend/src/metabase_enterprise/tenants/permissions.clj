@@ -1,9 +1,9 @@
 (ns metabase-enterprise.tenants.permissions
   "Enterprise implementation of tenant-specific collection permissions management."
   (:require
-   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions :as permissions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -15,7 +15,7 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
-  (tenants.db/delete-permissions-with-objects! (for [coll (cons collection (collection/descendants collection))
+  (permissions/delete-permissions-for-objects! (for [coll (cons collection (collection/descendants collection))
                                                      path-fn [perms/collection-read-path
                                                               perms/collection-readwrite-path]]
                                                  (path-fn coll))))
@@ -29,7 +29,7 @@
   (by definition) to somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- @#'collection/LocationPath]
   ;; TODO(johnswanson, 2025-11-25) fix the private bits
-  (#'collection/copy-collection-permissions! (#'collection/parent {:location new-location})
+  (#'collection/copy-collection-permissions! (collection/parent-or-root nil (collection/location-path->parent-id new-location))
                                              (cons collection (collection/descendants collection))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!

@@ -1,11 +1,20 @@
 (ns metabase.actions.models
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
+   [metabase.actions.collection-items :as actions.collection-items]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.dependencies :as actions.dependencies]
    [metabase.actions.schema :as actions.schema]
+   [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -21,9 +30,12 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate])
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 ;;; ----------------------------------------------------- Setup ------------------------------------------------------
@@ -37,35 +49,10 @@
 (doto :model/Action
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events))
-
-(defmethod events/spec :model/Action
-  [_model]
-  {:create :event/action-create
-   :update :event/action-update
-   :delete :event/action-delete})
+  (derive :hook/timestamped?))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
-
-(doto :model/QueryAction
-  (derive :search/indexed)
-  (derive :hook/events))
-
-(defmethod events/spec :model/QueryAction
-  [_model]
-  {:create :event/query-action-create
-   :update :event/query-action-update
-   :delete :event/query-action-delete})
-
-(derive :model/ImplicitAction :hook/events)
-
-(defmethod events/spec :model/ImplicitAction
-  [_model]
-  {:create :event/implicit-action-create
-   :update :event/implicit-action-update
-   :delete :event/implicit-action-delete})
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -128,9 +115,9 @@
   #{collection/data-actions-ns collection/data-apps-ns})
 
 (defn- collection-namespace
-  "The namespace of the Collection of `action` as a keyword, or nil."
-  [{:keys [collection_id]}]
-  (some-> collection_id actions.db/collection-namespace keyword))
+  "The namespace of `collection`, the row of the Collection an Action is in, as a keyword, or nil."
+  [collection]
+  (some-> collection :namespace keyword))
 
 (defn- check-model-less-collection
   "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection,
@@ -144,13 +131,13 @@
                            :errors      {:collection_id msg}})))))
 
 (defn- check-collection-content
-  "Throws unless `action` may go in its Collection, whose namespace is `collection-namespace`."
-  [{collection-id :collection_id, :as action} collection-namespace]
-  (when collection-id
-    (collection/check-collection-namespace :model/Action collection-id)
-    (collection/check-allowed-content :action collection-id)
-    (collection/check-collection-not-archived (:archived action) collection-id))
-  (check-model-less-collection action collection-namespace))
+  "Throws unless `action` may go in `collection`, the row of its Collection, nil for none."
+  [action collection]
+  (when collection
+    (collection/check-collection-namespace :model/Action collection)
+    (collection/check-allowed-content :action collection)
+    (collection/check-collection-not-archived (:archived action) collection))
+  (check-model-less-collection action (collection-namespace collection)))
 
 (defn- model-collection-error
   "The 400 for an action of a model put in a Collection other than its model's."
@@ -187,48 +174,19 @@
 
 (t2/define-before-insert :model/Action
   [action]
-  (let [model-card (some-> (:model_id action) actions.db/card-placement)
-        action     (cond-> (public-sharing/add-public-uuid-prefix action)
-                     (:model_id action) (set-model-collection model-card))
-        namespace  (collection-namespace action)]
-    (when (and (implicit? action) (:model_id action))
-      (check-model-card model-card))
-    (check-collection-content action namespace)
-    (check-data-app-action action namespace)
-    action))
+  (public-sharing/add-public-uuid-prefix action))
 
 (t2/define-before-update :model/Action
-  [{model-id :model_id, :as action}]
-  (let [changes      (t2/changes action)
-        changed-any? (fn [ks] (some #(contains? changes %) ks))
-        model-card   (when (and model-id (changed-any? [:collection_id :type]))
-                       (actions.db/card-placement model-id))
-        placed?      (changed-any? [:collection_id :type :model_id :archived :public_uuid :parameters])
-        namespace    (when placed? (collection-namespace action))]
-    (when (and model-id
-               (contains? changes :collection_id)
-               (not= (:collection_id action) (:collection_id model-card)))
-      (throw (model-collection-error)))
-    (when (and (implicit? action) model-id (contains? changes :type))
-      (check-model-card model-card)
-      (check-query-supports-implicit-actions (actions.db/card-query model-id)))
-    (when (contains? changes :collection_id)
-      (check-collection-content action namespace))
-    (when placed?
-      (check-data-app-action action namespace))
+  [action]
+  (let [changes (t2/changes action)]
     (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly action #(collection/archived? (:collection_id action)))))))
-
-(defn- normalized-query
-  "The query of `query-action` normalized, or nil when it has none."
-  [{query :dataset_query}]
-  (when (and (map? query) (seq query))
-    (lib-be/normalize-query query)))
+      (and (contains? changes :archived) (not (contains? changes :archived_directly)))
+      (assoc :archived_directly (mi/archived-directly-clause :model/Action changes)))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` its query names, when the query names one."
-  [query-action]
-  (if-let [database-id (:database (normalized-query query-action))]
+  [{query :dataset_query, :as query-action}]
+  (if-let [database-id (when (map? query) (:database query))]
     (assoc query-action :database_id database-id)
     query-action))
 
@@ -240,7 +198,6 @@
 
 (t2/define-before-insert :model/QueryAction
   [query-action]
-  (check-details-type (some-> (:action_id query-action) actions.db/action-type-and-model) :query)
   (set-query-database query-action))
 
 (t2/define-before-update :model/QueryAction
@@ -261,21 +218,6 @@
                       {:status-code 400})))
     (when (nil? table-id)
       (throw (ex-info (tru "An implicit action needs a table.") {:status-code 400})))))
-
-(t2/define-before-insert :model/ImplicitAction
-  [implicit-action]
-  (let [action (some-> (:action_id implicit-action) actions.db/action-type-and-model)]
-    (check-details-type action :implicit)
-    (check-implicit-action-table implicit-action action)
-    implicit-action))
-
-(t2/define-before-update :model/ImplicitAction
-  [implicit-action]
-  (let [changes (t2/changes implicit-action)]
-    (when (contains? changes :table_id)
-      (check-implicit-action-table implicit-action
-                                   (some-> (:action_id implicit-action) actions.db/action-type-and-model)))
-    implicit-action))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -398,66 +340,6 @@
   (doseq [database-id (action-database-ids action)
           :when       database-id]
     (actions/check-actions-enabled-for-database (actions.db/database database-id))))
-
-(def ^:private action-columns
-  "The columns that are common to all Action types."
-  [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
-   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
-
-;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
-(mu/defn- insert*! :- ::actions.schema/id
-  [action-data :- ::actions.schema/action.for-insert]
-  (t2/with-transaction [_conn]
-    (let [action (actions.db/insert-action! (select-keys action-data action-columns))
-          row    (-> (apply dissoc action-data action-columns)
-                     (assoc :action_id (:id action))
-                     (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
-      (case (:type action)
-        :query    (actions.db/insert-query-action! row)
-        :implicit (actions.db/insert-implicit-action! row))
-      (:id action))))
-
-(mu/defn insert! :- ::actions.schema/id
-  "Inserts an Action and related type table. Returns the action id."
-  [action-data :- ::actions.schema/action.for-insert]
-  (insert*! (lib/normalize ::actions.schema/action.for-insert action-data)))
-
-(mu/defn- update*!
-  [{:keys [id] :as updates} :- ::actions.schema/action.for-update
-   existing-action          :- ::actions.schema/action]
-  (let [updates (assoc updates :type (or (:type updates) (:type existing-action)))]
-    (when (and (contains? updates :model_id) (not= (:model_id updates) (:model_id existing-action)))
-      (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
-    (t2/with-transaction [_conn]
-      (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (actions.db/update-action! id action-row))
-      (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
-                                       (= (or (:type updates) (:type existing-action))
-                                          :implicit)
-                                       (dissoc :database_id)))]
-        (let [type-row (assoc type-row :action_id id)]
-          (if (and (:type updates) (not= (:type updates) (:type existing-action)))
-            (do
-              (case (:type existing-action)
-                :query    (actions.db/delete-query-action! id)
-                :implicit (actions.db/delete-implicit-action! id))
-              (case (:type updates)
-                :query    (actions.db/insert-query-action! type-row)
-                :implicit (actions.db/insert-implicit-action! type-row)))
-            (case (:type existing-action)
-              :query    (actions.db/update-query-action! id type-row)
-              :implicit (actions.db/update-implicit-action! id type-row)))))
-      (when (and (:archived updates) (not (:archived existing-action)))
-        (actions.db/delete-dashcards-for-action! id))
-      (actions.db/action id))))
-
-(mu/defn update!
-  "Updates an Action and the related type table.
-   Deletes the old type table row if the type has changed."
-  [updates         :- ::actions.schema/action.for-update
-   existing-action :- ::actions.schema/action]
-  (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.
-    (update*! (lib/normalize ::actions.schema/action.for-update updates) existing-action)))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
@@ -749,7 +631,486 @@
                 action    (get actions-by-id action-id)]]
       (m/assoc-some dashcard :action action))))
 
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- placements-of
+  "A map of Card id to the id, type and Collection id of the models that `actions` are made on."
+  [actions]
+  (let [ids (into [] (comp (keep :model_id) (distinct)) actions)]
+    (if (seq ids) (actions.db/card-placements ids) {})))
+
+(defn- collections-of
+  "A map of Collection id to its row for the content checks, for the Collections `actions` are in."
+  [actions]
+  (let [ids (into [] (comp (keep :collection_id) (distinct)) actions)]
+    (collection/collections-for-content-checks ids)))
+
+(defn- collection-of
+  "The row of the Collection `action` is in, from `collections`, nil for none, and for one that does not exist, which the
+  foreign key of `collection_id` refuses."
+  [collections {:keys [collection_id]}]
+  (when collection_id
+    (get collections collection_id)))
+
+(defn- check-detail-types
+  "Throws unless each of the Actions with `action-ids` is of `action-type`, and returns a map of id to Action; one that
+  does not exist is left to the foreign key of the details row."
+  [action-ids action-type]
+  (let [actions (actions.db/action-types-and-models (vec (distinct action-ids)))]
+    (doseq [action-id action-ids
+            :let      [action (get actions action-id)]
+            :when     action]
+      (check-details-type action action-type))
+    actions))
+
+(mu/defn- create-query-actions! :- [:sequential (ms/InstanceOf :model/QueryAction)]
+  "Insert the QueryAction `rows`, the details of Actions that are query actions, in a plain write that publishes nothing,
+  and return the inserted instances, each with the database its query names."
+  [rows :- [:sequential ::actions.schema/query-action.create]]
+  (if (empty? rows)
+    []
+    (do
+      (check-detail-types (map :action_id rows) :query)
+      (vec (actions.db/insert-query-actions! rows)))))
+
+(mu/defn- update-query-actions! :- [:sequential ::actions.schema/query-action.update]
+  "Apply the changes in each of `rows`, the id of a query Action and the columns to change, with one statement per
+  distinct set of changes, in a plain write that publishes nothing, and return `rows`."
+  [rows :- [:sequential ::actions.schema/query-action.update]]
+  (doseq [[changes group] (group-by #(dissoc % :action_id) rows)]
+    (when (seq changes)
+      (actions.db/update-query-actions! (mapv :action_id group) changes)))
+  (vec rows))
+
+(mu/defn- delete-query-actions!
+  "Delete the QueryActions of the Actions with `action-ids`, in one statement of a plain write that publishes nothing."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (when (seq action-ids)
+    (actions.db/delete-query-actions! action-ids))
+  nil)
+
+(mu/defn- create-implicit-actions! :- [:sequential (ms/InstanceOf :model/ImplicitAction)]
+  "Insert the ImplicitAction `rows`, the details of Actions that are implicit actions, in a plain write that publishes
+  nothing, and return the inserted instances, an Action of a model taking no Table and an Action without a model
+  needing one."
+  [rows :- [:sequential ::actions.schema/implicit-action.create]]
+  (if (empty? rows)
+    []
+    (let [actions (check-detail-types (map :action_id rows) :implicit)]
+      (doseq [row rows]
+        (check-implicit-action-table row (get actions (:action_id row))))
+      (vec (actions.db/insert-implicit-actions! rows)))))
+
+(mu/defn- update-implicit-actions! :- [:sequential ::actions.schema/implicit-action.update]
+  "Apply the changes in each of `rows`, the id of an implicit Action and the columns to change, with one statement per
+  distinct set of changes, in a plain write that publishes nothing, throwing for a Table given to an Action of a
+  model or missing for an Action without one, and return `rows`."
+  [rows :- [:sequential ::actions.schema/implicit-action.update]]
+  (let [with-table (filter #(contains? % :table_id) rows)
+        actions    (when (seq with-table)
+                     (actions.db/action-types-and-models (mapv :action_id with-table)))]
+    (doseq [row with-table]
+      (check-implicit-action-table row (get actions (:action_id row))))
+    (doseq [[changes group] (group-by #(dissoc % :action_id) rows)]
+      (when (seq changes)
+        (actions.db/update-implicit-actions! (mapv :action_id group) changes)))
+    (vec rows)))
+
+(mu/defn- delete-implicit-actions!
+  "Delete the ImplicitActions of the Actions with `action-ids`, in one statement of a plain write that publishes
+  nothing."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (when (seq action-ids)
+    (actions.db/delete-implicit-actions! action-ids))
+  nil)
+
+(def ^:private detail-columns
+  "The columns of an Action's QueryAction or ImplicitAction that a row of the Action carries with it."
+  [:dataset_query :database_id :legacy_query :kind :table_id])
+
+(defn- details-row
+  "The columns of the details of an Action of `action-type` with `action-id` that `row`, the Action's columns with its
+  details, holds."
+  [row action-id action-type]
+  (cond-> (assoc (select-keys row detail-columns) :action_id action-id)
+    (= :implicit action-type) (dissoc :database_id)))
+
+(defn- create-details!
+  "Insert the QueryActions and the ImplicitActions of `details`, each `{:type :query or :implicit, :row details-row}`."
+  [details]
+  (let [rows-of (fn [action-type] (into [] (comp (filter #(= action-type (:type %))) (map :row)) details))]
+    (create-query-actions! (rows-of :query))
+    (create-implicit-actions! (rows-of :implicit))))
+
+(defn- delete-details!
+  "Delete the QueryActions and the ImplicitActions of `details`, each `{:type :query or :implicit, :id action-id}`."
+  [details]
+  (let [ids-of (fn [action-type] (into [] (comp (filter #(= action-type (:type %))) (map :id)) details))]
+    (delete-query-actions! (ids-of :query))
+    (delete-implicit-actions! (ids-of :implicit))))
+
+(defn- update-details!
+  "Apply the rows of `details`, each `{:type :query or :implicit, :row details-row}`, to the QueryActions and the
+  ImplicitActions they name."
+  [details]
+  (let [rows-of (fn [action-type] (into [] (comp (filter #(= action-type (:type %))) (map :row)) details))]
+    (update-query-actions! (rows-of :query))
+    (update-implicit-actions! (rows-of :implicit))))
+
+(defn- check-action-creates
+  "Throw unless every one of `rows`, new Actions with the model `cards` and `collections` they read, satisfies these rules:
+
+  - an implicit Action of a model has a model Card that can hold implicit Actions
+  - it fits the Collection it is in
+  - an Action in a data app Collection is one a data app may hold"
+  [rows cards collections]
+  (doseq [{model-id :model_id, :as row} rows
+          :let                          [collection (collection-of collections row)]]
+    (when (and (implicit? row) model-id)
+      (check-model-card (get cards model-id)))
+    (check-collection-content row collection)
+    (check-data-app-action row (collection-namespace collection))))
+
+(defn- insert-actions!
+  "Inserts `rows`, the checked new Actions of one batch, and, unless `writer` imports, their details, and returns the new
+  Actions."
+  [rows writer]
+  (let [actions (actions.db/insert-actions! (mapv #(select-keys % actions.db/action-columns) rows))]
+    (when-not (= :import writer)
+      (create-details! (mapv (fn [[action row]]
+                               {:type (:type action)
+                                :row  (details-row row (:id action) (:type action))})
+                             (map vector actions rows))))
+    actions))
+
+(defn- create-action-batch!
+  "Checks and inserts the Actions of `batch`, up to one partition of the call, and returns the new ones."
+  [batch writer]
+  (let [cards       (placements-of batch)
+        rows        (mapv #(cond-> % (:model_id %) (set-model-collection (get cards (:model_id %)))) batch)
+        collections (collections-of rows)]
+    (check-action-creates rows cards collections)
+    (insert-actions! rows writer)))
+
+(mu/defn create-actions! :- [:sequential (ms/InstanceOf :model/Action)]
+  "Insert the Action `rows`, each with the QueryAction or ImplicitAction columns of its details, in one transaction,
+  publishing their create event last, and return the inserted instances, the rows of `:writer :import` holding no
+  details, which the SerDes import writes on their own."
+  ([rows :- [:sequential ::actions.schema/action.create]]
+   (create-actions! rows nil))
+  ([rows :- [:sequential ::actions.schema/action.create]
+    opts :- :metabase.events.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (let [actions (into [] (mapcat #(create-action-batch! % (:writer opts)))
+                         (partition-all mdb/create-partition-size rows))]
+       (when (seq actions)
+         (events/publish-event! :event/action-create (events/create-event actions opts)))
+       actions))))
+
+(defn- changes-of
+  "The columns of `row`, an update of the stored Action `stored`, that differ from it."
+  [stored row]
+  (into {} (remove (fn [[k v]] (= v (get stored k)))) (dissoc row :id)))
+
+(defn- update-context
+  "What the checks of an update need to know about `row`, the update of the stored Action `stored`."
+  [stored row]
+  (let [action       (merge stored row)
+        changes      (changes-of stored row)
+        changed-any? (fn [ks] (boolean (some #(contains? changes %) ks)))]
+    {:row        row
+     :action     action
+     :changes    changes
+     :model-id   (:model_id action)
+     :placement? (boolean (and (:model_id action) (changed-any? [:collection_id :type])))
+     :placed?    (changed-any? [:collection_id :type :model_id :archived :public_uuid :parameters])}))
+
+(defn- check-update
+  "Throws when the update in `context` puts its Action where it does not fit, with the models `cards`, their
+  `queries` and the `collections` read for it."
+  [{:keys [action changes model-id placed?]} cards queries collections]
+  (let [model-card (get cards model-id)
+        collection (when placed? (collection-of collections action))]
+    (when (and model-id
+               (contains? changes :collection_id)
+               (not= (:collection_id action) (:collection_id model-card)))
+      (throw (model-collection-error)))
+    (when (and (implicit? action) model-id (contains? changes :type))
+      (check-model-card model-card)
+      (check-query-supports-implicit-actions (get queries model-id)))
+    (when (contains? changes :collection_id)
+      (check-collection-content action collection))
+    (when placed?
+      (check-data-app-action action (collection-namespace collection)))))
+
+(defn- check-model-unchanged
+  "Throws a 400 when the update in `context` changes the model of its Action."
+  [{:keys [changes]}]
+  (when (contains? changes :model_id)
+    (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400}))))
+
+(defn- detail-updates
+  "The writes of the details that `rows`, updates of the stored Actions `stored`, change as
+  `{:replaced [...] :kept [...]}`, `details` mapping an Action id to its stored details, `:replaced` holding for an Action whose type changes
+  `{:id action-id, :old old-type, :new new-type, :row details-row}` and `:kept` holding for one whose details columns
+  change `{:id action-id, :type action-type, :row details-row}`."
+  [stored details rows]
+  (let [updates (for [row   rows
+                      :let  [id       (:id row)
+                             old-type (:type (get stored id))
+                             new-type (or (:type row) old-type)
+                             detail   (details-row row id new-type)]
+                      :when (and (seq (dissoc detail :action_id))
+                                 (or (not= old-type new-type)
+                                     (seq (changes-of (get details id) (assoc detail :id id)))))]
+                  {:id id :old old-type :new new-type :row detail})]
+    {:replaced (filterv #(not= (:old %) (:new %)) updates)
+     :kept     (into [] (comp (filter #(= (:old %) (:new %))) (map (fn [{:keys [id new row]}] {:id id :type new :row row}))) updates)}))
+
+(defn- write-details!
+  "Write the `:replaced` and `:kept` writes of `updates`, as [[detail-updates]] gives them."
+  [{:keys [replaced kept]}]
+  (delete-details! (mapv (fn [{:keys [id old]}] {:type old :id id}) replaced))
+  (create-details! (mapv (fn [{:keys [new row]}] {:type new :row row}) replaced))
+  (update-details! kept))
+
+(defn- publish-update!
+  "Publish, as the last step of a write, the update event of the Actions that the `rows` change, and the touch event of
+  those of `touched-ids` that they leave unchanged, whose details an import wrote, so that their records are made once,
+  and nothing when there is none; `stored` holds the Actions as read before and `objects` as they are after."
+  [stored objects rows touched-ids opts]
+  (let [event   (events/update-event stored rows (assoc opts :objects objects))
+        updated (into #{} (map (comp :id :object)) (:changes event))
+        touched (into [] (comp (remove updated) (distinct) (keep stored)) touched-ids)
+        event   (update event :changes into (:changes (events/touch-event touched)))]
+    (when (seq (:changes event))
+      (events/publish-event! :event/action-update event))))
+
+(defmulti delete-for-archived-actions!
+  "Delete the rows of `model` that show the Actions with `action-ids`, which are being archived. The DashboardCard
+  model, whose namespace requires this one, implements it with its own write function."
+  {:arglists '([model action-ids])}
+  (fn [model _action-ids] model))
+
+(defn- newly-archived-ids
+  "The ids of the Actions of `rows`, updates of the stored Actions `stored`, that the rows archive."
+  [stored rows]
+  (into [] (comp (filter :archived) (remove #(:archived (get stored (:id %)))) (map :id)) rows))
+
+(defn- update-action-contexts
+  "The contexts of `rows`, updates of the `stored` Actions, and the details writes they make, `details` being the stored
+  details by Action id."
+  [stored details rows]
+  (let [updates     (when details (detail-updates stored details rows))
+        edited      (into #{} (map :id) (concat (:replaced updates) (:kept updates)))
+        now         (OffsetDateTime/now)
+        action-rows (mapv #(cond-> (select-keys % (conj actions.db/action-columns :id))
+                             (contains? edited (:id %)) (assoc :updated_at now))
+                          rows)]
+    {:updates  updates
+     :contexts (mapv #(update-context (get stored (:id %)) %) action-rows)}))
+
+(defn- check-action-updates
+  "Throw unless every one of `contexts`, updates of stored Actions, satisfies these rules, unless `opts` has
+  `:writer :cascade`:
+
+  - an Action that moves or changes type fits the model Card and the Collection it goes to
+  - an Action in a data app Collection is one a data app may hold
+  - the model of an Action does not change, unless `opts` has a `:writer`"
+  [contexts opts]
+  (when-not (= :cascade (:writer opts))
+    (let [cards       (placements-of (map :action (filter :placement? contexts)))
+          query-ids   (into [] (comp (filter #(and (implicit? (:action %)) (contains? (:changes %) :type)))
+                                     (keep :model-id)
+                                     (distinct))
+                            contexts)
+          queries     (if (seq query-ids) (actions.db/card-queries query-ids) {})
+          collections (collections-of (map :action (filter :placed? contexts)))]
+      (run! #(check-update % cards queries collections) contexts)))
+  (when (nil? (:writer opts))
+    (run! check-model-unchanged contexts)))
+
+(defn- write-action-updates!
+  "Writes the `contexts` and details `updates` of the `stored` Actions, deletes the DashboardCards of those that are
+  archived on their own, and returns the rows as the update event needs them and the Actions after the write."
+  [stored {:keys [updates contexts]} opts]
+  (let [action-rows (mapv :row contexts)
+        ids         (mapv :id action-rows)]
+    (actions.db/update-actions! action-rows)
+    (when updates
+      (write-details! updates))
+    (when-let [archived-ids (and (nil? (:writer opts)) (not-empty (newly-archived-ids stored action-rows)))]
+      (t2/resolve-model :model/DashboardCard)
+      (delete-for-archived-actions! :model/DashboardCard archived-ids))
+    (let [updated (actions.db/actions-by-ids ids)]
+      {:stored  stored
+       :updated updated
+       :rows    (mapv (fn [row {:keys [changes]}]
+                        (cond-> row
+                          (and (contains? changes :archived) (not (contains? row :archived_directly)))
+                          (assoc :archived_directly (:archived_directly (get updated (:id row))))))
+                      action-rows contexts)})))
+
+(defn- update-action-batch!
+  "Checks and writes the Actions of `batch`, up to one partition of the call, and returns what the event needs."
+  [batch opts]
+  (let [stored   (actions.db/actions-by-ids (mapv :id batch))
+        details  (when (some #(seq (select-keys % detail-columns)) batch)
+                   (into {} (map (juxt :action_id identity))
+                         (concat (actions.db/query-actions (mapv :id batch))
+                                 (actions.db/implicit-actions (mapv :id batch)))))
+        planned  (update-action-contexts stored details batch)]
+    (check-action-updates (:contexts planned) opts)
+    (write-action-updates! stored planned opts)))
+
+(mu/defn update-actions! :- :nil
+  "Apply the changes in each of `rows`, the id of an Action, the Action columns to change and the columns of its
+  details, in one transaction, publishing their update event last with the `:context` of `opts`, and with
+  `:writer :import` a touch of an Action that the rows leave unchanged."
+  ([rows :- [:sequential ::actions.schema/action.update]]
+   (update-actions! rows nil))
+  ([rows :- [:sequential ::actions.schema/action.update]
+    opts :- :metabase.events.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches (mapv #(update-action-batch! % opts) (partition-all mdb/update-partition-size rows))]
+       (publish-update! (into {} (map :stored) batches)
+                        (into {} (map :updated) batches)
+                        (into [] (mapcat :rows) batches)
+                        (if (= :import (:writer opts)) (mapv :id rows) [])
+                        opts)))
+   nil))
+
+(mu/defn update-action! :- :nil
+  "Apply `changes`, the columns of the Action with `id` and those of its details, in one transaction, publishing one
+  update event, a change of the details columns alone setting the update time of the Action and a change of its
+  `:type` replacing its QueryAction or ImplicitAction."
+  [id      :- ::actions.schema/id
+   changes :- (mut/dissoc ::actions.schema/action.update :id)
+   opts    :- :metabase.events.schema/write-opts]
+  (update-actions! [(assoc changes :id id)] opts)
+  nil)
+
+(mu/defn delete-actions! :- :nil
+  "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, in one transaction, publishing
+  their delete event right before the first statement."
+  [ids :- [:sequential ::lib.schema.id/action]]
+  (mdb/delete-batched! :model/Action ids
+                       {:before-delete #(events/publish-event! :event/action-delete (events/delete-event %))}))
+
+(mu/defn update-actions-for-models!
+  "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for
+  the root, in one pass over all of them with one statement for each Collection."
+  [model-id->collection-id :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]]
+  (when (seq model-id->collection-id)
+    (update-actions! (mapv (fn [{:keys [id model_id]}] {:id id :collection_id (get model-id->collection-id model_id)})
+                           (actions.db/action-model-ids (vec (keys model-id->collection-id))))
+                     nil)
+    nil))
+
+(mu/defn action-ids-of-models :- [:sequential ::lib.schema.id/action]
+  "The ids of the Actions of the model Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (actions.db/action-ids-of-models model-ids))
+
+(mu/defn action-ids-of-tables :- [:sequential ::lib.schema.id/action]
+  "The ids of the Actions that write to the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (actions.db/implicit-action-ids-of-tables table-ids))
+
+(mu/defn action-ids-of-databases :- [:sequential ::lib.schema.id/action]
+  "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
+  Actions that write to one of their Tables."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (actions.db/action-ids-of-databases database-ids))
+
+(defmethod database/delete-for-databases! :model/Action
+  [_model databases]
+  (delete-actions! (action-ids-of-databases (mapv :id databases))))
+
+(defmethod collection/archive-in-collections! :model/Action
+  [_model collection-ids opts]
+  (update-actions! (mapv (fn [id] {:id id :archived true :archived_directly false}) (mapv :id (actions.db/unarchived-actions-in-collections (vec collection-ids)))) (assoc opts :writer :cascade)))
+
+(defmethod collection/restore-in-collections! :model/Action
+  [_model collection-ids opts]
+  (update-actions! (mapv (fn [id] {:id id :archived false :archived_directly false}) (vec (actions.db/restorable-action-ids-in-collections (vec collection-ids)))) (assoc opts :writer :cascade)))
+
+(defmethod collection/delete-in-collections! :model/Action
+  [_model collection-ids _opts]
+  (delete-actions! (mapv :id (actions.db/actions-in-collections (vec collection-ids)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Action [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Action [_]
+  {:schema              ::actions.schema/external-action
+   :copy                [:archived :archived_directly :description :entity_id :name :public_uuid :type]
+   :skip                [:public_uuid_prefix]
+   :transform           {:creator_id             serialization/user-transform
+                         :made_public_by_id      serialization/user-transform
+                         :collection_id          (serialization/fk-transform :model/Collection)
+                         :model_id               (serialization/fk-transform :model/Card)
+                         :parameters             serialization/parameters-transform
+                         :parameter_mappings     serialization/parameter-mappings-transform
+                         :visualization_settings serialization/visualization-settings-transform}
+   :children            {:query    :model/QueryAction
+                         :implicit :model/ImplicitAction}
+   :defaults            {:archived false, :archived_directly false}
+   :storage-paths       actions.serialization/storage-paths
+   :import-dependencies actions.serialization/import-dependencies
+   :export-dependencies actions.serialization/export-dependencies
+   :loaded-entities     actions.serialization/loaded-entities
+   :insert!             #(create-actions! % {:writer :import})
+   :update!             #(do (update-actions! % {:writer :import}) %)
+   :delete!             delete-actions!})
+
+(defmethod remote-sync/spec :model/Action
+  [_model]
+  {:synced-items         actions.db/synced-action-items
+   :synced-filter-clause actions.db/synced-actions-clause})
+
+(defmethod search/spec :model/Action
+  [_model]
+  {"action"
+   {:attrs        {:archived       true
+                   :collection-id  true
+                   :creator-id     true
+                   :database-id    :query_action.database_id
+                   :native-query   :query_action.dataset_query
+                   ;; workaround for actions not having revisions (yet)
+                   :last-edited-at :updated_at
+                   :created-at     true
+                   :updated-at     true}
+    :search-terms [:name :description]
+    :render-terms {:model-id   :model.id
+                   :model-name :model.name}
+    :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
+    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
+                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}}})
+
+(defmethod dependencies/spec :model/Action [_model]
+  {:type  :action
+   :items actions.db/dependency-action-items
+
+   :hydrate      actions.dependencies/hydrate
+   :dependencies actions.dependencies/dependencies
+
+   :dependency-columns  #{:model_id :type}
+   :written-with-parts? true})
+
+(defmethod collection-items/spec :model/Action [_model]
+  {"action" {:items   actions.db/collection-action-items
+             :hydrate actions.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Action [_model]
+  {:names [:action]})
+
+(defmethod app-db-copy/spec :model/QueryAction [_model]
+  {:skip?    false
+   :sequence false})
 
 (defmethod serialization/spec :model/QueryAction [_]
   {:schema    ::actions.schema/external-query-action
@@ -758,7 +1119,18 @@
    :parent    {:model :model/Action :key :action_id}
    :transform {:action_id     serialization/import-only-transform
                :database_id   serialization/database-transform
-               :dataset_query serialization/mbql-transform}})
+               :dataset_query serialization/mbql-transform}
+   :insert!   create-query-actions!
+   :update!   update-query-actions!
+   :delete!   delete-query-actions!})
+
+(defmethod remote-sync/spec :model/QueryAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})
+
+(defmethod app-db-copy/spec :model/ImplicitAction [_model]
+  {:skip?    false
+   :sequence false})
 
 (defmethod serialization/spec :model/ImplicitAction [_]
   {:schema    ::actions.schema/external-implicit-action
@@ -766,87 +1138,11 @@
    :copy      [:kind]
    :parent    {:model :model/Action :key :action_id}
    :transform {:action_id serialization/import-only-transform
-               :table_id serialization/table-transform}})
-
-(defmethod serialization/spec :model/Action [_]
-  {:schema    ::actions.schema/external-action
-   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid :type]
-   :skip      [:public_uuid_prefix]
-   :transform {:creator_id             serialization/user-transform
-               :made_public_by_id      serialization/user-transform
-               :collection_id          (serialization/fk-transform :model/Collection)
-               :model_id               (serialization/fk-transform :model/Card)
-               :parameters             serialization/parameters-transform
-               :parameter_mappings     serialization/parameter-mappings-transform
-               :visualization_settings serialization/visualization-settings-transform}
-   :children  {:query    :model/QueryAction
-               :implicit :model/ImplicitAction}
-   :defaults  {:archived false, :archived_directly false}})
-
-(defmethod serialization/storage-paths :model/Action [_ entities ctx]
-  (mapv (fn [{:keys [model_id] :as action}]
-          (serialization/storage-default-collection-path
-           action ctx (if (nil? model_id)
-                        (serialization/collection-namespace-folder collection/data-actions-ns)
-                        "main")))
-        entities))
-
-(defmethod serialization/import-dependencies :model/Action [_ entities]
-  (mapv (fn [action]
-          (set (concat (when-let [collection-id (:collection_id action)]
-                         [[:model/Collection collection-id]])
-                       (when-let [model-id (:model_id action)]
-                         [[:model/Card model-id]])
-                       (when (= (keyword (:type action)) :query)
-                         (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
-        entities))
-
-(defmethod serialization/export-dependencies :model/Action [_ actions]
-  (let [queries (when-let [ids (seq (keep #(when (= (keyword (:type %)) :query) (:id %)) actions))]
-                  (into {} (map (juxt :action_id identity)) (actions.db/query-actions (vec ids))))]
-    (mapv (fn [{:keys [id collection_id model_id]}]
-            (set (concat (when collection_id [[:model/Collection collection_id]])
-                         (when model_id [[:model/Card model_id]])
-                         (when-let [{:keys [database_id dataset_query]} (get queries id)]
-                           (concat (when database_id [[:model/Database database_id]])
-                                   (serialization/export-mbql-dependencies dataset_query))))))
-          actions)))
-
-(defmethod serialization/loaded-entities :model/Action [_ entities]
-  (filterv #(not= "http" (some-> % :type name)) entities))
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
-(defmethod remote-sync/spec :model/Action
-  [_model]
-  {:synced-items         actions.db/synced-action-items
-   :synced-filter-clause actions.db/synced-actions-clause})
-
-(defmethod remote-sync/spec :model/QueryAction
-  [_model]
-  {:synced-filter-clause actions.db/synced-action-details-clause})
+               :table_id serialization/table-transform}
+   :insert!   create-implicit-actions!
+   :update!   update-implicit-actions!
+   :delete!   delete-implicit-actions!})
 
 (defmethod remote-sync/spec :model/ImplicitAction
   [_model]
   {:synced-filter-clause actions.db/synced-action-details-clause})
-
-;;; ---------------------------------------------------- Search ------------------------------------------------------
-
-(search/define-spec "action"
-  {:model        :model/Action
-   :attrs        {:archived       true
-                  :collection-id  true
-                  :creator-id     true
-                  :database-id    :query_action.database_id
-                  :native-query   :query_action.dataset_query
-                  ;; workaround for actions not having revisions (yet)
-                  :last-edited-at :updated_at
-                  :created-at     true
-                  :updated-at     true}
-   :search-terms [:name :description]
-   :render-terms {:model-id   :model.id
-                  :model-name :model.name}
-   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
-   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
-                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
-                  :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})

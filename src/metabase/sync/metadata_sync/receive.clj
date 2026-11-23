@@ -13,11 +13,11 @@
   Answers hold warehouse metadata, and field values are rows of the customer's tables, so nothing here logs them."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.change-log.core :as change-log]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.search.core :as search]
@@ -33,10 +33,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.time Duration Instant)))
@@ -235,7 +237,7 @@
                       (filter (fn [[column value]] (and (some? value) (nil? (get database column)))))
                       (select-keys batch wire/database-columns))]
     (when (seq changes)
-      (sync.db/update-database! (:id database) changes))
+      (database/update-databases! [(assoc changes :id (:id database))]))
     {:database_updated (if (seq changes) 1 0)}))
 
 (defn- table-row
@@ -407,8 +409,9 @@
     (when (pos? skipped)
       (log/warnf "Skipped %d FK links of Database %d: this Metabase does not have the Field or its target"
                  skipped database-id))
-    (doseq [[field-id [fk-field target-field]] fillable]
-      (sync.db/update-field! field-id (fk-changes fk-field target-field (user-set field-id #{}))))
+    (when (seq fillable)
+      (field/update-fields! (for [[field-id [fk-field target-field]] fillable]
+                              (assoc (fk-changes fk-field target-field (user-set field-id #{})) :id field-id))))
     {:fks_set (count fillable)}))
 
 (defn- fields-to-give-values
@@ -433,7 +436,7 @@
     (doseq [[field-id {:keys [values has_more_values]}] to-fill]
       (sync.db/insert-full-field-values! field-id {:values values :has_more_values has_more_values}))
     (when row-count?
-      (sync.db/update-table! table-id {:estimated_row_count estimated_row_count}))
+      (table/update-tables! [{:id table-id :estimated_row_count estimated_row_count}]))
     {:row_counts_set        (if row-count? 1 0)
      :field_values_inserted (count to-fill)}))
 
@@ -489,15 +492,17 @@
                (enum-columns model))
        (some? (sync.db/row-as-written model row))))
 
+(mr/def ::field-row
+  "A Field row that an entry gives, before its Table has an id: what creating a Field takes, without the Table."
+  (mut/dissoc ::warehouse-schema.schema/field.create :table_id))
+
 (defn- accepted-table?
   "Whether the rows that the Table entry `table` gives, its own and its Fields', are rows this Metabase takes for the
   Database with `database-id`."
   [database-id table]
   (try
-    (and (accepted-row? :model/Table ::warehouse-schema.schema/table.update (table-row database-id table))
-         (every? #(accepted-row? :model/Field
-                                 ::warehouse-schema.schema/field.update
-                                 (field-row nil nil (update % :path vec)))
+    (and (accepted-row? :model/Table ::warehouse-schema.schema/table.create (table-row database-id table))
+         (every? #(accepted-row? :model/Field ::field-row (dissoc (field-row nil nil (update % :path vec)) :table_id))
                  (:fields table)))
     (catch Exception _
       false)))
@@ -573,8 +578,7 @@
   [database batches]
   (try
     (t2/with-transaction [_conn]
-      (events/with-batched-events
-        (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches)))
+      (reduce (fn [counts batch] (merge-with + counts (apply-batch! database batch))) no-counts batches))
     (catch Exception e
       (throw (ex-info (tru "The answer of the other Metabase could not be applied, and nothing of it was written.")
                       {:status-code 422 :error-code "metadata-sync-apply-failed"}

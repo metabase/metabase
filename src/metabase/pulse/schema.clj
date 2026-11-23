@@ -1,6 +1,7 @@
 (ns metabase.pulse.schema
   "Malli schemas for the pulse module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.i18n :refer [tru]]
@@ -31,15 +32,13 @@
 
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
-  [:merge
-   ::pulse.update
-   [:map {:closed true}
-    [:id                  ::lib.schema.id/pulse]]])
+  ::pulse.update)
 
 (mr/def ::pulse.update
-  "What an update (or insert) of a Pulse accepts: every column of `:pulse` except `id`, all optional, a dashboard
-  subscription leaving the alert columns and the collection position nil when it holds them all."
+  "What an update of a Pulse takes: its `:id` and the columns to change, every column of `:pulse` except `id`, all
+  optional, a dashboard subscription leaving the alert columns and the collection position nil when it holds them all."
   [:map {:closed true :decode/normalize {:leave check-dashboard-subscription}}
+   [:id                  ::lib.schema.id/pulse]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:name                {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
@@ -62,14 +61,12 @@
 
 (mr/def ::pulse-card
   "A PulseCard as selected from the app DB: every column of `:pulse_card`."
-  [:merge
-   ::pulse-card.update
-   [:map {:closed true}
-    [:id                ms/PositiveInt]]])
+  ::pulse-card.update)
 
 (mr/def ::pulse-card.update
-  "What an update (or insert) of a PulseCard accepts: every column of `:pulse_card` except `id`, all optional."
+  "What an update of a PulseCard takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:pulse_id          {:optional true} [:maybe ::lib.schema.id/pulse]]
    [:card_id           {:optional true} [:maybe ::lib.schema.id/card]]
    [:position          {:optional true} ::pulse-card.position]
@@ -79,6 +76,18 @@
    [:entity_id         {:optional true} [:maybe :string]]
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::pulse-card.create
+  "What a caller gives to create a PulseCard."
+  [:map {:closed true}
+   [:pulse_id          ::lib.schema.id/pulse]
+   [:card_id           ::lib.schema.id/card]
+   [:position          ::pulse-card.position]
+   [:include_csv       {:optional true} [:maybe :boolean]]
+   [:include_xls       {:optional true} [:maybe :boolean]]
+   [:format_rows       {:optional true} [:maybe :boolean]]
+   [:pivot_results     {:optional true} [:maybe :boolean]]
+   [:dashboard_card_id {:optional true} [:maybe ::lib.schema.id/dashcard]]])
 
 (def ^:private subject-max-length
   "Inboxes truncate long before this; it bounds what a client can store."
@@ -155,15 +164,13 @@
 
 (mr/def ::pulse-channel
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."
-  [:merge
-   ::pulse-channel.update
-   [:map {:closed true}
-    [:id             ms/PositiveInt]]])
+  ::pulse-channel.update)
 
 (mr/def ::pulse-channel.update
-  "What an update (or insert) of a PulseChannel accepts: every column of `:pulse_channel` except `id`, all optional, its
-  schedule fitting its type when it holds every schedule column."
+  "What an update of a PulseChannel takes: its `:id` and the columns to change, each optional, its schedule fitting its
+  type when it holds every schedule column."
   [:map {:closed true :decode/normalize {:leave check-schedule}}
+   [:id             ms/PositiveInt]
    [:pulse_id       {:optional true} [:maybe ::lib.schema.id/pulse]]
    [:channel_type   {:optional true} ::pulse-channel.channel-type]
    [:details        {:optional true} [:maybe ::pulse-channel.details]]
@@ -179,13 +186,45 @@
 
 (mr/def ::pulse-channel-recipient
   "A PulseChannelRecipient as selected from the app DB: every column of `:pulse_channel_recipient`."
-  [:merge
-   ::pulse-channel-recipient.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
+  ::pulse-channel-recipient.update)
 
 (mr/def ::pulse-channel-recipient.update
-  "What an update (or insert) of a PulseChannelRecipient accepts: every column of `:pulse_channel_recipient` except `id`, all optional."
+  "What an update of a PulseChannelRecipient takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:pulse_channel_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::pulse-channel-recipient.create
+  "What a caller gives to create a PulseChannelRecipient."
+  [:merge
+   (mut/dissoc ::pulse-channel-recipient.update :id)
+   [:map {:closed true}
+    [:pulse_channel_id ms/PositiveInt]
+    [:user_id          ::lib.schema.id/user]]])
+
+(mr/def ::pulse-channel.recipient
+  "A recipient of a PulseChannel: a raw email address, a User by id, or a User."
+  [:or
+   [:map {:closed true}
+    [:id    {:optional true} ms/PositiveInt]
+    [:email {:optional true} :string]]
+   :metabase.users.schema/user])
+
+(mr/def ::pulse-channel.create
+  "What a caller gives to create a PulseChannel together with its recipients."
+  [:map {:closed true}
+   [:pulse_id       ::lib.schema.id/pulse]
+   [:enabled        :boolean]
+   [:id             {:optional true} :int]
+   [:channel_type   {:optional true} [:or :keyword :string]]
+   [:channel_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:details        {:optional true} ::pulse-channel.details]
+   [:entity_id      {:optional true} [:maybe :string]]
+   [:recipients     {:optional true} [:maybe [:sequential ::pulse-channel.recipient]]]
+   [:schedule_type  {:optional true} [:or :keyword :string]]
+   [:schedule_day   {:optional true} [:maybe :string]]
+   [:schedule_hour  {:optional true} [:maybe :int]]
+   [:schedule_frame {:optional true} [:maybe [:or :keyword :string]]]
+   [:created_at     {:optional true} ms/TemporalInstant]
+   [:updated_at     {:optional true} ms/TemporalInstant]])

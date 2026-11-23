@@ -4,11 +4,14 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -359,7 +362,7 @@
 
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
-    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform
@@ -426,8 +429,8 @@
                                               (try (data-testing.runner/validate-test
                                                     :transform
                                                     transform
-                                                    []
-                                                    [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                                                    {:inputs       []
+                                                     :expectations [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}]})
                                                    nil
                                                    (catch ExceptionInfo e
                                                      (select-keys (ex-data e) [:error-type :type])))))]
@@ -453,6 +456,13 @@
     (testing "Postgres and H2 keep both names"
       (is (nil? (check :postgres)))
       (is (nil? (check :h2))))))
+
+(deftest every-driver-that-runs-data-tests-states-its-column-name-case-rule-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    ;; `methods` rather than `get-method`, which would find the method of a parent such as `:postgres`.
+    (is (contains? (methods data-testing.u/column-names-ignore-case?) driver/*driver*)
+        (str "Add a `column-names-ignore-case?` method for " driver/*driver* ": data testing compares column names "
+             "by it."))))
 
 ;;; --------------------------------------------- columns-read ---------------------------------------------
 

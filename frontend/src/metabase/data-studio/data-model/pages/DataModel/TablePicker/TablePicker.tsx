@@ -6,12 +6,12 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
-  Badge,
   Box,
   Button,
   Card,
   Group,
   Icon,
+  Indicator,
   Input,
   Popover,
   Stack,
@@ -107,28 +107,15 @@ export function TablePicker({
           onChange={toggle}
         >
           <Popover.Target>
-            <Tooltip label={t`Filter`} disabled={isOpen}>
-              <Button
-                aria-label={t`Filter`}
-                leftSection={
-                  <Box pos="relative">
-                    <Icon name="filter" />
-
-                    {filtersCount > 0 && (
-                      <Badge
-                        color="brand"
-                        indicator
-                        pos="absolute"
-                        top={-6}
-                        right={-8}
-                      />
-                    )}
-                  </Box>
-                }
-                size="lg"
-                onClick={toggle}
-              />
-            </Tooltip>
+            <Indicator size={8} offset={7} disabled={filtersCount === 0}>
+              <Tooltip label={t`Filter`} disabled={isOpen}>
+                <Button
+                  aria-label={t`Filter`}
+                  leftSection={<Icon name="filter" />}
+                  onClick={toggle}
+                />
+              </Tooltip>
+            </Indicator>
           </Popover.Target>
 
           <Popover.Dropdown>

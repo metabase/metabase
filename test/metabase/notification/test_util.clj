@@ -125,14 +125,11 @@
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
   [{:keys [notification handlers subscriptions]} thunk]
-  (let [notification (models.notification/create-notification!
-                      notification
-                      subscriptions
-                      handlers)]
+  (let [[notification] (models.notification/create-notifications! [(assoc notification :subscriptions subscriptions :handlers handlers)])]
     (try
       (thunk (models.notification/hydrate-notification notification))
       (finally
-        (t2/delete! :model/Notification :id (:id notification))))))
+        (models.notification/delete-notifications! [(:id notification)])))))
 
 (defmacro with-temp-notification
   "Macro that sets up a temporary notification for testing.

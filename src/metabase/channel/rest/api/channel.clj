@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.channel.db :as channel.db]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.schema :as channel.schema]
    [metabase.models.interface :as mi]
    [metabase.util.api-error :as api-error]
@@ -69,7 +70,7 @@
   (when (channel.db/channel-name-exists? channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (channel.db/insert-channel! body))
+  (first (models.channel/create-channels! [body])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -97,7 +98,7 @@
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
   (api/write-check (channel.db/channel id))
-  (channel.db/update-channel! id body)
+  (models.channel/update-channels! [(assoc body :id id)])
   (channel.db/channel id))
 
 (defn- test-channel-connection!

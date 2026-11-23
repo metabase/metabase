@@ -68,7 +68,7 @@
         (is (= "Renamed" (t2/select-one-fn :name :model/Transform :id id)))
         (is (=? {:topic   :update-transform
                  :user_id (mt/user->id :crowberto)
-                 :details {:name "Renamed"}}
+                 :details {:previous {:name "Original"} :new {:name "Renamed"}}}
                 (mt/latest-audit-log-entry :update-transform id)))))))
 
 (deftest check-references-test

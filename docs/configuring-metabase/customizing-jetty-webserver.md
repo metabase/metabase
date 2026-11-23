@@ -11,7 +11,7 @@ In most cases there will be no reason to modify any of the settings around how M
 
 ## Running Metabase on another port
 
-By default Metabase will launch on port 3000, but if you prefer to run the application on another port you can do so by setting the following environment variable:
+By default Metabase will launch on port 3000, but if you prefer to run the application on another port you can do so by setting the [`MB_JETTY_PORT`](./environment-variables.md#mb_jetty_port) environment variable:
 
     export MB_JETTY_PORT=12345
     java -jar metabase.jar
@@ -20,14 +20,14 @@ In this example once the application starts up you will access it on port `12345
 
 ## Listening on a specific network interface
 
-By default, Metabase will be listening on `localhost`. In some production environments you may want to listen on a different interface, which can be done by using the `MB_JETTY_HOST` environment variable:
+By default, Metabase will be listening on `localhost`. In some production environments you may want to listen on a different interface, which can be done by using the [`MB_JETTY_HOST`](./environment-variables.md#mb_jetty_host) environment variable:
 
     export MB_JETTY_HOST=0.0.0.0
     java -jar metabase.jar
 
 ## Using HTTPS with Metabase
 
-If you have an SSL certificate and would prefer to have Metabase run over HTTPS directly using its webserver, you can do so by using the following environment variables:
+If you have an SSL certificate and would prefer to have Metabase run over HTTPS directly using its webserver, you can do so by setting [`MB_JETTY_SSL`](./environment-variables.md#mb_jetty_ssl), [`MB_JETTY_SSL_PORT`](./environment-variables.md#mb_jetty_ssl_port), [`MB_JETTY_SSL_KEYSTORE`](./environment-variables.md#mb_jetty_ssl_keystore), and [`MB_JETTY_SSL_KEYSTORE_PASSWORD`](./environment-variables.md#mb_jetty_ssl_keystore_password):
 
     export MB_JETTY_SSL="true"
     export MB_JETTY_SSL_PORT="8443"

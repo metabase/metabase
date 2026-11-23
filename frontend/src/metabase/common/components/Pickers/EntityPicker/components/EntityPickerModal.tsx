@@ -234,7 +234,7 @@ const SearchInput = ({
       classNames={{ input: S.textInput }}
       data-autofocus
       type="search"
-      leftSection={<Icon name="search" size={16} />}
+      leftSection={<Icon name="search" />}
       miw="min(400px, 100%)"
       placeholder={t`Search…`}
       value={localValue}
@@ -247,13 +247,14 @@ const SearchInput = ({
         value.length ? (
           <ActionIcon
             variant="subtle"
+            size="sm"
             onClick={() => {
               setLocalValue("");
               onChange("");
             }}
             data-testid="clear-search"
           >
-            <Icon name="close" size={16} />
+            <Icon name="close" />
           </ActionIcon>
         ) : null
       }

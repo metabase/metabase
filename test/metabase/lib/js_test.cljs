@@ -37,8 +37,10 @@
 
 (deftest ^:parallel query=-test-2
   (testing "explicit fields vs. implied fields"
-    (let [q1 #js {"query" #js {"source-table" 1}}
-          q2 #js {"query" #js {"source-table" 1
+    (let [q1 #js {"type"  "query"
+                  "query" #js {"source-table" 1}}
+          q2 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 1 nil]
                                              #js ["field" 2 nil]
                                              #js ["field" 3 nil]
@@ -59,16 +61,19 @@
 
 (deftest ^:parallel query=-test-3
   (testing "missing and extra fields"
-    (let [q1 #js {"query" #js {"source-table" 1
+    (let [q1 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 1 nil]
                                              #js ["field" 2 nil]]}}
 
           ;; Same fields, different order.
-          q2 #js {"query" #js {"source-table" 1
+          q2 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 2 nil]
                                              #js ["field" 1 nil]]}}
           ;; Different fields
-          q3 #js {"query" #js {"source-table" 1
+          q3 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 3 nil]
                                              #js ["field" 1 nil]]}}]
       (is (lib.js/query= q1 q2))
@@ -78,11 +83,13 @@
 (deftest ^:parallel query=-test-4
   (testing "lib/uuids are ignored for query="
     (testing "sanity check: legacy queries should be equal"
-      (let [q1 #js {"query" #js {"source-table" 1
+      (let [q1 #js {"type"  "query"
+                    "query" #js {"source-table" 1
                                  "aggregation"  #js [#js ["count"]]
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}
-            q2 #js {"query" #js {"source-table" 1
+            q2 #js {"type"  "query"
+                    "query" #js {"source-table" 1
                                  "aggregation"  #js [#js ["count"]]
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
@@ -689,7 +696,90 @@
     (doseq [[q1-type q1] queries
             [q2-type q2] queries]
       (testing (str "q1 = " q1-type ", q2 = " q2-type)
-        (lib.js/query= q1 q2)))))
+        (is (lib.js/query= q1 q2))))))
+
+(deftest ^:parallel query=-legacy-vs-mbql5-test
+  (let [mbql5  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
+                   (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (meta/field-metadata :orders :product-id))
+                   (as-> query (lib/order-by query (lib/aggregation-ref query 0))))
+        legacy #js {"database" (meta/id)
+                    "type"     "query"
+                    "query"    #js {"source-table" (meta/id :orders)
+                                    "expressions"  #js {"some_expr" #js ["+" #js ["field" (meta/id :orders :subtotal) nil] 1]}
+                                    "filter"       #js [">" #js ["field" (meta/id :orders :total) nil] 10]
+                                    "aggregation"  #js [#js ["count"]]
+                                    "breakout"     #js [#js ["field" (meta/id :orders :product-id) nil]]
+                                    "order-by"     #js [#js ["asc" #js ["aggregation" 0]]]}}]
+    (testing "a legacy query equals the same query in MBQL 5"
+      (is (lib.js/query= mbql5 legacy))
+      (is (lib.js/query= legacy mbql5)))
+    (testing "a different filter value is a different query"
+      (let [other (js/JSON.parse (js/JSON.stringify legacy))]
+        (aset other "query" "filter" 2 11)
+        (is (not (lib.js/query= mbql5 other)))
+        (is (not (lib.js/query= other mbql5)))))))
+
+(defn- mbql5-query-with-expression [expression-name]
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/expression expression-name (lib/+ (meta/field-metadata :orders :subtotal) 1))))
+
+(deftest ^:parallel query=-expression-name-test
+  (testing "renaming an expression makes a different query"
+    (is (lib.js/query= (mbql5-query-with-expression "a")
+                       (mbql5-query-with-expression "a")))
+    (is (not (lib.js/query= (mbql5-query-with-expression "a")
+                            (mbql5-query-with-expression "b"))))))
+
+(deftest ^:parallel query=-mbql5-fields-test
+  (let [query      (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        with-cols  (fn [& col-keys]
+                     (lib/with-fields query (for [k col-keys]
+                                              (meta/field-metadata :venues k))))]
+    (testing "the order of :fields does not matter"
+      (is (lib.js/query= (with-cols :id :name :price)
+                         (with-cols :price :id :name))))
+    (testing "different :fields"
+      (is (not (lib.js/query= (with-cols :id :name)
+                              (with-cols :id :price)))))
+    (testing "a query without :fields defaults to field-ids"
+      (let [ids (to-array (map #(meta/id :venues %) [:price :name :id]))]
+        (is (not (lib.js/query= query (with-cols :id :name :price))))
+        (is (lib.js/query= query (with-cols :id :name :price) ids))
+        (is (not (lib.js/query= query (with-cols :id :name) ids)))))))
+
+(deftest ^:parallel query=-invalid-clause-test
+  (testing "queries that differ only in a clause that fails schema validation are not equal"
+    (let [query-with-join-alias (fn [join-alias]
+                                  #js {"type"  "query"
+                                       "query" #js {"joins" #js [#js {"alias"     join-alias
+                                                                      "condition" #js ["=" #js ["field" 7 nil] #js ["field" 19 nil]]}]}})]
+      (is (lib.js/query= (query-with-join-alias "Products")
+                         (query-with-join-alias "Products")))
+      (is (not (lib.js/query= (query-with-join-alias "Products")
+                              (query-with-join-alias "People")))))))
+
+(deftest ^:parallel query=-native-test
+  (let [native-query (fn [sql native-extras]
+                       #js {"database" 1
+                            "type"     "native"
+                            "native"   (js/Object.assign #js {"query" sql} native-extras)})]
+    (testing "no :template-tags is the same as empty :template-tags"
+      (is (lib.js/query= (native-query "SELECT 1" #js {})
+                         (native-query "SELECT 1" #js {"template-tags" #js {}})))
+      (is (lib.js/query= (native-query "SELECT 1" #js {})
+                         #js {"database" 1
+                              "lib/type" "mbql/query"
+                              "stages"   #js [#js {"lib/type" "mbql.stage/native", "native" "SELECT 1"}]})))
+    (testing "different SQL"
+      (is (not (lib.js/query= (native-query "SELECT 1" #js {})
+                              (native-query "SELECT 2" #js {})))))
+    (testing ":info is ignored"
+      (let [with-info (native-query "SELECT 1" #js {})]
+        (aset with-info "info" #js {"card-entity-id" "abc"})
+        (is (lib.js/query= with-info (native-query "SELECT 1" #js {})))))))
 
 (deftest ^:parallel card-metadata-test
   (let [mp   (lib.tu/metadata-provider-with-mock-cards)
