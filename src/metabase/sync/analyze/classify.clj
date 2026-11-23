@@ -109,7 +109,7 @@
                       (sync-util/with-error-handling (format "Error saving the classification of the Fields of %s"
                                                              (sync-util/name-for-logging (id->table table-id)))
                         (sync.updates/update-fields-unless-user-set! table-updates)))]
-    (when (or (next by-table)
+    (when (or (nil? (next by-table))
               (instance? Exception (sync-util/with-error-handling "Error saving the classification of Fields"
                                      (sync.updates/update-fields-unless-user-set! updates))))
       (run! save-table! by-table))))
