@@ -238,6 +238,12 @@
             (computed! :card card-id)
             (t2/update! :model/Card :id card-id {:visualization_settings viz})
             (is (not (pending? :card card-id)))))
+        (testing "through the API"
+          (computed! :card card-id)
+          (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                {:visualization_settings {:graph.goal_value {:id goal-id :type "card" :column "count"}
+                                                          :card.title       "renamed again"}})
+          (is (not (pending? :card card-id))))
         (testing "dropping the goal changes them"
           (computed! :card card-id)
           (t2/update! :model/Card :id card-id {:visualization_settings {:card.title "renamed"}})
