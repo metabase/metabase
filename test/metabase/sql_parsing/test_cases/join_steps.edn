@@ -399,4 +399,8 @@
       :table [nil nil "b"],
       :alias "b",
       :strategy "left",
-      :sql "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.id = b.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id) AS m"}]}}]}
+      :sql "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.id = b.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id) AS m"}]}}
+  {:name "T-SQL query options are refused, since the steps would run without them",
+   :dialect "tsql",
+   :sql "SELECT * FROM a JOIN b ON a.id = b.id OPTION (MAXRECURSION 0)",
+   :expected {:status "unsupported", :reason "unsupported-join"}}]}

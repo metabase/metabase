@@ -258,8 +258,9 @@
     (seq (ast/find-all stmt Expressions$Placeholder Expressions$Parameter)) "parameters"
     ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
     (contains? (set-args stmt) "laterals")                                 "unsupported-join"
-    ;; ClickHouse's SETTINGS can change what a join returns, and the step queries would leave them out.
-    (contains? (set-args stmt) "settings")                                 "unsupported-join"))
+    ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
+    ;; queries would leave them out.
+    (some (set-args stmt) ["settings" "options"])                          "unsupported-join"))
 
 (defn- steps
   "The `ok` result of [[join-steps]].

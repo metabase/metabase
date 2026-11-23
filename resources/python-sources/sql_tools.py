@@ -654,8 +654,9 @@ def join_steps(sql: str, dialect: str = None) -> str:
         # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
         if stmt.args.get("laterals"):
             raise _JoinStepsUnsupported("unsupported-join")
-        # ClickHouse's SETTINGS can change what a join returns, and the step queries would leave them out.
-        if stmt.args.get("settings"):
+        # ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
+        # queries would leave them out.
+        if stmt.args.get("settings") or stmt.args.get("options"):
             raise _JoinStepsUnsupported("unsupported-join")
         from_ = stmt.args.get("from_")
         if from_ is None or from_.this is None:
