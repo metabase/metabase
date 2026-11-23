@@ -119,10 +119,15 @@
             (pr-str sql))))))
 
 (deftest ^:parallel join-steps-large-literal-list-test
-  (testing "SQL too large to parse whole is refused, not answered for a copy with its lists collapsed"
-    (let [sql (str "SELECT * FROM a JOIN b ON a.id = b.id WHERE a.x IN (" (str/join ", " (range 100000)) ")")]
+  (let [big-list (str "a.x IN (" (str/join ", " (range 100000)) ")")
+        steps    #(sql-parsing/join-steps (sql-tools/sqlglot-parser) "postgres" %)]
+    (testing "a large literal list in a clause the steps leave out does not matter"
+      (is (=? {:status "ok"
+               :steps  [{:sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}
+              (steps (str "SELECT * FROM a JOIN b ON a.id = b.id WHERE " big-list)))))
+    (testing "one the steps would run is refused, not run with its list collapsed"
       (is (= {:status "unsupported", :reason "large-literal-list"}
-             (sql-parsing/join-steps (sql-tools/sqlglot-parser) "postgres" sql))))))
+             (steps (str "SELECT * FROM a JOIN b ON a.id = b.id AND " big-list)))))))
 
 ;;; ------------------------------------------------ transpile-sql -------------------------------------------------
 

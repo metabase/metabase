@@ -15,6 +15,7 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sql-tools.sqlglot.core :as sql-tools.sqlglot]
    [metabase.test :as mt]))
 
 (def ^:private all-backends [:macaw :sqlglot])
@@ -730,10 +731,12 @@
                           {:source :table, :table-id nil, :alias "N", :strategy :inner-join}]}
                  (sql-tools/join-steps driver/*driver* query))))))))
 
-(deftest ^:parallel join-steps-unsupported-dialect-test
+(deftest join-steps-without-a-sqlglot-dialect-test
   (mt/test-driver :h2
-    (testing "a driver with no sqlglot dialect, other than H2, is refused rather than parsed in the default dialect"
-      (let [query (lib/native-query (mt/metadata-provider)
-                                    "select o.id from orders o join people p on p.id = o.user_id")]
-        (is (= {:unsupported :unsupported-dialect}
-               (sql-tools/join-steps :vertica query)))))))
+    (testing "a driver whose name is no sqlglot dialect is read in the default dialect"
+      (mt/with-dynamic-fn-redefs [sql-tools.sqlglot/driver->dialect (constantly "not-a-dialect")]
+        (let [query (lib/native-query (mt/metadata-provider)
+                                      "select o.id from orders o join people p on p.id = o.user_id")]
+          (is (=? {:steps [{:strategy :inner-join
+                            :sql      "SELECT COUNT(*) AS n FROM orders AS o JOIN people AS p ON p.id = o.user_id"}]}
+                  (sql-tools/join-steps :h2 query))))))))

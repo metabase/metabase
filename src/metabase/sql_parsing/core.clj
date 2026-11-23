@@ -612,17 +612,15 @@
 ;; A transform can be long, so there is no length cap; the queries run, so the literal-list ceiling is an executing
 ;; caller's; and H2 has no sqlglot dialect, so none is required.
 (def ^:private join-steps-limits
-  "Limits for the statement check of [[join-steps]]."
+  "Limits for the check of each query [[join-steps]] generates."
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     false})
 
-(def ^:private join-steps-statement-reasons
-  "The statement checks whose refusal [[join-steps]] reports under the checker's own reason."
-  #{"large-literal-list"
-    "multiple-statements"
-    "not-a-select"
-    "unparseable"})
+(defn- join-step-queries
+  "Every query in the `ok` result of [[join-steps]]."
+  [{:keys [base_sql steps]}]
+  (cons base_sql (map :sql steps)))
 
 (defn join-steps
   "The row-count queries of each join in `sql`, a SELECT, taken one join at a time, for a caller that will run them.
@@ -636,16 +634,30 @@
    For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
 
    Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
-   SQL that is not a read-only SELECT is refused as `\"not-read-only\"`, and SQL whose literal lists are too large to
-   parse safely as `\"large-literal-list\"`."
+   A generated query that is not read-only is refused as `\"not-read-only\"`.
+   SQL with a literal list too large to parse safely is read without it, and refused as `\"large-literal-list\"` if
+   the list is in a clause the queries keep."
   [parser dialect sql]
-  ;; Every generated query keeps the WITH clause, so a data-modifying CTE would run once per query. The check reads
-  ;; `sql` itself, never a copy with its literal lists collapsed.
-  (let [{:keys [verdict reason]} (classify-single-stmt parser dialect sql "read-only" join-steps-limits)]
+  ;; The check reads what will run, not `sql`: a lock or function call in a clause the steps leave out never executes,
+  ;; while the WITH clause is kept, so a data-modifying CTE would run once per query.
+  (let [stripped (strip-large-literal-lists sql executable-literal-list-ceiling)
+        result   (protocol/join-steps parser dialect stripped)
+        queries  (when (= "ok" (:status result))
+                   (join-step-queries result))
+        allowed? #(= :allowed (:verdict (classify-single-stmt parser dialect % "read-only" join-steps-limits)))]
     (cond
-      (= :allowed verdict)                  (protocol/join-steps parser dialect sql)
-      (join-steps-statement-reasons reason) {:status "unsupported", :reason reason}
-      :else                                 {:status "unsupported", :reason "not-read-only"})))
+      (nil? queries)
+      result
+
+      (and (not= stripped sql)
+           (some #(re-find #"\(NULL(, NULL)*\)|\[NULL\]" %) queries))
+      {:status "unsupported", :reason "large-literal-list"}
+
+      (every? allowed? queries)
+      result
+
+      :else
+      {:status "unsupported", :reason "not-read-only"})))
 
 ;;;; Transpile sql
 

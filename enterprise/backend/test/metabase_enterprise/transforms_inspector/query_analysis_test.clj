@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -57,11 +56,9 @@
     (sql.u/quote-name driver/*driver* :field col-name)))
 
 (defn- join-steps-drivers
-  "The SQL drivers with left joins whose native join steps sql-tools can generate."
+  "The SQL drivers with left joins."
   []
-  (mt/normal-driver-select {:+parent   :sql
-                            :+features [:left-join]
-                            :+fns      [sql-tools/join-steps-supported-driver?]}))
+  (mt/normal-driver-select {:+parent :sql, :+features [:left-join]}))
 
 (defn- make-native-transform
   [query]

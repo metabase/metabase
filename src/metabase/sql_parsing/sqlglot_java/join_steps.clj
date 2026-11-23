@@ -5,44 +5,13 @@
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Parameter
+   (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Lateral Expressions$Parameter
                              Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
-                             Expressions$Subquery
-                             Expressions$Table)
+                             Expressions$Subquery Expressions$Table Expressions$Values)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
    (java.util Collection)))
 
 (set! *warn-on-reflection* true)
-
-;; Any other argument on a source (a PIVOT, a time-travel clause, a sample) changes what it yields, so the query is
-;; refused rather than rebuilt without it.
-
-(def ^:private table-args
-  "The arguments a FROM or JOIN table may carry."
-  #{"alias"
-    "catalog"
-    "db"
-    "this"})
-
-(def ^:private subquery-args
-  "The arguments a derived-table source may carry."
-  #{"this" "alias"})
-
-(def ^:private join-args
-  "The arguments a join may carry."
-  #{"kind"
-    "method"
-    "on"
-    "side"
-    "this"
-    "using"})
-
-(def ^:private join-kinds
-  "The join kinds a step can be rebuilt for. A SEMI or ANTI join is not one."
-  #{""
-    "CROSS"
-    "INNER"
-    "OUTER"})
 
 (defn- unsupported [reason]
   (ex-info reason {::reason reason}))
@@ -59,9 +28,6 @@
                   k)))
         (ast/args node)))
 
-(defn- only-args? [allowed node]
-  (every? allowed (set-args node)))
-
 (defn- alias-or-name [node]
   (let [node-alias (ast/node-alias node)]
     (if (seq node-alias) node-alias (ast/node-name node))))
@@ -70,7 +36,7 @@
   "The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one.
   Port of `_effective_name`."
   [identifier dialect]
-  ;; Only H2 reaches here with no dialect, and it folds unquoted names up where sqlglot's default folds them down.
+  ;; H2 has no sqlglot dialect, and it folds unquoted names up where sqlglot's default folds them down.
   (if (nil? dialect)
     (cond-> (ast/node-name identifier)
       (not (ast/quoted? identifier)) u/upper-case-en)
@@ -78,61 +44,83 @@
 
 (defn- step-source
   "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.
+  Anything that is not a plain named table is `derived`.
+  Throws a refusal for a parenthesized join tree or a LATERAL or APPLY source.
   Port of `_join_step_source`."
   [node cte-names dialect]
-  (cond
-    (instance? Expressions$Table node)
-    (let [parts (references/table-parts node)]
-      (when-not (and (only-args? table-args node)
-                     (instance? Expressions$Identifier (ast/this node))
-                     parts)
-        (throw (unsupported "unsupported-source")))
-      (if (and (empty? (ast/text node "db"))
-               (empty? (ast/text node "catalog"))
-               (contains? cte-names (effective-name (ast/this node) dialect)))
-        {:source "cte", :table nil, :alias (alias-or-name node)}
-        {:source "table", :table parts, :alias (alias-or-name node)}))
+  (when (instance? Expressions$Lateral node)
+    (throw (unsupported "unsupported-source")))
+  (let [parts (when (and (instance? Expressions$Table node)
+                         (instance? Expressions$Identifier (ast/this node)))
+                (references/table-parts node))]
+    (cond
+      (and parts
+           (empty? (ast/text node "db"))
+           (empty? (ast/text node "catalog"))
+           (contains? cte-names (effective-name (ast/this node) dialect)))
+      {:source "cte", :table nil, :alias (alias-or-name node)}
 
-    (instance? Expressions$Subquery node)
-    (do
-      (when-not (only-args? subquery-args node)
-        (throw (unsupported "unsupported-source")))
-      ;; A parenthesized join tree, `JOIN (b JOIN c ON ...) ON ...`, is a Subquery around something that is not a
-      ;; query.
-      (when-not (instance? Expressions$Query (ast/this node))
-        (throw (unsupported "nested-join")))
-      {:source "derived", :table nil, :alias (alias-or-name node)})
+      parts
+      {:source "table", :table parts, :alias (alias-or-name node)}
 
-    :else
-    (throw (unsupported "unsupported-source"))))
+      ;; `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
+      (and (instance? Expressions$Subquery node)
+           (not (ast/instance-of-any? [Expressions$Query Expressions$Values] (ast/this node))))
+      (throw (unsupported "nested-join"))
+
+      :else
+      {:source "derived", :table nil, :alias (alias-or-name node)})))
+
+(defn- tokens-after-commas
+  "The start offsets of the tokens in `sql` that directly follow a comma.
+  Port of `_tokens_after_commas`."
+  [sql dialect]
+  ;; The default dialect parses a comma join with no kind, so it never needs telling apart from a CROSS JOIN.
+  (when dialect
+    (into #{}
+          (keep (fn [[[token-type] [_ _ start]]]
+                  (when (= "COMMA" token-type)
+                    start)))
+          (partition 2 1 (ast/tokenize sql dialect)))))
+
+(defn- comma-join?
+  "Whether a join that parsed as CROSS was written with a comma, which some dialects parse that way.
+  Port of `_comma_join`."
+  [join after-commas has-where?]
+  (let [source (ast/this join)]
+    (if (and (instance? Expressions$Table source)
+             (instance? Expressions$Identifier (ast/this source)))
+      (contains? (set after-commas)
+                 (->> (ast/find-all source Expressions$Identifier)
+                      (keep #(get (.meta ^Expr %) "start"))
+                      (apply min)))
+      ;; A derived source has no first identifier of its own to look behind. Only a WHERE clause can hold its condition.
+      has-where?)))
 
 (defn- upper-arg [join k]
   (u/upper-case-en (ast/text join k)))
 
 (defn- step-strategy
   "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
+  Throws a `comma-join` refusal for a comma join.
   Port of `_join_step_strategy`."
-  [join]
+  [join after-commas has-where?]
   (let [args   (set-args join)
         side   (upper-arg join "side")
         kind   (upper-arg join "kind")
         method (upper-arg join "method")]
-    (when-not (and (every? join-args args)
-                   (#{"" "NATURAL"} method)
-                   (join-kinds kind))
-      (throw (unsupported "unsupported-join")))
+    ;; `FROM a, b` has its condition, if any, in the WHERE clause, which the step queries leave out, so they would
+    ;; count the whole cross product.
+    (when (or (and (= "" side kind method)
+                   (not-any? args ["on" "using"]))
+              (and (= "CROSS" kind)
+                   (comma-join? join after-commas has-where?)))
+      (throw (unsupported "comma-join")))
     (cond
-      (= kind "CROSS")
-      "cross"
-
-      ;; `FROM a, b` parses as a join with no side, kind or condition. Its condition, if any, is in the WHERE clause,
-      ;; which the step queries leave out, so they would count the whole cross product.
-      (and (= "" side kind method)
-           (not-any? args ["on" "using"]))
-      (throw (unsupported "comma-join"))
-
-      :else
-      (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
+      (= kind "CROSS")           "cross"
+      ;; A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
+      (#{"SEMI" "ANTI"} kind)    "inner"
+      :else                      (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
 (defn- with-clause [^Expr select with-node]
   (cond-> select
@@ -184,7 +172,7 @@
     inner))
 
 (def ^:private marker-dialects
-  "The dialects whose databases have been run with the marker join of [[left-join-counts]]. No dialect means H2."
+  "The dialects whose databases run the marker join of [[left-join-counts]], the default dialect (nil) among them."
   #{nil "mysql" "postgres"})
 
 (defn- uses-marker-name?
@@ -200,7 +188,9 @@
   [from-node chain with-node dialect]
   (let [join (peek chain)]
     (when-not (or (not (contains? marker-dialects dialect))
-                  (= "NATURAL" (upper-arg join "method"))
+                  (not (ast/instance-of-any? [Expressions$Table Expressions$Subquery] (ast/this join)))
+                  (not-every? #{"this" "on" "using" "side" "kind"} (set-args join))
+                  (not (#{"" "OUTER"} (upper-arg join "kind")))
                   (uses-marker-name? (cons from-node chain)))
       (let [one    (ast/create "Literal" {"this" "1", "is_string" false})
             marker (ast/create "Subquery"
@@ -224,71 +214,86 @@
                        "joins"       (conj (mapv ast/copy (pop chain)) last')})
           with-node)))))
 
+(defn- merged-with
+  "One WITH clause holding the CTEs of `withs`, outermost first, or nil for none."
+  [withs]
+  (case (count withs)
+    0 nil
+    1 (first withs)
+    (doto (ast/copy (first withs))
+      (ast/set-arg! "expressions" (into [] (comp (mapcat ast/expressions) (map ast/copy)) withs))
+      (ast/set-arg! "recursive" (boolean (some #(ast/arg % "recursive") withs))))))
+
 (defn- whole-query
-  "`stmt` without brackets around the whole of it.
-  Throws a `not-a-select` refusal for brackets with a clause of their own, such as an outer WITH or ORDER BY.
+  "`stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
+  Throws a `not-a-select` refusal for brackets with a clause other than WITH, ORDER BY, LIMIT or OFFSET.
   Port of `_whole_query`."
   [stmt]
-  (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
-    (if (only-args? #{"this"} stmt)
-      (recur (ast/this stmt))
-      (throw (unsupported "not-a-select")))
-    stmt))
+  (loop [stmt stmt, withs []]
+    (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
+      (do
+        (when-not (every? #{"this" "with_" "order" "limit" "offset"} (set-args stmt))
+          (throw (unsupported "not-a-select")))
+        (recur (ast/this stmt) (cond-> withs (ast/arg stmt "with_") (conj (ast/arg stmt "with_")))))
+      [stmt (merged-with (cond-> withs
+                           (and (instance? Expressions$Select stmt) (ast/arg stmt "with_"))
+                           (conj (ast/arg stmt "with_"))))])))
 
 (defn- parse-statement
-  "The one statement in `sql`, without brackets around the whole of it.
-  Throws an `unparseable` or `multiple-statements` refusal otherwise."
+  "The first statement in `sql`, without brackets around the whole of it, and its WITH clause, as `[stmt with-node]`.
+  Throws an `unparseable` refusal if there is none."
   [dialect sql]
   (let [stmts (try
                 (ast/nonempty-statements (ast/parse sql dialect))
                 (catch ParseError _
                   (throw (unsupported "unparseable"))))]
-    (case (count stmts)
-      0 (throw (unsupported "unparseable"))
-      1 (whole-query (first stmts))
-      (throw (unsupported "multiple-statements")))))
+    (if (seq stmts)
+      (whole-query (first stmts))
+      (throw (unsupported "unparseable")))))
 
 (defn- statement-refusal
   "Why the parsed statement `stmt` cannot have its join steps rebuilt, before its sources are looked at, or nil."
   [stmt]
   (cond
-    (instance? Expressions$SetOperation stmt)                              "set-operation"
-    (not (instance? Expressions$Select stmt))                              "not-a-select"
-    ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on.
-    (seq (ast/find-all stmt Expressions$Placeholder Expressions$Parameter)) "parameters"
+    (instance? Expressions$SetOperation stmt)     "set-operation"
+    (not (instance? Expressions$Select stmt))     "not-a-select"
     ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
-    (contains? (set-args stmt) "laterals")                                 "unsupported-join"
+    (contains? (set-args stmt) "laterals")        "unsupported-join"
     ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
     ;; queries would leave them out.
-    (some (set-args stmt) ["settings" "options"])                          "unsupported-join"))
+    (some (set-args stmt) ["settings" "options"]) "unsupported-join"))
 
 (defn- steps
   "The `ok` result of [[join-steps]].
   Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
   [dialect sql]
-  (let [stmt (parse-statement dialect sql)]
+  (let [[stmt with-node] (parse-statement dialect sql)]
     (when-let [reason (statement-refusal stmt)]
       (throw (unsupported reason)))
-    (let [from-node (ast/arg stmt "from_")
-          _         (when-not (and from-node (ast/this from-node))
-                      (throw (unsupported "no-from")))
-          _         (when (seq (ast/expressions from-node))
-                      (throw (unsupported "comma-join")))
-          with-node (ast/arg stmt "with_")
-          cte-names (into #{}
-                          (keep #(when (seq (ast/node-alias %))
-                                   (effective-name (ast/this (ast/arg % "alias")) dialect)))
-                          (some-> with-node ast/expressions))
-          joins     (vec (ast/arg stmt "joins"))]
+    (let [from-node    (ast/arg stmt "from_")
+          _            (when-not (and from-node (ast/this from-node))
+                         (throw (unsupported "no-from")))
+          _            (when (seq (ast/expressions from-node))
+                         (throw (unsupported "comma-join")))
+          joins        (vec (ast/arg stmt "joins"))
+          ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One
+          ;; in a clause the steps leave out does not matter.
+          _            (when (some #(seq (ast/find-all % Expressions$Placeholder Expressions$Parameter))
+                                   (cond-> (cons from-node joins) with-node (conj with-node)))
+                         (throw (unsupported "parameters")))
+          cte-names    (into #{}
+                             (keep #(when (seq (ast/node-alias %))
+                                      (effective-name (ast/this (ast/arg % "alias")) dialect)))
+                             (some-> with-node ast/expressions))
+          after-commas (tokens-after-commas sql dialect)
+          has-where?   (contains? (set-args stmt) "where")]
       {:status   "ok"
        :from     (step-source (ast/this from-node) cte-names dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
        :steps    (vec (map-indexed
                        (fn [i join]
-                         (let [;; The source first: a LATERAL or APPLY source looks like a comma join to the
-                               ;; strategy check.
-                               source   (step-source (ast/this join) cte-names dialect)
-                               strategy (step-strategy join)
+                         (let [source   (step-source (ast/this join) cte-names dialect)
+                               strategy (step-strategy join after-commas has-where?)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
                                           (or (when (= "left" strategy)

@@ -87,17 +87,6 @@
    "full"  :full-join
    "cross" :cross-join})
 
-(def ^:private drivers-without-dialect
-  "The drivers with no sqlglot dialect whose step queries, generated in sqlglot's default dialect, are tested to run."
-  #{:h2})
-
-(defn join-steps-dialect?
-  "Whether [[join-steps]] generates queries for `driver`: it has a sqlglot dialect, or its queries in the default
-  dialect are tested to run."
-  [driver]
-  (or (some? (driver->dialect driver))
-      (contains? drivers-without-dialect driver)))
-
 (defn- source-table-ids
   "A function from a source's `[catalog schema table]` to the id of the Table it names in `query`'s database.
   It returns nil for a name that matches no Table, a transform's target not yet created included."
@@ -119,9 +108,14 @@
   See [[metabase.sql-tools.core/join-steps]]."
   [parser driver query]
   (let [dialect (driver->dialect driver)
-        result  (if-not (join-steps-dialect? driver)
-                  {:status "unsupported", :reason "unsupported-dialect"}
-                  (sql-parsing/join-steps parser dialect (lib/raw-native-query query)))]
+        sql     (lib/raw-native-query query)
+        ;; A driver with no sqlglot dialect of its name, such as a third-party one, is read in the default dialect.
+        result  (try
+                  (sql-parsing/join-steps parser dialect sql)
+                  (catch Exception e
+                    (if (and dialect (not (sql-parsing/parse-error? e)))
+                      (sql-parsing/join-steps parser nil sql)
+                      (throw e))))]
     (if-not (= "ok" (:status result))
       {:unsupported (keyword (:reason result))}
       (let [table-id (source-table-ids driver query (cons (:from result) (:steps result)))

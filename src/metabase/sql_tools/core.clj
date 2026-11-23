@@ -306,12 +306,6 @@
                           [:ref ::join-step-source]
                           [:map [:strategy [:enum :inner-join :left-join :right-join :full-join :cross-join]]]]]]]])
 
-(mu/defn join-steps-supported-driver? :- :boolean
-  "Whether [[join-steps]] can generate queries in `driver`'s SQL dialect.
-  For any other driver it returns `{:unsupported :unsupported-dialect}`."
-  [driver :- :keyword]
-  (sqlglot/join-steps-dialect? driver))
-
 (mu/defn join-steps :- ::join-steps
   "The row-count queries of each join in `native-query`, a single SELECT, taken one join at a time, ready to run.
 
@@ -327,10 +321,9 @@
 
   A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.
   A comma join is refused as `:comma-join`, since its join condition would be in the WHERE clause.
-  A query that writes, locks or otherwise is not a read-only SELECT is refused as `:not-read-only`.
-  The other reasons are `:set-operation`, `:not-a-select`, `:multiple-statements`, `:no-from`, `:nested-join`,
-  `:unsupported-join`, `:unsupported-source`, `:parameters`, `:large-literal-list`, `:unparseable` and
-  `:unsupported-dialect`.
+  A query whose generated SQL would write or lock is refused as `:not-read-only`.
+  The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
+  `:parameters`, `:large-literal-list` and `:unparseable`.
 
   Always parses with sqlglot, so with Macaw selected it uses the default sqlglot backend."
   [driver       :- :keyword

@@ -162,10 +162,19 @@
    :dialect "postgres",
    :sql "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN b ON a.id = b.id",
    :expected {:status "unsupported", :reason "not-read-only"}}
-  {:name "a locking SELECT is refused",
+  {:name "a lock outside FROM and JOIN is left out of the steps",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id FOR UPDATE",
-   :expected {:status "unsupported", :reason "not-read-only"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
   {:name "a comma join is refused: its condition is in the WHERE clause",
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE a.id = b.id",
@@ -182,18 +191,31 @@
    :dialect "postgres",
    :sql "INSERT INTO a SELECT * FROM b",
    :expected {:status "unsupported", :reason "not-a-select"}}
-  {:name "more than one statement is refused",
+  {:name "of several statements, only the first is read",
    :dialect "postgres",
    :sql "SELECT * FROM a; SELECT * FROM b",
-   :expected {:status "unsupported", :reason "multiple-statements"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps []}}
   {:name "a SELECT without FROM is refused",
    :dialect "postgres",
    :sql "SELECT 1",
    :expected {:status "unsupported", :reason "no-from"}}
-  {:name "a semi join is refused",
+  {:name "a semi join is counted as written, with no matched count",
    :dialect "spark",
    :sql "SELECT * FROM a LEFT SEMI JOIN b ON a.x = b.x",
-   :expected {:status "unsupported", :reason "unsupported-join"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a LEFT SEMI JOIN b ON a.x = b.x"}]}}
   {:name "a LATERAL source is refused",
    :dialect "postgres",
    :sql "SELECT * FROM a LEFT JOIN LATERAL (SELECT 1 AS y) t ON true",
@@ -202,38 +224,77 @@
    :dialect "tsql",
    :sql "SELECT * FROM a CROSS APPLY f(a.x) t",
    :expected {:status "unsupported", :reason "unsupported-source"}}
-  {:name "a table function source is refused",
+  {:name "a table function source is kept as written",
    :dialect "postgres",
    :sql "SELECT * FROM generate_series(1, 3) g",
-   :expected {:status "unsupported", :reason "unsupported-source"}}
-  {:name "a sampled table is refused",
+   :expected
+   {:status "ok",
+    :from {:source "derived", :table nil, :alias "g"},
+    :base_sql "SELECT COUNT(*) AS n FROM GENERATE_SERIES(1, 3) AS g",
+    :steps []}}
+  {:name "a sampled table is kept as written",
    :dialect "postgres",
    :sql "SELECT * FROM a TABLESAMPLE BERNOULLI (10)",
-   :expected {:status "unsupported", :reason "unsupported-source"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a TABLESAMPLE BERNOULLI (10)",
+    :steps []}}
   {:name "a Hive LATERAL VIEW is refused",
    :dialect "spark",
    :sql "SELECT * FROM a LATERAL VIEW EXPLODE(a.xs) t AS x",
    :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "an ASOF join is refused",
+  {:name "an ASOF join is counted as written",
    :dialect "duckdb",
    :sql "SELECT * FROM a ASOF JOIN b ON a.id = b.id AND a.t >= b.t",
-   :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "a join with an argument a step cannot carry, Snowflake's MATCH_CONDITION, is refused",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a ASOF JOIN b ON a.id = b.id AND a.t >= b.t"}]}}
+  {:name "Snowflake's MATCH_CONDITION is kept in the step",
    :dialect "snowflake",
    :sql "SELECT * FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id",
-   :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "a pivoted derived table is refused",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id"}]}}
+  {:name "a pivoted derived table is kept as written",
    :dialect "postgres",
    :sql "SELECT * FROM (SELECT 1 AS x) d PIVOT (SUM(x) FOR y IN (1))",
-   :expected {:status "unsupported", :reason "unsupported-source"}}
+   :expected
+   {:status "ok",
+    :from {:source "derived", :table nil, :alias "d"},
+    :base_sql "SELECT COUNT(*) AS n FROM (SELECT 1 AS x) AS d",
+    :steps []}}
   {:name "a parenthesized join tree is refused",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN (b JOIN c ON b.x = c.x) ON a.x = b.x",
    :expected {:status "unsupported", :reason "nested-join"}}
-  {:name "a placeholder is refused",
+  {:name "a placeholder in a clause the steps leave out does not matter",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.x = b.x WHERE a.y = ?",
-   :expected {:status "unsupported", :reason "parameters"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.x = b.x"}]}}
   {:name "unparseable SQL is refused",
    :dialect "postgres",
    :sql "SELECT * FROM (a",
@@ -241,15 +302,33 @@
   {:name "empty SQL is refused",
    :dialect "postgres",
    :sql "",
-   :expected {:status "unsupported", :reason "not-a-select"}}
-  {:name "brackets with an outer WITH are refused, since the steps would lose the CTE",
+   :expected {:status "unsupported", :reason "unparseable"}}
+  {:name "an outer WITH on brackets is kept in the steps",
    :dialect "postgres",
    :sql "WITH c AS (SELECT 1 AS id) (SELECT * FROM a JOIN c ON a.id = c.id) ORDER BY 1",
-   :expected {:status "unsupported", :reason "not-a-select"}}
-  {:name "brackets with a trailing clause of their own are refused",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "WITH c AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "cte",
+      :table nil,
+      :alias "c",
+      :strategy "inner",
+      :sql "WITH c AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM a JOIN c ON a.id = c.id"}]}}
+  {:name "a trailing LIMIT on brackets is left out of the steps",
    :dialect "postgres",
    :sql "(SELECT * FROM a JOIN b ON a.id = b.id) LIMIT 5",
-   :expected {:status "unsupported", :reason "not-a-select"}}
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
   {:name "ClickHouse SETTINGS are refused, since they can change what a join returns",
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id SETTINGS join_use_nulls = 0",
@@ -403,4 +482,42 @@
   {:name "T-SQL query options are refused, since the steps would run without them",
    :dialect "tsql",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id OPTION (MAXRECURSION 0)",
-   :expected {:status "unsupported", :reason "unsupported-join"}}]}
+   :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a comma join is refused in a dialect that parses it as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a, b WHERE a.id = b.id",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a comma join to a quoted table is refused in a dialect that parses it as CROSS",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a, `b` WHERE a.id = b.id",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "an explicit CROSS JOIN with a WHERE clause is kept in a dialect that parses commas as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a CROSS JOIN b WHERE a.id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "a function call in a clause the steps leave out does not matter",
+   :dialect "postgres",
+   :sql "SELECT * FROM a JOIN b ON a.id = b.id WHERE pg_sleep(1) IS NULL",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
+  {:name "a placeholder in a join condition is refused, since the steps would run it",
+   :dialect "postgres",
+   :sql "SELECT * FROM a JOIN b ON a.id = b.id AND b.x = ?",
+   :expected {:status "unsupported", :reason "parameters"}}]}
