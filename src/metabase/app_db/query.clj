@@ -248,17 +248,20 @@
 
 (defn- grouped-updates
   "The `[changes pks]` pairs of `updates` in the order the changes first appear, where `pk-fn` gives the primary key of
-  a row and `changes-fn` its columns to change; rows with no column to change are left out."
+  a row and `changes-fn` its columns to change. The rows of one primary key merge in order, so that the last value of
+  a column wins, and a key with no column to change is left out."
   [updates pk-fn changes-fn]
-  (let [pks (reduce (fn [m row]
-                      (let [changes (changes-fn row)]
-                        (cond-> m
-                          (seq changes) (update changes (fnil conj []) (pk-fn row)))))
-                    {}
-                    updates)]
+  (let [pk->changes  (reduce (fn [m row] (update m (pk-fn row) merge (changes-fn row))) {} updates)
+        pks-in-order (distinct (map pk-fn updates))
+        pks          (reduce (fn [m pk]
+                               (let [changes (pk->changes pk)]
+                                 (cond-> m
+                                   (seq changes) (update changes (fnil conj []) pk))))
+                             {}
+                             pks-in-order)]
     (into []
-          (comp (map changes-fn) (filter seq) (distinct) (map (fn [changes] [changes (pks changes)])))
-          updates)))
+          (comp (map pk->changes) (filter seq) (distinct) (map (fn [changes] [changes (pks changes)])))
+          pks-in-order)))
 
 (defn update-grouped!
   "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the

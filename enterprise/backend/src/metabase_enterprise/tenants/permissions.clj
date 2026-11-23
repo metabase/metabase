@@ -29,8 +29,9 @@
   (by definition) to somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- @#'collection/LocationPath]
   ;; TODO(johnswanson, 2025-11-25) fix the private bits
-  (#'collection/copy-collection-permissions! (collection/parent-or-root nil (collection/location-path->parent-id new-location))
-                                             (cons collection (collection/descendants collection))))
+  (let [parent (collection/parent-or-root nil (collection/location-path->parent-id new-location))]
+    (#'collection/copy-collection-permissions! (for [target (cons collection (collection/descendants collection))]
+                                                 [parent (:id target)]))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!
   "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.
