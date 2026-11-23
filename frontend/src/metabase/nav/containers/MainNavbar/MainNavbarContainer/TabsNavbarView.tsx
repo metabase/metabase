@@ -250,17 +250,17 @@ export function TabsNavbarView({
         aiConversationsTab,
       ]
     : isVariantC
-      ? // PROTOTYPE: C without git follows its git-on order (collections,
-        // External, Bookmarks, Data, AI conversations), with Data apps right
-        // after Collections and Getting Started last.
+      ? // PROTOTYPE: C without git puts Getting Started first, then follows
+        // its git-on order (collections, External, Bookmarks, Data, AI
+        // conversations), with Data apps right after Collections.
         [
+          ...sectionTabs.filter((tab) => tab.id === "getting-started"),
           sectionTabs[0],
           ...sectionTabs.filter((tab) => tab.id === "data-apps"),
           ...externalCollectionsTabs,
           bookmarksTab,
           { ...dataTab, icon: "grid_2x2" },
           aiConversationsTab,
-          ...sectionTabs.filter((tab) => tab.id === "getting-started"),
         ]
       : [
           sectionTabs[0],
@@ -419,7 +419,8 @@ export function TabsNavbarView({
           handleCreateNewCollection();
         }}
       >
-        {t`New folder`}
+        {/* PROTOTYPE: the "Modern nav" variants say "collection". */}
+        {isModernNav(variant) ? t`New collection` : t`New folder`}
       </Button>
     ) : null;
 
@@ -499,6 +500,36 @@ export function TabsNavbarView({
             onItemSelect={onItemSelect}
             withSubheadings={isVariantCWithGit}
           />
+        ) : isVariantC ? (
+          // PROTOTYPE: "Modern nav - C" without git puts Databases first,
+          // leaves out the Library's Datasets, and its Metrics always opens
+          // Browse metrics (which lists the metrics outside synced
+          // collections).
+          <>
+            {hasDataAccess && (
+              <DatabasesNavLink
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+              />
+            )}
+            <NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+              hideHeading
+              hideMetrics
+              hideDatasets
+            >
+              <MetricsNavLink
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+              />
+              <ModelsNavLink
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+              />
+            </NavbarLibrarySection>
+          </>
         ) : (
           <NavbarLibrarySection
             collections={collections}

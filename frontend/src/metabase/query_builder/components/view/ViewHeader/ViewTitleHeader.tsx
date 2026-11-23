@@ -158,13 +158,14 @@ export function ViewTitleHeader({
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
   // PROTOTYPE: in "Modern nav - C" with the nav closed, a saved question's
-  // title lines up with the open-sidebar button's icon in the bar above —
-  // measured, since the title sits inside several offset wrappers.
+  // header lines up with the open-sidebar button's icon in the bar above —
+  // measured, since the title sits inside several offset wrappers. With a
+  // back-to-dashboard button, its arrow lines up instead, the title after it.
   const headerRef = useRef<HTMLDivElement>(null);
-  const navToggleAlignedPadding = useNavToggleAlignedPadding(
-    headerRef,
-    '[data-testid="saved-question-header-title"]',
-  );
+  const navToggleAlignedPadding = useNavToggleAlignedPadding(headerRef, [
+    { selector: '[data-testid="qb-back-button"] svg', kind: "icon" },
+    { selector: '[data-testid="saved-question-header-title"]', kind: "text" },
+  ]);
   const alignedInset = isSaved ? navToggleAlignedPadding : undefined;
 
   return (
@@ -173,6 +174,8 @@ export function ViewTitleHeader({
         className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
           [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
           [ViewTitleHeaderS.alignWithNavHeader]: isModernNav(variant),
+          [ViewTitleHeaderS.underBreadcrumbBar]:
+            variant === "modern-nav-c" && isSaved,
         })}
         style={style}
         data-testid="qb-header"
@@ -182,7 +185,7 @@ export function ViewTitleHeader({
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
           {/* PROTOTYPE: "No top nav" opens the closed nav from here. */}
           <NavOpenButton />
-          <QueryBuilderBackButton mr="sm" />
+          <QueryBuilderBackButton mr="sm" data-testid="qb-back-button" />
           {isSaved ? (
             <SavedQuestionLeftSide
               question={question}

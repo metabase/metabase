@@ -32,6 +32,11 @@ export type MinimalAppBarLayout = {
    * measured live.
    */
   alignWithSelector?: string;
+  /**
+   * How far the page below may tuck up under the bar's empty lower edge, to
+   * sit closer to the breadcrumbs.
+   */
+  overlapBelowPx?: number;
 };
 
 // Clears the toggle pinned to the bar's left corner (nav closed only).
@@ -150,6 +155,7 @@ export const AppBarLarge = ({
         h={APP_BAR_HEIGHT}
         pl={alignedInset ?? fallbackInset}
         pr="lg"
+        mb={minimalLayout?.overlapBelowPx ? -minimalLayout.overlapBelowPx : 0}
         bg={minimalLayout?.background ?? "background_page-primary"}
       >
         {/* Pinned to the corner, so the breadcrumbs can start where the

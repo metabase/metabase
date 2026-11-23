@@ -5,6 +5,10 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useListMetabotConversationsQuery } from "metabase/metabot/api";
 import { resolveMetabotProfileId } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { useLocation } from "metabase/router";
 import { Button, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -27,6 +31,10 @@ export function AskAiConversationList({
 }: {
   onItemSelect: () => void;
 }) {
+  // PROTOTYPE: the "Modern nav" variants list conversations right under
+  // "New", without a "Recents" heading.
+  const { variant } = useNavVariant();
+  const showRecentsHeading = !isModernNav(variant);
   const {
     conversationId: activeConversationId,
     title: activeTitle,
@@ -85,11 +93,14 @@ export function AskAiConversationList({
         leftSection={<Icon name="add" />}
         // Puts the icon's center on the nav's icon column.
         ml={5.5}
+        mb={showRecentsHeading ? undefined : "xs"}
         onClick={onItemSelect}
       >
         {t`New`}
       </Button>
-      <SidebarHeading mt="lg" mb="sm">{t`Recents`}</SidebarHeading>
+      {showRecentsHeading && (
+        <SidebarHeading mt="lg" mb="sm">{t`Recents`}</SidebarHeading>
+      )}
       {isLoading && !isNewConversation ? null : items.length === 0 ? (
         <Text c="text-secondary" fz="sm" ps="lg">
           {t`No conversations yet.`}

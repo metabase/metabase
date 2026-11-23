@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { type JSX, useCallback } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   isEditableCollection,
@@ -32,10 +32,17 @@ export const CollectionCaption = ({
   const currentUser = useSelector(getUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
-  // PROTOTYPE: the Library's published-data section is shown as "Datasets"
-  // everywhere, so its heading matches; its real name isn't edited here.
+  // PROTOTYPE: the Library is shown as "Data", and its published-data section
+  // as "Datasets", everywhere, so their headings match; their real names
+  // aren't edited here.
   const isDatasetsSection =
     collection.type === "library-data" && collection.is_library_root === true;
+  const isLibraryRoot = collection.type === "library";
+  const navName = isDatasetsSection
+    ? t`Datasets`
+    : isLibraryRoot
+      ? c("A noun, shown in the sidebar as a navigation link").t`Data`
+      : null;
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -58,9 +65,9 @@ export const CollectionCaption = ({
         <EditableText
           key={collection.id}
           as="h1"
-          initialValue={isDatasetsSection ? t`Datasets` : collection.name}
+          initialValue={navName ?? collection.name}
           placeholder={t`Add title`}
-          isDisabled={!isEditable || isDatasetsSection}
+          isDisabled={!isEditable || navName != null}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
           maxLength={100}

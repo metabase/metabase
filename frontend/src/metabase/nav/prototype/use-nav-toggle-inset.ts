@@ -1,4 +1,4 @@
-import { type RefObject, useLayoutEffect, useState } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -34,51 +34,72 @@ export function useNavToggleInset(): number | undefined {
 }
 
 /**
+ * What to line up with the open-sidebar button's icon: the first of these
+ * found in the container. A text element lines its text up with the icon's
+ * outline; an icon (an `svg`) lines its box up with the toggle icon's box, so
+ * two icons drawn on the same 16px grid match.
+ */
+export type NavToggleAlignTarget = { selector: string; kind: "text" | "icon" };
+
+/**
  * PROTOTYPE: like `useNavToggleInset`, but measured: the left padding
- * `containerRef` needs for the text of the element at `selector` inside it to
- * start exactly where the open-sidebar button's icon does. For titles nested
- * in wrappers whose own offsets would otherwise have to be guessed.
+ * `containerRef` needs for the first target found inside it to start exactly
+ * where the open-sidebar button's icon does. For titles nested in wrappers
+ * whose own offsets would otherwise have to be guessed.
  */
 export function useNavToggleAlignedPadding(
   containerRef: RefObject<HTMLElement | null>,
-  selector: string,
+  targets: NavToggleAlignTarget[],
 ): number | undefined {
   const isEnabled = useIsNavToggleAligned();
   const [padding, setPadding] = useState<number>();
+  // The effect reads the latest targets, and reruns only when they change in
+  // content, whatever array the caller passes.
+  const targetsRef = useRef(targets);
+  targetsRef.current = targets;
+  const targetsKey = JSON.stringify(targets);
 
   useLayoutEffect(() => {
     if (!isEnabled) {
       setPadding(undefined);
       return;
     }
+    const parsedTargets = targetsRef.current;
 
     const measure = () => {
       const container = containerRef.current;
-      const target = container?.querySelector(selector);
       const icon = document.querySelector(NAV_TOGGLE_ICON_SELECTOR);
-      if (
-        !container ||
-        !(target instanceof HTMLElement) ||
-        !(icon instanceof SVGElement)
-      ) {
+      if (!container || !(icon instanceof SVGElement)) {
+        return;
+      }
+      const found = parsedTargets
+        .map(({ selector, kind }) => ({
+          element: container.querySelector(selector),
+          kind,
+        }))
+        .find(({ element }) => element instanceof Element);
+      if (!found || !(found.element instanceof Element)) {
         return;
       }
       const containerLeft = container.getBoundingClientRect().left;
       const containerPadding = parseFloat(
         window.getComputedStyle(container).paddingLeft,
       );
-      const targetStyle = window.getComputedStyle(target);
-      const textLeft =
-        target.getBoundingClientRect().left +
-        parseFloat(targetStyle.paddingLeft) +
-        parseFloat(targetStyle.borderLeftWidth);
-      // How far the text sits from the container's padding edge: fixed by
-      // the wrappers in between, whatever the padding is.
-      const textOffset = textLeft - (containerLeft + containerPadding);
+      const targetRect = found.element.getBoundingClientRect();
       const iconRect = icon.getBoundingClientRect();
-      const glyphLeft =
-        iconRect.left + iconRect.width * NAV_TOGGLE_GLYPH_OFFSET_RATIO;
-      setPadding(Math.round(glyphLeft - containerLeft - textOffset));
+      let targetLeft = targetRect.left;
+      let anchorLeft = iconRect.left;
+      if (found.kind === "text") {
+        const targetStyle = window.getComputedStyle(found.element);
+        targetLeft +=
+          parseFloat(targetStyle.paddingLeft) +
+          parseFloat(targetStyle.borderLeftWidth);
+        anchorLeft += iconRect.width * NAV_TOGGLE_GLYPH_OFFSET_RATIO;
+      }
+      // How far the target sits from the container's padding edge: fixed by
+      // the wrappers in between, whatever the padding is.
+      const targetOffset = targetLeft - (containerLeft + containerPadding);
+      setPadding(Math.round(anchorLeft - containerLeft - targetOffset));
     };
 
     // The title renders (and loads) after the header, so remeasure on the
@@ -99,7 +120,7 @@ export function useNavToggleAlignedPadding(
       mutationObserver.disconnect();
       resizeObserver.disconnect();
     };
-  }, [isEnabled, containerRef, selector]);
+  }, [isEnabled, containerRef, targetsKey]);
 
   return isEnabled ? padding : undefined;
 }

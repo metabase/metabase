@@ -132,6 +132,13 @@
   padding-bottom: 0.5rem;
 }
 
+/* PROTOTYPE: "Modern nav - C" saved questions sit under its breadcrumb bar,
+   which tucks its empty lower edge under this header; with no top padding
+   either, the space between the breadcrumbs and the title is about halved. */
+.ViewHeaderContainer.alignWithNavHeader.underBreadcrumbBar {
+  padding-top: 0;
+}
+
 .ViewHeaderIconButtonContainer {
   .ViewHeaderIconButton {
     padding: 0.25rem 0.5rem;

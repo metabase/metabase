@@ -35,9 +35,9 @@ const isLibraryType = (collection: Pick<Collection, "type">) =>
 /**
  * PROTOTYPE: the "Modern nav - C" nav tab a collection lives under, as a crumb
  * to lead its collection page's trail: Official collections (synced from
- * git), External collections (tenants), or Collections (the rest, linking to
- * the root). None for the Library (its trail starts at "Data"), personal
- * collections, or the root itself.
+ * git), External collections (tenants), or Collections (the rest, personal
+ * collections included, linking to the root). None for the Library (its trail
+ * starts at "Data") or the root itself.
  */
 function getPseudoCollectionCrumb(
   collection: Collection,
@@ -46,7 +46,6 @@ function getPseudoCollectionCrumb(
   const ancestors = collection.effective_ancestors ?? [];
   if (
     collection.id === "root" ||
-    collection.is_personal ||
     isLibraryType(collection) ||
     ancestors.some(isLibraryType)
   ) {

@@ -13,6 +13,9 @@ import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics"
 import { useDocsUrl } from "metabase/common/hooks";
 import { canUserCreateQueries } from "metabase/current-user";
 import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import { useSyncedCollectionIds } from "metabase/nav/prototype/use-synced-collection-ids";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -251,7 +254,21 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
   const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
   const error = hasVerifiedMetrics.error || metricsResult.error;
   // Unjustified type cast. FIXME
-  const metrics = metricsResult.data?.data as MetricResult[] | undefined;
+  const allMetrics = metricsResult.data?.data as MetricResult[] | undefined;
+
+  // PROTOTYPE: "Modern nav - C" without git lists only the metrics saved
+  // outside synced collections (the Library included).
+  const { variant } = useNavVariant();
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
+  const isUnsyncedOnly = variant === "modern-nav-c" && !isGitIntegrationEnabled;
+  const syncedCollectionIds = useSyncedCollectionIds({
+    skip: !isUnsyncedOnly,
+  });
+  const metrics = isUnsyncedOnly
+    ? allMetrics?.filter(
+        (metric) => !syncedCollectionIds.has(metric.collection.id),
+      )
+    : allMetrics;
 
   return {
     isLoading,

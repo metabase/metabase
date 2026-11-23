@@ -29,6 +29,8 @@ type LibraryCollectionSectionProps = {
   hideHeading?: boolean;
   /** PROTOTYPE: leaves out Metrics, e.g. when a Browse metrics link stands in. */
   hideMetrics?: boolean;
+  /** PROTOTYPE: leaves out Datasets. */
+  hideDatasets?: boolean;
 };
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
@@ -99,6 +101,7 @@ export function NavbarLibrarySection({
   children,
   hideHeading,
   hideMetrics,
+  hideDatasets,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
@@ -110,12 +113,14 @@ export function NavbarLibrarySection({
       return [];
     }
 
-    const dataTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-data",
-      t`Datasets`,
-    );
+    const dataTree = hideDatasets
+      ? null
+      : buildSectionTree(
+          libraryCollection,
+          collections,
+          "library-data",
+          t`Datasets`,
+        );
     const metricsTree = hideMetrics
       ? null
       : buildSectionTree(
@@ -134,7 +139,7 @@ export function NavbarLibrarySection({
     return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections, hideMetrics]);
+  }, [collections, hideMetrics, hideDatasets]);
 
   if (libraryTree.length === 0 && !children) {
     return null;

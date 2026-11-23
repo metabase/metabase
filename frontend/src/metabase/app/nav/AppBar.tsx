@@ -19,6 +19,10 @@ import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import type { MinimalAppBarLayout } from "metabase/nav/components/AppBar/AppBarLarge";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
+import {
+  type NavVariant,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { getOriginalQuestion, getQuestion } from "metabase/query_builder";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, openNavbar, toggleNavbar } from "metabase/redux/app";
@@ -52,7 +56,10 @@ export function getSearchResultSelection(
  * page's background, so the bar blends in, and — on collections and
  * dashboards — the title its breadcrumbs line up with.
  */
-function getMinimalAppBarLayout(pathname: string): MinimalAppBarLayout {
+function getMinimalAppBarLayout(
+  pathname: string,
+  navVariant: NavVariant,
+): MinimalAppBarLayout {
   if (pathname.startsWith("/collection/")) {
     return {
       background: "background_page-secondary",
@@ -69,6 +76,9 @@ function getMinimalAppBarLayout(pathname: string): MinimalAppBarLayout {
     return {
       background: "background_page-primary",
       alignWithSelector: '[data-testid="saved-question-header-title"]',
+      // "Modern nav - C" halves the gap down to the question's title (its
+      // header also drops its top padding).
+      overlapBelowPx: navVariant === "modern-nav-c" ? 8 : undefined,
     };
   }
   const isSecondaryPage =
@@ -93,8 +103,9 @@ export function AppBarContainer({ isMinimal }: { isMinimal?: boolean }) {
   const routerProps = { location };
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
+  const { variant: navVariant } = useNavVariant();
   const minimalLayout = isMinimal
-    ? getMinimalAppBarLayout(location.pathname)
+    ? getMinimalAppBarLayout(location.pathname, navVariant)
     : undefined;
 
   const currentUser = useSelector(getUser);
