@@ -77,7 +77,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     const link = await screen.findByText("Security Center");
-    expect(link).toHaveAttribute("href", "/admin/security-cente/advisories");
+    expect(link).toHaveAttribute("href", "/admin/security-center/advisories");
   });
 
   it("does not render once acknowledged", async () => {
