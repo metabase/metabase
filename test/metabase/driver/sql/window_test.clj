@@ -14,11 +14,13 @@
     (lib/query mp (lib.metadata/table mp (mt/id :checkins)))))
 
 (defn- col-ref
-  "Fresh column ref by display name. The 2-arity version defaults `group-name` to \"Checkins\"."
+  "Fresh column ref by display name. The 2-arity version picks the base table's group — its display name is
+  schema-prefixed on some drivers (e.g. \"Test Data Checkins\" on Oracle/Presto/Vertica), so match on
+  `{:is-main-group true}` instead."
   ([query display-name]
-   (col-ref query "Checkins" display-name))
-  ([query group-name display-name]
-   (lib/ref (nb/find-col-with-spec query (lib/visible-columns query) group-name display-name))))
+   (col-ref query {:is-main-group true} display-name))
+  ([query group-spec display-name]
+   (lib/ref (nb/find-col-with-spec query (lib/visible-columns query) group-spec display-name))))
 
 (defn- window-drivers []
   (mt/normal-driver-select {:+features [:window-functions] :+parent :sql}))

@@ -103,7 +103,6 @@
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                 false
-                              :window-functions/interval-frame-offsets true
                               :expression-literals                     true
                               :database-routing                        true
                               :metadata/table-existence-check          true
@@ -197,6 +196,11 @@
   [driver _feat db]
   (and (= driver :mysql)
        (not (mariadb? db))))
+
+;; MySQL 8+ accepts `RANGE BETWEEN INTERVAL n unit PRECEDING AND CURRENT ROW`; MariaDB rejects it.
+(defmethod driver/database-supports? [:mysql :window-functions/interval-frame-offsets]
+  [_driver _feat db]
+  (not (mariadb? db)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

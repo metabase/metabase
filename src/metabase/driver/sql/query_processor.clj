@@ -1253,7 +1253,7 @@
   "Return a HoneySQL form for an interval literal used as a `:range` window-frame offset, e.g. the
    interval in `RANGE BETWEEN INTERVAL '7' day PRECEDING AND CURRENT ROW`. Default emits the
    SQL-standard `INTERVAL '<n>' <unit>` form."
-  {:arglists '([driver amount unit])}
+  {:added "0.66.0", :arglists '([driver amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
