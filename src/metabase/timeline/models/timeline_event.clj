@@ -1,6 +1,8 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -9,6 +11,7 @@
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,15 +23,8 @@
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(defmethod events/spec :model/TimelineEvent
-  [_model]
-  {:create :event/timeline-event-create
-   :update :event/timeline-event-update
-   :delete :event/timeline-event-delete})
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."
@@ -66,7 +62,8 @@
 (t2/define-before-insert :model/TimelineEvent
   [row]
   (cond-> row
-    (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
+    (and (nil? (:icon row)) (:timeline_id row)) (assoc :icon (timeline.db/icon-clause (:timeline_id row) default-icon))
+    (and (nil? (:icon row)) (nil? (:timeline_id row))) (assoc :icon default-icon)))
 
 (t2/define-before-update :model/TimelineEvent
   [event]
@@ -84,7 +81,7 @@
   (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
   (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
     (if (seq ids)
-      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-ids ids)) k))
       {})))
 
 (methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
@@ -122,7 +119,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(timeline.db/timelines-by-id (map :timeline_id events))
+   #(timeline.db/timelines-by-ids (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events
@@ -158,7 +155,45 @@
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
-;;; -------------------------------------------------- Serialization ---------------------------------------------------
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
+(mu/defn create-timeline-events! :- [:sequential (ms/InstanceOf :model/TimelineEvent)]
+  "Insert the TimelineEvent `rows` and return the inserted instances, an event without an icon getting the icon of its
+  Timeline, in one transaction, publishing their create event."
+  [rows :- [:sequential ::timeline.schema/timeline-event.create]]
+  (app-db/create-batched! :model/TimelineEvent rows
+                          {:after-create #(events/publish-event! :event/timeline-event-create (events/create-event %))}))
+
+(defn- without-empty-updates
+  "The `updates` that give a column."
+  [updates _id->stored]
+  (filterv #(seq (dissoc % :id)) updates))
+
+(mu/defn update-timeline-events! :- :nil
+  "Applies `updates`, each the `:id` of a TimelineEvent with the changes it gets, in one transaction, publishing their
+  update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::timeline.schema/timeline-event.update]]
+   (update-timeline-events! updates nil))
+  ([updates :- [:sequential ::timeline.schema/timeline-event.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (app-db/update-batched! :model/TimelineEvent updates
+                           {:before-update without-empty-updates
+                            :after-update  (fn [updates id->stored _id->updated]
+                                             (when (seq updates)
+                                               (events/publish-event! :event/timeline-event-update
+                                                                      (events/update-event id->stored updates opts))))})))
+
+(mu/defn delete-timeline-events! :- :nil
+  "Delete the TimelineEvents with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/TimelineEvent ids
+                          {:before-delete #(events/publish-event! :event/timeline-event-delete (events/delete-event %))}))
+
+;;; ------------------------------------------------------ Specs -------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TimelineEvent [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TimelineEvent [_]
   {:schema    ::timeline.schema/external-timeline-event
@@ -167,9 +202,10 @@
    :transform {:timeline_id serialization/import-only-transform
                :creator_id serialization/user-transform
                :timestamp  serialization/date-transform}
-   :defaults  {:archived false}})
-
-;;; --------------------------------------------------- Remote sync ----------------------------------------------------
+   :defaults  {:archived false}
+   :insert!   create-timeline-events!
+   :update!   #(do (update-timeline-events! % {:writer :import}) %)
+   :delete!   delete-timeline-events!})
 
 (defmethod remote-sync/spec :model/TimelineEvent
   [_model]

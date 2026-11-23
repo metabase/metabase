@@ -1,7 +1,9 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.bookmarks.db :as bookmarks.db]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -24,16 +26,6 @@
 (derive :model/BookmarkOrdering :metabase/model)
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
-
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
-  bookmark)
-
-(t2/define-before-update :model/CollectionBookmark [model]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
-  model)
 
 ;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 
@@ -94,6 +86,25 @@
     (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
          (map normalize-bookmark-result))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-bookmarks! :- [:sequential :map]
+  "Give each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`, a bookmark on the item and
+  return the bookmarks, the existing one when there is one; a Collection that takes no bookmarks is a 400."
+  [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
+  (let [ids         (into [] (comp (filter #(= "collection" (:type %))) (map :item_id) (distinct)) rows)
+        collections (collection/collections-for-content-checks ids)]
+    (doseq [id ids]
+      (collection/check-allowed-content :model/CollectionBookmark (or (get collections id) id))))
+  (bookmarks.db/insert-bookmarks! rows))
+
+(mu/defn delete-bookmarks! :- :nil
+  "Delete the bookmark of each of `rows`, the bookmark `:type` of an item, its `:item_id` and a `:user_id`, doing
+  nothing for one that has none."
+  [rows :- [:sequential ::bookmarks.schema/bookmark.create]]
+  (bookmarks.db/delete-bookmarks! rows)
+  nil)
+
 (defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
@@ -102,3 +113,23 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
+  {:skip? false})

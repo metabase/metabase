@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database])
   (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
@@ -388,11 +389,10 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (gsheets.db/update-database! 1
-                               {:is_attached_dwh true
+  (database/update-databases! [{:id 1 :is_attached_dwh true
                                 :settings
                                 (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
+                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")}])
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:

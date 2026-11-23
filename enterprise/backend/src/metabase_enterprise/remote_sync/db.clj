@@ -24,12 +24,6 @@
   [model :- :keyword]
   (t2/count model (first (t2/primary-keys model)) [:in (remote-sync/synced-ids-clause model nil)]))
 
-(mu/defn delete-rows!
-  "Deletes the rows of `model` with the primary keys `pks`, running its hooks."
-  [model :- :keyword
-   pks   :- [:sequential [:or :int :string]]]
-  (t2/delete! model (first (t2/primary-keys model)) [:in pks]))
-
 (mu/defn built-in-entity-ids :- [:set :string]
   "Those of the `entity-ids` of rows of `model` that every instance has."
   [model      :- :keyword
@@ -167,7 +161,7 @@
                  :where  [:and stale [:in :id ids]]}))
     ids))
 
-(mu/defn delete-tasks-started-before!
+(mu/defn delete-remote-sync-tasks-for-cleanup!
   "Delete the RemoteSyncTasks started before `cutoff` but the one with `kept-id`, returning the number deleted."
   [cutoff  :- ms/TemporalInstant
    kept-id :- [:maybe ms/PositiveInt]]

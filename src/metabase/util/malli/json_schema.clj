@@ -27,9 +27,10 @@
   [:map {:closed true}
    [:definitions-path {:optional true} :string]])
 
-(def ^:private annotation-keys
+(def annotation-keys
   "The keys of a JSON Schema node that describe it without constraining what it accepts."
-  [:description :title :default :examples])
+  ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
+  #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
 
 (defn- empty-schema?
   "Whether the JSON Schema `node` accepts anything."
@@ -46,38 +47,102 @@
   [node]
   (::declared (meta node)))
 
-(defn- unwrap-branch
-  "Merge the one branch left of the branching node `schema` into it, keeping whether either was declared."
+(def ^:private neighbor-keys
+  "JSON Schema keywords whose meaning depends on other keywords of the same schema, mapped to those keywords."
+  {:additionalItems       #{:items :prefixItems}
+   :additionalProperties  #{:patternProperties :properties}
+   ;; OpenAPI's `discriminator` maps values to the branches beside it
+   :discriminator         #{:allOf :anyOf :oneOf}
+   :else                  #{:if}
+   :items                 #{:prefixItems}
+   :maxContains           #{:contains}
+   :minContains           #{:contains}
+   :then                  #{:if}
+   ;; the `unevaluated` keywords see what every applicator beside them evaluated
+   :unevaluatedItems      #{:$dynamicRef :$ref :allOf :anyOf :contains :else :if :items :oneOf :prefixItems :then}
+   :unevaluatedProperties #{:$dynamicRef :$ref :additionalProperties :allOf :anyOf :dependentSchemas :else :if :oneOf
+                            :patternProperties :properties :then}})
+
+(defn- reads-neighbor?
+  "Whether a keyword of the JSON Schema `a` depends on a keyword of `b`, so that merging the two changes its meaning."
+  [a b]
+  ;; a keyword that accepts anything, such as `additionalProperties: {}`, means the same whatever sits beside it
+  (mp/some (fn [[k v]]
+             (and (not (or (true? v) (empty-schema? v)))
+                  (mp/some #(contains? b %) (neighbor-keys k))))
+           a))
+
+(defn- merges-cleanly?
+  "Whether merging the JSON Schema `branch` into the JSON Schema `node` accepts what both accepted together.
+  False when the branch has its own `$id` or anchor, or a constraining key the node also has with a different value.
+  Also false when a keyword on one side depends on a keyword on the other."
+  [node branch]
+  (and (map? branch)
+       ;; a branch's `$id` would become the base every `$ref` in the node resolves against, and its anchors would
+       ;; name the whole node
+       (not-any? #(contains? branch %) [:$anchor :$dynamicAnchor :$id])
+       ;; an equal value, such as `type: object` on both, merges without losing anything
+       (not (mp/some #(and (contains? node %)
+                           (not (annotation-keys %))
+                           (not= (get node %) (get branch %)))
+                     (keys branch)))
+       (not (reads-neighbor? branch node))
+       (not (reads-neighbor? node branch))))
+
+(defn merge-one-branch
+  "The JSON Schema `schema` with the one branch under its branching keyword `k` merged into it, keeping whether either
+  was declared.
+  Returns nil when `k` holds more or fewer than one branch, when a keyword beside `k` reads it, or when the branch
+  does not [[merges-cleanly?]]."
   [schema k]
-  (let [branch (first (k schema))]
-    (with-meta (merge (dissoc schema k) branch)
-               (merge (meta schema) (select-keys (meta branch) [::declared])))))
+  (let [[branch & more] (k schema)
+        siblings        (dissoc schema k)]
+    ;; a keyword that reads the branching keyword itself, such as a `discriminator` beside an `anyOf`, would lose it
+    (when (and branch
+               (not more)
+               (not (reads-neighbor? siblings (select-keys schema [k])))
+               (merges-cleanly? siblings branch))
+      (with-meta (merge siblings branch)
+                 (merge (meta schema) (select-keys (meta branch) [::declared]))))))
+
+(defn- lift-annotations
+  "The JSON Schema `schema` with the annotations of its `k` branches that constrain nothing merged in, its own winning."
+  [schema k]
+  ;; a branch such as `{deprecated: true}` constrains nothing, but its annotation still describes the node
+  (with-meta (merge (apply merge {} (filter empty-schema? (k schema))) schema)
+             (meta schema)))
 
 (defn- collapse-branches
-  "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
-  has one branch left."
+  "Drop the conjuncts that accept anything, keeping their annotations on the node, and the alternatives that accept
+  nothing, and unwrap a branching node that has one branch left, if it [[merges-cleanly?]] (see [[merge-one-branch]])."
   [schema k]
-  (let [schema (cond-> schema
-                 (= k :allOf)
-                 (update k (partial remove empty-schema?))
+  (let [branches            (k schema)
+        ;; conjuncts that all accept anything leave a node that does too, declared only if each of them was
+        declared-conjuncts? (and (= k :allOf)
+                                 (seq branches)
+                                 (mp/every? #(and (empty-schema? %) (declared? %)) branches))
+        schema              (cond-> schema
+                              (= k :allOf)
+                              (-> (lift-annotations k)
+                                  (update k (partial remove empty-schema?)))
 
-                 (and (= k :anyOf) (mp/some (complement never-schema?) (k schema)))
-                 (update k (partial remove never-schema?)))]
+                              (and (= k :anyOf) (mp/some (complement never-schema?) branches))
+                              (update k (partial remove never-schema?)))]
     (cond
-      (mp/some #(and (empty-schema? %) (declared? %)) (k schema))
+      declared-conjuncts?
       (vary-meta (dissoc schema k) assoc ::declared true)
 
+      ;; an alternative that accepts anything makes the node accept anything, and its annotations describe the node
+      (mp/some #(and (empty-schema? %) (declared? %)) (k schema))
+      (vary-meta (dissoc (lift-annotations schema k) k) assoc ::declared true)
+
       (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
-      (dissoc schema k)
-
-      (= 1 (count (k schema)))
-      (unwrap-branch schema k)
-
-      (empty? (k schema))
-      (dissoc schema k)
+      (dissoc (lift-annotations schema k) k)
 
       :else
-      schema)))
+      (or (merge-one-branch schema k)
+          (cond-> schema
+            (empty? (k schema)) (dissoc k))))))
 
 (defn- stringify [required]
   (if (sequential? required)
@@ -95,11 +160,68 @@
     (and (:prefixItems node) (false? (:items node)) (not (:maxItems node)))
     (assoc :maxItems (count (:prefixItems node)))))
 
+(defn- merge-beside
+  "The JSON Schema `replacement` merged with the keywords `siblings` that sat beside the `oneOf` it replaces, theirs
+  winning, except that two string descriptions are joined, the siblings' first."
+  [replacement siblings]
+  ;; a `[:maybe]`'s description and its schema's both describe the property
+  (cond-> (merge replacement siblings)
+    (and (string? (:description siblings))
+         (string? (:description replacement))
+         (not= (:description siblings) (:description replacement)))
+    (assoc :description (str (:description siblings) " " (:description replacement)))))
+
+(def ^:private applicator-keys
+  "JSON Schema keywords that only apply subschemas to the value, and so mean the same beside other keywords as under an
+  `allOf`."
+  #{:allOf :anyOf :not :oneOf})
+
+(defn replace-one-of
+  "Replace the `oneOf` of the JSON Schema `node` with the JSON Schema `replacement`, keeping `node`'s metadata.
+  The replacement merges into the keywords beside the `oneOf` (see [[merge-beside]]) where those are only
+  [[annotation-keys]], or where the replacement asserts only [[applicator-keys]] they lack.
+  Otherwise it joins them under `allOf`, and its description, if they have none, stays on the node."
+  [node replacement]
+  (let [siblings   (dissoc node :oneOf)
+        assertions (keys (apply dissoc replacement annotation-keys))]
+    (with-meta
+     (cond
+       ;; merging also keeps a `discriminator` beside the alternatives it tells apart
+       (or (every? annotation-keys (keys siblings))
+           (and (every? applicator-keys assertions)
+                (not-any? #(contains? siblings %) assertions)))
+       (merge-beside replacement siblings)
+
+       ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
+       ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
+       ;; Readers look for a property's description at its top level, not inside `allOf`.
+       (and (:description replacement) (not (contains? siblings :description)))
+       (-> siblings
+           (assoc :description (:description replacement))
+           (update :allOf (fnil conj []) (dissoc replacement :description)))
+
+       :else
+       (update siblings :allOf (fnil conj []) replacement))
+     (meta node))))
+
+(defn branches->any-of
+  "The JSON Schema accepting what any of the JSON Schemas `branches` accepts.
+  Returns their `anyOf`, or `{:not {}}`, which accepts nothing, for no branches."
+  [branches]
+  ;; JSON Schema requires at least one branch in an `anyOf`
+  (if (seq branches)
+    {:anyOf (vec branches)}
+    {:not {}}))
+
 (defn- any-of
-  "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
+  "The JSON Schema `node` with its `oneOf` replaced by an `anyOf`, as [[replace-one-of]] does.
+  Unlike [[without-one-of]], it keeps the `null` branch of `[:maybe X]` in the `anyOf` rather than folding it into a
+  nullable type."
   [node]
+  ;; Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`.
+  ;; The nullable type exists for tool clients that coerce types, which the OpenAPI spec does not serve.
   (if-let [branches (:oneOf node)]
-    (-> node (dissoc :oneOf) (update :anyOf #(concat % branches)))
+    (replace-one-of node (branches->any-of branches))
     node))
 
 (defn- definition-name
@@ -113,26 +235,148 @@
   (when (str/starts-with? ref definitions-path)
     (str/replace (subs ref (count definitions-path)) "~1" "/")))
 
-(defn- postwalk-schemas
+(def ^:private subschema-keywords
+  "The JSON Schema keywords that nest subschemas, by the shape of the keyword's value."
+  {:map-of #{:$defs :definitions :dependencies :dependentSchemas :patternProperties :properties}
+   :list   #{:allOf :anyOf :oneOf :prefixItems}
+   ;; `items` is a list of schemas in draft-07, so this shape takes either
+   :schema #{:additionalItems :additionalProperties :contains :contentSchema :else :if :items :not :propertyNames
+             :then :unevaluatedItems :unevaluatedProperties}})
+
+(defn postwalk-schemas
   "Apply `f` to every subschema of the JSON Schema `node`, children first, leaving property names and values alone."
   [f node]
   (if-not (map? node)
     node
-    (let [walk     #(postwalk-schemas f %)
-          walk-all #(mp/mapv walk %)]
-      (f (cond-> node
-           (map? (:properties node))           (update :properties update-vals walk)
-           (map? (:definitions node))          (update :definitions update-vals walk)
-           (map? (:items node))                (update :items walk)
-           (sequential? (:items node))         (update :items walk-all)
-           (sequential? (:prefixItems node))   (update :prefixItems walk-all)
-           (map? (:additionalProperties node)) (update :additionalProperties walk)
-           (sequential? (:anyOf node))         (update :anyOf walk-all)
-           (sequential? (:allOf node))         (update :allOf walk-all)
-           (sequential? (:oneOf node))         (update :oneOf walk-all)
-           (map? (:not node))                  (update :not walk)
-           (map? (:if node))                   (update :if walk)
-           (map? (:then node))                 (update :then walk))))))
+    (let [walk      #(postwalk-schemas f %)
+          walk-list #(mp/mapv walk %)
+          ;; a value of the wrong shape, such as `additionalProperties: false` or a `dependencies` list, stays
+          walk-by   {:map-of #(if (map? %) (update-vals % walk) %)
+                     :list   #(if (sequential? %) (walk-list %) %)
+                     :schema #(if (sequential? %) (walk-list %) (walk %))}]
+      (f (reduce-kv (fn [node shape ks]
+                      (reduce (fn [node k]
+                                (cond-> node
+                                  (contains? node k) (update k (walk-by shape))))
+                              node
+                              ks))
+                    node
+                    subschema-keywords)))))
+
+(def ^:private keyword-types
+  "JSON Schema assertion keywords that apply only to values of one type, mapped to that type."
+  (merge (zipmap [:additionalProperties :dependentRequired :dependentSchemas :maxProperties :minProperties
+                  :patternProperties :properties :propertyNames :required]
+                 (repeat "object"))
+         (zipmap [:contains :items :maxContains :maxItems :minContains :minItems :prefixItems :uniqueItems]
+                 (repeat "array"))
+         (zipmap [:contentEncoding :contentMediaType :contentSchema :format :maxLength :minLength :pattern]
+                 (repeat "string"))
+         (zipmap [:exclusiveMaximum :exclusiveMinimum :maximum :minimum :multipleOf]
+                 (repeat "number"))))
+
+(def ^:private null-neutral-keys
+  "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
+  (into annotation-keys (keys keyword-types)))
+
+(def ^:private type-array-keys
+  "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
+  itself, and an `:enum`, which `null` joins."
+  (conj null-neutral-keys :type :enum))
+
+(defn- types
+  "The types the `:type` of JSON Schema `schema` names, as a vector, or nil when it has none."
+  [{:keys [type]}]
+  (cond
+    (string? type)     [type]
+    (sequential? type) (vec type)))
+
+(defn- value-type
+  "The type of the values a JSON Schema `type` describes, for telling which types overlap and which keywords apply."
+  [type]
+  ;; every integer is a number
+  (if (= "integer" type) "number" type))
+
+(defn- union->type-array
+  "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
+  Each branch must name its own types, no two branches' overlapping, and assert only [[keyword-types]] keywords that
+  apply to those types.
+  A branch may carry a string `:description`, which is joined, but no other annotation, since the type array would
+  lose it."
+  [branches]
+  (let [branch-types (map types branches)
+        own-keyword? (fn [branch k]
+                       (contains? (set (map value-type (types branch))) (keyword-types k)))]
+    (when (and (seq branches)
+               (every? seq branch-types)
+               (apply distinct? (map value-type (apply concat branch-types)))
+               ;; a localized description is translated when it is serialized, so joining it here would fix the
+               ;; locale of whoever builds the cached manifest first
+               (every? (comp (some-fn nil? string?) :description) branches)
+               (every? (fn [branch]
+                         (every? #(own-keyword? branch %) (remove #{:type :description} (keys branch))))
+                       branches))
+      (let [description (str/join " " (keep :description branches))]
+        (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
+            (assoc :type (into [] cat branch-types))
+            (cond-> (not (str/blank? description)) (assoc :description description)))))))
+
+(defn- flatten-union
+  "The JSON Schema `schema` with an `anyOf` beside only annotations replaced by its [[union->type-array]], joining the
+  descriptions, or `schema` itself when there is no such union."
+  [{:keys [anyOf description] :as schema}]
+  (or (when (and anyOf
+                 (every? annotation-keys (keys (dissoc schema :anyOf)))
+                 ((some-fn nil? string?) description))
+        (when-let [union (union->type-array anyOf)]
+          (let [descriptions (remove str/blank? [description (:description union)])]
+            (cond-> (merge (dissoc schema :anyOf :description) (dissoc union :description))
+              (seq descriptions) (assoc :description (str/join " " descriptions))))))
+      schema))
+
+(defn- nullable
+  "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
+  Where `schema`, or its [[flatten-union]], has a `:type` and otherwise only [[type-array-keys]], returns it with
+  `null` added to that type and to any `:enum`.
+  Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
+  [schema]
+  ;; A coercing client tries `anyOf` branches in order and coerces into the first one it can, so an explicit `null`
+  ;; becomes `0`, `false` or `""` there; a type array keeps it `null`.
+  (let [flat       (flatten-union schema)
+        type-names (types flat)]
+    ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
+    (if (and (seq type-names)
+             (every? type-array-keys (keys flat)))
+      (cond-> (assoc flat :type (vec (distinct (conj type-names "null"))))
+        ;; an enum rejects a `null` it does not list
+        (:enum flat) (update :enum #(vec (distinct (conj (vec %) nil)))))
+      (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
+        (:description schema) (assoc :description (:description schema))))))
+
+(defn- one-of-replacement
+  "What replaces the `oneOf` `branches`.
+  For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
+  For any other branches, returns [[branches->any-of]]."
+  [[x y :as branches]]
+  (if (and (= 2 (count branches)) (= {:type "null"} y))
+    (nullable x)
+    (branches->any-of branches)))
+
+(defn without-one-of
+  "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]], keeping the keywords beside it as
+  [[replace-one-of]] does.
+  The OpenAPI pass uses [[any-of]] instead, which leaves `[:maybe X]` as an `anyOf` with a `null` branch."
+  [json-schema]
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so a falsy value valid for X matches
+  ;; both branches of a nullable `oneOf` and fails it, where an `anyOf` or a type array passes it.
+  ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
+  ;; OpenAI rejects `oneOf` anywhere in a tool schema: in strict mode, and from GPT-6.2 without it too.
+  ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
+  (postwalk-schemas
+   (fn [{branches :oneOf :as node}]
+     (cond-> node
+       branches (replace-one-of (one-of-replacement branches))))
+   json-schema))
 
 (defn- subschemas
   "The subschemas of the JSON Schema `node`."

@@ -11,6 +11,7 @@
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -278,11 +279,12 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
-    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
-      (testing "New group should have permissions for the router database"
-        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
-      (testing "New group should NOT have permissions for the destination database"
-        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+    (mt/with-model-cleanup [:model/PermissionsGroup]
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Test Group for Routing"}])]
+        (testing "New group should have permissions for the router database"
+          (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+        (testing "New group should NOT have permissions for the destination database"
+          (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id))))))))
 
 (deftest manage-db-user-can-update-destination-database-test
   (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"

@@ -316,10 +316,10 @@
 (defn- embedding-relay-state-key!
   "Persist a relay-state entry like the embedding GET flow does, returning its RelayState key."
   [origin]
-  (relay-state/persist! {:id           (relay-state/generate-key)
-                         :continue-url (str (system/site-url) "/auth/sso")
-                         :origin       origin
-                         :embedding?   true}))
+  (relay-state/create-sso-relay-state! {:id           (relay-state/generate-key)
+                                        :continue-url (str (system/site-url) "/auth/sso")
+                                        :origin       origin
+                                        :embedding?   true}))
 
 (defn- some-saml-attributes [user-nickname]
   {"http://schemas.auth0.com/identities/default/provider"   "auth0"

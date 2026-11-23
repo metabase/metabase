@@ -163,7 +163,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.3"}
+  org.clojure/clojure                       {:mvn/version "1.12.7"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.memoize                  {:mvn/version "1.1.266"}            ; useful FIFO, LRU, etc. caching mechanisms
@@ -454,9 +454,9 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   ;;
-  ;; or run every documentation command in one JVM
+  ;; or run every documentation command in one JVM, with the driver modules for the database feature support page
   ;;
-  ;;    clojure -M:ee:doc all-documentation
+  ;;    clojure -M:ee:drivers:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"

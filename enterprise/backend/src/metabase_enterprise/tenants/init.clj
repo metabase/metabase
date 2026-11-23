@@ -6,4 +6,5 @@
   the namespace — without this eager require, a freshly started instance silently skips the tenant step for JWT/SAML
   logins until something else loads the namespace, provisioning tenant users as internal users (UXW-4898)."
   (:require
-   [metabase-enterprise.tenants.auth-provider]))
+   [metabase-enterprise.tenants.auth-provider]
+   [metabase-enterprise.tenants.models]))

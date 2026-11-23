@@ -2,6 +2,7 @@
   "Application database queries for the workspaces module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -14,22 +15,29 @@
 (mr/def ::status
   [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
-(mr/def ::workspace-database.insert
+(mr/def ::workspace-database.update
+  "What an update of a WorkspaceDatabase takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
-   [:workspace_id     ms/PositiveInt]
-   [:database_id      ::lib.schema.id/database]
-   [:input_schemas    [:sequential :string]]
-   [:database_details ::warehouses.schema/database.connection-details]
-   [:output_namespace :string]
+   [:id               ms/PositiveInt]
+   [:workspace_id     {:optional true} ms/PositiveInt]
+   [:database_id      {:optional true} ::lib.schema.id/database]
+   [:input_schemas    {:optional true} [:sequential :string]]
+   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
+   [:output_namespace {:optional true} :string]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
-(mr/def ::workspace-database.update
-  [:map {:closed true}
-   [:output_namespace {:optional true} :string]
-   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
-   [:status           {:optional true} ::status]
-   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
+(mr/def ::workspace-database.create
+  "What creating a WorkspaceDatabase takes: the columns of an update without the `:id`, and its Workspace, Database,
+  input schemas, connection details and output namespace."
+  [:merge
+   (mut/dissoc ::workspace-database.update :id)
+   [:map
+    [:workspace_id     ms/PositiveInt]
+    [:database_id      ::lib.schema.id/database]
+    [:input_schemas    [:sequential :string]]
+    [:database_details ::warehouses.schema/database.connection-details]
+    [:output_namespace :string]]])
 
 (mr/def ::table-spec
   [:map {:closed true}
@@ -48,11 +56,6 @@
   "Every Database."
   []
   (t2/select :model/Database))
-
-(defn update-database-settings!
-  "Replace the `:settings` of the Database with `database-id`."
-  [database-id settings]
-  (t2/update! :model/Database :id database-id {:settings settings}))
 
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
@@ -175,13 +178,14 @@
 
 (mu/defn insert-workspace-databases!
   "Insert `rows`."
-  [rows :- [:sequential ::workspace-database.insert]]
+  [rows :- [:sequential ::workspace-database.create]]
   (t2/insert! :model/WorkspaceDatabase rows))
 
 (mu/defn update-workspace-database!
   "Apply `changes` to the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt
-   changes               :- ::workspace-database.update]
+   changes               :- (mut/select-keys ::workspace-database.update
+                                             [:output_namespace :database_details :status :updated_at])]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id} changes))
 
 (mu/defn transition-workspace-database!
@@ -262,15 +266,19 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/WorkspaceDatabase :database_id database-id))
 
-(mu/defn database-has-active-workspace-databases?
-  "Whether the Database with `database-id` has a WorkspaceDatabase that is not `:unprovisioned`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/WorkspaceDatabase :database_id database-id :status [:not= :unprovisioned]))
+(mu/defn database-id-with-active-workspace-databases :- [:maybe ::lib.schema.id/database]
+  "The id of one of the Databases with `database-ids` that has a WorkspaceDatabase that is not `:unprovisioned`, or
+  nil."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-one-fn :database_id :model/WorkspaceDatabase
+                    :database_id [:in database-ids]
+                    :status [:not= :unprovisioned]
+                    {:order-by [[:database_id :asc]]}))
 
-(mu/defn delete-unprovisioned-workspace-databases-of-database!
-  "Delete the `:unprovisioned` WorkspaceDatabases of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/WorkspaceDatabase :database_id database-id :status :unprovisioned))
+(mu/defn delete-unprovisioned-workspace-databases-of-databases!
+  "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/delete! :model/WorkspaceDatabase :database_id [:in database-ids] :status :unprovisioned))
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 
@@ -341,6 +349,11 @@
   "Delete the TableRemappings of the Database with `database-id`. Returns the number of rows deleted."
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/TableRemapping :database_id database-id))
+
+(mu/defn delete-table-remappings-of-databases!
+  "Delete the TableRemappings of the Databases with `database-ids`, returning the number of rows deleted."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/delete! :model/TableRemapping :database_id [:in database-ids]))
 
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`

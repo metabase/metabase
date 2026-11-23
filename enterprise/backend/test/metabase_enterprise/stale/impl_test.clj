@@ -365,23 +365,23 @@
                  :model/Card {id1 :id} (stale-card {:name "A" :collection_id col-id})
                  :model/Card {id2 :id} (stale-card {:name "B" :collection_id col-id})]
     ;; card 1 is verified, then unverified - it should be included
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id1
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              "verified"}])
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id1
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              nil}])
     ;; card 2 is unverified, then verified - it should NOT be included.
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id2
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              nil}])
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id2
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              "verified"}])
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
            (stale/find-candidates
@@ -552,7 +552,7 @@
                (rows (assoc base :models #{:model/Dashboard})))))
       (testing "a model with no registered staleness method fails loud (no silent drop)"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"No staleness method registered for"
+                              #"No staleness spec registered for"
                               (rows (assoc base :models #{:model/Card :model/Collection}))))))))
 
 (deftest things-that-are-already-archived-do-not-appear

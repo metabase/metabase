@@ -653,9 +653,7 @@
   (let [types (or types (case query-type
                           :unreferenced (vec deps.dependency-types/dependency-types)
                           :breaking [:card :table]))
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes have no name or location to search.
-                         query (remove #{:sandbox}))]
+        selected-types (if (sequential? types) types [types])]
     (merge (current-user-visibility nil)
            {:query-type query-type
             :entity-types selected-types

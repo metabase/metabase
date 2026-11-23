@@ -637,7 +637,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.get("@targetDashboardId").then((targetDashboardId) => {
         H.modal().within(() => {
           cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
-            `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
+            `${Cypress.config("baseUrl")}/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
             { parseSpecialCharSequences: false },
           );
           cy.button("Done").click();

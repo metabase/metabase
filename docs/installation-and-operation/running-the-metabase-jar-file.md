@@ -141,7 +141,7 @@ export MB_DB_HOST=localhost
 java -jar metabase.jar
 ```
 
-The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`. If you're running Metabase as a service, you'll put these environment variables in a separate configuration file.
+The above command would connect Metabase to your Postgres database, `metabaseappdb` via `localhost:5432` with the user account `username` and password `password`. If you're running Metabase as a service, you'll put these environment variables in a separate configuration file. For details on each `MB_DB_*` variable, see [Environment variables](../configuring-metabase/environment-variables.md#mb_db_automigrate).
 
 ### Running the Metabase JAR as a service
 

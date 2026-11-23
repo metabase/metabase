@@ -44,13 +44,13 @@ import {
   getEmbeddedParameterVisibilityGetter,
   getIsResultDirty,
   getIsVisualized,
-  getMetabotCardBaseline,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
   getShouldShowUnsavedChangesWarning,
   getSubmittableQuestion,
+  toMetabotCardBaseline,
 } from "./selectors";
 
 registerVisualizations();
@@ -594,7 +594,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         parameters: undefined,
       });
       const baselineOf = (card: Card) =>
-        getMetabotCardBaseline(
+        toMetabotCardBaseline(
           checkNotNull(getQuestion(getBaseState({ card }))),
         );
 

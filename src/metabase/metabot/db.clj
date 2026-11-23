@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
-   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -51,12 +50,6 @@
   "Whether a Metabot with `metabot-id` exists."
   [metabot-id :- ms/PositiveInt]
   (t2/exists? :model/Metabot :id metabot-id))
-
-(mu/defn update-metabot!
-  "Apply `changes` to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot :id metabot-id changes))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -125,23 +118,10 @@
   [metabot-id :- ms/PositiveInt]
   (t2/count :model/MetabotPrompt :metabot_id metabot-id))
 
-(mu/defn insert-prompts!
-  "Insert the MetabotPrompt `rows`."
-  [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (t2/insert! :model/MetabotPrompt rows))
-
-(mu/defn delete-metabot-prompt!
-  "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   prompt-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id metabot-id]]}))
-
-(mu/defn delete-prompts-for-metabot!
-  "Delete the MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+(mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
+  "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
+  [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (vec (t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in [:auto/param metabot-ids]])))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
@@ -254,29 +234,28 @@
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
-(mu/defn insert-conversation!
-  "Insert `conversation` under the client-generated `conversation-id`."
+(mu/defn insert-upserted-conversation!
+  "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
+  row."
   [conversation-id :- :string
-   conversation    :- ::metabot.schema/metabot-conversation.update]
-  (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
+   columns         :- :map]
+  (first (t2/insert-returning-instances! :model/MetabotConversation (assoc columns :id conversation-id))))
 
-(mu/defn upsert-conversation!
-  "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
-  insert) and must return the fields to write."
+(mu/defn update-conversation!
+  "Apply `changes` to the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
+   changes         :- :map]
+  (t2/update! :model/MetabotConversation :id conversation-id changes))
 
-(mu/defn set-conversation-title-if-missing!
-  "Set the title of the MetabotConversation with `conversation-id` if it has none."
-  [conversation-id :- :string
-   title :- :string]
-  (t2/update! :model/MetabotConversation {:id conversation-id, :title nil} {:title title}))
+(mu/defn titleless-conversation
+  "The MetabotConversation with `conversation-id` if it has no title, or nil."
+  [conversation-id :- :string]
+  (t2/select-one :model/MetabotConversation :id conversation-id :title nil))
 
-(mu/defn delete-conversations-created-before!
-  "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
+(mu/defn conversations-created-before
+  "The MetabotConversations created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
+  (t2/select :model/MetabotConversation {:where [:< :created_at cutoff]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
@@ -349,77 +328,92 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
-(mu/defn insert-message-returning-pk!
-  "Insert `message` and return its ID."
-  [message :- ::metabot.schema/metabot-message.update]
-  (t2/insert-returning-pk! :model/MetabotMessage message))
+(mu/defn insert-messages! :- [:sequential ::metabot.schema/metabot-message]
+  "Insert the MetabotMessage `rows`, one statement for each set of columns they give, and return the new instances in
+  their order."
+  [rows :- [:sequential [:or ::metabot.schema/metabot-message.create (mut/dissoc ::metabot.schema/metabot-message :id)]]]
+  (mdb/insert-returning-instances! :model/MetabotMessage rows))
 
-(mu/defn insert-messages!
-  "Insert one MetabotMessage map or a sequence of them."
-  [messages :- [:or ::metabot.schema/metabot-message.update [:sequential ::metabot.schema/metabot-message.update]]]
-  (t2/insert! :model/MetabotMessage messages))
-
-(mu/defn update-message!
-  "Apply `changes` to the MetabotMessage with `message-id`."
-  [message-id :- ms/PositiveInt
-   changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage :id message-id changes))
-
-(mu/defn soft-delete-messages-where!
-  "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
-  rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
-  single MetabotMessage or, given a collection, any of several."
-  [conditions :- [:and
-                  [:map {:closed true}
-                   [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-                   [:channel_id   {:optional true} [:maybe :string]]
-                   [:slack_msg_id {:optional true} [:maybe :string]]
-                   [:role         {:optional true} [:maybe [:or :keyword :string]]]]
-                  [:fn {:error/message "must have at least one condition"} seq]]
-   deleted-by-user-id :- ::lib.schema.id/user]
+(mu/defn messages-matching
+  "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed as an
+  empty map would match every message, where `:id` matches a single MetabotMessage or, given a collection, any of
+  several."
+  [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions]
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
                        (coll? id) (assoc :id [:in id]))]
-    (t2/update! :model/MetabotMessage (h2x/assert-map-or-nil! conditions) {:deleted_at         [:now]
-                                                                           :deleted_by_user_id deleted-by-user-id})))
+    (apply t2/select [:model/MetabotMessage :id :deleted_by_user_id] (mapcat identity conditions))))
+
+(mu/defn soft-delete-messages! :- :int
+  "Stamp the deletion time on the MetabotMessages with `message-ids`, and `deleted-by-user-id` as their deleting User when
+  it is given, returning the number of rows updated."
+  [message-ids        :- [:sequential {:min 1} ms/PositiveInt]
+   deleted-by-user-id :- [:maybe ::lib.schema.id/user]]
+  (t2/update! :model/MetabotMessage :id [:in [:auto/param message-ids]]
+              (cond-> {:deleted_at [:now]}
+                deleted-by-user-id (assoc :deleted_by_user_id deleted-by-user-id))))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id {:optional true} ms/PositiveInt]
-                         [:message_id {:optional true} [:maybe ms/PositiveInt]]
-                         [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
-                         [:created_at {:optional true} [:maybe ms/TemporalInstant]]]]]
+  [rows :- [:sequential ::metabot.schema/metabot-used-table.create]]
   (t2/insert! :model/MetabotUsedTable rows))
+
+;;; -------------------------------------------------- AI usage --------------------------------------------------
+
+(mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLogs created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]})))
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
+(defn- upsert-row!
+  "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
+  columns to those of `row`, in one statement (`ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
+  MariaDB, `MERGE ... KEY` on H2), binding the values and taking every identifier from the constants of this
+  namespace."
+  [table key-columns row]
+  (let [columns     (vec (keys row))
+        names       (mapv name columns)
+        updated     (mapv name (remove (set key-columns) columns))
+        placeholder (str/join ", " (repeat (count columns) "?"))
+        column-list (str/join ", " names)
+        key-list    (str/join ", " (map name key-columns))
+        sql         (case (mdb/db-type)
+                      :postgres (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON CONFLICT (" key-list ") DO UPDATE SET "
+                                     (str/join ", " (map #(str % " = EXCLUDED." %) updated)))
+                      :mysql    (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
+                                     " ON DUPLICATE KEY UPDATE "
+                                     (str/join ", " (map #(str % " = VALUES(" % ")") updated)))
+                      :h2       (str "MERGE INTO " (name table) " (" column-list ") KEY (" key-list ") VALUES ("
+                                     placeholder ")"))]
+    (t2/query (into [sql] (map #(if (keyword? %) (name %) %)) (map row columns)))
+    nil))
+
 (mu/defn upsert-feedback!
-  "Insert or update the MetabotFeedback row for the MetabotMessage with `message-id` and the User with
-  `submitter-user-id`. `update-fn` receives the existing row (or nil on insert) and must return the fields to
-  write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`, or update
+  its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotFeedback
-                         {:message_id message-id :user_id submitter-user-id}
-                         update-fn))
+   columns           :- (mut/dissoc ::metabot.schema/metabot-feedback.update :message_id :user_id)]
+  (upsert-row! :metabot_feedback [:message_id :user_id]
+               (assoc columns :message_id message-id :user_id submitter-user-id))
+  (t2/select-one-pk :model/MetabotFeedback :message_id message-id :user_id submitter-user-id))
 
 (mu/defn upsert-source-feedback!
-  "Insert or update the MetabotSourceFeedback row for the MetabotMessage with `message-id`, the User with
-  `submitter-user-id`, and the source with `source-id`/`source-type`. `update-fn` receives the existing row (or nil
-  on insert) and must return the fields to write."
-  [message-id :- ms/PositiveInt
+  "Insert the MetabotSourceFeedback of the User with `submitter-user-id` on the source with `source-id` and
+  `source-type` of the MetabotMessage with `message-id`, or update its `columns`, in one statement, and return its ID."
+  [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
-   source-id :- ms/PositiveInt
-   source-type :- [:enum "table" "card" "model" "dashboard"]
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotSourceFeedback
-                         {:message_id  message-id
-                          :user_id     submitter-user-id
-                          :source_id   source-id
-                          :source_type source-type}
-                         update-fn))
+   source-id         :- ms/PositiveInt
+   source-type       :- [:enum "table" "card" "model" "dashboard"]
+   columns           :- (mut/select-keys ::metabot.schema/metabot-source-feedback.update [:positive :updated_at])]
+  (upsert-row! :metabot_source_feedback [:message_id :user_id :source_id :source_type]
+               (assoc columns :message_id message-id :user_id submitter-user-id
+                      :source_id source-id :source_type source-type))
+  (t2/select-one-pk :model/MetabotSourceFeedback
+                    :message_id message-id :user_id submitter-user-id :source_id source-id :source_type source-type))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
 
@@ -748,6 +742,11 @@
    type :- [:enum :model :metric :question]]
   (t2/select-one :model/Card :id card-id :type type))
 
+(mu/defn card-types :- [:map-of ::lib.schema.id/card :keyword]
+  "The map from each of `card-ids` that is the ID of a Card to its type."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :type :model/Card :id [:in [:auto/param card-ids]]))
+
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -924,17 +923,6 @@
              :metabot_conversation_id conversation-id
              :archived false
              {:order-by [[:id :asc]]}))
-
-(mu/defn link-card-to-conversation!
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`."
-  [card-id :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-    (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
-                                                         :metabot_chart_id        chart-id})))
 
 (mu/defn conversation-dashboard-questions
   "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
@@ -1238,3 +1226,25 @@
   "A map of Segment ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
+
+(mu/defn insert-conversation-row!
+  "Insert the MetabotConversation `row`, which carries its own id and timestamps, returning the inserted row."
+  [row :- ::metabot.schema/metabot-conversation]
+  (first (mdb/insert-returning-instances! :model/MetabotConversation [row])))
+
+(mu/defn insert-usage-log-row!
+  "Insert the AiUsageLog `row`, timestamps and all."
+  [row :- ::metabot.schema/ai-usage-log.update]
+  (t2/insert! :model/AiUsageLog row))
+
+(mu/defn usage-log-ids-for-conversations :- [:sequential ms/PositiveInt]
+  "The ids of the AiUsageLog rows of the conversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (if (seq conversation-ids)
+    (vec (t2/select-pks-vec :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+    []))
+
+(mu/defn conversation-ids-created-before :- [:sequential :string]
+  "The ids of the MetabotConversations created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (mapv :id (conversations-created-before cutoff)))

@@ -85,8 +85,7 @@
           (doseq [field ["first" "second" "third"]
                   :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) sql))
-          (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider))))
+          (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider)))
           (is (every? :database_indexed
                       (t2/select :model/Field
                                  {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
@@ -95,8 +94,7 @@
                   :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
                                                       driver/*driver* :index (str "idx_first_table_" field)))]]
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) sql))
-          (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider))))
+          (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider)))
           (is (every? (complement :database_indexed)
                       (t2/select :model/Field
                                  {:where [:and

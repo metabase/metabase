@@ -508,7 +508,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           body: metabotResponse,
         });
 
-        cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
+        cy.intercept("POST", `${H.METABASE_INSTANCE_URL}/api/card`).as(
+          "postCard",
+        );
 
         cy.log("Create a collection");
         cy.request("POST", "/api/collection", {

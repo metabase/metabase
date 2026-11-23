@@ -1,7 +1,7 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
-   [metabase.events.core :as events]
+   [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -34,6 +34,14 @@
    eids    :- [:sequential {:min 1} :string]
    columns :- ::columns]
   (t2/select (selected model columns) :entity_id [:in [:auto/param (vec eids)]]))
+
+(mu/defn rows-by-column-values :- [:sequential ::row]
+  "The `model` rows, with only `columns` unless nil, whose `column` holds one of `values`."
+  [model   :- :keyword
+   column  :- :keyword
+   values  :- [:sequential {:min 1} [:or :int :string]]
+   columns :- ::columns]
+  (t2/select (selected model columns) column [:in [:auto/param (vec values)]]))
 
 (mu/defn users-by-emails :- [:sequential ::row]
   "The Users, with only `columns` unless nil, whose email is one of `emails`."
@@ -113,67 +121,6 @@
    columns   :- ::columns]
   (t2/select (selected :model/TableUserSettings columns) :table_id [:in [:auto/param (vec table-ids)]]))
 
-(mu/defn dashboard-tabs-by-dashboard-ids :- [:sequential ::row]
-  "The DashboardTabs of the Dashboards with `dashboard-ids`, with only `columns` unless nil."
-  [dashboard-ids :- [:sequential {:min 1} :int]
-   columns       :- ::columns]
-  (t2/select (selected :model/DashboardTab columns) :dashboard_id [:in [:auto/param (vec dashboard-ids)]]))
-
-(mu/defn dashboard-cards-by-dashboard-ids :- [:sequential ::row]
-  "The DashboardCards of the Dashboards with `dashboard-ids`, with only `columns` unless nil."
-  [dashboard-ids :- [:sequential {:min 1} :int]
-   columns       :- ::columns]
-  (t2/select (selected :model/DashboardCard columns) :dashboard_id [:in [:auto/param (vec dashboard-ids)]]))
-
-(mu/defn dashboard-card-series-by-dashboard-card-ids :- [:sequential ::row]
-  "The DashboardCardSeries of the DashboardCards with `dashboard-card-ids`, with only `columns` unless nil."
-  [dashboard-card-ids :- [:sequential {:min 1} :int]
-   columns            :- ::columns]
-  (t2/select (selected :model/DashboardCardSeries columns)
-             :dashboardcard_id [:in [:auto/param (vec dashboard-card-ids)]]))
-
-(mu/defn timeline-events-by-timeline-ids :- [:sequential ::row]
-  "The TimelineEvents of the Timelines with `timeline-ids`, with only `columns` unless nil."
-  [timeline-ids :- [:sequential {:min 1} :int]
-   columns      :- ::columns]
-  (t2/select (selected :model/TimelineEvent columns) :timeline_id [:in [:auto/param (vec timeline-ids)]]))
-
-(mu/defn metabot-prompts-by-metabot-ids :- [:sequential ::row]
-  "The MetabotPrompts of the Metabots with `metabot-ids`, with only `columns` unless nil."
-  [metabot-ids :- [:sequential {:min 1} :int]
-   columns     :- ::columns]
-  (t2/select (selected :model/MetabotPrompt columns) :metabot_id [:in [:auto/param (vec metabot-ids)]]))
-
-(mu/defn transform-job-tags-by-job-ids :- [:sequential ::row]
-  "The TransformJobTransformTags of the TransformJobs with `job-ids`, with only `columns` unless nil."
-  [job-ids :- [:sequential {:min 1} :int]
-   columns :- ::columns]
-  (t2/select (selected :model/TransformJobTransformTag columns) :job_id [:in [:auto/param (vec job-ids)]]))
-
-(mu/defn transform-tags-by-transform-ids :- [:sequential ::row]
-  "The TransformTransformTags of the Transforms with `transform-ids`, with only `columns` unless nil."
-  [transform-ids :- [:sequential {:min 1} :int]
-   columns       :- ::columns]
-  (t2/select (selected :model/TransformTransformTag columns) :transform_id [:in [:auto/param (vec transform-ids)]]))
-
-(mu/defn table-indexes-by-transform-ids :- [:sequential ::row]
-  "The TableIndexes of the Transforms with `transform-ids`, with only `columns` unless nil."
-  [transform-ids :- [:sequential {:min 1} :int]
-   columns       :- ::columns]
-  (t2/select (selected :model/TableIndex columns) :transform_id [:in [:auto/param (vec transform-ids)]]))
-
-(mu/defn query-actions-by-action-ids :- [:sequential ::row]
-  "The QueryActions of the Actions with `action-ids`, with only `columns` unless nil."
-  [action-ids :- [:sequential {:min 1} :int]
-   columns    :- ::columns]
-  (t2/select (selected :model/QueryAction columns) :action_id [:in [:auto/param (vec action-ids)]]))
-
-(mu/defn implicit-actions-by-action-ids :- [:sequential ::row]
-  "The ImplicitActions of the Actions with `action-ids`, with only `columns` unless nil."
-  [action-ids :- [:sequential {:min 1} :int]
-   columns    :- ::columns]
-  (t2/select (selected :model/ImplicitAction columns) :action_id [:in [:auto/param (vec action-ids)]]))
-
 (mu/defn osi-ai-contexts-by-local-ids :- [:sequential ::row]
   "The OsiAiContexts, with only `columns` unless nil, of the entities of type `entity-type` with `local-ids`."
   [entity-type :- :string
@@ -190,7 +137,7 @@
    rows  :- [:sequential ::row]]
   (let [pks       (t2/primary-keys model)
         pk-of     (apply juxt pks)
-        instances (t2/insert-returning-instances! model rows)]
+        instances (app-db/insert-returning-instances! model rows)]
     (if (every? #(contains? (first rows) %) pks)
       (let [by-pk (into {} (map (juxt pk-of identity)) instances)]
         (mapv (comp by-pk pk-of) rows))
@@ -216,7 +163,7 @@
   delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (thunk))))
 
 (defn do-in-repeatable-read-transaction

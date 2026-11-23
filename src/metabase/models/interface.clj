@@ -16,7 +16,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
-   [metabase.events.batch :as events.batch]
+   [metabase.config.core :as config]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -36,13 +36,12 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.realize :as t2.realize]
    [toucan2.tools.after :as t2.after]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -507,6 +506,61 @@
     (cond-> obj
       should-set-updated-at? (assoc :updated_at (now)))))
 
+(defn archived-directly-clause
+  "The HoneySQL expression that sets `archived_directly` of the rows of `model` when an update that makes `changes` sets
+  `archived`: false when it restores, else false when the Collection the row is in after the update, the one `changes`
+  give or else the stored one, is archived, and true otherwise."
+  [model changes]
+  (if-not (:archived changes)
+    [:inline false]
+    [:case
+     [:= ^:allow-subquery {:select [:parent.archived]
+                           :from   [[(t2/table-name :model/Collection) :parent]]
+                           :where  [:= :parent.id (if (contains? changes :collection_id)
+                                                    (when-some [id (:collection_id changes)] [:auto/param id])
+                                                    (u/qualified-key (t2/table-name model) :collection_id))]}
+      [:inline true]]
+     [:inline false]
+     :else [:inline true]]))
+
+(defn derive-archived-directly
+  "`updates`, with the `archived_directly` that the write gave each of those that change `archived`, read from
+  `id->updated`, the rows by id after the write."
+  [updates id->updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get id->updated id)))))
+        updates))
+
+(defn initially-published-at-clause
+  "The HoneySQL expression that sets `initially_published_at` to the database clock when the row left by an update that
+  makes `changes` is embedded and was never published, or nil when `changes` give the column themselves or turn
+  embedding off, reading only stored columns: the first form when `changes` turn embedding on, which assigns
+  `enable_embedding`, the second when they leave it alone."
+  [changes]
+  (cond
+    (contains? changes :initially_published_at)
+    nil
+
+    (true? (:enable_embedding changes))
+    [:coalesce :initially_published_at :%now]
+
+    (contains? changes :enable_embedding)
+    nil
+
+    :else
+    [:case
+     [:and [:= :enable_embedding true] [:= :initially_published_at nil]]
+     :%now
+     :else :initially_published_at]))
+
+(defn add-initially-published-at
+  "`row`, an update of a Card or Dashboard, with the [[initially-published-at-clause]] of its changes."
+  [row]
+  (if-let [clause (initially-published-at-clause (t2/changes row))]
+    (assoc row :initially_published_at clause)
+    row))
+
 (t2/define-before-insert :hook/timestamped?
   [instance]
   (-> instance
@@ -554,6 +608,87 @@
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
+(defn- check-hook-runs-no-statement
+  "Calls `thunk`, the `phase` hook of `model`, and throws when it ran an app-DB statement through Toucan."
+  [model phase thunk]
+  (t2/with-call-count [call-count]
+    (u/prog1 (thunk)
+      (when (pos? (call-count))
+        (throw (ex-info (format "The %s hook of %s ran %d app-DB statement(s); a hook must not query the app DB."
+                                (name phase) model (call-count))
+                        {:model model, :phase phase, :statements (call-count)}))))))
+
+(defn- after-hook-phase
+  "The hook phase of a Toucan after-row function for `query-type`."
+  [query-type]
+  (if (isa? query-type :toucan.query-type/insert.*) :after-insert :after-update))
+
+(defn- install-hook-statement-guard!
+  "Wraps the insert, update and delete hooks of every `:metabase/model` in [[check-hook-runs-no-statement]]."
+  []
+  (doseq [[multifn phase] [[#'t2.before-insert/before-insert :before-insert]
+                           [#'t2.before-update/before-update :before-update]
+                           [#'t2.before-delete/before-delete :before-delete]]]
+    (methodical/add-aux-method-with-unique-key!
+     multifn :around :metabase/model
+     (fn [next-method model row]
+       (check-hook-runs-no-statement model phase #(next-method model row)))
+     ::hook-statement-guard))
+  (methodical/add-aux-method-with-unique-key!
+   #'t2.after/each-row-fn :around [:toucan2.tools.after/query-type :metabase/model]
+   (fn [next-method query-type model]
+     (let [row-fn (next-method query-type model)
+           phase  (after-hook-phase query-type)]
+       (fn [row]
+         (check-hook-runs-no-statement model phase #(row-fn row)))))
+   ::hook-statement-guard))
+
+(defn- hook-differing-change-keys
+  "The keys, sorted, that a hook made differ between rows of `change-maps`, the changes of the rows of one update by
+  `requested`: a column of `requested` that rows change to different values, or a column outside it that differs
+  between rows that change the same columns of `requested`; rows that change fewer of them already hold the rest, and
+  what a hook adds for them may differ."
+  [requested change-maps]
+  (let [requested-keys (keys requested)
+        present-values (fn [k] (into #{} (keep #(when (contains? % k) (get % k))) change-maps))]
+    (into (sorted-set)
+          cat
+          [(filter #(< 1 (count (present-values %))) requested-keys)
+           (mapcat (fn [[_requested-part maps]]
+                     (let [added (map #(apply dissoc % requested-keys) maps)]
+                       (filter (fn [k] (apply not= (map #(get % k ::absent) added)))
+                               (into #{} (mapcat keys) added))))
+                   (group-by #(set (keys (select-keys % requested-keys))) change-maps))])))
+
+(defn- check-uniform-update-changes
+  "Returns `changes->pk-maps`, what Toucan's before-update step makes of the rows of one update of `model` by
+  `requested` changes, and throws when a hook made the changes of its rows differ."
+  [model requested changes->pk-maps]
+  (when (> (count changes->pk-maps) 1)
+    (when-let [ks (seq (hook-differing-change-keys requested (keys changes->pk-maps)))]
+      (throw (ex-info (format (str "The before-update hook of %s returned different changes for the rows of one update "
+                                   "(keys: %s), which makes Toucan run one UPDATE per row; make the hook add the same "
+                                   "changes for every row, a HoneySQL expression where the value depends on the row")
+                              model (str/join ", " ks))
+                      {:model model, :keys ks, :change-sets (count changes->pk-maps)}))))
+  changes->pk-maps)
+
+(defn- install-uniform-update-guard!
+  "Wraps the select with which Toucan runs the before-update hooks of an update of a `:metabase/model` in
+  [[check-uniform-update-changes]]."
+  []
+  (methodical/add-aux-method-with-unique-key!
+   #'t2.pipeline/transduce-query :around [::t2.before-update/select-for-before-update :metabase/model :default]
+   (fn [next-method rf query-type model parsed-args resolved-query]
+     (check-uniform-update-changes model
+                                   (:changes parsed-args)
+                                   (next-method rf query-type model parsed-args resolved-query)))
+   ::uniform-update-guard))
+
+(when (or config/is-dev? config/is-test?)
+  (install-hook-statement-guard!)
+  (install-uniform-update-guard!))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -561,6 +696,12 @@
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
                                         (t2.protocols/changes row))))
+
+(defn effective-changes
+  "The columns of `changes` whose value differs from the one in `stored`, the row as read, compared as Toucan compares
+  them before an update."
+  [stored changes]
+  (into {} (remove (fn [[k v]] (= (get stored k ::absent) v))) changes))
 
 (defn do-after-select
   "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
@@ -573,59 +714,6 @@
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
                         e))))))
-
-(defmulti after-archived-change
-  "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by
-  [[define-update-in-transaction]] after the UPDATE with the rows as they were before it, so the parent is written first."
-  {:arglists '([model rows changes])}
-  (fn [model _rows _changes] model))
-
-(defmethod after-archived-change :default
-  [_model _rows _changes]
-  nil)
-
-(defn rows-changing-archived
-  "The rows of `model` that the UPDATE given by `parsed-args` and `resolved-query` selects and whose `:archived` differs
-  from the one in `changes`."
-  [model parsed-args resolved-query changes]
-  (filterv #(not= (boolean (:archived %)) (boolean (:archived changes)))
-           (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
-                                        :toucan.query-type/select.instances.from-update
-                                        model parsed-args resolved-query)))
-
-(defn runs-statement?
-  "Whether the UPDATE of `model` as `query-type` runs its statement here, rather than handing it to Toucan's after-update
-  tool, which runs it again as a query returning instances."
-  [query-type model]
-  (or (isa? query-type :toucan.result-type/instances)
-      (methodical/is-default-primary-method? t2.after/each-row-fn [query-type model])))
-
-(defmacro define-update-in-transaction
-  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, and calls [[after-archived-change]]
-  after it for the rows whose `:archived` it changed, with the events of the UPDATE and of the cascade delivered as one
-  batch."
-  [model]
-  `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
-     [rf# query-type# model# parsed-args# resolved-query#]
-     (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
-       (let [changes# (:changes parsed-args#)
-             rows#    (when (and (contains? changes# :archived)
-                                 (contains? (methods after-archived-change) model#)
-                                 (runs-statement? query-type# model#))
-                        (rows-changing-archived model# parsed-args# resolved-query# changes#))]
-         (if (seq rows#)
-           (events.batch/do-with-write-batch
-            #(u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
-               (after-archived-change model# rows# changes#)))
-           (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))
-
-(defn archived-directly
-  "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is
-  archived by itself, which is when `parent-archived?`, a function of no arguments, says that its parent is not."
-  [row parent-archived?]
-  (if (contains? (t2/changes row) :archived_directly)
-    (:archived_directly row)
-    (boolean (and (:archived row) (not (parent-archived?))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -868,13 +956,12 @@
         (when item
           (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
 
-(defmulti exclude-internal-content-hsql
-  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
-   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
-   or keyword) is provided any columns will have a table alias in the returned expression."
-  {:arglists '([model & {:keys [table-alias]}])}
+(defmulti non-internal-filter-clause
+  "The HoneySQL clause over the table of `model` aliased `alias` selecting the rows that are no internal content, such
+  as Metabase Analytics, the sample database or the internal user; every row by default."
+  {:arglists '([model alias])}
   dispatch-on-model)
 
-(defmethod exclude-internal-content-hsql :default
-  [_model & _]
+(defmethod non-internal-filter-clause :default
+  [_model _alias]
   [:= [:inline 1] [:inline 1]])

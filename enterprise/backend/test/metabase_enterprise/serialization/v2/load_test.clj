@@ -27,21 +27,24 @@
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
 ;; and extract with `:include-h2?` (production keeps it filtered).
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- by-model [entities model-name]
@@ -2078,13 +2081,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                          {:entity_id     eid
-                                                           :name          "the action"
-                                                           :model_id      (:id card)
-                                                           :type          :query
-                                                           :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
-                                                           :database_id   (:id db)}))]
+                _action-id (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert
+                                                                               {:entity_id     eid
+                                                                                :name          "the action"
+                                                                                :model_id      (:id card)
+                                                                                :type          :query
+                                                                                :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
+                                                                                :database_id   (:id db)})])))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true})))
             (let [action-serialized (first (filter (fn [entity] (= [:model/Action eid] (serialization/key-of entity)))
                                                    @serialized))]
@@ -2228,14 +2231,14 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/insert! {:entity_id     eid
-                                            :name          "the action"
-                                            :model_id      (:id card)
-                                            :type          :query
-                                            :dataset_query (lib/native-query
-                                                            (lib-be/application-database-metadata-provider (:id db))
-                                                            "SELECT 1")
-                                            :database_id   (:id db)})]
+                _action-id (:id (first (action/create-actions! [{:entity_id     eid
+                                                                 :name          "the action"
+                                                                 :model_id      (:id card)
+                                                                 :type          :query
+                                                                 :dataset_query (lib/native-query
+                                                                                 (lib-be/application-database-metadata-provider (:id db))
+                                                                                 "SELECT 1")
+                                                                 :database_id   (:id db)}])))]
             (reset! serialized
                     (->> (serdes.extract/extract {:include-h2? true})
                          ;; add an extra key to *every serialized model*

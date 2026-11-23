@@ -1,14 +1,13 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
@@ -73,6 +72,8 @@
   (when-let [workspace (ws.db/workspace-by-name workspace-name)]
     (t2/hydrate workspace :creator :databases)))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (defn- with-workspace-database-defaults
   "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them. `updated_at` is
   this instance's current time, the clock the busy window of a delete uses."
@@ -93,7 +94,7 @@
   (t2/with-transaction [_conn]
     (let [workspace-id (ws.db/insert-workspace! name creator_id idempotency_key)]
       (when (seq databases)
-        (ws.db/insert-workspace-databases!
+        (workspace-database/create-workspace-databases!
          (mapv #(with-workspace-database-defaults % workspace-id) databases)))
       (get-workspace workspace-id))))
 
@@ -144,8 +145,13 @@
             preserved-db-ids  (set (map :database_id active))]
         (reject-active-modification! active incoming-by-db-id)
         (when-let [to-delete-ids (seq (map :id unprovisioned))]
-          (ws.db/delete-workspace-databases! to-delete-ids))
+          (workspace-database/delete-workspace-databases! to-delete-ids))
         (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
-          (ws.db/insert-workspace-databases!
+          (workspace-database/create-workspace-databases!
            (mapv #(with-workspace-database-defaults % id) to-insert)))))
     (get-workspace id)))
+
+;;; ----------------------------------------------- Specs -----------------------------------------------
+
+(defmethod app-db-copy/spec :model/Workspace [_model]
+  {:skip? false})

@@ -2,7 +2,8 @@
   "/api/ee/scim/ endpoints"
   (:require
    [metabase-enterprise.scim.db :as scim.db]
-   [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.core :as api-keys]
+   [metabase.api-keys.models.api-key :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.secret :as u.secret]
@@ -20,15 +21,16 @@
   "Generates a new SCIM API key and deletes any that already exist."
   [user-id]
   (t2/with-transaction [_conn]
-    (scim.db/delete-scim-api-keys!)
+    (api-key/delete-api-keys! (api-keys/api-key-ids-with-scope :scim))
     (let [unhashed-key (api-key/generate-key)]
       (->
-       (scim.db/insert-api-key! {:user_id               nil
-                                 :scope                 :scim
-                                 :name                  (scim-api-key-name)
-                                 ::api-key/unhashed-key unhashed-key
-                                 :creator_id            user-id
-                                 :updated_by_id         user-id})
+       (api-key/create-api-keys! [{:user_id               nil
+                                   :scope                 :scim
+                                   :name                  (scim-api-key-name)
+                                   ::api-keys/unhashed-key unhashed-key
+                                   :creator_id            user-id
+                                   :updated_by_id         user-id}])
+       first
        (assoc :unmasked_key (u.secret/expose unhashed-key))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

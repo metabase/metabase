@@ -85,7 +85,10 @@ export interface QueryBuilderUIControls {
   nativeEditorSelectedRange: Range[];
 }
 
-/** The saveable parts of a native question, as `getMetabotCardBaseline` reads them. */
+/**
+ * The query, display, visualization settings and parameters of a native question.
+ * Metabot compares them to tell whether the user changed it.
+ */
 export type MetabotCardBaseline = Pick<
   Card,
   "dataset_query" | "display" | "visualization_settings" | "parameters"
@@ -93,7 +96,7 @@ export type MetabotCardBaseline = Pick<
 
 /** A question Metabot is opening, read and cleared by the next query builder init. */
 export type PendingMetabotCard = {
-  /** `pathname + hash` of the location the init must match. */
+  /** The location's pathname and hash, which the init must match. */
   url: string;
 };
 
@@ -114,8 +117,8 @@ export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
   pendingMetabotCard: PendingMetabotCard | null;
   /**
-   * The native questions Metabot opened, as loaded and as the query builder has
-   * adjusted them since. A question that still matches one is not unsaved work.
+   * The native questions Metabot opened, as loaded and as the query builder has adjusted them since.
+   * A question that still matches one is not unsaved work.
    */
   metabotCardBaselines: MetabotCardBaseline[];
   loadingControls: QueryBuilderLoadingControls;
