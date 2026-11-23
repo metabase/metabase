@@ -2352,44 +2352,44 @@
                                 (t2/select-one :model/Collection :id collection-id)))))))))
 
 (deftest audit-collection-access-test
-  (do-with-audit-collection!
-   audit/default-audit-collection-entity-id
-   (fn [{collection-id :id}]
-     (let [audit-collection #(t2/select-one :model/Collection :id collection-id)]
-       (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
-                      :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
-         (mt/with-non-admin-groups-no-collection-perms (audit-collection)
-           (perms/grant-collection-read-permissions! group-id collection-id)
-           (mt/with-additional-premium-features #{:audit-app}
-             (testing "with the audit app a user with read permission reads the audit Collection"
-               (mt/with-test-user :rasta
-                 (is (true? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
-             (testing "with the audit app a user without read permission does not read the audit Collection"
-               (mt/with-test-user :lucky
-                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
-             (testing "an admin does not write the audit Collection"
-               (mt/with-test-user :crowberto
-                 (is (false? (mi/can-write? (t2/hydrate (audit-collection) :can_write)))))))
-           (mt/with-premium-features #{}
-             (testing "without the audit app neither an admin nor a user with read permission reads it"
-               (mt/with-test-user :crowberto
-                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))
-               (mt/with-test-user :rasta
-                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))))))))))
-
-(defn- collection-permissions-call-count!
-  "The number of statements hydrating the permissions of `n` fresh Collections issues for rasta while the audit app is
+  (mt/when-ee-evailable
+   (do-with-audit-collection!
+    audit/default-audit-collection-entity-id
+    (fn [{collection-id :id}]
+      (let [audit-collection #(t2/select-one :model/Collection :id collection-id)]
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+          (mt/with-non-admin-groups-no-collection-perms (audit-collection)
+            (perms/grant-collection-read-permissions! group-id collection-id)
+            (mt/with-additional-premium-features #{:audit-app}
+              (testing "with the audit app a user with read permission reads the audit Collection"
+                (mt/with-test-user :rasta
+                  (is (true? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+              (testing "with the audit app a user without read permission does not read the audit Collection"
+                (mt/with-test-user :lucky
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+              (testing "an admin does not write the audit Collection"
+                (mt/with-test-user :crowberto
+                  (is (false? (mi/can-write? (t2/hydrate (audit-collection) :can_write)))))))
+            (mt/with-premium-features #{}
+              (testing "without the audit app neither an admin nor a user with read permission reads it"
+                (mt/with-test-user :crowberto
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))
+                (mt/with-test-user :rasta
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))))))))))
+  (defn- collection-permissions-call-count!
+    "The number of statements hydrating the permissions of `n` fresh Collections issues for rasta while the audit app is
   off."
-  [n]
-  (mt/with-model-cleanup [:model/Collection]
-    (let [ids         (t2/insert-returning-pks! :model/Collection (for [i (range n)]
-                                                                    {:name (str "Fresh " i) :location "/"}))
-          collections (t2/select :model/Collection :id [:in ids])]
-      (mt/with-premium-features #{}
-        (mt/with-test-user :rasta
-          (t2/with-call-count [call-count]
-            (is (= n (count (doall (t2/hydrate collections :can_read :can_write)))))
-            (call-count)))))))
+    [n]
+    (mt/with-model-cleanup [:model/Collection]
+      (let [ids         (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                      {:name (str "Fresh " i) :location "/"}))
+            collections (t2/select :model/Collection :id [:in ids])]
+        (mt/with-premium-features #{}
+          (mt/with-test-user :rasta
+            (t2/with-call-count [call-count]
+              (is (= n (count (doall (t2/hydrate collections :can_read :can_write)))))
+              (call-count))))))))
 
 (deftest collection-permissions-call-count-test
   (testing "hydrating the permissions of more fresh Collections issues no more statements"

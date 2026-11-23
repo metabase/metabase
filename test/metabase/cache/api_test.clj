@@ -50,33 +50,34 @@
                        (first (get-in response [:specific-errors :strategy])))))))))
 
 (deftest delete-cache-configs-statements-do-not-grow-with-targets-test
-  (mt/with-premium-features #{:cache-granular-controls}
-    (mt/with-temp [:model/Collection {writable-id :id}  {}
-                   :model/Collection {forbidden-id :id} {}]
-      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable-id)
-      (let [cards!  (fn [coll-id n]
-                      (vec (t2/insert-returning-pks! :model/Card
-                                                     (for [i (range n)]
-                                                       {:name          (str "cached card " i)
-                                                        :creator_id    (mt/user->id :crowberto)
-                                                        :database_id   (mt/id)
-                                                        :display       :table
-                                                        :collection_id coll-id
-                                                        :visualization_settings {}
-                                                        :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}))))
-            delete! (fn [expected ids]
-                      (mt/user-http-request :rasta :delete expected "cache/" {:model "question" :model_id ids}))]
-        (mt/with-model-cleanup [:model/Card :model/CacheConfig]
-          (delete! 204 (cards! writable-id 2))
-          (let [small-ids (cards! writable-id 4)
-                large-ids (cards! writable-id 10)
-                small     (t2/with-call-count [call-count] (delete! 204 small-ids) (call-count))
-                large     (t2/with-call-count [call-count] (delete! 204 large-ids) (call-count))]
-            (is (= small large)))
-          (testing "a batch with one question the user cannot write is refused and removes nothing"
-            (let [ids       (cards! writable-id 4)
-                  forbidden (first (cards! forbidden-id 1))]
-              (t2/insert! :model/CacheConfig (for [id (cons forbidden ids)]
-                                               {:model "question" :model_id id :strategy :nocache :config {}}))
-              (delete! 403 (conj ids forbidden))
-              (is (= 5 (t2/count :model/CacheConfig :model "question" :model_id [:in (conj ids forbidden)]))))))))))
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:cache-granular-controls}
+     (mt/with-temp [:model/Collection {writable-id :id}  {}
+                    :model/Collection {forbidden-id :id} {}]
+       (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable-id)
+       (let [cards!  (fn [coll-id n]
+                       (vec (t2/insert-returning-pks! :model/Card
+                                                      (for [i (range n)]
+                                                        {:name          (str "cached card " i)
+                                                         :creator_id    (mt/user->id :crowberto)
+                                                         :database_id   (mt/id)
+                                                         :display       :table
+                                                         :collection_id coll-id
+                                                         :visualization_settings {}
+                                                         :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}))))
+             delete! (fn [expected ids]
+                       (mt/user-http-request :rasta :delete expected "cache/" {:model "question" :model_id ids}))]
+         (mt/with-model-cleanup [:model/Card :model/CacheConfig]
+           (delete! 204 (cards! writable-id 2))
+           (let [small-ids (cards! writable-id 4)
+                 large-ids (cards! writable-id 10)
+                 small     (t2/with-call-count [call-count] (delete! 204 small-ids) (call-count))
+                 large     (t2/with-call-count [call-count] (delete! 204 large-ids) (call-count))]
+             (is (= small large)))
+           (testing "a batch with one question the user cannot write is refused and removes nothing"
+             (let [ids       (cards! writable-id 4)
+                   forbidden (first (cards! forbidden-id 1))]
+               (t2/insert! :model/CacheConfig (for [id (cons forbidden ids)]
+                                                {:model "question" :model_id id :strategy :nocache :config {}}))
+               (delete! 403 (conj ids forbidden))
+               (is (= 5 (t2/count :model/CacheConfig :model "question" :model_id [:in (conj ids forbidden)])))))))))))

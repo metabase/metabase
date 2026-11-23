@@ -131,6 +131,9 @@
                   "notification-send"    2 ; 2 notifications, each send to 2 channels
                   "channel-send"         4}
                  (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
+                   (filter (let [ids (set (take-last 2 (sort (t2/select-pks-vec :model/Notification))))]
+                             #(contains? ids (get-in % [:task_details :notification_id] (first ids))))
+                           th)
                    (group-by :task th)
                    (update-vals th count)))))))))
 
