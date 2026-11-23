@@ -210,7 +210,7 @@
       (mdb.connection/do-after-commit
        (fn []
          (swap! calls conj :a)
-         ;; the run binds *after-commit-callbacks* to nil, so a do-after-commit here runs immediately (we are
+         ;; the run binds *end-callbacks* to nil, so a do-after-commit here runs immediately (we are
          ;; logically outside the transaction) rather than enqueuing for a later pass
          (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-from-a)))))
       (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
