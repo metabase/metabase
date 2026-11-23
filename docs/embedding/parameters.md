@@ -194,8 +194,8 @@ To stay in sync:
 
 For a new visit, you can:
 
-- **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults. On a linked dashboard, if the click sets no filter, these values are the person's last used values. Storing these values doesn't re-run queries on a linked dashboard. On a linked SQL question,  if the click doesn't set every variable, storing the values re-runs the query.
-- **Use the click's values and the defaults, but never last used values,** with `{ ...payload.defaultParameters, ...payload.clickParameters }`.
+- **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults. On a linked dashboard, if the click sets no filter, these values are the person's last used values. Storing these values doesn't re-run queries on a linked dashboard. On a linked SQL question, if the click doesn't set every variable, storing the values re-runs the query.
+- **Use the click's values and the defaults, but never last used values,** with `payload.clickParameters`.
 - **Add your own values.** Put them before `clickParameters` to fill in the other filters, or after it to override the click.
 - **Ignore the click** by leaving out `clickParameters`.
 

@@ -26,7 +26,7 @@ const Example = () => {
 
       // A new visit, or someone changed a filter: store what's applied.
       // For a new visit, you can store other values instead, like
-      // { ...payload.defaultParameters, ...payload.clickParameters }
+      // payload.clickParameters
       return { ...previous, [navigationId]: payload.parameters };
     });
   };

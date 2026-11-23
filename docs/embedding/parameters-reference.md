@@ -106,7 +106,7 @@ SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChan
 | `entityType`      | `"dashboard"` or `"question"`.                                                                                                                                                                                         |
 | `entityId`        | The [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) of the dashboard or question on screen.                                                                                 |
 | `navigationId`    | The ID of this visit. Each new visit gets a new ID, and going back keeps it. Use it as the key in `navigatedEntityParameters`.                                                                                         |
-| `clickParameters` | The values the click set, keyed like `parameters`. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`. |
+| `clickParameters` | The values the click set, keyed like `parameters`. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`.                                      |
 
 ### When the callback fires
 
