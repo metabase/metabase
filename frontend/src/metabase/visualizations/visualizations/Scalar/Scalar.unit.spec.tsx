@@ -406,10 +406,12 @@ describe("Scalar", () => {
 describe("Scalar conditional colors", () => {
   const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
+  type StatusCode = number;
+
   type SetupOpts = {
     goalSourceResults?:
       | GoalSourceResults
-      | number
+      | StatusCode
       | (() => Promise<GoalSourceResults>);
     isQueryBuilder?: boolean;
     segments: ScalarSegment[];
