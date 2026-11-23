@@ -23,10 +23,6 @@ export type ResolvedGoalValues =
 
 const LOADING: GoalValueResult = { value: null, isLoading: true };
 
-/**
- * Resolves every goal value against the chart's `data` and the results of the
- * entities the values read. `resolving` until those results load.
- */
 export function useResolvedGoalValues(
   data: GoalData,
   values: (GoalValue | null)[],
@@ -48,8 +44,7 @@ export function useResolvedGoalValues(
 
 /**
  * Like `useResolvedGoalValues`, for one value. Fetching all of `sources` lets
- * inputs that edit goals of the same chart share one request. A value that
- * reads an entity is `isLoading` until its result loads.
+ * inputs that edit goals of the same chart share one request.
  */
 export function useResolvedGoalValue({
   data,
