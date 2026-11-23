@@ -43,7 +43,8 @@ export const AnalysisWorkspace = ({
   });
   const isTableSetUp = table !== undefined && isEventTableSetUp(table);
   const eventTable = isTableSetUp ? table : undefined;
-  const [areFiltersExpanded, { toggle: toggleFilters }] = useDisclosure(false);
+  const [areFiltersExpanded, { open: expandFilters, toggle: toggleFilters }] =
+    useDisclosure(false);
   const { storedSettings, onChangeSettings } =
     useStoredSettings<AnalysisSettingsByKind[ProductAnalyticsKind]>();
   const {
@@ -57,12 +58,15 @@ export const AnalysisWorkspace = ({
   } = useAnalysis({ kind, table: eventTable, storedSettings });
 
   const filterCount =
-    baseQuery !== undefined
-      ? Lib.filters(baseQuery, STAGE_INDEX).length
-      : undefined;
+    baseQuery !== undefined ? Lib.filters(baseQuery, STAGE_INDEX).length : 0;
 
   const handleBaseQueryChange = (newBaseQuery: Lib.Query) =>
     onChangeSettings({ base_query: Lib.toJsQuery(newBaseQuery) });
+
+  const handleFirstFilterAdd = (newBaseQuery: Lib.Query) => {
+    handleBaseQueryChange(newBaseQuery);
+    expandFilters();
+  };
 
   return (
     <Stack flex={1} h="100%" gap={0} bg="background_page-secondary">
@@ -83,13 +87,14 @@ export const AnalysisWorkspace = ({
           settings={settings}
           options={getAnalysisConfig(kind).options}
           query={query}
-          filterCount={filterCount}
+          baseQuery={baseQuery}
           areFiltersExpanded={areFiltersExpanded}
           onTableChange={onTableChange}
           onChangeSettings={onChangeSettings}
           onToggleFilters={toggleFilters}
+          onAddFirstFilter={handleFirstFilterAdd}
         />
-        {areFiltersExpanded && baseQuery !== undefined && (
+        {areFiltersExpanded && baseQuery !== undefined && filterCount > 0 && (
           <FilterPills query={baseQuery} onChange={handleBaseQueryChange} />
         )}
       </Stack>

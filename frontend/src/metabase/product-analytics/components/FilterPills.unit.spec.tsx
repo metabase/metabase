@@ -99,17 +99,7 @@ const setup = ({ query = createQuery() }: SetupOpts = {}) => {
 };
 
 describe("FilterPills", () => {
-  it("opens the filter picker straight away when there are no filters", () => {
-    setup();
-
-    expect(screen.queryAllByTestId("filter-pill")).toHaveLength(0);
-    expect(
-      screen.getByRole("button", { name: "New filter" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Total")).toBeInTheDocument();
-  });
-
-  it("shows a pill for each filter, and doesn't open the filter picker", () => {
+  it("shows a pill for each filter, and an add button", () => {
     setup({ query: createQuery([TOTAL_FILTER, QUANTITY_FILTER]) });
 
     expect(
@@ -153,11 +143,17 @@ describe("FilterPills", () => {
   });
 
   it("adds a segment as a filter", async () => {
-    const { onChange, getNextQuery } = setup();
+    const { onChange, getNextQuery } = setup({
+      query: createQuery([QUANTITY_FILTER]),
+    });
 
-    await userEvent.click(screen.getByText("Discounted"));
+    await userEvent.click(screen.getByRole("button", { name: "Add a filter" }));
+    await userEvent.click(await screen.findByText("Discounted"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(getFilterNames(getNextQuery())).toEqual(["Discounted"]);
+    expect(getFilterNames(getNextQuery())).toEqual([
+      "Quantity is less than 5",
+      "Discounted",
+    ]);
   });
 });

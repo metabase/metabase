@@ -27,12 +27,7 @@ export const FilterPills = ({ query, onChange }: FilterPillsProps) => {
           onChange={onChange}
         />
       ))}
-      <AddFilterButton
-        query={query}
-        // With no filters, the picker opens straight away.
-        isInitiallyOpened={items.length === 0}
-        onChange={onChange}
-      />
+      <AddFilterButton query={query} onChange={onChange} />
     </Flex>
   );
 };

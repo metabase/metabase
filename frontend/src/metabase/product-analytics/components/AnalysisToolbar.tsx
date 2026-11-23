@@ -20,12 +20,13 @@ type AnalysisToolbarProps = {
   options: CommonSettingsOptions;
   /** Undefined until the analysis's query is built. */
   query: Lib.Query | undefined;
-  /** Undefined until the analysis's filters are known. */
-  filterCount: number | undefined;
+  /** The query the analysis's filters are on. Undefined until it's known. */
+  baseQuery: Lib.Query | undefined;
   areFiltersExpanded: boolean;
   onTableChange: (tableId: TableId) => void;
   onChangeSettings: (changes: Partial<CommonSettings>) => void;
   onToggleFilters: () => void;
+  onAddFirstFilter: (baseQuery: Lib.Query) => void;
 };
 
 /** The controls every analysis shares. */
@@ -36,11 +37,12 @@ export const AnalysisToolbar = ({
   settings,
   options,
   query,
-  filterCount,
+  baseQuery,
   areFiltersExpanded,
   onTableChange,
   onChangeSettings,
   onToggleFilters,
+  onAddFirstFilter,
 }: AnalysisToolbarProps) => (
   <Group justify="space-between" gap="sm">
     <Group gap="sm">
@@ -52,9 +54,10 @@ export const AnalysisToolbar = ({
           onChange={onTableChange}
         />
         <FiltersButton
-          count={filterCount}
+          query={baseQuery}
           isExpanded={areFiltersExpanded}
-          onClick={onToggleFilters}
+          onToggle={onToggleFilters}
+          onAdd={onAddFirstFilter}
         />
       </Button.Group>
       {settings !== undefined && <CountingMenu value={settings.counting} />}

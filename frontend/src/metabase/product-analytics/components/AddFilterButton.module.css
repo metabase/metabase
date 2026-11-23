@@ -1,11 +1,12 @@
-/* Tinted like filter pills. */
-.button {
+/* Round, and tinted like filter pills. */
+.add {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: 1.5rem;
   height: 1.5rem;
-  border-radius: 0.75rem;
+  border-radius: 50%;
   color: var(--mb-color-core-filter);
   background-color: var(--mb-color-button-light-filter-default);
 
@@ -13,8 +14,4 @@
   &[aria-expanded="true"] {
     background-color: var(--mb-color-button-light-filter-hover);
   }
-}
-
-.add {
-  width: 1.5rem;
 }

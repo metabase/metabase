@@ -413,21 +413,44 @@ describe("NewAnalysisPage", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("opens the filter picker from the Filters button when there are no filters", async () => {
+    it("adds the first filter from the Filters button, and then shows the filters", async () => {
       setup({ initialRoute: SET_UP_TABLE_ROUTE });
       const filtersButton = await screen.findByRole("button", {
         name: "Filters",
       });
       await waitFor(() => expect(filtersButton).toBeEnabled());
       expect(screen.queryByTestId("filters-count")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("analysis-filters")).not.toBeInTheDocument();
 
       await userEvent.click(filtersButton);
+      await userEvent.click(await screen.findByText("Created At"));
+      await userEvent.click(await screen.findByText("Today"));
 
       expect(
-        screen.getByRole("button", { name: "New filter" }),
+        await screen.findByRole("button", { name: "1 filter" }),
+      ).toHaveAttribute("aria-pressed", "true");
+      expect(
+        within(screen.getByTestId("analysis-filters"))
+          .getAllByTestId("filter-pill")
+          .map((pill) => pill.textContent),
+      ).toEqual(["Created At is today"]);
+    });
+
+    it("hides the filters when the last one is removed", async () => {
+      setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ base_query: getBaseQuery(["u1"]) })}`,
+      });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "1 filter" }),
+      );
+
+      await userEvent.click(
+        within(screen.getByTestId("filter-pill")).getByLabelText("Remove"),
+      );
+
+      expect(
+        await screen.findByRole("button", { name: "Filters" }),
       ).toBeInTheDocument();
-      expect(await screen.findByText("User ID")).toBeInTheDocument();
+      expect(screen.queryByTestId("analysis-filters")).not.toBeInTheDocument();
     });
 
     it("offers the columns of a table the event table links to", async () => {
