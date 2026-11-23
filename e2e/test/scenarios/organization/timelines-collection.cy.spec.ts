@@ -72,7 +72,7 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.reload();
     H.modal().within(() => {
       cy.findByText("No events found").should("be.visible");
-      cy.button("Back").click();
+      cy.icon("chevronleft").click();
       cy.findByTestId("event-list").findByText("RC2").should("be.visible");
     });
 
@@ -89,7 +89,7 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.reload();
     H.modal().within(() => {
       cy.findByText("No events found").should("be.visible");
-      cy.button("Back").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC2").should("not.exist");
     });
@@ -119,7 +119,7 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.reload();
     H.modal().within(() => {
       cy.findByText("Rockets").should("be.visible");
-      cy.button("Back").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Rockets").should("be.visible");
       cy.icon("cake").should("be.visible");
@@ -146,7 +146,7 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.reload();
     H.modal().within(() => {
       cy.findByText("No timelines found").should("be.visible");
-      cy.button("Back").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Rockets").should("be.visible").click();
     });
@@ -190,7 +190,7 @@ describe("scenarios > organization > timelines > collection", () => {
     H.modal().within(() => {
       cy.findByText("Metrics").should("be.visible");
       cy.findByText("RC2").should("not.exist");
-      cy.button("Back").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Releases").click();
       cy.findByTestId("event-list").within(() => {
         cy.findByText("RC1").should("be.visible");
