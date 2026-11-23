@@ -33,44 +33,6 @@ if (!config) {
 const { options } = config;
 const host = ts.createCompilerHost(options);
 
-// Mantine does not export the types these inferred declarations need (TS2883, or an implicit
-// `any`), and /ui stays unchanged, so annotate them in memory.
-const mantine = (name: string) => `import("@mantine/core").${name}`;
-const themeComponent = mantine("MantineThemeComponent");
-const REPLACEMENTS: Record<string, [from: string, to: string]> = {
-  "components/overlays/Menu/Menu.config.ts": [
-    "export const menuOverrides = {",
-    `export const menuOverrides: Record<"Menu" | "MenuSub", ${themeComponent}> = {`,
-  ],
-  "components/overlays/Popover/Popover.config.ts": [
-    "export const popoverOverrides = {",
-    `export const popoverOverrides: Record<"Popover", ${themeComponent}> = {`,
-  ],
-  "components/overlays/Modal/index.tsx": [
-    "Modal.Content = MantineModal.Content;",
-    `Modal.Content = MantineModal.Content as ${mantine("MantineComponent")}<{ props: ${mantine("ModalContentProps")}; ref: HTMLDivElement; stylesNames: "content" | "inner"; compound: true }>;`,
-  ],
-};
-const getSourceFile = host.getSourceFile;
-host.getSourceFile = (fileName, languageVersionOrOptions, ...rest) => {
-  const file = getSourceFile(fileName, languageVersionOrOptions, ...rest);
-  const replacement = REPLACEMENTS[relative(uiDir, fileName)];
-  if (!file || !replacement) {
-    return file;
-  }
-  const [from, to] = replacement;
-  if (!file.text.includes(from)) {
-    throw new Error(
-      `${relative(repoRoot, fileName)}: build-types.ts REPLACEMENTS expects "${from}", which is not in the file; update or drop the replacement`,
-    );
-  }
-  return ts.createSourceFile(
-    fileName,
-    file.text.replace(from, to),
-    languageVersionOrOptions,
-  );
-};
-
 const program = ts.createProgram({
   rootNames: config.fileNames,
   options,
@@ -275,4 +237,5 @@ writeFileSync(
   resolve(distDir, "index.d.ts"),
   `import "./${augmentation}.js";\nexport * from "./types/ui-package/src/index.js";\n`,
 );
-console.log("Wrote declarations to dist/types and dist/index.d.ts");
+writeFileSync(resolve(distDir, "css.d.ts"), "export {};\n");
+console.log("Wrote declarations to dist/");

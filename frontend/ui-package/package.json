@@ -27,8 +27,14 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./fonts.css": "./dist/fonts.css",
+    "./styles.css": {
+      "types": "./dist/css.d.ts",
+      "default": "./dist/styles.css"
+    },
+    "./fonts.css": {
+      "types": "./dist/css.d.ts",
+      "default": "./dist/fonts.css"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
