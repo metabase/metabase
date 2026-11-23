@@ -601,9 +601,15 @@ def _on_counts_matches(from_, joins, strategy, dialect):
         if not isinstance(conjunct, _JOIN_COMPARISONS):
             return False
         for operand in (conjunct.this, conjunct.expression):
-            if isinstance(operand, exp.Column) and isinstance(operand.args.get("table"), exp.Identifier):
+            # A column with a longer path may be a struct field, as in BigQuery's `a.payload.id`, whose `table` is
+            # `payload`, so it can't be attributed to a source.
+            if (
+                isinstance(operand, exp.Column)
+                and isinstance(operand.args.get("table"), exp.Identifier)
+                and operand.args.get("db") is None
+            ):
                 column = _effective_name(operand.args["table"], dialect)
-                # A qualifier that names no source is a struct field, as in BigQuery's `b.payload.id`.
+                # A qualifier that names no source is a struct field too.
                 if column not in names:
                     return False
                 columns.append(column)

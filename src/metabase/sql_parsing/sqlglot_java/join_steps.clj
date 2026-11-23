@@ -184,9 +184,12 @@
     (instance? Expressions$Literal operand)
     ::literal
 
+    ;; A column with a longer path may be a struct field, as in BigQuery's `a.payload.id`, whose `table` is `payload`,
+    ;; so it can't be attributed to a source.
     (and (instance? Expressions$Column operand)
-         (instance? Expressions$Identifier (ast/arg operand "table")))
-    ;; A qualifier that names no source is a struct field, as in BigQuery's `b.payload.id`.
+         (instance? Expressions$Identifier (ast/arg operand "table"))
+         (nil? (ast/arg operand "db")))
+    ;; A qualifier that names no source is a struct field too.
     (names (effective-name (ast/arg operand "table") dialect))))
 
 (defn- on-counts-matches?

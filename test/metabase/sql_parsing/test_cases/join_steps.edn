@@ -381,7 +381,7 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(CASE WHEN s.b.id = s.a.id THEN 1 END) AS m FROM s.a LEFT JOIN s.b ON s.b.id = s.a.id"}]}}
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s.a LEFT JOIN s.b ON s.b.id = s.a.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s.a JOIN s.b ON s.b.id = s.a.id) AS m"}]}}
   {:name "a ClickHouse LEFT JOIN counts the matches with the join made INNER, since unmatched columns get defaults",
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id",
@@ -614,6 +614,20 @@
       :strategy "right",
       :sql
       "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a RIGHT JOIN b ON b.payload.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON b.payload.id = 1) AS m"}]}}
+  {:name "a struct field named like a source counts matches with the join made INNER",
+   :dialect "bigquery",
+   :sql "SELECT * FROM lhs AS a LEFT JOIN rhs AS payload ON a.payload.id = 1",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "lhs"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM lhs AS a",
+    :steps
+    [{:source "table",
+      :table [nil nil "rhs"],
+      :alias "payload",
+      :strategy "left",
+      :sql
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM lhs AS a LEFT JOIN rhs AS payload ON a.payload.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM lhs AS a JOIN rhs AS payload ON a.payload.id = 1) AS m"}]}}
   {:name "two sources with one name count matches with the join made INNER",
    :dialect "postgres",
    :sql "SELECT * FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1",
