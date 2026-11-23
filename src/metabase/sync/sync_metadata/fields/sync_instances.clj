@@ -174,28 +174,24 @@
 ;;; |                                           "RETIRING" INACTIVE FIELDS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- retire-field! :- [:maybe [:= 1]]
-  "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
-  nested Fields. Returns `1`."
-  [table          :- i/TableInstance
-   metabase-field :- common/TableMetadataFieldWithID]
-  (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (field/update-fields! [(u/the-id metabase-field)] {:active false})
-  1)
-
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero
   "Mark inactive any Fields in the application database that are no longer present in the DB being synced. These
-  Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields.
-  Returns `1` if a Field was marked inactive."
+  Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields. All of
+  them are written together, in one bulk update, whatever their number. Returns the number of Fields marked inactive."
   [table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
-  ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
-  (sync-util/sum-for [metabase-field our-metadata
-                      :when          (not (common/matching-field-metadata metabase-field db-metadata))]
-    (sync-util/with-error-handling (format "Error retiring %s"
-                                           (common/field-metadata-name-for-logging table metabase-field))
-      (retire-field! table metabase-field))))
+  (let [to-retire (filterv #(not (common/matching-field-metadata % db-metadata)) our-metadata)]
+    (if (empty? to-retire)
+      0
+      (let [result (sync-util/with-error-handling (format "Error retiring %d Fields of %s"
+                                                          (count to-retire)
+                                                          (common/field-metadata-name-for-logging table (first to-retire)))
+                     (doseq [metabase-field to-retire]
+                       (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
+                     (field/update-fields! (mapv u/the-id to-retire) {:active false})
+                     (count to-retire))]
+        (if (number? result) result 0)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  HIGH-LEVEL INSTANCE SYNCING LOGIC (CREATING/REACTIVATING/RETIRING/UPDATING)                   |

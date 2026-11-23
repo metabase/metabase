@@ -57,7 +57,7 @@
                           {:status-code 403}))))
       (t2/with-transaction [_conn]
         (perms-group-membership/remove-users-from-groups! [user-id] (vec to-remove-group-ids))
-        (doseq [group-id to-add-group-ids]
-          (perms-group-membership/add-users-to-groups! [{:user              user-id
-                                                         :group             group-id
-                                                         :is-group-manager? (:is_group_manager (new-group-id->membership-info group-id))}]))))))
+        (perms-group-membership/add-users-to-groups! (for [group-id to-add-group-ids]
+                                                       {:user              user-id
+                                                        :group             group-id
+                                                        :is-group-manager? (:is_group_manager (new-group-id->membership-info group-id))}))))))

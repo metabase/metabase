@@ -20,6 +20,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -228,23 +229,68 @@
      []
      (t2/with-transaction [_conn]
        (let [rows (cond-> rows
-                    (= :import (:writer opts)) (native-query-snippets.serialization/with-free-names nil))]
+                    (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names nil))]
          (check-snippets (map #(update % :archived boolean) rows))
          (let [ids      (name->id rows)
                snippets (native-query-snippets.db/insert-snippets! (mapv #(assoc % :template_tags (snippet-template-tags % ids)) rows))]
            (events/publish-event! :event/snippet-create (events/create-event snippets opts))
            snippets))))))
 
-(defn- with-template-tags
+(defn- assoc-template-tags
   "`changes`, an update of the snippet `stored` that gives a `:content`, with the template tags of that content when they
-  differ from the stored ones, and without the template tags it was given."
-  [changes stored]
+  differ from the stored ones, and without the template tags it was given, `name-ids` being the ids of the snippets that
+  the contents of the update name."
+  [changes stored name-ids]
   (let [changes (dissoc changes :template_tags)]
     (if (and (contains? changes :content) (:content (merge stored changes)))
-      (let [tags (snippet-template-tags (merge stored changes) (name->id [changes]))]
+      (let [tags (snippet-template-tags (merge stored changes) name-ids)]
         (cond-> changes
           (not= tags (:template_tags stored)) (assoc :template_tags tags)))
       changes)))
+
+(defn- check-update-content
+  "Throw a 400 unless `changes` leave the content to one snippet:
+
+  - a change of `:content` applies to one snippet"
+  [ids changes]
+  (when (and (contains? changes :content) (next ids))
+    (throw (ex-info (tru "The content of more than one snippet cannot be changed at once.") {:status-code 400}))))
+
+(defn- assoc-snippet-template-tags
+  "`rows`, updates of the snippets `stored`, each with the template tags of its content, reading the snippets that the
+  contents name once."
+  [rows stored]
+  (let [name-ids (name->id rows)]
+    (mapv (fn [{:keys [id] :as row}]
+            (assoc (assoc-template-tags (dissoc row :id) (get stored id) name-ids) :id id))
+          rows)))
+
+(defn- derive-archived-directly
+  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
+  snippets by id after the write."
+  [rows updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
+        rows))
+
+(defn- write-snippet-updates!
+  "Applies `rows`, each the `:id` of a snippet with the changes it gets, which may differ from row to row, in one
+  transaction, and publishes one update event for all of them with the `:context` of `opts`."
+  [rows opts]
+  (let [stored (when (seq rows) (native-query-snippets.db/snippets-by-id (mapv :id rows)))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (when (seq rows)
+      (t2/with-transaction [_conn]
+        (let [rows (assoc-snippet-template-tags rows stored)]
+          (check-snippets (for [row rows
+                                :when (contains? row :collection_id)]
+                            (update (merge (get stored (:id row)) row) :archived boolean)))
+          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+            (native-query-snippets.db/update-snippets! (mapv :id group) changes))
+          (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
+            (events/publish-event! :event/snippet-update
+                                   (events/update-event stored (derive-archived-directly rows updated) (assoc opts :objects updated)))))))))
 
 (mu/defn update-snippets! :- :nil
   "Applies `changes` to each NativeQuerySnippet of `ids`, publishing one update event with the `:context` of `opts`. A
@@ -253,33 +299,20 @@
   [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
    changes :- ::native-query-snippets.schema/native-query-snippet.changes
    opts    :- ::write-opts]
-  (let [stored (when (seq ids) (native-query-snippets.db/snippets-by-id ids))
-        ids    (filterv stored ids)]
-    (when (and (contains? changes :content) (next ids))
-      (throw (ex-info (tru "The content of more than one snippet cannot be changed at once.") {:status-code 400})))
-    (when (seq ids)
-      (t2/with-transaction [_conn]
-        (let [changes (with-template-tags changes (get stored (first ids)))]
-          (when (contains? changes :collection_id)
-            (check-snippets (map #(update (merge (get stored %) changes) :archived boolean) ids)))
-          (native-query-snippets.db/update-snippets! ids changes)
-          (let [updated (native-query-snippets.db/snippets-by-id ids)
-                rows    (mapv #(cond-> (assoc changes :id %)
-                                 (contains? changes :archived)
-                                 (assoc :archived_directly (:archived_directly (get updated %))))
-                              ids)]
-            (events/publish-event! :event/snippet-update (events/update-event stored rows (assoc opts :objects updated))))))))
+  (when (and (contains? changes :content) (next ids))
+    (check-update-content (filterv (set (keys (native-query-snippets.db/snippets-by-id ids))) ids) changes))
+  (write-snippet-updates! (mapv #(assoc changes :id %) ids) opts)
   nil)
 
 (mu/defn update-snippets-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values, to its NativeQuerySnippet one snippet at a time,
-  as an import writes different values for each, renaming each with ` (copy)` suffixes until no other snippet holds its
-  name."
+  "Applies the columns of each of `rows`, an `:id` with its own values, in one pass over all of them, publishing one
+  update event, as an import writes different values for each, renaming each with ` (copy)` suffixes until no other
+  snippet, or earlier row, holds its name."
   [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (let [renamed (first (native-query-snippets.serialization/with-free-names
-                           [row] (native-query-snippets.db/snippets-by-id [id])))]
-      (update-snippets! [id] (dissoc renamed :id) nil)))
+  (write-snippet-updates!
+   (native-query-snippets.serialization/rename-to-free-names
+    rows (native-query-snippets.db/snippets-by-id (mapv :id rows)))
+   nil)
   nil)
 
 (mu/defn delete-snippets!
@@ -288,7 +321,8 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/snippet-delete
-                             (events/delete-event (vec (vals (native-query-snippets.db/snippets-by-id ids)))))
+                             {:changes (u.events/delete-changes (vec (vals (native-query-snippets.db/snippets-by-id ids))))
+                            :user-id (mi/current-user-id)})
       (native-query-snippets.db/delete-snippets! ids))))
 
 (defmethod collection/archive-in-collections! :model/NativeQuerySnippet
@@ -308,7 +342,8 @@
   (when (seq collection-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/snippet-delete
-                             (events/delete-event (native-query-snippets.db/snippets-in-collections (vec collection-ids))))
+                             {:changes (u.events/delete-changes (native-query-snippets.db/snippets-in-collections (vec collection-ids)))
+                            :user-id (mi/current-user-id)})
       (native-query-snippets.db/delete-snippets-in-collections! (vec collection-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

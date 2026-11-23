@@ -6949,3 +6949,22 @@
                       (t2/select :model/Revision :model "Dashboard" :model_id copy-id)))
               (is (= 1 (count (filter #{:dashboard-create} topics))))
               (is (empty? (filter #{:dashboard-add-cards} topics))))))))))
+
+(deftest replace-dashcards-statement-count-test
+  (testing "PUT /api/dashboard/:id replacing its dashcards takes as many statements for many new dashcards as for few"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (mt/with-model-cleanup [:model/Card :model/DashboardCard]
+        (let [replace! (fn [n]
+                         (let [card-ids (mapv (fn [i]
+                                                (t2/insert-returning-pk! :model/Card
+                                                                         (merge (mt/with-temp-defaults :model/Card)
+                                                                                {:name (str "replacing " i)})))
+                                              (range n))]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                                                   {:dashcards (map-indexed (fn [k card-id]
+                                                                              {:id (- (inc k)) :card_id card-id :row k :col 0 :size_x 4 :size_y 4})
+                                                                            card-ids)})
+                             (call-count))))]
+          (replace! 1)
+          (is (= (replace! 2) (replace! 6))))))))

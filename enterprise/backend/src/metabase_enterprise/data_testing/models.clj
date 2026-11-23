@@ -24,6 +24,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -250,7 +251,7 @@
     (t2/with-transaction [_conn]
       (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
       (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests))
-      (events/publish-event! (get-in saved-test-topics [model :delete]) (events/delete-event tests))
+      (events/publish-event! (get-in saved-test-topics [model :delete]) {:changes (u.events/delete-changes tests) :user-id (mi/current-user-id)})
       (data-testing.db/delete-saved-tests! model (mapv :id tests))))
   nil)
 
@@ -295,8 +296,8 @@
   "Apply each of `rows`, the id of a TransformTest and the columns to change, as an import writes it, one row at a time.
   An import runs rows with different values, which one change for all cannot express."
   [rows :- [:sequential ::data-testing.schema/transform-test.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-transform-tests! [id] (dissoc row :id) {:writer :import}))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-transform-tests! (mapv :id rows) changes {:writer :import}))
   nil)
 
 (mu/defn delete-transform-tests! :- :nil

@@ -38,6 +38,7 @@
    [metabase.transforms.staleness :as transforms.staleness]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -446,7 +447,7 @@
              (some #(nil? (:field-id %)) (get-in target [:target-incremental-strategy :unique-key])))
     target_table_id))
 
-(defn- with-resolved-merge-key
+(defn- resolve-merge-key
   "`target`, the target of a transform, with the `:field-id` of the columns of its merge unique key filled from
   `name->id`, a map from the name of an active Field of its target table to its id."
   [target name->id]
@@ -461,7 +462,7 @@
   (boolean (some (fn [k] (and (contains? changes k) (not= (get transform k) (get changes k))))
                  [:source :target])))
 
-(defn- with-resolved-merge-keys
+(defn- resolve-merge-keys
   "`changes-by-id`, a map from the id of a Transform to its changes, with the `:target` of each Transform whose merge
   unique key would still have columns known by name only, once the changes apply to its row in `stored`, replaced by
   one whose columns have their Field ids, the Fields of all their target tables read at once."
@@ -474,7 +475,7 @@
           (map (fn [[id changes]]
                  (let [merged (merge (stored id) changes)]
                    [id (if-let [table-id (unresolved-merge-key-table-id merged)]
-                         (assoc changes :target (with-resolved-merge-key (:target merged) (get fields table-id {})))
+                         (assoc changes :target (resolve-merge-key (:target merged) (get fields table-id {})))
                          changes)])))
           changes-by-id)))
 
@@ -563,7 +564,7 @@
   "Apply the `changes`, columns of a Transform, to the Transforms with `ids`, whose stored rows are in `stored`, after
   the checks of an update, and return the changes of each id with the Field ids of its merge unique key filled."
   [ids stored changes]
-  (let [resolved (with-resolved-merge-keys (zipmap ids (repeat changes)) stored)]
+  (let [resolved (resolve-merge-keys (zipmap ids (repeat changes)) stored)]
     (check-update! ids stored changes resolved)
     (transforms.db/update-transforms! stored resolved)
     resolved))
@@ -619,16 +620,16 @@
   "Apply each of `rows`, the id of a Transform and the columns to change, as an import writes it, one row at a time. An
   import runs rows with different values, which one change for all cannot express."
   [rows :- [:sequential ::transforms.schema/transform.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-transforms! [id] (dissoc row :id) {:writer :import}))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-transforms! (mapv :id rows) changes {:writer :import}))
   nil)
 
 (mu/defn update-transforms-for-replacement! :- :nil
   "Apply each of `rows`, the id of a Transform and the columns to change, as a replacement of a source writes it, one
   row at a time. A replacement writes a new source to each Transform, which one change for all cannot express."
   [rows :- [:sequential ::transforms.schema/transform.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-transforms! [id] (dissoc row :id)))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-transforms! (mapv :id rows) changes))
   nil)
 
 (mu/defn delete-transforms! :- :nil
@@ -638,7 +639,7 @@
     (t2/with-transaction [_conn]
       (let [transforms (vec (transforms.db/transforms (vec transform-ids)))]
         (delete-transform-tests-for-transforms! (vec transform-ids))
-        (events/publish-event! :event/transform-delete (events/delete-event transforms))
+        (events/publish-event! :event/transform-delete {:changes (u.events/delete-changes transforms) :user-id (mi/current-user-id)})
         (transforms.db/delete-transforms! (vec transform-ids)))))
   nil)
 

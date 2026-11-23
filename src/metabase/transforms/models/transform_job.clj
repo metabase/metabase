@@ -17,6 +17,7 @@
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -312,7 +313,7 @@
     (t2/with-transaction [_conn]
       (let [jobs (transforms.db/jobs-by-ids (vec job-ids))]
         (run! transforms.schedule/delete-job! job-ids)
-        (events/publish-event! :event/transform-job-delete (events/delete-event jobs))
+        (events/publish-event! :event/transform-job-delete {:changes (u.events/delete-changes jobs) :user-id (mi/current-user-id)})
         (transforms.db/delete-jobs! (vec job-ids)))))
   nil)
 

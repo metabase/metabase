@@ -735,9 +735,12 @@
   (when (seq card-ids)
     (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
-      (doseq [card (t2/hydrate (vec cards) :can_write)]
-        (when-not (mi/can-update? card {:collection_id new-collection-id-or-nil})
-          (events/publish-event! :event/update-permission-failure {:user-id api/*current-user-id* :object card})
+      (let [cards   (t2/hydrate (vec cards) :can_write)
+            changes {:collection_id new-collection-id-or-nil}]
+        (when-not (mi/can-update-all? :model/Card cards changes)
+          (events/publish-event! :event/update-permission-failure
+                                 {:user-id api/*current-user-id*
+                                  :object  (or (first (remove #(mi/can-update? % changes) cards)) (first cards))})
           (api/check-403 false)))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]

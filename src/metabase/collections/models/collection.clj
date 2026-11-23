@@ -28,6 +28,7 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
@@ -1998,6 +1999,16 @@
       (and (can-write-collection-or-root? (:collection_id row) {:root-namespace nil})
            (can-write-collection-or-root? (:collection_id changes) {:root-namespace nil}))))
 
+(defn can-move-all?
+  "Whether the current user may apply `changes` to the `:collection_id` of each of `rows`, as [[can-move?]] answers for
+  one, with the Collections read once and one answer for all of them: write access to the old Collections of those that
+  change and to the new one. False when a Collection does not exist, which [[can-move?]] answers with a 404."
+  [rows changes]
+  (let [moving (filterv #(api/column-will-change? (:collection_id %) (get changes :collection_id ::api/not-provided)) rows)]
+    (or (empty? moving)
+        (and (can-write-all-collections-or-root? (map :collection_id moving) {:root-namespace nil})
+             (can-write-all-collections-or-root? [(:collection_id changes)] {:root-namespace nil})))))
+
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
@@ -2944,7 +2955,8 @@
             (delete-followers! ids)
             (permissions/delete-permissions-for-objects! (permission-objects ids))
             (events/publish-event! :event/collection-delete
-                                   (events/delete-event (vec (vals (collections.db/collections-by-id (vec ids))))))
+                                   {:changes (u.events/delete-changes (vec (vals (collections.db/collections-by-id (vec ids)))))
+                            :user-id (mi/current-user-id)})
             (collections.db/delete-collections! (vec ids)))))))
   nil)
 

@@ -126,8 +126,11 @@
           (events/publish-event! :event/tenant-create (events/create-event <>)))))))
 
 (defn- check-names-free
-  "Throws a 400 when `changes` renames one of the Tenants with `ids` to the name of another Tenant, or renames a second
-  of them, in the order of `ids`; `stored` holds the Tenants that exist by id."
+  "Throws a 400 unless `changes` to the Tenants with `ids`, whose stored rows `stored` holds by id, satisfy these rules,
+  in the order of `ids`:
+
+  - a rename does not take the name of another Tenant
+  - no second Tenant of the call is renamed"
   [ids stored changes]
   (when (contains? changes :name)
     (reduce (fn [renamed? id]
@@ -138,28 +141,33 @@
             false
             ids)))
 
+(defn- cascade-activation!
+  "Deactivate the active Users of those of the Tenants with `ids` whose stored active flag in `stored` differs from
+  `active`, when it is false, or reactivate the Users deactivated with them, when it is true; nil `active` changes
+  nothing."
+  [ids stored active]
+  (when-let [flipped (when (some? active)
+                       (not-empty (filterv #(not= active (:is_active (stored %))) ids)))]
+    (if active
+      (user/update-users! (user/deactivated-with-tenant-user-ids flipped)
+                          {:is_active true :deactivated_with_tenant nil})
+      (user/update-users! (user/active-user-ids-of-tenant flipped)
+                          {:is_active false :deactivated_with_tenant true}))))
+
 (mu/defn update-tenants! :- :nil
   "Apply `changes` to the Tenants with `ids`, publishing the event of the write; the name of another Tenant is a 400,
   deactivating a Tenant deactivates its active Users, and activating it reactivates the Users deactivated with it."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::tenants.schema/tenant.update]
   (t2/with-transaction [_conn]
-    (let [ids      (into [] (distinct) ids)
-          stored   (if (seq ids) (u/index-by :id (tenants.db/tenants-by-ids ids)) {})
-          _        (check-names-free ids stored changes)
-          existing (filterv stored ids)
-          active   (:is_active changes)]
-      (when (seq existing)
+    (let [ids    (into [] (distinct) ids)
+          stored (if (seq ids) (u/index-by :id (tenants.db/tenants-by-ids ids)) {})]
+      (check-names-free ids stored changes)
+      (when-let [existing (not-empty (filterv stored ids))]
         (tenants.db/update-tenants! existing changes)
         (events/publish-event! :event/tenant-update
                                (events/update-event stored (mapv #(assoc changes :id %) existing)))
-        (when-let [flipped (when (some? active)
-                             (not-empty (filterv #(not= active (:is_active (stored %))) existing)))]
-          (if active
-            (user/update-users! (user/deactivated-with-tenant-user-ids flipped)
-                                {:is_active true :deactivated_with_tenant nil})
-            (user/update-users! (user/active-user-ids-of-tenant flipped)
-                                {:is_active false :deactivated_with_tenant true}))))))
+        (cascade-activation! existing stored (:is_active changes)))))
   nil)
 
 (defenterprise deactivate-tenants!

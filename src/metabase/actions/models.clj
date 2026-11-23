@@ -25,6 +25,7 @@
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -907,12 +908,11 @@
   nil)
 
 (mu/defn update-actions-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values and the columns of its details, to its Action one
-  Action at a time, as an import does, which sends an Action whose details it wrote on their own and leaves unchanged
-  a touch."
+  "Applies the columns of each of `rows`, an `:id` with its own values and the columns of its details, in one pass over
+  all of them, as an import does, publishing one update event, which sends an Action whose details it wrote on their own
+  and leaves unchanged a touch."
   [rows :- [:sequential ::actions.schema/action.update]]
-  (doseq [row rows]
-    (update-action-rows! [row] {:writer :import}))
+  (update-action-rows! rows {:writer :import})
   nil)
 
 (mu/defn- update-action-rows! :- [:sequential ::actions.schema/action.update]
@@ -972,7 +972,8 @@
   [ids :- [:sequential ::lib.schema.id/action]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (events/publish-event! :event/action-delete (events/delete-event (vec (vals (actions.db/actions-by-id (vec ids))))))
+      (events/publish-event! :event/action-delete {:changes (u.events/delete-changes (vec (vals (actions.db/actions-by-id (vec ids)))))
+                            :user-id (mi/current-user-id)})
       (actions.db/delete-actions! ids))
     nil))
 
@@ -985,12 +986,12 @@
 
 (mu/defn update-actions-for-models!
   "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for
-  the root, with one read and one statement for each Collection."
+  the root, in one pass over all of them with one statement for each Collection."
   [model-id->collection-id :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]]
   (when (seq model-id->collection-id)
-    (doseq [[collection-id actions] (group-by #(get model-id->collection-id (:model_id %))
-                                              (actions.db/action-model-ids (vec (keys model-id->collection-id))))]
-      (update-actions! (mapv :id actions) {:collection_id collection-id} nil))
+    (update-action-rows! (mapv (fn [{:keys [id model_id]}] {:id id :collection_id (get model-id->collection-id model_id)})
+                               (actions.db/action-model-ids (vec (keys model-id->collection-id))))
+                         nil)
     nil))
 
 (mu/defn delete-actions-for-tables!

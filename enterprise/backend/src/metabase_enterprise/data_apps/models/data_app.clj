@@ -9,13 +9,13 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -43,21 +43,10 @@
   {:in  identity
    :out blob->bytes})
 
-(def ^:private column-normalizers
-  "The function that converts a value of each column of a DataApp that a transform converts on its way in."
-  {:name          #(lib/normalize ::data-apps.schema/name %)
-   :description   #(lib/normalize ::data-apps.schema/description %)
-   :bundle_path   #(lib/normalize ::data-apps.schema/bundle-path %)
-   :allowed_hosts #(lib/normalize ::data-apps.schema/allowed-hosts %)})
-
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
-   :name          {:in (:name column-normalizers) :out identity}
-   :description   {:in (:description column-normalizers) :out identity}
-   :bundle_path   {:in (:bundle_path column-normalizers) :out identity}
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts {:in  (comp mi/json-in (:allowed_hosts column-normalizers))
-                   :out (:out mi/transform-json)}})
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -81,15 +70,9 @@
   (cond-> row
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
-(defn- with-derived-columns
-  "The DataApp `row`, or the changes of one, with version 1 for a nil version and the bundle hash of its bundle."
-  [row]
-  (cond-> (with-bundle-hash row)
-    (and (contains? row :version) (nil? (:version row))) (assoc :version 1)))
-
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (with-derived-columns data-app))
+  (with-bundle-hash data-app))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -101,7 +84,7 @@
     (when (contains? changes :bundle_hash)
       (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (merge data-app (some-> changes with-derived-columns))))
+    (merge data-app (some-> changes with-bundle-hash))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
@@ -161,9 +144,9 @@
   (.getBytes content StandardCharsets/UTF_8))
 
 (defn- entity-bundle-path
-  "The normalized bundle path of `entity`, a data app entity."
+  "The bundle path of `entity`, a data app entity."
   [entity]
-  (lib/normalize ::data-apps.schema/bundle-path (:path entity)))
+  (:path entity))
 
 (defn- export-bundles
   "Exports the `bundles` of data `apps` as the files at their bundle paths."
@@ -285,11 +268,6 @@
           apps)))
     []))
 
-(defn- updated-data-app
-  "The DataApp `stored` as the update `changes` leaves it, converted as its transforms and its update hook do."
-  [stored changes]
-  (merge stored (with-derived-columns (reduce-kv (fn [row k f] (cond-> row (contains? row k) (update k f))) changes column-normalizers))))
-
 (defn- without-held-bundles
   "`rows`, the update rows of an import, without the bundle that the stored app of the row already holds."
   [rows stored]
@@ -298,43 +276,58 @@
             (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle)))
         rows))
 
+(defn- check-new-resource-collections
+  "Throw a 400 unless the apps of `rows` that get their first resource collection, `stored` being the apps by id, satisfy
+  these rules:
+
+  - no two of them get the same resource collection
+  - each gets a resource collection that can be one, see [[check-resource-collections]]"
+  [rows stored]
+  (let [pairs (into []
+                    (keep (fn [{:keys [id resource_collection_id]}]
+                            (when (and resource_collection_id (nil? (:resource_collection_id (get stored id))))
+                              [resource_collection_id id])))
+                    rows)]
+    (doseq [[collection-id group] (group-by first pairs)
+            :when                 (< 1 (count group))]
+      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))
+    (check-resource-collections (into {} pairs))))
+
+(defn- write-data-app-updates!
+  "Applies `rows`, each the `:id` of a DataApp with the changes it gets, which may differ from row to row, which the hooks
+  of the model normalize, in one transaction with one statement for each distinct set of changes, publishing one update
+  event for all of them, and returns `rows`."
+  [rows]
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (let [ids    (mapv :id rows)
+            stored (u/index-by :id (data-apps.db/data-apps-by-ids ids))]
+        (check-new-resource-collections rows stored)
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)
+                :when (seq changes)]
+          (data-apps.db/update-data-apps! (mapv :id group) changes))
+        (events/publish-event! :event/data-app-update
+                               (events/update-event stored
+                                                    rows
+                                                    {:objects (u/index-by :id (data-apps.db/data-apps-by-ids ids))})))))
+  (vec rows))
+
 (mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
   "Apply `changes`, one change to the columns, which the hooks of the model normalize, to each of the DataApps with
   `ids` in one transaction, publishing their update event. Throws unless a new resource collection can be one, which
   it cannot for several apps. Returns the updated rows."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::data-apps.schema/data-app.update]
-  (let [rows (mapv #(assoc changes :id %) ids)]
-    (when (seq ids)
-      (t2/with-transaction [_conn]
-        (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (vec ids)))
-              given  (when-let [collection-id (:resource_collection_id changes)]
-                       {:collection-id collection-id
-                        :apps          (filterv #(nil? (:resource_collection_id (stored %))) ids)})]
-          (when-let [{:keys [collection-id apps]} given]
-            (when (< 1 (count apps))
-              (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
-                              {:status-code 400, :collection-id collection-id})))
-            (check-resource-collections (into {} (map (fn [id] [collection-id id])) apps)))
-          (when (seq changes)
-            (data-apps.db/update-data-apps! ids changes))
-          (events/publish-event! :event/data-app-update
-                                 (events/update-event stored
-                                                      rows
-                                                      {:objects (into {}
-                                                                      (keep (fn [id]
-                                                                              (when-let [previous (stored id)]
-                                                                                [id (updated-data-app previous changes)])))
-                                                                      ids)})))))
-    rows))
+  (write-data-app-updates! (mapv #(assoc changes :id %) ids)))
 
 (mu/defn update-data-apps-for-import!
-  "Apply each of `rows`, the id of a DataApp and the columns to change, one row after the other, as an import does
-  because every row holds its own values, without a bundle that the stored app already holds. Returns `rows`."
+  "Apply each of `rows`, the id of a DataApp and the columns to change, in one pass over all of them, publishing one
+  update event, as an import does because every row holds its own values, without a bundle that the stored app already
+  holds. Returns `rows`."
   [rows :- [:sequential ::data-apps.schema/data-app.update-row]]
-  (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))]
-    (doseq [row (without-held-bundles rows stored)]
-      (update-data-apps! [(:id row)] (dissoc row :id))))
+  (write-data-app-updates!
+   (without-held-bundles rows (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))))
   (vec rows))
 
 (mu/defn delete-data-apps! :- :nil
@@ -347,7 +340,8 @@
             collection-ids (into [] (keep :resource_collection_id) apps)]
         (when (seq collection-ids)
           (collection/delete-collections! collection-ids))
-        (events/publish-event! :event/data-app-delete (events/delete-event apps))
+        (events/publish-event! :event/data-app-delete {:changes (u.events/delete-changes apps)
+                            :user-id (mi/current-user-id)})
         (data-apps.db/delete-data-apps! (vec data-app-ids)))))
   nil)
 
@@ -355,6 +349,11 @@
 
 (defmethod app-db-copy/spec :model/DataApp [_model]
   {:skip? true})
+
+(defn- default-versions
+  "The load `items` of data apps, each with version 1 when its file declares none."
+  [items]
+  (mapv #(update-in % [:row :version] (fnil identity 1)) items))
 
 (defmethod serialization/spec :model/DataApp [_]
   {:schema              ::data-apps.schema/external-data-app
@@ -367,6 +366,7 @@
                          :bundle                 {:as     :serdes/resources
                                                   :export export-bundles
                                                   :import import-bundles}}
+   :before-load         default-versions
    :insert!             create-data-apps!
    :update!             update-data-apps-for-import!
    :delete!             delete-data-apps!

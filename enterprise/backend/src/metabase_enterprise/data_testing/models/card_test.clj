@@ -147,8 +147,8 @@
   "Apply each of `rows`, the id of a CardTest and the columns to change, as an import writes it, one row at a time. An
   import runs rows with different values, which one change for all cannot express."
   [rows :- [:sequential ::data-testing.schema/card-test.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-card-tests! [id] (dissoc row :id) {:writer :import}))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-card-tests! (mapv :id rows) changes {:writer :import}))
   nil)
 
 (mu/defn delete-card-tests! :- :nil

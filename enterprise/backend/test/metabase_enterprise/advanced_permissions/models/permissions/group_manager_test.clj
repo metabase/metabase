@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
+   [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- user-group-memberships
   [user]
@@ -112,3 +114,19 @@
       (is (= [{:id 1 :is_group_manager true}
               {:id 2 :is_group_manager false}]
              (#'gm/complete-membership-info new-info old-info))))))
+
+(deftest set-user-group-memberships-publishes-one-event-test
+  (testing "adding a user to n groups publishes one membership create event, at 2 and at 6 groups"
+    (let [published (fn [n]
+                      (mt/with-model-cleanup [:model/PermissionsGroup]
+                        (mt/with-temp [:model/User user {}]
+                          (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                    (for [_ (range n)] {:name (mt/random-name)}))
+                                topics    (atom [])]
+                            (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj topic) event)]
+                              (mt/with-test-user :crowberto
+                                (gm/set-user-group-memberships! user (for [group-id group-ids]
+                                                                       {:id group-id :is_group_manager false}))))
+                            (frequencies @topics)))))]
+      (is (= {:event/group-membership-create 1} (published 2)))
+      (is (= (published 2) (published 6))))))

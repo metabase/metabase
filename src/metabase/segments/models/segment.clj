@@ -26,6 +26,7 @@
    [metabase.segments.serialization :as segments.serialization]
    [metabase.segments.xrays :as segments.xrays]
    [metabase.serialization.core :as serialization]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -199,21 +200,42 @@
                                                                                 ids*))))
          (mapv #(assoc changes :id %) ids))))))
 
+(defn- write-segment-updates!
+  "Apply each of `rows`, the id of a Segment and the columns to change, which differ from row to row, in one pass: the
+  stored Segments are read once, each new definition is checked and gives its table, and the update event is published
+  once for all of them. Returns `rows`."
+  [rows]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [stored (segments.db/segments-by-id (mapv :id rows))
+            rows*  (filterv #(contains? stored (:id %)) rows)]
+        (doseq [{:keys [id] :as row} rows*]
+          (check-changed-definition [id] (dissoc row :id) stored))
+        (doseq [{:keys [id] :as row} rows*
+                :let [changes (cond-> (dissoc row :id)
+                                (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]]
+          (segments.db/update-segments! [id] changes stored))
+        (events/publish-event! :event/segment-update
+                               (events/update-event stored
+                                                    rows*
+                                                    {:objects (into {}
+                                                                    (map (fn [{:keys [id] :as row}]
+                                                                           [id (updated-segment (stored id) (dissoc row :id))]))
+                                                                    rows*)}))
+        (vec rows)))))
+
 (mu/defn update-segments-for-import!
-  "Apply each of `rows`, the id of a Segment and the columns to change, one row after the other, as an import does; the
-  rows are written one by one because every row holds its own values. Returns `rows`."
+  "Apply each of `rows`, the id of a Segment and the columns to change, as an import does, in one pass over all of them
+  because every row holds its own values. Returns `rows`."
   [rows :- [:sequential ::segments.schema/segment.update-row]]
-  (doseq [row rows]
-    (update-segments! [(:id row)] (dissoc row :id)))
-  (vec rows))
+  (write-segment-updates! rows))
 
 (mu/defn update-segments-for-replacement!
-  "Apply each of `rows`, the id of a Segment and the columns to change, one row after the other, as a replacement does;
-  the rows are written one by one because every row holds its own definition. Returns `rows`."
+  "Apply each of `rows`, the id of a Segment and the columns to change, as a replacement does, in one pass over all of
+  them because every row holds its own definition. Returns `rows`."
   [rows :- [:sequential ::segments.schema/segment.update-row]]
-  (doseq [row rows]
-    (update-segments! [(:id row)] (dissoc row :id)))
-  (vec rows))
+  (write-segment-updates! rows))
 
 (mu/defn delete-segments!
   "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction, publishing their
@@ -223,7 +245,8 @@
     (t2/with-transaction [_conn]
       (let [segments (vec (vals (segments.db/segments-by-id (vec ids))))]
         (delete-segment-tests-for-segments! ids)
-        (events/publish-event! :event/segment-delete (events/delete-event segments))
+        (events/publish-event! :event/segment-delete {:changes (u.events/delete-changes segments)
+                            :user-id (mi/current-user-id)})
         (segments.db/delete-segments! ids))
       nil)))
 

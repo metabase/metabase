@@ -15,6 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.queries.models.card :as queries.card]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
@@ -28,6 +29,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -83,7 +85,7 @@
   [ids]
   (t2/with-transaction [_conn]
     (events/publish-event! :event/moderation-review-delete
-                           (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
+                           {:changes (u.events/delete-changes (t2/select :model/ModerationReview :id [:in ids])) :user-id (mi/current-user-id)})
     (t2/delete! :model/ModerationReview :id [:in ids])))
 
 (defn- delete-cards-by-hand!
@@ -91,7 +93,7 @@
   the rows the database cascades to are left for the search capture."
   [ids]
   (t2/with-transaction [_conn]
-    (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
+    (events/publish-event! :event/card-delete {:changes (u.events/delete-changes (t2/select :model/Card :id [:in ids])) :user-id (mi/current-user-id)})
     (t2/delete! :model/Card :id [:in ids])))
 
 ;;; Capture wiring

@@ -149,7 +149,7 @@
                      :model/PermissionsGroup group         {}]
         (group-access/add-groups! app [(:id group)])
         (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
-                                                         :path "./dist/index.js"
+                                                         :path "dist/index.js"
                                                          :collection (resource-collection-entity-id app))
                           {"dist/index.js" "console.log(2)"})
         (import! dump-dir)

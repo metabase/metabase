@@ -2432,6 +2432,21 @@
         (is (= ["A2" "B2"] (t2/select-fn-vec :name :model/Card :id [:in [a b]] {:order-by [:id]})))
         (is (= "d" (t2/select-one-fn :description :model/Card :id b)))))))
 
+(deftest update-cards-for-import-statement-count-test
+  (testing "importing rows that all give another value costs only the update of each row beyond a fixed number of
+            statements: the Cards, what their changes need and the rows that depend on them are read once for all of
+            them, and each distinct set of columns is one update of two statements (its select and its write)"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [import! (fn [n]
+                        (let [ids  (mapv :id (card/create-cards! (cards-with-metadata n coll-id)))
+                              rows (mapv (fn [id] {:id id :description (str "imported " id)}) ids)]
+                          (events.tu/statement-count! #(card/update-cards-for-import! rows))))]
+          (import! 1)
+          (let [few  (import! 2)
+                many (import! 6)]
+            (is (<= (- many few) (* 2 (- 6 2))))))))))
+
 (deftest update-cards-for-replacement-test
   (testing "each row is applied to its own Card"
     (mt/with-temp [:model/Card {a :id} {:name "A"}

@@ -186,6 +186,6 @@
                           "(%s vs %s). The cached project-id-from-credentials uses the read connection's project; "
                           "query qualification may be incorrect for write connections.")
                      (u/the-id database) creds-proj-id write-proj-id))))
-    (database/update-databases! [{:id      (u/the-id database)
-                                  :details (assoc details :project-id-from-credentials creds-proj-id)}])
+    (database/update-databases! [(u/the-id database)]
+                                {:details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

@@ -2314,3 +2314,17 @@
             (let [body (-> @mt/inbox (get email) first :body first :content)]
               (is (some? body))
               (is (re-find #"/auth/reset_password/" body)))))))))
+
+(deftest update-user-group-memberships-keeps-unchanged-all-users-test
+  (testing "PUT /api/user/:id with the full set of groups, All Users included and unchanged, adds the other groups"
+    (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                   :model/PermissionsGroup {group-2 :id} {}]
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email      "keeps-all-users@example.com"
+                                                    :first_name "Test"
+                                                    :last_name  "User"}])
+              all-users-id    (:id (perms-group/all-users))]
+          (is (contains? (user/group-ids user-id) all-users-id))
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                {:user_group_memberships [{:id all-users-id} {:id group-1} {:id group-2}]})
+          (is (= #{all-users-id group-1 group-2} (user/group-ids user-id))))))))

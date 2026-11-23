@@ -36,6 +36,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -441,6 +442,51 @@
     (queries.card/update-cards! card-ids {:archived archived?}
                                 {:context (or context {:archived-with [:model/Document (first ids)]})})))
 
+(defn- move-cards-of-moved!
+  "Moves the cards of the Documents of `moved`, rows holding the new `:collection_id`, to it, with one write for each
+  Collection."
+  [moved]
+  (doseq [[collection-id group] (group-by :collection_id moved)]
+    (move-cards! (mapv :id group) collection-id)))
+
+(defn- set-cards-archived-of!
+  "Archives or restores the cards of the Documents of `rows`, which change `archived`, with one write for each direction."
+  [rows context]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)]
+    (set-cards-archived! (mapv :id group) archived? context)))
+
+(defn- derive-archived-directly
+  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
+  Documents by id after the write."
+  [rows updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
+        rows))
+
+(defn- write-document-updates!
+  "Applies `rows`, each the `:id` of a Document with the changes it gets, which may differ from row to row, in one
+  transaction, and publishes one update event for all of them with the `:context` of `opts`."
+  [rows opts]
+  (let [stored (m/index-by :id (documents.db/documents (mapv :id rows)))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (when (seq rows)
+      (t2/with-transaction [_conn]
+        (let [moved            (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
+              archived-changed (filterv #(changed? (get stored (:id %)) % :archived) rows)]
+          (check-documents
+           (for [row moved]
+             {:collection_id (:collection_id row)
+              :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row)))))}))
+          (move-cards-of-moved! moved)
+          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+            (documents.db/update-documents! (mapv :id group) changes))
+          (set-cards-archived-of! archived-changed (:context opts))
+          (events/publish-event! :event/document-update
+                                 (events/update-event stored
+                                                      (derive-archived-directly rows (m/index-by :id (documents.db/documents (mapv :id rows))))
+                                                      opts)))))))
+
 (mu/defn update-documents! :- :nil
   "Apply `changes` to the Documents with `ids`, publishing one update event with the `:context` of `opts`. Documents
   moved to another Collection move their cards along and the new Collection must be able to hold them, and a change of
@@ -451,37 +497,14 @@
   ([ids :- [:sequential ms/PositiveInt]
     changes :- ::documents.schema/document.update
     opts :- ::write-opts]
-   (let [stored (m/index-by :id (documents.db/documents ids))
-         ids    (filterv stored ids)]
-     (when (seq ids)
-       (t2/with-transaction [_conn]
-         (let [moved            (filterv #(changed? (get stored %) changes :collection_id) ids)
-               archived-changed (filterv #(changed? (get stored %) changes :archived) ids)]
-           (check-documents
-            (for [id moved]
-              {:collection_id (:collection_id changes)
-               :archived      (boolean (if (contains? changes :archived) (:archived changes) (:archived (get stored id))))}))
-           (when (seq moved)
-             (move-cards! moved (:collection_id changes)))
-           (documents.db/update-documents! ids changes)
-           (when (seq archived-changed)
-             (set-cards-archived! archived-changed (boolean (:archived changes)) (:context opts)))
-           (events/publish-event! :event/document-update
-                                  (events/update-event stored
-                                                       (let [updated (m/index-by :id (documents.db/documents ids))]
-                                                         (mapv #(cond-> (assoc changes :id %)
-                                                                  (contains? changes :archived)
-                                                                  (assoc :archived_directly (:archived_directly (get updated %))))
-                                                               ids))
-                                                       opts))))))
+   (write-document-updates! (mapv #(assoc changes :id %) ids) opts)
    nil))
 
 (mu/defn update-documents-for-import! :- [:sequential ::documents.schema/document.import-row]
-  "Apply the changes in `rows`, each the `:id` of a Document and its columns, one Document at a time, and return `rows`:
-  an import writes different values for each Document."
+  "Apply the changes in `rows`, each the `:id` of a Document and its columns, in one pass over all of them, publishing one
+  update event, and return `rows`: an import writes different values for each Document."
   [rows :- [:sequential ::documents.schema/document.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-documents! [id] (dissoc row :id)))
+  (write-document-updates! rows nil)
   rows)
 
 (mu/defn delete-documents! :- :nil
@@ -489,7 +512,8 @@
   [document-ids :- [:sequential ms/PositiveInt]]
   (when (seq document-ids)
     (t2/with-transaction [_conn]
-      (events/publish-event! :event/document-delete (events/delete-event (documents.db/documents (vec document-ids))))
+      (events/publish-event! :event/document-delete {:changes (u.events/delete-changes (documents.db/documents (vec document-ids)))
+                            :user-id (mi/current-user-id)})
       (documents.db/delete-documents! document-ids)))
   nil)
 

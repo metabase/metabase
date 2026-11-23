@@ -8,6 +8,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -167,26 +168,32 @@
         (events/publish-event! :event/timeline-event-create (events/create-event timeline-events))
         timeline-events))))
 
+(defn- write-timeline-event-updates!
+  "Applies `rows`, each the `:id` of a TimelineEvent with the changes it gets, which may differ from row to row, in one
+  transaction with one statement for each distinct set of changes, publishing one update event for all of them with the
+  `:context` of `opts`."
+  [rows opts]
+  (let [stored (when (seq rows) (timeline.db/timeline-events-by-id (mapv :id rows)))
+        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) rows)]
+    (when (seq rows)
+      (t2/with-transaction [_conn]
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (timeline.db/update-timeline-events! (mapv :id group) changes))
+        (events/publish-event! :event/timeline-event-update (events/update-event stored rows opts))))))
+
 (mu/defn update-timeline-events! :- :nil
   "Applies `changes` to each TimelineEvent of `ids`, publishing one update event with the `:context` of `opts`."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::timeline.schema/timeline-event.changes
    opts    :- ::timeline.schema/write-opts]
-  (let [stored (when (seq ids) (timeline.db/timeline-events-by-id ids))
-        ids    (filterv stored ids)]
-    (when (and (seq ids) (seq changes))
-      (t2/with-transaction [_conn]
-        (timeline.db/update-timeline-events! ids changes)
-        (events/publish-event! :event/timeline-event-update
-                               (events/update-event stored (mapv #(assoc changes :id %) ids) opts)))))
+  (write-timeline-event-updates! (mapv #(assoc changes :id %) ids) opts)
   nil)
 
 (mu/defn update-timeline-events-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values, to its TimelineEvent one TimelineEvent at a
-  time, as an import writes different values for each."
+  "Applies the columns of each of `rows`, an `:id` with its own values, in one pass over all of them, publishing one
+  update event, as an import writes different values for each."
   [rows :- [:sequential ::timeline.schema/timeline-event.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-timeline-events! [id] (dissoc row :id) nil))
+  (write-timeline-event-updates! rows nil)
   nil)
 
 (mu/defn delete-timeline-events!
@@ -195,7 +202,8 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/timeline-event-delete
-                             (events/delete-event (vec (vals (timeline.db/timeline-events-by-id ids)))))
+                             {:changes (u.events/delete-changes (vec (vals (timeline.db/timeline-events-by-id ids))))
+                            :user-id (mi/current-user-id)})
       (timeline.db/delete-timeline-events! ids))))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------

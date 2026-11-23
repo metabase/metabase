@@ -317,13 +317,13 @@
                                                 :is_writable    false}]
       ;; Simulate what happens during sync: the driver reports both tables as writable
       (let [select-cols (into [:model/Table :id :name :schema :data_authority] @#'sync-tables/keys-to-update)]
-        (#'sync-tables/update-table-metadata-if-needed!
-         {:name "computed_table" :schema nil :is_writable true}
-         (t2/select-one select-cols :id (:id computed-table))
+        (#'sync-tables/update-tables-metadata-if-needed!
+         #{{:name "computed_table" :schema nil :is_writable true}}
+         #{(t2/select-one select-cols :id (:id computed-table))}
          (driver.u/lib-database (:id db)))
-        (#'sync-tables/update-table-metadata-if-needed!
-         {:name "normal_table" :schema nil :is_writable true}
-         (t2/select-one select-cols :id (:id normal-table))
+        (#'sync-tables/update-tables-metadata-if-needed!
+         #{{:name "normal_table" :schema nil :is_writable true}}
+         #{(t2/select-one select-cols :id (:id normal-table))}
          (driver.u/lib-database (:id db))))
       (testing "computed table should remain non-writable"
         (is (false? (t2/select-one-fn :is_writable :model/Table :id (:id computed-table)))))
@@ -331,7 +331,7 @@
         (is (true? (t2/select-one-fn :is_writable :model/Table :id (:id normal-table))))))))
 
 (deftest no-spurious-update-when-metadata-unchanged-test
-  (testing (str "update-table-metadata-if-needed! should not issue an UPDATE (which would bump updated_at) "
+  (testing (str "update-tables-metadata-if-needed! should not issue an UPDATE (which would bump updated_at) "
                 "when none of the tracked metadata fields have changed. Regression test for GHY-3272 — "
                 "a customer with a trigger on metabase_table.updated_at was seeing it fire on every sync.")
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
@@ -354,16 +354,16 @@
                                 :is_writable             false}
             initial-updated-at (t2/select-one-fn :updated_at :model/Table :id (:id tbl))]
         (testing "no-op sync does not bump updated_at"
-          (#'sync-tables/update-table-metadata-if-needed!
-           matching-metadata
-           (t2/select-one select-cols :id (:id tbl))
+          (#'sync-tables/update-tables-metadata-if-needed!
+           #{matching-metadata}
+           #{(t2/select-one select-cols :id (:id tbl))}
            (driver.u/lib-database (:id db)))
           (is (= initial-updated-at
                  (t2/select-one-fn :updated_at :model/Table :id (:id tbl)))))
         (testing "a real change still bumps updated_at"
-          (#'sync-tables/update-table-metadata-if-needed!
-           (assoc matching-metadata :estimated_row_count 999)
-           (t2/select-one select-cols :id (:id tbl))
+          (#'sync-tables/update-tables-metadata-if-needed!
+           #{(assoc matching-metadata :estimated_row_count 999)}
+           #{(t2/select-one select-cols :id (:id tbl))}
            (driver.u/lib-database (:id db)))
           (is (not= initial-updated-at
                     (t2/select-one-fn :updated_at :model/Table :id (:id tbl))))

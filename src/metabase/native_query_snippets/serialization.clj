@@ -110,7 +110,7 @@
                        (serialization/export-mbql-dependencies template_tags))))
         snippets))
 
-(defn with-free-names
+(defn rename-to-free-names
   "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name. `stored`, a map from id
   to the stored snippet of an update, gives the entity id of the snippet a row writes, which is that of the row itself
   for an insert, `stored` being nil. Rows without a name are left alone."

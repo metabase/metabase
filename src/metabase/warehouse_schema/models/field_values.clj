@@ -42,6 +42,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -701,7 +702,7 @@
   "Publish the delete of the FieldValues `rows`, as they were read, right before the statement that deletes them,
   returning whether there are any."
   [rows]
-  (events/publish-event! :event/field-values-delete (events/delete-event (vec rows)))
+  (events/publish-event! :event/field-values-delete {:changes (u.events/delete-changes (vec rows)) :user-id (mi/current-user-id)})
   (boolean (seq rows)))
 
 (defn- clear-advanced-field-values-for-fields!
@@ -757,10 +758,10 @@
                                                                    existing-ids))))))))
 
 (mu/defn update-field-values-for-import!
-  "Apply each of `rows`, the id of a FieldValues and the columns to change, one FieldValues at a time."
+  "Apply each of `rows`, the id of a FieldValues and the columns to change, one statement for the rows with the same changes."
   [rows :- [:sequential ::warehouse-schema.schema/field-values.update]]
-  (doseq [row rows]
-    (update-field-values! [(:id row)] (dissoc row :id))))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-field-values! (mapv :id rows) changes)))
 
 (defn- duplicate-key?
   "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."

@@ -23,6 +23,7 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -500,7 +501,7 @@
     (let [collections (warehouse-schema.db/collections-for-content-checks (set ids))]
       (run! #(collection/check-allowed-content :table (collections %)) ids))))
 
-(defn- with-default-field-orders
+(defn- add-default-field-orders
   "Each of the Table `rows` with the default field order of its Database's driver unless it has one, the engines of
   the Databases read in one query."
   [rows]
@@ -527,7 +528,7 @@
     []
     (t2/with-transaction [_conn]
       (check-allowed-contents (map :collection_id rows))
-      (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders rows)))
+      (u/prog1 (vec (warehouse-schema.db/insert-tables! (add-default-field-orders rows)))
         (set-new-permissions! <>)
         (events/publish-event! :event/table-create (events/create-event <>))))))
 
@@ -563,6 +564,22 @@
                                                             [id (updated-table previous (dissoc row :id))])))
                                                   rows))))
 
+(defn- moved-collection-ids
+  "The ids of the Collections that `rows`, the id of a Table of `stored`, `{id row}`, and its changes, move Tables to."
+  [stored rows]
+  (for [{:keys [id collection_id]} rows
+        :when (and collection_id (not= collection_id (:collection_id (stored id))))]
+    collection_id))
+
+(defn- reordered-tables
+  "The id and new field order of each of `rows` that gives its Table, one of `stored`, another field order."
+  [stored rows]
+  (for [{:keys [id field_order] :as row} rows
+        :when (and (contains? row :field_order)
+                   (contains? stored id)
+                   (not= (some-> field_order keyword) (:field_order (stored id))))]
+    {:id id :field_order (some-> field_order keyword)}))
+
 (defn- apply-table-updates!
   "Apply each of `rows`, the id of a Table and the columns to change, to the `stored` Tables, `{id row}`, and the
   changes that follow them, and publish their events with the `:context` of `opts`, returning the number of Tables
@@ -571,16 +588,9 @@
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
-      (check-allowed-contents (for [{:keys [id collection_id]} rows
-                                    :when (and collection_id (not= collection_id (:collection_id (stored id))))]
-                                collection_id))
+      (check-allowed-contents (moved-collection-ids stored rows))
       (u/prog1 (warehouse-schema.db/update-tables! stored rows fresh?)
-        (update-field-positions!
-         (for [{:keys [id field_order] :as row} rows
-               :when (and (contains? row :field_order)
-                          (contains? stored id)
-                          (not= (some-> field_order keyword) (:field_order (stored id))))]
-           {:id id :field_order (some-> field_order keyword)}))
+        (update-field-positions! (reordered-tables stored rows))
         (events/publish-event! :event/table-update (table-update-event stored rows opts))))))
 
 (def ^:private write-batch-size
@@ -627,10 +637,10 @@
    (vec ids)))
 
 (mu/defn update-tables-for-import!
-  "Apply each of `rows`, the id of a Table and the columns to change, one Table at a time."
+  "Apply each of `rows`, the id of a Table and the columns to change, one statement for the rows with the same changes."
   [rows :- [:sequential ::warehouse-schema.schema/table.update]]
-  (doseq [row rows]
-    (update-tables! [(:id row)] (dissoc row :id))))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-tables! (mapv :id rows) changes)))
 
 (mu/defn update-tables-for-humanization!
   "Apply each of `rows`, the id of a Table and its new display name, which differs for each Table of a setting that
@@ -666,7 +676,7 @@
       (let [tables (warehouse-schema.db/tables (vec ids))]
         (field/delete-fields-for-tables! (vec ids))
         (actions.models/delete-actions-for-tables! (vec ids))
-        (events/publish-event! :event/table-delete (events/delete-event tables))
+        (events/publish-event! :event/table-delete {:changes (u.events/delete-changes tables) :user-id (mi/current-user-id)})
         (warehouse-schema.db/delete-tables! (vec ids))))))
 
 (mu/defn increment-view-counts! :- :int

@@ -65,7 +65,7 @@
   "What the Clojure derivation leaves stored in a Field holding `stored` types after `changes`."
   [[base strategy effective] changes]
   (let [stored  {:base_type base :coercion_strategy strategy :effective_type effective}
-        derived (#'field/with-derived-types stored (assoc changes :id 1))
+        derived (#'field/add-derived-types stored (assoc changes :id 1))
         final   (merge stored derived)]
     (mapv (comp normalized final) [:base_type :coercion_strategy :effective_type])))
 

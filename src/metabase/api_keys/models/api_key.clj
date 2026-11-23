@@ -217,6 +217,35 @@
   [:map {:closed true}
    [:context {:optional true} :metabase.events.schema/context]])
 
+(defn- rename-key-users!
+  "Give `new-name` to the Users created for those of the ApiKeys with `ids`, stored as `stored`, that are not named
+  so, publishing the events of the write with `opts`; a nil `new-name` renames nothing."
+  [ids stored new-name opts]
+  (when new-name
+    (when-let [user-ids (not-empty (into [] (comp (map stored)
+                                                  (remove #(= new-name (:name %)))
+                                                  (keep :user_id))
+                                         ids))]
+      (user/update-users! (user/user-ids-of-type user-ids :api-key) {:first_name new-name :last_name ""} opts))))
+
+(defn- move-key-users!
+  "Move the User created for each of the ApiKeys with `ids`, stored as `stored`, to the group with `new-group-id`
+  besides All Users; a nil `new-group-id` moves nothing, and a key whose User was not created with it fails the
+  assertion."
+  [ids stored new-group-id]
+  (when new-group-id
+    (doseq [id ids
+            :let [user-id (:user_id (stored id))]]
+      (assert (= (api-keys.db/user-type user-id) :api-key)
+              "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
+      (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))))
+
+(defn- key-column-changes
+  "The columns of ApiKeys that `changes` set: all but the group, with `updated_at` set to now when the group moves."
+  [changes]
+  (cond-> (dissoc changes ::api-keys/group-id)
+    (::api-keys/group-id changes) (assoc :updated_at (t/offset-date-time))))
+
 (mu/defn update-api-keys! :- :nil
   "Apply `changes` to the ApiKeys with `ids`, publishing the event of the write with `opts`; a new `:name` renames the
   User created for each key, and `::api-keys/group-id` moves that User to the group with that id (besides All
@@ -228,25 +257,12 @@
     changes :- ::api-keys.schema/api-key.update
     opts    :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
-     (let [stored       (if (seq ids) (u/index-by :id (api-keys.db/api-keys-by-ids (vec ids))) {})
-           ids          (into [] (comp (distinct) (filter stored)) ids)
-           new-name     (:name changes)
-           new-group-id (::api-keys/group-id changes)]
+     (let [stored (if (seq ids) (u/index-by :id (api-keys.db/api-keys-by-ids (vec ids))) {})
+           ids    (into [] (comp (distinct) (filter stored)) ids)]
        (when (seq ids)
-         (when new-name
-           (when-let [user-ids (not-empty (into [] (comp (map stored)
-                                                         (remove #(= new-name (:name %)))
-                                                         (keep :user_id))
-                                                ids))]
-             (user/update-users! (user/user-ids-of-type user-ids :api-key) {:first_name new-name :last_name ""} opts)))
-         (when new-group-id
-           (doseq [id ids
-                   :let [user-id (:user_id (stored id))]]
-             (assert (= (api-keys.db/user-type user-id) :api-key)
-                     "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
-             (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}])))
-         (let [column-changes (cond-> (dissoc changes ::api-keys/group-id)
-                                new-group-id (assoc :updated_at (t/offset-date-time)))]
+         (rename-key-users! ids stored (:name changes) opts)
+         (move-key-users! ids stored (::api-keys/group-id changes))
+         (let [column-changes (key-column-changes changes)]
            (when (seq column-changes)
              (api-keys.db/update-api-keys! ids column-changes))
            (events/publish-event! :event/api-key-update

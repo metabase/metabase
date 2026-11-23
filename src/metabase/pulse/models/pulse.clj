@@ -44,6 +44,7 @@
    [metabase.pulse.schema :as pulse.schema]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -660,7 +661,7 @@
   [pulse changes]
   (into {} (remove (fn [[k v]] (= v (get pulse k)))) changes))
 
-(mu/defn- with-dashboard-collections :- [:sequential ::pulse.schema/pulse.update]
+(mu/defn- assoc-dashboard-collections :- [:sequential ::pulse.schema/pulse.update]
   "`pulses`, each filed in the Collection of its Dashboard when it is a dashboard subscription."
   [pulses :- [:sequential ::pulse.schema/pulse.update]]
   (let [dashboards (when-let [ids (not-empty (into [] (comp (keep :dashboard_id) (distinct)) pulses))]
@@ -833,7 +834,7 @@
      (t2/with-transaction [_conn]
        (let [pulses (pulse.db/pulses-with-ids pulse-ids)]
          (pulse-channel/delete-pulse-channels! (mapv :id (pulse.db/pulse-channels-for-pulses pulse-ids)))
-         (events/publish-event! :event/pulse-delete (events/delete-event pulses opts))
+         (events/publish-event! :event/pulse-delete (cond-> {:changes (u.events/delete-changes pulses) :user-id (mi/current-user-id)} (seq (:context opts)) (assoc :context (:context opts))))
          (pulse.db/delete-pulses! pulse-ids))))
    nil))
 
@@ -989,7 +990,7 @@
   [rows :- [:sequential PulseCreate]]
   (let [ids (t2/with-transaction [_conn]
               (let [prepared (mapv #(dissoc % :cards :channels) rows)
-                    checked  (with-dashboard-collections prepared)
+                    checked  (assoc-dashboard-collections prepared)
                     parents  (collection-parents checked)
                     _        (doseq [[pulse row] (map vector checked rows)]
                                (check-collection parents pulse)

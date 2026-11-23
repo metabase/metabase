@@ -12,6 +12,7 @@
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -187,7 +188,7 @@
   (when (seq tag-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/transform-tag-delete
-                             (events/delete-event (transforms.db/tags-by-ids (vec tag-ids))))
+                             {:changes (u.events/delete-changes (transforms.db/tags-by-ids (vec tag-ids))) :user-id (mi/current-user-id)})
       (transforms.db/delete-tags! (vec tag-ids))))
   nil)
 

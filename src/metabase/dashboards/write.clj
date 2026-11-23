@@ -319,8 +319,10 @@
 (defn- create-dashcards-check!
   "Throws unless the current user may add the new `dashcards`."
   [dashcards]
-  (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
-    (api/check-not-archived (dashboards.db/card card-id)))
+  (let [card-ids (vec (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards))
+        id->card (m/index-by :id (dashboards.db/cards-by-ids card-ids))]
+    (doseq [card-id card-ids]
+      (api/check-not-archived (get id->card card-id))))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id))))
@@ -584,21 +586,31 @@
   dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction."
   [decisions new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} decisions]
-    {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/with-copy-source-card to-copy
-                                  (api/create-check :model/Card (assoc to-copy :collection_id dest-coll-id))
-                                  (let [row (queries.card/new-card-row
-                                             (cond-> to-copy
-                                               true                    (assoc :collection_id dest-coll-id)
-                                               same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                               (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                             api/*current-user-id*)]
-                                    (t2/with-transaction [_conn]
-                                      (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
-                                      (first (queries.card/create-cards! [row])))))]))
-     :discarded  discard
-     :referenced reference}))
+        {:keys [copy discard reference]} decisions
+        entries                          (vec (for [[id to-copy] copy]
+                                                {:id     id
+                                                 :source to-copy
+                                                 :card   (assoc to-copy :collection_id dest-coll-id)}))]
+    ;; One answer for all copies; when it is no, each is asked on its own so that the refusal names the first one.
+    (when-not (queries.card/can-create-all? (mapv (juxt :card :source) entries))
+      (doseq [{:keys [source card]} entries]
+        (queries/with-copy-source-card source
+          (api/create-check :model/Card card)))
+      (api/check-403 false))
+    (let [rows   (mapv (fn [{:keys [source card]}]
+                         (queries.card/new-card-row
+                          (cond-> card
+                            same-collection?            (update :name #(str % " - " (tru "Duplicate")))
+                            (:dashboard_id source)      (assoc :dashboard_id (u/the-id new-dashboard)))
+                          api/*current-user-id*))
+                       entries)
+          copies (when (seq rows)
+                   (t2/with-transaction [_conn]
+                     (run! #(collection/maybe-reconcile-collection-position! (select-keys % [:collection_id :collection_position])) rows)
+                     (queries.card/create-cards! rows)))]
+      {:copied     (zipmap (map :id entries) copies)
+       :discarded  discard
+       :referenced reference})))
 
 (defn- update-colvalmap-setting
   "Visualizer dashcards have unique visualization settings which embed column id remapping metadata

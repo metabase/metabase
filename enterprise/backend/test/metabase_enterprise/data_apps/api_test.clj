@@ -209,7 +209,7 @@
           (testing "a superuser updates manifest fields"
             (is (=? {:name "Renamed" :description "What it does" :allowed_hosts []}
                     (mt/user-http-request :crowberto :put 200 url {:name          "Renamed"
-                                                                   :description   "  What it does  "
+                                                                   :description   "What it does"
                                                                    :allowed_hosts []}))))
           (testing "invalid manifest fields are refused"
             (mt/user-http-request :crowberto :put 400 url {:bundle_path "/abs.js"})
@@ -249,7 +249,7 @@
                  :version                1
                  :enabled                true
                  :resource_collection_id pos-int?}
-                (mt/user-http-request :crowberto :post 200 "ee/apps" (assoc app-request :bundle_path "./dist/index.js"))))
+                (mt/user-http-request :crowberto :post 200 "ee/apps" app-request)))
         (testing "with an empty bundle"
           (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :slug "demo")))))
         (testing "with its own collection in the data-apps namespace, which no group but Administrators reads"
@@ -263,7 +263,10 @@
       (testing "invalid manifest fields are refused"
         (doseq [bad [{:slug "Not A Slug"}
                      {:bundle_path "../escape.js"}
+                     {:bundle_path "./dist/index.js"}
+                     {:name "   "}
                      {:allowed_hosts ["ftp://example.com"]}
+                     {:allowed_hosts ["https://API.example.com/"]}
                      {:version 0}]]
           (mt/user-http-request :crowberto :post 400 "ee/apps" (merge app-request {:slug "other"} bad))
           (is (not (t2/exists? :model/DataApp :slug "other")) (str "should refuse: " (pr-str bad))))))))

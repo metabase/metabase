@@ -250,6 +250,31 @@
     [:is-group-manager? {:optional true}
      [:maybe :boolean]]]])
 
+(defn- requested-memberships
+  "The map from `[user-id group-id]` to whether the User manages the group, for the `pgms`, maps of a user, a group and
+  `:is-group-manager?`; two of them for the same user and group that disagree throw."
+  [pgms]
+  (->> pgms
+       (map (fn [{:keys [user group is-group-manager?]}]
+              {:user-id           (u/the-id user)
+               :group-id          (u/the-id group)
+               :is-group-manager? is-group-manager?}))
+       (group-by (juxt :user-id :group-id))
+       (m/map-vals (fn [pgms]
+                     (when-not (= 1 (count (distinct pgms)))
+                       (throw (ex-info "Conflicting permissions group memberships"
+                                       {:conflicts (distinct pgms)})))
+                     (boolean (:is-group-manager? (first pgms)))))))
+
+(defn- missing-memberships
+  "The membership rows of `requested`, the map from `[user-id group-id]` to the manager flag, whose user and group are
+  not members already, with the existing pairs read once."
+  [requested]
+  (let [existing (permissions.db/existing-membership-pairs (keys requested))]
+    (for [[[user-id group-id] is-group-manager?] requested
+          :when (not (contains? existing [user-id group-id]))]
+      {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})))
+
 (mu/defn add-users-to-groups! :- :nil
   "Create the memberships of the `pgms`, maps of a user, a group and `:is-group-manager?`, that do not exist yet,
   publishing the events of the writes with `opts`."
@@ -258,22 +283,7 @@
   ([pgms :- ::new-memberships
     opts :- [:maybe ::write-opts]]
    (when (seq pgms)
-     (let [pgms (->> pgms
-                     (map (fn [{:keys [user group is-group-manager?]}]
-                            {:user-id (u/the-id user)
-                             :group-id (u/the-id group)
-                             :is-group-manager? is-group-manager?})))
-           user-id-group-id->is-group-manager? (->> pgms
-                                                    (group-by (juxt :user-id :group-id))
-                                                    (m/map-vals (fn [pgms]
-                                                                  (when-not (= 1 (count (distinct pgms)))
-                                                                    (throw (ex-info "Conflicting permissions group memberships"
-                                                                                    {:conflicts (distinct pgms)})))
-                                                                  (boolean (:is-group-manager? (first pgms))))))
-           existing    (permissions.db/existing-membership-pairs (keys user-id-group-id->is-group-manager?))
-           memberships (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?
-                             :when (not (contains? existing [user-id group-id]))]
-                         {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})]
+     (let [memberships (missing-memberships (requested-memberships pgms))]
        (when (seq memberships)
          (t2/with-transaction [_conn]
            (check-magic-group-members-unchanged (map :group_id memberships))
@@ -302,6 +312,18 @@
                           opts))
    nil))
 
+(defn- check-membership-update
+  "Throws a 400 unless `changes` to the PermissionsGroupMembership stored as `before`, of the User `member`, satisfy
+  these rules, in this order:
+
+  - a tenant user is not made a group manager
+  - an admin is not made a group manager
+  - the membership moves to no other user or group"
+  [before changes member]
+  (when (:is_group_manager changes)
+    (check-group-manager-member (merge before changes) member))
+  (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
+
 (mu/defn update-permissions-group-memberships! :- :nil
   "Apply `changes` to the PermissionsGroupMemberships with `ids`, publishing the event of the write; making a tenant
   user or an admin a group manager is a 400. The refusal of the first refused membership in the order of `ids` is the
@@ -316,9 +338,7 @@
                     {})]
       (doseq [id ids
               :let [before (stored id)]]
-        (when (:is_group_manager changes)
-          (check-group-manager-member (merge before changes) (get members (:user_id before))))
-        (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
+        (check-membership-update before changes (get members (:user_id before))))
       (when (seq ids)
         (permissions.db/update-group-memberships! ids changes)
         (events/publish-event! :event/group-membership-update

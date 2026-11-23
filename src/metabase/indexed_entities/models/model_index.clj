@@ -18,6 +18,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -220,7 +221,8 @@
       (run! #(remove-indexing-job {:id %}) ids)
       (if-let [indexes (not-empty (vec (indexed-entities.db/model-indexes ids)))]
         (do
-          (events/publish-event! :event/model-index-delete (events/delete-event indexes))
+          (events/publish-event! :event/model-index-delete {:changes (u.events/delete-changes indexes)
+                            :user-id (mi/current-user-id)})
           (indexed-entities.db/delete-model-indexes! (mapv :id indexes)))
         0))))
 

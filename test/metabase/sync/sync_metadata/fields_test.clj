@@ -617,8 +617,8 @@
                    :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
       (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
       (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
-      (is (= 1 (#'sync-fks/mark-fk! (driver.u/lib-database db-id) {:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
-                                                                   :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"})))
+      (is (= 1 (#'sync-fks/mark-fks! (driver.u/lib-database db-id) [{:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
+                                                                     :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"}])))
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
               (t2/select-one :model/Field :id fk-id))))))
 

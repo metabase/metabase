@@ -6133,3 +6133,22 @@
                    (t2/select-one-fn :user_id :model/Revision :model "Card" :model_id card-id {:order-by [[:id :desc]]})))
             (is (= (mt/user->id :crowberto)
                    (t2/select-one-fn :user_id :model/AuditLog :model "Card" :model_id card-id {:order-by [[:id :desc]]})))))))))
+
+(deftest move-cards-to-collection-statement-count-test
+  (testing "POST /api/card/collections takes as many statements for many Cards as for few, permission checks included"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card]
+        (let [move! (fn [n]
+                      (let [ids (mapv (fn [i]
+                                        (t2/insert-returning-pk! :model/Card
+                                                                 (merge (mt/with-temp-defaults :model/Card)
+                                                                        {:name (str "moving " i) :collection_id from-id})))
+                                      (range n))]
+                        (t2/with-call-count [call-count]
+                          (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
+                          (call-count))))]
+          (move! 1)
+          (is (= (move! 2) (move! 6))))))))

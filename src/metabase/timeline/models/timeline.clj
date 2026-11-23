@@ -13,6 +13,7 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -126,6 +127,38 @@
        {:archived archive?}
        {:context {:archived-with [:model/Timeline (first ids)]}}))))
 
+(defn- update-timeline-groups!
+  "Writes `rows`, each the `:id` of a Timeline with its changes, with one statement for each distinct set of changes."
+  [rows]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (timeline.db/update-timelines! (mapv :id group) changes)))
+
+(defn- derive-archived-directly
+  "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
+  Timelines by id after the write."
+  [rows updated]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (contains? row :archived) (assoc :archived_directly (:archived_directly (get updated id)))))
+        rows))
+
+(defn- write-timeline-updates!
+  "Applies `rows`, each the `:id` of a Timeline with the changes it gets, which may differ from row to row, in one
+  transaction, and publishes one update event for all of them, with the `:context` of `opts`."
+  [rows opts]
+  (let [stored (when (seq rows) (timeline.db/timelines-by-id (mapv :id rows)))
+        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) rows)]
+    (when (seq rows)
+      (t2/with-transaction [_conn]
+        (check-timelines (for [row rows
+                               :when (contains? row :collection_id)]
+                           (update (merge (get stored (:id row)) row) :archived boolean)))
+        (update-timeline-groups! rows)
+        (let [updated (timeline.db/timelines-by-id (mapv :id rows))
+              rows    (derive-archived-directly rows updated)]
+          (carry-to-events! rows stored)
+          (events/publish-event! :event/timeline-update (events/update-event stored rows (assoc opts :objects updated))))))))
+
 (mu/defn update-timelines! :- :nil
   "Applies `changes` to each Timeline of `ids`, publishing one update event with the `:context` of `opts`. A move into a
   Collection that cannot hold a Timeline throws, a change of `archived` gives their `archived_directly`, archiving a
@@ -133,28 +166,14 @@
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::timeline.schema/timeline.changes
    opts    :- ::timeline.schema/write-opts]
-  (let [stored (when (seq ids) (timeline.db/timelines-by-id ids))
-        ids    (filterv stored ids)]
-    (when (and (seq ids) (seq changes))
-      (t2/with-transaction [_conn]
-        (when (contains? changes :collection_id)
-          (check-timelines (map #(update (merge (get stored %) changes) :archived boolean) ids)))
-        (timeline.db/update-timelines! ids changes)
-        (let [updated (timeline.db/timelines-by-id ids)
-              rows    (mapv #(cond-> (assoc changes :id %)
-                               (contains? changes :archived)
-                               (assoc :archived_directly (:archived_directly (get updated %))))
-                            ids)]
-          (carry-to-events! rows stored)
-          (events/publish-event! :event/timeline-update (events/update-event stored rows (assoc opts :objects updated)))))))
+  (write-timeline-updates! (mapv #(assoc changes :id %) ids) opts)
   nil)
 
 (mu/defn update-timelines-for-import! :- :nil
-  "Applies the columns of each of `rows`, an `:id` with its own values, to its Timeline one Timeline at a time, as an
-  import writes different values for each."
+  "Applies the columns of each of `rows`, an `:id` with its own values, in one pass over all of them, publishing one update
+  event, as an import writes different values for each."
   [rows :- [:sequential ::timeline.schema/timeline.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-timelines! [id] (dissoc row :id) nil))
+  (write-timeline-updates! rows nil)
   nil)
 
 (mu/defn delete-timelines!
@@ -162,7 +181,8 @@
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (events/publish-event! :event/timeline-delete (events/delete-event (vec (vals (timeline.db/timelines-by-id ids)))))
+      (events/publish-event! :event/timeline-delete {:changes (u.events/delete-changes (vec (vals (timeline.db/timelines-by-id ids))))
+                            :user-id (mi/current-user-id)})
       (timeline.db/delete-timelines! ids))))
 
 (defmethod collection/archive-in-collections! :model/Timeline
@@ -182,7 +202,8 @@
   (when (seq collection-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/timeline-delete
-                             (events/delete-event (timeline.db/timelines-in-collections (vec collection-ids))))
+                             {:changes (u.events/delete-changes (timeline.db/timelines-in-collections (vec collection-ids)))
+                            :user-id (mi/current-user-id)})
       (timeline.db/delete-timelines-in-collections! (vec collection-ids)))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

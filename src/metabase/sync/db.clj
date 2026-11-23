@@ -3,7 +3,6 @@
   values users set alone."
   (:require
    [clojure.set :as set]
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -227,6 +226,13 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/TableUserSettings :table_id table-id))
 
+(mu/defn table-user-settings-for-tables :- [:sequential ::warehouse-schema.schema/table-user-settings]
+  "The TableUserSettings of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/TableUserSettings :table_id [:in table-ids])
+    []))
+
 (mu/defn fields
   "The Fields with `field-ids`, which `our-metadata` diffs against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -449,58 +455,77 @@
     (t2/select :model/FieldUserSettings :field_id [:in field-ids])
     []))
 
+(defn- lower-key
+  "The key by which fk metadata and Fields are matched: the lower-cased schema, table and column names."
+  [schema table column]
+  [(some-> schema u/lower-case-en) (u/lower-case-en table) (u/lower-case-en column)])
+
+(mu/defn fk-target-changes-for-entries :- [:sequential [:map
+                                                        [:id ::lib.schema.id/field]
+                                                        [:changes :map]
+                                                        [:entry :map]]]
+  "For each of `entries`, foreign key metadata with the `:fk-table-schema`, `:fk-table-name` and `:fk-column-name` of a
+  Field and the `:pk-` ones of the Field it points at, in the Database with `db-id`: the id of the Field and the changes
+  that point it at the target, with the entry, leaving out an entry whose Fields are missing, that already points
+  there, or whose Field has a user-set target. Reads the Fields of all entries in one query, then their rows and
+  settings in one each, however many entries there are."
+  [db-id   :- ::lib.schema.id/database
+   entries :- [:sequential :map]]
+  (if (empty? entries)
+    []
+    (let [table-names (into [] (comp (mapcat (juxt :fk-table-name :pk-table-name)) (map u/lower-case-en) (distinct)) entries)
+          candidates  (t2/query {:select    [:f.id [:f.name :column] [:t.name :table] [:t.schema :schema]
+                                             [:u.fk_target_field_id_set :fk_set] [:u.semantic_type_set :semantic_set]]
+                                 :from      [[(t2/table-name :model/Field) :f]]
+                                 :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                 :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :f.id :u.field_id]]
+                                 :where     [:and
+                                             [:= :t.db_id [:auto/param db-id]]
+                                             [:in [:lower :t.name] [:auto/param table-names]]
+                                             [:= :f.active true]
+                                             [:not= :f.visibility_type "retired"]
+                                             [:= :t.active true]
+                                             [:= :t.visibility_type nil]]
+                                 :order-by  [[:f.id :asc]]})
+          lowest      (fn [rows] (reduce (fn [m {:keys [id schema table column]}]
+                                           (let [k (lower-key schema table column)]
+                                             (cond-> m (not (contains? m k)) (assoc k id))))
+                                         {}
+                                         rows))
+          user-set?   (fn [flag] (or (true? flag) (= 1 flag)))
+          fk-ids      (lowest (remove #(or (user-set? (:fk_set %)) (user-set? (:semantic_set %))) candidates))
+          pk-ids      (lowest candidates)
+          resolved    (into []
+                            (keep (fn [{:keys [fk-table-schema fk-table-name fk-column-name
+                                               pk-table-schema pk-table-name pk-column-name] :as entry}]
+                                    (let [fk-id (fk-ids (lower-key fk-table-schema fk-table-name fk-column-name))
+                                          pk-id (pk-ids (lower-key pk-table-schema pk-table-name pk-column-name))]
+                                      (when (and fk-id pk-id)
+                                        {:id fk-id :pk-id pk-id :entry entry}))))
+                            entries)]
+      (if (empty? resolved)
+        []
+        (let [fields   (u/index-by :id (t2/select [:model/Field :id :fk_target_field_id :has_field_values]
+                                                  :id [:in (mapv :id resolved)]))
+              settings (u/index-by :field_id (field-user-settings-for-fields (mapv :id resolved)))]
+          (into []
+                (keep (fn [{:keys [id pk-id entry]}]
+                        (let [field    (fields id)
+                              user-set (warehouse-schema.user-settings/user-set-field-columns (settings id))]
+                          (when (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
+                            {:id      id
+                             :changes (apply dissoc
+                                             (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                               (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
+                                             user-set)
+                             :entry   entry}))))
+                resolved))))))
+
 (mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
   "The ID of the Field named `field-name` of the Table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
   (t2/select-one-pk :model/Field :name field-name :table_id table-id))
-
-(defn- fk-field-id-subquery
-  "Subquery selecting the (lowest) id of the Field named `column-name` on the Table `[table-schema table-name]` in
-  the Database with `db-id`, excluding, when `unless-user-set?`, Fields with a user-set foreign key target or semantic
-  type. `min` limits the subquery to one result (MySQL disallows `LIMIT` in subqueries), needed because
-  schema/table/column names can be non-unique when lower-cased for some DBs."
-  [db-id table-schema table-name column-name unless-user-set?]
-  ^:allow-subquery
-  {:select    [[[:min :f.id] :id]]
-   :from      [[(t2/table-name :model/Field) :f]]
-   :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-   :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :f.id :u.field_id]]
-   :where     [:and
-               (when unless-user-set?
-                 [:and
-                  [:= [:coalesce :u.fk_target_field_id_set false] false]
-                  [:= [:coalesce :u.semantic_type_set false] false]])
-               [:= :t.db_id db-id]
-               [:= [:lower :f.name] (u/lower-case-en column-name)]
-               [:= [:lower :t.name] (u/lower-case-en table-name)]
-               [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
-               [:= :f.active true]
-               [:not= :f.visibility_type "retired"]
-               [:= :t.active true]
-               [:= :t.visibility_type nil]]})
-
-(mu/defn fk-target-changes :- [:maybe [:tuple ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
-  "The id of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with `db-id` and the
-  changes that point it at the Field at `[pk-table-schema pk-table-name pk-column-name]`, or nil when either is
-  missing, it already points there, or a user set its target."
-  [db-id            :- ::lib.schema.id/database
-   fk-table-schema  :- [:maybe :string]
-   fk-table-name    :- :string
-   fk-column-name   :- :string
-   pk-table-schema  :- [:maybe :string]
-   pk-table-name    :- :string
-   pk-column-name   :- :string]
-  (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name true)))
-        pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name false)))]
-    (when (and fk-id pk-id)
-      (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id)
-            user-set (warehouse-schema.user-settings/user-set-field-columns (field-user-settings fk-id))]
-        (when (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
-          [fk-id (apply dissoc
-                        (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                          (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
-                        user-set)])))))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it

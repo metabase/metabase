@@ -133,7 +133,7 @@
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is-attached-dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
+                     ;; [[metabase.warehouse-schema-rest.api.table/update-existing-tables!]] to track occasions where the table
                      ;; was updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
@@ -280,8 +280,9 @@
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
-(mu/defn- update-table-metadata-if-needed!
-  "Update the table metadata if it has changed. Returns true if a row was updated."
+(mu/defn- table-metadata-changes
+  "The changes to make to the table metadata if it has changed, as a pair of `metabase-table` and its changes, nil when
+  nothing changes. Writes nothing."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- i/DatabaseInstance]
@@ -315,10 +316,8 @@
                  (sync-util/name-for-logging metabase-table)
                  (get metabase-table k)
                  v))
-    (boolean
-     (when (seq changes)
-       (sync.updates/update-table-unless-user-set! metabase-table changes)
-       true))))
+    (when (seq changes)
+      [metabase-table changes])))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int
   "Update metadata for the tables present in both `table-metadatas` and `metabase-tables`. Returns
@@ -327,16 +326,17 @@
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
    metabase-database :- i/DatabaseInstance]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
-        name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
-    (reduce (fn [updated name+schema]
-              (cond-> updated
-                (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
-                                                  (name+schema->metabase-table name+schema)
-                                                  metabase-database)
-                inc))
-            0
-            (set/intersection (set (keys name+schema->table-metadata))
-                              (set (keys name+schema->metabase-table))))))
+        name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)
+        pairs                       (into []
+                                          (keep (fn [name+schema]
+                                                  (table-metadata-changes (name+schema->table-metadata name+schema)
+                                                                          (name+schema->metabase-table name+schema)
+                                                                          metabase-database)))
+                                          (set/intersection (set (keys name+schema->table-metadata))
+                                                            (set (keys name+schema->metabase-table))))]
+    (when (seq pairs)
+      (sync.updates/update-tables-unless-user-set! pairs))
+    (count pairs)))
 
 (def ^:private table-sync-batch-size
   "How many warehouse tables to reconcile against the app DB at a time. Bounds peak memory so a

@@ -169,19 +169,18 @@
     []))
 
 (mu/defn update-users!
-  "Apply `changes` to the Users with `user-ids`, one statement for each set of the changes that differ from the stored
-  rows, read with every column as Toucan compares them, so that Users already holding one of the values do not make
-  Toucan update row by row, returning the number updated."
-  [user-ids :- [:sequential ::lib.schema.id/user]
-   changes  :- ::users.schema/user.update]
-  (if (empty? user-ids)
+  "Apply `changes` to the Users whose stored rows, read with every column as Toucan compares them, are `users`, one
+  statement for each set of the changes that differ from those rows, so that Users already holding one of the values
+  do not make Toucan update row by row, returning the number updated."
+  [users   :- [:sequential [:map [:id ::lib.schema.id/user]]]
+   changes :- ::users.schema/user.update]
+  (if (empty? users)
     0
-    (let [stored (u/index-by :id (t2/select [:model/User :*] :id [:in [:auto/param (vec (distinct user-ids))]]))]
-      (transduce (map (fn [[changes ids]]
-                        (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
-                 +
-                 0
-                 (mi/group-ids-by-changes stored (map #(assoc changes :id %) user-ids))))))
+    (transduce (map (fn [[changes ids]]
+                      (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
+               +
+               0
+               (mi/group-ids-by-changes (u/index-by :id users) (map #(assoc changes :id (:id %)) users)))))
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

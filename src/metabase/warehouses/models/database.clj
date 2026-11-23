@@ -28,6 +28,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -805,7 +806,7 @@
   schedules from them."
   #{:details :engine :is_stub :is_full_sync :is_on_demand :metadata_sync_schedule :cache_field_values_schedule})
 
-(defn- with-client-secrets
+(defn- add-client-secrets
   "`changes` to the stored Database `stored`, with the client secrets of the connection details they change stored as
   Secrets."
   [stored changes]
@@ -830,7 +831,7 @@
                     :when (seq changes)]
                 (warehouses.db/update-databases! (set ids) changes))))
 
-(defn- with-update
+(defn- add-update
   "`changes`, `{id change}`, with the update of the Database `previous` to `object` added, a Database changed twice
   keeping the row it had before the first change."
   [changes previous object]
@@ -864,7 +865,7 @@
                            (keep (fn [{:keys [id] :as row}]
                                    (when-let [database (stored id)]
                                      (let [row (cond-> row (= :import writer) warehouses.serialization/sanitized-row)]
-                                       (assoc (with-client-secrets database (dissoc row :id)) :id id)))))
+                                       (assoc (add-client-secrets database (dissoc row :id)) :id id)))))
                            rows)
             disabled (when (some (fn [{:keys [id uploads_enabled]}]
                                    (and uploads_enabled (not (:uploads_enabled (stored id)))))
@@ -880,8 +881,8 @@
                             (u/index-by :id (warehouses.db/databases trigger-ids)))
               changes     (reduce (fn [changes {:keys [id] :as row}]
                                     (let [previous (or (get-in changes [id :object]) (stored id))]
-                                      (with-update changes (stored id) (or (get reread id)
-                                                                           (merge previous (dissoc row :id))))))
+                                      (add-update changes (stored id) (or (get reread id)
+                                                                          (merge previous (dissoc row :id))))))
                                   (or disabled {})
                                   rows)]
           ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
@@ -961,7 +962,7 @@
         (run! unschedule-tasks! databases)
         (models.secret/delete-secrets-for-databases! databases)
         (delete-followers! follower-models databases)
-        (events/publish-event! :event/database-delete (events/delete-event databases))
+        (events/publish-event! :event/database-delete {:changes (u.events/delete-changes databases) :user-id (mi/current-user-id)})
         (run! notify-database-deleted! databases)
         (warehouses.db/delete-databases! (mapv :id databases)))))
   nil)

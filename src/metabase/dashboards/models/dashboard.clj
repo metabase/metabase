@@ -30,7 +30,6 @@
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
@@ -53,6 +52,7 @@
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -80,16 +80,13 @@
 (def ^:private column-normalizers
   "The function that converts a value of each column of a Dashboard that a transform converts on its way in."
   {:parameters       #(lib/normalize ::parameters.schema/parameters %)
-   :embedding_params #(lib/normalize ms/EmbeddingParams %)
-   :embedding_type   lib.schema.common/normalize-string-key})
+   :embedding_params #(lib/normalize ms/EmbeddingParams %)})
 
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
    :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
    :embedding_params {:in  (comp mi/json-in (:embedding_params column-normalizers))
-                      :out mi/json-out-without-keywordization}
-   :embedding_type   {:in  (:embedding_type column-normalizers)
-                      :out identity}})
+                      :out mi/json-out-without-keywordization}})
 
 (defn- normalize-columns
   "`row`, the columns of a Dashboard, with the value of each column a transform converts converted the same way, so that
@@ -557,22 +554,17 @@
                            opts)
           rows)))))
 
-(def ^:private DashboardChanges
-  (mut/dissoc ::dashboards.schema/dashboard.update :id))
-
 (def ^:private DashboardChangesWithParts
   (mut/dissoc UpdateDashboard :id))
 
 (mu/defn update-dashboards! :- :nil
-  "Apply the same `changes`, columns of the Dashboards, to each of the Dashboards with `ids` and publish one update event
-  for them, after what the columns do, see [[write-columns!]]."
-  ([ids :- [:sequential ::lib.schema.id/dashboard]
-    changes :- DashboardChanges]
-   (update-dashboards! ids changes nil))
-  ([ids :- [:sequential ::lib.schema.id/dashboard]
-    changes :- DashboardChanges
-    opts :- ::dashboards.schema/write-opts]
-   (write-updates! (mapv #(assoc changes :id %) ids) opts)
+  "Apply `updates`, each the `:id` of a Dashboard with the columns to give it, which may differ from one to the next, and
+  publish one update event for all of them, after what the columns do, see [[write-columns!]]."
+  ([updates :- [:sequential ::dashboards.schema/dashboard.update]]
+   (update-dashboards! updates nil))
+  ([updates :- [:sequential ::dashboards.schema/dashboard.update]
+    opts    :- ::dashboards.schema/write-opts]
+   (write-updates! updates opts)
    nil))
 
 (mu/defn update-dashboard! :- :nil
@@ -589,18 +581,6 @@
     opts :- ::dashboards.schema/write-opts]
    (write-updates! [(assoc changes :id id)] opts)
    nil))
-
-(mu/defn update-dashboards-for-import! :- [:sequential ::dashboards.schema/dashboard.update]
-  "Update the Dashboards of the `rows` of a SerDes import, each holding an `:id` and the columns to set, one at a time as
-  each can name a different value, and return the rows of the Dashboards that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard.update]]
-  (write-updates! rows {:writer :import}))
-
-(mu/defn update-dashboards-for-replacement! :- [:sequential ::dashboards.schema/dashboard.update]
-  "Update the Dashboards of the `rows` of a replacement of a data source, each holding an `:id` and the parameters it
-  rewrites, and return the rows of the Dashboards that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard.update]]
-  (write-updates! rows {:writer :replacement}))
 
 (mu/defn add-dashcards! :- [:sequential :map]
   "Insert the DashboardCards `dashcards`, each holding the `:dashboard_id` of its Dashboard and the ids of the Cards of its
@@ -674,7 +654,10 @@
          (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
          (cache-config/delete-cache-configs-for-deleted-targets! "dashboard" dashboard-ids)
          (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-         (events/publish-event! :event/dashboard-delete (events/delete-event dashboards opts))
+         (events/publish-event! :event/dashboard-delete (cond-> {:changes (u.events/delete-changes dashboards)
+                          :user-id (mi/current-user-id)}
+               (seq (:context opts)) (assoc :context (:context opts))
+               (:writer opts)        (assoc :writer (:writer opts))))
          (dashboards.db/delete-dashboards! dashboard-ids))))
    nil))
 
@@ -735,8 +718,7 @@
 
 (defmethod card/update-followers! :model/Dashboard
   [_model rows]
-  (doseq [{:keys [id] :as row} rows]
-    (update-dashboards! [id] (dissoc row :id))))
+  (write-updates! (vec rows) nil))
 
 (defmethod card/create-followers! :model/DashboardCard
   [_model rows]
@@ -811,7 +793,7 @@
    :export-dependencies dashboards.serialization/export-dependencies
    :before-load         dashboards.serialization/before-load
    :insert!             #(create-dashboards! % {:writer :import})
-   :update!             update-dashboards-for-import!
+   :update!             #(update-dashboards! % {:writer :import})
    :delete!             #(delete-dashboards! % {:writer :import})})
 
 (defmethod remote-sync/spec :model/Dashboard
@@ -899,7 +881,7 @@
   {:hydrate            dashboards.replacement/hydrate
    :upgrade-field-refs dashboards.replacement/upgrade-field-refs
    :swap-source        dashboards.replacement/swap-source
-   :update!            update-dashboards-for-replacement!})
+   :update!            #(update-dashboards! % {:writer :replacement})})
 
 (defmethod collection-items/spec :model/Dashboard [_model]
   {"dashboard" {:rank    1

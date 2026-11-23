@@ -79,15 +79,15 @@
     (data-app/delete-data-apps! [id])
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
-(deftest writes-are-normalized-test
-  (mt/with-temp [:model/DataApp {id :id} {:name          "  M  "
-                                          :bundle_path   "./dist/index.js"
-                                          :allowed_hosts ["https://API.example.com/"]}]
+(deftest writes-store-values-as-given-test
+  (mt/with-temp [:model/DataApp {id :id} {:name          "M"
+                                          :bundle_path   "dist/index.js"
+                                          :allowed_hosts ["https://api.example.com"]}]
     (is (=? {:name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
             (t2/select-one :model/DataApp :id id)))
-    (testing "an update is normalized"
-      (t2/update! :model/DataApp :id id {:bundle_path "./other.js" :description "  one\n line  "})
-      (is (=? {:bundle_path "other.js" :description "one line"}
+    (testing "an update stores a value as it is, an empty description included"
+      (t2/update! :model/DataApp :id id {:bundle_path "other.js" :description ""})
+      (is (=? {:bundle_path "other.js" :description ""}
               (t2/select-one :model/DataApp :id id))))))
 
 (deftest to-json-never-includes-the-bundle-bytes-test

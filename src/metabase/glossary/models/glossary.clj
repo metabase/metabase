@@ -10,6 +10,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -104,7 +105,8 @@
   (let [stored (vals (glossary.db/glossaries-by-id ids))]
     (when (seq stored)
       (t2/with-transaction [_conn]
-        (events/publish-event! :event/glossary-delete (events/delete-event (vec stored)))
+        (events/publish-event! :event/glossary-delete {:changes (u.events/delete-changes (vec stored))
+                            :user-id (mi/current-user-id)})
         (glossary.db/delete-glossaries! (mapv :id stored)))))
   nil)
 

@@ -25,6 +25,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -193,21 +194,42 @@
                                                                                 ids*))))
          (mapv #(assoc changes :id %) ids))))))
 
+(defn- write-measure-updates!
+  "Apply each of `rows`, the id of a Measure and the columns to change, which differ from row to row, in one pass: the
+  stored Measures are read once, each new definition is checked and gives its table, and the update event is published
+  once for all of them. Returns `rows`."
+  [rows]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [stored (measures.db/measures-by-id (mapv :id rows))
+            rows*  (filterv #(contains? stored (:id %)) rows)]
+        (doseq [{:keys [id] :as row} rows*]
+          (check-changed-definition [id] (dissoc row :id) stored))
+        (doseq [{:keys [id] :as row} rows*
+                :let [changes (cond-> (dissoc row :id)
+                                (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]]
+          (measures.db/update-measures! [id] changes stored))
+        (events/publish-event! :event/measure-update
+                               (events/update-event stored
+                                                    rows*
+                                                    {:objects (into {}
+                                                                    (map (fn [{:keys [id] :as row}]
+                                                                           [id (updated-measure (stored id) (dissoc row :id))]))
+                                                                    rows*)}))
+        (vec rows)))))
+
 (mu/defn update-measures-for-import!
-  "Apply each of `rows`, the id of a Measure and the columns to change, one row after the other, as an import does; the
-  rows are written one by one because every row holds its own values. Returns `rows`."
+  "Apply each of `rows`, the id of a Measure and the columns to change, as an import does, in one pass over all of them
+  because every row holds its own values. Returns `rows`."
   [rows :- [:sequential ::measures.schema/measure.update-row]]
-  (doseq [row rows]
-    (update-measures! [(:id row)] (dissoc row :id)))
-  (vec rows))
+  (write-measure-updates! rows))
 
 (mu/defn update-measures-for-replacement!
-  "Apply each of `rows`, the id of a Measure and the columns to change, one row after the other, as a replacement does;
-  the rows are written one by one because every row holds its own definition. Returns `rows`."
+  "Apply each of `rows`, the id of a Measure and the columns to change, as a replacement does, in one pass over all of
+  them because every row holds its own definition. Returns `rows`."
   [rows :- [:sequential ::measures.schema/measure.update-row]]
-  (doseq [row rows]
-    (update-measures! [(:id row)] (dissoc row :id)))
-  (vec rows))
+  (write-measure-updates! rows))
 
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`, publishing its update event."
@@ -227,7 +249,8 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (let [measures (vec (vals (measures.db/measures-by-id (vec ids))))]
-        (events/publish-event! :event/measure-delete (events/delete-event measures))
+        (events/publish-event! :event/measure-delete {:changes (u.events/delete-changes measures)
+                            :user-id (mi/current-user-id)})
         (measures.db/delete-measures! ids)))
     nil))
 

@@ -24,6 +24,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -1241,7 +1242,7 @@
                 :when        (= :notification-subscription/cron (:type subscription))]
           (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
         (notification.db/delete-notification-cards-for-notifications! notification-ids)
-        (events/publish-event! :event/notification-row-delete (events/delete-event notifications))
+        (events/publish-event! :event/notification-row-delete {:changes (u.events/delete-changes notifications) :user-id (mi/current-user-id)})
         (notification.db/delete-notifications! notification-ids)
         (count notifications)))
     0))

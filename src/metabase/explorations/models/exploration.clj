@@ -15,6 +15,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -207,7 +208,8 @@
   (when (seq exploration-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/exploration-delete
-                             (events/delete-event (explorations.db/rows :model/Exploration (vec exploration-ids))))
+                             {:changes (u.events/delete-changes (explorations.db/rows :model/Exploration (vec exploration-ids)))
+                            :user-id (mi/current-user-id)})
       (explorations.db/delete-explorations! exploration-ids)))
   nil)
 

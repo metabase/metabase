@@ -7,9 +7,11 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -110,8 +112,8 @@
   "Apply each of `rows`, the id of a PythonLibrary and the columns to change, as an import writes it, one row at a time.
   An import runs rows with different values, which one change for all cannot express."
   [rows :- [:sequential ::transforms-python.schema/python-library.import-row]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-python-libraries! [id] (dissoc row :id)))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-python-libraries! (mapv :id rows) changes))
   nil)
 
 (mu/defn delete-python-libraries!
@@ -120,7 +122,7 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/python-library-delete
-                             (events/delete-event (transforms-python.db/python-libraries-by-ids (vec ids))))
+                             {:changes (u.events/delete-changes (transforms-python.db/python-libraries-by-ids (vec ids))) :user-id (mi/current-user-id)})
       (transforms-python.db/delete-python-libraries! (vec ids))))
   nil)
 

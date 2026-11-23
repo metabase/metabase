@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -265,15 +266,15 @@
   "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, one Channel at a time. Per-row values
   cost one write per row, which an import accepts."
   [rows :- [:sequential ChannelUpdate]]
-  (doseq [{:keys [id] :as row} rows]
-    (update-channels! [id] (dissoc row :id))))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-channels! (mapv :id rows) changes)))
 
 (mu/defn delete-channels! :- :nil
   "Delete the Channels with `ids`, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (events/publish-event! :event/channel-delete (events/delete-event (channel.db/channels-by-ids (vec ids))))
+      (events/publish-event! :event/channel-delete {:changes (u.events/delete-changes (channel.db/channels-by-ids (vec ids))) :user-id (mi/current-user-id)})
       (channel.db/delete-channels! (vec ids))))
   nil)
 
@@ -298,7 +299,7 @@
   (when (seq template-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/channel-template-delete
-                             (events/delete-event (channel.db/channel-templates-by-ids template-ids)))
+                             {:changes (u.events/delete-changes (channel.db/channel-templates-by-ids template-ids)) :user-id (mi/current-user-id)})
       (channel.db/delete-channel-templates! template-ids)))
   nil)
 

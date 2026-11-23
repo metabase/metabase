@@ -777,13 +777,13 @@
                                                                   :type               "category"
                                                                   :values_source_type "static-list"}]
                                               :embedding_params {:p :enabled}
-                                              :embedding_type   :static-legacy}]
+                                              :embedding_type   "static-legacy"}]
       (is (=? {:parameters       [{:id "p" :type :category :values_source_type :static-list}]
                :embedding_params {"p" "enabled"}
                :embedding_type   "static-legacy"}
               (t2/select-one :model/Dashboard :id id)))
       (testing "on update"
-        (t2/update! :model/Dashboard :id id {:embedding_params {:q :locked} :embedding_type :guest})
+        (t2/update! :model/Dashboard :id id {:embedding_params {:q :locked} :embedding_type "guest"})
         (is (=? {:embedding_params {"q" "locked"}
                  :embedding_type   "guest"}
                 (t2/select-one :model/Dashboard :id id)))))))

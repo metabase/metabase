@@ -10,6 +10,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -111,7 +112,7 @@
   "Delete the MetabotConversation `rows`, publish their delete, and return how many there were."
   [rows]
   (when (seq rows)
-    (events/publish-event! :event/metabot-conversation-delete (events/delete-event rows))
+    (events/publish-event! :event/metabot-conversation-delete {:changes (u.events/delete-changes rows) :user-id (mi/current-user-id)})
     (metabot.db/delete-conversations! (mapv :id rows)))
   (count rows))
 

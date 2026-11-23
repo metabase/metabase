@@ -14,6 +14,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -192,7 +193,7 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/test-suite-delete
-                             (events/delete-event (data-testing.db/test-suites-by-ids (vec ids))))
+                             {:changes (u.events/delete-changes (data-testing.db/test-suites-by-ids (vec ids))) :user-id (mi/current-user-id)})
       (data-testing.db/delete-test-suites! (vec ids))))
   nil)
 

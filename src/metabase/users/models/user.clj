@@ -129,7 +129,7 @@
   [user]
   (dissoc user :password :password_salt :reset_token :reset_triggered))
 
-(defn- with-acknowledged-version
+(defn- assoc-acknowledged-version
   "Set the `last-acknowledged-version` user-local setting of a new `user` to the current version."
   [user]
   (assoc user :settings (u/assoc-dissoc (settings-map (:settings user))
@@ -156,7 +156,7 @@
   [user]
   (check-superuser-has-no-tenant user)
   (-> (merge insert-default-values user)
-      with-acknowledged-version
+      assoc-acknowledged-version
       normalize-user-fields
       without-credential-fields))
 
@@ -476,7 +476,7 @@
   "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `opts` and returning
   the number updated."
   [users changes opts]
-  (u/prog1 (users.db/update-users! (mapv :id users) changes)
+  (u/prog1 (users.db/update-users! users changes)
     (events/publish-event! :event/user-update
                            (events/update-event (u/index-by :id users)
                                                 (mapv #(assoc changes :id (:id %)) users)
@@ -526,6 +526,29 @@
   "The ids of the active Users of every Tenant, see [[users.db/active-tenant-user-ids]]."
   users.db/active-tenant-user-ids)
 
+(defn- admin-or-activity-change?
+  "Whether `changes` set the superuser flag or deactivate Users, which cascades to memberships and subscriptions."
+  [changes]
+  (or (some? (:is_superuser changes)) (false? (:is_active changes))))
+
+(defn- write-admin-or-activity-change!
+  "Apply `changes`, which set the superuser flag or deactivate Users, to the Users whose stored rows are `users`:
+  refuse deactivating or demoting the last admin, write and publish, then add or remove the Administrators membership
+  and delete the subscriptions of deactivated Users, publishing the events of the writes with `opts`. Returns the number
+  updated."
+  [users changes opts]
+  (let [superuser?   (:is_superuser changes)
+        deactivates? (false? (:is_active changes))
+        user-ids     (into #{} (map :id) users)
+        admin-ids    (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
+    (when (or deactivates? (false? superuser?))
+      (perms-group-membership/throw-if-last-admins! admin-ids))
+    (u/prog1 (write-users! users changes opts)
+      (when (some? superuser?)
+        (set-admin-memberships! user-ids admin-ids superuser? opts))
+      (when deactivates?
+        (delete-subscriptions! user-ids opts)))))
+
 (mu/defn update-users! :- :int
   "Apply `changes` to the Users with `user-ids` and return the number updated, publishing the events of the writes with
   `opts`; deactivating or demoting the last admin throws, a change of `is_superuser` adds or removes the
@@ -537,26 +560,11 @@
     changes  :- ::users.schema/user.update
     opts     :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
-     (let [superuser?   (:is_superuser changes)
-           deactivates? (false? (:is_active changes))
-           users        (users.db/users-by-ids user-ids)]
+     (let [users (users.db/users-by-ids user-ids)]
        (cond
-         (empty? users)
-         0
-
-         (not (or (some? superuser?) deactivates?))
-         (write-users! users changes opts)
-
-         :else
-         (let [user-ids  (into #{} (map :id) users)
-               admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
-           (when (or deactivates? (false? superuser?))
-             (perms-group-membership/throw-if-last-admins! admin-ids))
-           (u/prog1 (write-users! users changes opts)
-             (when (some? superuser?)
-               (set-admin-memberships! user-ids admin-ids superuser? opts))
-             (when deactivates?
-               (delete-subscriptions! user-ids opts)))))))))
+         (empty? users)                     0
+         (admin-or-activity-change? changes) (write-admin-or-activity-change! users changes opts)
+         :else                              (write-users! users changes opts))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only
@@ -594,7 +602,7 @@
   [_model flag-changes opts]
   (let [stored (u/index-by :id (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes)))]
     (reduce (fn [rows [user-ids changes]]
-              (users.db/update-users! (vec user-ids) changes)
+              (users.db/update-users! (into [] (keep rows) user-ids) changes)
               (let [event (events/update-event rows
                                                (mapv #(assoc changes :id %) user-ids)
                                                (assoc opts :objects (into {} (keep #(when-let [user (get rows %)] [% (user-after user changes)])) user-ids)))]

@@ -65,6 +65,42 @@
                        pairs)]
     (count (field/update-fields-for-sync! rows {:fields (mapv first pairs)}))))
 
+(mu/defn update-fields-by-id-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to each Field of `id->changes` its changes to columns no user set, in one bulk update: the settings of the
+  Fields are read once and their rows once, whatever the number of Fields. Returns the number of Fields updated."
+  [id->changes :- [:map-of ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
+  (if (empty? id->changes)
+    0
+    (let [settings (u/index-by :field_id (sync.db/field-user-settings-for-fields (vec (keys id->changes))))
+          rows     (into []
+                         (keep (fn [[id changes]]
+                                 (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
+                                                                      (settings id)))]
+                                   (when (seq changes)
+                                     (assoc changes :id id)))))
+                         id->changes)]
+      (count (field/update-fields-for-sync! rows)))))
+
+(mu/defn update-tables-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to each of `pairs`, a Table instance sync holds and its changes, the changes to columns no user set: the
+  settings of the Tables are read once, and the Tables whose changes are the same are written together, with the rows
+  sync holds as the rows before the update so that it reads none. Returns the number of Tables updated."
+  [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Table) (mut/dissoc ::warehouse-schema.schema/table.update :id)]]]
+  (let [settings (u/index-by :table_id (sync.db/table-user-settings-for-tables (mapv (comp :id first) pairs)))
+        groups   (group-by second
+                           (into []
+                                 (keep (fn [[table changes]]
+                                         (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
+                                                                              (settings (:id table))))]
+                                           (when (seq changes)
+                                             [table changes]))))
+                                 pairs))]
+    (reduce-kv (fn [updated changes table-pairs]
+                 (+ updated (count (table/update-tables! (mapv (comp :id first) table-pairs) changes
+                                                         {:tables (mapv first table-pairs)}))))
+               0
+               groups)))
+
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
   [table   :- [:or ::lib.schema.id/table (ms/InstanceOf :model/Table)]

@@ -11,6 +11,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -123,13 +124,13 @@
   (-> (t2.before-update/before-update :model/TableUserSettings (merge previous changes))
       (assoc :updated_at (:updated_at previous))))
 
-(defn- with-created
+(defn- add-created
   "`writes`, the writes of one call as `{id {:before row :after row}}`, with `:before` nil for a row the call created
   and `:after` `::deleted` for one it deleted, with the creation of the settings `rows`, the inserted instances."
   [writes rows]
   (reduce #(assoc %1 (:id %2) {:before nil :after %2}) writes rows))
 
-(defn- with-updated
+(defn- add-updated
   "`writes` with the update of the settings `rows`, as they were read, by the changes `changes-of` gives for each."
   [writes rows changes-of]
   (reduce (fn [writes row]
@@ -155,7 +156,7 @@
                          writes
                          rows)]
       (events/publish-event! :event/table-user-settings-delete
-                             (events/delete-event (into [] (keep #(:before (get writes (:id %)))) rows) opts))
+                             (cond-> {:changes (u.events/delete-changes (into [] (keep #(:before (get writes (:id %)))) rows)) :user-id (mi/current-user-id)} (seq (:context opts)) (assoc :context (:context opts)) (:writer opts) (assoc :writer (:writer opts))))
       writes)))
 
 (defn- delete-empty!
@@ -220,7 +221,7 @@
             :when (seq changes)]
       (warehouse-schema.db/update-table-user-settings-by-ids! (mapv (comp :id first) pairs) changes))
     (let [by-id (into {} (map (fn [pair] [(:id (first pair)) (changes-of pair)])) stored+rows)]
-      (with-updated writes (map first stored+rows) (comp by-id :id)))))
+      (add-updated writes (map first stored+rows) (comp by-id :id)))))
 
 (mu/defn create-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings]
   "Insert the TableUserSettings `rows`, their two-column pairs completed from their Tables, write the columns they say a
@@ -232,7 +233,7 @@
       (let [tables   (tables-for rows)
             inserted (vec (warehouse-schema.db/insert-table-user-settings-returning-instances!
                            (mapv #(completed-changes % (tables (:table_id %))) rows)))
-            writes   (delete-empty! (with-created {} inserted) (map :table_id inserted))]
+            writes   (delete-empty! (add-created {} inserted) (map :table_id inserted))]
         (mirror-onto-tables! inserted nil)
         (publish-writes! writes)
         inserted))))
@@ -314,8 +315,8 @@
               {:keys [stored changes inserted]} (update-or-insert-settings!
                                                  id (warehouse-schema.db/table-user-settings id) settings stored-table)
               writes       (-> (if stored
-                                 (with-updated {} [stored] (constantly changes))
-                                 (with-created {} [inserted]))
+                                 (add-updated {} [stored] (constantly changes))
+                                 (add-created {} [inserted]))
                                (delete-empty! [id]))]
           (u/prog1 (count (table/update-tables! [id] settings))
             (publish-writes! writes)))))))
@@ -333,8 +334,8 @@
                          {})
               existing (u/index-by :table_id (warehouse-schema.db/table-user-settings-for-tables table-ids))
               writes   (if-let [missing (not-empty (remove existing table-ids))]
-                         (with-created {} (warehouse-schema.db/insert-table-user-settings-returning-instances!
-                                           (mapv #(completed-changes (assoc settings :table_id %) (tables %)) missing)))
+                         (add-created {} (warehouse-schema.db/insert-table-user-settings-returning-instances!
+                                          (mapv #(completed-changes (assoc settings :table_id %) (tables %)) missing)))
                          {})
               writes   (-> writes
                            (update-settings! (for [table-id table-ids

@@ -227,11 +227,6 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids]))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn cards-by-ids
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

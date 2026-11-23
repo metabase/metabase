@@ -312,6 +312,19 @@
       (u/prog1 (sandbox.db/insert-sandboxes! rows)
         (events/publish-event! :event/sandbox-create (events/create-event <>))))))
 
+(defn- check-sandbox-changes
+  "Throws a 400 unless `changes` to the Sandboxes with `ids`, whose stored rows `stored` holds, satisfy these rules,
+  with the refusal of the first of `ids` that breaks one, in this order for each:
+
+  - a new Card's columns match the Table of the Sandbox
+  - the Sandbox keeps its Table and its group"
+  [ids stored changes]
+  (doseq [id ids
+          :let [before (stored id)]]
+    (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id before)))
+      (check-columns-match-table (merge before changes)))
+    (t2.before-update/before-update :model/Sandbox (merge before changes))))
+
 (mu/defn update-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
   "Apply `changes` to the Sandboxes with `ids` and return those that exist as stored after the update, in the order of
   `ids`, publishing the event of the write; a new Card whose columns do not match the Table is a 400. The refusal of
@@ -324,11 +337,7 @@
       (if (empty? ids)
         []
         (do
-          (doseq [id ids
-                  :let [before (stored id)]]
-            (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id before)))
-              (check-columns-match-table (merge before changes)))
-            (t2.before-update/before-update :model/Sandbox (merge before changes)))
+          (check-sandbox-changes ids stored changes)
           (sandbox.db/update-sandboxes! ids changes)
           (let [after (u/index-by :id (sandbox.db/sandboxes-by-ids (set ids)))]
             (events/publish-event! :event/sandbox-update

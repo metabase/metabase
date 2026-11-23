@@ -467,8 +467,7 @@
       (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
                  group-id (count user-entity-ids))
       (do
-        (doseq [user-id (set/difference current-ids desired-ids)]
-          (perms-group-membership/remove-users-from-groups! [user-id] [group-id]))
+        (perms-group-membership/remove-users-from-groups! (vec (set/difference current-ids desired-ids)) [group-id])
         (perms-group-membership/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
                                                        {:group group-id :user user-id}))))))
 

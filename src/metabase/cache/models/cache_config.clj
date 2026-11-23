@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -270,10 +271,10 @@
   [model model-ids]
   (t2/with-transaction [_conn]
     (when-let [items (not-empty (cache.db/cache-configs-for model model-ids))]
-      (doseq [item items]
-        (events/publish-event! :event/cache-config-delete
-                               (events/delete-event [item]
-                                                    {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}})))
+      (events/publish-event! :event/cache-config-delete
+                             {:changes (u.events/delete-changes (vec items))
+                              :user-id (mi/current-user-id)
+                              :context {:details {}}})
       (cache.db/delete-cache-configs! model (mapv :model_id items)))))
 
 (defn delete-cache-configs-for-deleted-targets!
@@ -336,6 +337,15 @@
     (invalidate-cards databases dashboards questions)
     (invalidate-cache-configs databases dashboards questions)))
 
+(defn- audit-details
+  "The audit details of `row` that the lifecycle `event` of a CacheConfig records beside its columns: for a delete the
+  REST API made, whose context carries `:details`, the change from the deleted config to none; for any other event
+  none, the context carrying them."
+  [row {:keys [operation context]}]
+  (if (and (= :delete operation) (contains? context :details))
+    (caching-change (select-keys row [:strategy :config :model :model_id]) nil)
+    {}))
+
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
 (defmethod app-db-copy/spec :model/CacheConfig [_model]
@@ -345,6 +355,7 @@
   {:track            []
    :track-redacted   [:config :invalidated_at :model :model_id :next_run_at :refresh_automatically :state :strategy]
    :skip             []
+   :details          audit-details
    :context-details? true
    :topics           {:create :cache-config-update
                       :update :cache-config-update

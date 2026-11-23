@@ -26,11 +26,11 @@
        (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
                                                 (swap! update-operations conj [(name model) id updates])
                                                 (count updates))]
-         (#'sync-metadata/update-field-metadata-if-needed!
+         (sync-metadata/update-metadata!
           (driver.u/lib-database (:id db))
           table
-          new-metadata-from-sync
-          metadata-in-application-db)
+          #{new-metadata-from-sync}
+          #{metadata-in-application-db})
          @update-operations)))))
 
 (defn- perform-updates!
@@ -38,11 +38,11 @@
   [new-metadata-from-sync metadata-in-application-db]
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (u/the-id db) :field_order :alphabetical}]
-    (#'sync-metadata/update-field-metadata-if-needed!
+    (sync-metadata/update-metadata!
      (driver.u/lib-database (:id db))
      table
-     new-metadata-from-sync
-     metadata-in-application-db)))
+     #{new-metadata-from-sync}
+     #{metadata-in-application-db})))
 
 (deftest database-type-changed-test
   (testing "test that if database-type changes we will update it in the DB"

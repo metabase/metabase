@@ -13,6 +13,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -107,10 +108,10 @@
                                  (events/update-event stored (mapv #(assoc changes :id %) existing-ids))))))))
 
 (mu/defn update-dimensions-for-import!
-  "Apply each of `rows`, the id of a Dimension and the columns to change, one Dimension at a time."
+  "Apply each of `rows`, the id of a Dimension and the columns to change, one statement for the rows with the same changes."
   [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
-  (doseq [row rows]
-    (update-dimensions! [(:id row)] (dissoc row :id))))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-dimensions! (mapv :id rows) changes)))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, read once for the delete event published right before the statement."
@@ -118,7 +119,7 @@
   (when (seq ids)
     (t2/with-transaction [_conn]
       (when-let [dimensions (not-empty (warehouse-schema.db/dimensions-by-ids ids))]
-        (events/publish-event! :event/dimension-delete (events/delete-event (vec dimensions)))
+        (events/publish-event! :event/dimension-delete {:changes (u.events/delete-changes (vec dimensions)) :user-id (mi/current-user-id)})
         (warehouse-schema.db/delete-dimensions! (mapv :id dimensions))))))
 
 (mu/defn rename-dimensions-for-fields!

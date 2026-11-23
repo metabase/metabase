@@ -408,3 +408,34 @@
                           (counted! #(serialization/load :model/TableUserSettings entities)))))))]
       (load! 1)
       (is (= (load! 2) (load! 6))))))
+
+(deftest sync-and-import-updates-statement-counts-test
+  (testing "the sync update and the import of Fields and Tables, rows that get the same change"
+    (let [counted (fn [n]
+                    (mt/with-temp [:model/Database db {}
+                                   :model/Table {table-id :id} {:db_id (:id db)}]
+                      (let [field-ids (insert-fields! table-id "S" n {})
+                            table-ids (insert-tables! (:id db) n)]
+                        (counted! (fn []
+                                    (field/update-fields-for-sync! (mapv (fn [id] {:id id :description "same" :database_type "SAME"}) field-ids))
+                                    (field/update-fields-for-import! (mapv (fn [id] {:id id :description "imported"}) field-ids))
+                                    (table/update-tables-for-import! (mapv (fn [id] {:id id :description "imported"}) table-ids)))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
+  (testing "the same with a value of its own for each row: one UPDATE and the SELECT of the before-update hook for each
+            distinct change, nothing else per row, so the cost of a row is at most 2 statements"
+    (let [counted (fn [n]
+                    (mt/with-temp [:model/Database db {}
+                                   :model/Table {table-id :id} {:db_id (:id db)}]
+                      (let [field-ids (insert-fields! table-id "D" n {})
+                            table-ids (insert-tables! (:id db) n)]
+                        (counted! (fn []
+                                    (field/update-fields-for-sync!
+                                     (vec (map-indexed (fn [i id] {:id id :description (str "described " i) :database_type (str "TYPE" i)}) field-ids)))
+                                    (field/update-fields-for-import!
+                                     (vec (map-indexed (fn [i id] {:id id :description (str "imported " i)}) field-ids)))
+                                    (table/update-tables-for-import!
+                                     (vec (map-indexed (fn [i id] {:id id :description (str "imported " i)}) table-ids))))))))
+          per-row 6]
+      (counted 1)
+      (is (<= (- (counted 6) (counted 2)) (* per-row 4))))))

@@ -18,6 +18,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.types.core :as types]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -217,7 +218,7 @@
 ;;; them with no statement of the hook's own. [[enforce-effective-type-invariant]] and [[coercion-changes]] are what the
 ;;; expressions must equal, row by row.
 
-(defn- with-derived-type-clauses
+(defn- add-derived-type-clauses
   "`field`, an update, with the types its changes derive. MySQL and MariaDB evaluate the assignments of a statement left to
   right, the later ones reading the columns the earlier ones set, so there the changes go back as a map in an order in
   which the effective type, which reads the stored strategy, comes before the strategy that is cleared."
@@ -236,7 +237,7 @@
     (when (contains? changes :table_id)
       (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
     (cond-> field
-      (seq changes) (with-derived-type-clauses changes))))
+      (seq changes) (add-derived-type-clauses changes))))
 
 (defn- check-permission-keys
   "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
@@ -503,7 +504,7 @@
   (-> (t2.before-update/before-update :model/Field (merge previous changes))
       (assoc :updated_at (:updated_at previous))))
 
-(defn- with-change
+(defn- add-change
   "`changes`, the changes of Fields as `{id {:previous-object :object}}`, with the update of the Field `previous` by
   `row`, the columns it sets, added; a Field changed twice keeps the row it had before the first change."
   [changes previous row]
@@ -531,9 +532,9 @@
       changes
       (do (warehouse-schema.db/clear-fk-targets-to-fields! field-ids)
           (reduce (fn [changes field]
-                    (with-change changes field (cond-> {:fk_target_field_id nil}
-                                                 (= :type/FK (some-> (:semantic_type field) keyword))
-                                                 (assoc :semantic_type nil))))
+                    (add-change changes field (cond-> {:fk_target_field_id nil}
+                                                (= :type/FK (some-> (:semantic_type field) keyword))
+                                                (assoc :semantic_type nil))))
                   changes
                   targeting)))))
 
@@ -578,9 +579,9 @@
         nested (keep #(when-some [active? (active %)] [% active?]) nested)]
     (doseq [[active? pairs] (group-by second nested)]
       (warehouse-schema.db/set-fields-active! (mapv (comp :id first) pairs) active?))
-    (reduce (fn [changes [field active?]] (with-change changes field {:active active?})) changes nested)))
+    (reduce (fn [changes [field active?]] (add-change changes field {:active active?})) changes nested)))
 
-(defn- with-derived-types
+(defn- add-derived-types
   "`row`, an update of the Field `stored`, with the `:coercion_strategy` and `:effective_type` that the row it leaves
   takes: those that follow a changed strategy or base type, and the base type as effective type of a Field with no
   strategy whose stored effective type diverges, which only the stored row can tell."
@@ -596,9 +597,9 @@
 
 (defn- update-fields-by-change!
   "Apply each of `rows`, the id of one of the `stored` Fields, `{id row}`, and the columns to change, with the types
-  [[with-derived-types]] adds; `fresh?` when the function read `stored` itself."
+  [[add-derived-types]] adds; `fresh?` when the function read `stored` itself."
   [stored rows fresh?]
-  (run! #(with-derived-types (get stored (:id %)) %) rows)
+  (run! #(add-derived-types (get stored (:id %)) %) rows)
   (warehouse-schema.db/update-fields! stored rows fresh?))
 
 (def ^:private write-batch-size
@@ -614,6 +615,53 @@
     (cond-> (or stored {})
       (seq missing) (merge (u/index-by :id (warehouse-schema.db/fields missing))))))
 
+(defn- column-changed?
+  "Whether `row`, the id of one of the `stored` Fields, `{id row}`, and its changes, sets `k` to another value than the
+  stored one."
+  [stored {:keys [id] :as row} k]
+  (and (contains? row k)
+       (contains? stored id)
+       (not= (get row k) (get-in stored [id k]))))
+
+(defn- merged-row
+  "`row`, the id of one of the `stored` Fields, `{id row}`, and its changes, with the columns of the stored Field."
+  [stored row]
+  (merge (get stored (:id row)) row))
+
+(defn- fk-target-rows
+  "The Fields of `rows` that the update points at a new foreign key target, as they are once changed."
+  [stored rows]
+  (for [row rows
+        :when (and (:fk_target_field_id row) (column-changed? stored row :fk_target_field_id))]
+    (merged-row stored row)))
+
+(defn- renamed-display-names
+  "A map from id to the new display name of each of `rows` that changes it."
+  [stored rows]
+  (into {}
+        (keep #(when (and (:display_name %) (column-changed? stored % :display_name)) [(:id %) (:display_name %)]))
+        rows))
+
+(defn- deactivated-ids
+  "The ids of the `rows` that deactivate their Field."
+  [rows]
+  (into [] (comp (filter #(false? (:active %))) (map :id)) rows))
+
+(defn- json-unfolding-rows
+  "The Fields of `rows` that the update gives another `json_unfolding`, as they are once changed."
+  [stored rows]
+  (into [] (comp (filter #(column-changed? stored % :json_unfolding)) (map #(merged-row stored %))) rows))
+
+(defn- add-row-changes
+  "`changes`, the changes of Fields as `{id {:previous-object :object}}`, with the update of each of `rows` added."
+  [changes stored rows]
+  (reduce (fn [changes {:keys [id] :as row}]
+            (if-let [previous (stored id)]
+              (add-change changes previous (dissoc row :id))
+              changes))
+          changes
+          rows))
+
 (defn- apply-field-updates!
   "Apply each of `rows`, the id of a Field and the columns to change, to the `stored` Fields, `{id row}`, and the changes
   that follow them, and publish their events, returning the number of Fields updated."
@@ -621,25 +669,12 @@
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
-      (let [changes? (fn [{:keys [id] :as row} k]
-                       (and (contains? row k)
-                            (contains? stored id)
-                            (not= (get row k) (get-in stored [id k]))))
-            merged   (fn [row] (merge (get stored (:id row)) row))
-            _        (check-fk-targets (for [row rows
-                                             :when (and (:fk_target_field_id row) (changes? row :fk_target_field_id))]
-                                         (merged row)))
-            changes  (deactivated! {} (into [] (comp (filter #(false? (:active %))) (map :id)) rows))
-            _        (dimension/rename-dimensions-for-fields!
-                      (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
-            changes  (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
+      (check-fk-targets (fk-target-rows stored rows))
+      (let [deactivated (deactivated! {} (deactivated-ids rows))
+            _           (dimension/rename-dimensions-for-fields! (renamed-display-names stored rows))
+            changes     (json-unfolding-changed! deactivated (json-unfolding-rows stored rows))]
         (u/prog1 (update-fields-by-change! stored rows fresh?)
-          (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
-                                            (if-let [previous (stored id)]
-                                              (with-change changes previous (dissoc row :id))
-                                              changes))
-                                          changes
-                                          rows)))))))
+          (publish-field-updates! (add-row-changes changes stored rows)))))))
 
 (mr/def ::write-opts
   "The options of an update of Fields: `:fields`, the Fields the caller already read, as the rows before it, so that it
@@ -685,10 +720,10 @@
   (update-field-rows! rows nil))
 
 (mu/defn update-fields-for-import!
-  "Apply each of `rows`, the id of a Field and the columns to change, one Field at a time."
+  "Apply each of `rows`, the id of a Field and the columns to change, one statement for the rows with the same changes."
   [rows :- [:sequential ::warehouse-schema.schema/field.update]]
-  (doseq [row rows]
-    (update-fields! [(:id row)] (dissoc row :id))))
+  (doseq [[changes rows] (group-by #(dissoc % :id) rows)]
+    (update-fields! (mapv :id rows) changes)))
 
 (mu/defn change-case!
   "Set each of `columns`, such as `:name`, of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper`
@@ -721,7 +756,7 @@
                    :position        (warehouse-schema.db/update-field-positions! field-id->position)
                    :custom_position (warehouse-schema.db/update-field-custom-positions! field-id->position))
           (publish-field-updates! (reduce (fn [acc {:keys [id] :as previous}]
-                                            (with-change acc previous {column (field-id->position id)}))
+                                            (add-change acc previous {column (field-id->position id)}))
                                           {}
                                           stored)))))))
 
@@ -744,7 +779,7 @@
     (let [fields (u/index-by :id (warehouse-schema.db/fields (into #{} cat levels)))]
       (doseq [ids (reverse levels)
               :when (seq ids)]
-        (events/publish-event! :event/field-delete (events/delete-event (into [] (keep fields) ids)))
+        (events/publish-event! :event/field-delete {:changes (u.events/delete-changes (into [] (keep fields) ids)) :user-id (mi/current-user-id)})
         (warehouse-schema.db/delete-fields! (vec ids))))))
 
 (mu/defn delete-fields!

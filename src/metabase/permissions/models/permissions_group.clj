@@ -270,6 +270,28 @@
   [stored changes]
   (t2.before-update/before-update :model/PermissionsGroup (merge stored changes)))
 
+(defn- check-group-changes
+  "Throws a 400 unless `changes` to the PermissionsGroups with `ids`, whose stored rows `stored` holds, satisfy these
+  rules, with the refusal of the first of `ids` that breaks one:
+
+  - a rename does not take the name of an existing group
+  - no second group of the call is renamed to the same name
+  - the model's before-update hook accepts the change: a magic group keeps its name, no group changes its type or
+    whether it is a tenant group"
+  [ids stored changes]
+  (reduce (fn [renamed? id]
+            (let [before   (stored id)
+                  renames? (and (contains? (mi/effective-changes before changes) :name)
+                                (some? (:name changes)))]
+              (when renames?
+                (if renamed?
+                  (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))
+                  (check-name-not-already-taken (:name changes))))
+              (before-update-in-memory before changes)
+              (or renamed? renames?)))
+          false
+          ids))
+
 (mu/defn update-permissions-groups! :- :nil
   "Apply `changes` to the PermissionsGroups with `ids`, publishing the event of the write; renaming a magic group, or
   to the name of an existing group, is a 400, and so is renaming a second group to the same name. The refusal of the
@@ -279,18 +301,7 @@
   (t2/with-transaction [_conn]
     (let [stored (if (seq ids) (u/index-by :id (permissions.db/permissions-groups-by-ids ids)) {})
           ids    (into [] (comp (distinct) (filter stored)) ids)]
-      (reduce (fn [renamed? id]
-                (let [before   (stored id)
-                      renames? (and (contains? (mi/effective-changes before changes) :name)
-                                    (some? (:name changes)))]
-                  (when renames?
-                    (if renamed?
-                      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))
-                      (check-name-not-already-taken (:name changes))))
-                  (before-update-in-memory before changes)
-                  (or renamed? renames?)))
-              false
-              ids)
+      (check-group-changes ids stored changes)
       (when (seq ids)
         (permissions.db/update-permissions-groups! ids changes)
         (events/publish-event! :event/group-update (events/update-event stored (mapv #(assoc changes :id %) ids))))))
