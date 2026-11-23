@@ -435,20 +435,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
 
     cy.get<CardId>("@singleColumnSourceId").then((sourceId) => {
       H.createQuestionAndDashboard({
-        questionDetails: {
-          name: EMBEDDABLE_CHART_NAME,
-          query: ORDERS_COUNT_BY_MONTH_QUERY,
-          display: "line",
-          enable_embedding: true,
-          visualization_settings: {
-            // visible data points leave the goal marker as the only hover target
-            "line.marker_enabled": true,
-            "graph.metrics": ["count"],
-            "graph.dimensions": ["CREATED_AT"],
-            "graph.show_goal": true,
-            "graph.goal_value": goalRef(sourceId, "TARGET"),
-          },
-        },
+        questionDetails: getEmbeddableChartDetails(sourceId),
         dashboardDetails: {
           name: "Embeddable dashboard",
           enable_embedding: true,
@@ -546,6 +533,65 @@ describe("scenarios > visualizations > dynamic goals", () => {
           });
           H.goalLine().should("exist");
           assertAnswered("@embedDashcardGoalValues", {
+            id: sourceId,
+            column: "TARGET",
+            value: 400,
+          });
+        },
+      );
+    });
+  });
+
+  it("should resolve goals in static embed previews", () => {
+    cy.intercept("GET", "/api/preview_embed/card/*/goal-values").as(
+      "previewCardGoalValues",
+    );
+    cy.intercept(
+      "GET",
+      "/api/preview_embed/dashboard/*/dashcard/*/card/*/goal-values",
+    ).as("previewDashcardGoalValues");
+
+    H.updateSetting("enable-embedding-static", true);
+
+    cy.get<CardId>("@singleColumnSourceId").then((sourceId) => {
+      H.createQuestionAndDashboard({
+        questionDetails: getEmbeddableChartDetails(sourceId),
+        dashboardDetails: { name: "Embeddable dashboard" },
+      }).then(
+        ({ body: { card_id: questionId, dashboard_id: dashboardId } }) => {
+          cy.log("Static embed preview of a question");
+          H.visitQuestion(questionId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "question",
+            resourceId: questionId,
+            activeTab: "parameters",
+            previewMode: "preview",
+          });
+          H.modal().within(() => {
+            H.getIframeBody().within(() => {
+              H.goalLine().should("exist");
+            });
+          });
+          assertAnswered("@previewCardGoalValues", {
+            id: sourceId,
+            column: "TARGET",
+            value: 400,
+          });
+
+          cy.log("Static embed preview of a dashboard");
+          H.visitDashboard(dashboardId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashboardId,
+            activeTab: "parameters",
+            previewMode: "preview",
+          });
+          H.modal().within(() => {
+            H.getIframeBody().within(() => {
+              H.goalLine().should("exist");
+            });
+          });
+          assertAnswered("@previewDashcardGoalValues", {
             id: sourceId,
             column: "TARGET",
             value: 400,
@@ -670,6 +716,23 @@ describe("scenarios > visualizations > dynamic goals", () => {
 
 function goalRef(id: CardId, column: string): GoalForeignColumnRef {
   return { type: "card", id, column };
+}
+
+function getEmbeddableChartDetails(sourceId: CardId) {
+  return {
+    name: EMBEDDABLE_CHART_NAME,
+    query: ORDERS_COUNT_BY_MONTH_QUERY,
+    display: "line" as const,
+    enable_embedding: true,
+    visualization_settings: {
+      // visible data points leave the goal marker as the only hover target
+      "line.marker_enabled": true,
+      "graph.metrics": ["count"],
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.show_goal": true,
+      "graph.goal_value": goalRef(sourceId, "TARGET"),
+    },
+  };
 }
 
 function openGoalMenu(
