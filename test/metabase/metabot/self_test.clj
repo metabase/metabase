@@ -3324,6 +3324,15 @@
                                                                        (constantly "API error")
                                                                        (java.net.SocketTimeoutException.
                                                                         "Read timed out"))))))))
+  (testing "a transport failure that an adapter reports with its own error code"
+    (is (= :request-failed
+           (self/call-failure (ex-info "Ollama did not answer" {:api-error true :error-code :ollama-timeout})))))
+  (testing "an exception that Metabot throws before it sends a request"
+    (are [data] (= :not-configured (self/call-failure (ex-info "boom" (assoc data :api-error true))))
+      {:error-code :invalid-region :status-code 400}
+      {:error-code :credentials-unavailable :status-code 403}
+      ;; `metabase.llm.provider.settings/url-not-allowed-ex` has `:status`, but no provider answered
+      {:error-code :llm-host-not-allowed :status-code 400 :status 400 :llm-host "10.0.0.1"}))
   (testing "a provider connection with an absent setting"
     (is (= :not-configured (self/call-failure (self.core/missing-api-key-ex "Anthropic"))))
     (mt/with-dynamic-fn-redefs [llm.settings/llm-proxy-base-url (constantly nil)]

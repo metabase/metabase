@@ -469,27 +469,35 @@
       (or (provider-failure status error)
           (some more-provider-failures [status error-type error-code])))))
 
-(def ^:private not-configured-error-codes
-  "The `:error-code` of each exception that Metabot throws before it sends a request, because the provider connection
-  has no value that the call can use for a setting: a credential, a base URL, a model, a project, or a proxy that
-  the provider supports. A code for a value in a wrong format, such as `:invalid-region`, is not in this set."
-  #{:llm-not-configured :api-key-missing :proxy-not-configured :proxy-unsupported :base-url-missing :model-missing
-    :project-id-required})
+(def ^:private transport-error-codes
+  "The `:error-code` of each exception for a request that Metabot sent and that got no response from the provider:
+  the provider is unreachable, or the connection timed out or broke.
+
+  [[core/rethrow-api-error!]] sets `:provider-request-failed`. The Ollama and vLLM adapters set their own codes."
+  #{:provider-request-failed
+    :ollama-unreachable :ollama-timeout :ollama-stream-interrupted
+    :vllm-unreachable :vllm-timeout :vllm-stream-interrupted})
 
 (defn call-failure
   "The kind of provider failure that made the LLM call throw `e`, or nil when the provider is not at fault.
 
-  The kinds of [[provider-failure-kind]], and two kinds for a call that got no response from the provider:
-  `:not-configured` for the [[not-configured-error-codes]] (no API key, a stale `llm-metabot-provider`), and
-  `:request-failed` for all others, such as a provider that is unreachable or timed out. Unlike [[provider-error]],
-  this is the same on the managed provider: it says whose the failure is, not what to tell the user."
+  The `:error-code` of a provider API exception gives one of three cases:
+  - `:provider-api-error`: the provider answered with an HTTP error. The kind is its [[provider-failure-kind]].
+  - one of the [[transport-error-codes]]: `:request-failed`.
+  - any other code: `:not-configured`. Metabot threw the exception before it sent a request, because a setting of
+    the provider connection is absent or has a value that Metabot refuses (no API key, a stale
+    `llm-metabot-provider`, an invalid region, a base URL on a network that the policy does not allow).
+
+  Unlike [[provider-error]], this is the same on the managed provider: it says whose the failure is, not what to
+  tell the user."
   [e]
   (let [{:keys [api-error status body error-code]} (ex-data e)]
     (when api-error
       (cond
-        status                                  (provider-failure-kind status (error-object body))
-        (not-configured-error-codes error-code) :not-configured
-        :else                                   :request-failed))))
+        ;; Not the presence of `:status`: an exception of Metabot's own can have one, such as `:llm-host-not-allowed`.
+        (= :provider-api-error error-code) (provider-failure-kind status (error-object body))
+        (transport-error-codes error-code) :request-failed
+        :else                              :not-configured))))
 
 (def ^:private context-overflow-message
   "The overflow 400 text of providers that send no structured code for it.
