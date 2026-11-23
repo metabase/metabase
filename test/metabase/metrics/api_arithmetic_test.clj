@@ -107,6 +107,27 @@
                                                           [:metric {:lib/uuid "b"} (:id metric)]]}})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))))))
+
+(deftest arithmetic-nested-sum-plus-constant-scalar-test
+  (testing "POST /api/metric/dataset without projections computes (A + A) + 123 as one value"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (let [scalar   (fn [expression]
+                       (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                             {:definition {:expression expression}}))
+            baseline (scalar [:metric {:lib/uuid "x"} (:id metric)])
+            response (scalar [:+ {}
+                              [:+ {}
+                               [:metric {:lib/uuid "a"} (:id metric)]
+                               [:metric {:lib/uuid "b"} (:id metric)]]
+                              123])
+            [[base]] (get-in baseline [:data :rows])]
+        (is (= "completed" (:status response)))
+        (is (pos? base))
+        (is (= [[(+ (* 2 base) 123)]]
+               (get-in response [:data :rows])))))))
+
 (deftest arithmetic-nested-expression-test
   (testing "POST /api/metric/dataset with nested (A + B) * C"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"

@@ -14,8 +14,6 @@ export const MetricsViewer = {
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
-  getDimensionPillBarContainer: () =>
-    cy.findByTestId("metrics-viewer-dimension-pill-bar"),
   dimensionPickerSidebar: () =>
     cy.findByTestId("metrics-viewer-dimension-picker-sidebar"),
   getColumnPickerButton: () =>
@@ -39,15 +37,6 @@ export const MetricsViewer = {
       "data-viz-ui-name",
       displayType,
     ),
-  assertAllVizTypes: (displayType: string, expectedLength?: number) => {
-    const subject = MetricsViewer.getAllMetricVisualizations();
-    if (expectedLength !== undefined) {
-      subject.should("have.length", expectedLength);
-    }
-    subject.each(($el) => {
-      cy.wrap($el).should("have.attr", "data-viz-ui-name", displayType);
-    });
-  },
   getMetricControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
     MetricsViewer.getMetricControls()
