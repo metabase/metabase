@@ -595,6 +595,8 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - table-data-edit
 - table-manual-scan
 - table-manual-sync
+- test-suite-run-start
+- test-suite-run-timeout
 - transform-inspect-discover
 - transform-inspect-lens
 - transform-run-canceled
