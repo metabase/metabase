@@ -7,6 +7,7 @@ import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import { getUserIsAdmin } from "metabase/current-user";
+import { AreaTabGroupHeading } from "metabase/nav/components/AreaLayout";
 import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Stack, Text } from "metabase/ui";
@@ -122,7 +123,7 @@ function getSyncedRoots(items: CollectionTreeItem[]): CollectionTreeItem[] {
 
 // Subfolders of the Library's sections share their section's type, so the
 // section itself is the one marked as the Library root.
-function findLibrarySection(
+export function findLibrarySection(
   items: CollectionTreeItem[],
   type: CollectionType,
 ): CollectionTreeItem | undefined {
@@ -221,7 +222,14 @@ export function OfficialDataLinks({
   nonEntityItem,
   hasDataAccess,
   onItemSelect,
-}: Props) {
+  withSubheadings = false,
+}: Props & {
+  /**
+   * PROTOTYPE: "Modern nav - C" groups the Library's Metrics and Datasets
+   * under "Official", and Databases and Models under "Other".
+   */
+  withSubheadings?: boolean;
+}) {
   // The Library's Metrics and Data collections, labeled by what they hold.
   // As tree rows, they expand to list their subfolders when they have any.
   // Until the Library holds a metric, Metrics links to Browse metrics instead.
@@ -241,6 +249,10 @@ export function OfficialDataLinks({
 
   return (
     <>
+      {/* Data Studio's group heading, its text lined up with the rows' icons. */}
+      {withSubheadings && (
+        <AreaTabGroupHeading ps="1.125rem">{t`Official`}</AreaTabGroupHeading>
+      )}
       {!hasLibraryMetrics && (
         <MetricsNavLink
           nonEntityItem={nonEntityItem}
@@ -262,6 +274,11 @@ export function OfficialDataLinks({
           )
         }
       />
+      {withSubheadings && (
+        <AreaTabGroupHeading ps="1.125rem" pt="md">
+          {t`Other`}
+        </AreaTabGroupHeading>
+      )}
       {hasDataAccess && (
         <DatabasesNavLink
           nonEntityItem={nonEntityItem}

@@ -3,6 +3,8 @@ import { useCallback } from "react";
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -21,6 +23,7 @@ import {
 export const useGetEntityPickerIcon = () => {
   const getIcon = useGetIcon();
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
+  const { variant: navVariant } = useNavVariant();
 
   return useCallback(
     (
@@ -59,6 +62,25 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "files";
       }
 
+      // PROTOTYPE: "Modern nav - C" uses its nav tabs' icons: Official
+      // collections, Collections, Data, External collections.
+      if (navVariant === "modern-nav-c") {
+        if (item.id === SYNCED_CONTENT_ID) {
+          icon.name = "folder_bookmark";
+        } else if (isRootCollection) {
+          icon.name = "folder";
+        } else if (item.model === "collection" && item.type === "library") {
+          icon.name = isGitIntegrationEnabled ? "grid_2x2_check" : "grid_2x2";
+        } else if (
+          item.model === "collection" &&
+          item.id === "root" &&
+          "namespace" in item &&
+          item.namespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+        ) {
+          icon.name = "globe";
+        }
+      }
+
       if (isSelected && !icon.color) {
         icon.color = "text-primary-inverse";
       }
@@ -73,7 +95,7 @@ export const useGetEntityPickerIcon = () => {
 
       return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
-    [getIcon, isGitIntegrationEnabled],
+    [getIcon, isGitIntegrationEnabled, navVariant],
   );
 };
 

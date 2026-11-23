@@ -34,8 +34,11 @@ export type MinimalAppBarLayout = {
   alignWithSelector?: string;
 };
 
-// Clears the toggle pinned to the bar's left corner.
+// Clears the toggle pinned to the bar's left corner (nav closed only).
 const MIN_BREADCRUMBS_INSET_PX = 56;
+// With the nav open there's no toggle, so the breadcrumbs can sit as far left
+// as the page's title; this is only the fallback when there's no title.
+const OPEN_NAV_FALLBACK_INSET_PX = 24;
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
@@ -94,7 +97,10 @@ export const AppBarLarge = ({
   minimalLayout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-  const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
+  // PROTOTYPE: the minimal bar is about its breadcrumbs, so it always shows
+  // them (it also shows with the nav open in "Modern nav - C").
+  const isInfoVisible =
+    isMinimal || !isNavBarVisible || isQuestionLineageVisible;
   const isGitSyncVisible = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncVisible,
   );
@@ -126,8 +132,11 @@ export const AppBarLarge = ({
   const alignedInset = useAlignedInset(
     minimalBarRef,
     isMinimal ? minimalLayout?.alignWithSelector : undefined,
-    MIN_BREADCRUMBS_INSET_PX,
+    isNavBarOpen ? 0 : MIN_BREADCRUMBS_INSET_PX,
   );
+  const fallbackInset = isNavBarOpen
+    ? OPEN_NAV_FALLBACK_INSET_PX
+    : MIN_BREADCRUMBS_INSET_PX;
 
   if (isMinimal) {
     return (
@@ -139,19 +148,27 @@ export const AppBarLarge = ({
         pos="relative"
         align="center"
         h={APP_BAR_HEIGHT}
-        pl={alignedInset ?? MIN_BREADCRUMBS_INSET_PX}
+        pl={alignedInset ?? fallbackInset}
         pr="lg"
         bg={minimalLayout?.background ?? "background_page-primary"}
       >
         {/* Pinned to the corner, so the breadcrumbs can start where the
-            page's heading does. */}
-        <Box
-          pos="absolute"
-          // Plain CSS lengths: `left`/`top` don't take theme spacing names.
-          style={{ left: "1rem", top: "50%", transform: "translateY(-50%)" }}
-        >
-          <NavToggleActionIcon isNavbarOpen={false} onToggle={onToggleNavbar} />
-        </Box>
+            page's heading does. The open nav has its own toggle. */}
+        {!isNavBarOpen && (
+          <Box
+            pos="absolute"
+            // Plain CSS lengths: `left`/`top` don't take theme spacing names.
+            style={{ left: "1rem", top: "50%", transform: "translateY(-50%)" }}
+            // PROTOTYPE: what `useNavToggleAlignedPadding` lines titles up
+            // with (the closed nav keeps its own, hidden, toggle mounted).
+            data-nav-toggle-anchor
+          >
+            <NavToggleActionIcon
+              isNavbarOpen={false}
+              onToggle={onToggleNavbar}
+            />
+          </Box>
+        )}
         {info}
       </Flex>
     );

@@ -14,7 +14,10 @@ import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/mo
 import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
 import { useIsSpaceSwitcherHeadingShown } from "metabase/nav/prototype/space-switcher-heading-store";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -254,7 +257,7 @@ export const AppSwitcher = ({
     setModalOpen(null);
   };
 
-  if (!target && variant === "no-top-nav" && isHeadingShown) {
+  if (!target && isModernNav(variant) && isHeadingShown) {
     return null;
   }
 

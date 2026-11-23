@@ -1,1 +1,1 @@
-export { CollectionBadge } from "./CollectionBadge";
+export { CollectionBadge, type CollectionBadgeIcon } from "./CollectionBadge";

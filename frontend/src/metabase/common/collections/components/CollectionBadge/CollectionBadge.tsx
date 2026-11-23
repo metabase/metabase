@@ -9,6 +9,7 @@ import { getName } from "metabase/utils/name";
 import type {
   CollectionId,
   Collection as CollectionType,
+  IconName,
 } from "metabase-types/api";
 
 const IRREGULAR_ICON_WIDTH = 16;
@@ -20,16 +21,34 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
+/**
+ * PROTOTYPE: how a crumb shows its icon — hidden, or replaced based on the
+ * full collection (e.g. "Modern nav - C" marks official collections).
+ */
+export type CollectionBadgeIcon =
+  | { kind: "default" }
+  | { kind: "hidden" }
+  | {
+      kind: "custom";
+      getIcon: (collection: CollectionType) => IconName | null;
+      /** Icon size in px, for both custom and default icons. */
+      size?: number;
+    };
+
 type CollectionBadgeInnerProps = {
   collection: CollectionType;
   showTooltip?: boolean;
   onClick?: () => void;
+  icon?: CollectionBadgeIcon;
+  isRegularWeight?: boolean;
 };
 
 const CollectionBadgeInner = ({
   collection,
   showTooltip,
   onClick,
+  icon: iconMode = { kind: "default" },
+  isRegularWeight,
 }: CollectionBadgeInnerProps) => {
   const tc = useTranslateContent();
   const getIcon = useGetIcon();
@@ -39,16 +58,26 @@ const CollectionBadgeInner = ({
   }
 
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
-  const icon = {
+  const defaultIcon = {
     ...getIcon({ ...collection, model: "collection" }),
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
+  const customIconName =
+    iconMode.kind === "custom" ? iconMode.getIcon(collection) : null;
+  const icon =
+    iconMode.kind === "hidden"
+      ? undefined
+      : customIconName
+        ? { name: customIconName, color: undefined }
+        : defaultIcon;
 
   return (
     <Breadcrumb
-      icon={icon.name}
-      iconColor={icon.color}
+      icon={icon?.name}
+      iconColor={icon?.color}
+      iconSize={iconMode.kind === "custom" ? iconMode.size : undefined}
       showTooltip={showTooltip}
+      isRegularWeight={isRegularWeight}
       to={
         onClick ? undefined : modelToUrl({ model: "collection", ...collection })
       }
@@ -67,12 +96,16 @@ type CollectionBadgeProps = {
   collectionId?: CollectionId;
   showTooltip?: boolean;
   onClick?: () => void;
+  icon?: CollectionBadgeIcon;
+  isRegularWeight?: boolean;
 };
 
 export const CollectionBadge = ({
   collectionId,
   showTooltip,
   onClick,
+  icon,
+  isRegularWeight,
 }: CollectionBadgeProps) => {
   const { data: collection } = useGetCollectionQuery({
     id: collectionId || "root",
@@ -85,6 +118,8 @@ export const CollectionBadge = ({
       collection={collection}
       showTooltip={showTooltip}
       onClick={onClick}
+      icon={icon}
+      isRegularWeight={isRegularWeight}
     />
   );
 };

@@ -3,10 +3,13 @@ import {
   type ComponentProps,
   Fragment,
   type ReactElement,
+  createContext,
   isValidElement,
+  useContext,
 } from "react";
 
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { Box, Flex } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
@@ -14,17 +17,28 @@ import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
+/**
+ * PROTOTYPE: "Modern nav - C" sets the data crumbs under a question's title
+ * like its collection breadcrumbs: regular weight, 12px icons. Context, so
+ * crumbs built elsewhere and passed in as parts pick it up too.
+ */
+const CompactCrumbsContext = createContext(false);
+
 const HeaderBreadcrumb = ({
   className,
   iconClassName,
   ...props
-}: ComponentProps<typeof Breadcrumb>) => (
-  <Breadcrumb
-    className={cx(HeaderBreadcrumbsS.HeaderBreadcrumb, className)}
-    iconClassName={cx(HeaderBreadcrumbsS.HeaderBreadcrumbIcon, iconClassName)}
-    {...props}
-  />
-);
+}: ComponentProps<typeof Breadcrumb>) => {
+  const isCompact = useContext(CompactCrumbsContext);
+  return (
+    <Breadcrumb
+      className={cx(HeaderBreadcrumbsS.HeaderBreadcrumb, className)}
+      iconClassName={cx(HeaderBreadcrumbsS.HeaderBreadcrumbIcon, iconClassName)}
+      {...props}
+      {...(isCompact && { iconSize: 12, isRegularWeight: true })}
+    />
+  );
+};
 
 function getBadgeInactiveColor({
   variant,
@@ -54,45 +68,49 @@ export function HeadBreadcrumbs({
   ...props
 }: HeadBreadcrumbsProps) {
   const { isObjectDetail, ...rest } = props;
+  const { variant: navVariant } = useNavVariant();
+  const isCompact = variant === "subhead" && navVariant === "modern-nav-c";
   return (
-    <Flex
-      align="center"
-      wrap="wrap"
-      data-testid="head-crumbs-container"
-      className={cx(
-        HeaderBreadcrumbsS.Container,
-        { [HeaderBreadcrumbsS.headVariant]: variant === "head" },
-        className,
-      )}
-      {...rest}
-    >
-      {parts.map((part, index) => {
-        const isLast = index === parts.length - 1;
-        const badgeInactiveColor =
-          inactiveColor || getBadgeInactiveColor({ variant, isLast });
-        return (
-          <Fragment key={index}>
-            {isDataSourceReactElement(part) ? (
-              part
-            ) : (
-              <HeaderBreadcrumb
-                to={part.href}
-                color={badgeInactiveColor}
-                icon={part.icon}
-              >
-                {part.name}
-              </HeaderBreadcrumb>
-            )}
-            {!isLast &&
-              (isDividerReactElement(divider) ? (
-                divider
+    <CompactCrumbsContext.Provider value={isCompact}>
+      <Flex
+        align="center"
+        wrap="wrap"
+        data-testid="head-crumbs-container"
+        className={cx(
+          HeaderBreadcrumbsS.Container,
+          { [HeaderBreadcrumbsS.headVariant]: variant === "head" },
+          className,
+        )}
+        {...rest}
+      >
+        {parts.map((part, index) => {
+          const isLast = index === parts.length - 1;
+          const badgeInactiveColor =
+            inactiveColor || getBadgeInactiveColor({ variant, isLast });
+          return (
+            <Fragment key={index}>
+              {isDataSourceReactElement(part) ? (
+                part
               ) : (
-                <Divider char={divider} />
-              ))}
-          </Fragment>
-        );
-      })}
-    </Flex>
+                <HeaderBreadcrumb
+                  to={part.href}
+                  color={badgeInactiveColor}
+                  icon={part.icon}
+                >
+                  {part.name}
+                </HeaderBreadcrumb>
+              )}
+              {!isLast &&
+                (isDividerReactElement(divider) ? (
+                  divider
+                ) : (
+                  <Divider char={divider} />
+                ))}
+            </Fragment>
+          );
+        })}
+      </Flex>
+    </CompactCrumbsContext.Provider>
   );
 }
 

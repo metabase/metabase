@@ -16,6 +16,7 @@ import { getCollectionItemsOptions } from "metabase/common/components/Pickers/ut
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
@@ -35,6 +36,7 @@ import {
 import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
+  IconName,
   SchemaName,
   SearchModel,
   SearchRequest,
@@ -181,6 +183,9 @@ function LibraryRootItemList({
   libraryCollectionId: CollectionItem["id"];
 }) {
   const { setPath } = useMiniPickerContext();
+  // PROTOTYPE: the sections look like the nav's: Datasets (table icon, or
+  // "Modern nav - C"'s grid-with-check) and Metrics (metric icon).
+  const { variant: navVariant } = useNavVariant();
 
   const { data, isLoading } = useListCollectionItemsQuery({
     id: libraryCollectionId,
@@ -190,6 +195,7 @@ function LibraryRootItemList({
     type Section = {
       key: string;
       name: string;
+      icon: IconName;
       type: LibrarySubCollectionType;
       realCollection?: CollectionItem;
       hasPromotedChildren: boolean;
@@ -198,13 +204,16 @@ function LibraryRootItemList({
     const sectionDefs: Section[] = [
       {
         key: "data",
-        name: t`Data`,
+        // PROTOTYPE: was "Data"; the nav calls this section "Datasets".
+        name: t`Datasets`,
+        icon: navVariant === "modern-nav-c" ? "grid_2x2_check" : "table",
         type: "library-data",
         hasPromotedChildren: false,
       },
       {
         key: "metrics",
         name: t`Metrics`,
+        icon: "metric",
         type: "library-metrics",
         hasPromotedChildren: false,
       },
@@ -231,7 +240,7 @@ function LibraryRootItemList({
     }
 
     return sectionDefs.filter((s) => s.realCollection || s.hasPromotedChildren);
-  }, [data]);
+  }, [data, navVariant]);
 
   if (isLoading) {
     return <MiniPickerListLoader />;
@@ -245,7 +254,9 @@ function LibraryRootItemList({
         return (
           <MiniPickerItem
             key={section.key}
-            name={collection?.name ?? section.name}
+            // The nav's section names, not the collections' own.
+            name={section.name}
+            icon={section.icon}
             model="collection"
             isFolder
             onClick={() => {
@@ -254,7 +265,7 @@ function LibraryRootItemList({
                   {
                     model: "collection",
                     id: collection.id,
-                    name: collection.name,
+                    name: section.name,
                     type: collection.type,
                   },
                 ]);

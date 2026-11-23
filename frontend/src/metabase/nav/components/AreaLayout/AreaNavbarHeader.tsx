@@ -5,7 +5,10 @@ import {
   SpaceSwitcherHeading,
   getSpaceHeading,
 } from "metabase/nav/prototype/SpaceSwitcherHeading";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { Box, Flex, Group, Text } from "metabase/ui";
 
 import { useGetCurrentApp } from "../AppSwitcher/useGetCurrentApp";
@@ -55,7 +58,7 @@ export function AreaNavbarHeader({
           )}
         </Box>
         {isNavbarOpened &&
-          (variant === "no-top-nav" ? (
+          (isModernNav(variant) ? (
             <Box c="text-primary" miw={0}>
               <SpaceSwitcherHeading label={spaceHeading} />
             </Box>

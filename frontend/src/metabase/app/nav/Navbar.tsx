@@ -6,7 +6,10 @@ import { getUser } from "metabase/current-user";
 import { getDashboard } from "metabase/dashboard/shell-selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
@@ -53,7 +56,7 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
       location={location}
       params={params}
       dashboard={dashboard}
-      header={variant === "no-top-nav" ? <NoTopNavHeader /> : undefined}
+      header={isModernNav(variant) ? <NoTopNavHeader /> : undefined}
     />
   );
 }

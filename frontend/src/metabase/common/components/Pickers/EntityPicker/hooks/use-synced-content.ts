@@ -19,13 +19,13 @@ export function isRootCollectionItem(item: OmniPickerItem): boolean {
   );
 }
 
-/** The "Synced content" root folder: the root's synced collections. */
+/** The "Official collections" root folder: the root's synced collections. */
 export function getSyncedContentItem(
   below: CollectionItemModel[],
 ): OmniPickerCollectionItem {
   return {
     id: SYNCED_CONTENT_ID,
-    name: t`Synced content`,
+    name: t`Official collections`,
     model: "collection",
     namespace: null,
     can_write: false,
@@ -36,14 +36,28 @@ export function getSyncedContentItem(
   };
 }
 
+// Models a picker can put things into rather than pick to use.
+const DESTINATION_MODELS: readonly string[] = [
+  "collection",
+  "dashboard",
+  "document",
+];
+
 /**
  * PROTOTYPE: with git integration on, synced collections are a separate tree
- * from Explorations. "Synced content" is only a save/move destination when
- * the instance can push to git (read-write).
+ * from the other collections. As a save/move destination, "Official
+ * collections" is only offered when the instance can push to git
+ * (read-write); pickers that pick things to use (e.g. a question's starting
+ * data) always offer it.
  */
-export function useSyncedContent() {
+export function useSyncedContent({
+  models = [],
+}: { models?: readonly string[] } = {}) {
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
   const isReadWrite = useSetting("remote-sync-type") !== "read-only";
+  const isDestinationPicker =
+    models.length > 0 &&
+    models.every((model) => DESTINATION_MODELS.includes(model));
   const syncedCollectionIds = useSyncedCollectionIds({
     skip: !isGitIntegrationEnabled,
   });
@@ -59,7 +73,8 @@ export function useSyncedContent() {
 
   return {
     isGitIntegrationEnabled,
-    showSyncedContent: isGitIntegrationEnabled && isReadWrite,
+    showSyncedContent:
+      isGitIntegrationEnabled && (isReadWrite || !isDestinationPicker),
     isSyncedCollection,
   };
 }

@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { getPickerCollectionName } from "metabase/common/components/Pickers/utils";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -32,6 +33,7 @@ export function SourceTableBreadcrumbs({
   const tableId = Lib.primarySourceTableId(query);
   const isSubhead = variant === "subhead";
   const hasTableLink = isSubhead || isObjectDetail;
+  const { variant: navVariant } = useNavVariant();
 
   const { data: table, isLoading } = useGetTableQuery(
     tableId != null ? { id: tableId } : skipToken,
@@ -63,7 +65,13 @@ export function SourceTableBreadcrumbs({
         <HeadBreadcrumbs.Breadcrumb
           key="collection"
           to={Urls.collection(collection)}
-          icon="repository"
+          icon={
+            // PROTOTYPE: "Modern nav - C" marks the Library's Datasets (and
+            // its subfolders) with its Data icon.
+            navVariant === "modern-nav-c" && collection.type === "library-data"
+              ? "grid_2x2_check"
+              : "repository"
+          }
         >
           {/* PROTOTYPE: the Library's sections use the nav's names. */}
           {getPickerCollectionName(collection)}

@@ -6,7 +6,10 @@ import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getUserIsAdmin } from "metabase/current-user";
 import { SpaceSwitcherHeading } from "metabase/nav/prototype/SpaceSwitcherHeading";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -37,7 +40,7 @@ export const AdminNavbar = ({
   const navigate = useNavigate();
   // PROTOTYPE: in "No top nav", "Metabase Admin" opens the space switcher.
   const { variant } = useNavVariant();
-  const hasSpaceSwitcherHeading = variant === "no-top-nav";
+  const hasSpaceSwitcherHeading = isModernNav(variant);
 
   useRegisterShortcut([
     {

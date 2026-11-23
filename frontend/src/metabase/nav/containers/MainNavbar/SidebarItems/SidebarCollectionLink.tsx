@@ -91,7 +91,12 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection, { isTenantUser });
+    const collectionIcon = getCollectionIcon(collection, { isTenantUser });
+    // PROTOTYPE: plain folders show as open while expanded.
+    const icon =
+      isExpanded && collectionIcon.name === "folder"
+        ? { ...collectionIcon, name: "folder_open" as const }
+        : collectionIcon;
 
     const content = (
       <>

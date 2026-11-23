@@ -14,6 +14,7 @@ import {
   useHasTokenFeature,
 } from "metabase/common/hooks";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { useTenantsEnabled } from "metabase/nav/prototype/use-tenants-enabled";
 import {
   PLUGIN_DATA_APPS,
@@ -64,7 +65,8 @@ export const useRootItems = () => {
   const hasTenants = useSetting("use-tenants") && isTenantsSimulatedOn;
   const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
-  const { showSyncedContent } = useSyncedContent();
+  const { variant: navVariant } = useNavVariant();
+  const { showSyncedContent } = useSyncedContent({ models });
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
@@ -152,8 +154,32 @@ export const useRootItems = () => {
     isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
-  return { items: rootItems, isLoading };
+  // PROTOTYPE: "Modern nav - C" names the first column like its nav tabs.
+  const items =
+    navVariant === "modern-nav-c"
+      ? rootItems.map(getVariantCRootItem)
+      : rootItems;
+
+  return { items, isLoading };
 };
+
+/**
+ * PROTOTYPE: a first-column item as "Modern nav - C"'s nav names it: shared
+ * tenant collections are "External collections". (Synced content, the root
+ * collection and the Library already take the nav's names — "Official
+ * collections", "Collections" and "Data" — wherever they're shown.)
+ */
+function getVariantCRootItem(item: OmniPickerItem): OmniPickerItem {
+  if (
+    item.model === "collection" &&
+    item.id === "root" &&
+    "namespace" in item &&
+    item.namespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+  ) {
+    return { ...item, name: t`External collections` };
+  }
+  return item;
+}
 
 async function getRootItems({
   searchQuery,
@@ -201,16 +227,6 @@ async function getRootItems({
       name: t`Search results for "${searchQuery}"`,
       below: validCollectionModels,
     });
-  }
-
-  // PROTOTYPE: collections synced from git, as their own tree. Only offered
-  // when the instance can push to git, since otherwise they're read-only.
-  if (
-    showSyncedContent &&
-    options?.hasRootCollection &&
-    namespaces.includes(null)
-  ) {
-    collectionItems.push(getSyncedContentItem(validCollectionModels));
   }
 
   if (options.hasLibrary && libraryCollection && namespaces.includes(null)) {
@@ -278,6 +294,17 @@ async function getRootItems({
       here: ["collection"],
       below: validCollectionModels,
     });
+  }
+
+  // PROTOTYPE: collections synced from git, as their own tree right above the
+  // rest. As a save/move destination, only offered when the instance can
+  // push to git, since otherwise they're read-only (see useSyncedContent).
+  if (
+    showSyncedContent &&
+    options?.hasRootCollection &&
+    namespaces.includes(null)
+  ) {
+    collectionItems.push(getSyncedContentItem(validCollectionModels));
   }
 
   if (options?.hasRootCollection && namespaces.includes(null)) {

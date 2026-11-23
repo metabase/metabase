@@ -5,16 +5,32 @@ import { useCallback } from "react";
 export const NAV_VARIANTS = [
   { id: "sections", label: "Sections" },
   { id: "tabs", label: "Tabs" },
-  { id: "no-top-nav", label: "No top nav" },
+  { id: "no-top-nav", label: "Modern nav - A" },
+  { id: "modern-nav-b", label: "Modern nav - B" },
+  { id: "modern-nav-c", label: "Modern nav - C" },
+  { id: "modern-nav-d", label: "Modern nav - D" },
 ] as const;
 
 export type NavVariant = (typeof NAV_VARIANTS)[number]["id"];
+
+/**
+ * The "Modern nav" variants: no top bar, the nav's own header, and vertical
+ * tabs. They differ only in how the tabs are named, ordered and grouped.
+ */
+export function isModernNav(variant: NavVariant): boolean {
+  return (
+    variant === "no-top-nav" ||
+    variant === "modern-nav-b" ||
+    variant === "modern-nav-c" ||
+    variant === "modern-nav-d"
+  );
+}
 
 const STORAGE_KEY = "prototype-nav-variant";
 const URL_PARAM = "v";
 
 // What the app opens on, unless a `?v=N` link says otherwise.
-const DEFAULT_VARIANT: NavVariant = "no-top-nav";
+const DEFAULT_VARIANT: NavVariant = "modern-nav-c";
 
 function isNavVariant(value: unknown): value is NavVariant {
   return NAV_VARIANTS.some((variant) => variant.id === value);

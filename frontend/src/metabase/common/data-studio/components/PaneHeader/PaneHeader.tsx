@@ -27,6 +27,11 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   showAppSwitcher?: boolean;
   /** PROTOTYPE: shown before the breadcrumbs, e.g. an open-nav button. */
   breadcrumbsLeading?: ReactNode;
+  /**
+   * PROTOTYPE: centers the breadcrumbs on the main nav's 52px header beside
+   * the page ("Modern nav" variants), keeping the title where it was.
+   */
+  isBreadcrumbsAlignedWithNavHeader?: boolean;
 }
 
 export const PaneHeader = ({
@@ -39,13 +44,34 @@ export const PaneHeader = ({
   breadcrumbs,
   showAppSwitcher = true,
   breadcrumbsLeading,
+  isBreadcrumbsAlignedWithNavHeader = false,
   ...rest
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xxs" {...rest}>
-      <Flex mb="xl" mt="lg" w="100%" h="xxl">
+      <Flex
+        // Aligned: 4px + 6px + half the 32px row = 26px, the nav header's
+        // center; the 10px taken from above goes below, so the title stays.
+        mt={isBreadcrumbsAlignedWithNavHeader ? 6 : "lg"}
+        mb={
+          isBreadcrumbsAlignedWithNavHeader
+            ? "calc(var(--mantine-spacing-xl) + 10px)"
+            : "xl"
+        }
+        w="100%"
+        h="xxl"
+        pos="relative"
+      >
+        {/* Hangs in the margin left of the breadcrumbs, so they stay lined
+            up with the title whether or not it's there. */}
         {breadcrumbsLeading && (
-          <Box mr="sm" style={{ alignSelf: "center" }}>
+          <Box
+            pos="absolute"
+            right="100%"
+            mr="sm"
+            top="50%"
+            style={{ transform: "translateY(-50%)" }}
+          >
             {breadcrumbsLeading}
           </Box>
         )}

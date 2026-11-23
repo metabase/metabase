@@ -23,6 +23,8 @@ interface Props {
   showTooltip?: boolean;
   to?: string;
   onClick?: () => void;
+  /** PROTOTYPE: regular weight instead of bold. */
+  isRegularWeight?: boolean;
 }
 
 export const Breadcrumb = ({
@@ -36,6 +38,7 @@ export const Breadcrumb = ({
   showTooltip = false,
   to,
   onClick,
+  isRegularWeight = false,
 }: Props) => {
   const isLink = typeof to === "string" && to.length > 0;
 
@@ -65,7 +68,7 @@ export const Breadcrumb = ({
       <Ellipsified
         c={undefined} // to avoid inline style with would have higher specificity than CSS in Breadcrumb.module.css
         className={S.text}
-        fw="bold"
+        fw={isRegularWeight ? "normal" : "bold"}
         lh="normal"
         showTooltip={showTooltip}
       >

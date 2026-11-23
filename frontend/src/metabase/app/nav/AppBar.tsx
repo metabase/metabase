@@ -65,6 +65,12 @@ function getMinimalAppBarLayout(pathname: string): MinimalAppBarLayout {
       alignWithSelector: '[data-testid="dashboard-name-heading"]',
     };
   }
+  if (/^\/question\/\d+/.test(pathname)) {
+    return {
+      background: "background_page-primary",
+      alignWithSelector: '[data-testid="saved-question-header-title"]',
+    };
+  }
   const isSecondaryPage =
     pathname === "/" ||
     pathname.startsWith("/browse") ||

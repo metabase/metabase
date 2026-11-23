@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, ReactNode, Ref } from "react";
 
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
@@ -11,6 +11,8 @@ export type ViewSectionProps = FlexProps & {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
+  /** PROTOTYPE: lets a header measure itself (React 19 passes it through). */
+  ref?: Ref<HTMLDivElement>;
 };
 
 export const ViewSection = ({

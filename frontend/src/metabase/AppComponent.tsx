@@ -28,14 +28,20 @@ import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import { hasOwnNavOpenButton } from "metabase/nav/prototype/NavOpenButton";
+import {
+  hasOwnNavOpenButton,
+  hasPinnedBreadcrumbBar,
+} from "metabase/nav/prototype/NavOpenButton";
 import { NavVariantPicker } from "metabase/nav/prototype/NavVariantPicker";
 import {
   PageMetabotButtonFallback,
   PageMetabotButtonProvider,
 } from "metabase/nav/prototype/PageMetabotButton";
 import { useSyncGitIntegrationAtStartup } from "metabase/nav/prototype/use-git-integration-enabled";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -118,13 +124,21 @@ export function App() {
   // PROTOTYPE: keeps plugins' startup view of git integration current.
   useSyncGitIntegrationAtStartup();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
-  const isNoTopNav =
-    navVariant === "no-top-nav" && isNavBarEnabled && !isAdminApp;
+  const isNoTopNav = isModernNav(navVariant) && isNavBarEnabled && !isAdminApp;
   // On query builder pages the header carries the open button instead, so
   // the nav-closed bar isn't needed there either.
+  // "Modern nav - C" instead keeps a breadcrumb bar over its main pages, nav
+  // open or closed, in the page's column so it sits beside the open nav.
+  const showPinnedBreadcrumbBar =
+    isAppBarVisible &&
+    !isUsageAnalyticsContent &&
+    isNoTopNav &&
+    navVariant === "modern-nav-c" &&
+    hasPinnedBreadcrumbBar(location.pathname);
   const showAppBar =
     isAppBarVisible &&
     !isUsageAnalyticsContent &&
+    !showPinnedBreadcrumbBar &&
     !(isNoTopNav && (isNavbarOpen || hasOwnNavOpenButton(location.pathname)));
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
@@ -177,22 +191,29 @@ export function App() {
                 ) : (
                   isNavBarEnabled && <Navbar />
                 )}
-                <Box
-                  component="main"
-                  ref={setViewportElement}
-                  className={cx(CS.overflowAuto, S.printOverflowVisible)}
-                  w="100%"
-                  h="100%"
-                  pos="relative"
-                  style={{ scrollMarginTop: APP_BAR_HEIGHT }}
-                >
-                  <ContentViewportContext.Provider
-                    value={viewportElement ?? null}
+                {/* PROTOTYPE: a column, so the pinned breadcrumb bar can sit
+                    above the page; always there, so toggling the bar doesn't
+                    remount the page. */}
+                <Flex direction="column" w="100%" h="100%" miw={0}>
+                  {showPinnedBreadcrumbBar && <AppBarContainer isMinimal />}
+                  <Box
+                    component="main"
+                    ref={setViewportElement}
+                    className={cx(CS.overflowAuto, S.printOverflowVisible)}
+                    w="100%"
+                    flex="1 1 0"
+                    mih={0}
+                    pos="relative"
+                    style={{ scrollMarginTop: APP_BAR_HEIGHT }}
                   >
-                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                  </ContentViewportContext.Provider>
-                  <PageMetabotButtonFallback />
-                </Box>
+                    <ContentViewportContext.Provider
+                      value={viewportElement ?? null}
+                    >
+                      {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                    </ContentViewportContext.Provider>
+                    <PageMetabotButtonFallback />
+                  </Box>
+                </Flex>
                 <UndoListing />
                 <StatusListing />
                 <NewModals />

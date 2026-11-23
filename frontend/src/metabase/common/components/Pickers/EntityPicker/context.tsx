@@ -44,9 +44,12 @@ export const EntityPickerProvider = ({
     showsDataApps: shouldShowDataApps(value),
   });
 
-  // PROTOTYPE: a value inside a synced collection opens under "Synced
-  // content" rather than "Saved", where synced collections are hidden.
-  const { showSyncedContent, isSyncedCollection } = useSyncedContent();
+  // PROTOTYPE: a value inside a synced collection opens under "Official
+  // collections" rather than "Collections", where synced collections are
+  // hidden.
+  const { showSyncedContent, isSyncedCollection } = useSyncedContent({
+    models: value.models,
+  });
   const [rootItem, firstChild] = rawPath;
   const path =
     showSyncedContent &&

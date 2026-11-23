@@ -9,7 +9,10 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useNavigate } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
@@ -56,7 +59,7 @@ export const MetabotAsk = () => {
   // PROTOTYPE: "Tabs" and "No top nav" list conversations in the nav's AI
   // conversations tab, so this page doesn't repeat them.
   const { variant } = useNavVariant();
-  const hasNavConversations = variant === "tabs" || variant === "no-top-nav";
+  const hasNavConversations = variant === "tabs" || isModernNav(variant);
   const showHistory =
     isConfigured && isHistoryEnabledProfile(profile) && !hasNavConversations;
   const historyAction = showHistory ? (
@@ -82,7 +85,7 @@ export const MetabotAsk = () => {
           {/* PROTOTYPE: "No top nav" skips the nav-closed strip here; its
               open-nav button sits in the page's top-left corner instead, where
               the strip had it. */}
-          {variant === "no-top-nav" && (
+          {isModernNav(variant) && (
             <Box pos="absolute" top={10} left="1rem" style={{ zIndex: 1 }}>
               <NavOpenButton />
             </Box>
@@ -108,10 +111,8 @@ export const MetabotAsk = () => {
             // PROTOTYPE: in "No top nav", the conversation header lines up
             // with the nav's header and holds the open-nav button, since this
             // page skips the nav-closed strip.
-            isHeaderNavAligned={variant === "no-top-nav"}
-            headerLeading={
-              variant === "no-top-nav" ? <NavOpenButton /> : undefined
-            }
+            isHeaderNavAligned={isModernNav(variant)}
+            headerLeading={isModernNav(variant) ? <NavOpenButton /> : undefined}
           />
         </Box>
       )}

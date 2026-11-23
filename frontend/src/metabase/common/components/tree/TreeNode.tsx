@@ -125,7 +125,12 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     const { name, icon } = item;
 
-    const iconProps = _.isObject(icon) ? icon : { name: icon };
+    const baseIconProps = _.isObject(icon) ? icon : { name: icon };
+    // PROTOTYPE: plain folders show as open while expanded.
+    const iconProps =
+      isExpanded && baseIconProps.name === "folder"
+        ? { ...baseIconProps, name: "folder_open" as const }
+        : baseIconProps;
 
     function onClick() {
       onSelect?.();

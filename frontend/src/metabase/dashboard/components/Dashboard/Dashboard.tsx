@@ -9,6 +9,7 @@ import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { useDashboardTimelines } from "metabase/dashboard/timeline-events";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
+import { useNavToggleInset } from "metabase/nav/prototype/use-nav-toggle-inset";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
@@ -43,6 +44,10 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   } = useDashboardContext();
 
   const hasDockedSidebar = isSharing || sidebar.name === SIDEBAR_NAME.events;
+  // PROTOTYPE: in "Modern nav - C" with the nav closed, a full-width
+  // dashboard's cards line up with its title and the open-sidebar button.
+  const navToggleInset = useNavToggleInset();
+  const cardsInset = dashboard?.width !== "fixed" ? navToggleInset : undefined;
 
   useDashboardChartPaste();
   useDashboardTimelines();
@@ -133,6 +138,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           <FullWidthContainer
             className={S.CardsContainer}
             data-element-id="dashboard-cards-container"
+            pl={cardsInset}
           >
             <Dashboard.Grid />
           </FullWidthContainer>

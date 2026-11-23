@@ -1,11 +1,15 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import { useNavToggleAlignedPadding } from "metabase/nav/prototype/use-nav-toggle-inset";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -153,16 +157,27 @@ export function ViewTitleHeader({
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
+  // PROTOTYPE: in "Modern nav - C" with the nav closed, a saved question's
+  // title lines up with the open-sidebar button's icon in the bar above —
+  // measured, since the title sits inside several offset wrappers.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const navToggleAlignedPadding = useNavToggleAlignedPadding(
+    headerRef,
+    '[data-testid="saved-question-header-title"]',
+  );
+  const alignedInset = isSaved ? navToggleAlignedPadding : undefined;
 
   return (
     <>
       <ViewSection
         className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
           [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
-          [ViewTitleHeaderS.alignWithNavHeader]: variant === "no-top-nav",
+          [ViewTitleHeaderS.alignWithNavHeader]: isModernNav(variant),
         })}
         style={style}
         data-testid="qb-header"
+        ref={headerRef}
+        pl={alignedInset}
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
           {/* PROTOTYPE: "No top nav" opens the closed nav from here. */}

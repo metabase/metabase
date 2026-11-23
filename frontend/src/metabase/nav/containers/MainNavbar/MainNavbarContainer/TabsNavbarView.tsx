@@ -5,6 +5,7 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
@@ -12,9 +13,13 @@ import {
   getIsTenantUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
+import { AreaTabGroupHeading } from "metabase/nav/components/AreaLayout";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
 import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
-import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -43,6 +48,7 @@ import {
   ModelsNavLink,
   OfficialDataLinks,
   SyncedContentList,
+  findLibrarySection,
   libraryHasMetrics,
 } from "./OfficialNavSection";
 import { useNavCollections } from "./use-nav-collections";
@@ -50,6 +56,10 @@ import { useNavCollections } from "./use-nav-collections";
 type NavTabId =
   | "home"
   | "collections"
+  | "metrics"
+  | "datasets"
+  | "data-sources"
+  | "models"
   | "data"
   | "external-collections"
   | "explorations"
@@ -60,12 +70,18 @@ type NavTabId =
 
 type NavTab = { id: NavTabId; label: string; icon: IconName };
 
+/** A run of tabs, under a heading in "Modern nav - B" and "- D". */
+type NavTabGroup = { heading?: string; tabs: NavTab[] };
+
 // PROTOTYPE: the open tab is remembered across reloads and shared by the
-// "Tabs" and "No top nav" variants.
+// "Tabs" and "Modern nav" variants.
 const ACTIVE_TAB_KEY = "prototype-nav-active-tab";
 
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ASK_AI_URL = "/question/ask";
+const BROWSE_METRICS_URL = "/browse/metrics";
+const BROWSE_DATABASES_URL = "/browse/databases";
+const BROWSE_MODELS_URL = "/browse/models";
 
 function NavTabSection({ children }: { children: ReactNode }) {
   return (
@@ -107,8 +123,9 @@ function DataAppsList({ onItemSelect }: { onItemSelect: () => void }) {
 
 /**
  * PROTOTYPE: the main nav as vertical tabs, one per section, with the active
- * section's contents listed below a divider. Used by the "Tabs" and "No top
- * nav" variants; the latter also gets the space switcher in the footer.
+ * section's contents listed below a divider. Used by the "Tabs" and "Modern
+ * nav" variants; "Modern nav - B" groups its tabs under "Official" and
+ * "Other" headings.
  */
 export function TabsNavbarView({
   bookmarks,
@@ -126,6 +143,15 @@ export function TabsNavbarView({
   const hasLibraryMetrics = libraryHasMetrics(collections);
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
   const { variant } = useNavVariant();
+  const isGrouped = variant === "modern-nav-b";
+  // PROTOTYPE: "Modern nav - C" renames and reorders the git-on tabs, and
+  // orders the git-off ones to match.
+  const isVariantC = variant === "modern-nav-c";
+  const isVariantCWithGit = isVariantC && isGitIntegrationEnabled;
+  // The Library's Metrics and Datasets sections, for B's and D's tabs of
+  // those names.
+  const metricsSection = findLibrarySection(collections, "library-metrics");
+  const datasetsSection = findLibrarySection(collections, "library-data");
   const navigate = useNavigate();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
@@ -208,25 +234,177 @@ export function TabsNavbarView({
     label: t`AI conversations`,
     icon: "ai",
   };
-  const tabs: NavTab[] = [
-    sectionTabs[0],
-    dataTab,
-    ...sectionTabs
-      .slice(1)
-      .map((tab, index) =>
-        index + 1 === dataTabIndex ? aiConversationsTab : tab,
-      ),
-  ];
+  const tabs: NavTab[] = isVariantCWithGit
+    ? // PROTOTYPE: C puts the collections first (Official, then the rest as
+      // plain "Collections", then External) and Bookmarks right after them.
+      [
+        {
+          ...sectionTabs[0],
+          label: t`Official collections`,
+          icon: "folder_bookmark",
+        },
+        { id: "explorations", label: t`Collections`, icon: "folder" },
+        ...externalCollectionsTabs,
+        bookmarksTab,
+        { ...dataTab, icon: "grid_2x2_check" },
+        aiConversationsTab,
+      ]
+    : isVariantC
+      ? // PROTOTYPE: C without git follows its git-on order (collections,
+        // External, Bookmarks, Data, AI conversations), with Data apps right
+        // after Collections and Getting Started last.
+        [
+          sectionTabs[0],
+          ...sectionTabs.filter((tab) => tab.id === "data-apps"),
+          ...externalCollectionsTabs,
+          bookmarksTab,
+          { ...dataTab, icon: "grid_2x2" },
+          aiConversationsTab,
+          ...sectionTabs.filter((tab) => tab.id === "getting-started"),
+        ]
+      : [
+          sectionTabs[0],
+          dataTab,
+          ...sectionTabs
+            .slice(1)
+            .map((tab, index) =>
+              index + 1 === dataTabIndex ? aiConversationsTab : tab,
+            ),
+        ];
+
+  // PROTOTYPE: "Modern nav - D" groups its tabs under Collections, Data and
+  // More. Data's tabs open their pages (Metrics and Datasets also list their
+  // subfolders). Tabs that only show in some setups (External, Data apps,
+  // Getting Started) join the group they fit.
+  function getVariantDTabGroups(): NavTabGroup[] {
+    const externalTabs = externalCollectionsTabs.map((tab) => ({
+      ...tab,
+      label: t`External`,
+    }));
+    const collectionTabs: NavTab[] = isGitIntegrationEnabled
+      ? [
+          { id: "home", label: t`Official`, icon: "dashboard" },
+          ...externalTabs,
+          { id: "explorations", label: t`Other`, icon: "files" },
+        ]
+      : [
+          { id: "collections", label: t`All collections`, icon: "folder" },
+          ...externalTabs,
+        ];
+    return [
+      { heading: t`Collections`, tabs: collectionTabs },
+      {
+        heading: c("A noun, shown in the sidebar as a navigation link").t`Data`,
+        tabs: [
+          { id: "metrics", label: t`Metrics`, icon: "metric" },
+          ...(datasetsSection
+            ? [{ id: "datasets", label: t`Datasets`, icon: "table" } as const]
+            : []),
+          ...(hasDataAccess
+            ? [
+                {
+                  id: "data-sources",
+                  label: t`Data sources`,
+                  icon: "database",
+                } as const,
+              ]
+            : []),
+          { id: "models", label: t`Models`, icon: "model" },
+        ],
+      },
+      {
+        heading: t`More`,
+        tabs: [
+          aiConversationsTab,
+          bookmarksTab,
+          ...sectionTabs.filter(
+            (tab) => tab.id === "data-apps" || tab.id === "getting-started",
+          ),
+        ],
+      },
+    ];
+  }
+
+  // PROTOTYPE: "Modern nav - B" splits the tabs into Official (Collections
+  // and the Library's Metrics and Datasets) and Other (the rest, with Data
+  // reduced to Databases and Models). Tabs that only show in some setups
+  // (External collections, Data apps, Getting Started) join Other.
+  const tabGroups: NavTabGroup[] = isGrouped
+    ? [
+        {
+          heading: t`Official`,
+          tabs: [
+            sectionTabs[0],
+            { id: "metrics", label: t`Metrics`, icon: "metric" },
+            ...(datasetsSection
+              ? [{ id: "datasets", label: t`Datasets`, icon: "table" } as const]
+              : []),
+          ],
+        },
+        {
+          heading: t`Other`,
+          tabs: [
+            ...sectionTabs.filter((tab) => tab.id === "explorations"),
+            ...externalCollectionsTabs,
+            { ...dataTab, icon: "database" },
+            aiConversationsTab,
+            bookmarksTab,
+            ...sectionTabs.filter(
+              (tab) => tab.id === "data-apps" || tab.id === "getting-started",
+            ),
+          ],
+        },
+      ]
+    : variant === "modern-nav-d"
+      ? getVariantDTabGroups()
+      : [{ tabs }];
+  const allTabs = tabGroups.flatMap((group) => group.tabs);
 
   const [storedTabId, setStoredTabId] = useLocalStorage<string>({
     key: ACTIVE_TAB_KEY,
-    defaultValue: tabs[0].id,
+    defaultValue: allTabs[0].id,
     getInitialValueInEffect: false,
   });
   // A stored tab may not exist in this mode (e.g. "Home" with git off).
-  const activeTab = tabs.find((tab) => tab.id === storedTabId) ?? tabs[0];
+  const activeTab = allTabs.find((tab) => tab.id === storedTabId) ?? allTabs[0];
   const isCollectionsTab =
     activeTab.id === "collections" || activeTab.id === "explorations";
+
+  const getTabUrl = (id: NavTabId): string | undefined =>
+    match(id)
+      .with("ask-ai", () => ASK_AI_URL)
+      .with("metrics", () =>
+        hasLibraryMetrics && metricsSection
+          ? Urls.collection(metricsSection)
+          : BROWSE_METRICS_URL,
+      )
+      .with("datasets", () =>
+        datasetsSection ? Urls.collection(datasetsSection) : undefined,
+      )
+      .with("data-sources", () => BROWSE_DATABASES_URL)
+      .with("models", () => BROWSE_MODELS_URL)
+      .otherwise(() => undefined);
+
+  // Nothing to list (and no divider) when the section has no subfolders.
+  const renderLibrarySubfolders = (section?: CollectionTreeItem) =>
+    section && section.children.length > 0 ? (
+      <NavTabSection>
+        <Tree
+          data={section.children}
+          selectedId={collectionItem?.id}
+          onSelect={onItemSelect}
+          TreeNode={SidebarCollectionLink}
+          role="tree"
+          rightSection={(item) =>
+            typeof item.id === "number" && (
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "collection", id: item.id }}
+              />
+            )
+          }
+        />
+      </NavTabSection>
+    ) : null;
 
   const newFolderButton =
     canWriteToCollections && !isTenantUser ? (
@@ -288,15 +466,38 @@ export function TabsNavbarView({
     .with("collections", "explorations", () => (
       <NavTabSection>{collectionsList}</NavTabSection>
     ))
+    // The Library's sections: the tab opens the section, and lists its
+    // subfolders. Without Library metrics, Metrics opens Browse metrics.
+    .with("metrics", () =>
+      hasLibraryMetrics ? renderLibrarySubfolders(metricsSection) : null,
+    )
+    .with("datasets", () => renderLibrarySubfolders(datasetsSection))
+    // Link-only tabs: their page is the content.
+    .with("data-sources", "models", () => null)
+    // B's Data holds what's left once Metrics and Datasets have their tabs.
     .with("data", () => (
       <NavTabSection>
-        {isGitIntegrationEnabled ? (
+        {isGrouped ? (
+          <>
+            {hasDataAccess && (
+              <DatabasesNavLink
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+              />
+            )}
+            <ModelsNavLink
+              nonEntityItem={nonEntityItem}
+              onItemSelect={onItemSelect}
+            />
+          </>
+        ) : isGitIntegrationEnabled ? (
           <OfficialDataLinks
             collections={collections}
             selectedCollectionId={collectionItem?.id}
             nonEntityItem={nonEntityItem}
             hasDataAccess={hasDataAccess}
             onItemSelect={onItemSelect}
+            withSubheadings={isVariantCWithGit}
           />
         ) : (
           <NavbarLibrarySection
@@ -391,34 +592,49 @@ export function TabsNavbarView({
       <Flex direction="column" flex={1}>
         {/* Grows, so Trash and the footer sit at the bottom. */}
         <Box flex="1 0 auto">
-          <SidebarSection mb="md">
-            {tabs.map((tab) => (
-              <SidebarLink
-                key={tab.id}
-                icon={tab.icon}
-                isSelected={tab.id === activeTab.id}
-                onClick={() => {
-                  setStoredTabId(tab.id);
-                  // Ask AI also opens a new conversation; the section lists
-                  // the past ones.
-                  if (tab.id === "ask-ai") {
-                    navigate(ASK_AI_URL);
-                    onItemSelect();
-                  }
-                }}
-              >
-                {tab.label}
-              </SidebarLink>
-            ))}
-          </SidebarSection>
-          <Divider />
-          {tabContent}
+          {tabGroups.map((group, index) => (
+            <SidebarSection key={group.heading ?? index} mb="md">
+              {group.heading && (
+                // Data Studio's group heading, its text lined up with the
+                // tabs' icons (link padding + icon box padding).
+                <AreaTabGroupHeading ps="1.125rem">
+                  {group.heading}
+                </AreaTabGroupHeading>
+              )}
+              {group.tabs.map((tab) => (
+                <SidebarLink
+                  key={tab.id}
+                  icon={tab.icon}
+                  isSelected={tab.id === activeTab.id}
+                  onClick={() => {
+                    setStoredTabId(tab.id);
+                    // Some tabs open a page too: Ask AI a new conversation
+                    // (the section lists the past ones), and B's Library tabs
+                    // their section (the section lists its subfolders).
+                    const url = getTabUrl(tab.id);
+                    if (url) {
+                      navigate(url);
+                      onItemSelect();
+                    }
+                  }}
+                >
+                  {tab.label}
+                </SidebarLink>
+              ))}
+            </SidebarSection>
+          ))}
+          {tabContent && (
+            <>
+              <Divider />
+              {tabContent}
+            </>
+          )}
         </Box>
 
         <SidebarSection>
           {trashTree}
           {/* Git branch controls; the space switcher sits by the logo. */}
-          {variant === "no-top-nav" && <PLUGIN_REMOTE_SYNC.AppBarControls />}
+          {isModernNav(variant) && <PLUGIN_REMOTE_SYNC.AppBarControls />}
         </SidebarSection>
       </Flex>
 
