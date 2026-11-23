@@ -4,10 +4,12 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
@@ -1129,3 +1131,110 @@
                       (testing "GET /api/database/:id"
                         (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
                           (is (= can-upload? (:can_upload result))))))))))))))))
+
+(defn- effective-table-perms
+  "The `perm-types` values that the groups with `group-ids` give on `table-id`, keyed by unqualified perm type."
+  [group-ids db-id table-id perm-types]
+  (into {}
+        (for [pt perm-types]
+          [(keyword (name pt)) (get (data-perms/table-permissions-for-groups group-ids pt {table-id db-id}) table-id)])))
+
+(deftest new-table-blocked-view-data-gets-no-query-or-download-perms-test
+  (testing "When a newly-synced table falls back to :blocked view-data for All Users, its create-queries and
+            download-results must not grant access (they should be :no, consistent with :blocked)"
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id}     {}
+                     :model/Table    {table-1 :id}   {:db_id db-id :schema "PUBLIC"}
+                     :model/Table    {table-2 :id}   {:db_id db-id :schema "PUBLIC"}]
+        (let [all-users (u/the-id (perms-group/all-users))
+              perm      (fn [table-id perm-type]
+                          (t2/select-one-fn :perm_value :model/DataPermissions
+                                            :db_id db-id :group_id all-users
+                                            :table_id table-id :perm_type perm-type))]
+          ;; One table granted, one table blocked, in the same schema
+          (data-perms/set-table-permissions! all-users :perms/view-data        {table-1 :unrestricted     table-2 :blocked})
+          (data-perms/set-table-permissions! all-users :perms/create-queries   {table-1 :query-builder    table-2 :no})
+          (data-perms/set-table-permissions! all-users :perms/download-results {table-1 :one-million-rows table-2 :no})
+          (doseq [[desc schema] [["new table in the same (mixed) schema" "PUBLIC"]
+                                 ["new table in a brand-new schema" "OTHER"]]]
+            (testing desc
+              (mt/with-model-cleanup [:model/Table]
+                (let [[{new-table :id}] (table/create-tables! [{:db_id db-id :schema schema :name "new_table" :active true}])]
+                  (is (= {:view-data :blocked :create-queries :no :download-results :no}
+                         {:view-data        (perm new-table :perms/view-data)
+                          :create-queries   (perm new-table :perms/create-queries)
+                          :download-results (perm new-table :perms/download-results)})))))))))))
+
+(deftest new-table-blocked-for-sandboxed-group-with-db-level-create-queries-test
+  (testing "A sandboxed group whose create-queries is stored at the DB level (a state the graph API produces) gets
+            :blocked view-data on a new table; its create-queries and download-results must not still grant access"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-model-cleanup [:model/Sandbox :model/Table]
+        (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                       :model/Card             {cid :id} {:dataset_query (mt/mbql-query venues {:filter [:= $category_id 50]})}]
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups gid (mt/id)]
+                         {:view-data      {"PUBLIC" (into {}
+                                                          (for [table-id (t2/select-pks-set :model/Table :db_id (mt/id) :schema "PUBLIC" :active true)]
+                                                            [table-id (if (= table-id (mt/id :venues)) :sandboxed :unrestricted)]))}
+                          :create-queries :query-builder
+                          :download       {:schemas :full}})
+               (assoc :sandboxes [{:table_id (mt/id :venues) :group_id gid :card_id cid}])))
+          (testing "the graph API stored create-queries as a single DB-level row"
+            (is (= [{:table_id nil :perm_value :query-builder}]
+                   (t2/select [:model/DataPermissions :table_id :perm_value]
+                              :group_id gid :db_id (mt/id) :perm_type :perms/create-queries))))
+          (let [[{new-table :id}] (table/create-tables! [{:db_id (mt/id) :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= {:view-data :blocked :create-queries :no :download-results :no}
+                   (effective-table-perms #{gid} (mt/id) new-table
+                                          [:perms/view-data :perms/create-queries :perms/download-results])))
+            (testing "existing tables keep the group's previous DB-level values"
+              (doseq [table-id [(mt/id :venues) (mt/id :orders)]]
+                (is (= {:create-queries :query-builder :download-results :one-million-rows}
+                       (effective-table-perms #{gid} (mt/id) table-id
+                                              [:perms/create-queries :perms/download-results])))))))))))
+
+(deftest new-table-blocked-view-data-end-to-end-test
+  (testing "After sync adds a table that All Users gets :blocked view-data on, a user in a dashboard-only group
+            (view-data only, no queries, no downloads) must not be able to query or download it"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp-copy-of-db
+        (let [db-id     (mt/id)
+              all-users (u/the-id (perms-group/all-users))
+              tables    (t2/select-pks-set :model/Table :db_id db-id :active true)
+              granted   #{(mt/id :venues) (mt/id :categories)}
+              by-table  (fn [granted-v blocked-v]
+                          (into {} (for [t tables] [t (if (granted t) granted-v blocked-v)])))]
+          ;; All Users: two tables Can view / Query builder / Full download, the rest Blocked / No / No.
+          (data-perms/set-table-permissions! all-users :perms/view-data        (by-table :unrestricted :blocked))
+          (data-perms/set-table-permissions! all-users :perms/create-queries   (by-table :query-builder :no))
+          (data-perms/set-table-permissions! all-users :perms/download-results (by-table :one-million-rows :no))
+          ;; Make sync rediscover USERS as a brand-new table.
+          (table/delete-tables! [(mt/id :users)])
+          (sync/sync-database! db-id {:scan :schema})
+          (let [new-table (t2/select-one-pk :model/Table :db_id db-id :name "USERS" :active true)
+                query     {:database db-id :type :query :query {:source-table new-table}}]
+            (is (some? new-table))
+            (testing "All Users perms on the newly-synced table"
+              (is (= {:view-data :blocked :create-queries :no :download-results :no}
+                     (effective-table-perms #{all-users} db-id new-table
+                                            [:perms/view-data :perms/create-queries :perms/download-results]))))
+            (mt/with-user-in-groups [viewers {:name "Viewers"}
+                                     user    [viewers]]
+              (data-perms/set-table-permissions! viewers :perms/view-data
+                                                 (into {} (for [t (t2/select-pks-set :model/Table :db_id db-id :active true)]
+                                                            [t (if (= t new-table) :unrestricted :blocked)])))
+              (data-perms/set-database-permission! viewers db-id :perms/create-queries :no)
+              (data-perms/set-database-permission! viewers db-id :perms/download-results :no)
+              (testing "POST /api/dataset is refused"
+                (is (=? {:error_type "missing-required-permissions"}
+                        (mt/user-http-request user :post 403 "dataset" query))))
+              (testing "POST /api/dataset/csv is refused"
+                (is (= 403 (:status (mt/user-http-request-full-response user :post "dataset/csv" {:query query})))))
+              (testing "control: a table All Users has always had Blocked / No / No is refused the same way"
+                (let [control {:database db-id :type :query :query {:source-table (mt/id :checkins)}}]
+                  (is (=? {:error_type "missing-required-permissions"}
+                          (mt/user-http-request user :post 403 "dataset" control)))
+                  (is (= 403 (:status (mt/user-http-request-full-response user :post "dataset/csv" {:query control})))))))))))))
