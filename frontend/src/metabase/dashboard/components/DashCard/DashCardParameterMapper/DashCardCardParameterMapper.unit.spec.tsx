@@ -15,14 +15,16 @@ import {
   screen,
 } from "__support__/ui";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
-  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockField,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockMetricDimension,
@@ -719,13 +721,13 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
   // The model metadata maps CATEGORY to the Products.Category field, so its
   // results metadata offers a column that a text filter could map to.
   const MODEL_RESULT_METADATA = [
-    createMockColumn({
+    createMockField({
       name: "ID",
       display_name: "ID",
       base_type: "type/BigInteger",
       field_ref: ["field", "ID", { "base-type": "type/BigInteger" }],
     }),
-    createMockColumn({
+    createMockField({
       id: PRODUCTS.CATEGORY,
       name: "CATEGORY",
       display_name: "Category",
@@ -739,7 +741,6 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
     id: MODEL_ID,
     name: "Native model",
     type: "model",
-    query_type: "native",
     display: "table",
     dataset_query: Lib.toJsQuery(
       Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
@@ -752,7 +753,6 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
   const STRUCTURED_MODEL = createMockCard({
     ...NATIVE_MODEL,
     name: "Structured model",
-    query_type: "query",
     dataset_query: Lib.toJsQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [{ source: { type: "table", id: PRODUCTS_ID } }],

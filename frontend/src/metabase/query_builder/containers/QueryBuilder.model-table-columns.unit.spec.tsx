@@ -14,7 +14,11 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Field,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -38,6 +42,10 @@ jest.unmock("metabase/querying/components/NativeQueryEditor");
 jest.unmock("@uiw/react-codemirror");
 
 registerVisualizations();
+
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
 
 describe("QueryBuilder > model with empty or hidden table.columns (metabase#23421)", () => {
   const MODEL_SQL =
@@ -129,10 +137,9 @@ describe("QueryBuilder > model with empty or hidden table.columns (metabase#2342
       type: "model",
       display: "table",
       displayIsLocked: true,
-      query_type: "native",
       dataset_query: Lib.toJsQuery(modelQuery),
       visualization_settings: visualizationSettings,
-      result_metadata: modelColumns,
+      result_metadata: toResultMetadata(modelColumns),
     });
     setupListNotificationEndpoints({ card_id: card.id }, []);
     // the real native editor loads the snippets for autocomplete

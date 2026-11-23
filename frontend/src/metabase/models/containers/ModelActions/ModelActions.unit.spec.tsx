@@ -841,9 +841,10 @@ describe("ModelActions", () => {
         description: "Set orders quantity to the same value",
         model_id: modelCard.id,
         can_write: true,
-        dataset_query: Lib.toLegacyQuery(
-          Lib.createTestNativeQuery(TEST_PROVIDER, { query: updateQuery }),
-        ),
+        dataset_query: createMockNativeDatasetQuery({
+          database: TEST_DATABASE_ID,
+          native: createMockNativeQuery({ query: updateQuery }),
+        }),
       });
       await setupActions({
         model: modelCard,
