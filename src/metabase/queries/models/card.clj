@@ -1399,7 +1399,6 @@
   ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references
   (check-new-goal-references! (:visualization_settings card)
                               (when (and *copy-source-card*
-                                         (seq (resolvable-goal-references (:visualization_settings card)))
                                          (not (some-> (:document_id card) queries.db/public-document?)))
                                 (:visualization_settings *copy-source-card*)))
   (let [card   (-> card

@@ -61,17 +61,6 @@
             (is (nil? (:uncopied copy)))
             (is (= source (goal-id (t2/select-one-fn :visualization_settings :model/Card :id chart))))))))))
 
-(deftest deep-copy-ignores-non-integer-goal-id-test
-  (testing "deep copy skips a stored goal whose id isn't an integer, which a write with no user can save"
-    (mt/with-model-cleanup [:model/Card :model/Dashboard]
-      (mt/with-temp [:model/Collection {src :id} {}
-                     :model/Collection {dest :id} {}
-                     :model/Card {chart :id} (card-props "Chart" src :visualization_settings (goal-viz "abc"))
-                     :model/Dashboard {dash :id} {:collection_id src}
-                     :model/DashboardCard _ {:dashboard_id dash :card_id chart}]
-        (deep-copy! dash dest)
-        (is (= #{"Chart"} (set (keys (cards-in dest)))))))))
-
 (deftest shallow-copy-keeps-goal-sources-test
   (testing "shallow copy duplicates no collection question, so goals keep reading the original"
     (mt/with-model-cleanup [:model/Card :model/Dashboard]

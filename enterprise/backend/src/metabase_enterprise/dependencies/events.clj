@@ -13,14 +13,11 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
@@ -163,23 +160,6 @@
              (u.events/changed-any? event (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata previous-object) (:result_metadata object)))))))
 
-(defn- goal-dependencies
-  "The entities the dynamic goals in `viz-settings` read. Normalizes first: a row read from the app DB is normalized,
-  while a value from a caller may be raw."
-  [viz-settings]
-  (dynamic-goals/goal-dependencies (lib/normalize ::lib.schema.visualization/visualization-settings viz-settings)))
-
-(mu/defn- dependencies-changed? :- :boolean
-  "Whether the `event`, the update of a row of a model, changes what the dependency job reads, ignoring a card's
-  visualization settings changes that leave its goals' dependencies as they were."
-  [{:keys [model object previous-object] :as event} :- [:map]]
-  (let [columns (:dependency-columns (dependencies/spec model))]
-    (and (u.events/changed-any? event columns)
-         (or (not= :model/Card model)
-             (u.events/changed-any? event (disj columns :visualization_settings))
-             (not= (goal-dependencies (:visualization_settings previous-object))
-                   (goal-dependencies (:visualization_settings object)))))))
-
 (mu/defn- data-apps-changed? :- :boolean
   "Whether the `event`, the update of a row of a model, moves a Card or an Action to another collection, which changes
   what the data apps whose resource collection it leaves or enters depend on."
@@ -202,7 +182,7 @@
   (let [spec        (dependencies/spec model)
         entity-type (:type spec)
         own         {entity-type #{(:id object)}}
-        dependency? (dependencies-changed? event)
+        dependency? (u.events/changed-any? event (:dependency-columns spec))
         analysis?   (u.events/changed-any? event (:analysis-columns spec))
         output?     (output-changed? event)
         part?       (u.events/changed-any? event (:part-columns spec))

@@ -223,30 +223,6 @@
                                              {:graph.goal_value {:id card-id :type "card" :column "count"}}})
         (is (pending? :card card-id))))))
 
-(deftest card-viz-edit-without-goal-change-test
-  (testing "editing a card's viz settings marks its dependencies stale only when its goals' dependencies change"
-    (mt/with-premium-features #{:dependencies}
-      (let [viz (fn [goal-id label]
-                  {:graph.goal_value {:id goal-id :type "card" :column "count"}
-                   :graph.goal_label label})]
-        (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (table-query :orders)}
-                       :model/Card {other-id :id}     {:dataset_query (table-query :orders)}
-                       :model/Card {card-id :id}      {:dataset_query          (table-query :products)
-                                                       :visualization_settings (viz goal-card-id "Target")}]
-          (testing "through a direct update"
-            (computed! :card card-id)
-            (t2/update! :model/Card :id card-id {:visualization_settings (viz goal-card-id "New target")})
-            (is (not (pending? :card card-id))))
-          (testing "through the API"
-            (computed! :card card-id)
-            (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
-                                  {:visualization_settings (viz goal-card-id "Another target")})
-            (is (not (pending? :card card-id))))
-          (testing "a goal that reads another card marks them stale"
-            (computed! :card card-id)
-            (t2/update! :model/Card :id card-id {:visualization_settings (viz other-id "Another target")})
-            (is (pending? :card card-id))))))))
-
 (deftest card-goal-only-edit-recalculates-dependencies-test
   (testing "adding a dynamic goal to a card, and nothing else, records the card it reads as a dependency"
     (mt/with-premium-features #{:dependencies}

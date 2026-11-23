@@ -4313,7 +4313,6 @@
            transforms.schema
            util
            util.graph
-           visualization-settings
            enterprise/permissions.sandbox}
    :model-imports #{:model/Action
                     :model/Card
