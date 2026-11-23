@@ -1,10 +1,9 @@
 import type { CardId } from "./card";
-import type { DashCardId } from "./dashboard";
+import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatasetColumn, RowValues } from "./dataset";
 import type { MeasureId } from "./measure";
 import type { GoalForeignEntityRef } from "./visualization-settings";
 
-/** Goal source results by source type, then by source id. A source with no entry wasn't run. */
 export type GoalSourceResults = {
   card?: Record<CardId, GoalSourceResult>;
   measure?: Record<MeasureId, GoalSourceResult>;
@@ -33,7 +32,7 @@ export type GoalSourceErrorType =
  * sources from the saved chart.
  */
 export type GoalSourcesScope =
-  | { type: "signed-in"; dashboard_id?: number }
+  | { type: "signed-in"; dashboard_id?: DashboardId }
   | { type: "public-card"; uuid: string }
   | {
       type: "public-dashcard";
