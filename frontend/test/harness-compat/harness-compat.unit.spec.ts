@@ -30,6 +30,7 @@ type FileSummary = {
 
 const ROOT = path.resolve(__dirname, "../../..");
 const FIXTURES = path.join(__dirname, "fixtures");
+const DOM_FIXTURES = path.join(__dirname, "dom-fixtures");
 const JEST = path.join(ROOT, "node_modules/jest/bin/jest.js");
 const RUNNER = path.join(ROOT, "frontend/test/harness/jest-runner.ts");
 const RUN_TIMEOUT_MS = 120_000;
@@ -41,6 +42,10 @@ const FIXTURES_THAT_CRASH_JEST = [
   "immediate-rejection.fixture.js",
 ];
 
+// The node:test runner skips the rest of this file on purpose. React stays
+// loaded in its worker, so the next tests could not render.
+const FIXTURE_THAT_LEAVES_REACT_STUCK = "react-stuck.fixture.js";
+
 describe("the node:test runner", () => {
   it(
     "reports the same results as jest's own runner",
@@ -48,7 +53,10 @@ describe("the node:test runner", () => {
       const jest = summarize(runJest("jest", ["--ci"]));
       const harness = summarize(runJest("harness", ["--ci"]));
 
-      for (const file of FIXTURES_THAT_CRASH_JEST) {
+      for (const file of [
+        ...FIXTURES_THAT_CRASH_JEST,
+        FIXTURE_THAT_LEAVES_REACT_STUCK,
+      ]) {
         expect([jest[file].status, harness[file].status]).toEqual([
           "failed",
           "failed",
@@ -60,6 +68,26 @@ describe("the node:test runner", () => {
       // The fixture that runs last in the worker passes, so no error left
       // an earlier file.
       expect(harness["z.fixture.js"].status).toBe("passed");
+    },
+    RUN_TIMEOUT_MS,
+  );
+
+  it(
+    "ends a file that leaves React stuck, and runs the next file in a new worker",
+    () => {
+      const results = summarize(
+        runJest("harness", [
+          path.join(DOM_FIXTURES, FIXTURE_THAT_LEAVES_REACT_STUCK),
+          path.join(DOM_FIXTURES, "after-react-stuck.fixture.js"),
+        ]),
+      );
+
+      expect(results[FIXTURE_THAT_LEAVES_REACT_STUCK].tests).toEqual({
+        "leaves React inside a commit": "failed",
+        "is skipped, because React cannot render": "pending",
+        "a later block is skipped too": "pending",
+      });
+      expect(results["after-react-stuck.fixture.js"].status).toBe("passed");
     },
     RUN_TIMEOUT_MS,
   );

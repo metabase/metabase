@@ -73,6 +73,15 @@ earlier file changed something that the test depends on, or the test is not
 stable. Report it, with the list of spec files that ran before it in the same
 worker, if you can. `NT_FILE_LOG` prints that list.
 
+In CI, the log lists the files that ran before each failed file in its worker,
+in a collapsed group. Run those files and the failed file with `-w 1` to
+reproduce the order.
+
+A failure can also leave React inside a commit. React stays loaded, so every
+later render in the worker would fail with `Should not already be working`. The
+runner detects this after the failed test, skips the rest of the file, and
+starts a new worker for the next file.
+
 One case is handled: a package that a spec file's `jest.mock` reaches. When a
 package loads while a spec file mocks a module, and the package requires that
 module, the package keeps the mock. The worker then ends after that file, and
