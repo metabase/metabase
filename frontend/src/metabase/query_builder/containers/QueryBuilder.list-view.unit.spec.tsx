@@ -9,7 +9,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Card, DatasetColumn } from "metabase-types/api";
+import type { Card, DatasetColumn, Field } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -76,15 +76,28 @@ const MINI_BAR_COLUMNS = ORDERS_COLUMNS.map((column) =>
     : column,
 );
 
-const createModel = (opts: Partial<Card> = {}) =>
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
+
+const getResultColumns = (card: Card) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  (card.result_metadata as unknown as DatasetColumn[] | null) ??
+  ORDERS_COLUMNS;
+
+const createModel = ({
+  result_metadata = ORDERS_COLUMNS,
+  ...opts
+}: Partial<Omit<Card, "result_metadata">> & {
+  result_metadata?: DatasetColumn[];
+} = {}) =>
   createMockCard({
     id: MODEL_ID,
     name: "Native Model",
     type: "model",
     display: "table",
-    query_type: "native",
     dataset_query: Lib.toJsQuery(NATIVE_QUERY),
-    result_metadata: ORDERS_COLUMNS,
+    result_metadata: toResultMetadata(result_metadata),
     ...opts,
   });
 
@@ -110,8 +123,7 @@ const parseBody = (body: unknown): Partial<Card> => {
  */
 const setupStoredModelEndpoints = (card: Card) => {
   let storedCard = card;
-  const getDataset = () =>
-    createDataset(storedCard.result_metadata ?? ORDERS_COLUMNS);
+  const getDataset = () => createDataset(getResultColumns(storedCard));
 
   fetchMock.get(`path:/api/card/${card.id}`, () => storedCard);
   fetchMock.put(`path:/api/card/${card.id}`, (call) => {
@@ -134,7 +146,7 @@ const setupModel = async ({
   setupStoredModelEndpoints(card);
   return setup({
     card,
-    dataset: createDataset(card.result_metadata ?? ORDERS_COLUMNS),
+    dataset: createDataset(getResultColumns(card)),
     initialRoute: `/model/${card.id}`,
     withUndos,
   });
