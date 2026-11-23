@@ -1231,7 +1231,7 @@
 (defn- publish-notification-updates!
   "Add or remove the Quartz triggers of the cron subscriptions of the Notifications of `id->stored` that `updates` activate
   or deactivate, then publish the update event of the Notifications."
-  [updates id->stored]
+  [updates id->stored _id->updated]
   (update-triggers-of-flipped! id->stored (into {} (map (juxt :id #(dissoc % :id))) updates))
   (events/publish-event! :event/notification-row-update (events/update-event id->stored updates)))
 

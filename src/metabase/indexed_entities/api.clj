@@ -118,4 +118,5 @@
                     [:id ms/PositiveInt]]]
   (api/let-404 [model-index (indexed-entities.db/model-index id)]
     (api/write-check :model/Card (:model_id model-index))
-    (model-index/delete-model-indexes! [id])))
+    (model-index/delete-model-indexes! [id])
+    1))
