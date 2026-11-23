@@ -390,8 +390,9 @@
   streamed parts.
 
   `parts` should be the post-[[streaming/combine-text-parts-xf]] parts vector. Stream metadata
-  (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
-  the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
+  (`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
+  the v2 at-rest format (see [[parts->storable-content]]) before storage, where each
+  `:start` becomes a `step-start` part that history replay splits steps at; usage is
   accumulated separately into the `usage` column; the error part body, if any,
   is captured into the `error` column via the `:error` kwarg; why the turn
   stopped early, if it did, is derived from those same parts into the
