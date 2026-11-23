@@ -473,10 +473,11 @@ def _join_step_source(node, cte_names, dialect):
     """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
 
     Anything that is not a plain named table is `derived`. Step queries copy the node whole, so what it carries (a
-    table hint, a PIVOT, a sample) stays in them.
-    Raises `_JoinStepsUnsupported` for a parenthesized join tree or a LATERAL or APPLY source.
+    table hint, a PIVOT) stays in them.
+    Raises `_JoinStepsUnsupported` for a parenthesized join tree, a LATERAL or APPLY source, or a sampled source, whose
+    rows differ from one step query to the next.
     """
-    if isinstance(node, exp.Lateral):
+    if isinstance(node, exp.Lateral) or node.args.get("sample"):
         raise _JoinStepsUnsupported("unsupported-source")
     if isinstance(node, exp.Table) and isinstance(node.this, exp.Identifier):
         parts = table_parts(node)
@@ -490,25 +491,36 @@ def _join_step_source(node, cte_names, dialect):
     return {"source": "derived", "table": None, "alias": node.alias_or_name}
 
 
-def _tokens_after_commas(sql, dialect):
-    """The start offsets of the tokens in `sql` that directly follow a comma."""
-    # The default dialect parses a comma join with no kind, so it never needs telling apart from a CROSS JOIN.
+def _join_tokens(sql, dialect):
+    """The `(type, start)` of each token in `sql`, or nothing for the default dialect.
+
+    The default dialect parses a comma join with no kind, so it never needs telling apart from a CROSS JOIN.
+    """
     if dialect is None:
-        return set()
-    tokens = sqlglot.Dialect.get_or_raise(dialect).tokenize(sql)
-    return {b.start for a, b in zip(tokens, tokens[1:]) if a.token_type.name == "COMMA"}
+        return []
+    return [(t.token_type.name, t.start) for t in sqlglot.Dialect.get_or_raise(dialect).tokenize(sql)]
 
 
-def _comma_join(join, after_commas, has_where):
-    """Whether a join that parsed as CROSS was written with a comma, which some dialects parse that way."""
+def _comma_join(join, tokens):
+    """Whether a join that parsed as CROSS was written with a comma, which some dialects parse that way.
+
+    Reads back from the source's name or alias to the nearest comma or JOIN outside any brackets.
+    """
     source = join.this
-    if isinstance(source, exp.Table) and isinstance(source.this, exp.Identifier):
-        return min(i.meta["start"] for i in source.find_all(exp.Identifier) if "start" in i.meta) in after_commas
-    # A derived source has no first identifier of its own to look behind. Only a WHERE clause can hold its condition.
-    return has_where
+    alias = source.args.get("alias")
+    identifier = source.this if isinstance(source, exp.Table) else alias.this if alias else None
+    start = identifier.meta.get("start") if isinstance(identifier, exp.Identifier) else None
+    depth = 0
+    for token_type, token_start in reversed(tokens):
+        if start is None or token_start >= start:
+            continue
+        depth += {"R_PAREN": 1, "L_PAREN": -1}.get(token_type, 0)
+        if depth == 0 and token_type in ("COMMA", "JOIN"):
+            return token_type == "COMMA"
+    return False
 
 
-def _join_step_strategy(join, after_commas, has_where):
+def _join_step_strategy(join, tokens):
     """The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
 
     Raises `_JoinStepsUnsupported` for a comma join.
@@ -520,7 +532,7 @@ def _join_step_strategy(join, after_commas, has_where):
     # `FROM a, b` has its condition, if any, in the WHERE clause, which the step queries leave out, so they would count
     # the whole cross product.
     if (not side and not kind and not method and not args & {"on", "using"}) or (
-        kind == "CROSS" and _comma_join(join, after_commas, has_where)
+        kind == "CROSS" and _comma_join(join, tokens)
     ):
         raise _JoinStepsUnsupported("comma-join")
     if kind == "CROSS":
@@ -548,6 +560,10 @@ def _whole_query(stmt):
         withs.append(stmt.args["with_"])
     if len(withs) < 2:
         return stmt, (withs[0] if withs else None)
+    # One WITH list cannot hold a CTE and the inner one that shadows it.
+    names = [cte.alias.lower() for with_ in withs for cte in with_.expressions]
+    if len(names) != len(set(names)):
+        raise _JoinStepsUnsupported("not-a-select")
     merged = withs[0].copy()
     merged.set("expressions", [cte.copy() for with_ in withs for cte in with_.expressions])
     merged.set("recursive", any(with_.args.get("recursive") for with_ in withs))
@@ -689,13 +705,12 @@ def join_steps(sql: str, dialect: str = None) -> str:
         cte_names = {
             _effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else []) if cte.alias
         }
-        after_commas = _tokens_after_commas(sql, dialect)
-        has_where = bool(stmt.args.get("where"))
+        tokens = _join_tokens(sql, dialect)
         from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):
             source = _join_step_source(join.this, cte_names, dialect)
-            strategy = _join_step_strategy(join, after_commas, has_where)
+            strategy = _join_step_strategy(join, tokens)
             step = dict(source, strategy=strategy)
             if strategy in ("left", "right", "full"):
                 query = _left_join_counts(from_, joins[:n], with_, dialect) if strategy == "left" else None

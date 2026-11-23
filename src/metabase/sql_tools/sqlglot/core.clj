@@ -113,7 +113,7 @@
         result  (try
                   (sql-parsing/join-steps parser dialect sql)
                   (catch Exception e
-                    (if (and dialect (not (sql-parsing/parse-error? e)))
+                    (if (and dialect (re-find #"Unknown dialect" (str (ex-message e))))
                       (sql-parsing/join-steps parser nil sql)
                       (throw e))))]
     (if-not (= "ok" (:status result))
