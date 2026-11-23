@@ -292,10 +292,11 @@
 
 (mr/def ::query-action.create
   "What a caller gives to create a QueryAction: the columns of an update, and the query."
-  [:merge
-   ::query-action.update
-   [:map {:closed true}
-    [:dataset_query ::query-action.dataset-query]]])
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:dataset_query ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]])
 
 (mr/def ::implicit-action.update
   "An ImplicitAction by the id of its Action with the columns to change, each optional."
