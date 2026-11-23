@@ -6,7 +6,10 @@
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -52,15 +55,24 @@
   [fingerprint source cooldown-hours]
   (data-complexity-score.db/scored-within-hours? fingerprint source cooldown-hours))
 
-(defn record-score!
-  "Persist one append-only Data Complexity Score snapshot."
-  [fingerprint source score]
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn record-score!
+  "Persist one append-only Data Complexity Score snapshot and return the latest score of `fingerprint` and `source`."
+  [fingerprint :- :string
+   source      :- :string
+   score       :- :map]
   (let [id (data-complexity-score.db/insert-score! {:fingerprint fingerprint
                                                     :source      source
                                                     :score_data  score})]
     (if id
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
+
+(mu/defn delete-data-complexity-scores! :- :nil
+  "Delete the Data Complexity Score snapshots with `ids` in one transaction."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/DataComplexityScore ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

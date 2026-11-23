@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
+   [metabase.collections.models.collection :as collection]
    [metabase.embedding.util :as embed.util]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -127,11 +128,12 @@
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      (collection/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
       ;; ok, now create the Pulse
-      (let [pulse (api/check-500
-                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        pulse))))
+      (api/check-500
+       (first (models.pulse/create-pulses! [(assoc pulse-data
+                                                   :cards    (mapv models.pulse/card->ref cards)
+                                                   :channels channels)]))))))
 
 (def ^:private PulseChannelRecipient
   [:map {:closed true}
@@ -164,7 +166,7 @@
    [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
 
 (def ^:private PulseChannel
-  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channels!]] reads off a channel."
   (into [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}]
         (drop 2 TestPulseChannel)))
 
@@ -222,7 +224,7 @@
 (defn- maybe-add-recipients
   "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
 
-  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels*]]
   deletes any recipient not present — so every recipient hidden on the read path must be restored on
   the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
   never saw. Two read filters hide recipients, and each is compensated here:
@@ -308,12 +310,10 @@
         (t2/with-transaction [_conn]
           ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
           ;; depending on what changed.
-          (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
+          (collection/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
           ;; ok, now update the Pulse
-          (models.pulse/update-pulse!
-           (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                              :archived :parameters])
-                  :id id))))))
+          (models.pulse/update-pulse! id (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id
+                                                                     :collection_position :archived :parameters]))))))
   (models.pulse/retrieve-pulse id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -423,7 +423,7 @@
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)
                 pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
     (binding [api/*current-user-id* nil]
-      (pulse.db/delete-pulse-channel-recipient! pcr-id)))
+      (models.pulse/delete-pulse-channel-recipients! [pcr-id])))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

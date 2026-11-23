@@ -3,11 +3,12 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration
   methods."
   (:require
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.collections.schema :as collections.schema]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,6 +47,11 @@
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
+
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`, by id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
 (mu/defn timelines
   "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
@@ -87,6 +93,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :parameters :embedding_params] :id [:in card-ids]))
 
+(mu/defn cards-parameters
+  "A map of ID to `:parameters` for the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :parameters [:model/Card :id :parameters] :id [:in card-ids]))
+
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -98,6 +109,16 @@
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
+
+(mu/defn cards-table-ids
+  "The `:id`, `:table_id` and `:database_id` of each of the Cards with `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :table_id :database_id] :id [:in card-ids]))
+
+(mu/defn card-schema-versions
+  "The stored `:card_schema` of each of the Cards with `card-ids`, by id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :card_schema [:model/Card :id :card_schema] :id [:in card-ids]))
 
 (mu/defn cards-queries-info
   "The IDs and query-related fields of the Cards with `card-ids`.
@@ -152,16 +173,32 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
-(mu/defn insert-card!
-  "Insert `card` and return the new instance."
-  [card :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card card))
+(mu/defn insert-cards!
+  "Insert the Card `rows` with one statement for each set of columns they have and return the new instances, in the
+  order of `rows`."
+  [rows :- [:sequential ::queries.schema/card.create]]
+  (mdb/insert-returning-instances! :model/Card rows))
 
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
+(mu/defn update-cards! :- :nil
+  "Apply each of `updates`, the `:id` of a Card and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Card updates)
+  nil)
+
+(mu/defn dashboards-for-placement
+  "The ID, `archived` flag and Collection ID of each of the Dashboards with `dashboard-ids`, by ID."
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (u/index-by :id (t2/select [:model/Dashboard :id :archived :collection_id] :id [:in dashboard-ids]))
+    {}))
+
+(mu/defn archived-document-ids
+  "The IDs among `document-ids` of the Documents that are archived."
+  [document-ids :- [:set ms/PositiveInt]]
+  (if (seq document-ids)
+    (t2/select-pks-set :model/Document :id [:in document-ids] :archived true)
+    #{}))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -292,11 +329,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
-(mu/defn document-archived?
-  "Whether the Document with `document-id` is archived."
-  [document-id :- ms/PositiveInt]
-  (t2/exists? :model/Document :id document-id :archived true))
-
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -307,41 +339,34 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
 
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+(mu/defn dashboards-parameters
+  "A map of ID to `:parameters` for the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select-pk->fn :parameters [:model/Dashboard :id :parameters] :id [:in dashboard-ids]))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/DashboardCard :card_id card-id))
 
-(mu/defn insert-dashcard!
-  "Insert `dashcard`, returning the number inserted."
-  [dashcard :- ::dashboards.schema/dashboard-card.update]
-  (t2/insert! :model/DashboardCard dashcard))
+(mu/defn dashcards-for-cards
+  "The DashboardCards showing the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/DashboardCard :card_id [:in card-ids])
+    []))
 
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
-
-(mu/defn delete-dashcards-for-card-on-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`, returning the
-  number deleted."
+(mu/defn dashcard-ids-for-card-on-dashboard
+  "The IDs of the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
 
-(mu/defn delete-dashcards-for-card-off-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`, returning
-  the number deleted."
+(mu/defn dashcard-ids-for-card-off-dashboard
+  "The IDs of the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
 
 (mu/defn dashcard-series-for-card-on-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
@@ -365,11 +390,6 @@
                       [:= :dcs.card_id card-id]
                       [:not= :dc.dashboard_id dashboard-id]]}))
 
-(mu/defn delete-dashcard-series!
-  "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
-  [series-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
-
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
@@ -378,57 +398,41 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-model!
-  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
-  updated."
-  [model-id      :- ::lib.schema.id/card
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
+(mu/defn implicit-action-ids-for-models
+  "The IDs of the implicit Actions of the model Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq model-ids)
+    (t2/select-pks-set :model/Action {:select [:action.id]
+                                      :from   [:action]
+                                      :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
+                                      :where  [:in :action.model_id model-ids]})
+    #{}))
 
-(mu/defn delete-actions-of-model!
-  "Delete the Actions of the Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id))
+(mu/defn card-notification-ids-for-cards
+  "The IDs of the card Notifications attached to the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-pks-set :model/Notification
+                       :payload_type :notification/card
+                       :payload_id [:in ^:allow-subquery {:select [:id]
+                                                          :from   [:notification_card]
+                                                          :where  [:in :card_id card-ids]}])
+    #{}))
 
-(mu/defn delete-actions-of-models!
-  "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
-  [model-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Action :model_id [:in model-ids]))
-
-(mu/defn delete-actions!
-  "Delete the Actions with `action-ids`, returning the number deleted."
-  [action-ids :- [:set ::lib.schema.id/action]]
-  (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
-  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
-  [card-id :- ::lib.schema.id/card]
-  ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
-  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
-
-(mu/defn delete-card-revisions!
-  "Delete the Revisions of the Card with `card-id`, returning the number deleted.
-  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
-  [card-id :- ::lib.schema.id/card]
-  ;; By table name, so search's delete capture skips it: these revisions only feed the Card being deleted.
-  (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))
-
-(mu/defn card-notification-ids
-  "The IDs of the card Notifications attached to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-pks-set :model/Notification
-                     :payload_type :notification/card
-                     :payload_id [:in ^:allow-subquery {:select [:id]
-                                                        :from   [:notification_card]
-                                                        :where  [:= :card_id card-id]}]))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
-
-;;; --------------------------------------------- ParameterCard ---------------------------------------------
+(mu/defn active-card-notifications-by-card
+  "The active card Notifications attached to the Cards with `card-ids`, by the ID of the Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (let [payloads (t2/select [:model/NotificationCard :id :card_id] :card_id [:in card-ids])]
+      (if (seq payloads)
+        (let [payload->card (into {} (map (juxt :id :card_id)) payloads)]
+          (group-by (comp payload->card :payload_id)
+                    (t2/select :model/Notification
+                               :active true
+                               :payload_type :notification/card
+                               :payload_id [:in (mapv :id payloads)])))
+        {}))
+    {}))
 
 (mu/defn parameter-cards-for-card
   "The ParameterCards drawing values from the Card with `card-id`."
@@ -448,59 +452,45 @@
                     :parameterized_object_type object-type
                     :parameterized_object_id object-id))
 
-(mu/defn parameter-card-exists?
-  "Whether the given parameter of the given parameterized object has a ParameterCard."
-  [object-type  :- [:or :keyword :string]
-   object-id    :- ms/PositiveInt
-   parameter-id :- :string]
-  (t2/exists? :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id object-id
-              :parameter_id parameter-id))
-
-(mu/defn set-parameter-card-card-id!
-  "Point the ParameterCard of the given parameter of the given parameterized object at `card-id`, returning the
-  number updated."
-  [object-type  :- [:or :keyword :string]
-   object-id    :- ms/PositiveInt
-   parameter-id :- :string
-   card-id      :- ::lib.schema.id/card]
-  (t2/update! :model/ParameterCard
-              {:parameterized_object_type object-type
-               :parameterized_object_id   object-id
-               :parameter_id              parameter-id}
-              {:card_id card-id}))
-
-(mu/defn insert-parameter-card!
-  "Insert `parameter-card`, returning the number inserted."
-  [parameter-card :- ::queries.schema/parameter-card.update]
-  (t2/insert! :model/ParameterCard parameter-card))
-
-(mu/defn delete-parameter-cards-for-card!
-  "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ParameterCard :card_id card-id))
-
-(mu/defn delete-parameter-cards-for-object!
-  "Delete every ParameterCard of the given parameterized object, returning the number deleted."
+(mu/defn parameter-cards-for-objects
+  "The ParameterCards of the parameterized objects of `object-type` with `object-ids`."
   [object-type :- [:or :keyword :string]
-   object-id   :- ms/PositiveInt]
+   object-ids  :- [:sequential ms/PositiveInt]]
+  (if (seq object-ids)
+    (t2/select :model/ParameterCard
+               :parameterized_object_type object-type
+               :parameterized_object_id [:in object-ids])
+    []))
+
+(mu/defn insert-parameter-cards!
+  "Insert `parameter-cards` in one statement, returning the number inserted."
+  [parameter-cards :- [:sequential ::queries.schema/parameter-card.create]]
+  (t2/insert! :model/ParameterCard parameter-cards))
+
+(mu/defn set-parameter-cards-card-id!
+  "Point the ParameterCards with `parameter-card-ids` at `card-id`, returning the number updated."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]
+   card-id            :- ::lib.schema.id/card]
+  (t2/update! :model/ParameterCard :id [:in parameter-card-ids] {:card_id card-id}))
+
+(mu/defn delete-parameter-cards-by-id!
+  "Delete the ParameterCards with `parameter-card-ids`, returning the number deleted."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ParameterCard :id [:in parameter-card-ids]))
+
+(mu/defn delete-parameter-cards-for-cards!
+  "Delete the ParameterCards drawing values from the Cards with `card-ids`, returning the number deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! :model/ParameterCard :card_id [:in card-ids]))
+
+(mu/defn delete-parameter-cards-for-objects!
+  "Delete every ParameterCard of the parameterized objects of `object-type` with `object-ids`, returning the number
+  deleted."
+  [object-type :- [:or :keyword :string]
+   object-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
-              :parameterized_object_id object-id))
-
-(mu/defn delete-parameter-cards-for-object-except!
-  "Delete the ParameterCards of the given parameterized object whose parameter is not one of `parameter-ids`,
-  returning the number deleted."
-  [object-type    :- [:or :keyword :string]
-   object-id      :- ms/PositiveInt
-   parameter-ids  :- [:sequential :string]]
-  (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id object-id
-              :parameter_id [:not-in parameter-ids]))
-
-;;; -------------------------------------------------- Query --------------------------------------------------
+              :parameterized_object_id [:in object-ids]))
 
 (mu/defn average-execution-time
   "The recorded average execution time of the query with `query-hash`."
@@ -522,25 +512,20 @@
                               c1)
                        [:inline 0])))
 
-(mu/defn backfill-query-and-average-execution-time!
-  "Set the query text and average execution time (`c0 * average_execution_time + c1`, rounded and cast to an integer)
-  of the query with `query-hash` if its text was never stored, returning the number updated."
-  [query-hash  :- bytes?
-   query-json  :- :string
-   c0          :- number?
-   c1          :- number?]
-  (t2/update! :model/Query
-              {:query_hash query-hash, :query nil}
-              {:query                  query-json
-               :average_execution_time (rolling-average-expr c0 c1)}))
-
-(mu/defn update-average-execution-time!
-  "Set the average execution time of the query with `query-hash` to `c0 * average_execution_time + c1`, rounded and
-  cast to an integer, returning the number updated."
-  [query-hash :- bytes?
-   c0         :- number?
-   c1         :- number?]
-  (t2/update! :model/Query {:query_hash query-hash} {:average_execution_time (rolling-average-expr c0 c1)}))
+(mu/defn backfill-queries-and-average-execution-times!
+  "Set the query text of each Query identified by the `[query-hash query-json c0 c1]` entries of `entries`, and its
+  average execution time to `c0 * average_execution_time + c1`, rounded and cast to an integer, in one statement."
+  [entries :- [:sequential {:min 1} [:tuple bytes? :string number? number?]]]
+  (t2/query {:update (t2/table-name :model/Query)
+             :set    {:query                  (into [:case]
+                                                    (mapcat (fn [[query-hash query-json]]
+                                                              [[:= :query_hash query-hash] query-json]))
+                                                    entries)
+                      :average_execution_time (into [:case]
+                                                    (mapcat (fn [[query-hash _query-json c0 c1]]
+                                                              [[:= :query_hash query-hash] (rolling-average-expr c0 c1)]))
+                                                    entries)}
+             :where  [:in :query_hash (map first entries)]}))
 
 (mu/defn update-average-execution-times!
   "Set the average execution time of each Query identified by the `[query-hash c0 c1]` triples in `hash+coefficients`
@@ -580,12 +565,27 @@
                     :card_id [:in card-ids]
                     :stored_result_id [:in stored-result-ids]))
 
-(mu/defn insert-stored-result-use!
-  "Record that the Card with `card-id` uses the StoredResult with `stored-result-id`, returning the number inserted."
-  [stored-result-id :- ms/PositiveInt
-   card-id          :- ::lib.schema.id/card]
-  (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
-                                      :card_id          card-id}))
+(mu/defn insert-stored-result-uses!
+  "Insert the StoredResultUse `rows` and return their ids, in the order of `rows`."
+  [rows :- [:sequential ::queries.schema/stored-result-use.create]]
+  (u/map-by-key-set #(t2/insert-returning-pks! :model/StoredResultUse %) rows))
+
+(mu/defn insert-stored-results!
+  "Insert the StoredResult `rows` and return their ids, in the order of `rows`."
+  [rows :- [:sequential ::queries.schema/stored-result.create]]
+  (u/map-by-key-set #(t2/insert-returning-pks! :model/StoredResult %) rows))
+
+(mu/defn delete-stored-results!
+  "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
+
+(mu/defn insert-query-executions!
+  "Insert the QueryExecution `rows` with one statement for each set of columns they have, in a transaction of their own
+  so that a row the app DB rejects rolls back to a savepoint, and return their ids in the order of `rows`."
+  [rows :- [:sequential ::queries.schema/query-execution.create]]
+  (t2/with-transaction [_conn]
+    (u/map-by-key-set #(t2/insert-returning-pks! :model/QueryExecution %) rows)))
 
 (mu/defn stored-result-gate-inputs-for-card
   "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
@@ -821,3 +821,98 @@
                             [:= :collection.archived false]]
                            [:report_dashboard :dashboard]
                            [:= :dashboard.id :card.dashboard_id]]}) :can_read :can_write))
+
+(mu/defn card-ids-for-databases-reducible
+  "A reducible of the `:id`s of the Cards of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/reducible-query {:from   [(t2/table-name :model/Card)]
+                       :select [:id]
+                       :where  [:in :database_id database-ids]}))
+
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
+(mu/defn delete-cards-for-databases! :- :int
+  "Delete the Cards with `card-ids` that still belong to one of the Databases with `database-ids`, returning the number
+  deleted."
+  [database-ids :- [:sequential ::lib.schema.id/database]
+   card-ids     :- [:sequential ::lib.schema.id/card]]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+  (first (t2/query {:delete-from (t2/table-name :model/Card)
+                    :where       [:and
+                                  [:in :database_id database-ids]
+                                  [:in :id card-ids]]})))
+
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
+
+;;; ------------------------------------------------ Card stamps ------------------------------------------------
+
+(def ^:private Temporal
+  "A `java.time` instant, date, or date-time."
+  [:fn #(instance? java.time.temporal.Temporal %)])
+
+(mu/defn update-cards-last-used-at!
+  "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
+  [card-id->timestamp :- [:map-of ::lib.schema.id/card Temporal]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+  (t2/query {:update [(t2/table-name :model/Card)]
+             :where  [:in :id (keys card-id->timestamp)]
+             :set    {:last_used_at (into [:case]
+                                          (mapcat (fn [[id timestamp]]
+                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                  card-id->timestamp))
+                      :updated_at :updated_at}}))
+
+(mu/defn set-card-last-used-at!
+  "Set `last_used_at` of the Card with `card-id`, returning the number updated."
+  [card-id      :- ::lib.schema.id/card
+   last-used-at :- ms/TemporalInstant]
+  (t2/update! :model/Card :id card-id {:last_used_at last-used-at}))
+
+(mu/defn shift-card-positions! :- :int
+  "Add or subtract one from the `collection_position` of the Cards in the Collection with `collection-id` whose position is
+  in `positions`, `{:from n :to m}` with either bound left out, as `direction` says, returning the number updated."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions
+   direction     :- ::collections.schema/position-direction]
+  (t2/update! :model/Card {:collection_id       collection-id
+                           :collection_position (collection/position-clause positions)}
+              {:collection_position [direction :collection_position 1]}))
+
+(mu/defn cards-at-positions
+  "The Cards in the Collection with `collection-id` whose `collection_position` is in `positions`, `{:from n :to m}` with
+  either bound left out."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   positions     :- ::collections.schema/positions]
+  (t2/select :model/Card :collection_id collection-id :collection_position (collection/position-clause positions)))
+
+(mu/defn set-cards-cache-invalidated-at!
+  "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
+  [card-ids       :- [:sequential ::lib.schema.id/card]
+   invalidated-at :- ms/TemporalInstant]
+  (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
+
+(mu/defn set-card-metabot-chart!
+  "Set the MetabotConversation and chart the Card with `card-id` was saved from, with a statement against its table
+  that publishes no event, returning the number updated."
+  [card-id         :- ::lib.schema.id/card
+   conversation-id :- :string
+   chart-id        :- :string]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the caller logs the row first
+  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                       :metabot_chart_id        chart-id}))
+
+(mu/defn delete-query-executions-before!
+  "Delete up to `batch-size` of the QueryExecutions whose `time-column` is at or before `cutoff`, returning the number
+  deleted."
+  [time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (mdb/delete-oldest-rows! :model/QueryExecution time-column cutoff batch-size))

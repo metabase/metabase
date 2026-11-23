@@ -17,6 +17,7 @@
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.plugins.core :as plugins]
    [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
@@ -25,7 +26,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.match :as match])
+   [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -75,16 +77,15 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (audit-app.db/insert-returning-database!
-                {:name canonical-db-name
-                 :description "Development database for analytics views and content"
-                 :engine (keyword db-type)
-                 :details {:is-audit-dev true}
-                 :is_audit false ; Important: not an audit DB
-                 :is_full_sync true
-                 :is_on_demand false
-                 :creator_id user-id
-                 :auto_run_queries true})]
+      (let [db (first (database/create-databases! [{:name canonical-db-name
+                                                    :description "Development database for analytics views and content"
+                                                    :engine (keyword db-type)
+                                                    :details {:is-audit-dev true}
+                                                    :is_audit false ; Important: not an audit DB
+                                                    :is_full_sync true
+                                                    :is_on_demand false
+                                                    :creator_id user-id
+                                                    :auto_run_queries true}]))]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! (u/the-id db) {:scan :schema})
         db))))
@@ -93,7 +94,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (audit-app.db/delete-database! db-id)
+  (database/delete-databases! [db-id])
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -286,8 +287,8 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (audit-app.db/delete-audit-databases!)
-  (audit-app.db/delete-analytics-collections!))
+  (database/delete-databases! (audit-app.db/audit-database-ids))
+  (collection/delete-collections! (audit-app.db/analytics-collection-ids)))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)

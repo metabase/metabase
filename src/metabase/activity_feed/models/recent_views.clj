@@ -138,55 +138,6 @@
    (duplicate-model-ids user-id context)
    (overflowing-model-buckets user-id context)))
 
-(defn- update-users-recent-views!*
-  "Batch handler for [[update-users-recent-views!]]: inserts the given views and then prunes overflow and
-  duplicates once per affected (user, context) pair."
-  [views]
-  (when (seq views)
-    (try
-      (t2/with-transaction [_conn]
-        (activity-feed.db/insert-recent-views!
-         (for [{:keys [user-id model model-id context timestamp]} views]
-           {:user_id user-id
-            :model (u/lower-case-en (name model))
-            :model_id model-id
-            :context (name context)
-            :timestamp timestamp}))
-        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
-        ;; pairs first: N views by one user become one set of prune queries instead of N.
-        (let [prune-ids (into #{}
-                              (comp (map (juxt :user-id :context))
-                                    (distinct)
-                                    (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
-                              views)]
-          (when (seq prune-ids)
-            (activity-feed.db/delete-recent-views! prune-ids))))
-      (catch Exception e
-        (log/error e "Failed to update users recent views")))))
-
-(def ^:private recent-views-interval-seconds 20)
-
-(def ^:private recent-views-queue-capacity 500)
-
-(defonce ^:private recent-views-queue
-  (delay (grouper/start!
-          #'update-users-recent-views!*
-          :capacity recent-views-queue-capacity
-          :interval (* recent-views-interval-seconds 1000))))
-
-(mu/defn update-users-recent-views!
-  "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id :- [:maybe ms/PositiveInt]
-   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
-   model-id :- ms/PositiveInt
-   context :- [:enum :view :selection]]
-  (when user-id
-    (grouper/submit! @recent-views-queue {:user-id   user-id
-                                          :model     model
-                                          :model-id  model-id
-                                          :context   context
-                                          :timestamp (t/offset-date-time)})))
-
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
   [user-id]
@@ -341,6 +292,57 @@
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]
      {:recents view-items})))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- update-users-recent-views!*
+  "Batch handler for [[update-users-recent-views!]]: inserts the given views and then prunes overflow and
+  duplicates once per affected (user, context) pair."
+  [views]
+  (when (seq views)
+    (try
+      (t2/with-transaction [_conn]
+        (activity-feed.db/insert-recent-views!
+         (for [{:keys [user-id model model-id context timestamp]} views]
+           {:user_id user-id
+            :model (u/lower-case-en (name model))
+            :model_id model-id
+            :context (name context)
+            :timestamp timestamp}))
+        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
+        ;; pairs first: N views by one user become one set of prune queries instead of N.
+        (let [prune-ids (into #{}
+                              (comp (map (juxt :user-id :context))
+                                    (distinct)
+                                    (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
+                              views)]
+          (when (seq prune-ids)
+            (activity-feed.db/delete-recent-views! prune-ids))))
+      (catch Exception e
+        (log/error e "Failed to update users recent views")))))
+
+(def ^:private recent-views-interval-seconds 20)
+
+(def ^:private recent-views-queue-capacity 500)
+
+(defonce ^:private recent-views-queue
+  (delay (grouper/start!
+          #'update-users-recent-views!*
+          :capacity recent-views-queue-capacity
+          :interval (* recent-views-interval-seconds 1000))))
+
+(mu/defn update-users-recent-views!
+  "Updates the RecentViews table for a given user with a new view, and prunes old views."
+  [user-id :- [:maybe ms/PositiveInt]
+   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
+   model-id :- ms/PositiveInt
+   context :- [:enum :view :selection]]
+  (when user-id
+    (grouper/submit! @recent-views-queue {:user-id   user-id
+                                          :model     model
+                                          :model-id  model-id
+                                          :context   context
+                                          :timestamp (t/offset-date-time)})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

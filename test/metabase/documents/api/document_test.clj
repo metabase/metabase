@@ -19,6 +19,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
@@ -129,19 +130,20 @@
 
 (deftest get-document-runs-content-gate-once-test
   (testing "one GET /api/document/:id adjudicates the document's content once"
-    (mt/with-temp [:model/Collection {coll-id :id}     {}
-                   :model/Document   {document-id :id} {:name          "Test Document"
-                                                        :collection_id coll-id
-                                                        :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
-      (let [gate  @#'m.document/doc-content-visibility-fn
-            orig  @gate
-            calls (atom 0)]
-        (try
-          (reset! gate (fn [_doc] (swap! calls inc) true))
-          (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
-          (is (= 1 @calls))
-          (finally
-            (reset! gate orig)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document   {document-id :id} {:name          "Test Document"
+                                                            :collection_id coll-id
+                                                            :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+          (let [gate  @#'m.document/doc-content-visibility-fn
+                orig  @gate
+                calls (atom 0)]
+            (try
+              (reset! gate (fn [_doc] (swap! calls inc) true))
+              (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+              (is (= 1 @calls))
+              (finally
+                (reset! gate orig)))))))))
 
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
@@ -1811,7 +1813,7 @@
                                     {:archived true})
               ;; Should have published document-archive event
               (is (some #(and (= :event/document-update (:topic %))
-                              (true? (:archived (:object (:event %)))))
+                              (some (comp true? :archived :object) (:changes (:event %))))
                         @events))))))
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
@@ -1823,7 +1825,7 @@
                                     {:archived false})
               ;; Should have published document-update event (not archive event)
               (is (some #(and (= :event/document-update (:topic %))
-                              (false? (:archived (:object (:event %)))))
+                              (some (comp false? :archived :object) (:changes (:event %))))
                         @events)))))))))
 
 (deftest document-archive-transaction-rollback-test
@@ -2024,7 +2026,7 @@
           ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
-            (is (= "Event Test Document" (get-in delete-event [:event :previous-object :name])))
+            (is (= "Event Test Document" (get-in delete-event [:event :changes 0 :previous-object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
 
 (deftest document-position-reconciliation-on-create-test
@@ -2811,7 +2813,8 @@
               original  (mt/original-fn #'events/publish-event!)]
           (with-redefs [events/publish-event! (fn [topic event]
                                                 (when (= :event/document-update topic)
-                                                  (swap! published conj [topic (some-> event :object :id)]))
+                                                  (swap! published into (for [change (:changes event)]
+                                                                          [topic (some-> change :object :id)])))
                                                 (original topic event))]
             (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
             (is (= [[:event/document-update (:id document)]] @published))
@@ -2829,7 +2832,7 @@
             original  (mt/original-fn #'events/publish-event!)]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/document-update topic)
-                                                (swap! published conj (some-> event :object :id)))
+                                                (swap! published into (map (comp :id :object) (:changes event))))
                                               (original topic event))]
           (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
           (is (= [document-id] @published))
@@ -2837,3 +2840,48 @@
           (reset! published [])
           (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived false})
           (is (= [document-id] @published)))))))
+
+(deftest document-cards-refusals-through-endpoints-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {write-id :id}  {}
+                       :model/Collection {read-id :id}   {}
+                       :model/Card       {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                       :model/Document   {doc-id :id}    {:collection_id write-id
+                                                          :content_type  prose-mirror/prose-mirror-content-type
+                                                          :document      {:type "doc" :content []}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
+          (let [good    (fn [] {:name (mt/random-name) :display "table" :visualization_settings {} :dataset_query (mt/mbql-query venues)})
+                three   (fn [second-card third-card] {"-1" (good) "-2" second-card "-3" third-card})
+                orders  (fn [] (assoc (good) :dataset_query (mt/mbql-query orders)))
+                field   (fn [] (assoc (good) :parameters [{:id "p" :name "p" :slug "p" :type "category"
+                                                           :target [:dimension [:field (mt/id :orders :total) nil]]}]))
+                ast     (documents.test-util/cards->prose-mirror-ast [-1 -2 -3])
+                counts  (fn [] [(t2/count :model/Document) (t2/count :model/Card)])
+                post!   (fn [collection-id cards status]
+                          (mt/user-http-request :rasta :post status "document/"
+                                                {:name (mt/random-name) :collection_id collection-id :document ast :cards cards}))
+                put!    (fn [cards status]
+                          (mt/user-http-request :rasta :put status (format "document/%d" doc-id) {:document ast :cards cards}))
+                refused (fn [f expected-message]
+                          (let [before (counts)]
+                            (is (= expected-message (f)))
+                            (is (= before (counts)) "nothing is written")))]
+            (doseq [[label cards message]
+                    [["a query on a table the user cannot query" (three (orders) (good)) "You cannot save this Question because you do not have permissions to run its query."]
+                     ["a parameter field the user cannot see"    (three (field) (good))  "You must have data permissions to add a parameter referencing this Field."]
+                     ["a source card the user cannot read"       (three (assoc (good) :source_card_id secret-id) (good)) "You don't have permissions to do that."]
+                     ["the first refused card in order"          (three (orders) (field)) "You cannot save this Question because you do not have permissions to run its query."]]]
+              (testing (str "POST /api/document with " label)
+                (refused #(post! write-id cards 403) message))
+              (testing (str "PUT /api/document/:id with " label)
+                (refused #(put! cards 403) message)))
+            (testing "POST /api/document with cards in a collection the user cannot write"
+              (refused #(post! read-id (three (good) (good)) 403) "You don't have permissions to do that."))
+            (testing "cards the user may create are saved by both endpoints"
+              (is (some? (post! write-id (three (good) (good)) 200)))
+              (is (some? (put! (three (good) (good)) 200))))))))))

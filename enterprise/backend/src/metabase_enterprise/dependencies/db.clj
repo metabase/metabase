@@ -8,10 +8,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -403,6 +403,43 @@
   (let [model (dependencies/entity-model entity-type)]
     (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
+(mu/defn app-db-reachable? :- :boolean
+  "Whether the app DB answers a query on a connection of its own, outside any transaction of this thread."
+  []
+  (try
+    (boolean (mdb/can-connect-to-data-source? (mdb/data-source)))
+    (catch Exception _
+      false)))
+
+(mu/defn throw-unless-app-db-reachable! :- :nil
+  "Rethrows `e` while the app DB is unreachable. A failure then says nothing about the entity it happened on, so it
+  mustn't count against it."
+  [e :- (ms/InstanceOfClass Throwable)]
+  (when-not (app-db-reachable?)
+    (throw e)))
+
+(mu/defn readable-entities :- [:sequential :any]
+  "The entities `read-entities` returns for `ids`. When that fails, reads each id alone, calling `on-unreadable` with
+  the id and exception of each that fails, so one unreadable row doesn't block the rest. Rethrows instead while the
+  app DB is unreachable: that failure isn't about any row."
+  [read-entities :- [:fn {:error/message "a function"} ifn?]
+   ids           :- [:set ::deps.dependency-types/entity-id]
+   on-unreadable :- [:fn {:error/message "a function"} ifn?]]
+  (try
+    (vec (read-entities ids))
+    (catch Exception e
+      (throw-unless-app-db-reachable! e)
+      (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
+      (into []
+            (mapcat (fn [id]
+                      (try
+                        (vec (read-entities #{id}))
+                        (catch Exception e
+                          (throw-unless-app-db-reachable! e)
+                          (on-unreadable id e)
+                          nil))))
+            ids))))
+
 (mu/defn entity
   "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -414,8 +451,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(dependencies/entity-model entity-type)] columns)
-             :id [:in ids]))
+  (let [model (into [(dependencies/entity-model entity-type)] columns)]
+    (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
 (mu/defn entity-with-columns
   "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
@@ -442,10 +479,17 @@
    id     :- ms/PositiveInt]
   (t2/select-one-fn column [model column] :id [:auto/param id]))
 
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+(mu/defn column-values :- [:map-of ms/PositiveInt [:maybe ms/PositiveInt]]
+  "The `column` of each of the rows of `model` with `ids`, by id."
+  [model  :- :keyword
+   column :- :keyword
+   ids    :- [:sequential {:min 1} ms/PositiveInt]]
+  (into {} (t2/select-fn->fn :id column [model :id column] :id [:in ids])))
+
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of each of the Fields with `field-ids`, by Field id."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (into {} (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids])))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -472,7 +516,7 @@
   [dependency-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Dependency :id [:in dependency-ids]))
 
-(mu/defn delete-dependencies-from!
+(mu/defn delete-dependencies-for-entities!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
@@ -487,7 +531,7 @@
                          :to_entity_type entity-type
                          :to_entity_id   entity-id)))
 
-(mu/defn delete-dependencies-on!
+(mu/defn delete-dependencies-for-dependents!
   "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
   number deleted."
   [from-type :- ::dependencies.schema/entity-type
@@ -789,10 +833,11 @@
                          :where [:in :dimension.human_readable_field_id field-ids]})
       #{}))
 
-(mu/defn internal-remap? :- :boolean
-  "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
+(mu/defn internal-remap-field-ids :- [:set ::lib.schema.id/field]
+  "The ids of the Fields among `field-ids` that have an internal remap, which shows their FieldValues' human-readable
+  values."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn-set :field_id :model/Dimension :field_id [:in field-ids] :type "internal") #{}))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
@@ -803,24 +848,45 @@
                          (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
           (select-keys [:updated_at :result_metadata])))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching
-  `updated_at`."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
-
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
+(defn- upsert-finding-sql
+  "The statement, as `[sql & params]`, that inserts the AnalysisFinding of `entity-type` `entity-id` or sets its `result`
+  when its unique key exists, stamping `analyzed_at` with the database clock only when the `result` differs, on the app
+  DB `db-type`."
+  [db-type entity-type entity-id result]
+  (case db-type
+    :postgres
+    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now()) "
+          "ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
+          "analyzed_at = CASE WHEN analysis_finding.result <> EXCLUDED.result THEN now() "
+          "ELSE analysis_finding.analyzed_at END, result = EXCLUDED.result")
+     entity-type entity-id result]
+
+    :mysql
+    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now(6)) "
+          "ON DUPLICATE KEY UPDATE "
+          "analyzed_at = IF(result <> VALUES(result), now(6), analyzed_at), result = VALUES(result)")
+     entity-type entity-id result]
+
+    :h2
+    [(str "MERGE INTO analysis_finding t USING (VALUES (CAST(? AS VARCHAR(254)), CAST(? AS INTEGER), "
+          "CAST(? AS BOOLEAN))) AS s(entity_type, entity_id, result) "
+          "ON t.entity_type = s.entity_type AND t.entity_id = s.entity_id "
+          "WHEN MATCHED THEN UPDATE SET "
+          "analyzed_at = CASE WHEN t.result <> s.result THEN now() ELSE t.analyzed_at END, result = s.result "
+          "WHEN NOT MATCHED THEN INSERT (entity_type, entity_id, result, analyzed_at) "
+          "VALUES (s.entity_type, s.entity_id, s.result, now())")
+     entity-type entity-id result]))
+
 (mu/defn upsert-finding!
-  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, updating the row a
-  concurrent analysis inserted meanwhile."
+  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, in one statement, stamping
+  `analyzed_at` when it inserts or the `result` changes."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt
    result      :- :boolean]
-  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:result result})))
+  (t2/query (upsert-finding-sql (mdb/db-type) (name entity-type) entity-id result))
+  nil)
 
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
@@ -862,7 +928,52 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private failed-entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
+(mu/defn failed-analysis-entities :- [:sequential [:map
+                                                   [:id            ms/PositiveInt]
+                                                   [:entity_id     :string]
+                                                   [:name          :string]
+                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                   [:given_up      [:maybe :boolean]]]]
+  "The entities of `entity-type` whose analysis failed or whose dependencies the dependency job gave up computing, with
+  `given_up` true for the latter, excluding archived and Metabase-managed content."
+  [entity-type :- (into [:enum] (keys failed-entity-columns))]
+  (let [model                           (dependencies/entity-model entity-type)
+        {:keys [archived? collection?]} (failed-entity-columns entity-type)]
+    (t2/query {:select    (cond-> [:entity.id :entity.entity_id :entity.name [:dependency_status.terminal :given_up]]
+                            collection? (conj :entity.collection_id))
+               :from      [[(t2/table-name model) :entity]]
+               :left-join [:analysis_finding  [:and
+                                               [:= :analysis_finding.entity_id :entity.id]
+                                               [:= :analysis_finding.entity_type (name entity-type)]]
+                           :dependency_status [:and
+                                               [:= :dependency_status.entity_id :entity.id]
+                                               [:= :dependency_status.entity_type (name entity-type)]]]
+               :where     (cond-> [:and
+                                   [:or
+                                    [:= :analysis_finding.result false]
+                                    [:= :dependency_status.terminal true]]
+                                   (mi/non-internal-filter-clause model :entity)]
+                            archived? (conj [:= :entity.archived false]))
+               :order-by  [[:entity.id :asc]]})))
+
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
+
+(mu/defn finding-errors-for-entities
+  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, each entity's oldest first."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (into []
+        (mapcat #(t2/select :model/AnalysisFindingError
+                            :analyzed_entity_type entity-type
+                            :analyzed_entity_id   [:in %]
+                            {:order-by [[:id :asc]]}))
+        (partition-all 1000 entity-ids)))
 
 (mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."

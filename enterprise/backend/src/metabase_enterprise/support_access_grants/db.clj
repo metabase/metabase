@@ -4,9 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
-   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -95,17 +93,6 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
 
-(mu/defn insert-user!
-  "Insert `user` and return the new instance."
-  [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
-  (t2/insert-returning-instance! :model/User user))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User :id user-id changes))
-
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."
   [user-id :- ::lib.schema.id/user]
@@ -120,45 +107,3 @@
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
-
-(mu/defn insert-auth-identity!
-  "Insert the AuthIdentity `row`, returning the number inserted."
-  [row :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:user_id :provider :provider_id :expires_at :credentials :metadata])]
-  (t2/insert! :model/AuthIdentity row))
-
-(mu/defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated. `changes` may be a
-  whole AuthIdentity instance re-saved after a partial edit (e.g. [[metabase.auth-identity.providers.emailed-secret/mark-token-consumed]]
-  round-trips the full row it was given), so every column is accepted."
-  [auth-identity-id :- ms/PositiveInt
-   changes          :- [:map {:closed true}
-                        [:id            {:optional true} ms/PositiveInt]
-                        [:user_id       {:optional true} ::lib.schema.id/user]
-                        [:provider      {:optional true} [:maybe [:or :keyword :string]]]
-                        [:provider_id   {:optional true} [:maybe :string]]
-                        [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
-                        [:last_used_at  {:optional true} [:maybe ms/TemporalInstant]]
-                        [:confirmed_at  {:optional true} [:maybe ms/TemporalInstant]]
-                        [:created_at    {:optional true} ms/TemporalInstant]
-                        [:updated_at    {:optional true} ms/TemporalInstant]
-                        [:credentials   {:optional true}
-                         [:maybe [:map {:closed true}
-                                  [:token_hash     :string]
-                                  [:expires_at     ms/TemporalInstant]
-                                  [:grant_ends_at  ms/TemporalInstant]
-                                  [:consumed_at    [:maybe ms/TemporalInstant]]]]]
-                        [:metadata      {:optional true}
-                         [:maybe [:map {:closed true}
-                                  [:email           ms/Email]
-                                  [:ip_address       {:optional true} [:maybe :string]]
-                                  [:request_context  {:optional true}
-                                   [:map {:closed true}
-                                    [:user_agent {:optional true} [:maybe :string]]
-                                    [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
-  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
-
-(mu/defn expire-auth-identities!
-  "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
-  [auth-identity-ids :- [:sequential ms/PositiveInt]
-   expires-at        :- ms/TemporalInstant]
-  (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at expires-at}))

@@ -35,6 +35,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
    [metabase.util.malli :as mu]
@@ -48,33 +49,6 @@
 (doto :model/UserKeyValue
   (derive :metabase/model)
   (derive :hook/timestamped?))
-
-(mu/defn put!
-  "Upserts a KV-pair"
-  [user-id :- :int
-   kvp :- ::types/user-key-value]
-  (let [{:keys [namespace key value expires-at]}
-        (mc/encode ::types/user-key-value
-                   kvp
-                   (mtx/transformer
-                    (mtx/default-value-transformer)
-                    {:name :database}))]
-    (t2/with-transaction [_]
-      (if (user-key-value.db/user-key-value user-id namespace key)
-        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
-        (try
-          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
-          ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
-          (catch Exception _
-            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
-    value))
-
-(mu/defn delete!
-  "Deletes a KV-pair"
-  [user-id :- :int
-   namespace :- :string
-   k :- :string]
-  (user-key-value.db/delete-user-key-value! user-id namespace k))
 
 (mu/defn retrieve
   "Retrieves a KV-pair"
@@ -100,6 +74,42 @@
                                  (mtx/default-value-transformer)
                                  {:name :database}))]
       (into {} (map (juxt :key :value) parsed-kvs)))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- duplicate-key?
+  "Whether `e` is the duplicate key of an insert that lost a race with a concurrent insert of the same row."
+  [e]
+  (= :duplicate-key (sql-errors/error-kind e)))
+
+(mu/defn put-user-key-value!
+  "Store the value of `kvp` for the User with `user-id`, replacing any stored under its key, and return the value."
+  [user-id :- :int
+   kvp :- ::types/user-key-value]
+  (let [{:keys [namespace key value expires-at]}
+        (mc/encode ::types/user-key-value
+                   kvp
+                   (mtx/transformer
+                    (mtx/default-value-transformer)
+                    {:name :database}))]
+    (t2/with-transaction [_]
+      (if (user-key-value.db/user-key-value user-id namespace key)
+        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
+        (try
+          (t2/with-transaction [_]
+            (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at))
+          (catch Exception e
+            (if (duplicate-key? e)
+              (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
+              (throw e))))))
+    value))
+
+(mu/defn delete-user-key-value!
+  "Delete the value the User with `user-id` stores under `k` in `namespace`, returning the number deleted."
+  [user-id :- :int
+   namespace :- :string
+   k :- :string]
+  (user-key-value.db/delete-user-key-value! user-id namespace k))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

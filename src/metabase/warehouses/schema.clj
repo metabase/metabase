@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -73,8 +74,9 @@
     [:transforms_permissions          {:optional true} [:maybe [:enum :write :none]]]]])
 
 (mr/def ::database.update
-  "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
+  "What an update of a Database takes: its `:id` and the columns of `:metabase_database` to change, each optional."
   [:map {:closed true}
+   [:id                          ::lib.schema.id/database]
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:name                        {:optional true} [:maybe :string]]
@@ -108,6 +110,16 @@
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::database.create
+  "What a caller gives to create a Database: the columns of an update, with an `:id` only for a Database whose id is
+  fixed, and its name and engine."
+  [:merge
+   (mut/dissoc ::database.update :id)
+   [:map
+    [:id     {:optional true} ::lib.schema.id/database]
+    [:name   :string]
+    [:engine ::lib.schema.common/keyword]]])
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."

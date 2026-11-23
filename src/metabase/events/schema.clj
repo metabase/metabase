@@ -147,20 +147,40 @@
    [:object [:fn #(t2/instance-of? :model/SecurityAdvisory %)]]])
 
 (defn register-lifecycle-topic!
-  "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
+  "Have the events of `topic`, made by the writes of rows, checked against the lifecycle schema."
   [topic]
   (when-not (contains? @lifecycle-topics topic)
     (swap! lifecycle-topics conj topic))
   nil)
 
-(mr/def ::lifecycle
+(mr/def ::lifecycle.change
+  "The change of one row in a lifecycle event: the row after the write as `:object`, absent for a delete, the row
+  before it as `:previous-object`, absent for a create."
   [:map {:closed true}
    [:object {:optional true} [:map]]
-   [:previous-object {:optional true} [:map]]
+   [:previous-object {:optional true} [:map]]])
+
+(mr/def ::context
+  "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;
+  `:archived-with`, the `[model id]` of the entity whose archive or restore carried their rows; and `:details`, a map
+  the audit log records."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:details {:optional true} [:map]]])
+
+(mr/def ::write-opts
+  "The options the write functions of most models take: `:writer`, who writes when it is not a user, and `:context`."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import :revert :replacement :sync :cascade]]
+           [:context {:optional true} [:maybe ::context]]]])
+
+(mr/def ::lifecycle
+  "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one action created,
+  updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, the
+  `:writer` when it is not a user's own write, such as `:import` or `:revert`, and the `:context` they share."
+  [:map {:closed true}
+   [:changes [:sequential ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
-   [:context {:optional true}
-    [:map {:closed true}
-     [:revision-message {:optional true} [:maybe :string]]
-     [:reverting? {:optional true} :boolean]
-     [:archived-with {:optional true} [:tuple :keyword pos-int?]]
-     [:details {:optional true} [:map]]]]])
+   [:writer {:optional true} :keyword]
+   [:context {:optional true} ::context]])

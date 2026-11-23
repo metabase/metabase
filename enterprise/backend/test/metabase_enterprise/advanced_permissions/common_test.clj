@@ -12,9 +12,11 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.impl-test :as upload-test]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -171,18 +173,20 @@
         (testing "A new table gets `:blocked` view-data perms if any tables in the DB are `:blocked`"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :blocked)
           (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
-          (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-            ;; Check that no DB-level perm is set
-            (is (nil? (perm-value nil)))
-            (is (= :blocked (perm-value table-id-3)))))
+          (mt/with-model-cleanup [:model/Table]
+            (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+              ;; Check that no DB-level perm is set
+              (is (nil? (perm-value nil)))
+              (is (= :blocked (perm-value table-id-3))))))
         (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
           (mt/with-temp [:model/Sandbox _ {:group_id group-id
-                                           :table_id table-id-1}
-                         :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (nil? (perm-value nil)))
-            (is (= :unrestricted (perm-value table-id-1)))
-            (is (= :blocked (perm-value table-id-3)))))))))
+                                           :table_id table-id-1}]
+            (mt/with-model-cleanup [:model/Table]
+              (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+                (is (nil? (perm-value nil)))
+                (is (= :unrestricted (perm-value table-id-1)))
+                (is (= :blocked (perm-value table-id-3)))))))))))
 
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
@@ -202,11 +206,12 @@
         (doseq [features [#{} #{:advanced-permissions} #{:sandboxes}]]
           (testing (format "premium features = %s" (pr-str features))
             (mt/with-premium-features features
-              (mt/with-temp [:model/Table {new-table-id :id} {:db_id db-id :schema "PUBLIC"}]
-                (is (nil? (perm-value nil))
-                    "No DB-level perm is written")
-                (is (= :blocked (perm-value new-table-id))
-                    "New table blocks the sandboxed group instead of leaking :unrestricted")))))))))
+              (mt/with-model-cleanup [:model/Table]
+                (let [[{new-table-id :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+                  (is (nil? (perm-value nil))
+                      "No DB-level perm is written")
+                  (is (= :blocked (perm-value new-table-id))
+                      "New table blocks the sandboxed group instead of leaking :unrestricted"))))))))))
 
 (deftest uploaded-table-without-premium-features-test
   (testing "An *uploaded* table fails CLOSED to :blocked for a sandboxed group even without premium features"
@@ -228,14 +233,13 @@
             (is (= #{group-id}
                    (advanced-permissions.common/new-table-sandboxed-groups db-id [group-id]))
                 "The sandbox guard does not consult the token")
-            (mt/with-temp [:model/Table {new-table-id :id} {:db_id       db-id
-                                                            :schema      "PUBLIC"
-                                                            :data_source :upload}]
-              (is (= :blocked
-                     (t2/select-one-fn :perm_value :model/DataPermissions
-                                       :db_id db-id :group_id group-id
-                                       :table_id new-table-id :perm_type :perms/view-data))
-                  "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))
+            (mt/with-model-cleanup [:model/Table]
+              (let [[{new-table-id :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true :data_source :upload}])]
+                (is (= :blocked
+                       (t2/select-one-fn :perm_value :model/DataPermissions
+                                         :db_id db-id :group_id group-id
+                                         :table_id new-table-id :perm_type :perms/view-data))
+                    "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted")))))))))
 
 (deftest new-table-in-granted-schema-test
   ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
@@ -252,20 +256,20 @@
              (advanced-permissions.common/new-table-view-data-permission-levels db-id [group-id]))
           "precondition: the DB-wide override would block a new table for this group")
       (testing "Sync (default): a synced table in the granted schema fails safe to :blocked"
-        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
-          (is (= :blocked
-                 (t2/select-one-fn :perm_value :model/DataPermissions
-                                   :db_id db-id :group_id group-id
-                                   :table_id table-id-3 :perm_type :perms/view-data)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "public" :name "new_table" :active true}])]
+            (is (= :blocked
+                   (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :db_id db-id :group_id group-id
+                                     :table_id table-id-3 :perm_type :perms/view-data))))))
       (testing "Upload (`:data_source :upload`): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
-        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id       db-id
-                                                      :schema      "public"
-                                                      :data_source :upload}]
-          (is (= :unrestricted
-                 (t2/select-one-fn :perm_value :model/DataPermissions
-                                   :db_id db-id :group_id group-id
-                                   :table_id table-id-3 :perm_type :perms/view-data))
-              "new table in the granted schema must inherit :unrestricted, not :blocked"))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "public" :name "new_table" :active true :data_source :upload}])]
+            (is (= :unrestricted
+                   (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :db_id db-id :group_id group-id
+                                     :table_id table-id-3 :perm_type :perms/view-data))
+                "new table in the granted schema must inherit :unrestricted, not :blocked")))))))
 
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
@@ -956,20 +960,21 @@
 (deftest settings-managers-can-enable-and-disable-uploads-on-dwh
   (mt/with-premium-features #{:advanced-permissions}
     (with-all-users-as-settings-managers
-      (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/User {user-id :id} {}
-                     :model/PermissionsGroupMembership {} {:user_id user-id
-                                                           :group_id group-id}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-restored-data-perms-for-groups! [group-id]
-            (testing "Can enable uploads on DWH"
-              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}}))
-            (testing "Can disable uploads on DWH"
-              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {}}))
-            (testing "Admins can do this too"
-              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
-              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}}))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email "dwh-uploads-manager@example.com"}])]
+          (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership {} {:user_id user-id
+                                                               :group_id group-id}]
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-groups! [group-id]
+                (testing "Can enable uploads on DWH"
+                  (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}}))
+                (testing "Can disable uploads on DWH"
+                  (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {}}))
+                (testing "Admins can do this too"
+                  (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
+                  (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}}))))))))))
 
 (deftest upload-csv-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)

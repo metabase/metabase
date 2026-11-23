@@ -29,6 +29,7 @@
     :model/OsiAiContext
     :model/PythonLibrary
     :model/SegmentTest
+    :model/TestSuite
     :model/TimelineEvent
     :model/TransformJob
     :model/TransformJobTransformTag

@@ -98,7 +98,7 @@
   (api/check-superuser)
   (api/check (seq advisory_ids) [400 "advisory_ids must be a non-empty array"])
   (mapv acknowledge-response
-        (security-advisory/acknowledge-many! advisory_ids api/*current-user-id*)))
+        (security-advisory/acknowledge-security-advisories! advisory_ids api/*current-user-id*)))
 
 (defonce ^:private ^ExecutorService sync-executor
   (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS

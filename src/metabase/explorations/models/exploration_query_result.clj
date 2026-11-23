@@ -4,12 +4,17 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.composite :as composite]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.queries.models.stored-result :as stored-result]
+   [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -108,6 +113,13 @@
            (query-perms/query->resolved-source-ids (:dataset_query sr) (:resolved_source_ids sr)))
          eq-results))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-query-results! :- [:sequential (ms/InstanceOf :model/ExplorationQueryResult)]
+  "Insert the ExplorationQueryResult `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-query-result.create]]
+  (explorations.db/insert-query-results! rows))
+
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly
   built from multiple `ExplorationQuery` snapshots combined into one — for a single document
@@ -159,39 +171,40 @@
       (t2/with-transaction [_conn]
         (let [stored-result-id (if single?
                                  (:id first-sr)
-                                 (explorations.db/insert-stored-result!
-                                  {:result_data   composite-bytes
-                                   :creator_id    creator-id
-                                   :database_id   (or (:database_id first-sr)
-                                                      (-> dataset-query :database))
-                                   :dataset_query dataset-query
-                                   ;; `composite/combine` refreshed :row_count to the
-                                   ;; combined row set's size.
-                                   :row_count     (:row_count composite-qp)
-                                   ;; Without this the read gate denies the composite to
-                                   ;; every non-superuser. See [[composite-data-access-token]].
-                                   :data_access_token (composite-data-access-token eq-results)
-                                   :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
-              card-id          (:id (queries/create-card!
-                                     {:name                   (or (not-empty (:name first-eq))
-                                                                  (not-empty (:name src-card))
-                                                                  (tru "Chart"))
-                                      :description            (:description src-card)
-                                      :type                   :question
-                                      :dashboard_id           nil
-                                      :dataset_query          dataset-query
-                                      :display                display
-                                      :visualization_settings visualization-settings
-                                      :document_id            document-id
-                                      :collection_id          collection-id}
-                                     creator))]
+                                 (first (stored-result/create-stored-results! [{:result_data   composite-bytes
+                                                                                :creator_id    creator-id
+                                                                                :database_id   (or (:database_id first-sr)
+                                                                                                   (-> dataset-query :database))
+                                                                                :dataset_query dataset-query
+                                                                                ;; `composite/combine` refreshed :row_count to the
+                                                                                ;; combined row set's size.
+                                                                                :row_count     (:row_count composite-qp)
+                                                                                ;; Without this the read gate denies the composite to
+                                                                                ;; every non-superuser. See [[composite-data-access-token]].
+                                                                                :data_access_token (composite-data-access-token eq-results)
+                                                                                :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}])))
+              card-id          (:id (first (queries.card/create-cards!
+                                            [(queries.card/new-card-row
+                                              {:name                   (or (not-empty (:name first-eq))
+                                                                           (not-empty (:name src-card))
+                                                                           (tru "Chart"))
+                                               :description            (:description src-card)
+                                               :type                   :question
+                                               :dashboard_id           nil
+                                               :dataset_query          dataset-query
+                                               :display                display
+                                               :visualization_settings visualization-settings
+                                               :document_id            document-id
+                                               :collection_id          collection-id}
+                                              (:id creator))])))]
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (explorations.db/insert-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
-          (when-not single?
-            (doseq [{:keys [sr]} eq-results]
-              (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
+          (stored-result-use/create-stored-result-uses!
+           (into [{:stored_result_id stored-result-id :card_id card-id}]
+                 (when-not single?
+                   (for [{:keys [sr]} eq-results]
+                     {:stored_result_id (:id sr) :card_id card-id}))))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

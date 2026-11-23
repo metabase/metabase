@@ -23,6 +23,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -331,14 +332,14 @@
   (let [cards (cond->> (dashboard-question-candidates id)
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
-      (mapv (fn [{:as card :keys [in_dashboards]}]
-              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
-              (queries/update-card! {:card-before-update card
-                                     :card-updates {:dashboard_id (-> in_dashboards first :id)}
-                                     :actor @api/*current-user*
-                                     :delete-old-dashcards? false})
-              (:id card))
-            cards))))
+      (let [updates (mapv (fn [{:as card :keys [in_dashboards]}]
+                            (let [changes {:dashboard_id (-> in_dashboards first :id)}]
+                              (api/update-check card changes)
+                              (queries.card/place-updated-dashboard-question! card changes false)
+                              (assoc (queries.card/card-changes changes) :id (:id card))))
+                          cards)]
+        (queries.card/update-cards! updates)
+        (mapv :id cards)))))
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
@@ -628,12 +629,12 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
-        (collection/move-collection! child new-children-location))
+      (collection/update-collections! (mapv (fn [id] {:id id :location new-children-location}) (mapv :id (collections-rest.db/directly-archived-descendant-collections old-children-location))) nil)
       ;; Now we can safely delete this collection and anything left under it.
-      (collections-rest.db/delete-collection! id))))
+      (collection/delete-collections! [id])
+      1)))
 
 (api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:
