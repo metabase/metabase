@@ -5,7 +5,7 @@ Metabase's UI components, theme, colors and icons, built from [`frontend/src/met
 ## Install
 
 ```sh
-npm install @metabase/ui
+bun add @metabase/ui
 ```
 
 Peer dependencies: `react` and `react-dom` `^19.0.0`, `dayjs` `^1.11.18`, and `@mantine/core`, `@mantine/hooks`, `@mantine/dates` `~8.3.18` (`styles.css` embeds that Mantine version's CSS). Peer warnings from `kbar` and its dependencies are expected.

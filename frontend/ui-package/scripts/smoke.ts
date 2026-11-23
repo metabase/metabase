@@ -2,7 +2,7 @@
 import { spawnSync } from "child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { basename, join, resolve } from "path";
 
 const packageDir = resolve(import.meta.dirname, "..");
 const keep = process.argv.includes("--keep");
@@ -16,13 +16,13 @@ function run(cmd: string, args: string[], cwd: string, quiet = false) {
   });
   if (result.error) {
     console.error(`Could not run ${cmd}: ${result.error.message}`);
-    return { ok: false, output: "", stdout: "" };
+    return { ok: false };
   }
   const output = `${result.stdout}${result.stderr}`;
   if (!quiet || result.status !== 0) {
     process.stdout.write(output);
   }
-  return { ok: result.status === 0, output, stdout: result.stdout };
+  return { ok: result.status === 0 };
 }
 
 function must(cmd: string, args: string[], cwd: string, quiet = false) {
@@ -56,35 +56,33 @@ cpSync(join(packageDir, "smoke-app"), appDir, {
 });
 
 try {
-  must("npm", ["ci", "--no-audit", "--no-fund"], appDir, true);
-  // No --force or --legacy-peer-deps: kbar's peer warnings are expected, errors are not.
-  const install = must(
-    "npm",
-    ["install", "--no-save", "--no-audit", "--no-fund", tarball],
-    appDir,
-  );
-  const peerWarnings = install.output
-    .split("\n")
-    .filter((line) => /^npm warn.*(peer|ERESOLVE)/i.test(line));
-  console.log(
-    `\nnpm peer warnings seen (expected from kbar): ${peerWarnings.length}`,
-  );
-
-  const ls = run(
-    "npm",
-    ["ls", "react", "react-dom", "--all", "--parseable"],
+  must(
+    "bun",
+    ["install", "--frozen-lockfile", "--linker=hoisted"],
     appDir,
     true,
   );
+  must("bun", ["add", "--no-save", "--linker=hoisted", tarball], appDir);
+
+  // With the hoisted linker, extra React copies appear under nested node_modules.
+  const dependencies = readdirSync(join(appDir, "node_modules"), {
+    recursive: true,
+    withFileTypes: true,
+  });
   for (const name of ["react", "react-dom"]) {
-    const paths = new Set(
-      ls.stdout.split("\n").filter((p) => p.endsWith(`/node_modules/${name}`)),
-    );
-    assert(paths.size === 1, `expected one ${name}, got ${[...paths]}`);
+    const paths = dependencies
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          entry.name === name &&
+          basename(entry.parentPath) === "node_modules",
+      )
+      .map((entry) => join(entry.parentPath, entry.name));
+    assert(paths.length === 1, `expected one ${name}, got ${paths}`);
   }
 
-  must("npm", ["run", "type-check"], appDir);
-  must("npm", ["run", "build"], appDir);
+  must("bun", ["run", "type-check"], appDir);
+  must("bun", ["run", "build"], appDir);
 
   const assets = readdirSync(join(appDir, "dist/assets"));
   for (const weight of ["regular", "700", "900"]) {

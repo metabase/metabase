@@ -9,7 +9,7 @@ rmSync(packDir, { recursive: true, force: true });
 mkdirSync(packDir);
 
 // Packs a local tarball only. This script never publishes.
-const result = spawnSync("npm", ["pack", "--pack-destination", packDir], {
+const result = spawnSync("bun", ["pm", "pack", "--destination", packDir], {
   cwd: packageDir,
   stdio: "inherit",
 });
