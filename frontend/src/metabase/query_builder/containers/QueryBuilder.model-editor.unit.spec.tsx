@@ -18,11 +18,11 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Dataset,
   DatasetColumn,
+  Field,
   RowValue,
 } from "metabase-types/api";
 import {
@@ -52,6 +52,14 @@ import { EDITOR_TAB_INDEXES } from "../components/DatasetEditor/constants";
 import { setup, waitForSaveChangesToBeEnabled } from "./test-utils";
 
 registerVisualizations();
+
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
+
+const fromResultMetadata = (metadata: Card["result_metadata"]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  metadata as unknown as DatasetColumn[] | null;
 
 // The global mock of NativeQueryEditor has no run button. The real editor
 // runs here, and only CodeMirror, which needs a layout, is a plain textarea.
@@ -121,7 +129,7 @@ const GUI_MODEL: Card = createMockCard({
       stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 5 }],
     }),
   ),
-  result_metadata: ORDERS_COLUMNS,
+  result_metadata: toResultMetadata(ORDERS_COLUMNS),
 });
 
 const ORDERS_MODEL: Card = createMockCard({
@@ -134,7 +142,7 @@ const ORDERS_MODEL: Card = createMockCard({
       stages: [{ source: { type: "table", id: ORDERS_ID } }],
     }),
   ),
-  result_metadata: ORDERS_COLUMNS,
+  result_metadata: toResultMetadata(ORDERS_COLUMNS),
 });
 
 const NATIVE_ORDERS_COLUMNS: DatasetColumn[] = ORDERS_COLUMNS.map((column) =>
@@ -158,7 +166,6 @@ function createNativeModel(opts: { id: number; name: string; query: string }) {
     name: opts.name,
     type: "model",
     display: "table",
-    query_type: "native",
     dataset_query: Lib.toJsQuery(
       Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: opts.query }),
     ),
@@ -223,7 +230,7 @@ function parseBody(call: CallLog): unknown {
 /** As the backend does, a model's own metadata wins over the query's */
 function withModelMetadata(
   dataset: Dataset,
-  modelMetadata: Card["result_metadata"],
+  modelMetadata: DatasetColumn[] | null,
 ): Dataset {
   const cols = dataset.data.cols.map((column) => ({
     ...column,
@@ -234,7 +241,7 @@ function withModelMetadata(
     data: {
       ...dataset.data,
       cols,
-      results_metadata: createMockResultsMetadata(cols),
+      results_metadata: createMockResultsMetadata(toResultMetadata(cols)),
     },
   };
 }
@@ -305,7 +312,7 @@ function setupModelServer({
   const runSavedQuery = () =>
     withModelMetadata(
       runQuery(savedCard.dataset_query),
-      savedCard.result_metadata,
+      fromResultMetadata(savedCard.result_metadata),
     );
   fetchMock.post(`path:/api/card/${card.id}/query`, runSavedQuery);
   setupAdhocQueryEndpoint((call) => {
@@ -555,13 +562,12 @@ function getNotebookStep(type: string) {
 
 /** Goes where the "Use the notebook editor" option of a new model leads */
 function startNewModel(router: { navigate: (to: string) => unknown }) {
-  const url = Urls.newQuestion(
-    Question.create({
-      metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
-      cardType: "model",
-    }),
-    { mode: "query", creationType: "custom_question" },
-  );
+  const url = Urls.newQuestion({
+    metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
+    cardType: "model",
+    mode: "query",
+    creationType: "custom_question",
+  });
   act(() => {
     router.navigate(url);
   });
@@ -873,7 +879,7 @@ describe("QueryBuilder - model editor", () => {
             ],
           }),
         ),
-        result_metadata: cols,
+        result_metadata: toResultMetadata(cols),
         // the order the model was saved with after moving Custom before Total
         visualization_settings: {
           "table.columns": ["ID", "Custom", "TOTAL", "Country"].map((name) =>
@@ -954,7 +960,7 @@ describe("QueryBuilder - model editor", () => {
             ],
           }),
         ),
-        result_metadata: cols,
+        result_metadata: toResultMetadata(cols),
       });
       const rows = [
         ["2022-01-01T00:00:00Z", 744, 42156.87],
@@ -1058,7 +1064,7 @@ describe("QueryBuilder - model editor", () => {
             ],
           }),
         ),
-        result_metadata: cols,
+        result_metadata: toResultMetadata(cols),
       });
       setupModelServer({
         card: model,
@@ -1093,7 +1099,7 @@ describe("QueryBuilder - model editor", () => {
             stages: [{ source: { type: "table", id: PRODUCTS_ID }, limit: 5 }],
           }),
         ),
-        result_metadata: cols,
+        result_metadata: toResultMetadata(cols),
       });
       const rows = [
         [
@@ -1258,6 +1264,11 @@ describe("QueryBuilder - model editor", () => {
   });
 
   describe("columns visible only in detail views", () => {
+    beforeEach(() => {
+      // v65 object detail loads the foreign keys of the model's virtual table
+      fetchMock.get(/\/api\/table\/card__\d+\/fks$/, []);
+    });
+
     async function setVisibility(columnName: string, visibility: string) {
       await clickHeader(columnName);
       await userEvent.click(screen.getByLabelText(visibility));

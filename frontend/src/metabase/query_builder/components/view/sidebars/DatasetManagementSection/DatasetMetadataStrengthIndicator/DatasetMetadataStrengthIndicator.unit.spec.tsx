@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { Field } from "metabase-types/api";
