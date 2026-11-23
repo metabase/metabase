@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseEndpoints,
-  setupDatabaseMetadataEndpoint,
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -52,7 +52,7 @@ function setup({ initialRoute }: SetupOpts) {
 
   setupSegmentsEndpoints([PEOPLE_SEGMENT, ORDERS_SEGMENT]);
   setupDatabaseEndpoints(DATABASE);
-  setupDatabaseMetadataEndpoint(DATABASE);
+  fetchMock.get(`path:/api/database/${DATABASE.id}/metadata`, DATABASE);
 
   renderRoutes([...getReferenceRoutes(), XRAY_ROUTE], {
     initialRoute,

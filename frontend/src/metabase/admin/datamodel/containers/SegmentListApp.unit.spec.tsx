@@ -5,7 +5,10 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupSdkReact18HostsEndpoint,
+  setupSearchEndpoints,
   setupSegmentsEndpoints,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -23,6 +26,7 @@ import type { EnterpriseSettings, Revision, Segment } from "metabase-types/api";
 import {
   createMockRevision,
   createMockSegment,
+  createMockStructuredDatasetQuery,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -44,6 +48,9 @@ const ORDERS_SEGMENT = createMockSegment({
   name: "Orders < 100",
   description: "All orders with a total under $100.",
   table_id: ORDERS_ID,
+  definition: createMockStructuredDatasetQuery({
+    query: { "source-table": ORDERS_ID },
+  }),
   definition_description: "Filtered by Total is less than 100",
 });
 
@@ -52,6 +59,9 @@ const PEOPLE_SEGMENT = createMockSegment({
   name: "People from Twitter",
   description: "People who signed up from Twitter",
   table_id: PEOPLE_ID,
+  definition: createMockStructuredDatasetQuery({
+    query: { "source-table": PEOPLE_ID },
+  }),
   definition_description: "Filtered by Source is Twitter",
 });
 
@@ -117,6 +127,13 @@ function setup({
   ]);
   setupSegmentsEndpoints(segments);
   setupCardDataset();
+  setupSdkReact18HostsEndpoint([]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "sdk-react-18-notice",
+    value: false,
+  });
+  setupSearchEndpoints([]);
   fetchMock.get("path:/api/setting/engines", {});
   // Answers only the revisions of the Orders segment.
   fetchMock.get("path:/api/revision", (call) => {
