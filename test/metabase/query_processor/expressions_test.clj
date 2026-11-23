@@ -1020,23 +1020,30 @@
   #_{:clj-kondo/ignore [:unused-binding]}
   (let [dataset-def (no-laziness-dataset-definition 300)]
     (mt/dataset dataset-def
-      (let [query (mt/mbql-query lots-of-fields
-                    {:expressions {:c [:+
-                                       [:field (mt/id :lots-of-fields :a) nil]
-                                       [:field (mt/id :lots-of-fields :b) nil]]}
-                     :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (t2/select [:model/Field :id]
-                                                                      :table_id (mt/id :lots-of-fields)
-                                                                      :id       [:not-in #{(mt/id :lots-of-fields :a)
-                                                                                           (mt/id :lots-of-fields :b)}]
-                                                                      {:order-by [[:name :asc]]})]
-                                          [:field id nil]))})]
-        (t2/with-call-count [call-count-fn]
-          (mt/with-native-query-testing-context query
-            (is (= 1
-                   (-> (qp/process-query query) mt/rows ffirst))))
-          (testing "# of app DB calls should not be some insane number"
-            (is (< (call-count-fn) 20))))))))
+      (let [field-ids (t2/select-pks-vec :model/Field
+                                         :table_id (mt/id :lots-of-fields)
+                                         :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                              (mt/id :lots-of-fields :b)}]
+                                         {:order-by [[:name :asc]]})
+            query     (fn [num-fields]
+                        (mt/mbql-query lots-of-fields
+                          {:expressions {:c [:+
+                                             [:field (mt/id :lots-of-fields :a) nil]
+                                             [:field (mt/id :lots-of-fields :b) nil]]}
+                           :fields      (into [[:expression "c"]]
+                                              (for [id (take num-fields field-ids)]
+                                                [:field id nil]))}))
+            counted   (fn [num-fields]
+                        (let [query (query num-fields)]
+                          (t2/with-call-count [call-count-fn]
+                            (mt/with-native-query-testing-context query
+                              (is (= 1
+                                     (-> (qp/process-query query) mt/rows ffirst))))
+                            (call-count-fn))))]
+        (counted 1)
+        (testing "# of app DB calls should not grow with the number of Fields"
+          (is (= (min (counted 10) (counted 10))
+                 (min (counted 300) (counted 300)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::expression-names-containing-slashes]
   [_driver _feature _database]

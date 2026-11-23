@@ -8,7 +8,13 @@ import {
   setupSecurityAdvisoriesErrorEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Advisory, HealthCheck } from "metabase-types/api";
 import {
@@ -86,9 +92,11 @@ describe("SecurityCenterLayout", () => {
       checks: [createMockHealthCheck({ status: "fail" })],
     });
 
-    expect(
-      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+      ).toBeInTheDocument(),
+    );
     expect(
       within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
     ).not.toBeInTheDocument();
@@ -102,11 +110,13 @@ describe("SecurityCenterLayout", () => {
       hasAdvisoriesError: true,
     });
 
-    expect(
-      within(screen.getByTestId("admin-layout-content")).getByText(
-        "Something went wrong loading security advisories.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("admin-layout-content")).getByText(
+          "Something went wrong loading security advisories.",
+        ),
+      ).toBeInTheDocument(),
+    );
     expect(getNavLink(/Advisories/)).toBeInTheDocument();
   });
 });

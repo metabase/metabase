@@ -142,7 +142,7 @@
           (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
             ;; Populate dependencies via events
             (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
-              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+              (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (mt/user->id :crowberto)}))
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                  {:source_entity_id   old-id
@@ -206,7 +206,7 @@
                                              :type          :question
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
-          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object child-card}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           ;; Insert a fake active run to simulate one already running
           (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
@@ -238,7 +238,7 @@
                                              :type          :question
                                              :name          "Child Card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
-          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object child-card}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                {:source_entity_id   old-id
@@ -271,7 +271,7 @@
                                              :type          :question
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
-          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object child-card}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (snowplow-test/with-fake-snowplow-collector
             (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
@@ -388,7 +388,7 @@
                 (mt/with-model-cleanup [:model/ReplacementRun]
                   ;; Populate dependencies via events
                   (doseq [card [model-card question-card]]
-                    (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+                    (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (mt/user->id :crowberto)}))
                   (deps.test/synchronously-run-dependency-job!)
                   (snowplow-test/with-fake-snowplow-collector
                     (let [response (mt/user-http-request :crowberto :post 202
@@ -513,7 +513,7 @@
                                                                    {:stage-number 0}]}]}]
                 (mt/with-model-cleanup [:model/ReplacementRun]
                   (doseq [card [model-card direct-card nested-card metric-card join-card]]
-                    (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+                    (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (mt/user->id :crowberto)}))
                   (deps.test/synchronously-run-dependency-job!)
                   (let [response (mt/user-http-request :crowberto :post 202
                                                        "ee/replacement/replace-model-with-transform"

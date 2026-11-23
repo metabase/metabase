@@ -207,6 +207,26 @@
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
 
+(defn combine-text-parts-xf
+  "Transducer that merges each run of consecutive `:text` parts into one `:text` part.
+
+  Other parts pass through unchanged."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
+
 (defn post-process-xf
   "Composed transducer for post-processing agent output.
 

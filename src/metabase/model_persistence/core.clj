@@ -8,8 +8,6 @@
 (p/import-vars
  [metabase.model-persistence.models.persisted-info
   allow-persisted-substitution?
-  invalidate!
-  mark-for-pruning!
   metadata->definition
   query-hash
   with-persisted-substituion-disabled])

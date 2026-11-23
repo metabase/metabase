@@ -5,7 +5,6 @@
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -74,13 +73,6 @@
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select model :id [:in ids]))
 
-(mu/defn update-row!
-  "Apply `changes` to the row of `model` with `id`, returning the number updated."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- :map]
-  (t2/update! model :id id changes))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -91,12 +83,6 @@
   [card-ids :- [:set ::lib.schema.id/card]
    table-id :- ::lib.schema.id/table]
   (t2/exists? :model/Card :id [:in card-ids] :table_id table-id))
-
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

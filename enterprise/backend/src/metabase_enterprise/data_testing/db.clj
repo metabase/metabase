@@ -2,13 +2,15 @@
   "Application database queries for the data-testing module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.run-tracking.core :as rt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -62,57 +64,57 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TestSuite :id id))
 
-(def ^:private SuiteMemberRows
-  [:sequential [:map {:closed true}
-                [:test_type      ::data-testing.schema/test-type]
-                [:test_entity_id :string]]])
+(mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
+  "Insert the TestSuite `suites` and return the inserted instances."
+  [suites :- [:sequential {:min 1} ::data-testing.schema/test-suite.create]]
+  (app-db/insert-returning-instances! :model/TestSuite suites))
 
-(mu/defn- replace-suite-members!
-  "Replace the members of the TestSuite `suite-id` with `members`, positioned in their order."
-  [suite-id :- ms/PositiveInt
-   members  :- SuiteMemberRows]
-  (t2/delete! :model/TestSuiteMember :suite_id suite-id)
-  (when (seq members)
-    (t2/insert! :model/TestSuiteMember (map-indexed (fn [i member] (assoc member :suite_id suite-id :position i))
-                                                    members))))
+(mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
+  "The TestSuites with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TestSuite :id [:in [:auto/param ids]]))
 
-(mu/defn insert-test-suite! :- ms/PositiveInt
-  "Insert the TestSuite `suite` with `members`, positioned in their order, and return its id. The audit log records
-  the write as one create of the suite."
-  [suite   :- [:map {:closed true}
-               [:name        :string]
-               [:description {:optional true} [:maybe :string]]
-               [:creator_id  ::lib.schema.id/user]]
-   members :- SuiteMemberRows]
-  (events/with-batched-events
-    (t2/with-transaction [_conn]
-      (let [id (t2/insert-returning-pk! :model/TestSuite suite)]
-        (replace-suite-members! id members)
-        id))))
+(mu/defn test-suites-for-update :- [:sequential ::data-testing.schema/test-suite]
+  "The TestSuites with `ids`, their rows locked in the order of their ids until the transaction ends."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
-(mu/defn update-test-suite!
-  "Apply `updates` to the TestSuite with `id`, and replace its members with `members` unless `members` is nil. A change
-  of members alone also sets the suite's update time. The audit log records the write as one update of the suite."
-  [id      :- ms/PositiveInt
-   updates :- [:map {:closed true}
-               [:name        {:optional true} :string]
-               [:description {:optional true} [:maybe :string]]]
-   members :- [:maybe SuiteMemberRows]]
-  (events/with-batched-events
-    (t2/with-transaction [_conn]
-      ;; The suite row is updated first: its row lock makes a concurrent update of the same suite wait until this one
-      ;; commits, so the second replaces the members the first wrote instead of merging with them.
-      (let [updates (cond-> updates
-                      (some? members) (assoc :updated_at :%now))]
-        (when (seq updates)
-          (t2/update! :model/TestSuite :id id updates)))
-      (when (some? members)
-        (replace-suite-members! id members)))))
+(mu/defn update-test-suites!
+  "Apply to the TestSuite rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::data-testing.schema/test-suite.update]]
+  (app-db/update-grouped! :model/TestSuite updates))
 
-(mu/defn delete-test-suite!
-  "Delete the TestSuite with `id`, and its members."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TestSuite :id id))
+(mu/defn touch-test-suites!
+  "Set the update time of the TestSuites with `ids` to the database's current time."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/TestSuite :id [:in [:auto/param ids]] {:updated_at :%now}))
+
+(mu/defn delete-members-of-suites!
+  "Delete the members of the TestSuites with `suite-ids`."
+  [suite-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param suite-ids]]))
+
+(mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
+  "Insert the TestSuiteMember `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ::data-testing.schema/test-suite-member.create]]
+  (app-db/insert-returning-instances! :model/TestSuiteMember rows))
+
+(mu/defn update-suite-members!
+  "Apply `changes` to the TestSuiteMembers with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- (mut/dissoc ::data-testing.schema/test-suite-member.update :id)]
+  (t2/update! :model/TestSuiteMember :id [:in [:auto/param ids]] changes))
+
+(mu/defn delete-suite-members!
+  "Delete the TestSuiteMembers with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TestSuiteMember :id [:in [:auto/param ids]]))
+
+(mu/defn suite-members-of-tests :- [:sequential ::data-testing.schema/test-suite.member]
+  "The members of the TestSuites that name the `test-type` tests with `entity-ids`."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential {:min 1} :string]]
+  (t2/select :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]]))
 
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites with `suite-ids`, by suite and then position."
@@ -167,24 +169,38 @@
   [suite-id :- ms/PositiveInt]
   (t2/count :model/TestSuiteRun :suite_id suite-id))
 
-(mu/defn delete-suite-members-of-test!
-  "Remove the `test-type` test with entity id `entity-id` from every TestSuite."
-  [test-type :- ::data-testing.schema/test-type
-   entity-id :- :string]
-  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id entity-id))
-
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/TransformTest :id id))
 
-(mu/defn insert-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` and return the inserted instance."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/TransformTest transform-test))
+(def ^:private saved-test-model
+  "The models of the saved tests."
+  [:enum :model/TransformTest :model/CardTest :model/SegmentTest])
+
+(mu/defn saved-test-ids-of-subjects :- [:sequential ms/PositiveInt]
+  "The ids of the tests of `model` whose `subject-column` holds one of `subject-ids`."
+  [model          :- saved-test-model
+   subject-column :- :keyword
+   subject-ids    :- [:sequential ms/PositiveInt]]
+  (if (seq subject-ids)
+    (vec (t2/select-pks-vec model subject-column [:in [:auto/param subject-ids]]))
+    []))
+
+(mu/defn delete-suite-members-of-tests! :- :nil
+  "Remove the `test-type` tests with `entity-ids` from every TestSuite."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential {:min 1} :string]]
+  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]])
+  nil)
+
+(mu/defn clear-test-ids-of-runs! :- :nil
+  "Set the test id of the runs of the `test-type` tests with `test-ids` to nil, so that no run names a test after it is
+  deleted."
+  [test-type :- ::data-testing.schema/test-type
+   test-ids  :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param test-ids]] {:test_id nil})
+  nil)
 
 (mu/defn insert-test-run! :- ::data-testing.schema/data-test-run
   "Insert a started DataTestRun of the `test-type` test `test-id` and return it."
@@ -270,13 +286,6 @@
                                                                   [:= :newer.start_time :data_test_run.start_time]
                                                                   [:> :newer.id :data_test_run.id]]]]}]]]}))
 
-(mu/defn clear-test-id-of-runs!
-  "Set the test id of the runs of the `test-type` test `test-id` to nil, so that no run names the test after it is
-  deleted."
-  [test-type :- ::data-testing.schema/test-type
-   test-id   :- ms/PositiveInt]
-  (t2/update! :model/DataTestRun :test_type (name test-type) :test_id test-id {:test_id nil}))
-
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
@@ -290,22 +299,6 @@
               :id run-id
               :status "started"
               {:status status :end_time :%now}))
-
-(mu/defn update-transform-test!
-  "Apply `updates` to the TransformTest with `id`."
-  [id :- ms/PositiveInt
-   updates :- ::data-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest :id id updates))
-
-(mu/defn delete-transform-test!
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTest :id id))
-
-(mu/defn delete-transform-tests!
-  "Delete the TransformTests of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/TransformTest :transform_id transform-id))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -346,30 +339,6 @@
                                            [:include-archived? {:optional true} [:maybe :boolean]]]]
   (tests-of-subjects :model/CardTest :card_id :model/Card card-id include-archived?))
 
-(mu/defn insert-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` and return the inserted instance."
-  [card-test :- [:merge
-                 ::data-testing.schema/card-test.create
-                 [:map {:closed true}
-                  [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/CardTest card-test))
-
-(mu/defn update-card-test!
-  "Apply `updates` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/card-test.update]
-  (t2/update! :model/CardTest :id id updates))
-
-(mu/defn delete-card-test!
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/CardTest :id id))
-
-(mu/defn delete-card-tests!
-  "Delete the CardTests of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/CardTest :card_id card-id))
-
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
@@ -394,30 +363,6 @@
                                               [:segment-id        {:optional true} [:maybe ::lib.schema.id/segment]]
                                               [:include-archived? {:optional true} [:maybe :boolean]]]]
   (tests-of-subjects :model/SegmentTest :segment_id :model/Segment segment-id include-archived?))
-
-(mu/defn insert-segment-test! :- ::data-testing.schema/segment-test
-  "Insert the SegmentTest `segment-test` and return the inserted instance."
-  [segment-test :- [:merge
-                    ::data-testing.schema/segment-test.create
-                    [:map {:closed true}
-                     [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/SegmentTest segment-test))
-
-(mu/defn update-segment-test!
-  "Apply `updates` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/segment-test.update]
-  (t2/update! :model/SegmentTest :id id updates))
-
-(mu/defn delete-segment-test!
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/SegmentTest :id id))
-
-(mu/defn delete-segment-tests!
-  "Delete the SegmentTests of the Segment with `segment-id`."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/delete! :model/SegmentTest :segment_id segment-id))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -479,3 +424,25 @@
                              (fn [segment]
                                (some-> segment
                                        (update :table #(some-> % (collection.root/hydrate-root-collection root))))))))))))
+
+(def ^:private run-model
+  "A model of the runs of this module whose rows the run tracking heartbeats and reaps."
+  [:enum :model/DataTestRun :model/TestSuiteRun])
+
+(mu/defn heartbeat-started-runs!
+  "Set `last_heartbeat` to now on the started `model` runs with `run-ids`, returning the number updated."
+  [model   :- run-model
+   run-ids :- [:sequential ms/PositiveInt]]
+  (t2/query (rt/heartbeat-statement model [:status "started"] :last_heartbeat run-ids)))
+
+(mu/defn set-started-runs-terminal!
+  "Apply the `terminal` column values to the started `model` runs with `run-ids`, returning the number updated."
+  [model    :- run-model
+   run-ids  :- [:sequential ms/PositiveInt]
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
+  (t2/query (rt/terminal-statement model [:status "started"] run-ids terminal)))

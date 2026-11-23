@@ -5,6 +5,7 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -83,7 +84,7 @@
         (mt/with-test-user :crowberto
           (if metadata
             (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-            (card.metadata/save-metadata-async! metadata-future card))))
+            (queries.card/save-metadata-async! [{:future metadata-future :card card}]))))
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}

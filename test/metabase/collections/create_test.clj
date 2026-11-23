@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.create :as collections.create]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -34,7 +35,7 @@
             (is (=? {:name "Persist Child" :is_remote_synced true :location (str "/" (:id parent) "/")}
                     (t2/select-one :model/Collection :id (:id coll))))
             (finally
-              (t2/delete! :model/Collection :id (:id coll)))))))
+              (collection/delete-collections! [(:id coll)]))))))
     (testing "A child takes its namespace from its parent"
       (mt/with-temp [:model/Collection parent {:name "Snippet Parent" :namespace "snippets"}]
         (let [coll (collections.create/create-collection!
@@ -42,7 +43,7 @@
           (try
             (is (= :snippets (t2/select-one-fn :namespace :model/Collection :id (:id coll))))
             (finally
-              (t2/delete! :model/Collection :id (:id coll)))))))
+              (collection/delete-collections! [(:id coll)]))))))
     (testing "A namespace other than the one of the parent is refused"
       (mt/with-temp [:model/Collection parent {:name "Snippet Parent 2" :namespace "snippets"}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"same namespace as its parent"

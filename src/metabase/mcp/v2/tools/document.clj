@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
@@ -409,10 +410,13 @@
     (api/create-check :model/Document {:collection_id collection-id})
     (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
-      (let [created (documents/create-document! {:name                name
-                                                 :document            ast
-                                                 :collection_id       collection-id
-                                                 :collection_position collection_position})]
+      (document/check-creating-document-cards {:document ast :collection_id collection-id})
+      (let [created (t2/with-transaction [_conn]
+                      (documents/get-document
+                       (document/create-document-with-cards! {:name                name
+                                                              :document            ast
+                                                              :collection_id       collection-id
+                                                              :collection_position collection_position})))]
         (document-response created [] [])))))
 
 ;;; ------------------------------------------------------ Update --------------------------------------------------
@@ -459,7 +463,8 @@
                       (contains? args :collection_id)       (assoc :collection_id collection-id)
                       (contains? args :collection_position) (assoc :collection_position collection_position)
                       (contains? args :archived)            (assoc :archived (boolean archived)))
-            updated (documents/update-document! existing body)
+            _       (document/check-updating-document-cards existing body)
+            updated (document/update-document-with-cards! existing body)
             removed (when new-ast
                       (set/difference old-ids (ast-id-set (:document updated))))
             changed (if (seq edits)

@@ -103,12 +103,11 @@
                                   (assert (= n (count mine))
                                           (str "expected " n " of our metrics, got " (count mine)))
                                   (qc))))))))
+            _    (run-with 1)
             few  (run-with 2)
             many (run-with 12)]
         (testing (str "queries for 2 metrics = " few ", for 12 metrics = " many)
-          ;; 10 extra metrics would have meant ~20 extra queries pre-fix; allow generous slack
-          ;; for incidental per-row variation while still proving it is not per-metric.
-          (is (< (- many few) 6)))))))
+          (is (= few many)))))))
 
 ;;; ----------------------------------- research-candidates / research-groups -----------------------------------
 

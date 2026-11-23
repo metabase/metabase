@@ -3,6 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sql-tools.schema :as sql-tools.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -26,30 +27,11 @@
                                [:= :visibility_type nil]
                                [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
 
-(def ^:private ShadowDifferenceChanges
-  [:map {:closed true}
-   [:outcome        :string]
-   [:primary_result [:maybe :string]]
-   [:shadow_result  [:maybe :string]]])
-
-(def ^:private ShadowDifferenceRow
-  [:map {:closed true}
-   [:input_hash      :string]
-   [:method          :string]
-   [:dialect         [:maybe :string]]
-   [:primary_backend :string]
-   [:shadow_backend  :string]
-   [:outcome         :string]
-   [:sql             [:maybe :string]]
-   [:arguments       [:maybe :string]]
-   [:primary_result  [:maybe :string]]
-   [:shadow_result   [:maybe :string]]])
-
 (mu/defn shadow-difference-seen-again! :- :int
   "Count one more sighting of the shadow difference with `input-hash`, and keep the newest `changes` (outcome and
   results). Returns the number of rows updated."
   [input-hash :- :string
-   changes    :- ShadowDifferenceChanges]
+   changes    :- ::sql-tools.schema/shadow-difference.changes]
   (t2/update! :model/SqlParsingShadowDifference
               {:input_hash [:auto/param input-hash]}
               (assoc changes
@@ -58,5 +40,5 @@
 
 (mu/defn insert-shadow-difference! :- :int
   "Insert a shadow difference `row`. Returns the number of rows inserted."
-  [row :- ShadowDifferenceRow]
+  [row :- ::sql-tools.schema/shadow-difference.create]
   (t2/insert! :model/SqlParsingShadowDifference row))

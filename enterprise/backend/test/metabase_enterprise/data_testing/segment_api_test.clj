@@ -396,12 +396,11 @@
       ;; Created through the model, which does not validate, so that its creation revision has no data-testing.test-util/google-segment-inputs. A revision is
       ;; recorded only under a current user.
       (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
-                          (:id (data-testing.models.segment-test/create-segment-test!
-                                {:segment_id   subject-id
-                                 :name         "No data-testing.test-util/google-segment-inputs"
-                                 :inputs       []
-                                 :expectations (mapv #(update % :type keyword) data-testing.test-util/google-segment-expectations)
-                                 :creator_id   (mt/user->id :crowberto)})))
+                          (:id (first (data-testing.models.segment-test/create-segment-tests! [{:segment_id   subject-id
+                                                                                                :name         "No data-testing.test-util/google-segment-inputs"
+                                                                                                :inputs       []
+                                                                                                :expectations (mapv #(update % :type keyword) data-testing.test-util/google-segment-expectations)
+                                                                                                :creator_id   (mt/user->id :crowberto)}]))))
             path        (str "ee/segment-test/" test-id)
             creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" test-id))
                              (m/find-first :is_creation)

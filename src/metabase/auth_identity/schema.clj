@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.schema
   "Malli schemas for the auth-identity module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -63,8 +64,9 @@
     [:id           ms/PositiveInt]]])
 
 (mr/def ::auth-identity.update
-  "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
+  "What an update of an AuthIdentity takes: its `:id` and every other column of `:auth_identity`, all optional."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:provider     {:optional true} [:maybe [:or :keyword :string]]]
    [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
@@ -75,3 +77,16 @@
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::auth-identity.create
+  "What [[metabase.auth-identity.models.auth-identity/create-auth-identity!]] takes: the columns of an update a caller
+  gives, without the `:id` and the timestamps the database sets, and the user and provider."
+  [:merge
+   (-> ::auth-identity.update
+       (mut/dissoc :id)
+       (mut/dissoc :last_used_at)
+       (mut/dissoc :created_at)
+       (mut/dissoc :updated_at))
+   [:map {:closed true}
+    [:user_id  ::lib.schema.id/user]
+    [:provider [:or :keyword :string]]]])

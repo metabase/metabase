@@ -56,12 +56,6 @@
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
 
-(mu/defn other-app-has-collection?
-  "Whether a DataApp other than the one with `app-id`, or any when it is nil, has the Collection with `collection-id`."
-  [collection-id :- pos-int?
-   app-id        :- [:maybe pos-int?]]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id :id [:not= (or app-id -1)]))
-
 (mu/defn data-apps-namespace-collection?
   "Whether the Collection with `collection-id` is in the data-apps namespace."
   [collection-id :- pos-int?]
@@ -72,27 +66,19 @@
   [slug :- :string]
   (format "Data App: %s" slug))
 
-(mu/defn insert-resource-collection! :- ms/PositiveInt
-  "Insert the resource collection of the data app named `slug`, a top-level collection of data apps, returning its ID."
-  [slug :- :string]
-  (t2/insert-returning-pk! :model/Collection {:name      (resource-collection-name slug)
-                                              :namespace "data-apps"}))
+(mu/defn data-app-ids-by-collection-ids :- [:map-of ms/PositiveInt [:set ms/PositiveInt]]
+  "The ids of the DataApps whose resource collection is one of `collection-ids`, by that collection's id."
+  [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (reduce (fn [collection-id->ids {:keys [id resource_collection_id]}]
+            (update collection-id->ids resource_collection_id (fnil conj #{}) id))
+          {}
+          (t2/select [:model/DataApp :id :resource_collection_id]
+                     :resource_collection_id [:in [:auto/param collection-ids]])))
 
-(mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
-  "Insert the DataApp `row`, returning its ID."
-  [row :- ::data-apps.schema/data-app.create]
-  (t2/insert-returning-pk! :model/DataApp row))
-
-(mu/defn update-data-app!
-  "Apply `changes` to the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt
-   changes     :- ::data-apps.schema/data-app.update]
-  (t2/update! :model/DataApp :id data-app-id changes))
-
-(mu/defn delete-data-app!
-  "Delete the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt]
-  (t2/delete! :model/DataApp :id data-app-id))
+(mu/defn resource-collections-by-ids :- [:map-of ms/PositiveInt :map]
+  "The Collections with `collection-ids`, by id."
+  [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
@@ -128,11 +114,6 @@
   "The resource collection with `collection-id`, or nil."
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
-
-(defn delete-resource-collection!
-  "Delete the resource collection with `collection-id`."
-  [collection-id]
-  (t2/delete! :model/Collection :id collection-id))
 
 (mu/defn readable-data-app-ids-select
   "A HoneySQL query of readable DataApp ids. Non-superusers need a resource-collection grant from a matching-tenancy group."

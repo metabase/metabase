@@ -2,13 +2,14 @@
   "Application database queries for the actions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -78,20 +79,10 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(mu/defn card-placement
-  "The id, type and Collection id of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :type :collection_id] :id card-id))
-
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id))
-
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
 
 (mu/defn action
   "The Action with `action-id`, or nil."
@@ -102,11 +93,6 @@
   "The Collection id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
-
-(mu/defn action-type-and-model
-  "The id, type and model Card id of the Action with `action-id`, or nil."
-  [action-id :- ::lib.schema.id/action]
-  (t2/select-one [:model/Action :id :type :model_id] :id action-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -139,58 +125,126 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
 
-(mu/defn delete-dashcards-for-action!
-  "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/DashboardCard :action_id action-id))
+(def action-columns
+  "The columns that are common to all Action types."
+  [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
+   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
-(mu/defn insert-query-execution!
-  "Insert the QueryExecution `row` and return its id."
-  [row :- ::queries.schema/query-execution.update]
-  (t2/insert-returning-pk! :model/QueryExecution row))
+(mu/defn insert-actions!
+  "Insert the Action `rows` and return the inserted instances."
+  [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
+  (app-db/insert-returning-instances! :model/Action rows))
 
-(mu/defn insert-action!
-  "Insert the Action `row` and return the inserted instance."
-  [row :- ::actions.schema/action.for-insert]
-  (t2/insert-returning-instance! :model/Action row))
+(mu/defn update-actions! :- :nil
+  "Apply each of `updates`, the `:id` of an Action and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Action updates)
+  nil)
 
-(mu/defn update-action!
-  "Apply `changes` to the Action with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action :id action-id changes))
+(mu/defn insert-query-actions!
+  "Insert the QueryAction `rows` and return the inserted instances."
+  [rows :- [:sequential ::actions.schema/query-action.create]]
+  (t2/insert! :model/QueryAction rows)
+  (t2/select :model/QueryAction :action_id [:in (mapv :action_id rows)]))
 
-(mu/defn insert-query-action!
-  "Insert the QueryAction `action`, returning the number inserted."
-  [action :- ::actions.schema/query-action.update]
-  (t2/insert! :model/QueryAction action))
+(mu/defn insert-implicit-actions!
+  "Insert the ImplicitAction `rows` and return the inserted instances."
+  [rows :- [:sequential ::actions.schema/implicit-action.create]]
+  (t2/insert! :model/ImplicitAction rows)
+  (t2/select :model/ImplicitAction :action_id [:in (mapv :action_id rows)]))
 
-(mu/defn insert-implicit-action!
-  "Insert the ImplicitAction `action`, returning the number inserted."
-  [action :- ::actions.schema/implicit-action.update]
-  (t2/insert! :model/ImplicitAction action))
+(mu/defn update-query-actions!
+  "Apply `changes` to the QueryActions of the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]
+   changes    :- (mut/dissoc ::actions.schema/query-action.update :action_id)]
+  (t2/update! :model/QueryAction :action_id [:in action-ids] changes))
 
-(mu/defn update-query-action!
-  "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction :action_id action-id changes))
+(mu/defn update-implicit-actions!
+  "Apply `changes` to the ImplicitActions of the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]
+   changes    :- (mut/dissoc ::actions.schema/implicit-action.update :action_id)]
+  (t2/update! :model/ImplicitAction :action_id [:in action-ids] changes))
 
-(mu/defn update-implicit-action!
-  "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction :action_id action-id changes))
+(mu/defn delete-query-actions!
+  "Delete the QueryActions of the Actions with `action-ids`, returning the number deleted."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/delete! :model/QueryAction :action_id [:in action-ids]))
 
-(mu/defn delete-query-action!
-  "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/QueryAction :action_id action-id))
+(mu/defn delete-implicit-actions!
+  "Delete the ImplicitActions of the Actions with `action-ids`, returning the number deleted."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/delete! :model/ImplicitAction :action_id [:in action-ids]))
 
-(mu/defn delete-implicit-action!
-  "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/ImplicitAction :action_id action-id))
+(mu/defn actions-by-ids
+  "A map of id to Action for the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-pk->fn identity :model/Action :id [:in action-ids]))
+
+(mu/defn action-types-and-models
+  "A map of id to the id, type and model Card id of the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-pk->fn identity [:model/Action :id :type :model_id] :id [:in action-ids]))
+
+(mu/defn card-placements
+  "A map of id to the id, type and Collection id of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn identity [:model/Card :id :type :collection_id] :id [:in card-ids]))
+
+(mu/defn card-queries
+  "A map of id to the query of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+
+(mu/defn action-ids-of-models
+  "The ids of the Actions of the Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (vec (t2/select-pks-vec :model/Action :model_id [:in model-ids])))
+
+(mu/defn action-model-ids
+  "The `:id` and `:model_id` of the Actions of the Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select [:model/Action :id :model_id] :model_id [:in model-ids]))
+
+(mu/defn action-ids-of-databases :- [:vector ::lib.schema.id/action]
+  "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
+  Actions that write to one of their Tables."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (vec (into (set (t2/select-fn-set :action_id :model/QueryAction :database_id [:in database-ids]))
+             (t2/select-fn-set :action_id :model/ImplicitAction
+                               {:join  [[(t2/table-name :model/Table) :table]
+                                        [:= :table.id :implicit_action.table_id]]
+                                :where [:in :table.db_id database-ids]}))))
+
+(mu/defn implicit-action-ids-of-tables
+  "The ids of the Actions whose ImplicitAction writes to one of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (vec (t2/select-fn-vec :action_id [:model/ImplicitAction :action_id] :table_id [:in table-ids])))
+
+(mu/defn unarchived-actions-in-collections
+  "The unarchived Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived false))
+
+(mu/defn actions-in-collections
+  "The Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids]))
+
+(mu/defn restorable-action-ids-in-collections
+  "The ids of the Actions in the Collections with `collection-ids` that were archived along with them and whose model,
+  if any, is not archived."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (into [] (map :id)
+        (t2/query {:select    [:action.id]
+                   :from      [[(t2/table-name :model/Action) :action]]
+                   :left-join [[(t2/table-name :model/Card) :model]
+                               [:= :model.id :action.model_id]]
+                   :where     [:and
+                               [:in :action.collection_id collection-ids]
+                               [:= :action.archived true]
+                               [:= :action.archived_directly false]
+                               [:or [:= :action.model_id nil] [:= :model.archived false]]]})))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
