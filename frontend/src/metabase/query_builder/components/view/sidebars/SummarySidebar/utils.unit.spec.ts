@@ -1,18 +1,24 @@
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import type { TestQuerySpec } from "metabase-types/api";
-import { createMockCard, createMockMeasure } from "metabase-types/api/mocks";
+import type { Card, TestQuerySpec } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockMeasure,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
+  createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -212,6 +218,193 @@ describe("getFieldSections", () => {
       "Orders",
       "Products",
       "User",
+    ]);
+  });
+});
+
+describe("getFieldSections by source", () => {
+  const ORDERS_COLUMN_NAMES = [
+    "Created At",
+    "Discount",
+    "ID",
+    "Product ID",
+    "Quantity",
+    "Subtotal",
+    "Tax",
+    "Total",
+    "User ID",
+  ];
+  const ORDERS_JS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  });
+  const ORDERS_BY_MONTH_SPEC: TestQuerySpec = {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+      },
+    ],
+  };
+
+  function createCardSourceQuery(card: Card) {
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      }),
+    });
+    return Lib.createTestQuery(provider, {
+      stages: [{ source: { type: "card", id: card.id } }],
+    });
+  }
+
+  function getSectionItemNames(query: Lib.Query, stageIndex: number) {
+    return getFieldSections(query, stageIndex).map((section) => [
+      section.name,
+      section.items.map((item) => item.name),
+    ]);
+  }
+
+  it("lists a model's columns under its name, then the tables its keys link to", () => {
+    const query = createCardSourceQuery(
+      createMockCard({
+        id: 1,
+        name: "Orders Model",
+        type: "model",
+        dataset_query: ORDERS_JS_QUERY,
+      }),
+    );
+
+    expect(getSectionItemNames(query, STAGE_INDEX)).toEqual([
+      ["Orders Model", ORDERS_COLUMN_NAMES],
+      ["Product", expect.any(Array)],
+      ["User", expect.any(Array)],
+    ]);
+  });
+
+  it("names a model's columns the way the model does", () => {
+    const query = createCardSourceQuery(
+      createMockCard({
+        id: 1,
+        name: "Curated Orders",
+        type: "model",
+        dataset_query: ORDERS_JS_QUERY,
+        result_metadata: checkNotNull(createOrdersTable().fields).map((field) =>
+          createMockColumn({
+            id: Number(field.id),
+            name: field.name,
+            display_name:
+              field.id === ORDERS.TOTAL ? "Revenue" : field.display_name,
+            base_type: field.base_type,
+            effective_type: field.effective_type,
+            semantic_type: field.semantic_type,
+            fk_target_field_id: field.fk_target_field_id,
+            table_id: ORDERS_ID,
+            source: "fields",
+            field_ref: ["field", Number(field.id), null],
+          }),
+        ),
+      }),
+    );
+    const [[sectionName, columnNames]] = getSectionItemNames(
+      query,
+      STAGE_INDEX,
+    );
+
+    expect(sectionName).toBe("Curated Orders");
+    expect(columnNames).toContain("Revenue");
+    expect(columnNames).not.toContain("Total");
+    expect(columnNames).toHaveLength(ORDERS_COLUMN_NAMES.length);
+  });
+
+  it("lists only the result columns of a SQL model", () => {
+    const query = createCardSourceQuery(
+      createMockCard({
+        id: 1,
+        name: "Native Orders",
+        type: "model",
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "select id, total from orders",
+        }),
+        result_metadata: [
+          createMockColumn({
+            id: undefined,
+            table_id: undefined,
+            name: "ID",
+            display_name: "ID",
+            base_type: "type/BigInteger",
+            field_ref: ["field", "ID", { "base-type": "type/BigInteger" }],
+          }),
+          createMockColumn({
+            id: undefined,
+            table_id: undefined,
+            name: "TOTAL",
+            display_name: "Total",
+            base_type: "type/Float",
+            field_ref: ["field", "TOTAL", { "base-type": "type/Float" }],
+          }),
+        ],
+      }),
+    );
+
+    expect(getSectionItemNames(query, STAGE_INDEX)).toEqual([
+      ["Native Orders", ["ID", "Total"]],
+    ]);
+  });
+
+  it("lists only what a saved question returns when the query is built on it", () => {
+    const query = createCardSourceQuery(
+      createMockCard({
+        id: 1,
+        name: "Monthly Orders",
+        type: "question",
+        dataset_query: Lib.createTestJsQuery(
+          SAMPLE_PROVIDER,
+          ORDERS_BY_MONTH_SPEC,
+        ),
+      }),
+    );
+
+    expect(getSectionItemNames(query, STAGE_INDEX)).toEqual([
+      ["Monthly Orders", ["Created At: Month", "Count"]],
+    ]);
+  });
+
+  it("lists the previous stage's results and the stage's own custom columns on a later stage", () => {
+    const query = createOrdersQuery({
+      stages: [
+        ...ORDERS_BY_MONTH_SPEC.stages,
+        {
+          expressions: [
+            {
+              name: "Double",
+              value: {
+                type: "operator",
+                operator: "*",
+                args: [
+                  { type: "column", name: "count" },
+                  { type: "literal", value: 2 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(getSectionItemNames(query, 1)).toEqual([
+      ["Summaries", ["Created At: Month", "Count", "Double"]],
+    ]);
+  });
+
+  it("keeps listing the table's columns on the first stage of a multi-stage query", () => {
+    const query = Lib.appendStage(createOrdersQuery(ORDERS_BY_MONTH_SPEC));
+
+    expect(getSectionItemNames(query, 0)).toEqual([
+      ["Orders", ORDERS_COLUMN_NAMES],
+      ["Product", expect.any(Array)],
+      ["User", expect.any(Array)],
     ]);
   });
 });

@@ -996,3 +996,80 @@ describe("View Header | Inaccessible Cards", () => {
     expect(await screen.findByText("View-only")).toBeInTheDocument();
   });
 });
+
+describe("View Header | Summarize sidebar entry point", () => {
+  const SUMMARIZE_SHORTCUT_ID = "query-builder-toggle-summarize-sidebar";
+  // `s` is the key of the summarize shortcut.
+  const pressSummarizeKey = () => userEvent.keyboard("s");
+  const querySummarizeButton = () =>
+    screen.queryByRole("button", { name: /Summarize/ });
+
+  const NOT_OFFERED_CASES: { name: string; opts: SetupOpts }[] = [
+    {
+      name: "an unsaved native question",
+      opts: { card: getNativeQuestionCard() },
+    },
+    {
+      name: "a saved native question",
+      opts: { card: getSavedNativeQuestionCard() },
+    },
+    {
+      name: "a read-only question on a database the user can't query",
+      opts: { card: getSavedGUIQuestionCard(), database: null },
+    },
+    {
+      name: "a read-only question on a hidden table",
+      opts: { card: getSavedGUIQuestionCard(), hideOrdersTable: true },
+    },
+    {
+      name: "an archived question",
+      opts: { card: getSavedGUIQuestionCard({ archived: true }) },
+    },
+  ];
+
+  it("opens the sidebar from the Summarize button", async () => {
+    const { editSummary } = setup({
+      card: getSavedGUIQuestionCard(),
+      queryBuilderMode: "view",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
+
+    expect(editSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the sidebar from the keyboard shortcut", async () => {
+    const { editSummary, getRegistrationsOf } = setupWithKBar({
+      card: getSavedGUIQuestionCard(),
+      queryBuilderMode: "view",
+    });
+    expect(getRegistrationsOf(SUMMARIZE_SHORTCUT_ID)).toHaveLength(1);
+
+    await pressSummarizeKey();
+
+    expect(editSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it("is offered for a saved question the user can query but can't overwrite", () => {
+    setup({
+      card: getSavedGUIQuestionCard({ can_write: false }),
+      queryBuilderMode: "view",
+    });
+
+    expect(querySummarizeButton()).toBeInTheDocument();
+  });
+
+  it.each(NOT_OFFERED_CASES)("is not offered for $name", async ({ opts }) => {
+    const { editSummary, getRegistrationsOf } = setupWithKBar({
+      ...opts,
+      queryBuilderMode: "view",
+    });
+
+    expect(querySummarizeButton()).not.toBeInTheDocument();
+    expect(getRegistrationsOf(SUMMARIZE_SHORTCUT_ID)).toHaveLength(0);
+
+    await pressSummarizeKey();
+
+    expect(editSummary).not.toHaveBeenCalled();
+  });
+});

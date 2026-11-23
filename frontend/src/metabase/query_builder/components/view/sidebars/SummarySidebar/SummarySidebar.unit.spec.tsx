@@ -167,7 +167,7 @@ function setup({
     );
   }
 
-  renderWithProviders(<Wrapper />);
+  const { unmount } = renderWithProviders(<Wrapper />);
 
   function getLastQuery() {
     const [lastCall] = onQueryChange.mock.calls.slice(-1);
@@ -180,7 +180,7 @@ function setup({
     };
   }
 
-  return { onQueryChange, getLastQuery };
+  return { onQueryChange, getLastQuery, unmount };
 }
 
 function createQueryWithMetric() {
@@ -234,6 +234,27 @@ describe("SummarySidebar", () => {
 
     expect(getChipLabels("values")).toEqual([]);
     expect(getChipLabels("columns")).toEqual([]);
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
+  it("doesn't change query on sidebar open and close with empty wells", async () => {
+    const { onQueryChange, unmount } = setup();
+    const valuesInput = screen.getByLabelText("Add a value by name");
+    const groupingsInput = screen.getByLabelText("Add a grouping by name");
+    const search = screen.getByLabelText("Search fields");
+
+    await userEvent.type(valuesInput, "tot");
+    await userEvent.clear(valuesInput);
+    await userEvent.type(valuesInput, "{Backspace}");
+    await userEvent.type(groupingsInput, "cre");
+    await userEvent.clear(groupingsInput);
+    await userEvent.type(groupingsInput, "{Backspace}");
+    await userEvent.type(search, "total");
+    await userEvent.clear(search);
+    await userEvent.click(screen.getByLabelText("Hide fields"));
+    await userEvent.click(screen.getByLabelText("Show fields"));
+    unmount(); // simulate sidebar close
+
     expect(onQueryChange).not.toHaveBeenCalled();
   });
 
