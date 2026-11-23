@@ -70,12 +70,14 @@ const ANSWERED = createMockGoalSourceResults({ column: "goal", value: 250 });
 
 const FAILED = createMockFailedGoalSourceResults();
 
+type StatusCode = number;
+
 type SetupOpts = {
   cols?: DatasetColumn[];
   display: VisualizationDisplay;
   goalSourceResults?:
     | GoalSourceResults
-    | number
+    | StatusCode
     | (() => Promise<GoalSourceResults>);
   rows?: RowValues[];
   settings?: VisualizationSettings;
