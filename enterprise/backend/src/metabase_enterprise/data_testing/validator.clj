@@ -207,13 +207,22 @@
       rebuilt
 
       :disallowed
-      (throw (if (= "number-literal" reason)
-               ;; Data tests do not support these forms yet: VER-183.
+      (throw (case reason
+               ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+               "number-literal"
                (data-testing.errors/ex
                 ::data-testing.errors/unsupported-sql
                 (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores, yet."
                      (sql-source-label source) detail)
                 {:reason reason :detail detail})
+
+               "div-operator"
+               (data-testing.errors/ex
+                ::data-testing.errors/unsupported-sql
+                (tru "The SQL of {0} uses the DIV operator, which the SQL check rewrites as a division that rounds where DIV truncates. Data tests do not support DIV yet."
+                     (sql-source-label source))
+                {:reason reason})
+
                (data-testing.errors/ex
                 ::data-testing.errors/not-a-single-select
                 (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."

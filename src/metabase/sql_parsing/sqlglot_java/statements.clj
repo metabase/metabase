@@ -406,14 +406,19 @@
   "`[reason detail]` for the first form in `sql` that sqlglot regenerates as SQL with another value, else nil. On
   Postgres, `\"number-literal\"` with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number, regenerated
   as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, regenerated as a number and an
-  alias. Read from the dialect's tokens, so a string or a comment holding such text is not one.
+  alias. On MySQL, `\"div-operator\"`: `a DIV b`, regenerated as a cast that rounds where DIV truncates. Read from the
+  dialect's tokens, so a string or a comment holding such text is not one.
   Port of `_value_changing_form`."
   [^String sql dialect]
-  ;; Data tests do not support these forms yet: VER-183.
-  (when (= dialect "postgres")
+  ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+  (when (#{"postgres" "mysql"} dialect)
     (let [tokens (ast/tokenize sql dialect)]
       (some (fn [[[token-type ^String text start] [following-type ^String following-text following-start]]]
               (cond
+                (= dialect "mysql")
+                (when (= token-type "DIV")
+                  ["div-operator" nil])
+
                 (#{"HEX_STRING" "BIT_STRING"} token-type)
                 ;; `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
                 (when (#{"0x" "0b"} (u/lower-case-en (subs sql start (min (count sql) (+ (long start) 2)))))

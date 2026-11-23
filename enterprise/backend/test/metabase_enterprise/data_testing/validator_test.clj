@@ -311,6 +311,15 @@
     (is (=? {:error-type ::errors/unsupported-sql :message #".*holds the number 1_000_000\..*"}
             (single-select :postgres "SELECT 1_000_000" nil)))))
 
+(deftest ensure-single-select-refuses-mysql-div-test
+  (testing "control: a MySQL division runs as its rewrite"
+    (is (= "SELECT a / 3 AS q FROM t" (single-select :mysql "SELECT a / 3 AS q FROM t" nil))))
+  (testing "the MySQL DIV operator, which the rewrite turns into a division that rounds, is refused, naming the source"
+    (is (=? {:error-type ::errors/unsupported-sql
+             :message    (str "The SQL of the query under test uses the DIV operator, which the SQL check rewrites as a "
+                              "division that rounds where DIV truncates. Data tests do not support DIV yet.")}
+            (single-select :mysql "SELECT a DIV 3 AS q FROM t" nil)))))
+
 (deftest ensure-single-select-without-a-dialect-test
   (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"
     (is (=? {:error-type ::errors/uncheckable-sql

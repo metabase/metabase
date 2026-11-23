@@ -2095,14 +2095,18 @@ def _value_changing_form(sql: str, dialect: str):
 
     On Postgres, reason "number-literal" with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number,
     reconstructed as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, reconstructed
-    as a number and an alias. Read from the dialect's tokens, so a string or a comment holding such text is not one.
+    as a number and an alias. On MySQL, reason "div-operator": `a DIV b`, reconstructed as a cast that rounds where DIV
+    truncates. Read from the dialect's tokens, so a string or a comment holding such text is not one.
     """
-    # Data tests do not support these forms yet: VER-183.
-    if dialect != "postgres":
+    # Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+    if dialect not in ("postgres", "mysql"):
         return None
     tokens = sqlglot.tokenize(sql, read=dialect)
     for tok, following in zip(tokens, tokens[1:] + [None]):
-        if tok.token_type in (sqlglot.TokenType.HEX_STRING, sqlglot.TokenType.BIT_STRING):
+        if dialect == "mysql":
+            if tok.token_type == sqlglot.TokenType.DIV:
+                return ("div-operator", None)
+        elif tok.token_type in (sqlglot.TokenType.HEX_STRING, sqlglot.TokenType.BIT_STRING):
             # `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
             if sql[tok.start : tok.start + 2].lower() in ("0x", "0b"):
                 return ("number-literal", sql[tok.start : tok.start + 2 + len(tok.text)])

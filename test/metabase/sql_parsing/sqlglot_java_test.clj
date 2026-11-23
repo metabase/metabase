@@ -128,6 +128,9 @@
                ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000"                                               "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT X'1F' AS a, '0x1F' AS b /* 1_000 */"                     nil]
                ["postgres" "read"      "rebuild"        "SELECT 0x1F AS a"                                               nil]
+               ;; The MySQL DIV operator, whose rebuild rounds (VER-184).
+               ["mysql"    "read-only" "rebuild-strict" "SELECT a DIV 3 AS q FROM t"                                     "div-operator"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT 'DIV' AS a /* a DIV 3 */"                                nil]
                ;; "rebuild" counts the statements with the setting on only.
                ["postgres" "read"      "rebuild"               "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       nil]
                ["postgres" "read"      "rebuild"               "SELECT 1 AS $q$a;SELECT 2$q$"                                          "rebuild-differs"]

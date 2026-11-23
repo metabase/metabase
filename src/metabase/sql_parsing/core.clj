@@ -610,7 +610,7 @@
   \"multiple-statements\"`), and for `\"read-only\"` also with it off (else `:reason \"backslash-quote\"`). A
   `\"read-only\"` statement must also hold no form that the reconstruction gives another value: on Postgres a
   hexadecimal, binary or octal number or one with underscores (`:reason \"number-literal\"`, the literal as
-  `:detail`)."
+  `:detail`), on MySQL the `DIV` operator (`:reason \"div-operator\"`)."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

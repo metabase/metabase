@@ -464,7 +464,7 @@
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "unparseable"}}
 
   ;; SQLGlot rebuilds these forms as SQL with another value, so a caller that executes the rebuild of a "read-only"
-  ;; statement is refused them (VER-183). The original runs as written for the other callers.
+  ;; statement is refused them (VER-183, VER-184). The original runs as written for the other callers.
   {:name              "Postgres hexadecimal and binary numbers are rebuilt as bit strings, and refused to a caller that executes the rebuild"
    :dialect           "postgres"
    :sqls              ["SELECT 0x1F AS a" "SELECT 0b101 AS a" "SELECT 0X1f AS a"]
@@ -482,6 +482,19 @@
   {:name       "Postgres bit strings, decimal numbers, and number forms inside strings and comments are allowed"
    :dialect    "postgres"
    :sqls       ["SELECT X'1F' AS a, B'101' AS b" "SELECT 1.5e3 AS a, 10 AS b, 1 AS c" "SELECT '0x1F' AS a /* 1_000 */"]
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name              "the MySQL DIV operator is rebuilt as a cast that rounds, and refused to a caller that executes the rebuild"
+   :dialect           "mysql"
+   :sqls              ["SELECT a DIV 3 AS q FROM t" "SELECT a div 3 AS q FROM t"]
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "div-operator"}}
+
+  {:name       "DIV in a string or a comment is allowed"
+   :dialects   ["mysql" "postgres"]
+   :sqls       ["SELECT 'DIV' AS a /* a DIV 3 */"]
    :stmt-type  "read-only"
    :expected   {:verdict :allowed :single-stmt? true}}
 
