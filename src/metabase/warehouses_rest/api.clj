@@ -23,6 +23,8 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.serialization.core :as serialization]
+   [metabase.serialization.resolve :as serialization.resolve]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
@@ -335,6 +337,52 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? (t2/hydrate db :can_write))           (assoc :can-manage true)))
 
+(def ^:private get-database-query-entries
+  "The entries of the query params of `GET /api/database/:id`, which `GET /api/database/by-name` takes too."
+  [[:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
+   [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
+   [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]])
+
+(mr/def ::get-database-query
+  "The query params of `GET /api/database/:id`."
+  (into [:map {:closed true}] get-database-query-entries))
+
+(defn- fetch-database
+  "The Database with `id`, presented as `GET /api/database/:id` returns it."
+  [id {:keys [include include_editable_data_model exclude_uneditable_details]}]
+  (present-database
+   (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
+                                :exclude-uneditable-details? exclude_uneditable_details
+                                :include-destination-databases? true})
+   {:include include
+    :include-editable-data-model? include_editable_data_model
+    :exclude-uneditable-details? exclude_uneditable_details}))
+
+(defn- database-id-by-name
+  "The id of the Database named `db-name`, the oldest one when several share the name, as serialization resolves it;
+  throws a 404 when none has it or when the current user cannot read it: a name is easy to guess, so a 403 would tell
+  the user that the Database exists."
+  [db-name]
+  (let [id (get (serialization.resolve/row-ids serialization/app-db-store :model/Database #{db-name} {}) db-name)]
+    (api/check-404 (when (some-> id warehouses-rest.db/database (t2/hydrate :can_read) mi/can-read?) id))))
+
+(def ^:private by-name-entry
+  "The query param naming a Database by its name."
+  [:db ms/NonBlankString])
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/by-name"
+  "Get the Database named `db`, as `GET /api/database/:id` does, taking its query params too. A name names the oldest
+  Database with that name, as in serialization and remote sync."
+  {:scope api-scope/data-app}
+  [_route-params
+   {:keys [db] :as query-params} :- (into [:map {:closed true} by-name-entry] get-database-query-entries)]
+  (fetch-database (database-id-by-name db) (dissoc query-params :db)))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -362,18 +410,8 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include include_editable_data_model exclude_uneditable_details]}
-   :- [:map {:closed true}
-       [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
-       [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
-       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
-  (present-database
-   (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
-                                :exclude-uneditable-details? exclude_uneditable_details
-                                :include-destination-databases? true})
-   {:include include
-    :include-editable-data-model? include_editable_data_model
-    :exclude-uneditable-details? exclude_uneditable_details}))
+   query-params :- ::get-database-query]
+  (fetch-database id query-params))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -877,35 +915,32 @@
     :article+noun     ["an" "admin"]
     :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update a `Database`."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
-           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings]
-    :as   body}
-   :- [:map {:closed true}
-       [:name               {:optional true} [:maybe ms/NonBlankString]]
-       [:engine             {:optional true} [:maybe DBEngine]]
-       [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
-       [:write_data_details {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
-       [:admin_details      {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
-       [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-       [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
-       [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
-       [:description        {:optional true} [:maybe :string]]
-       [:caveats            {:optional true} [:maybe :string]]
-       [:points_of_interest {:optional true} [:maybe :string]]
-       [:auto_run_queries   {:optional true} [:maybe :boolean]]
-       [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-       [:settings           {:optional true} [:maybe ::warehouses.schema/database.local-settings]]
-       [:is_stub            {:optional true} [:maybe :boolean]]]]
+(mr/def ::update-database-body
+  "The body of `PUT /api/database/:id` and `PUT /api/database/by-name`."
+  [:map {:closed true}
+   [:name               {:optional true} [:maybe ms/NonBlankString]]
+   [:engine             {:optional true} [:maybe DBEngine]]
+   [:refingerprint      {:optional true} [:maybe :boolean]]
+   [:details            {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+   [:write_data_details {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+   [:admin_details      {:optional true} [:maybe ::warehouses.schema/database.connection-details]]
+   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+   [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+   [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
+   [:description        {:optional true} [:maybe :string]]
+   [:caveats            {:optional true} [:maybe :string]]
+   [:points_of_interest {:optional true} [:maybe :string]]
+   [:auto_run_queries   {:optional true} [:maybe :boolean]]
+   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+   [:settings           {:optional true} [:maybe ::warehouses.schema/database.local-settings]]
+   [:is_stub            {:optional true} [:maybe :boolean]]])
+
+(defn- update-database!
+  "Update the Database with `id` from `body`, a `::update-database-body`, returning what `PUT /api/database/:id`
+  returns."
+  [id {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
+              points_of_interest schedules auto_run_queries refingerprint cache_ttl settings]
+       :as   body}]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
@@ -1026,6 +1061,30 @@
               (m/update-existing :details #(merge incoming-details %))
               (m/update-existing :write_data_details #(merge incoming-write-data-details %))
               (m/update-existing :admin_details #(merge incoming-admin-details %))))))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update a `Database`."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-database-body]
+  (update-database! id body))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/by-name"
+  "Update the Database named `db`, as `PUT /api/database/:id` does. A name names the oldest Database with that name, as
+  in serialization and remote sync."
+  [_route-params
+   {:keys [db]} :- [:map {:closed true} by-name-entry]
+   body :- ::update-database-body]
+  (update-database! (database-id-by-name db) body))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
@@ -1188,6 +1247,28 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
+(def ^:private schema-tables-query-entries
+  "The entries of the query params of `GET /api/database/:id/schema/`, which `GET /api/database/by-name/schema` takes
+  too."
+  [[:schema                      {:optional true} [:maybe :string]]
+   [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+   [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+   [:can-query                   {:optional true} [:maybe :boolean]]
+   [:include_measures            {:optional true} [:maybe :boolean]]])
+
+(defn- schema-tables
+  "The Tables of the Database with `db-id` whose schema is `schema`, or no schema or an empty one when `schema` is
+  blank, as `GET /api/database/:id/schema/` returns them; throws a 404 when there are none."
+  [db-id {:keys [schema include_hidden include_editable_data_model can-query include_measures]}]
+  (let [opts {:include-hidden?              include_hidden
+              :include-editable-data-model? include_editable_data_model
+              :can-query?                   can-query
+              :include-measures?            include_measures}]
+    (api/check-404 (seq (if (str/blank? schema)
+                          (concat (schema.table/schema-tables-list db-id nil opts)
+                                  (schema.table/schema-tables-list db-id "" opts))
+                          (schema.table/schema-tables-list db-id schema opts))))))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1244,20 +1325,25 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [schema include_hidden include_editable_data_model can-query include_measures]} :- [:map {:closed true}
-                                                                                              [:schema                      {:optional true} [:maybe :string]]
-                                                                                              [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                              [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                              [:include_measures            {:optional true} [:maybe :boolean]]]]
-  (let [opts {:include-hidden?              include_hidden
-              :include-editable-data-model? include_editable_data_model
-              :can-query?                   can-query
-              :include-measures?            include_measures}]
-    (api/check-404 (seq (if (str/blank? schema)
-                          (concat (schema.table/schema-tables-list id nil opts)
-                                  (schema.table/schema-tables-list id "" opts))
-                          (schema.table/schema-tables-list id schema opts))))))
+   query-params :- (into [:map {:closed true}] schema-tables-query-entries)]
+  (schema-tables id query-params))
+
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/by-name/schema"
+  "Return the Tables of the Database named `db` whose schema is `schema`, as `GET /api/database/:id/schema/` does,
+  taking its query params too: no `schema`, or an empty one, names the Tables with no schema. A name names the oldest
+  Database with that name, as in serialization and remote sync."
+  {:scope api-scope/data-app}
+  [_route-params
+   {:keys [db] :as query-params} :- (into [:map {:closed true} by-name-entry] schema-tables-query-entries)]
+  (schema-tables (database-id-by-name db) (dissoc query-params :db)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

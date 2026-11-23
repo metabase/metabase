@@ -1511,3 +1511,41 @@
         (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
                                                :from   [:report_card]
                                                :where  [:= :id metric-id]}))))))))
+
+(deftest table-by-name-test
+  (testing "GET /api/table/by-name returns the same Table as GET /api/table/:id"
+    (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))]
+      (is (= (mt/user-http-request :crowberto :get 200 (str "table/" (mt/id :venues)))
+             (mt/user-http-request :crowberto :get 200 "table/by-name"
+                                   :db (:name (mt/db)) :schema schema :table name)))
+      (testing "an unknown name is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "table/by-name"
+                                     :db (:name (mt/db)) :schema schema :table "NO_SUCH_TABLE"))))
+      (testing "a db and a table are required"
+        (mt/user-http-request :crowberto :get 400 "table/by-name" :table name)
+        (mt/user-http-request :crowberto :get 400 "table/by-name" :db (:name (mt/db))))))
+  (mt/with-temp [:model/Database {db-id :id}      {:name "by-name tables" :engine :h2 :details {}}
+                 :model/Table    {schemaless :id} {:db_id db-id :schema nil :name "T"}
+                 :model/Table    {in-schema :id}  {:db_id db-id :schema "S" :name "T"}]
+    (testing "a missing schema param names the Table with no schema"
+      (is (=? {:id schemaless}
+              (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name tables" :table "T"))))
+    (testing "PUT /api/table/by-name updates like PUT /api/table/:id"
+      (is (=? {:id in-schema :description "Updated by name"}
+              (mt/user-http-request :crowberto :put 200 "table/by-name" {:description "Updated by name"}
+                                    :db "by-name tables" :schema "S" :table "T")))
+      (is (= "Updated by name" (t2/select-one-fn :description :model/Table :id in-schema)))
+      (testing "and checks permissions"
+        (mt/user-http-request :rasta :put 403 "table/by-name" {:description "No"}
+                              :db "by-name tables" :schema "S" :table "T")))))
+
+(deftest table-by-name-unreadable-test
+  (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))
+        params                [:db (:name (mt/db)) :schema schema :table name]]
+    (testing "a Table the user cannot read is a 404 by name, as an unknown one is, so a name reveals nothing"
+      (mt/with-no-data-perms-for-all-users!
+        (is (= "Not found." (apply mt/user-http-request :rasta :get 404 "table/by-name" params)))
+        (is (= "Not found." (apply mt/user-http-request :rasta :put 404 "table/by-name" {:description "No"} params)))))
+    (testing "a Table the user can read but not edit is a 403, as by id"
+      (apply mt/user-http-request :rasta :put 403 "table/by-name" {:description "No"} params))))

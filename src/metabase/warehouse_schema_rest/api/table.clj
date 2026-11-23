@@ -33,6 +33,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema-rest.natural-keys :as natural-keys]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
@@ -126,6 +127,36 @@
                      (map schema.table/present-table))
             (cond-> tables can-query (t2/hydrate :can_query))))))
 
+(def ^:private get-table-query-entries
+  "The entries of the query params of `GET /api/table/:id`, which `GET /api/table/by-name` takes too."
+  [[:include_editable_data_model {:optional true} [:maybe :boolean]]])
+
+(defn- fetch-table
+  "The Table with `id`, as `GET /api/table/:id` returns it."
+  [id {:keys [include_editable_data_model]}]
+  (let [api-perm-check-fn (if include_editable_data_model
+                            schema.table/check-data-model-perms
+                            api/read-check)]
+    (-> (api/check-404 (warehouse-schema-rest.db/table id))
+        api-perm-check-fn
+        (t2/hydrate :db :pk_field :collection)
+        schema.table/present-table)))
+
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/by-name"
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
+  "Get the Table named by `db`, its Database's name, `schema`, its schema, left out for none, and `table`, its name, as
+  `GET /api/table/:id` does, taking its query params too. These are the names serialization and remote sync name a
+  Table by, and a Database name names the oldest Database with that name."
+  {:scope api-scope/data-app}
+  [_route-params
+   query-params :- (into [:map {:closed true}] (concat natural-keys/table-entries get-table-query-entries))]
+  (fetch-table (natural-keys/table-id query-params) (apply dissoc query-params natural-keys/natural-key-params)))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
@@ -137,16 +168,8 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]}
-   :- [:map {:closed true}
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
-  (let [api-perm-check-fn (if include_editable_data_model
-                            schema.table/check-data-model-perms
-                            api/read-check)]
-    (-> (api/check-404 (warehouse-schema-rest.db/table id))
-        api-perm-check-fn
-        (t2/hydrate :db :pk_field :collection)
-        schema.table/present-table)))
+   query-params :- (into [:map {:closed true}] get-table-query-entries)]
+  (fetch-table id query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -263,6 +286,17 @@
    _query-params
    body :- TableUpdateBodySingle]
   (first (update-tables! [id] body)))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/by-name"
+  "Update the Table named by `db`, `schema` and `table`, as `PUT /api/table/:id` does. See `GET /api/table/by-name`."
+  [_route-params
+   query-params :- ::natural-keys/table-query
+   body :- TableUpdateBodySingle]
+  (first (update-tables! [(natural-keys/table-id query-params)] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

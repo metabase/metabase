@@ -3607,6 +3607,7 @@
            public-sharing
            request
            sample-data
+           serialization
            settings
            sync
            upload
@@ -3707,6 +3708,7 @@
            premium-features
            query-processor
            request
+           serialization
            sync
            upload
            util
