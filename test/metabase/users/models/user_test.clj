@@ -1054,3 +1054,31 @@
           (is (= 3 (count (user/create-users! [{:email (first emails) :is_active false}
                                                {:email (second emails) :is_active false}
                                                {:email (nth emails 2)}])))))))))
+
+(deftest users-with-malformed-email-or-unknown-locale-are-refused-test
+  (mt/with-temp [:model/User {user-id :id} {:email "stored@localhost" :locale nil}]
+    (mt/with-model-cleanup [:model/User]
+      (let [status #(:status-code (try (%) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+        (testing "creating"
+          (is (= 400 (status #(user/create-users! [{:email "not-an-email"}]))))
+          (is (= 400 (status #(user/create-users! [{:email "new-user@example.com" :locale "xx_YY_ZZ"}]))))
+          (is (not (t2/exists? :model/User :email [:in ["not-an-email" "new-user@example.com"]]))))
+        (testing "updating to new value"
+          (is (= 400 (status #(user/update-users! [{:id user-id :email "not-an-email"}]))))
+          (is (= 400 (status #(user/update-users! [{:id user-id :locale "xx_YY_ZZ"}]))))
+          (is (= "stored@localhost" (t2/select-one-fn :email :model/User :id user-id))))
+        (testing "updating with stored email given again"
+          (is (nil? (status #(user/update-users! [{:id user-id :email "stored@localhost" :first_name "Test"}]))))
+          (is (= "Test" (t2/select-one-fn :first_name :model/User :id user-id))))))))
+
+(deftest user-update-event-holds-only-columns-it-may-carry-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (t2/update! :core_user :id user-id {:password "stored-value" :password_salt "stored-value" :reset_token "stored-value"})
+    (let [events  (events.tu/published-events! #(user/update-users! [{:id user-id :first_name "Test"}]))
+          objects (for [[topic event] events
+                        :when         (= :event/user-update topic)
+                        change        (:changes event)
+                        object        [(:object change) (:previous-object change)]]
+                    object)]
+      (is (seq objects))
+      (is (every? #(empty? (select-keys % [:password :password_salt :reset_token :reset_triggered :settings])) objects)))))

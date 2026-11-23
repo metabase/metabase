@@ -170,7 +170,7 @@
    [:details {:optional true} [:map]]])
 
 (mr/def ::write-opts
-  "The options every write function of a model takes: `:writer`, who writes when it is not a user, and `:context`."
+  "The options the write functions of most models take: `:writer`, who writes when it is not a user, and `:context`."
   [:maybe [:map {:closed true}
            [:writer  {:optional true} [:enum :import :revert :replacement :sync :cascade]]
            [:context {:optional true} [:maybe ::context]]]])

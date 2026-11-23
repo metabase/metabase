@@ -2076,7 +2076,9 @@
   "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`, the rows the
   content checks read."
   [collection-ids]
-  (collections.db/collections-for-content-checks (vec collection-ids)))
+  (if (empty? collection-ids)
+    {}
+    (collections.db/collections-for-content-checks (vec collection-ids))))
 
 (defn check-collections-for-model
   "Throw a 400 for the first of `rows`, each holding `:collection_id` and `:archived`, that breaks one of these rules, as

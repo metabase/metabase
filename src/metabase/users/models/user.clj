@@ -466,13 +466,14 @@
 (defn- check-emails-and-locales
   "Throws a 400 unless each of `rows` satisfies these rules:
 
-  - an email it gives is well formed
-  - a locale it gives is available"
-  [rows]
-  (doseq [{:keys [email locale] :as row} rows]
-    (when (and (contains? row :email) (not (u/email? email)))
+  - an email it gives, other than the one stored in `id->stored`, is well formed
+  - a locale it gives, other than the one stored, is available"
+  [rows id->stored]
+  (doseq [{:keys [id email locale] :as row} rows
+          :let [stored (get id->stored id)]]
+    (when (and (contains? row :email) (not= email (:email stored)) (not (u/email? email)))
       (throw (ex-info (tru "Invalid email: {0}" (pr-str email)) {:status-code 400})))
-    (when (and locale (not (i18n/available-locale? locale)))
+    (when (and locale (not= locale (:locale stored)) (not (i18n/available-locale? locale)))
       (throw (ex-info (tru "Invalid locale: {0}" (pr-str locale)) {:status-code 400})))))
 
 (defn- check-new-users
@@ -483,7 +484,7 @@
   - each email is free, see [[check-emails-free]]
   - each email is well formed and each locale available, see [[check-emails-and-locales]]"
   [rows]
-  (check-emails-and-locales rows)
+  (check-emails-and-locales rows {})
   (check-sso-setup rows)
   (check-user-limit rows)
   (check-emails-free rows))
@@ -610,15 +611,16 @@
     (perms-group-membership/throw-if-last-admins! losing-admin-ids)))
 
 (defn- check-user-updates
-  "Throws a 400 unless the `updates` of one batch satisfy these rules, against the Users stored by earlier batches:
+  "Throws a 400 unless the `updates` of one batch satisfy these rules, against `id->stored` and the Users stored by
+  earlier batches:
 
   - no two rows have the same id
   - each email is free, see [[check-emails-free]]
   - each email is well formed and each locale available, see [[check-emails-and-locales]]"
-  [updates]
+  [updates id->stored]
   (when (not= (count updates) (count (into #{} (map :id) updates)))
     (throw (ex-info (tru "A User can be updated only once in a call.") {:status-code 400})))
-  (check-emails-and-locales updates)
+  (check-emails-and-locales updates id->stored)
   (check-emails-free updates))
 
 (defn- update-user-batch!
@@ -627,7 +629,7 @@
   [updates]
   (let [id->stored (users.db/users-by-ids (mapv :id updates))
         updates    (filterv (comp id->stored :id) updates)]
-    (check-user-updates updates)
+    (check-user-updates updates id->stored)
     (users.db/update-users! updates)
     {:updates     updates
      :id->stored  id->stored

@@ -23,6 +23,16 @@
       thunk)
     @topics))
 
+(defn published-events!
+  "Call `thunk` with the events of its writes not delivered and return them, each a pair of topic and event, in order."
+  [thunk]
+  (let [published (atom [])
+        record    (fn [topic event] (swap! published conj [topic event]) event)]
+    (with-redefs-fn {#'events.impl/publish-event! record
+                     #'events/publish-event!      record}
+      thunk)
+    @published))
+
 (defmacro without-delivery
   "Run `body` as [[do-without-delivery!]] does."
   [& body]

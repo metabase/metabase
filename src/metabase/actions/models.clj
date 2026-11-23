@@ -850,8 +850,8 @@
     (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400}))))
 
 (defn- detail-updates
-  "The writes of the details that `rows`, updates of the stored Actions `stored`, change as `{:replaced [...] :kept
-  [...]}`, `details` mapping an Action id to its stored details, `:replaced` holding for an Action whose type changes
+  "The writes of the details that `rows`, updates of the stored Actions `stored`, change as
+  `{:replaced [...] :kept [...]}`, `details` mapping an Action id to its stored details, `:replaced` holding for an Action whose type changes
   `{:id action-id, :old old-type, :new new-type, :row details-row}` and `:kept` holding for one whose details columns
   change `{:id action-id, :type action-type, :row details-row}`."
   [stored details rows]
@@ -965,8 +965,8 @@
 
 (mu/defn update-actions! :- :nil
   "Apply the changes in each of `rows`, the id of an Action, the Action columns to change and the columns of its
-  details, in one transaction, publishing their update event last with the `:context` of `opts`, and with `:writer
-  :import` a touch of an Action that the rows leave unchanged."
+  details, in one transaction, publishing their update event last with the `:context` of `opts`, and with
+  `:writer :import` a touch of an Action that the rows leave unchanged."
   ([rows :- [:sequential ::actions.schema/action.update]]
    (update-actions! rows nil))
   ([rows :- [:sequential ::actions.schema/action.update]

@@ -2219,8 +2219,8 @@
   "Apply `updates`, each the `:id` of a Card with the columns to give it, which may differ from one to the next, after
   checking that each can go where it is put, in one pass that reads the Cards, what their changes need to know and
   the rows that depend on them together and writes the Cards that get the same changes with one statement, publishing
-  the event of the writes as the last step with the `:context` of `opts`, such as `{:archived-with [:model/Dashboard
-  1]}` for the Cards that the archive of Dashboard 1 carries."
+  the event of the writes as the last step with the `:context` of `opts`, such as
+  `{:archived-with [:model/Dashboard 1]}` for the Cards that the archive of Dashboard 1 carries."
   ([updates :- [:sequential ::queries.schema/card.update]]
    (update-cards! updates nil))
   ([updates :- [:sequential ::queries.schema/card.update]

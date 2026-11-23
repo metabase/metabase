@@ -42,7 +42,7 @@
 (mr/def ::timeline.create
   "What a caller gives to create a Timeline: the columns of an update without the `:id`, and the name."
   [:merge
-   (mut/dissoc ::timeline.update :id)
+   (reduce mut/dissoc ::timeline.update [:id :created_at :updated_at])
    [:map {:closed true}
     [:name ::name]]])
 
@@ -73,7 +73,7 @@
   "What a caller gives to create a TimelineEvent: the columns of an update without the `:id`, and the timeline, name and
   timestamp."
   [:merge
-   (mut/dissoc ::timeline-event.update :id)
+   (reduce mut/dissoc ::timeline-event.update [:id :created_at :updated_at])
    [:map {:closed true}
     [:timeline_id ms/PositiveInt]
     [:name        ::name]

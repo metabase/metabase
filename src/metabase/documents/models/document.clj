@@ -655,8 +655,8 @@
 (mu/defn update-document-with-cards!
   "Apply `body`, any of `:name`, `:document`, `:collection_id`, `:collection_position`, `:cards` and `:archived`, to
   `existing-document`, clone any newly embedded cards the document does not own, and return the updated document,
-  leaving the permission checks (write-check, archived state, collection move) to the caller, as the REST `PUT
-  /api/document/:id` handler does."
+  leaving the permission checks (write-check, archived state, collection move) to the caller, as the REST
+  `PUT /api/document/:id` handler does."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}

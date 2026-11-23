@@ -88,7 +88,7 @@
   "What a caller gives to create a Comment: the columns of an update without the `:id`, and the target, creator and
   content."
   [:merge
-   (mut/dissoc ::comment.update :id)
+   (reduce mut/dissoc ::comment.update [:id :is_resolved :created_at :updated_at :deleted_at :content_html])
    [:map {:closed true}
     [:target_type [:or :keyword :string]]
     [:target_id   ms/PositiveInt]
@@ -133,7 +133,7 @@
   "What a caller gives to create a CommentReaction: the columns of an update without the `:id`, and the comment, user and
   emoji."
   [:merge
-   (mut/dissoc ::comment-reaction.update :id)
+   (reduce mut/dissoc ::comment-reaction.update [:id :created_at])
    [:map {:closed true}
     [:comment_id ms/PositiveInt]
     [:user_id    ::lib.schema.id/user]
