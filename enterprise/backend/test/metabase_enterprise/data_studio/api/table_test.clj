@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.data-studio.api.table-test
+(ns metabase-enterprise.data-studio.api.table-test
   "Tests for /api/ee/data-studio/table endpoints (enterprise-only: publish-tables, unpublish-tables)."
   (:require
    [clojure.test :refer :all]

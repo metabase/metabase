@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.api-test
+(ns metabase.query-processor.api-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
@@ -726,7 +726,7 @@
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
 
 ;; historical test: don't do this going forward
-(deftest ^:parallel compile-test-6
+(deftest ^:mb/driver-tests ^:parallel compile-test-6
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "`:now` is usable inside `:case` with mongo (#32216)"
@@ -748,7 +748,7 @@
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
 ;; historical test: don't do this going forward
-(deftest report-timezone-test
+(deftest ^:mb/driver-tests report-timezone-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
@@ -763,7 +763,7 @@
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
 ;; historical test: don't do this going forward
-(deftest databricks-stack-trace-test
+(deftest ^:mb/driver-tests databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
@@ -777,7 +777,7 @@
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
-(deftest ^:parallel pivot-dataset-test
+(deftest ^:mb/driver-tests ^:parallel pivot-dataset-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -809,7 +809,7 @@
                        :error  string?}
                       body)))))))))
 
-(deftest ^:parallel pivot-dataset-row-totals-disabled-test
+(deftest ^:mb/driver-tests ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with row totals disabled"
@@ -827,7 +827,7 @@
                       distinct
                       vec))))))))
 
-(deftest ^:parallel pivot-dataset-column-totals-disabled-test
+(deftest ^:mb/driver-tests ^:parallel pivot-dataset-column-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with column totals disabled"
@@ -845,7 +845,7 @@
                       distinct
                       vec))))))))
 
-(deftest ^:parallel pivot-dataset-both-totals-disabled-test
+(deftest ^:mb/driver-tests ^:parallel pivot-dataset-both-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with row and column totals disabled"
@@ -863,7 +863,7 @@
                       distinct
                       vec))))))))
 
-(deftest ^:parallel pivot-filter-dataset-test
+(deftest ^:mb/driver-tests ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -879,7 +879,7 @@
             (is (= ["WA" nil 2 148] (nth rows 135)))
             (is (= [nil nil 3 7562] (last rows)))))))))
 
-(deftest ^:parallel pivot-parameter-dataset-test
+(deftest ^:mb/driver-tests ^:parallel pivot-parameter-dataset-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"

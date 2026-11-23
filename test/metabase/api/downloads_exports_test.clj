@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.downloads-exports-test
+(ns metabase.api.downloads-exports-test
   "Tests for the various Download and Export features in the app.
 
   TODO: Add tests to cover the many places data can be exported or downloaded:

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.database-routing.sandboxing-test
+(ns metabase-enterprise.database-routing.sandboxing-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.e2e-test :as e2e]

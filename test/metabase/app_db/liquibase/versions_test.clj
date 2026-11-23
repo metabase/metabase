@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.app-db.liquibase.versions-test
+(ns metabase.app-db.liquibase.versions-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -61,7 +61,7 @@
     (is (= 9999 (versions/version->major versions/dev-version)))
     (is (nil? (versions/version->major nil)))))
 
-(deftest dev-version-test
+(deftest ^:mb/driver-tests dev-version-test
   (testing "a build with no real release version records the constant dev version"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -106,7 +106,7 @@
 
 ;;; ------------------------------------------------- recording runs ----------------------------------------------
 
-(deftest record-deployment-version-nil-guard-test
+(deftest ^:mb/driver-tests record-deployment-version-nil-guard-test
   (testing "recording with a nil deployment id (empty changelog) is a no-op instead of a NOT NULL violation"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -115,7 +115,7 @@
           (versions/record-deployment-version! conn nil "x.1.0" true)
           (is (= [] (version-rows conn))))))))
 
-(deftest record-deployment-version-is-idempotent-test
+(deftest ^:mb/driver-tests record-deployment-version-is-idempotent-test
   (testing "an already-present (deployment, version) pair is left alone, so a boot row never overwrites a ran row"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -126,7 +126,7 @@
           (versions/record-deployment-version! conn "dep" "x.65.0" true)
           (is (= [["dep" "x.65.0" true]] (version-rows conn))))))))
 
-(deftest recording-listener-records-the-run-test
+(deftest ^:mb/driver-tests recording-listener-records-the-run-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -146,7 +146,7 @@
               (liquibase/migrate-up-if-needed! liquibase (mdb/data-source))
               (is (= 1 (count (version-rows conn)))))))))))
 
-(deftest record-boot-version-test
+(deftest ^:mb/driver-tests record-boot-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -190,7 +190,7 @@
 
 ;;; --------------------------------------------- table creation and backfill ---------------------------------------
 
-(deftest ensure-backfills-the-current-deployment-test
+(deftest ^:mb/driver-tests ensure-backfills-the-current-deployment-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -220,7 +220,7 @@
           (testing "the deployments keep their changelog order"
             (is (= ["newer" "older"] (map :deployment-id (versions/recorded-deployments conn db))))))))))
 
-(deftest backfill-uses-highest-version-not-latest-executed-test
+(deftest ^:mb/driver-tests backfill-uses-highest-version-not-latest-executed-test
   (testing "the backfill records the highest major present, even when a lower-version changeset ran last (a back-ported patch)"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -238,7 +238,7 @@
                 "the current deployment is the patch's, but its version is the highest major in the changelog")
             (is (= latest (versions/last-deployment-version conn db)))))))))
 
-(deftest backfill-counts-the-v65-changesets-64-ships-as-64-test
+(deftest ^:mb/driver-tests backfill-counts-the-v65-changesets-64-ships-as-64-test
   (testing "a 64 database that ran the two v65 view changesets 64 ships again is backfilled as 64, not 65 -- otherwise
             every later 64 patch would refuse to boot against it"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -255,7 +255,7 @@
             (is (= [["d64" "x.64.0.0" true]] (version-rows conn)))
             (is (= 64 (versions/current-schema-major conn db)))))))))
 
-(deftest first-backfill-records-every-legacy-deployment-test
+(deftest ^:mb/driver-tests first-backfill-records-every-legacy-deployment-test
   (testing "the first backfill records each legacy deployment at the major its vNN. ids put the schema at, so the
             major before the current one stays a `migrate down` target"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -278,7 +278,7 @@
               (is (= 3 (count (version-rows conn)))))
             (is (= 63 (versions/previous-recorded-major (versions/recorded-deployments conn db) false)))))))))
 
-(deftest version-tracking-sql-backfills-every-legacy-deployment-test
+(deftest ^:mb/driver-tests version-tracking-sql-backfills-every-legacy-deployment-test
   (testing "the manual-upgrade SQL backfills every legacy deployment, like the first boot does: once it is applied the
             versions are tracked, and no later backfill records the older deployments"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -310,7 +310,7 @@
           (mdb/migrate! (mdb/data-source) :up)
           (is (= [true] @lock-held-at-repair)))))))
 
-(deftest migrate-recreates-version-table-after-failure-test
+(deftest ^:mb/driver-tests migrate-recreates-version-table-after-failure-test
   (testing "the version table is (re)created at the start of every migrate!, so a rolled-back CREATE (transactional DDL) is simply redone"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -334,7 +334,7 @@
       (f))
     @statements))
 
-(deftest ensure-version-tracking-skips-ddl-when-table-exists-test
+(deftest ^:mb/driver-tests ensure-version-tracking-skips-ddl-when-table-exists-test
   (testing "once the version tables exist, boots run no DDL: a Postgres user without CREATE on the schema can still boot"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -345,7 +345,7 @@
             (is (= [] (ddl-statements! #(versions/ensure-version-tracking! conn db)))
                 "later calls see it and skip the CREATE")))))))
 
-(deftest ensure-version-tracking-tolerates-losing-create-race-test
+(deftest ^:mb/driver-tests ensure-version-tracking-tolerates-losing-create-race-test
   (testing "a CREATE that fails because a concurrent boot created the table first is not an error"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -368,7 +368,7 @@
                 (is (thrown-with-msg? java.sql.SQLException #"permission denied"
                                       (versions/ensure-version-tracking! conn db)))))))))))
 
-(deftest ensure-version-tracking-tolerates-losing-create-race-in-a-transaction-test
+(deftest ^:mb/driver-tests ensure-version-tracking-tolerates-losing-create-race-in-a-transaction-test
   (testing "on Postgres, inside the caller's transaction, a CREATE that loses the race is rolled back to its savepoint
             and the transaction goes on (two instances upgrading the same install at once)"
     (mt/test-drivers #{:postgres}
@@ -387,7 +387,7 @@
             (is (= [{:one 1}] (jdbc/query {:connection conn} ["SELECT 1 AS one"]))
                 "the caller's transaction is still usable")))))))
 
-(deftest versions-table-name-matches-changelog-casing-test
+(deftest ^:mb/driver-tests versions-table-name-matches-changelog-casing-test
   (testing "the version table is cased like Liquibase's DATABASECHANGELOG: upper case on H2 and MySQL, lower on Postgres"
     ;; MySQL table names are case-sensitive on Linux, and other code (the audit app, h2 dump comparisons) looks it up
     ;; by the same spelling as the changelog table
@@ -404,7 +404,7 @@
             (is (= expected (versions/versions-table-name)))
             (is (= [expected] actual))))))))
 
-(deftest mysql-ran-migrations-is-bit-test
+(deftest ^:mb/driver-tests mysql-ran-migrations-is-bit-test
   (testing "on MySQL/MariaDB ran_migrations is bit(1), like every other boolean column (see general-schema-tests)"
     (mt/test-driver :mysql
       (mt/with-temp-empty-app-db [conn :mysql]
@@ -420,7 +420,7 @@
           (versions/record-deployment-version! conn "dep1" "x.64.0" true)
           (is (= [["dep1" "x.64.0" true]] (version-rows conn))))))))
 
-(deftest deployed-at-uses-unified-timestamp-type-test
+(deftest ^:mb/driver-tests deployed-at-uses-unified-timestamp-type-test
   (testing "the version table starts with the post-UnifyTimeColumnsType type on both fresh installs and upgrades"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -447,7 +447,7 @@
                        (is (= "timestamp" data_type))
                        (is (= 6 datetime_precision)))))))))
 
-(deftest repair-corrects-a-deployment-trimmed-by-a-legacy-rollback-test
+(deftest ^:mb/driver-tests repair-corrects-a-deployment-trimmed-by-a-legacy-rollback-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -472,7 +472,7 @@
                 "the ran row is lowered to the highest remaining major, and newer boot rows are dropped")
             (is (= 63 (versions/current-schema-major conn db)))))))))
 
-(deftest repair-leaves-tracked-deployments-alone-test
+(deftest ^:mb/driver-tests repair-leaves-tracked-deployments-alone-test
   (testing "a ran version above the changelog's highest vNN. major is only corrected for a legacy-only deployment"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (doseq [[desc {:keys [ran changesets]}]
@@ -493,7 +493,7 @@
 
 ;;; ------------------------------------------------- deployment reads ---------------------------------------------
 
-(deftest recorded-deployments-follow-the-changelog-test
+(deftest ^:mb/driver-tests recorded-deployments-follow-the-changelog-test
   (testing "the current deployment is the one owning the newest changelog row, whatever order the version rows were written in"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -510,7 +510,7 @@
             (is (= "x.64.0" (versions/last-deployment-version conn db)))
             (is (= "d65" (versions/previous-deployment-id conn db)))))))))
 
-(deftest rollback-window-test
+(deftest ^:mb/driver-tests rollback-window-test
   (testing "the window is every current-major deployment plus the most recent previous-major one; `all?` is the whole history"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -534,7 +534,7 @@
               (is (= ["x.59.0" "x.59.3"] (:versions (nth deployments 2))) "ran and booted versions alike")
               (is (= "x.59.0" (:ran-version (nth deployments 2)))))))))))
 
-(deftest previous-recorded-major-test
+(deftest ^:mb/driver-tests previous-recorded-major-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -563,7 +563,7 @@
 
 ;;; ---------------------------------------- the legacy-version-tracking marker -------------------------------------
 
-(deftest latest-applied-major-version-test
+(deftest ^:mb/driver-tests latest-applied-major-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -571,7 +571,7 @@
         (migrate-without-recording! liquibase)
         (is (< 52 (versions/latest-applied-major-version conn (.getDatabase liquibase))))))))
 
-(deftest record-legacy-version-tracking-test
+(deftest ^:mb/driver-tests record-legacy-version-tracking-test
   (testing "record-legacy-version-tracking! tags the deployment that ran migrations, so older binaries read the right major"
     ;; Older (pre-version-less) binaries detect an unsupported downgrade via latest-applied-major-version (id LIKE 'v%')
     ;; and know nothing about databasechangelog_version. For a version-less major this row is the only signal.
@@ -630,7 +630,7 @@
               (is (= versions/dev-major (versions/latest-applied-major-version conn db))
                   "older binaries read the dev major and refuse"))))))))
 
-(deftest force-migrate-writes-legacy-marker-test
+(deftest ^:mb/driver-tests force-migrate-writes-legacy-marker-test
   (testing "migrate force records the vNN.legacy-version-tracking marker just like a normal upgrade, so
             pre-versionless binaries can still detect a downgrade after a force upgrade"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -651,7 +651,7 @@
 
 ;;; ---------------------------------------------- first runs of re-run changesets ----------------------------------
 
-(deftest re-run-records-where-the-changeset-first-ran-test
+(deftest ^:mb/driver-tests re-run-records-where-the-changeset-first-ran-test
   (testing "a re-run keeps where the changeset first ran, which Liquibase overwrites on its changelog row"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -676,7 +676,7 @@
             (is (= (:deployment_id original) (:deployment_id (first-of)))
                 "a second re-run keeps the first run")))))))
 
-(deftest run-always-records-where-the-changeset-first-ran-test
+(deftest ^:mb/driver-tests run-always-records-where-the-changeset-first-ran-test
   (testing "a runAlways changeset re-runs on every update run, so it gets a first-run record too"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -696,7 +696,7 @@
             (is (not= (:deployment_id original) (:deployment_id (row-of "always_view"))) "sanity: the view re-ran")
             (is (= original (first-of)))))))))
 
-(deftest first-runs-keep-the-changelog-timestamp-type-test
+(deftest ^:mb/driver-tests first-runs-keep-the-changelog-timestamp-type-test
   (testing "a fresh install, which runs UnifyTimeColumnsType over the tables already there, leaves the copied
             dateexecuted with the changelog's type, so the two still compare"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -732,7 +732,7 @@
                     [(format "SELECT id, deployment_id FROM %s WHERE filename = 'legacy-version-tracking' ORDER BY id"
                              changelog-table)])))
 
-(deftest tail-marker-keeps-old-binaries-on-the-current-changelog-test
+(deftest ^:mb/driver-tests tail-marker-keeps-old-binaries-on-the-current-changelog-test
   (testing "old binaries take a version-less newest row for a pre-4.2 install, so every run ends with a marker they read safely"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -768,7 +768,7 @@
               (is (= "v66.legacy-version-tracking" (old-binary-latest-row conn ct)))
               (is (= [["v56.legacy-version-tracking" "d58c"] ["v66.legacy-version-tracking" "d66b"]] (marker-rows conn ct))))))))))
 
-(deftest ensure-backfills-deployments-old-binaries-ran-test
+(deftest ^:mb/driver-tests ensure-backfills-deployments-old-binaries-ran-test
   (testing "deployments an old binary ran after version tracking started are recorded from their vNN. ids"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -786,7 +786,7 @@
             (is (= 59 (versions/previous-recorded-major (versions/recorded-deployments conn db) false))
                 "so `migrate down` steps back to the major the old binary left, not past it")))))))
 
-(deftest ensure-repairs-a-deployment-an-old-binary-rolled-back-test
+(deftest ^:mb/driver-tests ensure-repairs-a-deployment-an-old-binary-rolled-back-test
   (testing "an old binary's `migrate down` removes a major's vNN. changesets but not the version rows recording that major"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -819,7 +819,7 @@
               (is (= [["d59" "x.59.0.0" true] ["d59b" "x.59.9" true] ["d66" "x.66.0" true]] (sort (version-rows conn)))
                   "and so is a version-less major, which has no vNN. changesets at all"))))))))
 
-(deftest deployments-are-ordered-like-liquibase-orders-them-test
+(deftest ^:mb/driver-tests deployments-are-ordered-like-liquibase-orders-them-test
   (testing "rows are ordered by dateexecuted, then orderexecuted, like Liquibase: orderexecuted only increases within
             an update run and can restart, so a later deployment may have lower values"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -835,7 +835,7 @@
             (is (= "d59" (versions/last-deployment-id conn db)))
             (is (= 59 (versions/current-schema-major conn db)))))))))
 
-(deftest ensure-heals-a-version-less-newest-row-test
+(deftest ^:mb/driver-tests ensure-heals-a-version-less-newest-row-test
   (testing "whatever left a version-less row newest, the next entry point puts a marker after it"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -852,7 +852,7 @@
               (is (= "v59.2025-01-01T00:00:00" (old-binary-latest-row conn ct)))
               (is (= [["v56.legacy-version-tracking" "d58"]] (marker-rows conn ct))))))))))
 
-(deftest which-majors-are-versioned-comes-from-the-changelog-test
+(deftest ^:mb/driver-tests which-majors-are-versioned-comes-from-the-changelog-test
   (testing "a major is versioned when its own vNN. changesets are in the changelog -- however late a major still shipped some"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]

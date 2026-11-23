@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.database-routing.persistence-test
+(ns metabase-enterprise.database-routing.persistence-test
   "A Model's persisted cache table holds the results as seen through the Router Database's own connection. A user
   routed to a Destination Database must never read from it, whether the Model is referenced as a source table or via
   a native `{{#N}}` template tag."
@@ -13,7 +13,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest persistence-disabled-when-db-routed-test
+(deftest ^:mb/driver-tests persistence-disabled-when-db-routed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models :database-routing)
     (mt/with-premium-features #{:database-routing}
       (mt/dataset test-data

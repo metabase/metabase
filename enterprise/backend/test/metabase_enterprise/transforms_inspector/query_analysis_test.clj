@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.query-analysis-test
+(ns metabase-enterprise.transforms-inspector.query-analysis-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-inspector.lens.join-analysis :as join-analysis]
@@ -22,7 +22,7 @@
                      :name   "multi-stage-test"}]
       (is (nil? (query-analysis/analyze-mbql-query transform))))))
 
-(deftest analyze-mbql-query-single-stage-returns-result-test
+(deftest ^:mb/driver-tests analyze-mbql-query-single-stage-returns-result-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "analyze-mbql-query returns result for single-stage queries"
       (let [mp    (mt/metadata-provider)
@@ -70,7 +70,7 @@
 
 ;;; -------------------------------------------------- Native CTE / subquery tests --------------------------------------------------
 
-(deftest analyze-native-query-cte-join-source-table-is-nil-test
+(deftest ^:mb/driver-tests analyze-native-query-cte-join-source-table-is-nil-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql
                                              :+features [:left-join]})
     (testing "join against a CTE alias produces nil :source-table"
@@ -88,7 +88,7 @@
         (is (nil? (:source-table (first (:join-structure result))))
             "CTE alias should not resolve to a real table ID")))))
 
-(deftest analyze-native-query-mixed-simple-and-cte-joins-test
+(deftest ^:mb/driver-tests analyze-native-query-mixed-simple-and-cte-joins-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql
                                              :+features [:left-join]})
     (testing "mix of simple table join and CTE join: only simple table has source-table"

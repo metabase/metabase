@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions.models-test
+(ns metabase.actions.models-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -27,7 +27,7 @@
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
-(deftest hydrate-query-action-test
+(deftest ^:mb/driver-tests hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [model-id action-id] :as _context} {:type :query}]
@@ -38,7 +38,7 @@
                        :parameters [{:id "id" :type :number}]}
                       (action/select-action :id action-id)))))))
 
-(deftest hydrate-implicit-action-test
+(deftest ^:mb/driver-tests hydrate-implicit-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (let [query (mt/mbql-query categories)]
@@ -81,7 +81,7 @@
                                                                :order        1}}}}
                     (action/select-action :id action-id)))))))))
 
-(deftest hydrate-implicit-action-test-1a
+(deftest ^:mb/driver-tests hydrate-implicit-action-test-1a
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (let [query (mt/mbql-query categories)]
@@ -106,7 +106,7 @@
                          :hidden false}
                         (get field-settings "name")))))))))))
 
-(deftest hydrate-implicit-action-test-2
+(deftest ^:mb/driver-tests hydrate-implicit-action-test-2
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
       (mt/dataset json
@@ -134,7 +134,7 @@
                        (->> (action/select-action :id action-id)
                             :parameters (map :id) set)))))))))))
 
-(deftest hydrate-implicit-action-test-3
+(deftest ^:mb/driver-tests hydrate-implicit-action-test-3
   (testing "Implicit actions do not map parameters to binary fields, the same way JSON fields are excluded"
     (mt/test-driver :postgres
       (mt/dataset (mt/dataset-definition
@@ -153,7 +153,7 @@
               (testing "the binary column is excluded"
                 (is (not (contains? parameter-ids "bytea_col")))))))))))
 
-(deftest hydrate-creator-test
+(deftest ^:mb/driver-tests hydrate-creator-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
@@ -165,7 +165,7 @@
                        :parameters [{:id "id" :type :number}]}
                       (t2/hydrate (action/select-action :id action-id) :creator)))))))
 
-(deftest hydrate-model-test
+(deftest ^:mb/driver-tests hydrate-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
@@ -173,7 +173,7 @@
           (is (some? (:model action)))
           (is (= (:id (:model action)) model-id)))))))
 
-(deftest dashcard-deletion-test
+(deftest ^:mb/driver-tests dashcard-deletion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are archived"
@@ -185,7 +185,7 @@
             (action/update-action! action-id, {:archived true} nil)
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
-(deftest dashcard-deletion-test-2
+(deftest ^:mb/driver-tests dashcard-deletion-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are deleted entirely"
@@ -197,7 +197,7 @@
             (t2/delete! :model/Action :id action-id)
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
-(deftest create-update-select-implicit-action-test
+(deftest ^:mb/driver-tests create-update-select-implicit-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (mt/with-actions [{:keys [action-id]} {:type :implicit
@@ -308,7 +308,7 @@
                                                         :creator_id (mt/user->id :crowberto)}])))
         (is (not (t2/exists? :model/Action :name "Root")))))))
 
-(deftest query-action-without-model-test
+(deftest ^:mb/driver-tests query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
       (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
@@ -405,7 +405,7 @@
               (action/update-action! action-id {:collection_id app-id} nil)
               (is (= app-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
 
-(deftest implicit-action-requires-table-test
+(deftest ^:mb/driver-tests implicit-action-requires-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "an implicit action cannot be inserted without a model or a table"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An implicit action needs a table"
@@ -549,7 +549,7 @@
                               (action/update-action! action-id {:model_id other-id} nil)))
         (is (= model-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))
 
-(deftest switching-to-implicit-checks-the-model-test
+(deftest ^:mb/driver-tests switching-to-implicit-checks-the-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "a query action cannot become implicit when its card is a question"
@@ -568,7 +568,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
                                 (action/update-action! action-id {:type :implicit :kind :row/update} nil))))))))
 
-(deftest model-to-saved-question-test
+(deftest ^:mb/driver-tests model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Non-implicit actions and their dashboard buttons are deleted if their model is converted to a saved question"
@@ -585,7 +585,7 @@
           (queries.card/update-cards! [{:id model-id :type :question}])
           (is (false? (t2/exists? :model/Action :id action-id))))))))
 
-(deftest model-to-saved-question-test-2
+(deftest ^:mb/driver-tests model-to-saved-question-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       ;; Ngoc: I know this seems like a silly test but we actually made a mistake
@@ -597,7 +597,7 @@
           (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (false? (t2/select-one-fn :archived :model/Action :id action-id))))))))
 
-(deftest exclude-auto-increment-fields-for-create-implicit-actions-test
+(deftest ^:mb/driver-tests exclude-auto-increment-fields-for-create-implicit-actions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (doseq [kind [:row/create :row/update :row/delete]]

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.database-routing.query-execution-test
+(ns metabase-enterprise.database-routing.query-execution-test
   "Integration tests that verify `is_db_routed` is recorded on `:model/QueryExecution` rows when a query is routed
   to a destination database via DB routing. Drives a full userland query through the QP and inspects the persisted
   row."

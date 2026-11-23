@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.actions.actions-test
+(ns metabase.actions.actions-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.actions-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.actions.actions-test]}}}}}}
   (:require
@@ -45,7 +45,7 @@
 (defn- categories-row-count []
   (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
 
-(deftest create-test
+(deftest ^:mb/driver-tests create-test
   (testing "row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -59,7 +59,7 @@
             (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
                 "The record at created-id should now have its name set to \"created_row\"")))))))
 
-(deftest create-invalid-data-test
+(deftest ^:mb/driver-tests create-invalid-data-test
   (testing "row/create -- invalid data"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -79,7 +79,7 @@
           (is (= 75
                  (categories-row-count))))))))
 
-(deftest update-test
+(deftest ^:mb/driver-tests update-test
   (testing "row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -92,7 +92,7 @@
                (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})) last last))
             "The row should actually be updated")))))
 
-(deftest delete-test
+(deftest ^:mb/driver-tests delete-test
   (testing "row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -188,7 +188,7 @@
                                                  (dissoc :query)
                                                  (assoc :native {:query "Not really a SQL query"})))))))))
 
-(deftest row-update-action-gives-400-when-matching-more-than-one
+(deftest ^:mb/driver-tests row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (mt/with-test-user :crowberto
@@ -205,7 +205,7 @@
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
-(deftest row-delete-action-gives-400-when-matching-more-than-one
+(deftest ^:mb/driver-tests row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (mt/with-test-user :crowberto
@@ -220,7 +220,7 @@
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
-(deftest row-delete-unparseable-values-test
+(deftest ^:mb/driver-tests row-delete-unparseable-values-test
   (testing "row/delete"
     (testing "should return error message if value cannot be parsed correctly for Field in question"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -236,7 +236,7 @@
             (is (= 75
                    (categories-row-count)))))))))
 
-(deftest row-delete-fk-constraint-violation-test
+(deftest ^:mb/driver-tests row-delete-fk-constraint-violation-test
   (testing "row/delete"
     (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -265,7 +265,7 @@
             ~expected-schema
             (assoc (ex-data e#) ::message (ex-message e#)))))))
 
-(deftest table-row-create-happy-path-test
+(deftest ^:mb/driver-tests table-row-create-happy-path-test
   (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -295,7 +295,7 @@
                :semantic_type :type/PK}
               {:semantic_type nil}))
 
-(deftest table-row-create-no-pk
+(deftest ^:mb/driver-tests table-row-create-no-pk
   (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -324,7 +324,7 @@
           (is (= 75
                  (categories-row-count))))))))
 
-(deftest table-row-create-failure-test
+(deftest ^:mb/driver-tests table-row-create-failure-test
   (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -363,7 +363,7 @@
             (is (= 75
                    (categories-row-count)))))))))
 
-(deftest table-row-delete-happy-path-test
+(deftest ^:mb/driver-tests table-row-delete-happy-path-test
   (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -383,7 +383,7 @@
                    #'map? (u/lower-case-map-keys &match))))
           (is (= 73 (categories-row-count))))))))
 
-(deftest table-row-delete-no-pk
+(deftest ^:mb/driver-tests table-row-delete-no-pk
   (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -408,7 +408,7 @@
           (testing "nothing was deleted"
             (is (= 75 (categories-row-count)))))))))
 
-(deftest table-row-delete-failure-test
+(deftest ^:mb/driver-tests table-row-delete-failure-test
   (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -474,7 +474,7 @@
 (defn- first-three-categories []
   (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
 
-(deftest table-row-update-happy-path-test
+(deftest ^:mb/driver-tests table-row-update-happy-path-test
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -501,7 +501,7 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(deftest table-row-update-no-pk
+(deftest ^:mb/driver-tests table-row-update-no-pk
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -536,7 +536,7 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(deftest table-row-update-failure-test
+(deftest ^:mb/driver-tests table-row-update-failure-test
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
@@ -595,7 +595,7 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(deftest actions-on-ssh-tunneled-db
+(deftest ^:mb/driver-tests actions-on-ssh-tunneled-db
   ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
   ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
   ;; the db on the correct port. So we do the tests twice, once expecting the correct answer, and then again with the
@@ -691,7 +691,7 @@
        (mt/with-test-user :crowberto
          ~@body))))
 
-(deftest uuid-update-test
+(deftest ^:mb/driver-tests uuid-update-test
   (testing "row/update with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
@@ -708,7 +708,7 @@
                    last))
             "The row should actually be updated")))))
 
-(deftest uuid-create-test
+(deftest ^:mb/driver-tests uuid-create-test
   (testing "row/create with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
@@ -728,7 +728,7 @@
                      last))
               "The row should actually be created"))))))
 
-(deftest uuid-delete-test
+(deftest ^:mb/driver-tests uuid-delete-test
   (testing "row/delete with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
@@ -741,7 +741,7 @@
         (is (= [] (mt/rows (mt/run-mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Selecting for deleted rows should return an empty result")))))
 
-(deftest test-permission-denied-errors
+(deftest ^:mb/driver-tests test-permission-denied-errors
   (testing "Permission denied errors should return nice error messages"
     ;; can't create users with restricted permissions in h2
     (mt/with-actions-enabled
@@ -829,7 +829,7 @@
                       (is (= actions.error/violate-permission-constraint (:type first-error)))
                       (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))
 
-(deftest action-creates-write-pool-test
+(deftest ^:mb/driver-tests action-creates-write-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:actions]})
     (mt/with-actions-test-data-and-actions-enabled
       (let [db-id           (mt/id)

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.postgres-test
+(ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.postgres-test]}
                                                             metabase.test.data/query          {:namespaces [metabase.driver.postgres-test]}
@@ -78,7 +78,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest default-schema-test
+(deftest ^:mb/driver-tests default-schema-test
   (mt/test-driver :postgres
     (testing "default"
       (is (= "public"
@@ -220,7 +220,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(deftest ^:synchronized edge-case-identifiers-test
+(deftest ^:mb/driver-tests ^:synchronized edge-case-identifiers-test
   (mt/test-drivers #{:postgres :motherduck}
     ;; Each section queries another database as Rasta, and dev mode limits the permission cache misses in one user scope.
     ;; Start a new scope for each driver.
@@ -274,7 +274,7 @@
      {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
     [["Cam" 1]]]])
 
-(deftest duplicate-names-test
+(deftest ^:mb/driver-tests duplicate-names-test
   (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
@@ -303,7 +303,7 @@
        (into [])
        (sort-by :name)))
 
-(deftest materialized-views-test
+(deftest ^:mb/driver-tests materialized-views-test
   (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
@@ -324,7 +324,7 @@
                     :field-comment "Facts that are true"}]
                   (into [] (driver/describe-fields :postgres (driver.u/ensure-lib-database database) {:table-names ["test_mview"]})))))))))
 
-(deftest foreign-tables-test
+(deftest ^:mb/driver-tests foreign-tables-test
   (mt/test-driver :postgres
     (testing "Check that we properly fetch foreign tables."
       (tx/drop-if-exists-and-create-db! driver/*driver* "fdw_test")
@@ -358,7 +358,7 @@
                    (default-table-result "local_table" {:estimated_row_count nil})]
                   (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
-(deftest estimated-row-count-hides-zero-test
+(deftest ^:mb/driver-tests estimated-row-count-hides-zero-test
   (mt/test-driver :postgres
     (testing "Check that tables with n_live_tup = 0 return nil for estimated_row_count to avoid confusion with stale stats"
       (tx/drop-if-exists-and-create-db! driver/*driver* "estimated_count_test")
@@ -370,7 +370,7 @@
           (is (=? [(default-table-result "empty_table" {:estimated_row_count nil})]
                   (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
-(deftest recreated-views-test
+(deftest ^:mb/driver-tests recreated-views-test
   (mt/test-driver :postgres
     (testing (str "make sure that if a view is dropped and recreated that the original Table object is marked active "
                   "rather than a new one being created (#3331)")
@@ -402,7 +402,7 @@
                    (map (partial into {})
                         (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
-(deftest partitioned-table-test
+(deftest ^:mb/driver-tests partitioned-table-test
   (mt/test-driver :postgres
     (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
                   " synced properly (#15049)")
@@ -485,7 +485,7 @@
           (str "validate-impersonated-query* placed the TEXT[] cast on the result of #>> "
                "rather than on the array path argument:\n  " out-sql)))))
 
-(deftest ^:parallel json-field-test
+(deftest ^:mb/driver-tests ^:parallel json-field-test
   (mt/test-driver :postgres
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
@@ -535,7 +535,7 @@
                                        "injection' OR 1=1--' AND released = 1"]
                        :database-type "VARCHAR"})]}))
 
-(deftest ^:parallel json-alias-test
+(deftest ^:mb/driver-tests ^:parallel json-alias-test
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
@@ -576,7 +576,7 @@
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
 
-(deftest ^:parallel json-alias-test-2
+(deftest ^:mb/driver-tests ^:parallel json-alias-test-2
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
@@ -610,7 +610,7 @@
                                           :aggregation  [[:count]]
                                           :breakout     [[:field 1 nil]]}})}]}))
 
-(deftest ^:parallel json-breakout-in-model-test
+(deftest ^:mb/driver-tests ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider (json-alias-in-model-mock-metadata-provider driver/*driver*)
@@ -637,7 +637,7 @@
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
-(deftest ^:parallel nested-field-pivot-compile-test
+(deftest ^:mb/driver-tests ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
     (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
       (let [mp       (lib.tu/mock-metadata-provider
@@ -705,7 +705,7 @@
                     "  \"__mb_source\".\"region\" ASC"]
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
 
-(deftest nested-field-pivot-e2e-test
+(deftest ^:mb/driver-tests nested-field-pivot-e2e-test
   (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset json
       (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
@@ -768,7 +768,7 @@
 ;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
 ;;; (#73721). PostgreSQL 19 refuses the setting off, so only the `on` case runs there.
-(deftest contains-filter-jdbc-parser-test
+(deftest ^:mb/driver-tests contains-filter-jdbc-parser-test
   (mt/test-driver :postgres
     (testing "PGJDBC parses LIKE filters under each standard_conforming_strings setting the server allows (#73721)"
       (let [mp       (mt/metadata-provider)
@@ -797,7 +797,7 @@
                        (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
                            (str "PGJDBC should prepare the SQL; got SQL: " sql))))))))))))))
 
-(deftest describe-nested-field-columns-identifier-test
+(deftest ^:mb/driver-tests describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
       (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-with-schema-test")
@@ -822,7 +822,7 @@
                     (driver.u/lib-database (:id database))
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
-(deftest describe-funky-name-table-nested-field-columns-test
+(deftest ^:mb/driver-tests describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-funky-names-test")
@@ -856,7 +856,7 @@
      [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
-(deftest uuid-columns-test
+(deftest ^:mb/driver-tests uuid-columns-test
   (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
@@ -963,7 +963,7 @@
     [[[:raw "'192.168.1.1'::inet"]]
      [[:raw "'10.4.4.15'::inet"]]]]])
 
-(deftest inet-columns-test
+(deftest ^:mb/driver-tests inet-columns-test
   (mt/test-driver :postgres
     (testing (str "Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` "
                   "(otherwise this wouldn't work)")
@@ -991,7 +991,7 @@
       (mt/with-db db
         (thunk)))))
 
-(deftest ^:parallel money-columns-in-results-test
+(deftest ^:mb/driver-tests ^:parallel money-columns-in-results-test
   (mt/test-driver :postgres
     (testing "It should be possible to return money column results (#3754)"
       (sql-jdbc.execute/do-with-connection-with-options
@@ -1005,7 +1005,7 @@
              (is (= [1000.00M]
                     (row-thunk))))))))))
 
-(deftest money-columns-test
+(deftest ^:mb/driver-tests money-columns-test
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (do-with-money-test-db!
@@ -1086,14 +1086,14 @@
     (f database)
     (driver/notify-database-updated :postgres (driver.u/lib-database (:id database)))))
 
-(deftest ^:parallel enums-test
+(deftest ^:mb/driver-tests ^:parallel enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
              (sql.qp/->honeysql driver/*driver* [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
 
-(deftest enums-test-2
+(deftest ^:mb/driver-tests enums-test-2
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
@@ -1173,7 +1173,7 @@
                       :data
                       (select-keys [:rows :native_form]))))))))))
 
-(deftest enum-field-filter-test
+(deftest ^:mb/driver-tests enum-field-filter-test
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
@@ -1204,7 +1204,7 @@
                                          :target [:dimension [:template-tag "type"]]
                                          :value  ["toucan"]}])))))))))))
 
-(deftest enums-test-3
+(deftest ^:mb/driver-tests enums-test-3
   (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
@@ -1283,7 +1283,7 @@
                       :data
                       (select-keys [:rows :native_form]))))))))))
 
-(deftest enums-actions-test
+(deftest ^:mb/driver-tests enums-actions-test
   (mt/test-driver :postgres
     (testing "actions with enums"
       (do-with-enums-db!
@@ -1313,7 +1313,7 @@
                                                             "other_status" "sad bird"
                                                             "type"         "turkey"}}))))))))))))
 
-(deftest filtering-on-enum-from-source-test
+(deftest ^:mb/driver-tests filtering-on-enum-from-source-test
   (mt/test-driver
     :postgres
     (do-with-enums-db!
@@ -1357,7 +1357,7 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
-(deftest filtering-on-enum-from-source-bad-effective-type-test
+(deftest ^:mb/driver-tests filtering-on-enum-from-source-bad-effective-type-test
   (mt/test-driver
     :postgres
     (do-with-enums-db!
@@ -1480,7 +1480,7 @@
 
 ;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
-(deftest check-constraint-test
+(deftest ^:mb/driver-tests check-constraint-test
   (mt/test-driver :postgres
     (testing "violate check constraints"
       (tx/drop-if-exists-and-create-db! driver/*driver* "check-constraint-test")
@@ -1510,7 +1510,7 @@
 
 ;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
-(deftest action-error-handling-test
+(deftest ^:mb/driver-tests action-error-handling-test
   (mt/test-driver :postgres
     (testing "violate not-null constraints with multiple columns"
       (tx/drop-if-exists-and-create-db! driver/*driver* "not-null-constraint-on-multiple-cols")
@@ -1554,7 +1554,7 @@
                                                                   :filter       [:= $mytable.id 2]}
                                                      :type       :query}))))))))))))
 
-(deftest ^:parallel float-special-values-test
+(deftest ^:mb/driver-tests ^:parallel float-special-values-test
   ;; MotherDuck's endpoint sends infinities as `+Inf` and `-Inf`, which pgjdbc can't parse (QUE-1013).
   (mt/test-drivers #{:postgres :motherduck}
     (let [values ["Infinity" "-Infinity" "NaN" "1.5"]
@@ -1579,7 +1579,7 @@
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
-(deftest timezone-test
+(deftest ^:mb/driver-tests timezone-test
   (mt/test-drivers #{:postgres :motherduck}
     (letfn [(get-timezone-with-report-timezone [report-timezone]
               (mt/with-temporary-setting-values [report-timezone report-timezone]
@@ -1599,7 +1599,7 @@
         (is (= (get-timezone-with-report-timezone nil)
                (get-timezone-with-report-timezone "Crunk Burger")))))))
 
-(deftest timetz-values-test
+(deftest ^:mb/driver-tests timetz-values-test
   ;; MotherDuck's endpoint sends TIMETZ values in its own format (QUE-969). Metabase shows every time with an offset in
   ;; the results time zone, so both drivers must give the same output for the same values.
   (mt/test-drivers #{:postgres :motherduck}
@@ -1630,7 +1630,7 @@
                    "15:29:45+09:00"]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest fingerprint-time-fields-test
+(deftest ^:mb/driver-tests fingerprint-time-fields-test
   (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
@@ -1673,7 +1673,7 @@
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
-(deftest ^:parallel exception-test
+(deftest ^:mb/driver-tests ^:parallel exception-test
   (mt/test-driver :postgres
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
@@ -1702,7 +1702,7 @@
 
 ;;; see [[metabase.query-processor.middleware.annotate-test/native-query-infer-effective-type-test]] for a test that
 ;;; just makes sure metadata is calculated correctly.
-(deftest ^:parallel pgobject-test
+(deftest ^:mb/driver-tests ^:parallel pgobject-test
   (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
       (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.01) AS sleep;"}))]
@@ -1719,7 +1719,7 @@
                     :name           "sleep"}]
                   (mt/cols results))))))))
 
-(deftest ^:parallel id-field-parameter-test
+(deftest ^:mb/driver-tests ^:parallel id-field-parameter-test
   (mt/test-driver :postgres
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
@@ -1727,7 +1727,7 @@
               (mt/run-mbql-query venues
                 {:filter [:= $id "2"]})))))))
 
-(deftest dont-sync-tables-with-no-select-permissions-test
+(deftest ^:mb/driver-tests dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
     (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "no-select-test")
@@ -1750,7 +1750,7 @@
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
-(deftest json-unfolding-skips-columns-without-select-privilege-test
+(deftest ^:mb/driver-tests json-unfolding-skips-columns-without-select-privilege-test
   (testing "JSON unfolding only samples JSON columns the connection user can read, so column-level grants don't break field sync (#83790)"
     (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "json-column-grants-test")
@@ -1787,7 +1787,7 @@
             (jdbc/execute! spec [(format "DROP OWNED BY %s;" role)])
             (jdbc/execute! spec [(format "DROP ROLE %s;" role)])))))))
 
-(deftest json-operator-?-works
+(deftest ^:mb/driver-tests json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
     (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
@@ -1826,7 +1826,7 @@
                                                :value  ["1"]}])
                                       qp/process-query)))))))))
 
-(deftest sync-json-with-composite-pks-test
+(deftest ^:mb/driver-tests sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-drivers #{:postgres :motherduck}
       (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
@@ -1861,7 +1861,7 @@
       (str/replace #"\"" "")
       (str/replace #"public\." "")))
 
-(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:mb/driver-tests ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
     (mt/test-driver :postgres
       (mt/dataset attempted-murders
@@ -1883,7 +1883,7 @@
     (lib/append-stage $q)
     (lib/filter $q (lib/> (m/find-first (comp #{"count"} :name) (lib/filterable-columns $q)) 1))))
 
-(deftest ^:parallel multi-stage-query-test
+(deftest ^:mb/driver-tests ^:parallel multi-stage-query-test
   (testing "a multi-stage query, compiled as chained CTEs on Postgres, runs and returns the right result"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1894,7 +1894,7 @@
           (is (= [[100]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
-(deftest ^:parallel multi-stage-join-source-test
+(deftest ^:mb/driver-tests ^:parallel multi-stage-join-source-test
   (testing "a multi-stage join source, compiled as a WITH nested inside the JOIN parens on Postgres, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1912,7 +1912,7 @@
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 13]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
-(deftest ^:parallel native-source-stage-test
+(deftest ^:mb/driver-tests ^:parallel native-source-stage-test
   (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1926,7 +1926,7 @@
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
-(deftest ^:parallel multi-stage-card-referenced-from-native-query-test
+(deftest ^:mb/driver-tests ^:parallel multi-stage-card-referenced-from-native-query-test
   (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1938,7 +1938,7 @@
               (is (= [[100]]
                      (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
-(deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+(deftest ^:mb/driver-tests ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1988,7 +1988,7 @@
              " target timezone of the convertTimezone LHS.\nSQL:\n" sql))
     (is (=? {:status :completed} (qp/process-query query)))))
 
-(deftest ^:parallel convert-timezone-relative-datetime-filter-test
+(deftest ^:mb/driver-tests ^:parallel convert-timezone-relative-datetime-filter-test
   ;; Regression for #80155.
   (testing "Relative-datetime filter on a convertTimezone expression compiles LHS and RHS in the same wall-clock frame"
     (mt/test-drivers #{:postgres :motherduck}
@@ -1997,7 +1997,7 @@
           (assert-now-wrapped-in-target-timezone
            (lib/filter base (lib/time-interval ist-expr -3 :month))))))))
 
-(deftest ^:parallel convert-timezone-bucketed-lhs-filter-test
+(deftest ^:mb/driver-tests ^:parallel convert-timezone-bucketed-lhs-filter-test
   ;; Regression for #80155.
   (testing "A bucketed convertTimezone LHS still compiles LHS and RHS in the same wall-clock frame"
     (mt/test-drivers #{:postgres :motherduck}
@@ -2010,7 +2010,7 @@
            (lib/filter base (lib/>= (lib/with-temporal-bucket ist-expr :week)
                                     (lib/relative-datetime -2 :month)))))))))
 
-(deftest ^:parallel convert-timezone-now-filter-test
+(deftest ^:mb/driver-tests ^:parallel convert-timezone-now-filter-test
   ;; Regression for #80155.
   (testing "A :now filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
     (mt/test-drivers #{:postgres :motherduck}
@@ -2019,7 +2019,7 @@
           (assert-now-wrapped-in-target-timezone
            (lib/filter base (lib/< ist-expr (lib/now)))))))))
 
-(deftest ^:parallel convert-timezone-today-filter-test
+(deftest ^:mb/driver-tests ^:parallel convert-timezone-today-filter-test
   ;; Regression for #80155.
   (testing "A :today filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
     (mt/test-drivers #{:postgres :motherduck}
@@ -2028,7 +2028,7 @@
           (assert-now-wrapped-in-target-timezone
            (lib/filter base (lib/< ist-expr (lib/today)))))))))
 
-(deftest ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
+(deftest ^:mb/driver-tests ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
   ;; Regression for #80155.
   (testing "A convertTimezone nested inside datetime-add still compiles LHS and RHS in the same wall-clock frame"
     (mt/test-drivers #{:postgres :motherduck}
@@ -2045,7 +2045,7 @@
           (assert-now-wrapped-in-target-timezone
            (lib/filter base (lib/time-interval shifted -3 :month))))))))
 
-(deftest postgres-ssl-connectivity-test
+(deftest ^:mb/driver-tests postgres-ssl-connectivity-test
   (mt/test-driver :postgres
     (if (config/config-bool :mb-postgres-ssl-test-ssl)
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
@@ -2060,7 +2060,7 @@
   (str "-----BEGIN CERTIFICATE-----\n"
        "-----END CERTIFICATE-----"))
 
-(deftest handle-nil-client-ssl-properties-test
+(deftest ^:mb/driver-tests handle-nil-client-ssl-properties-test
   (mt/test-driver :postgres
     (testing "Setting only one of the client SSL params doesn't result in an NPE error (#19984)"
       (mt/with-temp-file [dummy-root-cert   "dummy-root-cert.pem"
@@ -2132,7 +2132,7 @@
               absolute-path
               (str/ends-with? ".p12"))))))
 
-(deftest syncable-schemas-test
+(deftest ^:mb/driver-tests syncable-schemas-test
   (mt/test-driver :postgres
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
@@ -2152,7 +2152,7 @@
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))))))
 
-(deftest table-privileges-test
+(deftest ^:mb/driver-tests table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
@@ -2227,7 +2227,7 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest query-canceled?-test
+(deftest ^:mb/driver-tests query-canceled?-test
   (testing "Recognizes timeout exceptions from postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -2243,7 +2243,7 @@
                     (catch Throwable e
                       (is (driver/query-canceled? :postgres e))))))))))))
 
-(deftest ^:parallel set-role-statement-test
+(deftest ^:mb/driver-tests ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     (mt/test-driver :postgres
       (sql-jdbc.execute/do-with-connection-with-options
@@ -2261,7 +2261,7 @@
            "none"                         "SET ROLE none;"
            "NONE"                         "SET ROLE NONE;"))))))
 
-(deftest get-tables-parity-with-jdbc-test
+(deftest ^:mb/driver-tests get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
     (mt/test-driver :postgres
       (mt/with-empty-db
@@ -2299,7 +2299,7 @@
              (testing "filter by table name"
                (do-test :table-pattern "table" :tables ["table"])))))))))
 
-(deftest ^:parallel date-plus-integer-test
+(deftest ^:mb/driver-tests ^:parallel date-plus-integer-test
   (testing "Can we add a {{date}} template tag parameter to an integer in SQL queries? (#40755)"
     (mt/test-driver :postgres
       (is (= [[#t "2024-07-03"]]
@@ -2316,7 +2316,7 @@
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
 
-(deftest ^:parallel xml-column-is-readable-test
+(deftest ^:mb/driver-tests ^:parallel xml-column-is-readable-test
   (mt/test-driver :postgres
     (let [xml-str "<abc>abc</abc>"]
       (is (= [[xml-str]]
@@ -2326,7 +2326,7 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-(deftest ^:parallel temporal-column-with-binning-keeps-type
+(deftest ^:mb/driver-tests ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
       (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
@@ -2342,7 +2342,7 @@
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
 
-(deftest ^:parallel datetime-diff-works-for-all-units
+(deftest ^:mb/driver-tests ^:parallel datetime-diff-works-for-all-units
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
       (doseq [[field units] [[:birth_date [:year :quarter :month :week :day]]
@@ -2357,7 +2357,7 @@
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
 
-(deftest have-select-privelege?-timeout-test
+(deftest ^:mb/driver-tests have-select-privelege?-timeout-test
   (mt/test-driver :postgres
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
@@ -2372,7 +2372,7 @@
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
 
-(deftest sync-writable-test
+(deftest ^:mb/driver-tests sync-writable-test
   (mt/test-driver :postgres
     (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
       (let [db-name "sync_writable_test"
@@ -2415,7 +2415,7 @@
               (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
               (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))
 
-(deftest ^:parallel null-array-query-test
+(deftest ^:mb/driver-tests ^:parallel null-array-query-test
   (testing "queries with nulls in arrays should be returned in a readable format"
     (mt/test-driver :postgres
       (is (= [[[nil]
@@ -2431,7 +2431,7 @@
                   mt/process-query
                   mt/rows))))))
 
-(deftest ^:parallel arrays-have-base-type
+(deftest ^:mb/driver-tests ^:parallel arrays-have-base-type
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
     (mt/test-drivers #{:postgres :motherduck}
       (is (=? [{:name "id"
@@ -2450,7 +2450,7 @@
                    mt/process-query
                    mt/cols))))))
 
-(deftest can-edit-model-metadata
+(deftest ^:mb/driver-tests can-edit-model-metadata
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
     (mt/test-driver :postgres
       (let [query "SELECT *
@@ -2503,7 +2503,7 @@
         (let [database {:details {:host host} :engine :postgres}]
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
 
-(deftest ^:parallel complex-types-in-notification-payload
+(deftest ^:mb/driver-tests ^:parallel complex-types-in-notification-payload
   (mt/test-driver :postgres
     (testing "we handle complex types in notifications"
       (let [sql "SELECT
@@ -2566,7 +2566,7 @@
        (map unchecked-byte)
        byte-array))
 
-(deftest bytea-column-not-truncated-test
+(deftest ^:mb/driver-tests bytea-column-not-truncated-test
   (testing "fix for #30671"
     (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset (mt/dataset-definition
@@ -2601,7 +2601,7 @@
             pg-obj-map {:data [pg-object] :metadata {:type "test"}}]
         (test-pgobject-caching pg-obj-map)))))
 
-(deftest canceled-query-no-stacktrace-test
+(deftest ^:mb/driver-tests canceled-query-no-stacktrace-test
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
               (let [query    (cond-> {:type :query, :database 1}
@@ -2657,7 +2657,7 @@
                 (let [bad-messages (into [] (cancel-messages) (messages))]
                   (is (empty? bad-messages)))))))))))
 
-(deftest bit-strings-can-be-filtered
+(deftest ^:mb/driver-tests bit-strings-can-be-filtered
   (mt/test-driver :postgres
     (mt/dataset (mt/dataset-definition
                  "bit_string_dataset"
@@ -2724,7 +2724,7 @@
                       [2 "0" "00001111" "10101" "1001001"]]
                      (mt/rows (qp/process-query query)))))))))))
 
-(deftest set-network-timeout-test
+(deftest ^:mb/driver-tests set-network-timeout-test
   (mt/test-driver :postgres
     (testing "network hangs are interrupted after *network-timeout-ms*"
       (binding [driver.settings/*network-timeout-ms* 3000]
@@ -2749,7 +2749,7 @@
               (with-open [stmt (.createStatement conn)]
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
 
-(deftest ^:parallel parse-final-identifier-test
+(deftest ^:mb/driver-tests ^:parallel parse-final-identifier-test
   (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
@@ -2797,7 +2797,7 @@
                       [(format "DROP ROLE IF EXISTS %s"
                                (sql.u/quote-name :postgres :field ~role))]))))
 
-(deftest workspace-precondition-usage-grant-option-test
+(deftest ^:mb/driver-tests workspace-precondition-usage-grant-option-test
   (mt/test-driver :postgres
     (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
       (mt/with-empty-db
@@ -2828,7 +2828,7 @@
                                             qschema qrole)])
                     (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
 
-(deftest workspace-precondition-table-grant-option-test
+(deftest ^:mb/driver-tests workspace-precondition-table-grant-option-test
   (mt/test-driver :postgres
     (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
       (mt/with-empty-db
@@ -2865,7 +2865,7 @@
                                             qobject qrole)])
                     (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
 
-(deftest workspace-precondition-alter-default-privileges-test
+(deftest ^:mb/driver-tests workspace-precondition-alter-default-privileges-test
   (mt/test-driver :postgres
     (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
       (mt/with-empty-db
@@ -2902,7 +2902,7 @@
                                      [(format "GRANT %s TO %s" qowner qrole)])
                       (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))
 
-(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+(deftest ^:mb/driver-tests ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
   ;; PostgreSQL counterpart to Redshift's GHY-3709 destroy fix. The Redshift
   ;; driver had to grow explicit `pg_default_acl` discovery + per-grantor
   ;; REVOKEs because Redshift's `DROP OWNED BY` semantics differ from PG. PG's
@@ -2965,7 +2965,7 @@
                          (catch Throwable t
                            (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
 
-(deftest ^:synchronized reducible-query-streams-large-result-set-test
+(deftest ^:mb/driver-tests ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
     (mt/test-driver :postgres
       ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
@@ -2987,7 +2987,7 @@
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
 
-(deftest ^:synchronized workspace-isolation-accepts-an-id-only-database-test
+(deftest ^:mb/driver-tests ^:synchronized workspace-isolation-accepts-an-id-only-database-test
   (mt/test-driver :postgres
     (testing "init and destroy load the Database by id, so an id-only database map works, as it did before #85487"
       (let [database  {:id (mt/id)}
@@ -3013,7 +3013,7 @@
                  (sql.qp/format-honeysql :postgres form)))
           (is (= "timestamptz" (h2x/database-type form))))))))
 
-(deftest failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
+(deftest ^:mb/driver-tests failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
   (mt/test-driver :postgres
     (testing "inside a transaction, a parameterized query that fails reports its own error, not \"current transaction is aborted\""
       ;; The `:sql-jdbc` test connection, without the autosave the `:postgres` one adds: the transaction Redshift runs.

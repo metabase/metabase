@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.action-v2.api-test
+(ns metabase-enterprise.action-v2.api-test
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
@@ -50,7 +50,7 @@
 
 ;; TODO have a similar test to this next one, but for single execution (which data apps will use)
 
-(deftest table-operations-via-action-execute-test
+(deftest ^:mb/driver-tests table-operations-via-action-execute-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
@@ -99,7 +99,7 @@
           (is (= [[3 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))))))
 
-(deftest table-operations-via-action-execute-with-uuid-pk-test
+(deftest ^:mb/driver-tests table-operations-via-action-execute-with-uuid-pk-test
   (mt/with-premium-features #{actions-feature-flag}
     ;; MySQL does not support a UUID type (or at least if it does, our create-table syntax is wrong)
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions/data-editing) :mysql)
@@ -159,7 +159,7 @@
             (is (= [[id-3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
-(deftest table-operations-via-action-execute-with-compound-pk-test
+(deftest ^:mb/driver-tests table-operations-via-action-execute-with-compound-pk-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
@@ -332,7 +332,7 @@
      [2 "Beta" 1]]]])
 
 ;; TODO let's keep this test setup, but track our current behavior with no smarts
-(deftest mutual-recursion-delete-test
+(deftest ^:mb/driver-tests mutual-recursion-delete-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
     (mt/with-premium-features #{actions-feature-flag}
       (action-v2.tu/with-actions-temp-db mutual-recursion-users-teams
@@ -373,7 +373,7 @@
                   (is (empty? remaining-users))
                   (is (= 1 (count remaining-teams)))))))))))
 
-(deftest editing-allowed-test
+(deftest ^:mb/driver-tests editing-allowed-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "40x returned if user/database not configured for editing"
@@ -415,7 +415,7 @@
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
 
-(deftest ^:synchronized editing-refused-in-workspace-mode-test
+(deftest ^:mb/driver-tests ^:synchronized editing-refused-in-workspace-mode-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "a workspace instance refuses data-grid edits: they skip the workspace's table remapping, so they would write to production tables"
@@ -425,7 +425,7 @@
                    (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
           (is (= [] (table-rows table-id))))))))
 
-(deftest ^:synchronized undo-and-redo-refused-in-workspace-mode-test
+(deftest ^:mb/driver-tests ^:synchronized undo-and-redo-refused-in-workspace-mode-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "a workspace instance refuses undo and redo, and the table keeps its rows"
@@ -466,7 +466,7 @@
        (is (= exclusions missing))))
    test-cases))
 
-(deftest coercion-test
+(deftest ^:mb/driver-tests coercion-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (let [always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
@@ -532,7 +532,7 @@
              (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)
              (run! #(apply do-test %)))))))
 
-(deftest native-temporal-columns-output-roundtrip-test
+(deftest ^:mb/driver-tests native-temporal-columns-output-roundtrip-test
   (testing "execute-bulk echoes native date/timestamp columns in the same format the QP returns"
     (mt/with-premium-features #{actions-feature-flag}
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
@@ -558,7 +558,7 @@
                          :dt #(re-find #"2021-06-20T08:15:00" (str %))}
                         updated-qp-row))))))))))
 
-(deftest field-values-invalidated-test
+(deftest ^:mb/driver-tests field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
@@ -594,7 +594,7 @@
             (process-queue!)
             (is (= ["a" "c" "d" "e"] (field-values)))))))))
 
-(deftest execute-form-built-in-table-action-test
+(deftest ^:mb/driver-tests execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "Data editing not enabled on database"
@@ -720,7 +720,7 @@
                          (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
                         (params-by-id action)))))))))))
 
-(deftest validate-inputs-api-test
+(deftest ^:mb/driver-tests validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"
     (mt/with-premium-features #{actions-feature-flag}
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
@@ -759,7 +759,7 @@
                                 {:price "Must be an integer"}
                                 {:name  "This field is required"}]} (:errors result))))))))))
 
-(deftest partial-revokes-editing-end-to-end-test
+(deftest ^:mb/driver-tests partial-revokes-editing-end-to-end-test
   (testing "a writable MySQL table can be edited end-to-end even when partial_revokes is enabled (metabase#73276)"
     (mt/with-premium-features #{actions-feature-flag}
       (mt/test-driver :mysql
@@ -806,7 +806,7 @@
                 (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                 (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_edit_user';")))))))))
 
-(deftest partial-revokes-optimistic-edit-fails-at-runtime-test
+(deftest ^:mb/driver-tests partial-revokes-optimistic-edit-fails-at-runtime-test
   (testing "a table that only *looks* editable under a schema-level partial revoke fails at runtime when edited (metabase#73276)"
     (mt/with-premium-features #{actions-feature-flag}
       (mt/test-driver :mysql

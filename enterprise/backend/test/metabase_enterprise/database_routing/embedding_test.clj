@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.database-routing.embedding-test
+(ns metabase-enterprise.database-routing.embedding-test
   "Tests for database routing with embedding functionality."
   (:require
    [buddy.sign.jwt :as jwt]

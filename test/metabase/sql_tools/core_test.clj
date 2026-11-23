@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.sql-tools.core-test
+(ns metabase.sql-tools.core-test
   "Tests for sql-tools that run against both :macaw and :sqlglot backends.
 
    These tests verify that both parser implementations produce compatible results
@@ -37,7 +37,7 @@
 
 ;;; ------------------------------------------------ validate-query ------------------------------------------------
 
-(deftest ^:parallel validate-query-syntax-error-test
+(deftest ^:mb/driver-tests ^:parallel validate-query-syntax-error-test
   (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "complete nonsense query")]
@@ -45,7 +45,7 @@
          (is (= #{(lib/syntax-error)}
                 (sql-tools/validate-query driver/*driver* query))))))))
 
-(deftest ^:parallel validate-query-missing-column-test
+(deftest ^:mb/driver-tests ^:parallel validate-query-missing-column-test
   (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select nonexistent from orders")]
@@ -53,7 +53,7 @@
          (is (= #{(lib/missing-column-error "NONEXISTENT")}
                 (sql-tools/validate-query driver/*driver* query))))))))
 
-(deftest ^:parallel validate-query-valid-test
+(deftest ^:mb/driver-tests ^:parallel validate-query-valid-test
   (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select id, total from orders")]
@@ -63,7 +63,7 @@
 
 ;;; ---------------------------------------------- referenced-tables -----------------------------------------------
 
-(deftest ^:parallel referenced-tables-basic-test
+(deftest ^:mb/driver-tests ^:parallel referenced-tables-basic-test
   (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select id from orders")]
@@ -71,7 +71,7 @@
          (is (= #{{:table (mt/id :orders)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
-(deftest ^:parallel referenced-tables-join-test
+(deftest ^:mb/driver-tests ^:parallel referenced-tables-join-test
   (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider)
@@ -81,7 +81,7 @@
                   {:table (mt/id :products)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
-(deftest referenced-tables-fetches-only-named-tables-test
+(deftest ^:mb/driver-tests referenced-tables-fetches-only-named-tables-test
   (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
            Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
            OOM-killing instances with ~20k synced tables."
@@ -231,7 +231,7 @@
         (is (= :skipped status))
         (is (= :missing-dialect reason))))))
 
-(deftest ^:parallel validate-executable-stmt-test
+(deftest ^:mb/driver-tests ^:parallel validate-executable-stmt-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))

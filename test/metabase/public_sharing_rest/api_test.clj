@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.public-sharing-rest.api-test
+(ns metabase.public-sharing-rest.api-test
   "Tests for `api/public/` (public links) endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-test]}}}}}}
   (:require
@@ -984,7 +984,7 @@
                                                            :card_id      (:id nested-card)}]}]}
                       (client/client :get 200 (str "public/dashboard/" (:public_uuid dash))))))))))))
 
-(deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
+(deftest ^:mb/driver-tests public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data-tables #{"venues" "categories"}
@@ -1038,7 +1038,7 @@
                                                (format "public/dashboard/%s/dashcard/%s/execute/values" public-uuid dashcard-id)
                                                {:parameters {"id" 1}}))))))))))))
 
-(deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
+(deftest ^:mb/driver-tests public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
   (testing "prefill should validate that the dashcard belongs to the dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -1982,7 +1982,7 @@
 
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
-(deftest pivot-public-card-test
+(deftest ^:mb/driver-tests pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/public/pivot/card/:uuid/query"
@@ -2020,7 +2020,7 @@
                                               :target       [:dimension (mt/$ids $orders.user_id->people.state)]}])]
           (f dash card dashcard))))))
 
-(deftest pivot-public-dashcard-test
+(deftest ^:mb/driver-tests pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
       (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2059,7 +2059,7 @@
                    (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                    (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))
 
-(deftest public-pivot-dashcard-errors-test
+(deftest ^:mb/driver-tests public-pivot-dashcard-errors-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
       (do-with-temp-dashboard-and-public-pivot-card
