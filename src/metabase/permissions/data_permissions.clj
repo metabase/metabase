@@ -1132,12 +1132,19 @@
   [{:keys [db-id db-level-idx all-db-tables batch-table-ids]}
    [[group-id perm-type] entries]]
   (let [db-perm      (get db-level-idx [group-id perm-type])
-        ;; Only go granular when a batch table needs `:blocked` and the DB-level row has some *other*
-        ;; value: a `:blocked` DB-level row already covers the new tables, and expanding it would write
-        ;; one redundant row per table (see #76077, where this ballooned data_permissions to 46M rows).
+        db-value     (:perm_value db-perm)
+        ;; Only go granular when a batch table needs a value the DB-level row doesn't already give it:
+        ;; - `:blocked`, when the DB-level row has some *other* value. A `:blocked` DB-level row already
+        ;;   covers the new tables, and expanding it would write one redundant row per table (see #76077,
+        ;;   where this ballooned data_permissions to 46M rows).
+        ;; - `:no` forced by [[cap-perms-on-blocked-tables]], when the DB-level row isn't `:no`. Otherwise
+        ;;   the DB-level row (e.g. `:query-builder` for a sandboxed group) would still grant query and
+        ;;   download access on a table whose `view-data` is `:blocked`.
         go-granular? (and db-perm
-                          (not= :blocked (:perm_value db-perm))
-                          (some #(= :blocked (:actual-value %)) entries))
+                          (some (fn [{:keys [actual-value capped?]}]
+                                  (or (and (= :blocked actual-value) (not= :blocked db-value))
+                                      (and capped? (not= :no db-value))))
+                                entries))
         mk           (fn [v table-id schema]
                        (mk-perm-row group-id perm-type v db-id table-id schema))]
     (cond
@@ -1158,6 +1165,32 @@
       ;; DB-level covers the batch tables — no-op.
       :else nil)))
 
+(def ^:private perm-types-gated-by-view-data
+  "Perm types that must not grant anything on a table whose `view-data` is `:blocked`."
+  #{:perms/create-queries :perms/download-results})
+
+(defn- cap-perms-on-blocked-tables
+  "When a new table's `view-data` for a group resolves to `:blocked`, force that group's `create-queries` and
+  `download-results` for the table to `:no`. These are resolved independently in [[compute-actual-value]], so
+  without this a group whose schema has mixed values (or a new schema) falls back to the caller's default, which is
+  `:query-builder` / `:one-million-rows` for All Users. Those then grant query and download access on the new table
+  through any other group that gives it `view-data`.
+
+  Capped entries are marked `:capped? true` so [[classify-key]] also expands a DB-level row that would otherwise
+  still cover the new table, as it does for a sandboxed group with DB-level `create-queries`."
+  [annotated]
+  (let [blocked (into #{}
+                      (keep (fn [{:keys [perm-type actual-value group-id table]}]
+                              (when (and (= perm-type :perms/view-data) (= actual-value :blocked))
+                                [group-id (u/the-id table)])))
+                      annotated)]
+    (mapv (fn [{:keys [perm-type group-id table] :as d}]
+            (if (and (perm-types-gated-by-view-data perm-type)
+                     (blocked [group-id (u/the-id table)]))
+              (assoc d :actual-value :no :capped? true)
+              d))
+          annotated)))
+
 (defn set-default-table-permissions-bulk!
   "Bulk-set default permissions for many newly-created tables on the same
   database. Issues the introspection SELECTs once for the whole batch and
@@ -1175,8 +1208,9 @@
           perm-types      (distinct (map :perm-type all-defaults))
           ctx             (assoc (load-perm-context db-id group-ids perm-types)
                                  :batch-table-ids batch-table-ids)
-          annotated       (mapv (fn [d] (assoc d :actual-value (compute-actual-value ctx d)))
-                                all-defaults)
+          annotated       (cap-perms-on-blocked-tables
+                           (mapv (fn [d] (assoc d :actual-value (compute-actual-value ctx d)))
+                                 all-defaults))
           results         (->> annotated
                                (group-by (juxt :group-id :perm-type))
                                (keep #(classify-key ctx %)))
