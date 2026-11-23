@@ -1,0 +1,20 @@
+/* Tinted like filter pills. */
+.button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem;
+  border-radius: 0.75rem;
+  color: var(--mb-color-core-filter);
+  background-color: var(--mb-color-button-light-filter-default);
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background-color: var(--mb-color-button-light-filter-hover);
+  }
+}
+
+.add {
+  width: 1.5rem;
+}

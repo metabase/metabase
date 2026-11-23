@@ -1,6 +1,8 @@
 import type { CompleteSettingDefinitions } from "metabase/viz-core";
+import type * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
+  DatasetQuery,
   DateTimeAbsoluteUnit,
   ProductAnalyticsKind,
   Table,
@@ -20,9 +22,15 @@ export type Granularity = Extract<
 export type AnalysisContext = {
   /** The event table, with its event settings. */
   table: Table;
+  metadataProvider: Lib.MetadataProvider;
 };
 
 export type CommonSettings = {
+  /**
+   * A one-stage query on the event table that holds the analysis's filters.
+   * The date range isn't in it.
+   */
+  base_query: DatasetQuery;
   /** A date filter in the format dashboard date filters use, e.g. "past90days". */
   date_range: string;
   counting: Grain;
