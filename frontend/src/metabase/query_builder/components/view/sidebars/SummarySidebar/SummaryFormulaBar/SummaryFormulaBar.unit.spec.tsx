@@ -1112,6 +1112,8 @@ describe("editing a formula chip", () => {
   });
 
   it("offers no rename for the chip whose formula is open, and keeps it for the others", async () => {
+    // A rename replaces the formula's clause, which gives it a new UUID. The bar finds its formula by
+    // UUID, so a rename while the bar is open would close the bar and lose the edit in progress.
     await setupFormulaQuery();
     await openFormula("Sum total");
 
@@ -1129,6 +1131,8 @@ describe("editing a formula chip", () => {
   });
 
   it("shows every grouping of the open custom column as open, and offers none of them a rename", async () => {
+    // Renaming any of these groupings renames the custom column they share, which gives the open
+    // formula a new UUID and would close the bar.
     await setup({ query: TWICE_GROUPED_FORMULA_QUERY });
     await openFormula("Order date: Year");
     expect(getFormulaChip("Order date: Year")).toHaveAttribute(

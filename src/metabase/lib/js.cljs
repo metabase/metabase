@@ -739,8 +739,11 @@
 (defn ^:export clause-uuid
   "Returns the `:lib/uuid` of `a-clause`, such as an aggregation, breakout, custom expression, filter, or order by.
 
-  Each clause in a query has its own UUID. It tells apart clauses that are otherwise equal, and finds a clause again in
-  a later version of the query. Replacing the clause, or a clause that it refers to, can give it a new UUID.
+  Each clause in a query has its own UUID, so it tells apart clauses that are otherwise equal.
+
+  UUIDs are not stable. Replacing a clause, for example to rename or edit it, gives it a new UUID, and replacing a
+  clause that it refers to can too. Converting a legacy MBQL query makes new UUIDs. Use a UUID only to find a clause
+  again after short-lived changes, and expect that no clause has it anymore.
 
   > **Code health:** Healthy"
   [a-clause]

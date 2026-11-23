@@ -104,9 +104,13 @@ export function replaceClause(
 }
 
 /**
- * The UUID of a clause in its query. It tells apart clauses that are otherwise equal, and finds
- * a clause again in a later version of the query. Replacing the clause, or a clause that it
- * refers to, can give it a new UUID.
+ * The UUID of a clause in its query. It tells apart clauses that are otherwise equal.
+ *
+ * UUIDs are not stable. Replacing a clause, for example to rename or edit it, gives it a new UUID,
+ * and replacing a clause that it refers to can too. Converting a legacy MBQL query makes new UUIDs.
+ *
+ * Use a UUID only to find a clause again after short-lived changes, and expect that no clause has
+ * it anymore.
  */
 export function clauseUuid(clause: Clause): string {
   return ML.clause_uuid(clause);
