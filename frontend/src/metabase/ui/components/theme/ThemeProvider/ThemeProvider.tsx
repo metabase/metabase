@@ -6,7 +6,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
 import { deepMerge } from "metabase/utils/deep-merge";
-import type { ColorSettings } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/color-settings";
 
 import { getThemeOverrides } from "../../../theme";
 import "../../overlays/Popover/register-popover-dropdown";
