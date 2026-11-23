@@ -30,7 +30,6 @@
    [toucan2.core :as t2]
    [toucan2.jdbc.query :as t2.jdbc.query]))
 
-
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))

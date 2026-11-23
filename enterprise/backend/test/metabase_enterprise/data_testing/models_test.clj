@@ -16,7 +16,6 @@
   (:import
    (java.time OffsetDateTime ZoneOffset)))
 
-
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Fixtures ------------------------------------------------

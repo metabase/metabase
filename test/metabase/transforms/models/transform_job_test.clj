@@ -20,8 +20,6 @@
   them one at a time: the before-update SELECT and the UPDATE, 2 for each of the 4 rows between 2 and 6."
   8)
 
-
-
 (comment transform-job/keep-me)
 
 (def ^:private values {"hourly"

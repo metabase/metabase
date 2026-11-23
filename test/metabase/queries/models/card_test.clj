@@ -2581,31 +2581,31 @@
                          (events.tu/statement-count! #(card/create-cards! rows))))))
           (testing "updating columns, some already holding the new value"
             (counted (partial update!
-                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
-                                      {:name "Same"})))
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                              {:name "Same"})))
           (testing "archiving cards, some already archived"
             (counted (partial update!
-                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
-                                      {:archived true})))
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                              {:archived true})))
           (testing "restoring cards, some already live"
             (counted (partial update!
-                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
-                                      {:archived false})))
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                              {:archived false})))
           (testing "moving cards, some already in the Collection"
             (counted (partial update!
-                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
-                                      {:collection_id to-id})))
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
+                              {:collection_id to-id})))
           (testing "moving cards from a Collection of their own each to one Collection"
             (counted (fn [n]
-                               (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
-                                     ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
-                                                   sources)]
-                                 (events.tu/statement-count!
-                                  #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
+                       (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
+                             ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
+                                           sources)]
+                         (events.tu/statement-count!
+                          #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
           (testing "changing the type of cards, some already of the type"
             (counted (partial update!
-                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
-                                      {:type :model})))
+                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
+                              {:type :model})))
           (testing "deleting cards"
             (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(card/delete-cards! ids))))))
           (testing "touching and counting uses"

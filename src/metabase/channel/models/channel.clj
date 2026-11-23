@@ -24,8 +24,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-
-
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------

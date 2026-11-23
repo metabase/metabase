@@ -12,6 +12,14 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
+(defn- updated-ids
+  "The ids an update by primary key writes: `pk`, a single id, or the ids of `[:in [:auto/param ids]]`."
+  [pk]
+  (if (and (vector? pk) (= :in (first pk)))
+    (let [ids (second pk)]
+      (if (and (vector? ids) (= :auto/param (first ids))) (second ids) ids))
+    [pk]))
+
 (defn- updates-that-will-be-performed!
   ([new-metadata-from-sync metadata-in-application-db]
    ;; use alphabetical field_order by default because the default, database, will update the position
@@ -24,7 +32,8 @@
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
        (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
-                                                (swap! update-operations conj [(name model) id updates])
+                                                (doseq [id (updated-ids id)]
+                                                  (swap! update-operations conj [(name model) id updates]))
                                                 (count updates))]
          (sync-metadata/update-metadata!
           (driver.u/lib-database (:id db))

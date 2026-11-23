@@ -133,17 +133,17 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-tab/create-dashboard-tabs! rows))))))
         (testing "updating tabs, some already holding the new value"
           (counted (fn [n]
-                             (let [ids (fresh! n)]
-                               (dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) (take-nth 2 ids)))
-                               (events.tu/statement-count!
-                                #(dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) ids)))))))
+                     (let [ids (fresh! n)]
+                       (dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) (take-nth 2 ids)))
+                       (events.tu/statement-count!
+                        #(dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) ids)))))))
         (testing "deleting tabs"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-tab/delete-dashboard-tabs! ids))))))
         (testing "replacing the tabs of a dashboard"
           (counted (fn [n]
-                             (let [ids     (fresh! n)
-                                   current (mapv (fn [id] (t2/select-one [:model/DashboardTab :id :name :position] :id id)) ids)
-                                   new-tabs (concat (map-indexed (fn [i tab] (cond-> tab (even? i) (assoc :name "Renamed"))) (rest current))
-                                                    [{:id -1 :name "New" :position 99}])]
-                               (events.tu/statement-count!
-                                #(dashboard-tab/replace-dashboard-tabs! [{:dashboard_id dashboard-id :current-tabs current :new-tabs (vec new-tabs)}]))))))))))
+                     (let [ids     (fresh! n)
+                           current (mapv (fn [id] (t2/select-one [:model/DashboardTab :id :name :position] :id id)) ids)
+                           new-tabs (concat (map-indexed (fn [i tab] (cond-> tab (even? i) (assoc :name "Renamed"))) (rest current))
+                                            [{:id -1 :name "New" :position 99}])]
+                       (events.tu/statement-count!
+                        #(dashboard-tab/replace-dashboard-tabs! [{:dashboard_id dashboard-id :current-tabs current :new-tabs (vec new-tabs)}]))))))))))

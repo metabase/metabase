@@ -79,7 +79,16 @@
                               (t2/update! model :id id {:initially_published_at published}))
                             (events.tu/statement-count! #(update-rows! model rows))))]
             (counted [g])
-            (is (= (counted [a b]) (counted [a b c d e f])))
+            (testing "rows in different stored states, which Toucan writes apart, cost two statements more for each"
+              (is (<= (- (counted [a b c d e f]) (counted [a b])) (* 2 (- 6 2)))))
+            (testing "rows in the same stored state cost the same statements at two and six rows"
+              (let [same (fn [ids]
+                           (doseq [id ids]
+                             (t2/update! model :id id {:enable_embedding false})
+                             (t2/update! model :id id {:initially_published_at nil}))
+                           (events.tu/statement-count!
+                            #(update-rows! model (mapv (fn [id] {:id id :name (str "Renamed " (count ids)) :enable_embedding true}) ids))))]
+                (is (= (same [a b]) (same [a b c d e f])))))
             (testing "rows embedded before keep their time and the others get the time of the write"
               (let [stored (t2/select-pk->fn :initially_published_at model :id [:in [a b c d e f]])]
                 (is (= #{(t/offset-date-time published)} (set (map stored [a c e]))))

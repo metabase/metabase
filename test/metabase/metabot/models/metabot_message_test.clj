@@ -12,8 +12,6 @@
   them one at a time: the before-update SELECT and the UPDATE, 2 for each of the 4 rows between 2 and 6."
   8)
 
-
-
 (deftest after-select-migrates-v1-data-test
   (mt/with-temp [:model/MetabotConversation conv {}
                  :model/MetabotMessage      msg  {:conversation_id (:id conv)

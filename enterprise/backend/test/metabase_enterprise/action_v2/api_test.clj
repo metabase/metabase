@@ -75,7 +75,7 @@
                  (set
                   (:outputs
                    (action-v2.tu/update-grouped! table-id [{:id 1 :song "Join us now and share the software"}
-                                                        {:id 2 :name "Speacolumn"}])))))
+                                                           {:id 2 :name "Speacolumn"}])))))
           (is (= #{[1 "Pidgey" "Join us now and share the software"]
                    [2 "Speacolumn" "Hold music"]
                    [3 "Farfetch'd" "The land of lisp"]}
@@ -131,7 +131,7 @@
                    (set
                     (:outputs
                      (action-v2.tu/update-grouped! table-id [{:id id-1, :song "Join us now and share the software"}
-                                                          {:id id-2, :name "Speacolumn"}])))))
+                                                             {:id id-2, :name "Speacolumn"}])))))
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -142,9 +142,9 @@
                    (set
                     (:outputs
                      (action-v2.tu/update-grouped! table-id
-                                                [{:id id-1}
-                                                 {:id id-2}]
-                                                {:song "The Star-Spangled Banner"})))))
+                                                   [{:id id-1}
+                                                    {:id id-2}]
+                                                   {:song "The Star-Spangled Banner"})))))
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -189,7 +189,7 @@
                  (set
                   (:outputs
                    (action-v2.tu/update-grouped! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
-                                                        {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
+                                                           {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
           (is (= #{[1 0 "Pidgey" "Join us now and share the software"]
                    [2 0 "Speacolumn" "Hold music"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
@@ -200,9 +200,9 @@
                  (set
                   (:outputs
                    (action-v2.tu/update-grouped! table-id
-                                              [{:id_1 1, :id_2 0}
-                                               {:id_1 2, :id_2 0}]
-                                              {:song "The Star-Spangled Banner"})))))
+                                                 [{:id_1 1, :id_2 0}
+                                                  {:id_1 2, :id_2 0}]
+                                                 {:song "The Star-Spangled Banner"})))))
           (is (= #{[1 0 "Pidgey" "The Star-Spangled Banner"]
                    [2 0 "Speacolumn" "The Star-Spangled Banner"]
                    [3 0 "Farfetch'd" "The land of lisp"]}

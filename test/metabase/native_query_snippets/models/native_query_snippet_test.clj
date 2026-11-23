@@ -281,24 +281,24 @@
                        (events.tu/statement-count! #(native-query-snippet/create-snippets! rows {:writer :import}))))))
         (testing "updating columns, some already holding the new value"
           (counted (partial update!
-                                    (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
-                                    {:description "Same"}
-                                    nil)))
+                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
+                            {:description "Same"}
+                            nil)))
         (testing "archiving snippets, some already archived"
           (counted (partial update!
-                                    (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
-                                    {:archived true}
-                                    nil)))
+                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
+                            {:archived true}
+                            nil)))
         (testing "restoring snippets, some already live"
           (counted (partial update!
-                                    (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
-                                    {:archived false}
-                                    nil)))
+                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
+                            {:archived false}
+                            nil)))
         (testing "moving snippets, some already in the Collection"
           (counted (partial update!
-                                    (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :collection_id other}) ids) nil))
-                                    {:collection_id other}
-                                    nil)))
+                            (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :collection_id other}) ids) nil))
+                            {:collection_id other}
+                            nil)))
         (testing "deleting snippets"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(native-query-snippet/delete-snippets! ids))))))))))
 

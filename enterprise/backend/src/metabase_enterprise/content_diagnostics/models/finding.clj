@@ -77,11 +77,12 @@
       (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 
 (mu/defn invalidate-findings!
-  "Soft-invalidate the still-active findings among `ids`; returns the set of `ids`. A finding invalidated meanwhile
-  keeps its first stamp."
+  "Soft-invalidate the still-active findings among `ids` in one transaction; returns the set of `ids`. A finding
+  invalidated meanwhile keeps its first stamp."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (cd.db/invalidate-findings-by-ids! (vec ids)))
+    (t2/with-transaction [_conn]
+      (cd.db/invalidate-findings-by-ids! (vec ids))))
   (set ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

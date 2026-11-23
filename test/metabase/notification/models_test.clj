@@ -16,13 +16,10 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-
-
 (def ^:private per-part-update-growth
   "The statements the update of a Notification adds for the 4 handlers between 2 and 6 when each handler gets its own
   template id: the before-update SELECT and UPDATE of a template and of its handler, 4 for each."
   16)
-
 
 (set! *warn-on-reflection* true)
 

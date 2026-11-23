@@ -17,8 +17,6 @@
   them one at a time: the before-update SELECT and the UPDATE, 2 for each of the 4 rows between 2 and 6."
   8)
 
-
-
 (comment transform-tag/keep-me)
 
 (deftest initial-tags-translated-on-select
@@ -161,8 +159,8 @@
         (is (= [b c d] (mapv #(t2/select-one-fn :name :model/TransformTag :id (:id %)) [tag-a tag-b tag-c]))))
       (testing "two tags swapping names are refused"
         (is (= 400 (:status-code (try (transform-tag/update-transform-tags! [{:id (:id tag-a) :name c}
-                                                                              {:id (:id tag-b) :name d}
-                                                                              {:id (:id tag-c) :name b}])
+                                                                             {:id (:id tag-b) :name d}
+                                                                             {:id (:id tag-c) :name b}])
                                       nil
                                       (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))
 

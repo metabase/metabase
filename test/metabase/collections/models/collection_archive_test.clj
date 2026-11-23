@@ -271,12 +271,12 @@
                             {:description "Same"})))
         (testing "archiving collections, some already archived"
           (counted (partial update!
-                                      (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
-                                      {:archived true})))
+                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
+                            {:archived true})))
         (testing "restoring collections, some already live"
           (counted (partial update!
-                                      (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
-                                      {:archived false})))
+                            (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
+                            {:archived false})))
         (testing "moving collections, some already under the parent"
           (let [location (collection/children-location (t2/select-one :model/Collection :id target))]
             (counted (partial update!

@@ -18,7 +18,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-
 (deftest channel-details-is-encrypted
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
   (mt/with-temp-empty-app-db [_conn :h2]

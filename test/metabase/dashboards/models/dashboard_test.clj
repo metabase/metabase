@@ -847,8 +847,8 @@
             (is (<= (- (mixed 6) (mixed 2)) (* 4 (- 6 2))))))
         (testing "restoring dashboards and their questions"
           (counted (partial update!
-                                      (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
-                                      {:archived false})))
+                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
+                            {:archived false})))
         (testing "moving dashboards and their questions"
           (counted (partial update! (fn [_ids]) {:collection_id other})))
         (testing "adding, updating and removing dashcards"
@@ -857,10 +857,10 @@
                            rows (mapv (fn [id] {:dashboard_id id :card_id card-id :row 5 :col 0 :size_x 4 :size_y 4 :series [series-id]}) ids)]
                        (events.tu/statement-count! #(dashboard/add-dashcards! rows)))))
           (counted (fn [n]
-                             (let [ids       (fresh! n)
-                                   dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
-                               (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
-                               (events.tu/statement-count! #(dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) dashcards))))))
+                     (let [ids       (fresh! n)
+                           dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
+                       (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
+                       (events.tu/statement-count! #(dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) dashcards))))))
           (counted (fn [n]
                      (let [ids       (fresh! n)
                            dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]

@@ -99,6 +99,6 @@
         (let [inserts (atom 0)]
           (mt/with-dynamic-fn-redefs [revisions.db/insert-revisions! (let [f (mt/original-fn #'revisions.db/insert-revisions!)]
                                                                        (fn [rows] (swap! inserts inc) (f rows)))]
-            (doseq [[id name] [[a "A2"] [b "B2"]]] (card/update-cards! [{:id id :name name}])))
+            (card/update-cards! [{:id a :name "A2"} {:id b :name "B2"}]))
           (is (= 1 @inserts))
           (is (= 2 (t2/count :model/Revision :model "Card" :model_id [:in [a b]] :is_creation false))))))))

@@ -10,7 +10,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
