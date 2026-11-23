@@ -3,4 +3,4 @@ export {
   prefetchInlineExpressionEditor,
   useInlineExpressionEditorChunk,
 } from "./lazy";
-export type { InlineExpressionEditorProps } from "./InlineExpressionEditor";
+export type { InlineExpressionEditorProps } from "./types";

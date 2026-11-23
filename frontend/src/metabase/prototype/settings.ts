@@ -4,41 +4,6 @@ import type {
   SegmentedPrototypeSetting,
 } from "./types";
 
-export const EXPRESSION_EDITOR_VERSION_SETTING: SegmentedPrototypeSetting = {
-  key: "expression-editor-version",
-  type: "segmented",
-  label: "Expression editor",
-  description:
-    "A: one code editor for everything: an expression, a request in words, or an inline AI prompt; templates and functions in the side panel. B: separate AI and code modes; a prompt by default, = or the f button to write code, and f again to ask the AI about the code. C: like B, with a + menu at the start of the input for the modes and for converting SQL, Python or Excel. D: like B, with the prompt and the code one above the other, both on screen; f or = opens the code and the docs. E: like B, with a switch between the AI and the code at the start of the input. F: like E, with the switch as a strip on the left edge of the input.",
-  options: [
-    { value: "a", label: "Version A" },
-    { value: "b", label: "Version B" },
-    { value: "c", label: "Version C" },
-    { value: "d", label: "Version D" },
-    { value: "e", label: "Version E" },
-    { value: "f", label: "Version F" },
-  ],
-  defaultValue: "a",
-};
-
-export const EXPRESSION_PILL_VERSION_SETTING: SegmentedPrototypeSetting = {
-  key: "expression-pill-version",
-  type: "segmented",
-  label: "Expression pill",
-  description:
-    "The style of the custom column pill, to show that a double-click renames it. A: the current pill. B: a brand-blue pill with its name in a box like a text field, shown for a default name and on hover or selection. C: like B, in light colors: a white pill with a border, and a grey box. Hover, Field, Default name and Underline keep pill A and add a hint to the selected pill, also in summaries. Hover: a field behind the name on hover. Field: a field behind the name at all times. Default name: the field while the name is a default one, like New column, and the hover field after a rename. Underline: a dashed underline below the name.",
-  options: [
-    { value: "a", label: "Version A" },
-    { value: "b", label: "Version B" },
-    { value: "c", label: "Version C" },
-    { value: "hover", label: "Hover" },
-    { value: "field", label: "Field" },
-    { value: "default", label: "Default name" },
-    { value: "underline", label: "Underline" },
-  ],
-  defaultValue: "a",
-};
-
 export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSetting =
   {
     key: "expression-columns-outside-brackets",
@@ -86,8 +51,6 @@ export const EXPRESSION_PREVIEW_CONTEXT_SETTING: SegmentedPrototypeSetting = {
  * reads them with `usePrototypeSetting`. See PROTOTYPE.md.
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
-  EXPRESSION_EDITOR_VERSION_SETTING,
-  EXPRESSION_PILL_VERSION_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_HIDE_AI_SETTING,

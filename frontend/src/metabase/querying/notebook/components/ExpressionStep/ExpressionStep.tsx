@@ -9,10 +9,6 @@ import {
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import {
-  EXPRESSION_PILL_VERSION_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
@@ -22,12 +18,10 @@ import {
   InlineExpressionEditor,
   useInlineExpressionEditorChunk,
 } from "../InlineExpressionEditor";
-import { NotebookCell, NotebookCellAdd } from "../NotebookCell";
+import { NotebookCell } from "../NotebookCell";
 import { useCustomColumnRequest } from "../NotebookStepList/CustomColumnRequest";
 
-import { ExpressionPill } from "./ExpressionPill";
 import { ExpressionAddButtonB, ExpressionPillB } from "./ExpressionPillB";
-import { ExpressionAddButtonC, ExpressionPillC } from "./ExpressionPillC";
 
 type EditorTarget =
   | { kind: "clause"; index: number }
@@ -367,90 +361,47 @@ export const ExpressionStep = ({
     [query, stageIndex, editedIndex],
   );
 
-  // Prototype: the style of the pills, from the switcher.
-  const [pillVersion] = usePrototypeSetting(EXPRESSION_PILL_VERSION_SETTING);
-  const pillStyle = PILL_STYLES[pillVersion];
-
   return (
     <>
       <NotebookCell color={color}>
         <ClauseStepDndContext items={expressions} onReorder={handleReorder}>
           {expressions.map((expression, index) => (
             <ClauseStepDndItem key={index} index={index} readOnly={!!readOnly}>
-              {pillStyle != null ? (
-                <pillStyle.Pill
-                  name={getExpressionName(expression)}
-                  isActive={editedIndex === index}
-                  readOnly={readOnly}
-                  isNameDefault={isDefaultOrAutoName(
-                    getExpressionName(expression),
-                  )}
-                  hasUnsavedChanges={
-                    pendingKey({ kind: "clause", index }) in pendingSources
-                  }
-                  onOpen={() => openEditorAt({ kind: "clause", index })}
-                  onRename={(name) => handleRename(index, name)}
-                  onRemove={() => handleRemove(index)}
-                />
-              ) : (
-                <ExpressionPill
-                  name={getExpressionName(expression)}
-                  hasDefaultName={isDefaultOrAutoName(
-                    getExpressionName(expression),
-                  )}
-                  color={color}
-                  isActive={editedIndex === index}
-                  readOnly={readOnly}
-                  hasUnsavedChanges={
-                    pendingKey({ kind: "clause", index }) in pendingSources
-                  }
-                  onOpen={() => openEditorAt({ kind: "clause", index })}
-                  onRename={(name) => handleRename(index, name)}
-                  onRemove={() => handleRemove(index)}
-                />
-              )}
+              <ExpressionPillB
+                name={getExpressionName(expression)}
+                isActive={editedIndex === index}
+                readOnly={readOnly}
+                isNameDefault={isDefaultOrAutoName(
+                  getExpressionName(expression),
+                )}
+                hasUnsavedChanges={
+                  pendingKey({ kind: "clause", index }) in pendingSources
+                }
+                onOpen={() => openEditorAt({ kind: "clause", index })}
+                onRename={(name) => handleRename(index, name)}
+                onRemove={() => handleRemove(index)}
+              />
             </ClauseStepDndItem>
           ))}
         </ClauseStepDndContext>
 
-        {draftIds.map((id) =>
-          pillStyle != null ? (
-            // A new column starts as "Untitled", in the box of a default name.
-            <pillStyle.Pill
-              key={id}
-              name={draftNames[id] ?? t`Untitled`}
-              isActive={openTarget?.kind === "draft" && openTarget.id === id}
-              readOnly={readOnly}
-              isNameDefault={
-                draftNames[id] === undefined || isDefaultName(draftNames[id])
-              }
-              onOpen={() => openEditorAt({ kind: "draft", id })}
-              onRename={(name) => setDraftName(id, name)}
-              onRemove={() => discardDraft(id)}
-            />
-          ) : (
-            <ExpressionPill
-              key={id}
-              name={draftNames[id] ?? t`New column`}
-              hasDefaultName={
-                draftNames[id] === undefined || isDefaultName(draftNames[id])
-              }
-              color={color}
-              isActive={openTarget?.kind === "draft" && openTarget.id === id}
-              readOnly={readOnly}
-              onOpen={() => openEditorAt({ kind: "draft", id })}
-              onRename={(name) => setDraftName(id, name)}
-              onRemove={() => discardDraft(id)}
-            />
-          ),
-        )}
+        {draftIds.map((id) => (
+          // A new column starts as "Untitled", in the box of a default name.
+          <ExpressionPillB
+            key={id}
+            name={draftNames[id] ?? t`Untitled`}
+            isActive={openTarget?.kind === "draft" && openTarget.id === id}
+            readOnly={readOnly}
+            isNameDefault={
+              draftNames[id] === undefined || isDefaultName(draftNames[id])
+            }
+            onOpen={() => openEditorAt({ kind: "draft", id })}
+            onRename={(name) => setDraftName(id, name)}
+            onRemove={() => discardDraft(id)}
+          />
+        ))}
 
-        {!readOnly &&
-          (pillStyle != null ? (
-            <pillStyle.AddButton onClick={addDraft} />
-          ) : (
-            <NotebookCellAdd color={color} onClick={addDraft} />
-          ))}
+        {!readOnly && <ExpressionAddButtonB onClick={addDraft} />}
       </NotebookCell>
 
       {openEditor != null && isEditorLoaded && (
@@ -475,21 +426,6 @@ export const ExpressionStep = ({
       )}
     </>
   );
-};
-
-// Prototype: the pill styles after A, from the switcher. B and C behave the
-// same and differ only in colors.
-const PILL_STYLES: Partial<
-  Record<
-    string,
-    {
-      Pill: typeof ExpressionPillB;
-      AddButton: typeof ExpressionAddButtonB;
-    }
-  >
-> = {
-  b: { Pill: ExpressionPillB, AddButton: ExpressionAddButtonB },
-  c: { Pill: ExpressionPillC, AddButton: ExpressionAddButtonC },
 };
 
 // "New column", or "New column (2)" after the unique-name suffix.

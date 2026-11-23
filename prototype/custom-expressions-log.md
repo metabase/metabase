@@ -3,18 +3,20 @@
 ## Brief
 AI help in the custom expression editor: one code editor where people type an expression, a request in words, or an inline AI prompt, with good ergonomics for typing by hand. Guided by the CEO's requirements.
 
-Try it: `bun run dev-prototype`, then a new question in the notebook on Prototype Data (e.g. Orders) → Custom column. Switcher: bottom of the page (beaker icon hides it).
+Try it: `bun run dev-prototype`, then a new question in the notebook on Prototype Data (e.g. Orders) → Custom column.
 
 ## Variants
 
 | Version | Axis | Folders | Based on | Status |
 |---|---|---|---|---|
-| A | One code editor for everything; templates and functions in the side panel | see below | — | active |
-| B | Separate AI mode and code mode, switched by `=` and the `f` button | `notebook/components/InlineExpressionEditorB/`, `components/expressions/EditorB/` | A | active |
-| C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | active |
-| D | B with the prompt and the code one above the other, both on screen | `notebook/components/InlineExpressionEditorD/`, `components/expressions/EditorD/` | B | active |
-| E | B with a sparkle/f switch at the start of the input instead of the f button | `notebook/components/InlineExpressionEditorE/`, `components/expressions/EditorE/` | B | active |
+| A | One code editor for everything; templates and functions in the side panel | see below | — | removed 2026-11-23 |
+| B | Separate AI mode and code mode, switched by `=` and the `f` button | `notebook/components/InlineExpressionEditorB/`, `components/expressions/EditorB/` | A | removed 2026-11-23 |
+| C | B with a `+` menu at the start of the input: the modes and code conversions | `notebook/components/InlineExpressionEditorC/`, `components/expressions/EditorC/` | B | removed 2026-11-23 |
+| D | B with the prompt and the code one above the other, both on screen | `notebook/components/InlineExpressionEditorD/`, `components/expressions/EditorD/` | B | removed 2026-11-23 |
+| E | B with a sparkle/f switch at the start of the input instead of the f button | `notebook/components/InlineExpressionEditorE/`, `components/expressions/EditorE/` | B | removed 2026-11-23 |
 | F | E with the switch as a grey strip on the left edge of the input | `notebook/components/InlineExpressionEditorF/`, `components/expressions/EditorF/` | E | active |
+
+Only version F is left (2026-11-23). The folders and the inline editor of A to E are deleted, and so is the switcher. F still uses A's shared code below, and A's notebook preview (`ExpressionPreview`). `InlineExpressionEditor/lazy.tsx` always loads F. The popover editors still use A's `Editor`.
 
 Version A is the code as it was when the switcher was added (2026-11-19). It was not moved: Oleh also commits to this branch, and moving files would conflict with his work. Later versions copy the folders they change.
 
@@ -38,17 +40,17 @@ Version F copies E's two folders. Figma: frame 304:14982.
 
 ### The custom column pill
 
-A separate switcher, **Expression pill** (`expression-pill-version`), for the style of the pill (like `Total + Subtotal`), to show that it can be renamed. Only the styling differs; the behaviour stays the same.
+Only pill B is left (2026-11-23); the switcher and the other pills are deleted. Pill A stays only in filters and summaries, without the rename hints. It was a separate switcher, **Expression pill** (`expression-pill-version`), for the style of the pill (like `Total + Subtotal`), to show that it can be renamed. Only the styling differs; the behaviour stays the same.
 
 | Version | Axis | Folder | Based on | Status |
 |---|---|---|---|---|
-| A | The current pill | `notebook/components/ExpressionStep/ExpressionPill.tsx` | — | active |
+| A | The current pill | `notebook/components/ExpressionStep/ExpressionPill.tsx` | — | removed 2026-11-23 |
 | B | Brand-blue pill; the name sits in a box like a text field: shown for a default name, and on hover or while selected | `notebook/components/ExpressionStep/ExpressionPillB.tsx` (+ `.module.css`) | A | active |
-| C | Pill B in light colors: a white pill with a thin border, grey on hover and while selected; the name's box is grey | `notebook/components/ExpressionStep/ExpressionPillC.tsx` (+ `.module.css`) | B | active |
-| Hover | Pill A; the selected pill shows a light field behind the name on hover | `notebook/components/ExpressionStep/ExpressionPill.tsx` (`RENAME_HINTS`) | A | active |
-| Field | Pill A; the selected pill always shows a field with an outline behind the name; the field gets darker on hover | same | A | active |
-| Default name | Pill A; the field of Field while the name is a default one, the hover field of Hover after a rename | same | A | active |
-| Underline | Pill A; the selected pill shows a dashed underline below the name, solid on hover | same | A | active |
+| C | Pill B in light colors: a white pill with a thin border, grey on hover and while selected; the name's box is grey | `notebook/components/ExpressionStep/ExpressionPillC.tsx` (+ `.module.css`) | B | removed 2026-11-23 |
+| Hover | Pill A; the selected pill shows a light field behind the name on hover | `notebook/components/ExpressionStep/ExpressionPill.tsx` (`RENAME_HINTS`) | A | removed 2026-11-23 |
+| Field | Pill A; the selected pill always shows a field with an outline behind the name; the field gets darker on hover | same | A | removed 2026-11-23 |
+| Default name | Pill A; the field of Field while the name is a default one, the hover field of Hover after a rename | same | A | removed 2026-11-23 |
+| Underline | Pill A; the selected pill shows a dashed underline below the name, solid on hover | same | A | removed 2026-11-23 |
 
 Versions Hover, Field, Default name and Underline only add a hint to the selected pill A, which is the only pill that can be renamed. They apply to custom columns and custom summaries. The hint keeps the size of the pill.
 
@@ -98,18 +100,17 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-19 — D: large AI changes show as a diff to accept or reject, as in A. Why: Oleh's version of the Figma (frames 304:15577, 304:15631, 304:16770) kept it.
 - 2026-11-19 — D: the preview can't hide; its button in the code row shows only until the preview shows.
 - 2026-11-19 — D: the docs button in the code row shows when the user closes the docs side panel.
+- 2026-11-23 — Keep editor F and pill B; remove the other versions, their switchers and their settings. Why: the prototype goes to the production team with one design.
 - 2026-11-20 — A new custom column or custom summary can be renamed before its expression is valid. The name stays in the step's state until the first valid edit adds the clause with it. The AI does not replace a name that the user gave. A new pill (column, summary or filter) shows no unsaved dot; the dot shows only on a saved clause with an invalid edit.
 
 ## Settings
-- `expression-editor-version` — which version of the editor shows.
-- `expression-pill-version` — which style of the custom column pill shows.
 - `expression-columns-outside-brackets` — suggest columns for a bare word, not only after `[`.
 - `expression-sql-fixes` — suggest the custom expression for SQL syntax.
 - `expression-hide-ai` — behave as without an AI provider.
 - `expression-preview-context` — context columns in the preview.
 
 ## Known bugs
-- A: the spec "shows the preview with Cmd+Enter, and hides it with Cmd+Enter again" fails since Cmd+Enter became Enter (d1054a7e59f).
+- None known.
 
 ## Open questions
 - Should Enter in the popover editors (filters, summaries) also save?

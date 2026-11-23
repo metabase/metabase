@@ -1,5 +1,4 @@
 export { PrototypeSettingsMenuItem } from "./components/PrototypeSettingsMenuItem";
-export { PrototypeVersionSwitcher } from "./components/PrototypeVersionSwitcher";
 export * from "./settings";
 export type {
   BooleanPrototypeSetting,

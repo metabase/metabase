@@ -193,9 +193,6 @@ export function AggregateStep({
           <ExpressionPill
             hasStepSelectedColor
             name={renderAggregationName(aggregation)}
-            hasDefaultName={
-              !Lib.displayInfo(query, stageIndex, aggregation).isNamed
-            }
             color={color}
             isActive={inline.editedIndex === index}
             readOnly={readOnly}
@@ -211,7 +208,6 @@ export function AggregateStep({
           <ExpressionPill
             hasStepSelectedColor
             name={openDraftName ?? t`New summary`}
-            hasDefaultName={openDraftName == null}
             color={color}
             isActive
             readOnly={readOnly}

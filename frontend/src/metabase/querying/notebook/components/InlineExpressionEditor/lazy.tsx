@@ -1,52 +1,16 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 
-import {
-  EXPRESSION_EDITOR_VERSION_SETTING,
-  usePrototypeSetting,
-} from "metabase/prototype";
-
-import type { InlineExpressionEditorProps } from "./InlineExpressionEditor";
+import type { InlineExpressionEditorProps } from "./types";
 
 let isInlineEditorLoaded = false;
 
-// Prototype: the versions of the editor load together, so that switching
-// between them doesn't wait for a chunk.
 const importInlineEditor = () =>
-  Promise.all([
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "./InlineExpressionEditor"
-    ),
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "../InlineExpressionEditorB"
-    ),
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "../InlineExpressionEditorC"
-    ),
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "../InlineExpressionEditorD"
-    ),
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "../InlineExpressionEditorE"
-    ),
-    import(
-      /* webpackChunkName: "expression-editor" */
-      "../InlineExpressionEditorF"
-    ),
-  ]).then(([module, moduleB, moduleC, moduleD, moduleE, moduleF]) => {
+  import(
+    /* webpackChunkName: "expression-editor" */
+    "../InlineExpressionEditorF"
+  ).then((module) => {
     isInlineEditorLoaded = true;
-    return {
-      ...module,
-      ...moduleB,
-      ...moduleC,
-      ...moduleD,
-      ...moduleE,
-      ...moduleF,
-    };
+    return module;
   });
 
 export const prefetchInlineExpressionEditor = () => {
@@ -77,53 +41,13 @@ export const useInlineExpressionEditorChunk = () => {
 };
 
 const LazyInlineExpressionEditor = lazy(() =>
-  importInlineEditor().then(({ InlineExpressionEditor }) => ({
-    default: InlineExpressionEditor,
-  })),
-);
-
-const LazyInlineExpressionEditorB = lazy(() =>
-  importInlineEditor().then(({ InlineExpressionEditorB }) => ({
-    default: InlineExpressionEditorB,
-  })),
-);
-
-const LazyInlineExpressionEditorC = lazy(() =>
-  importInlineEditor().then(({ InlineExpressionEditorC }) => ({
-    default: InlineExpressionEditorC,
-  })),
-);
-
-const LazyInlineExpressionEditorD = lazy(() =>
-  importInlineEditor().then(({ InlineExpressionEditorD }) => ({
-    default: InlineExpressionEditorD,
-  })),
-);
-
-const LazyInlineExpressionEditorE = lazy(() =>
-  importInlineEditor().then(({ InlineExpressionEditorE }) => ({
-    default: InlineExpressionEditorE,
-  })),
-);
-
-const LazyInlineExpressionEditorF = lazy(() =>
   importInlineEditor().then(({ InlineExpressionEditorF }) => ({
     default: InlineExpressionEditorF,
   })),
 );
 
-export const InlineExpressionEditor = (props: InlineExpressionEditorProps) => {
-  const [version] = usePrototypeSetting(EXPRESSION_EDITOR_VERSION_SETTING);
-  return (
-    <Suspense fallback={null}>
-      {version === "b" && <LazyInlineExpressionEditorB {...props} />}
-      {version === "c" && <LazyInlineExpressionEditorC {...props} />}
-      {version === "d" && <LazyInlineExpressionEditorD {...props} />}
-      {version === "e" && <LazyInlineExpressionEditorE {...props} />}
-      {version === "f" && <LazyInlineExpressionEditorF {...props} />}
-      {!["b", "c", "d", "e", "f"].includes(version) && (
-        <LazyInlineExpressionEditor {...props} />
-      )}
-    </Suspense>
-  );
-};
+export const InlineExpressionEditor = (props: InlineExpressionEditorProps) => (
+  <Suspense fallback={null}>
+    <LazyInlineExpressionEditor {...props} />
+  </Suspense>
+);
