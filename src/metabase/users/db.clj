@@ -184,18 +184,11 @@
   (when-not active?
     [:coalesce :deactivated_at :%now]))
 
-(defn- assoc-deactivated-at
-  "The update `row` with the `deactivated_at` that its `is_active` implies, so that every row of an update, whether or
-  not it already holds that `is_active`, gets the same change."
-  [row]
-  (cond-> row
-    (contains? row :is_active) (assoc :deactivated_at (deactivated-at-clause (:is_active row)))))
-
 (mu/defn update-users! :- :nil
-  "Apply `updates`, each the id of a User and its columns to set, with one update for each distinct change, every change
-  that sets `is_active` carrying the `deactivated_at` it implies."
+  "Apply `updates`, each the id of a User and its columns to set, with one update for each distinct change."
   [updates :- [:sequential ::users.schema/user.update-row]]
-  (app-db/update-grouped! :model/User (map assoc-deactivated-at updates)))
+  (app-db/update-grouped! :model/User updates)
+  nil)
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

@@ -618,17 +618,21 @@
    ::hook-statement-guard))
 
 (defn- hook-differing-change-keys
-  "The keys, sorted, whose value in `change-maps` differs between rows because of a hook: a key outside `requested`, the
-  changes of the update, that is not the same in every map, or a key of `requested` that maps hold with different values;
-  a key of `requested` that a map lacks is a row that already holds the value."
+  "The keys, sorted, that a hook made differ between rows of `change-maps`, the changes of the rows of one update by
+  `requested`: a column of `requested` that rows change to different values, or a column outside it that differs
+  between rows that change the same columns of `requested`; rows that change fewer of them already hold the rest, and
+  what a hook adds for them may differ."
   [requested change-maps]
-  (into (sorted-set)
-        (filter (fn [k]
-                  (let [values (map #(get % k ::absent) change-maps)]
-                    (if (contains? requested k)
-                      (< 1 (count (into #{} (remove #{::absent}) values)))
-                      (apply not= values)))))
-        (into #{} (mapcat keys) change-maps)))
+  (let [requested-keys (keys requested)
+        present-values (fn [k] (into #{} (keep #(when (contains? % k) (get % k))) change-maps))]
+    (into (sorted-set)
+          cat
+          [(filter #(< 1 (count (present-values %))) requested-keys)
+           (mapcat (fn [[_requested-part maps]]
+                     (let [added (map #(apply dissoc % requested-keys) maps)]
+                       (filter (fn [k] (apply not= (map #(get % k ::absent) added)))
+                               (into #{} (mapcat keys) added))))
+                   (group-by #(set (keys (select-keys % requested-keys))) change-maps))])))
 
 (defn- check-uniform-update-changes
   "Returns `changes->pk-maps`, what Toucan's before-update step makes of the rows of one update of `model` by

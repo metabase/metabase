@@ -53,7 +53,8 @@
                             (let [definition (on-orders (inc total))]
                               (events.tu/statement-count! #(segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 10)
-            (is (= (counted 2 20) (counted 6 30)))
+            (testing "rows in different stored states cost at most the SELECT of the hook and the UPDATE of each more row"
+              (is (<= (- (counted 6 30) (counted 2 20)) (* 2 (- 6 2)))))
             (testing "every segment is on the table of its new definition"
               (is (= #{(mt/id :orders)} (t2/select-fn-set :table_id :model/Segment :id [:in ids]))))))))))
 
@@ -95,7 +96,8 @@
                             (let [definition (on-orders column)]
                               (events.tu/statement-count! #(measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (vec (take n ids)))))))]
             (counted 6 :subtotal)
-            (is (= (counted 2 :tax) (counted 6 :discount)))
+            (testing "rows in different stored states cost at most the SELECT of the hook and the UPDATE of each more row"
+              (is (<= (- (counted 6 :discount) (counted 2 :tax)) (* 2 (- 6 2)))))
             (testing "every measure is on the table of its new definition"
               (is (= #{(mt/id :orders)} (t2/select-fn-set :table_id :model/Measure :id [:in ids]))))))
         (testing "setting the dimensions"

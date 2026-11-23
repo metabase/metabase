@@ -24,6 +24,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+
+
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
@@ -239,9 +241,15 @@
 
 (defn- requested-changes
   "A map from id to the changes of each of `rows`, the id of a Channel and the columns to set, for the Channels in
-  `stored`."
+  `stored`, leaving out the columns that already hold the value and the Channels left with none, so that deactivating
+  an inactive Channel does not rename it."
   [rows stored]
-  (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows))
+  (into {}
+        (keep (fn [{:keys [id] :as row}]
+                (when-let [channel (stored id)]
+                  (when-let [changes (not-empty (into {} (remove (fn [[k v]] (= v (get channel k)))) (dissoc row :id)))]
+                    [id changes]))))
+        rows))
 
 (defn- deactivated-ids
   "The ids of the active Channels of `stored` that `requested`, a map from id to its changes, deactivates."

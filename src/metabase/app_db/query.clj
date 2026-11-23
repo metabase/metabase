@@ -28,13 +28,11 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.model :as t2.model])
   (:import
-   (clojure.lang ExceptionInfo)
-   (java.util ArrayList LinkedHashMap Map$Entry)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -202,18 +200,18 @@
   1000)
 
 (defn- grouped-updates
-  "The primary keys of `updates` by the columns they change, in the order the changes first appear, where `pk-of` gives
-  the primary key of a row and `changes-of` its columns to change; rows with no column to change are left out."
-  ^LinkedHashMap [pk-of changes-of updates]
-  (let [groups (LinkedHashMap.)]
-    (perf/run! (fn [row]
-                 (let [changes (changes-of row)]
-                   (when-not (perf/empty? changes)
-                     (if-let [^ArrayList pks (.get groups changes)]
-                       (.add pks (pk-of row))
-                       (.put groups changes (perf/list-add! (perf/make-list) (pk-of row)))))))
-               updates)
-    groups))
+  "The `[changes pks]` pairs of `updates` in the order the changes first appear, where `pk-fn` gives the primary key of
+  a row and `changes-fn` its columns to change; rows with no column to change are left out."
+  [updates pk-fn changes-fn]
+  (let [pks (reduce (fn [m row]
+                      (let [changes (changes-fn row)]
+                        (cond-> m
+                          (seq changes) (update changes (fnil conj []) (pk-fn row)))))
+                    {}
+                    updates)]
+    (into []
+          (comp (map changes-fn) (filter seq) (distinct) (map (fn [changes] [changes (pks changes)])))
+          updates)))
 
 (defn update-grouped!
   "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the
@@ -222,12 +220,11 @@
   (let [pk-columns (t2/primary-keys model)]
     (if (= (count pk-columns) 1)
       (let [pk (first pk-columns)]
-        (perf/run! (fn [^Map$Entry group]
-                     (t2/update! model pk [:in [:auto/param (vec (.getValue group))]] (.getKey group)))
-                   (.entrySet (grouped-updates pk #(dissoc % pk) updates))))
-      (perf/run! (fn [^Map$Entry group]
-                   (perf/run! #(t2/update! model :toucan/pk % (.getKey group)) (.getValue group)))
-                 (.entrySet (grouped-updates (perf/juxt* pk-columns) #(apply dissoc % pk-columns) updates))))))
+        (doseq [[changes pks] (grouped-updates updates pk #(dissoc % pk))]
+          (t2/update! model pk [:in [:auto/param pks]] changes)))
+      (doseq [[changes pks] (grouped-updates updates (apply juxt pk-columns) #(apply dissoc % pk-columns))
+              pk            pks]
+        (t2/update! model :toucan/pk pk changes)))))
 
 (defn insert-returning-instances!
   "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in

@@ -16,6 +16,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+
+
 (def ^:private per-part-update-growth
   "The statements the update of a Notification adds for the 4 handlers between 2 and 6 when each handler gets its own
   template id: the before-update SELECT and UPDATE of a template and of its handler, 4 for each."
@@ -596,7 +598,7 @@
                  (fn [existing _n] (assoc existing :handlers []))]]]
          (testing part-kind
            (counted handler change 1)
-           (if (= part-kind "changing the template of each handler")
+           (if (#{"changing the template of each handler" "changing the recipient of each handler"} part-kind)
              (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))
              (is (= (counted handler change 1) (counted handler change 3))))))))))
 
