@@ -6,14 +6,8 @@ import { PORTAL_CONTAINER_ID } from "../../src/metabase/ui/components/overlays/P
 
 import { MetabaseUIProvider } from "./MetabaseUIProvider";
 
-const getStyleText = () =>
-  // eslint-disable-next-line testing-library/no-node-access -- <style> has no role
-  [...document.querySelectorAll("style")]
-    .map((style) => style.textContent ?? "")
-    .find((text) => text.startsWith(":root { --mb-color-")) ?? "";
-
-const readVariable = (css: string, name: string) =>
-  new RegExp(`${name}: ([^;]+);`).exec(css)?.[1];
+const readVariable = (name: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 const ThemeProbe = () => {
   const theme = useMantineTheme();
@@ -24,7 +18,7 @@ const ThemeProbe = () => {
       data-scheme={theme.other.colorScheme}
       data-font={theme.fontFamily}
       data-radius={String(theme.defaultRadius)}
-      data-colors={Object.keys(theme.colors).includes("custom") ? "custom" : ""}
+      data-brand={theme.colors["core-brand"][0]}
       data-context={`${colorScheme}/${resolvedColorScheme}`}
     />
   );
@@ -33,47 +27,47 @@ const ThemeProbe = () => {
 describe("MetabaseUIProvider", () => {
   it("writes the CSS variables for the light scheme", () => {
     render(<MetabaseUIProvider>content</MetabaseUIProvider>);
-    const css = getStyleText();
-    expect(css).toMatch(/^:root \{/);
-    expect(readVariable(css, "--mb-color-core-brand")).toBeTruthy();
-    expect(readVariable(css, "--mb-default-font-family")).toBe(
+    expect(readVariable("--mb-color-core-brand")).toBeTruthy();
+    expect(readVariable("--mb-default-font-family")).toBe(
       '"Lato", Arial, sans-serif',
     );
-    expect(readVariable(css, "--mb-overlay-z-index")).toMatch(/^\d+$/);
+    expect(readVariable("--mb-overlay-z-index")).toMatch(/^\d+$/);
   });
 
   it("writes different colors for the dark scheme and updates on change", () => {
     const { rerender } = render(
       <MetabaseUIProvider>content</MetabaseUIProvider>,
     );
-    const light = readVariable(
-      getStyleText(),
-      "--mb-color-background_page-secondary",
-    );
+    const light = readVariable("--mb-color-background_page-secondary");
+    expect(light).toBeTruthy();
 
     rerender(
       <MetabaseUIProvider colorScheme="dark" fontFamily="Inter, sans-serif">
         content
       </MetabaseUIProvider>,
     );
-    const css = getStyleText();
-    expect(readVariable(css, "--mb-color-background_page-secondary")).not.toBe(
-      light,
-    );
-    expect(readVariable(css, "--mb-default-font-family")).toBe(
-      "Inter, sans-serif",
-    );
+    const dark = readVariable("--mb-color-background_page-secondary");
+    expect(dark).toBeTruthy();
+    expect(dark).not.toBe(light);
+    expect(readVariable("--mb-default-font-family")).toBe("Inter, sans-serif");
   });
 
   it("applies the scheme, ignores owned keys and keeps other overrides", () => {
-    render(
+    const { rerender } = render(
+      <MetabaseUIProvider colorScheme="dark">
+        <ThemeProbe />
+      </MetabaseUIProvider>,
+    );
+    const brand = screen.getByTestId("probe").getAttribute("data-brand");
+    expect(brand).toBeTruthy();
+
+    rerender(
       <MetabaseUIProvider
         colorScheme="dark"
         theme={{
           fontFamily: "Comic Sans MS",
           colors: {
-            // @ts-expect-error -- "custom" is not a Metabase color; the provider must ignore it
-            custom: [
+            "core-brand": [
               "#000",
               "#000",
               "#000",
@@ -96,7 +90,7 @@ describe("MetabaseUIProvider", () => {
     const probe = screen.getByTestId("probe");
     expect(probe).toHaveAttribute("data-scheme", "dark");
     expect(probe).toHaveAttribute("data-font", "var(--mb-default-font-family)");
-    expect(probe).toHaveAttribute("data-colors", "");
+    expect(probe).toHaveAttribute("data-brand", brand);
     expect(probe).toHaveAttribute("data-radius", "xl");
     expect(probe).toHaveAttribute("data-context", "dark/dark");
   });
@@ -127,7 +121,7 @@ describe("MetabaseUIProvider", () => {
         content
       </MetabaseUIProvider>,
     );
-    expect(readVariable(getStyleText(), "--mb-overlay-z-index")).toBe("200");
+    expect(readVariable("--mb-overlay-z-index")).toBe("200");
   });
 
   it("writes a custom popover z-index", () => {
@@ -136,7 +130,7 @@ describe("MetabaseUIProvider", () => {
         content
       </MetabaseUIProvider>,
     );
-    expect(readVariable(getStyleText(), "--mb-overlay-z-index")).toBe("9999");
+    expect(readVariable("--mb-overlay-z-index")).toBe("9999");
   });
 
   it("renders a tooltip into an element passed as its portal target", async () => {
