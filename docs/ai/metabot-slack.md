@@ -73,9 +73,9 @@ Some caveats:
 
 If you ask Metabot a question in a public channel, _everyone_ in that channel can see the response. So even though Metabot respects your Metabase [permissions](../permissions/introduction.md) (Metabot can only see what you see), be thoughtful about questions that could surface sensitive data to others that may lack your permissions.
 
-### Feedback stays in your Metabase
+### Your feedback goes to your admin and Metabase
 
-Your Metabase instance doesn't send your feedback to Metabase (the company). On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation it's about. See [AI privacy](./privacy.md#feedback-stays-in-your-metabase).
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation it's about. On Metabase Cloud, Metabase (the company) can see your feedback too. See [AI privacy](./privacy.md#who-can-see-your-feedback).
 
 ## Further reading
 

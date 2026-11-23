@@ -56,9 +56,16 @@ If you're using your own API key, everything listed above is sent to your select
 
 When using the [MCP server](./mcp.md), query _results_ are sent to the connected MCP client.
 
-## Feedback stays in your Metabase
+## Who can see your feedback
 
-If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, Metabase stores your rating, the issue type, and any comments in your Metabase's application database. Your Metabase instance doesn't send feedback to Metabase (the company). On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see feedback next to the conversation it's about in [AI usage auditing](./usage-auditing.md#conversation-detail).
+If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, Metabase stores your rating, the issue type, and any comments in your Metabase's application database.
+
+Who else can see your feedback depends on where your Metabase runs:
+
+- **Self-hosted**: your feedback stays in your Metabase instance. Your Metabase instance doesn't send it to Metabase (the company).
+- **Metabase Cloud**: Metabase (the company) hosts your application database, so it can see your feedback.
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see feedback next to the conversation it's about in [AI usage auditing](./usage-auditing.md#conversation-detail).
 
 ## Further reading
 
