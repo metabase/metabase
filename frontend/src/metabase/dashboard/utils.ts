@@ -589,7 +589,6 @@ export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
   return dashcard?.card?.display === "table";
 }
 
-/** Where the charts of `dashcard` fetch their goal source results from. */
 export function getDashcardGoalSourcesScope(
   dashcard: Pick<DashboardCard, "id" | "card_id" | "dashboard_id">,
 ): GoalSourcesScope {
