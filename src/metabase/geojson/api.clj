@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
@@ -25,12 +26,14 @@
 
 (defn- url->geojson
   [url]
-  (let [resp (try (http/get url {:as                 :reader
-                                 :redirect-strategy  :none
-                                 :socket-timeout     connection-timeout-ms
-                                 :connection-timeout connection-timeout-ms
-                                 :throw-exceptions   false
-                                 :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
+  (let [resp (try (http/get url (m/assoc-some
+                                 {:as                 :reader
+                                  :redirect-strategy  :none
+                                  :socket-timeout     connection-timeout-ms
+                                  :connection-timeout connection-timeout-ms
+                                  :throw-exceptions   false}
+                                 :dns-resolver (u.http/network-policy-dns-resolver
+                                                (geojson.settings/geojson-allowed-networks))))
                   (catch Throwable e
                     (if (:ssrf (ex-data e))
                       (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))

@@ -240,11 +240,47 @@
              (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))))
 
 (deftest url-proxy-rejects-any-local-ula-cgnat-test
-  (testing "hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]), IPv6 ULA, IPv4 CGNAT --
-           are rejected up front, before any fetch"
-    (doseq [host ["0.0.0.0" "[::]" "100.64.0.1" "[fc00::1]"]]
-      (testing host
-        (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
-                    "URLs referring to hosts that supply internal hosting metadata are "
-                    "prohibited.")
-               (mt/user-http-request :crowberto :get 400 "geojson" :url (str "http://" host "/x.json"))))))))
+  (testing "under external-only, any-local (0.0.0.0 / [::]), IPv6 ULA and IPv4 CGNAT hosts are rejected up front,
+           before any fetch"
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "external-only"]
+      (doseq [host ["0.0.0.0" "[::]" "100.64.0.1" "[fc00::1]"]]
+        (testing host
+          (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                      "URLs referring to hosts that supply internal hosting metadata are "
+                      "prohibited.")
+                 (mt/user-http-request :crowberto :get 400 "geojson" :url (str "http://" host "/x.json")))))))))
+
+(def ^:private invalid-location-msg
+  (str "Invalid GeoJSON file location: must start with http:// or https://. "
+       "URLs referring to hosts that supply internal hosting metadata are "
+       "prohibited."))
+
+(defn- fetch-with-host-resolved-to!
+  "GET /api/geojson for [[test-geojson-url]], with its host resolving to `address` (a byte array) at connect time."
+  [address]
+  (with-redefs [api.geojson/connection-timeout-ms 200]
+    (binding [u.http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                             (.add "metabase.com"
+                                                   (into-array [(InetAddress/getByAddress (byte-array address))])))]
+      (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))
+
+(deftest resolver-follows-geojson-allowed-networks-test
+  (testing "the connection-time resolver applies geojson-allowed-networks, not a hard-coded external-only"
+    (testing "external-only refuses a host that resolves to a private address"
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "external-only"]
+        (is (= invalid-location-msg (fetch-with-host-resolved-to! [10 255 255 1])))))
+    (testing "allow-private lets the fetch go to a private address (it then fails to connect, as nothing is there)"
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-private"]
+        (is (= "GeoJSON URL failed to load" (fetch-with-host-resolved-to! [10 255 255 1])))))
+    (testing "allow-private still refuses link-local"
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-private"]
+        (is (= invalid-location-msg (fetch-with-host-resolved-to! [169 254 169 254])))))))
+
+(deftest url-proxy-allow-all-reaches-loopback-test
+  (testing "under allow-all the fetch is not restricted, so a loopback server is actually contacted"
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-all"]
+      (with-redefs [api.geojson/connection-timeout-ms 200]
+        (with-open [server (non-responding-server)]
+          (is (= "GeoJSON URL failed to load"
+                 (mt/user-http-request :crowberto :get 400 "geojson"
+                                       :url (str "http://localhost:" (-port server))))))))))
