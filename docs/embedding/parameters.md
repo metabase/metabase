@@ -173,9 +173,9 @@ You must update your state from the callback. If you don't, the embed reverts to
 
 {% include plans-blockquote.html feature="Controlled values on linked dashboards and questions" convert_pro_link_to_embedding=true is_plural=true %}
 
-[Controlled values](#control-values-from-your-app) only reach the dashboard you embed. When you [let people follow links](./dashboard.md#let-people-follow-links-to-other-dashboards-and-questions) to other dashboards and SQL questions, the dashboard or question that a [click behavior](../dashboards/interactive.md#custom-destinations) opens gets the values that the click [passes to it](../dashboards/interactive.md#passing-values-to-the-destination), and your `parameters` don't apply to it. To see and set the values of those linked dashboards and SQL questions, use `navigated-entity-parameters` and the `navigated-entity-parameters-change` event on the web component, or `navigatedEntityParameters` and `onNavigatedEntityParametersChange` in the SDK.
+[Controlled values](#control-values-from-your-app) only reach the dashboard you embed. When you [let people follow links](./dashboard.md#let-people-follow-links-to-other-dashboards-and-questions) to other dashboards and SQL questions, your `parameters` don't apply to the linked dashboard or question. It gets the values that the [click behavior](../dashboards/interactive.md#passing-values-to-the-destination) passes to it. To see and set the values of those linked dashboards and SQL questions, use `navigated-entity-parameters` and the `navigated-entity-parameters-change` event on the web component, or `navigatedEntityParameters` and `onNavigatedEntityParametersChange` in the SDK.
 
-These need entity navigation, so they work on `<metabase-dashboard>` with SSO and drills on, and on `InteractiveDashboard` and `EditableDashboard` in the SDK. View-only dashboards and guest embeds can't follow links, so they don't take these values.
+These need [entity navigation](./dashboard.md#let-people-follow-links-to-other-dashboards-and-questions) turned on: `enable-entity-navigation="true"` on an SSO `<metabase-dashboard>` with drills on, or `enableEntityNavigation` on `InteractiveDashboard` or `EditableDashboard` in the SDK. View-only dashboards and guest embeds can't follow links, so they don't take these values.
 
 Each time someone opens a linked dashboard or question, the visit gets a new `navigationId`, even if they opened the same dashboard before. When they go back, they return to the earlier visit, with its `navigationId`. A click that links to the dashboard that's already on screen isn't a new visit: it changes the filters or the tab in place. You key your values by `navigationId`, so the values you store for a visit apply only to that visit, and come back with it. Inside each visit's values, the keys are filter slugs for a linked dashboard, and variable names for a linked SQL question.
 
@@ -189,13 +189,13 @@ The [payload](./parameters-reference.md#linked-dashboard-and-question-payload) h
 
 To stay in sync:
 
-1. On `initial-state`, check whether you already have values for the `navigationId`. If you do, the person went back: keep your values, so their edits come back with the visit. If you don't, it's a new visit: store values for it.
+1. On `initial-state`, check whether you already have values for the `navigationId`. If you do, the person went back: keep your values, so their edits come back with the visit. If you don't, it's a new visit: store values for it. You choose which values, as described below.
 2. On `manual-change` and `auto-change`, store the payload's `parameters` for the `navigationId`.
 
-For a new visit, you pick the values:
+For a new visit, you can:
 
 - **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults. On a linked dashboard, if the click sets no filter, these values are the person's last used values. Storing these values doesn't re-run queries on a linked dashboard. On a linked SQL question,  if the click doesn't set every variable, storing the values re-runs the query.
-- **Use the click's values and the defaults, but never last used values,** with `{ ...defaultParameters, ...clickParameters }`.
+- **Use the click's values and the defaults, but never last used values,** with `{ ...payload.defaultParameters, ...payload.clickParameters }`.
 - **Add your own values.** Put them before `clickParameters` to fill in the other filters, or after it to override the click.
 - **Ignore the click** by leaving out `clickParameters`.
 
@@ -212,7 +212,7 @@ Questions built with the query builder can't be controlled: a click to one opens
 
 ### Web component values on linked content
 
-Listen for `navigated-entity-parameters-change` on the element, and store the values with the `navigatedEntityParameters` property:
+Listen for `navigated-entity-parameters-change` on the element, and store the values in the `navigatedEntityParameters` property:
 
 ```html
 <metabase-dashboard

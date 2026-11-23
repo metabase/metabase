@@ -28,7 +28,7 @@ For each attribute's or prop's type and description, see:
 
 ## Web component attribute parsing
 
-The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs. `navigated-entity-parameters` takes an object keyed by `navigationId`, with an object keyed by slug for each visit.
+The parameter attributes take JSON: an object keyed by slug or variable name, or for `hidden-parameters`, an array of slugs. `navigated-entity-parameters` takes an object keyed by `navigationId`, where each value is the object of parameter values for that visit.
 
 Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`. Without the brackets, a dashboard embed won't render at all, and the console shows a `TypeError` rather than a message about the attribute. A question embed still renders, but it hides every parameter whose slug appears anywhere in the string. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
 
@@ -106,7 +106,7 @@ SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChan
 | `entityType`      | `"dashboard"` or `"question"`.                                                                                                                                                                                         |
 | `entityId`        | The [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) of the dashboard or question on screen.                                                                                 |
 | `navigationId`    | The ID of this visit. Each new visit gets a new ID, and going back keeps it. Use it as the key in `navigatedEntityParameters`.                                                                                         |
-| `clickParameters` | The values the click set, keyed like `parameters`, with only the filters the click set. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`. |
+| `clickParameters` | The values the click set, keyed like `parameters`. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`. |
 
 ### When the callback fires
 
