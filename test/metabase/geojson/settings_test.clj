@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -38,64 +39,137 @@
     (is (nil? (geojson.settings/builtin-region-geojson "narnia")))
     (is (nil? (geojson.settings/builtin-region-geojson nil)))))
 
-(deftest ^:parallel validate-geojson-test
+(defn- valid-geojson-url?
+  "Whether a custom map with GeoJSON at `url` may be saved."
+  [url]
+  (let [geojson {:deadb33f {:name "Rivendell" :url url :region_key nil :region_name nil}}]
+    (try
+      (#'geojson.settings/validate-geojson geojson geojson)
+      true
+      (catch clojure.lang.ExceptionInfo _ false))))
+
+(deftest validate-geojson-test
   (testing "It validates URLs and files appropriately (classpath resources disabled by default)"
-    (let [examples {;; Internal metadata for GCP
-                    "metadata.google.internal"                 false
-                    "https://metadata.google.internal"         false
-                    "//metadata.google.internal"               false
-                    ;; Link-local addresses (internal metadata for AWS, OpenStack, and Azure)
-                    "http://169.254.0.0"                       false
-                    "http://fe80::"                            false
-                    "169.254.169.254"                          false
-                    "http://169.254.169.254/secret-stuff.json" false
-                    "http://0.0.0.0"                           false
-                    "http://[::]"                              false
-                    "http://100.64.0.1"                        false
-                    "http://[fc00::1]"                         false
-                    ;; Special-purpose addresses that are not globally reachable
-                    "http://192.0.2.0"                         false
-                    "http://198.18.0.1"                        false
-                    "http://[2001:db8::1]"                     false
-                    ;; alternate IPv4 encodings (hex, octal, integer)
-                    "http://0xa9fea9fe"                        false
-                    "https://0xa9fea9fe"                       false
-                    "http://0xA9FEA9FE"                        false
-                    "http://0xa9.0xfe.0xa9.0xfe"               false
-                    "http://0XA9.0XFE.0xA9.0XFE"               false
-                    "http://0xa9fea9fe/secret-stuff.json"      false
-                    "http://025177524776"                      false
-                    "http://0251.0376.0251.0376"               false
-                    "http://2852039166"                        false
-                    ;; Prohibited protocols
-                    "ftp://example.com/rivendell.json"         false
-                    "example.com/rivendell.json"               false
-                    "jar:file:test.jar!/test.json"             false
-                    ;; Acceptable URLs
-                    "http://example.com/"                      true
-                    "https://example.com/"                     true
-                    "http://example.com/rivendell.json"        true
-                    "http://8.8.8.8"                           true
-                    ;; this following test flakes in CI for unknown reasons
-                    ;;"http://0xc0000200"                        true
-                    ;; Classpath resources are NOT valid when env var is not set
-                    "test.geojson"                             false
-                    ;; Other files are not
-                    "./README.md"                              false
-                    "file:///tmp"                              false
-                    ;; Nonsense is invalid
-                    "rasta@metabase.com"                       false
-                    ""                                         false
-                    "Tom Bombadil"                             false}
-          valid?   #'geojson.settings/validate-geojson]
-      (doseq [[url should-pass?] examples]
-        (let [geojson {:deadb33f {:name        "Rivendell"
-                                  :url         url
-                                  :region_key  nil
-                                  :region_name nil}}]
-          (if should-pass?
-            (is (valid? geojson geojson) (str url))
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "external-only"]
+      (let [examples {;; Internal metadata for GCP
+                      "metadata.google.internal"                 false
+                      "https://metadata.google.internal"         false
+                      "//metadata.google.internal"               false
+                      ;; Link-local addresses (internal metadata for AWS, OpenStack, and Azure)
+                      "http://169.254.0.0"                       false
+                      "http://fe80::"                            false
+                      "169.254.169.254"                          false
+                      "http://169.254.169.254/secret-stuff.json" false
+                      "http://0.0.0.0"                           false
+                      "http://[::]"                              false
+                      "http://100.64.0.1"                        false
+                      "http://[fc00::1]"                         false
+                      ;; Special-purpose addresses that are not globally reachable
+                      "http://192.0.2.0"                         false
+                      "http://198.18.0.1"                        false
+                      "http://[2001:db8::1]"                     false
+                      ;; alternate IPv4 encodings (hex, octal, integer)
+                      "http://0xa9fea9fe"                        false
+                      "https://0xa9fea9fe"                       false
+                      "http://0xA9FEA9FE"                        false
+                      "http://0xa9.0xfe.0xa9.0xfe"               false
+                      "http://0XA9.0XFE.0xA9.0XFE"               false
+                      "http://0xa9fea9fe/secret-stuff.json"      false
+                      "http://025177524776"                      false
+                      "http://0251.0376.0251.0376"               false
+                      "http://2852039166"                        false
+                      ;; Prohibited protocols
+                      "ftp://example.com/rivendell.json"         false
+                      "example.com/rivendell.json"               false
+                      "jar:file:test.jar!/test.json"             false
+                      ;; Acceptable URLs
+                      "http://example.com/"                      true
+                      "https://example.com/"                     true
+                      "http://example.com/rivendell.json"        true
+                      "http://8.8.8.8"                           true
+                      ;; this following test flakes in CI for unknown reasons
+                      ;;"http://0xc0000200"                        true
+                      ;; Classpath resources are NOT valid when env var is not set
+                      "test.geojson"                             false
+                      ;; Other files are not
+                      "./README.md"                              false
+                      "file:///tmp"                              false
+                      ;; Nonsense is invalid
+                      "rasta@metabase.com"                       false
+                      ""                                         false
+                      "Tom Bombadil"                             false}
+            valid?   #'geojson.settings/validate-geojson]
+        (doseq [[url should-pass?] examples]
+          (let [geojson {:deadb33f {:name        "Rivendell"
+                                    :url         url
+                                    :region_key  nil
+                                    :region_name nil}}]
+            (if should-pass?
+              (is (valid? geojson geojson) (str url))
+              (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url)))))))))
+
+(deftest geojson-allowed-networks-default-test
+  (testing "the default policy depends on where we are running: on Cloud a GeoJSON file on an internal address is
+           somebody reaching for our infrastructure, but self-hosted it is ordinary"
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks nil]
+      (premium-features.tu/with-premium-features #{:hosting}
+        (is (= :external-only (geojson.settings/geojson-allowed-networks))))
+      (premium-features.tu/with-premium-features #{}
+        (is (= :allow-private (geojson.settings/geojson-allowed-networks)))))
+    (testing "an explicit value wins either way"
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-all"]
+        (premium-features.tu/with-premium-features #{:hosting}
+          (is (= :allow-all (geojson.settings/geojson-allowed-networks))))))
+    (testing "an unrecognized policy is refused outright"
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-everything"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid MB_GEOJSON_ALLOWED_NETWORKS"
+                              (geojson.settings/geojson-allowed-networks)))))))
+
+(deftest geojson-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value in the setting table is ignored"
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks nil]
+      (premium-features.tu/with-premium-features #{:hosting}
+        (mt/with-temporary-raw-setting-values [geojson-allowed-networks "allow-all"]
+          (is (= :external-only (geojson.settings/geojson-allowed-networks))))))))
+
+(deftest validate-geojson-allows-private-networks-self-hosted-test
+  (testing "self-hosted, GeoJSON on the deployment's own network is a legitimate configuration"
+    (premium-features.tu/with-premium-features #{}
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks nil]
+        (doseq [url ["http://10.0.0.1/regions.geojson"
+                     "http://192.168.0.1:8080/regions.geojson"
+                     "http://172.16.4.20/regions.geojson"
+                     "http://100.64.0.1/regions.geojson"
+                     "http://[fc00::1]/regions.geojson"
+                     "https://example.com/regions.geojson"]]
+          (testing url
+            (is (valid-geojson-url? url))))
+        (testing "loopback, link-local and unresolvable hosts are still refused"
+          (doseq [url ["http://127.0.0.1/regions.geojson"
+                       "http://localhost/regions.geojson"
+                       "http://[::1]/regions.geojson"
+                       "http://169.254.169.254/latest/meta-data"
+                       "http://0xa9fea9fe/regions.geojson"
+                       "http://metadata.google.internal/regions.geojson"]]
+            (testing url
+              (is (not (valid-geojson-url? url)))))))))
+  (testing "on Cloud the same private URLs are refused"
+    (premium-features.tu/with-premium-features #{:hosting}
+      (mt/with-temp-env-var-value! [mb-geojson-allowed-networks nil]
+        (is (not (valid-geojson-url? "http://10.0.0.1/regions.geojson")))
+        (is (valid-geojson-url? "https://example.com/regions.geojson"))))))
+
+(deftest validate-geojson-allow-all-test
+  (testing "allow-all imposes no host restriction"
+    (mt/with-temp-env-var-value! [mb-geojson-allowed-networks "allow-all"]
+      (doseq [url ["http://127.0.0.1:8899/regions.geojson"
+                   "http://geo.invalid/regions.geojson"]]
+        (testing url
+          (is (valid-geojson-url? url))))
+      (testing "the scheme is still checked"
+        (is (not (valid-geojson-url? "file:///etc/passwd")))
+        (is (not (valid-geojson-url? "ftp://example.com/regions.geojson")))))))
 
 (deftest classpath-geojson-env-var-test
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
