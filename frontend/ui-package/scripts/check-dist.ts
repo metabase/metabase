@@ -18,6 +18,8 @@ const REQUIRED_FILES = [
   "dist/index.d.ts",
   "dist/styles.css",
   "dist/fonts.css",
+  "dist/mantine-core-LICENSE.txt",
+  "dist/mantine-dates-LICENSE.txt",
   "dist/fonts/Lato/OFL.txt",
   "dist/fonts/Lato/lato-v16-latin-regular.woff2",
   "dist/fonts/Lato/lato-v16-latin-700.woff2",

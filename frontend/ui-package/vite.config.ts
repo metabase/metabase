@@ -9,10 +9,14 @@ import {
   writeFileSync,
 } from "fs";
 import { createRequire } from "module";
-import { basename, relative, resolve } from "path";
+import { basename, dirname, relative, resolve } from "path";
 
+import type { Plugin as PostcssPlugin } from "postcss";
 import { type Plugin, defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
+
+import type SharedPostcssConfig from "../../postcss.config.js";
+import { SVGO_CONFIG } from "../build/shared/rspack/svgo-config.js";
 
 import {
   APP_ALLOWLIST,
@@ -29,19 +33,16 @@ const pkg = readPackageJson(resolve(packageDir, "package.json"));
 
 const uiDir = resolve(repoRoot, "frontend/src/metabase/ui");
 
-const { SVGO_CONFIG } = require(
-  resolve(repoRoot, "frontend/build/shared/rspack/svgo-config.js"),
-);
-
 // Resolved from @svgr/webpack (a root dependency) so the root needs no @svgr/plugin-* entries.
 const svgrRequire = createRequire(require.resolve("@svgr/webpack"));
-const svgrPlugin = (name: string) => {
-  const mod = svgrRequire(name);
-  return mod.default ?? mod;
-};
+const svgrPlugin = (name: string) => svgrRequire.resolve(name);
 
 // The root postcss.config.js lists a repo-relative file, resolved against cwd.
 process.chdir(repoRoot);
+// Load from the repo so plugin resolution uses the shared config's location.
+const postcssConfig = require(
+  resolve(repoRoot, "postcss.config.js"),
+) as typeof SharedPostcssConfig;
 
 const externalNames = [
   ...Object.keys(pkg.dependencies ?? {}),
@@ -114,6 +115,31 @@ function rejectUndeclaredBareImports(): Plugin {
   };
 }
 
+function rejectUnlistedCssImports(): PostcssPlugin {
+  return {
+    postcssPlugin: "mbui-reject-unlisted-css-imports",
+    OnceExit(_, { result }) {
+      for (const message of result.messages) {
+        const file: unknown = message.file;
+        const parent: unknown = message.parent;
+        if (
+          message.type === "dependency" &&
+          message.plugin === "postcss-import" &&
+          typeof file === "string" &&
+          isAppCodeFile(file) &&
+          !isAllowedSourceFile(file)
+        ) {
+          const importer =
+            typeof parent === "string" ? relative(repoRoot, parent) : "CSS";
+          throw new Error(
+            `${importer}: imports ${relative(repoRoot, file)}, which is app code outside the package allowlist (scripts/app-allowlist.ts)`,
+          );
+        }
+      }
+    },
+  };
+}
+
 const stripSpace = (text: string) => text.replace(/\s+/g, "");
 
 // The baseline must stay identical to what the Mantine patch removes from styles.css.
@@ -148,14 +174,18 @@ function assertBaselineMatchesPatch(baseline: string) {
 function stylesAndFonts(): Plugin {
   const dist = resolve(packageDir, "dist");
   let failed = false;
+  let write = true;
   return {
     name: "mbui-styles-and-fonts",
+    configResolved(config) {
+      write = config.build.write;
+    },
     buildEnd(error) {
       failed = Boolean(error);
     },
     closeBundle() {
       // Let the original build error surface instead of a follow-up one.
-      if (failed) {
+      if (failed || !write) {
         return;
       }
       const cssFiles = readdirSync(dist).filter((f) => f.endsWith(".css"));
@@ -191,6 +221,14 @@ function stylesAndFonts(): Plugin {
         resolve(repoRoot, "LICENSE.txt"),
         resolve(packageDir, "LICENSE.txt"),
       );
+
+      for (const name of ["core", "dates"]) {
+        const stylesPath = require.resolve(`@mantine/${name}/styles.css`);
+        copyFileSync(
+          resolve(dirname(stylesPath), "LICENSE"),
+          resolve(dist, `mantine-${name}-LICENSE.txt`),
+        );
+      }
 
       const fonts = readFileSync(resolve(packageDir, "src/fonts.css"), "utf-8");
       writeFileSync(resolve(dist, "fonts.css"), fonts);
@@ -250,8 +288,10 @@ export default defineConfig({
     "process.env.MB_LOG_CHARTS_DEBUG": "undefined",
   },
   css: {
-    // Vite only finds a postcss config in `root`, so point it at the repo's.
-    postcss: repoRoot,
+    postcss: {
+      // Use the shared PostCSS pipeline and check the dependencies it resolves.
+      plugins: [...postcssConfig.plugins, rejectUnlistedCssImports()],
+    },
     modules: { generateScopedName },
   },
   build: {

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowJs": true,
     "target": "es2022",
     "lib": ["es2023"],
     "module": "esnext",
