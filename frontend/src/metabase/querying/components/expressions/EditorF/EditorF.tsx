@@ -162,6 +162,8 @@ export type EditorFProps = {
   mode: "ai" | "code";
   /** The AI prompt, shown in the row of the code in AI mode. */
   aiInput?: ReactNode;
+  /** Why the AI couldn't answer, in a bar below the prompt, in AI mode. */
+  aiError?: string;
   /** Called on Backspace in empty code, to go back to the AI prompt. */
   onExitCode?: () => void;
 };
@@ -248,6 +250,7 @@ export function EditorF(props: EditorFProps) {
     clearRef,
     mode,
     aiInput,
+    aiError,
     onExitCode,
   } = props;
 
@@ -810,6 +813,7 @@ export function EditorF(props: EditorFProps) {
         className={cx(S.wrapper, {
           [S.formatting]: isFormatting,
           [S.inline]: inline,
+          [S.withStart]: toolbarStart != null,
         })}
       >
         {inline ? (
@@ -847,6 +851,7 @@ export function EditorF(props: EditorFProps) {
           content={sqlHint}
           inline={inline}
         />
+        <AiErrorBar error={aiError} />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
@@ -1194,4 +1199,13 @@ function getTooltipPosition(state: EditorState) {
   }
 
   return token?.start ?? pos;
+}
+
+/** Why the AI couldn't answer, in a bar below the prompt. */
+function AiErrorBar({ error }: { error?: string }) {
+  return error != null ? (
+    <div className={S.aiError} role="alert">
+      {error}
+    </div>
+  ) : null;
 }

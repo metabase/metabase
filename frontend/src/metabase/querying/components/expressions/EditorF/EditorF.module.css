@@ -10,7 +10,24 @@
 
   &.inline {
     border-bottom: none;
+    /* Where the text starts: after the mode switch (32px) and 32px more, or
+       24px from the edge without it. The error bars line up with it. */
+    --editor-text-start: var(--mantine-spacing-xl);
+
+    &.withStart {
+      --editor-text-start: 64px;
+    }
   }
+}
+
+/* Why the AI couldn't answer, in a bar below the prompt. */
+.aiError {
+  padding: 9px var(--mantine-spacing-xl) 9px var(--editor-text-start);
+  background-color: var(--mb-color-background_surface-warning);
+  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
+  color: var(--mb-color-feedback-warning-strong);
+  font-size: 12px;
+  line-height: 1.15;
 }
 
 .error {
@@ -33,6 +50,10 @@
   gap: var(--mantine-spacing-md);
   /* Version F: the mode switch is on the left edge, so no left padding. */
   padding: 0 var(--mantine-spacing-xl) 0 0;
+
+  .wrapper:not(.withStart) & {
+    padding-left: var(--mantine-spacing-xl);
+  }
 }
 
 /* Centered on the first line of the code or prompt: 22px padding + half the
@@ -43,7 +64,9 @@
   display: flex;
   flex-shrink: 0;
   align-self: stretch;
-  margin-right: 20px;
+  /* Over the panel's 0.5px border, like in the design, so that two 32px
+     cells fit a 64px editor. */
+  margin: -0.5px 20px -0.5px -0.5px;
 }
 
 .inlineToolbar {
@@ -53,13 +76,16 @@
   gap: var(--mantine-spacing-md);
   height: 24px;
   margin-top: 20px;
+  margin-left: auto;
 }
 
-/* The code, next to the toolbar. Hidden in AI mode, where the prompt shows. */
+/* The code, next to the toolbar. Hidden in AI mode, where the prompt shows.
+   At most 800px wide. */
 .code {
   display: flex;
   flex: 1;
   min-width: 0;
+  max-width: 800px;
 }
 
 .hidden {
@@ -83,7 +109,7 @@
 
     :global(.cm-editor),
     :global(.cm-content) {
-      font-size: 13px;
+      font-size: 13.5px;
       line-height: 1.6;
     }
 
@@ -93,7 +119,22 @@
       /* Version F: the row has the left padding, before the mode switch.
          2px on the left keep the cursor of empty code inside the scroller,
          which clips it; the editor's -2px margin keeps the text in place. */
-      padding: 21.5px 0 21.5px 2px;
+      /* 64px tall with one line: (63px - the 1.6 line) / 2. */
+      padding: calc((63px - 1.6em) / 2) 0 calc((63px - 1.6em) / 2) 2px;
+    }
+
+    /* The "=" before the code, like in a spreadsheet. Not part of the text. */
+    :global(.cm-codePrefix) {
+      margin-right: 1ch;
+      color: var(--mb-color-text-primary);
+    }
+
+    :global(.cm-placeholder) {
+      color: var(--mb-color-text-disabled);
+    }
+
+    .columnToken {
+      color: var(--mb-color-core-blue-saturated);
     }
 
     :global(.cm-line) {

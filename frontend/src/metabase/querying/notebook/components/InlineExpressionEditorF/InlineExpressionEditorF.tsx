@@ -11,7 +11,7 @@ import {
   isEnterForTheEditor,
 } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
-import { UnstyledButton } from "metabase/ui";
+import { Box, Icon, Loader, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { EditorF } from "../../../components/expressions/EditorF";
@@ -24,6 +24,7 @@ import type {
 import { Layout } from "../../../components/expressions/Layout";
 import type { InlineExpressionEditorProps } from "../InlineExpressionEditor";
 import { ExpressionPreview } from "../InlineExpressionEditor/ExpressionPreview";
+import { NotebookActionButton } from "../NotebookStep/NotebookActionButton";
 
 import { AiPrompt } from "./AiPrompt";
 import S from "./InlineExpressionEditorF.module.css";
@@ -328,105 +329,138 @@ export function InlineExpressionEditorF({
   };
 
   return (
-    <Layout
-      inline
-      mt="sm"
-      className={S.panel}
-      data-testid="expression-editor"
-      data-ignore-editor-clicks="true"
-      onKeyDownCapture={handleKeyDownCapture}
-    >
-      <EditorF
-        id="expression-content"
-        mode={mode}
-        aiInput={
-          <AiPrompt
-            prompt={prompt}
-            context={context}
-            isGenerating={isGenerating}
-            error={aiError}
-            onPromptChange={(prompt) => {
-              setPrompt(prompt);
-              setAiError(undefined);
-            }}
-            onSubmit={sendPrompt}
-            onEnterCode={enterCode}
-            onRemoveContext={clearContext}
-            onClose={onDiscard}
+    <div className={S.root}>
+      <div className={S.editorRow}>
+        <Layout
+          inline
+          className={S.panel}
+          data-testid="expression-editor"
+          data-ignore-editor-clicks="true"
+          onKeyDownCapture={handleKeyDownCapture}
+        >
+          <EditorF
+            id="expression-content"
+            mode={mode}
+            aiInput={
+              <AiPrompt
+                prompt={prompt}
+                context={context}
+                isGenerating={isGenerating}
+                onPromptChange={(prompt) => {
+                  setPrompt(prompt);
+                  setAiError(undefined);
+                }}
+                onSubmit={sendPrompt}
+                onEnterCode={enterCode}
+                onRemoveContext={clearContext}
+                onClose={onDiscard}
+              />
+            }
+            aiError={mode === "ai" && !isGenerating ? aiError : undefined}
+            onExitCode={canUseAi ? enterAi : undefined}
+            expressionMode={expressionMode}
+            clause={clause}
+            initialClause={clause}
+            initialSource={initialSource}
+            initialExpressionClause={initialExpressionClause}
+            onChange={handleChange}
+            onEdit={handleEdit}
+            onGenerated={showPreview}
+            query={query}
+            stageIndex={stageIndex}
+            expressionIndex={expressionIndex}
+            availableColumns={availableColumns}
+            availableMetrics={availableMetrics}
+            reportTimezone={reportTimezone}
+            error={error}
+            showErrors={isErrorShown}
+            validateRef={validateRef}
+            formatRef={formatRef}
+            generateRef={generateRef}
+            cancelGenerateRef={cancelGenerateRef}
+            focusRef={focusCodeRef}
+            clearRef={clearCodeRef}
+            readOnly={readOnly}
+            toolbarStart={
+              canUseAi ? (
+                <ModeSwitch
+                  mode={mode}
+                  disabled={isGenerating}
+                  onChange={(next) =>
+                    next === "code" ? enterCode() : enterAi()
+                  }
+                />
+              ) : undefined
+            }
+            toolbarEnd={
+              readOnly ? undefined : (
+                <div className={S.toolbar}>
+                  {isGenerating ? (
+                    <>
+                      <Loader size="sm" aria-label={t`Loading`} />
+                      <UnstyledButton
+                        className={S.textButton}
+                        onClick={cancelPrompt}
+                      >{t`Cancel`}</UnstyledButton>
+                    </>
+                  ) : (
+                    <UnstyledButton
+                      className={S.textButton}
+                      onClick={handleDone}
+                    >{t`Done`}</UnstyledButton>
+                  )}
+                </div>
+              )
+            }
+            name={name}
+            hasDefaultName={hasDefaultName}
+            onAcceptName={handleAcceptName}
+            breakouts={breakouts}
+            onAcceptBreakouts={onAcceptBreakouts}
+            inline
           />
-        }
-        onExitCode={canUseAi ? enterAi : undefined}
-        expressionMode={expressionMode}
-        clause={clause}
-        initialClause={clause}
-        initialSource={initialSource}
-        initialExpressionClause={initialExpressionClause}
-        onChange={handleChange}
-        onEdit={handleEdit}
-        onGenerated={showPreview}
-        query={query}
-        stageIndex={stageIndex}
-        expressionIndex={expressionIndex}
-        availableColumns={availableColumns}
-        availableMetrics={availableMetrics}
-        reportTimezone={reportTimezone}
-        error={error}
-        showErrors={isErrorShown}
-        validateRef={validateRef}
-        formatRef={formatRef}
-        generateRef={generateRef}
-        cancelGenerateRef={cancelGenerateRef}
-        focusRef={focusCodeRef}
-        clearRef={clearCodeRef}
-        readOnly={readOnly}
-        toolbarStart={
-          canUseAi ? (
-            <ModeSwitch
-              mode={mode}
-              disabled={isGenerating}
-              onChange={(next) => (next === "code" ? enterCode() : enterAi())}
-            />
-          ) : undefined
-        }
-        toolbarEnd={
-          readOnly ? undefined : (
-            <div className={S.toolbar}>
-              {isGenerating ? (
-                <UnstyledButton
-                  className={S.textButton}
-                  onClick={cancelPrompt}
-                >{t`Cancel`}</UnstyledButton>
-              ) : (
-                <UnstyledButton
-                  className={S.textButton}
-                  onClick={handleDone}
-                >{t`Done`}</UnstyledButton>
-              )}
-            </div>
-          )
-        }
-        name={name}
-        hasDefaultName={hasDefaultName}
-        onAcceptName={handleAcceptName}
-        breakouts={breakouts}
-        onAcceptBreakouts={onAcceptBreakouts}
-        inline
-      />
+        </Layout>
+        {previewRun == null && !readOnly && (
+          // The same button as the preview of a step.
+          <Box
+            className={S.previewButton}
+            component={NotebookActionButton}
+            icon="play"
+            title={t`Preview`}
+            color="text-disabled"
+            onClick={runPreview}
+          />
+        )}
+      </div>
 
       {previewRun != null && (
-        <ExpressionPreview
-          query={query}
-          stageIndex={stageIndex}
-          expressionMode={expressionMode}
-          expressionIndex={expressionIndex}
-          clause={previewRun.clause}
-          name={getResultName(expressionMode, previewRun.name ?? name)}
-          refreshKey={previewRefreshKey}
-          isOutdated={isPreviewOutdated}
-          runLabel={t`Update preview (Enter)`}
-          onRun={runPreview}
-        />
+        <div className={S.previewSection}>
+          <div className={S.previewHeader}>
+            <span className={S.previewTitle}>{t`Preview`}</span>
+            <UnstyledButton
+              className={S.previewClose}
+              aria-label={t`Close the preview`}
+              onClick={() => setPreviewRun(undefined)}
+            >
+              <Icon name="close" size={16} />
+            </UnstyledButton>
+          </div>
+          <div className={S.previewPlate}>
+            <ExpressionPreview
+              query={query}
+              stageIndex={stageIndex}
+              expressionMode={expressionMode}
+              expressionIndex={expressionIndex}
+              clause={previewRun.clause}
+              name={getResultName(expressionMode, previewRun.name ?? name)}
+              refreshKey={previewRefreshKey}
+              isOutdated={isPreviewOutdated}
+              runLabel={t`Update preview (Enter)`}
+              onRun={runPreview}
+            />
+          </div>
+        </div>
       )}
-    </Layout>
+    </div>
   );
 }

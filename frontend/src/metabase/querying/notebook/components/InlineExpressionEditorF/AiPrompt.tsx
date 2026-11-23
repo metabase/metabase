@@ -1,10 +1,8 @@
 import cx from "classnames";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import { Icon, Textarea, Tooltip, UnstyledButton } from "metabase/ui";
-
-import LoadingDots from "../../../components/expressions/EditorF/loading-dots.svg?component";
+import { Icon, Textarea, UnstyledButton } from "metabase/ui";
 
 import S from "./InlineExpressionEditorF.module.css";
 
@@ -13,7 +11,6 @@ type AiPromptProps = {
   /** The current expression, sent to the AI as the thing to change. */
   context: string | null;
   isGenerating: boolean;
-  error?: string;
   onPromptChange: (prompt: string) => void;
   onSubmit: () => void;
   /** "=" in an empty prompt: write the expression by hand instead. */
@@ -30,7 +27,6 @@ export function AiPrompt({
   prompt,
   context,
   isGenerating,
-  error,
   onPromptChange,
   onSubmit,
   onEnterCode,
@@ -63,9 +59,6 @@ export function AiPrompt({
   return (
     <div className={S.ai}>
       <div className={S.promptRow}>
-        {isGenerating && (
-          <LoadingDots className={S.loadingDots} aria-label={t`Loading`} />
-        )}
         <div className={S.promptField}>
           <Textarea
             variant="unstyled"
@@ -87,23 +80,35 @@ export function AiPrompt({
           />
           {prompt === "" && (
             <div className={S.placeholder} aria-hidden>
-              {t`Ask AI`}
+              {context != null
+                ? jt`Ask AI, or press ${(
+                    <kbd key="key" className={S.key}>
+                      =
+                    </kbd>
+                  )} to edit the expression`
+                : jt`Ask AI, or press ${(
+                    <kbd key="key" className={S.key}>
+                      =
+                    </kbd>
+                  )} to write an expression`}
             </div>
           )}
         </div>
       </div>
-      {error != null && !isGenerating && <div className={S.error}>{error}</div>}
       {context != null && (
-        <div className={S.context}>
-          <Tooltip label={context} maw={480}>
-            <span className={S.contextCode}>{context}</span>
-          </Tooltip>
+        // A double-click opens the expression in code mode.
+        <div
+          className={cx(S.context, { [S.isDisabled]: isGenerating })}
+          onDoubleClick={isGenerating ? undefined : onEnterCode}
+        >
+          <span className={S.contextCode}>= {context}</span>
           <UnstyledButton
             className={S.contextRemove}
             aria-label={t`Remove the expression`}
+            disabled={isGenerating}
             onClick={onRemoveContext}
           >
-            <Icon name="close" size={10} />
+            <Icon name="close" size={12} />
           </UnstyledButton>
         </div>
       )}

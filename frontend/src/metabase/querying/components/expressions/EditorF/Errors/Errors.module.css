@@ -24,11 +24,12 @@
 .inline {
   display: flex;
   align-items: baseline;
-  gap: var(--mantine-spacing-md);
-  min-height: 40px;
-  padding: 12px var(--mantine-spacing-xl);
-  background-color: var(--mb-color-background_surface-primary);
-  box-shadow: inset 0 0.5px 0 0 var(--mb-color-border-neutral-strong);
+  gap: 16px;
+  min-height: 32px;
+  padding: 9px var(--mantine-spacing-xl) 9px
+    var(--editor-text-start, var(--mantine-spacing-xl));
+  background-color: var(--mb-color-background_surface-warning);
+  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
   font-size: 12px;
   line-height: 1.15;
 

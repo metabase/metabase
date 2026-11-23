@@ -297,8 +297,8 @@ export function ExpressionPreview({
     >
       <div className={S.body}>
         {shown == null ? (
-          <div className={S.message}>
-            <Loader size="sm" />
+          <div className={S.loading}>
+            <Loader size="xl" />
           </div>
         ) : shown.errorMessage != null ? (
           <Text c="feedback-negative" fz="sm" className={S.message}>

@@ -1,5 +1,7 @@
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
 import { useMemo } from "react";
 
 import {
@@ -82,6 +84,12 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      // Columns in the darker blue of the design.
+      syntaxHighlighting(
+        HighlightStyle.define([
+          { tag: tags.processingInstruction, class: S.columnToken },
+        ]),
+      ),
       expressionEditing(),
       functionArgumentPlaceholders(),
       expressionTemplates({ activeClassName: S.templateActive }),

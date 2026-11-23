@@ -3,9 +3,8 @@ import { t } from "ttag";
 import { Tooltip, UnstyledButton } from "metabase/ui";
 
 import S from "./InlineExpressionEditorF.module.css";
+import AiIcon from "./ai-icon.svg?component";
 import FunctionIcon from "./function.svg?component";
-import SparkleFilledIcon from "./sparkle-filled.svg?component";
-import SparkleIcon from "./sparkle.svg?component";
 
 type Mode = "ai" | "code";
 
@@ -24,7 +23,7 @@ export function ModeSwitch({ mode, disabled, onChange }: ModeSwitchProps) {
     {
       value: "ai" as const,
       label: t`Ask AI`,
-      icon: mode === "ai" ? <SparkleFilledIcon /> : <SparkleIcon />,
+      icon: <AiIcon />,
     },
     {
       value: "code" as const,

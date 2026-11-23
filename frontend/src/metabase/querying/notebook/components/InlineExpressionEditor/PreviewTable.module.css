@@ -25,9 +25,6 @@
   th& {
     background-color: var(--mb-color-background_page-secondary);
     font-weight: bold;
-    box-shadow:
-      inset 0 0.5px 0 rgba(0, 0, 0, 0.15),
-      inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
   }
 
   tbody tr:last-child & {

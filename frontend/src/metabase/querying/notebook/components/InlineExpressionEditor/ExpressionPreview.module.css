@@ -1,8 +1,6 @@
-/* Between the code and the footer of the editor layout. */
+/* In the box of the preview, below the editor. */
 .preview {
   position: relative;
-  grid-row: 3;
-  grid-column: 1;
   min-width: 0;
 }
 
@@ -11,10 +9,17 @@
   opacity: 0.5;
 }
 
+/* The first run, before there are rows: a spinner in the middle of the box. */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xl);
+}
+
 /* A message in place of the table. */
 .message {
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
 }
 
 /* Runs an outdated preview again. It sits on the middle of the faded rows. */
