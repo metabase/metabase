@@ -1930,9 +1930,12 @@
              verified)))))
 
 (defn- invalidate-cached-results-of-changed-cards!
-  "Invalidates the cached results of each Card among `entries`, whether or not its update changes anything."
+  "Invalidates the cached results of each Card among `entries` that its change changes."
   [entries]
-  (when-let [ids (not-empty (into [] (map (comp :id :before)) entries))]
+  (when-let [ids (not-empty (into []
+                                  (comp (filter (comp seq :changes))
+                                        (map (comp :id :before)))
+                                  entries))]
     (cache-config/invalidate! {:questions ids :with-overrides? true})))
 
 (defn- notifications-of-changing-cards
