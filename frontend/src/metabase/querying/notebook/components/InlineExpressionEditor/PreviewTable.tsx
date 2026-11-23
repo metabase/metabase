@@ -1,8 +1,15 @@
 import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 
+import {
+  BodyCell,
+  type CellAlign,
+  HeaderCellPill,
+  HeaderCellWrapper,
+} from "metabase/data-grid";
 import { formatValue } from "metabase/value-formatting";
 import { getComputedSettingsForSeries } from "metabase/viz-core";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, RawSeries, RowValues } from "metabase-types/api";
 
 import S from "./PreviewTable.module.css";
@@ -20,8 +27,10 @@ type PreviewTableProps = {
 };
 
 /**
- * A plain table of the sample rows. The last column is the result of the
- * expression. The values have the same format as in a table question.
+ * A plain table of the sample rows, with the header and body cells of the
+ * data grid. The last column is the result of the expression. The values have
+ * the same format and alignment as in a table question, and keys show as
+ * pills.
  */
 export function PreviewTable({
   rawSeries,
@@ -41,6 +50,9 @@ export function PreviewTable({
         const columnSettings = settings.column?.(col) ?? { column: col };
         return {
           title: columnSettings._column_title_full || col.display_name,
+          align: getAlign(columnSettings["text_align"]),
+          variant:
+            isPK(col) || isFK(col) ? ("pill" as const) : ("text" as const),
           format: (value: RowValues[number]) =>
             value == null
               ? null
@@ -60,7 +72,6 @@ export function PreviewTable({
   const contextStart = hasKey ? 1 : 0;
   const cellClassName = (index: number) =>
     cx(S.cell, {
-      [S.key]: hasKey && index === 0,
       [S.context]: index >= contextStart && index < contextStart + contextCount,
       [S.result]: index === resultIndex,
     });
@@ -71,10 +82,13 @@ export function PreviewTable({
         <thead>
           <tr>
             {columns.map((column, index) => (
-              <th key={index} className={cellClassName(index)}>
-                <div className={S.value}>{column.title}</div>
+              <th key={index} className={cx(cellClassName(index), S.header)}>
+                <HeaderCellWrapper align={column.align}>
+                  <HeaderCellPill name={column.title} align={column.align} />
+                </HeaderCellWrapper>
               </th>
             ))}
+            <th className={cx(S.filler, S.header)} />
           </tr>
         </thead>
         <tbody>
@@ -82,17 +96,30 @@ export function PreviewTable({
             <tr key={rowIndex}>
               {row.map((value, index) => (
                 <td key={index} className={cellClassName(index)}>
-                  <div className={S.value}>
-                    {renderResult != null && index === resultIndex
-                      ? renderResult(value)
-                      : columns[index].format(value)}
-                  </div>
+                  <BodyCell
+                    className={S.bodyCell}
+                    value={value}
+                    columnId={String(index)}
+                    rowIndex={rowIndex}
+                    align={columns[index].align}
+                    variant={columns[index].variant}
+                    formatter={(value) =>
+                      renderResult != null && index === resultIndex
+                        ? renderResult(value)
+                        : columns[index].format(value)
+                    }
+                  />
                 </td>
               ))}
+              <td className={S.filler} />
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function getAlign(value: unknown): CellAlign {
+  return value === "right" || value === "middle" ? value : "left";
 }

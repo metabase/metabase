@@ -1,69 +1,59 @@
+/* The font size of the data grid. */
 .container {
   overflow-x: auto;
+  font-size: 12.5px;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
   background-color: var(--mb-color-background_surface-primary);
-  font-size: 12px;
-  line-height: 1.15;
+  color: var(--mb-color-text-primary);
 }
 
+/* The cells of the data grid fill the table cells: 36px rows, and a 37px
+   header with a line below it. */
 .cell {
-  padding: 13px 32px 13px 0;
-  color: var(--mb-color-text-primary);
-  font-weight: normal;
-  text-align: left;
+  height: 36px;
+  max-width: 320px;
+  padding: 0;
   white-space: nowrap;
-  box-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
+}
 
-  &:first-child {
-    padding-left: 24px;
+.header {
+  height: 37px;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+  font-weight: normal;
+
+  /* The header pill of the data grid, as plain text: the preview can't be
+     sorted. */
+  [data-grid-header-cell-content] {
+    background-color: transparent;
+    cursor: default;
   }
+}
 
-  th& {
-    background-color: var(--mb-color-background_page-secondary);
-    font-weight: bold;
+/* Rows can't be clicked here, so no pointer and no hover color. */
+.bodyCell.bodyCell {
+  cursor: default;
+
+  &:hover {
+    background-color: transparent;
   }
 
   tbody tr:last-child & {
-    box-shadow: none;
-  }
-}
-
-.value {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The primary key of the row. */
-.key {
-  td& {
-    color: var(--mb-color-text-disabled);
-    font-family: var(--mb-default-monospace-font-family);
-  }
-
-  /* The monospace font sits higher than the text next to it. */
-  td& .value {
-    transform: translateY(1px);
+    border-bottom: none;
   }
 }
 
 /* A column that tells what the row is about. The expression does not use it. */
-.context {
-  td& {
-    color: var(--mb-color-text-secondary);
-  }
+.context .bodyCell {
+  color: var(--mb-color-text-secondary);
 }
 
-/* The result of the expression, after a dashed line. It takes the rest of
-   the width. */
+/* The result of the expression, after a dashed line. */
 .result {
   position: relative;
-  width: 100%;
-  padding-left: 32px;
 
   &::before {
     content: "";
@@ -77,5 +67,17 @@
       var(--mb-color-border-neutral-strong) 0 1px,
       transparent 1px 3px
     );
+  }
+}
+
+/* The rest of the width, after the result, so that a right-aligned result
+   stays next to the other columns. It has the row lines of the cells. */
+.filler {
+  width: 100%;
+  padding: 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+
+  tbody tr:last-child & {
+    border-bottom: none;
   }
 }
