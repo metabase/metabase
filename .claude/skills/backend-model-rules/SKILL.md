@@ -66,14 +66,9 @@ Three layers, and a rule goes to the lowest one that can hold it:
        changes held an expression.
      - What stays in Clojure: values from lib or the query processor, parsing, humanized names, encryption and hashing
        (from the incoming changes alone, so already uniform).
-  2. A write function that updates several rows makes each `t2/update!` uniform itself, also without any derivation:
-     an update of two or more columns over rows in mixed state (row A already holds one of the new values) splits
-     too. It computes each row's changes against the stored rows it holds, adds the row-dependent derivations there,
-     and groups the ids: `(mi/group-ids-by-changes stored rows)` gives `[[changes ids] ...]`, one statement each; the
-     groups are bounded by combinations of columns, not by rows. A value that differs for every row is a hook
-     expression (rule 1), not a group per row.
-     Drop a key as unchanged only against the row as STORED: where after-select rewrites columns (Card's schema
-     upgrade), the row the function holds is not the stored one, and the columns written in lockstep stay.
+  2. A write function does not group rows by their stored state: `app-db/update-grouped!` writes one statement per
+     distinct change map the caller asked for, and Toucan may still write rows in mixed stored state apart. That
+     cost is accepted for now. A value that differs for every row is a hook expression (rule 1).
   In dev and test a guard in `metabase.models.interface` throws when the rows of one update end with different changes,
   before any UPDATE runs. Test a write function with rows that differ in stored state, not only uniform rows.
 - No `after-insert` and no `after-update` hook: Toucan reads the written rows back for a model that has one, and a
@@ -233,7 +228,7 @@ the Document's function calls `create-cards!` / `update-cards!`.
   `events/touch-event` (before = after).
 - Create and update events go after the function's statements. The delete event goes right before the delete
   statement, since consumers (search, the change log) read what the delete cascades to at that moment:
-  `(events/publish-event! :event/segment-delete (events/delete-event segments))`, then `segments.db/delete-segments!`.
+  a `:before-delete` of `(events/publish-event! :event/segment-delete (events/delete-event segments))`.
 - A consumer is an ordinary `publish-event!` method on a key it derives; a consumer of every lifecycle topic derives
   its key from `:metabase/lifecycle-event`. It answers the whole list with statements that do not grow with it.
 ```clojure
