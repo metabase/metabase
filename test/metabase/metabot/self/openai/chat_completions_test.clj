@@ -163,7 +163,7 @@
              [{:type :tool-output :id "call-1" :result {:output "Found 42 results"}}])))))
 
 (deftest ^:parallel parts->cc-messages-tool-result-without-output-test
-  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+  (testing "a result without :output sends empty text and none of its other keys"
     (is (= [{:role "tool" :tool_call_id "call-1" :content ""}]
            (chat-completions/parts->cc-messages
             [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))

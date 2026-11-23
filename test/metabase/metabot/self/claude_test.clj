@@ -557,11 +557,7 @@
                         :content     "<card/>"}]}]
            (claude/parts->claude-messages
             [{:type :tool-output :id "call-1" :result {:output "<card/>"}}]))))
-  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
-    ;; This case and the same cases of the other three adapters check only the text that is sent. All four
-    ;; adapters get that text from `metabase.metabot.self.core/tool-result-text`. The test that history replays
-    ;; the same text comes in https://github.com/metabase/metabase/pull/87321. When it is merged, remove this
-    ;; comment or update it.
+  (testing "a result without :output sends empty text and none of its other keys"
     (is (= [{:role    "user"
              :content [{:type "tool_result" :tool_use_id "call-1" :content ""}]}]
            (claude/parts->claude-messages

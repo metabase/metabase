@@ -363,7 +363,7 @@
               :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->openai-input-tool-result-without-output-test
-  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+  (testing "a result without :output sends empty text and none of its other keys"
     (is (= [{:type "function_call_output" :call_id "call-1" :output ""}]
            (openai/parts->openai-input
             [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))

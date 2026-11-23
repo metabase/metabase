@@ -116,7 +116,7 @@
                        :error  {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->contents-tool-result-without-output-key-test
-  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+  (testing "a result without :output sends empty text and none of its other keys"
     (doseq [part [{:type :tool-output :id "call-1" :function "search" :result {:rows [1 2]}}
                   {:type :tool-output :id "call-1" :function "search"}]]
       (is (= [{:role  "user"

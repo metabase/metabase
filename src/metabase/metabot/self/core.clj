@@ -640,12 +640,15 @@
         parts))
 
 (defn tool-result-text
-  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part: its `:output`. The
-  other keys of the result, such as `:structured-output` and `:data-parts`, do not go to the model.
+  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part.
 
-  `ToolResult` requires `:output`, but in production an invalid input is only logged. A map result without `:output`
-  is then sent as empty text. That is also what [[metabase.metabot.persistence/history]] replays for it, so the next
-  turn's request still starts with the bytes that this turn sent."
+  The text is the result's `:output`. The other keys of the result, such as `:structured-output` and `:data-parts`,
+  do not go to the model.
+
+  `ToolResult` requires `:output`, but production does not check it: `mu/defn` validates its schemas only in dev and
+  test. So in production a map result without `:output` can get here, and it is sent as empty text. That is also what
+  [[metabase.metabot.persistence/history]] replays for it, so the next turn's request still starts with the bytes
+  that this turn sent."
   [result]
   ;; A result that is not a map also gets empty text, but history replays its printed value. So the next turn's
   ;; bytes are different. A failed result without `:output` also gets empty text. The Claude adapter then sends an

@@ -494,7 +494,8 @@
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
   calls and gets assistant text from its own thread copy).
-  While query execution is off, a stored query result is replaced with a note that it is hidden."
+  While query execution is off, a stored query result is replaced with a note that it is hidden.
+  The result of a failed (`output-error`) call has `:is_error true`."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
@@ -514,9 +515,12 @@
                          :arguments (if (string? input)
                                       input
                                       (json/encode (or input {})))}]}
-          {:role         :tool
-           :tool_call_id toolCallId
-           :content      content}])))))
+          (cond-> {:role         :tool
+                   :tool_call_id toolCallId
+                   :content      content}
+            ;; The adapters mark a failed result as they marked it in the turn that failed, so the next
+            ;; turn's request starts with the bytes that this turn sent.
+            (= "output-error" state) (assoc :is_error true))])))))
 
 (defn- message-text
   [{:keys [data]}]
