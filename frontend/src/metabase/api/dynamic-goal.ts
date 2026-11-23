@@ -9,9 +9,24 @@ import type {
 
 import { Api } from "./api";
 
+type SignedInGoalSourceResultsRequest = Extract<
+  GoalSourceResultsRequest,
+  { type: "signed-in" }
+>;
+
 type GoalSourceResultsQuery =
-  | { method: "GET"; url: string }
-  | { method: "POST"; url: string; body: unknown };
+  | {
+      method: "GET";
+      url: string;
+    }
+  | {
+      method: "POST";
+      url: string;
+      body: Pick<
+        SignedInGoalSourceResultsRequest,
+        "sources" | "dashboard_id" | "ignore_cache"
+      >;
+    };
 
 export const dynamicGoalApi = Api.injectEndpoints({
   endpoints: (builder) => ({
