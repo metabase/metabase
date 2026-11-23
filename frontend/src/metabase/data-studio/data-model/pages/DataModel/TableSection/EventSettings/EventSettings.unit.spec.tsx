@@ -41,6 +41,14 @@ const TABLE = createMockTable({
       base_type: "type/Text",
       effective_type: "type/Text",
     }),
+    createMockField({
+      id: 5,
+      name: "email",
+      display_name: "Email",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      visibility_type: "sensitive",
+    }),
   ],
 });
 
@@ -131,6 +139,18 @@ describe("EventSettings", () => {
         (option) => option.textContent,
       ),
     ).toEqual(["Created At"]);
+  });
+
+  it("doesn't offer sensitive columns", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Person" }));
+
+    expect(
+      (await screen.findAllByRole("option")).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["Created At", "User ID", "Event", "Session ID"]);
   });
 
   it("saves a picked column and keeps the other roles", async () => {
@@ -225,6 +245,19 @@ describe("EventSettings", () => {
     expect(
       screen.queryByText(/is ready for product analysis/),
     ).not.toBeInTheDocument();
+  });
+
+  it("asks for the required columns when one is sensitive", () => {
+    setup({
+      eventSettings: { ...SET_UP_SETTINGS, "columns.person": "email" },
+    });
+
+    expect(screen.getByRole("textbox", { name: "Person" })).toHaveValue("");
+    expect(
+      screen.getByText(
+        "Pick the required columns to make this table available in product analysis.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("says the table is ready once it's set up", () => {
