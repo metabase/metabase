@@ -11,7 +11,6 @@
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
@@ -223,15 +222,14 @@
                                         {:keyword_queries ["orders"], :database_id (mt/id)}]]]
     (testing retriever
       (let [opts (atom nil)]
-        (with-redefs [metabot.search/search (fn [search-opts] (reset! opts search-opts) [])]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [search-opts] (reset! opts search-opts) [])]
           (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
                                                       {:retriever retriever, :arguments arguments})))))
         (is (= types (vec (:entity-types @opts))))
         (is (= ["orders"] (:term-queries @opts)))))))
 
 (deftest metabot-retrieve-reports-a-failed-call-test
-  (with-redefs [#_{:clj-kondo/ignore [:discouraged-var]}
-                entity-retrieval/search-unfiltered (constantly :unavailable)]
+  (mt/with-premium-features #{}
     (is (= "Library search is unavailable."
            (re-find #"Library search is unavailable\."
                     (str (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
