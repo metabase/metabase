@@ -195,7 +195,12 @@
                          :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
                          :owner_email :is_published :description_set :visibility_type_set :data_layer_set
                          :data_source_set]
-   :skip                [:caveats_set :points_of_interest_set]
+   :skip                [:caveats_set :points_of_interest_set
+                         ;; structural metadata
+                         :table_role :grain :grain_description :period_granularity :mutability :load_strategy
+                         :scd_type :history_definition :eav_definition :history_definition_set
+                         :eav_definition_set :period_granularity_set :table_role_set :grain_set
+                         :grain_description_set :mutability_set :load_strategy_set :scd_type_set]
    :defaults            {:description_set     false
                          :visibility_type_set false
                          :data_layer_set      false

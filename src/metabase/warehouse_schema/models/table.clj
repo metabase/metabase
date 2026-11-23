@@ -557,7 +557,9 @@
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :collection_id :is_published :transform_id :transform_target]
+           :owner_user_id :collection_id :is_published :transform_id :transform_target :table_role :grain
+           :grain_description :period_granularity :mutability :load_strategy :scd_type :history_definition
+           :eav_definition]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
@@ -568,7 +570,10 @@
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
                          :owner_email :is_published]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper]
+                         :is_defective_duplicate :unique_table_helper
+                         ;; structural metadata
+                         :table_role :grain :grain_description :period_granularity :mutability :load_strategy
+                         :scd_type :history_definition :eav_definition]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
@@ -585,11 +590,12 @@
 (defmethod audit/spec :model/Table [_model]
   {:track          [:id :name :db_id]
    :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
-                    :database_require_filter :deactivated_at :description :display_name :entity_type
-                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
-                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
-                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
-                    :visibility_type]
+                    :database_require_filter :deactivated_at :description :display_name :eav_definition
+                    :entity_type :estimated_row_count :field_order :grain :grain_description :history_definition
+                    :initial_sync_status :is_defective_duplicate :is_published :is_upload :is_writable
+                    :load_strategy :mutability :owner_email :owner_user_id :period_granularity :points_of_interest
+                    :scd_type :schema :show_in_getting_started :table_role :transform_id :transform_target
+                    :unique_table_helper :visibility_type]
    :skip           [:view_count]
    :topics         {}
    :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?

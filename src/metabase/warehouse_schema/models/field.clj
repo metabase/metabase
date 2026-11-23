@@ -477,7 +477,8 @@
            :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
            :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
            :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
-           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity
+           :is_grain :attribute_scd_type :facets]
    :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
            :is_defective_duplicate :unique_field_helper]})
 
@@ -491,7 +492,9 @@
                    :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
                    :settings :visibility_type]
    :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-                   :is_defective_duplicate :unique_field_helper]
+                   :is_defective_duplicate :unique_field_helper
+                   ;; structural metadata
+                   :is_grain :attribute_scd_type :facets]
    :children      {:dimensions :model/Dimension}
    :transform     {:table_id           serialization/table-transform
                    :fk_target_field_id serialization/field-transform

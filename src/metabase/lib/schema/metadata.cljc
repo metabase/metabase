@@ -576,6 +576,10 @@
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
+   ;; structural metadata, as stored: `facets` is the raw JSON string
+   [:is-grain                   {:optional true} [:maybe :boolean]]
+   [:attribute-scd-type         {:optional true} [:maybe :int]]
+   [:facets                     {:optional true} [:maybe :string]]
    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
    [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
