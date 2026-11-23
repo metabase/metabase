@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { render, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { Field } from "metabase-types/api";
@@ -73,6 +75,74 @@ describe("DatasetMetadataStrengthIndicator", () => {
         expect(screen.getByTestId("indicator")).toBeInTheDocument();
         expect(screen.getByText(completenessPercent)).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("tooltip", () => {
+    // 9 columns, like the Orders table: 3 points each for a friendly name, a
+    // description and a column type
+    const createColumns = (count: number, opts: Partial<Field>): Field[] =>
+      Array.from({ length: count }, (_, index) =>
+        createMockField({ name: `COLUMN_${index}`, ...opts }),
+      );
+
+    it("says that some columns miss metadata when most of it is there", async () => {
+      setup({
+        resultMetadata: [
+          ...createColumns(6, {
+            display_name: "Total",
+            description: "A description",
+            semantic_type: "type/Category",
+          }),
+          ...createColumns(3, {
+            display_name: "Subtotal",
+            description: "A description",
+            semantic_type: null,
+          }),
+        ],
+      });
+
+      await userEvent.hover(screen.getByText("89%"));
+
+      const tooltip = await screen.findByTestId("tooltip-content");
+      expect(tooltip).toHaveTextContent(
+        "Some columns are missing a column type, description, or friendly name.",
+      );
+      expect(tooltip).toHaveTextContent(
+        "Adding metadata makes it easier for your team to explore this data.",
+      );
+    });
+
+    it("says that most columns miss metadata when little of it is there", async () => {
+      setup({
+        resultMetadata: [
+          ...createColumns(4, {
+            display_name: "TOTAL",
+            description: null,
+            semantic_type: "type/Category",
+          }),
+          ...createColumns(2, {
+            display_name: "TAX",
+            description: null,
+            semantic_type: null,
+          }),
+          ...createColumns(3, {
+            display_name: "USER_ID",
+            description: null,
+            semantic_type: null,
+          }),
+        ],
+      });
+
+      await userEvent.hover(screen.getByText("37%"));
+
+      const tooltip = await screen.findByTestId("tooltip-content");
+      expect(tooltip).toHaveTextContent(
+        "Most columns are missing a column type, description, or friendly name.",
+      );
+      expect(tooltip).toHaveTextContent(
+        "Adding metadata makes it easier for your team to explore this data.",
+      );
     });
   });
 });
