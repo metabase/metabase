@@ -4,7 +4,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]))
 
@@ -132,3 +135,21 @@
           (is (= [[100]]
                  (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
                                                 (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"}))))))))))
+
+(deftest stats-query-sandbox-test
+  (testing "POST /api/dataset/stats returns the same sandboxed rows as POST /api/dataset"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {"price" [:dimension [:field (mt/id :venues :price) nil]]}}}
+                      :attributes {"price" "1"}}
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            price (m/find-first #(= "PRICE" (:name %)) (lib/breakoutable-columns query))
+            query (-> query
+                      (lib/aggregate (lib/count))
+                      (lib/breakout price)
+                      (dissoc :lib/metadata))
+            rows  (fn [route]
+                    (mt/rows (mt/user-http-request :rasta :post 202 route query)))]
+        (is (= [[1 22]]
+               (rows "dataset/stats")))
+        (is (= (rows "dataset")
+               (rows "dataset/stats")))))))

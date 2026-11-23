@@ -16624,7 +16624,7 @@
       },
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ],
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration", "filter-stats" ],
         "type" : "string"
       },
       "metabase.lib.schema.info.hash" : {
@@ -44230,6 +44230,42 @@
           }
         },
         "summary" : "POST /api/dataset/query_metadata",
+        "tags" : [ "/api/dataset" ]
+      }
+    },
+    "/api/dataset/stats" : {
+      "post" : {
+        "description" : "Run a stats query the same way as `POST /api/dataset`: the same body, the same response format and the same\n  permissions. Does not use the cache. Records the run with the `filter-stats` context, and does not count it as a\n  view of its source table or card.",
+        "operationId" : "post-api-dataset-stats",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-internal-query"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/dataset/stats",
         "tags" : [ "/api/dataset" ]
       }
     },

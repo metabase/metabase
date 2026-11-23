@@ -453,6 +453,137 @@
                       (mt/user-http-request :rasta :post "dataset"
                                             (mt/mbql-query venues {:limit 1})))))))))
 
+(defn- count-by-price-query
+  "A count of rows by price, on the venues table or on the Card with `card-id`."
+  ([]
+   (let [mp (mt/metadata-provider)]
+     (count-by-price-query mp (lib.metadata/table mp (mt/id :venues)))))
+  ([card-id]
+   (let [mp (mt/metadata-provider)]
+     (count-by-price-query mp (lib.metadata/card mp card-id))))
+  ([mp source]
+   (let [query (lib/query mp source)
+         price (m/find-first #(= "PRICE" (:name %)) (lib/breakoutable-columns query))]
+     (-> query
+         (lib/aggregate (lib/count))
+         (lib/breakout price)
+         (dissoc :lib/metadata)))))
+
+(defn- venues-model []
+  (let [mp (mt/metadata-provider)]
+    (mt/card-with-metadata {:type          :model
+                            :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+
+(defn- query-execution [query context]
+  (t2/select-one :model/QueryExecution
+                 :hash    (qp.util/query-hash query)
+                 :context context
+                 {:order-by [[:started_at :desc]]}))
+
+(defn- result-data [response]
+  {:status    (:status response)
+   :row_count (:row_count response)
+   :rows      (get-in response [:data :rows])
+   :cols      (get-in response [:data :cols])})
+
+(deftest stats-query-test
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (let [query    (count-by-price-query)
+          expected (mt/user-http-request :rasta :post 202 "dataset" query)
+          stats    (mt/user-http-request :rasta :post 202 "dataset/stats" query)]
+      (testing "POST /api/dataset/stats returns the same result as POST /api/dataset"
+        (is (= [[1 22] [2 59] [3 13] [4 6]]
+               (get-in stats [:data :rows])))
+        (is (= (result-data expected)
+               (result-data stats))))
+      (testing "POST /api/dataset/stats records the run with the filter-stats context"
+        (is (= "filter-stats" (:context stats)))
+        (is (=? {:executor_id (mt/user->id :rasta)
+                 :card_id     nil
+                 :error       nil}
+                (query-execution query :filter-stats)))))))
+
+(deftest stats-query-permissions-test
+  (doseq [route ["dataset" "dataset/stats"]]
+    (testing (str "POST /api/" route " checks the data permissions")
+      (testing "with permissions for another table only"
+        (mt/with-temp-copy-of-db
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :categories)
+                                         :perms/create-queries :query-builder)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (is (malli= [:map
+                         [:status [:= "failed"]]
+                         [:error  [:= "You do not have permissions to run this query."]]]
+                        (mt/user-http-request :rasta :post route (count-by-price-query)))))))
+      (testing "with blocked view-data permissions (OSS)"
+        (mt/with-premium-features #{}
+          (mt/with-temp-copy-of-db
+            (mt/with-no-data-perms-for-all-users!
+              (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+              (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+              (is (malli= [:map
+                           [:status [:= "failed"]]
+                           [:error  [:= "You do not have permissions to run this query."]]]
+                          (mt/user-http-request :rasta :post route (count-by-price-query)))))))))
+    (testing (str "POST /api/" route " checks the read permission on a source model")
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Card       {card-id :id}       (assoc (venues-model) :collection_id collection-id)]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 route (count-by-price-query card-id)))))))))
+
+(deftest stats-query-on-table-adds-no-view-test
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-model-cleanup [:model/RecentViews :model/ViewLog]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:view_count 0}
+        (let [query      (count-by-price-query)
+              user-id    (mt/user->id :crowberto)
+              view-count #(t2/select-one-fn :view_count :model/Table :id (mt/id :venues))
+              recent?    #(t2/exists? :model/RecentViews :user_id user-id :model "table" :model_id (mt/id :venues))]
+          (t2/delete! :model/RecentViews :user_id user-id)
+          (testing "POST /api/dataset/stats on a table adds no table view and no recent item"
+            (mt/user-http-request :crowberto :post 202 "dataset/stats" query)
+            (is (= 0 (view-count)))
+            (is (not (recent?))))
+          (testing "POST /api/dataset adds both for the same query"
+            (mt/user-http-request :crowberto :post 202 "dataset" query)
+            (is (= 1 (view-count)))
+            (is (recent?))))))))
+
+(deftest stats-query-on-model-is-not-a-card-run-test
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-model-cleanup [:model/RecentViews :model/ViewLog]
+      (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+        (let [query      (count-by-price-query card-id)
+              user-id    (mt/user->id :crowberto)
+              view-count #(t2/select-one-fn :view_count :model/Card :id card-id)
+              recent?    #(t2/exists? :model/RecentViews :user_id user-id :model "card" :model_id card-id)]
+          (testing "POST /api/dataset/stats on a model records no card, and adds no card view and no recent item"
+            (mt/user-http-request :crowberto :post 202 "dataset/stats" query)
+            (is (=? {:card_id nil} (query-execution query :filter-stats)))
+            (is (= 0 (view-count)))
+            (is (not (recent?))))
+          (testing "POST /api/dataset records the card, and adds both for the same query"
+            (mt/user-http-request :crowberto :post 202 "dataset" query)
+            (is (=? {:card_id card-id} (query-execution query :ad-hoc)))
+            (is (= 1 (view-count)))
+            (is (recent?))))))))
+
+(deftest stats-query-on-model-keeps-model-metadata-test
+  (testing "POST /api/dataset/stats returns the column display names from the metadata of a model"
+    (let [model (update (venues-model) :result_metadata
+                        (partial mapv #(cond-> % (= "PRICE" (:name %)) (assoc :display_name "Bird price"))))]
+      (mt/with-temp [:model/Card {card-id :id} model]
+        (let [query         (count-by-price-query card-id)
+              display-names (fn [route]
+                              (->> (mt/user-http-request :crowberto :post 202 route query)
+                                   :data :cols (map :display_name)))]
+          (is (= ["Bird price" "Count"]
+                 (display-names "dataset/stats")))
+          (is (= (display-names "dataset")
+                 (display-names "dataset/stats"))))))))
+
 (deftest api-card-join-permissions-test
   (testing "POST /api/dataset should error for card join permission violations"
     (mt/with-non-admin-groups-no-root-collection-perms

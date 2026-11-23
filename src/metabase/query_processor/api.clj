@@ -61,19 +61,23 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
-   & {:keys [context export-format was-pivot]
-      :or   {context       :ad-hoc
-             export-format :api}}
+   & {:keys [context export-format was-pivot publish-table-read? record-source-card?]
+      :or   {context             :ad-hoc
+             export-format       :api
+             publish-table-read? true
+             record-source-card? true}}
    :- [:maybe [:map {:closed true}
-               [:context       {:optional true} ::lib.schema.info/context]
-               [:export-format {:optional true} ::qp.schema/export-format]
-               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
+               [:context             {:optional true} ::lib.schema.info/context]
+               [:export-format       {:optional true} ::qp.schema/export-format]
+               [:was-pivot           {:optional true} [:maybe :boolean]]
+               [:publish-table-read? {:optional true} :boolean]
+               [:record-source-card? {:optional true} :boolean]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/primary-source-table-id query))]
-      (when (int? table-id)
+      (when (and publish-table-read? (int? table-id))
         (events/publish-event! :event/table-read {:object  (query-processor.db/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
@@ -83,7 +87,9 @@
                            (queries/card-query-info source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
-                                  :card-id     source-card-id}
+                                  ;; `query->source-card-id` has already done the read check, so leaving `:card-id` out
+                                  ;; changes only what the QueryExecution row records.
+                                  :card-id     (when record-source-card? source-card-id)}
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
@@ -101,6 +107,16 @@
                                       rff))
           (qp/process-query (assoc query :info info) rff))))))
 
+(defn- run-userland-query
+  [query request options]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
+  (run-streaming-query
+   (-> query
+       (dissoc :cache-strategy)
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)
+   options))
+
 (api.macros/defendpoint :post "/"
   :- ::qp.streaming/query-result-response
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -109,12 +125,21 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
-  (run-streaming-query
-   (-> query
-       (dissoc :cache-strategy)
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+  (run-userland-query query request {}))
+
+(api.macros/defendpoint :post "/stats"
+  :- ::qp.streaming/query-result-response
+  "Run a stats query the same way as `POST /api/dataset`: the same body, the same response format and the same
+  permissions. Does not use the cache. Records the run with the `filter-stats` context, and does not count it as a
+  view of its source table or card."
+  {:scope api-scope/data-app}
+  [_route-params
+   _query-params
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
+  (run-userland-query query request {:context             :filter-stats
+                                     :publish-table-read? false
+                                     :record-source-card? false}))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
