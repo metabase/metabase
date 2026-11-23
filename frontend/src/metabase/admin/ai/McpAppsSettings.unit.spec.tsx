@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   findRequests,
@@ -9,21 +10,31 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 
 import { McpAppsSettings } from "./McpAppsSettings";
 
 const SITE_URL = "https://metabase.example.com";
 const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
+const ENABLED_CLIENTS_ENV_VAR = "MB_MCP_APPS_CORS_ENABLED_CLIENTS";
 
 const setup = async ({
   commonOrigins = [],
   customOrigins = "",
   enabled = true,
+  commonOriginsSetByEnvVar = false,
+  holdSettingDetails = false,
+  failSettingDetails = false,
 }: {
   commonOrigins?: string[];
   customOrigins?: string;
   enabled?: boolean;
+  commonOriginsSetByEnvVar?: boolean;
+  holdSettingDetails?: boolean;
+  failSettingDetails?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "mcp-enabled?": enabled,
@@ -32,8 +43,29 @@ const setup = async ({
     "site-url": SITE_URL,
   });
 
+  const settingDetails = [
+    createMockSettingDefinition({
+      key: "mcp-apps-cors-enabled-clients",
+      value: commonOriginsSetByEnvVar ? null : commonOrigins,
+      is_env_setting: commonOriginsSetByEnvVar,
+      env_name: commonOriginsSetByEnvVar ? ENABLED_CLIENTS_ENV_VAR : undefined,
+    }),
+  ];
+  let releaseSettingDetails = () => {};
+
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
+  if (holdSettingDetails) {
+    fetchMock.get(
+      "path:/api/setting",
+      new Promise((resolve) => {
+        releaseSettingDetails = () => resolve(settingDetails);
+      }),
+    );
+  } else if (failSettingDetails) {
+    fetchMock.get("path:/api/setting", 500);
+  } else {
+    setupSettingsEndpoints(settingDetails);
+  }
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<McpAppsSettings />, {
@@ -45,6 +77,16 @@ const setup = async ({
   if (enabled) {
     await screen.findByText("MCP server");
   }
+
+  const detailsWillLoad = !holdSettingDetails && !failSettingDetails;
+  if (enabled && !commonOriginsSetByEnvVar && detailsWillLoad) {
+    // The client switches stay disabled until the setting details load.
+    await waitFor(() => {
+      expect(screen.getByRole("switch", { name: "Claude" })).toBeEnabled();
+    });
+  }
+
+  return { releaseSettingDetails };
 };
 
 describe("McpAppsSettings", () => {
@@ -107,6 +149,49 @@ describe("McpAppsSettings", () => {
     expect(puts[2].body).toEqual({
       value: ["claude", "cursor-vscode", "chatgpt"],
     });
+  });
+
+  it("shows MCP client toggles set by an env var as read-only", async () => {
+    await setup({
+      commonOrigins: ["claude"],
+      commonOriginsSetByEnvVar: true,
+    });
+
+    expect(
+      await screen.findByRole("link", { name: ENABLED_CLIENTS_ENV_VAR }),
+    ).toBeInTheDocument();
+
+    const claude = screen.getByRole("switch", { name: "Claude" });
+    expect(claude).toBeChecked();
+    expect(claude).toBeDisabled();
+    expect(
+      screen.getByRole("switch", { name: "Cursor and VS Code" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "ChatGPT" })).toBeDisabled();
+  });
+
+  it("keeps MCP client toggles disabled until the setting details load", async () => {
+    const { releaseSettingDetails } = await setup({ holdSettingDetails: true });
+
+    const claude = screen.getByRole("switch", { name: "Claude" });
+    try {
+      expect(claude).toBeDisabled();
+    } finally {
+      releaseSettingDetails();
+    }
+
+    await waitFor(() => {
+      expect(claude).toBeEnabled();
+    });
+  });
+
+  it("keeps MCP client toggles disabled when the setting details fail to load", async () => {
+    await setup({ failSettingDetails: true });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
+    });
+    expect(screen.getByRole("switch", { name: "Claude" })).toBeDisabled();
   });
 
   it("shows 'Install in Cursor' link only when the Cursor and VS Code switch is enabled", async () => {
