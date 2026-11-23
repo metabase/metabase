@@ -332,9 +332,12 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
-def _wrap_base_table(table, alias):
-    """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
-    property inherited from it (see `add_into_clause`)."""
+def _wrap_base_table(table):
+    """Build a self-UNION subquery that scans `table` once but strips any IDENTITY property inherited from it (see
+    `add_into_clause`). Its alias is the identifier `table` is known by, quoted as it was, so a reserved word such as
+    `[order]` keeps its brackets."""
+    alias = table.args.get("alias")
+    alias = (alias.this if alias is not None and alias.this is not None else table.this).copy()
     bare_table = table.copy()
     bare_table.set("alias", None)
     self_union = exp.union(
@@ -413,7 +416,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
             for column in scope.source_columns(alias):
                 column.set("db", None)
                 column.set("catalog", None)
-            table.replace(_wrap_base_table(table, alias))
+            table.replace(_wrap_base_table(table))
 
     # Create the Into expression with the table identifier
     # The table_name is pre-formatted, so parse it to preserve quotes

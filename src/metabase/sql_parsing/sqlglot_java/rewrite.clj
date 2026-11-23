@@ -20,10 +20,12 @@
                         "from_"       (ast/create "From" {"this" table})}))
 
 (defn- wrap-base-table
-  "A self-UNION subquery, aliased `table-alias`, that scans `table` once but strips any IDENTITY property inherited
-  from it (see [[add-into-clause]]). Port of `_wrap_base_table`."
-  [table table-alias]
-  (let [bare-table (ast/set-arg! (ast/copy table) "alias" nil)
+  "A self-UNION subquery that scans `table` once but strips any IDENTITY property inherited from it (see
+  [[add-into-clause]]). Its alias is the identifier `table` is known by, quoted as it was, so a reserved word such as
+  `[order]` keeps its brackets. Port of `_wrap_base_table`."
+  [table]
+  (let [table-alias (ast/copy (or (some-> (ast/arg table "alias") ast/this) (ast/this table)))
+        bare-table  (ast/set-arg! (ast/copy table) "alias" nil)
         empty-side (ast/set-arg! (select-star-from (ast/copy bare-table))
                                  "where"
                                  (ast/create "Where" {"this" (ast/create "EQ" {"this"       (ast/create "Literal" {"this" "1" "is_string" false})
@@ -32,7 +34,7 @@
                                         "expression" empty-side
                                         "distinct"   false})]
     (ast/create "Subquery" {"this"  self-union
-                            "alias" (ast/create "TableAlias" {"this" (ast/to-identifier table-alias)})})))
+                            "alias" (ast/create "TableAlias" {"this" table-alias})})))
 
 (defn add-into-clause
   "`sql`, a SELECT, as a SQL Server `SELECT ... INTO table-name`, with every base table read through a self-UNION
@@ -67,7 +69,7 @@
       (doseq [column (.sourceColumns scope table-alias)]
         (ast/set-arg! column "db" nil)
         (ast/set-arg! column "catalog" nil))
-      (ast/replace! table (wrap-base-table table table-alias)))
+      (ast/replace! table (wrap-base-table table)))
     (ast/set-arg! into-select "into" (ast/create "Into" {"this" (ast/to-table table-name)}))
     (ast/sql stmt dialect)))
 
