@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
@@ -78,7 +79,7 @@
                                                    :email "data-analyst@metabase.com"
                                                    :is_data_analyst true}
                      :model/Database {db-id :id} {}
-                     :model/Table {table-id :id} {:db_id db-id}]
+                     :model/Table {table-id :id} {:db_id db-id :display_name "Test Table"}]
         (mt/when-ee-evailable
          (mt/with-premium-features #{:advanced-permissions}
            (t2/insert! :model/PermissionsGroupMembership {:user_id analyst-id :group_id data-analyst-group-id})
@@ -220,8 +221,8 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:previous-object event)))))]
-          (data-studio.db/delete-field-values-for-tables! [table-id]))
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-tables [table-id])))
         (is (contains? @deleted fv-id))))))
 
 (deftest bulk-discard-values-test
@@ -406,10 +407,13 @@
 (deftest selection-basic-test
   (testing "POST /api/data-studio/table/selection"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1 :id} {:db_id db-id :name "orders" :schema "PUBLIC"}
-                   :model/Table    {t2 :id} {:db_id db-id :name "products" :schema "PUBLIC"}
+                   :model/Table    {t1 :id} {:db_id db-id :name "orders"
+                                             :display_name "Orders" :schema "PUBLIC"}
+                   :model/Table    {t2 :id} {:db_id db-id :name "products"
+                                             :display_name "Products" :schema "PUBLIC"}
                    :model/TableUserSettings _ {:table_id t2 :is_published true}
-                   :model/Table    _        {:db_id db-id :name "people" :schema "PUBLIC"}]
+                   :model/Table    _        {:db_id db-id :name "people"
+                                             :display_name "People" :schema "PUBLIC"}]
       (testing "returns a published table in selection with all required fields"
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [t2]})]
@@ -446,13 +450,15 @@
   (testing "POST /api/data-studio/table/selection with remapping dependencies"
     (mt/with-temp [:model/Database  {db-id :id}    {}
                    ;; Orders table with FK to Products
-                   :model/Table     {orders-id :id}   {:db_id db-id :name "orders" :schema "PUBLIC"}
+                   :model/Table     {orders-id :id}   {:db_id db-id :name "orders"
+                                                       :display_name "Orders" :schema "PUBLIC"}
                    :model/Field     _                 {:table_id orders-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {product-fk :id}  {:table_id orders-id :name "product_id" :semantic_type :type/FK
                                                        :base_type :type/Integer}
                    ;; Products table
-                   :model/Table     {products-id :id} {:db_id db-id :name "products" :schema "PUBLIC"}
+                   :model/Table     {products-id :id} {:db_id db-id :name "products"
+                                                       :display_name "Products" :schema "PUBLIC"}
                    :model/Field     _                 {:table_id products-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {prod-name-f :id} {:table_id products-id :name "name" :semantic_type :type/Name
@@ -514,13 +520,15 @@
     ;; orders.customer_id remaps to customers.name
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table
-                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"}
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
+                                                           :display_name "Purchasers" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table
-                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"}
+                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
+                                                          :display_name "Orders" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
@@ -528,7 +536,8 @@
                    :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table
-                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"}
+                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
+                                                          :display_name "Order Items" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
@@ -563,15 +572,17 @@
     ;; If we unpublish customers, we need to unpublish orders and order_items too
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table (published)
-                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"}
-                   :model/TableUserSettings _            {:table_id purchasers-id :is_published true}
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
+                                                           :display_name "Purchasers" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id purchasers-id :is_published true}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table (published)
-                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"}
-                   :model/TableUserSettings _            {:table_id orders-id :is_published true}
+                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
+                                                          :display_name "Orders" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id orders-id :is_published true}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
@@ -579,8 +590,9 @@
                    :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table (published)
-                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"}
-                   :model/TableUserSettings _            {:table_id items-id :is_published true}
+                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
+                                                          :display_name "Order Items" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id items-id :is_published true}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"

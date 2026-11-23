@@ -120,6 +120,17 @@
                         (#'appearance.settings/parsed-illustration setting-key reloaded)))
         (is (identical? reloaded (first (get @cache setting-key))))))))
 
+(deftest site-name-description-follows-application-name-test
+  (testing "the site-name description names the whitelabeled application, not Metabase (#17043)"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-name "New Test Co"]
+        (is (= "The name used for this instance of New Test Co."
+               (str ((:description (setting/resolve-setting :site-name))))))))))
+
+(deftest application-logo-url-is-readable-when-signed-out-test
+  (testing "the custom logo reaches a visitor with no session, so it shows on the login page"
+    (is (setting/can-read-setting? :application-logo-url #{:public}))))
+
 (deftest help-link-setting-test
   (mt/discard-setting-changes [help-link]
     (mt/with-premium-features #{:whitelabel}

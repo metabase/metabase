@@ -63,6 +63,8 @@
   "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
   [:maybe [:set ::lib.schema.validate/error-with-source]])
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."

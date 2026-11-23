@@ -1,5 +1,6 @@
 (ns metabase.sso.slack-connect
   (:require
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]))
@@ -24,4 +25,4 @@
 (defn disconnect-slack-account!
   "Remove the Slack link of the user with `user-id`."
   [user-id]
-  (sso.db/delete-slack-connect-identity! user-id))
+  (models.auth-identity/delete-auth-identities! (sso.db/auth-identity-ids user-id "slack-connect")))

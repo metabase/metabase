@@ -57,6 +57,17 @@
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :last_evaluated_at :acknowledged_by :acknowledged_at :last_notified_at])]
   (t2/update! :model/SecurityAdvisory :id id changes))
 
+(mu/defn advisories-by-ids
+  "The SecurityAdvisories with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/SecurityAdvisory :id [:in [:auto/param (vec (distinct ids))]]))
+
+(mu/defn update-advisories!
+  "Apply `changes` to the SecurityAdvisories with `ids`, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:acknowledged_by])]
+  (t2/update! :model/SecurityAdvisory :id [:in [:auto/param (vec ids)]] changes))
+
 (mu/defn record-advisory-evaluation!
   "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number
   updated."
@@ -118,3 +129,13 @@
   "Whether a connection impersonation policy exists on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+
+(mu/defn delete-all-advisories!
+  "Delete every SecurityAdvisory."
+  []
+  (t2/delete! :model/SecurityAdvisory))
+
+(mu/defn insert-advisories!
+  "Insert `advisories` and return the inserted SecurityAdvisory instances."
+  [advisories :- [:sequential ::security-center.schema/security-advisory.update]]
+  (mdb/insert-returning-instances! :model/SecurityAdvisory advisories))

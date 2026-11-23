@@ -2,7 +2,6 @@
   "Application database queries for the segments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,18 +24,6 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-segment!
-  "Insert a Segment and return the inserted instance."
-  [creator-id :- ::lib.schema.id/user
-   segment-name :- :string
-   description :- [:maybe :string]
-   definition :- ::segments.schema/segment.definition]
-  (t2/insert-returning-instance! :model/Segment
-                                 :creator_id  creator-id
-                                 :name        segment-name
-                                 :description description
-                                 :definition  definition))
-
 (mu/defn segment
   "The Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
@@ -47,16 +34,15 @@
   []
   (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn update-segment!
-  "Apply `changes` to the Segment with `id`."
-  [id :- ::lib.schema.id/segment
-   changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
-  (t2/update! :model/Segment :id id changes))
-
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
+
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (into {} (t2/select-fn->fn :id :db_id [:model/Table :id :db_id] :id [:in table-ids])))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."

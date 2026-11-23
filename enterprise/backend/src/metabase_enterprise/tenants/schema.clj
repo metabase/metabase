@@ -2,6 +2,7 @@
   "Malli schemas for the tenants module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -27,14 +28,8 @@
 
 (mr/def ::tenant
   "A Tenant as selected from the app DB: every column of `:tenant`."
-  [:merge
-   ::tenant.update
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]]])
-
-(mr/def ::tenant.update
-  "What an update (or insert) of a Tenant accepts: every column of `:tenant` except `id`, all optional."
   [:map {:closed true}
+   [:id                   ms/PositiveInt]
    [:name                 {:optional true} ::tenant.name]
    [:slug                 {:optional true} ::tenant.slug]
    [:is_active            {:optional true} [:maybe :boolean]]
@@ -42,3 +37,19 @@
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:attributes           {:optional true} [:maybe ::tenant.attributes]]
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mr/def ::tenant.update
+  "What an update of a Tenant takes: its `:id` and a new name, attributes, or active flag."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:name       {:optional true} ::tenant.name]
+   [:is_active  {:optional true} [:maybe :boolean]]
+   [:attributes {:optional true} [:maybe ::tenant.attributes]]])
+
+(mr/def ::tenant.create
+  "What creating a Tenant takes: the attributes of an update, and its name and slug."
+  [:merge
+   (-> ::tenant.update (mut/dissoc :id) (mut/dissoc :is_active))
+   [:map {:closed true}
+    [:name ::tenant.name]
+    [:slug ::tenant.slug]]])

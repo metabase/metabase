@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.content :as content]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.protocol :as protocol]
@@ -68,7 +67,7 @@
   "Deletes the rows `ours` exports the documents with the keys `ks` from, each after the rows that depend on it."
   [ours ks]
   (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))]
-    (remote-sync.db/delete-rows! model (mapv (comp second :row ours) keys))))
+    (serialization/delete! model (mapv (comp second :row ours) keys))))
 
 (defn- apply!
   "Makes the app DB, whose documents are `ours`, hold the `merged` documents, returning how many entities changed."

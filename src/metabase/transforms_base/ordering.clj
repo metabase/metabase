@@ -278,28 +278,36 @@
                             (node->children node))]
            (recur stack' (conj visited node))))))))
 
-(mu/defn get-transform-cycle :- [:maybe [:map {:closed true}
-                                         [:cycle-str :string]
-                                         [:cycle     [:vector ::lib.schema.id/transform]]]]
-  "Get a cycle if it exists (otherwise `nil`). Cycle consists of:
+(mr/def ::cycle
+  "A cycle of transforms feeding one another."
+  [:map {:closed true}
+   [:cycle-str :string]
+   [:cycle     [:vector ::lib.schema.id/transform]]])
 
-  ```
-  {:cycle-str \"transform-1 => tranform-2\"
-   :cycle [1 2]}
-  ```
-"
-  [{transform-id :id :as to-check} :- ::transforms-base.schema/transform]
+(defn- live-target-table-ids
+  "A map from the `:id` of each of `transforms` with a target to the id of the active Table its target names, read for
+  all of them at once."
+  [transforms]
+  (let [targets (into {}
+                      (keep (fn [transform]
+                              (when-let [db-id (transforms-base.i/target-db-id transform)]
+                                (let [{:keys [schema name]} (:target transform)]
+                                  [(:id transform) [db-id schema name]]))))
+                      transforms)
+        tables  (when (seq targets)
+                  (u/index-by (juxt :db_id :schema :name) (transforms-base.db/active-tables-named (vals targets))))]
+    (update-vals targets #(:id (get tables %)))))
+
+(defn- transform-cycle
+  "The cycle that `to-check`, a transform as its update leaves it, is part of among the stored transforms in
+  `all-transforms`, or nil, with its target Table `target-table-id`."
+  [all-transforms target-table-id {transform-id :id :as to-check}]
   (let [db-id            (get-in to-check [:source :query :database])
-        ;; Recompute the transform under test live — its source or target may have just changed, so the
-        ;; stored deps and `target_table_id` are stale — and pin its source db. Every other transform
-        ;; uses its stored values.
         to-check         (-> to-check
                              (assoc :source_database_id db-id
-                                    :target_table_id    (when-let [db-id (transforms-base.i/target-db-id to-check)]
-                                                          (let [{:keys [schema name]} (:target to-check)]
-                                                            (:id (transforms-base.db/target-table db-id schema name :active true)))))
+                                    :target_table_id    target-table-id)
                              (dissoc :table_dependencies))
-        transforms       (conj (vec (transforms-base.db/transforms-for-ordering transform-id))
+        transforms       (conj (into [] (remove #(= transform-id (:id %))) all-transforms)
                                to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))
@@ -315,6 +323,27 @@
     (when cycle
       {:cycle-str (str/join " -> " (map id->name cycle))
        :cycle     cycle})))
+
+(mu/defn get-transform-cycles :- [:sequential [:maybe ::cycle]]
+  "For each of `to-checks`, transforms as their update leaves them, the cycle it is part of (otherwise `nil`), among
+  the transforms stored, which are read once for all of them, lazily so that a caller that stops at the first cycle
+  computes the dependencies of no later transform, each cycle being
+  `{:cycle-str \"transform-1 => tranform-2\" :cycle [1 2]}`."
+  [to-checks :- [:sequential ::transforms-base.schema/transform]]
+  (when (seq to-checks)
+    (let [all-transforms (transforms-base.db/transforms-for-ordering)
+          target-ids     (live-target-table-ids to-checks)
+          check          (fn check [[to-check & more]]
+                           (lazy-seq
+                            (when to-check
+                              (cons (transform-cycle all-transforms (get target-ids (:id to-check)) to-check)
+                                    (check more)))))]
+      (check to-checks))))
+
+(mu/defn get-transform-cycle :- [:maybe ::cycle]
+  "Get a cycle `to-check` is part of if it exists (otherwise `nil`), as [[get-transform-cycles]] does."
+  [to-check :- ::transforms-base.schema/transform]
+  (first (get-transform-cycles [to-check])))
 
 (mu/defn available-transforms :- [:sequential ::lib.schema.id/transform]
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,

@@ -96,21 +96,22 @@
   (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))
 
 (deftest cannot-move-pulse-to-trash-test
-  (mt/with-temp [:model/Collection {coll-id :id}      {}
-                 :model/Card       {card-id :id}      {}
-                 :model/Dashboard  {dashboard-id :id} {:name "Birdcage KPIs" :collection_id coll-id}]
-    (mt/with-model-cleanup [:model/Pulse]
-      (testing "Cannot move a pulse without a dashboard to the trash"
-        (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse" (pulse-payload card-id))]
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 (str "pulse/" id) {:collection_id (collection/trash-collection-id)})))
-          (is (nil? (stored-collection-id id)))))
-      (testing "A dashboard subscription refuses a move to the trash and stays in its dashboard's collection"
-        (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse"
-                                             (assoc (pulse-payload card-id) :dashboard_id dashboard-id))]
-          (mt/user-http-request :rasta :put 400 (str "pulse/" id)
-                                {:collection_id (collection/trash-collection-id)})
-          (is (= coll-id (stored-collection-id id))))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dashboard-id :id} {:name "Birdcage KPIs" :collection_id coll-id}]
+        (mt/with-model-cleanup [:model/Pulse]
+          (testing "Cannot move a pulse without a dashboard to the trash"
+            (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse" (pulse-payload card-id))]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :put 403 (str "pulse/" id) {:collection_id (collection/trash-collection-id)})))
+              (is (nil? (stored-collection-id id)))))
+          (testing "A dashboard subscription refuses a move to the trash and stays in its dashboard's collection"
+            (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse"
+                                                 (assoc (pulse-payload card-id) :dashboard_id dashboard-id))]
+              (mt/user-http-request :rasta :put 400 (str "pulse/" id)
+                                    {:collection_id (collection/trash-collection-id)})
+              (is (= coll-id (stored-collection-id id))))))))))
 
 (deftest ^:parallel cannot-move-collection-to-trash-test
   (testing "Cannot move a a collection to the trash"

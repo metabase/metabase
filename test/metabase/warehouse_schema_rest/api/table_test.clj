@@ -25,7 +25,7 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
-   [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors)))
@@ -886,8 +886,8 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:previous-object event)))))]
-          (warehouse-schema-rest.db/delete-field-values-for-fields! #{field-id}))
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-fields [field-id])))
         (is (contains? @deleted fv-id))))))
 
 (deftest field-ordering-test

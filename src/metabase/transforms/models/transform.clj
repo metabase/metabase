@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -30,6 +31,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-transform-tag :as transform-transform-tag]
    [metabase.transforms.replacement :as transforms.replacement]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.search :as transforms.search]
@@ -41,6 +43,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -51,7 +54,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
@@ -80,13 +83,6 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defn- check-collection
-  "Throws unless the Collection of `transform`, if any, can hold Transforms."
-  [{:keys [collection_id]}]
-  (when collection_id
-    (collection/check-collection-namespace :model/Transform collection_id)
-    (collection/check-allowed-content :model/Transform collection_id)))
-
 (defn- source-database-id
   "The Database id the source of `transform` names, or nil when it names none, as a Python source without a
   `:source-database` does."
@@ -102,20 +98,6 @@
              :target_db_id (transforms-base.i/target-db-id transform)}
       (source-database-id transform) (assoc :source_database_id (source-database-id transform)))))
 
-(defn- check-target-database
-  "Throws a 400 unless the target Database of `transform` can hold the tables of a transform."
-  [{:keys [target_db_id]}]
-  (when target_db_id
-    (let [database (transforms.db/database target_db_id)]
-      (when-not database
-        (throw (ex-info (tru "The target database cannot be found.") {:status-code 400})))
-      (when (:is_sample database)
-        (throw (ex-info (tru "Cannot run transforms on the sample database.") {:status-code 400})))
-      (when (:is_audit database)
-        (throw (ex-info (tru "Cannot run transforms on audit databases.") {:status-code 400})))
-      (when (:router_database_id database)
-        (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
-
 (defn check-incremental-table-tag
   "Throws a 400 when `transform` writes an incremental table from a native query that has no table variable for the
   incremental range filter, a variable of the table of its checkpoint Field when there is one."
@@ -129,18 +111,9 @@
           (throw (ex-info (tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.")
                           {:status-code 400})))))))
 
-(defn- check-and-derive-definition
-  "`transform`, whose source or target is being written, with the columns computed from them, after checking that the
-  target Database can hold them."
-  [transform]
-  (let [transform (merge transform (derived-columns transform))]
-    (check-target-database transform)
-    transform))
-
 (t2/define-before-insert :model/Transform
   [transform]
-  (check-collection transform)
-  (let [transform (check-and-derive-definition transform)]
+  (let [transform (merge transform (derived-columns transform))]
     (assoc-in transform [:target :database] (:target_db_id transform))))
 
 (defn- definition-changed?
@@ -148,34 +121,6 @@
   [transform]
   (let [changes (t2/changes transform)]
     (or (contains? changes :source) (contains? changes :target))))
-
-(defn- check-cycle
-  "Throws a 400 when the query transform `transform` has become part of a cycle of transforms feeding one another."
-  [transform]
-  (when (transforms-base.u/query-transform? transform)
-    (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle transform)]
-      (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                      {:status-code 400})))))
-
-(defn- unresolved-merge-key-table-id
-  "The ID of the target Table of `transform` when its merge unique key still has columns known by name only, or nil."
-  [{:keys [source target target_table_id]}]
-  (when (and target_table_id
-             (transforms-base.u/merge-target? {:source source :target target})
-             (some #(nil? (:field-id %)) (get-in target [:target-incremental-strategy :unique-key])))
-    target_table_id))
-
-(defn- resolve-merge-key-field-ids
-  "`transform` with the `:field-id` of the columns of its merge unique key filled from the active Fields of its target
-  table, once that table exists and any are still by-name only."
-  [transform]
-  (if-let [table-id (unresolved-merge-key-table-id transform)]
-    (let [name->id (transforms.db/active-field-ids-by-name table-id)]
-      (update-in transform [:target :target-incremental-strategy :unique-key]
-                 (fn [unique-key]
-                   (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
-                         unique-key))))
-    transform))
 
 (defn- checkpoint-field-changed?
   "Whether `transform` had an incremental checkpoint Field that its pending changes replace."
@@ -187,8 +132,7 @@
 (t2/define-before-update :model/Transform
   [transform]
   (let [changes    (t2/changes transform)
-        _          (when (contains? changes :collection_id) (check-collection transform))
-        definition (when (definition-changed? transform) (check-and-derive-definition transform))]
+        definition (when (definition-changed? transform) (merge transform (derived-columns transform)))]
     (when (and (or (contains? changes :source_type)
                    (and (contains? changes :source_database_id) (source-database-id transform)))
                (not (contains? changes :source)))
@@ -197,9 +141,6 @@
     (when (and (contains? changes :target_db_id) (not definition))
       (throw (ex-info (tru "target_db_id follows the source and the target; change them instead.")
                       {:status-code 400})))
-    (when definition
-      (check-cycle definition)
-      (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       definition
       (merge (select-keys definition [:source_type :source_database_id :target_db_id]))
@@ -208,10 +149,7 @@
       (assoc :table_dependencies nil)
 
       (checkpoint-field-changed? transform)
-      (assoc :last_checkpoint_value nil)
-
-      true
-      resolve-merge-key-field-ids)))
+      (assoc :last_checkpoint_value nil))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -219,68 +157,15 @@
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
-(defenterprise delete-transform-tests!
-  "Deletes the tests of the transform `transform-id` through their model and publishes a delete event for each, which a
-  database cascade would not; a no-op in OSS."
-  metabase-enterprise.data-testing.models
-  [_transform-id]
-  nil)
-
-(t2/define-before-delete :model/Transform [transform]
-  (delete-transform-tests! (:id transform))
-  transform)
-
-;;; -------------------------------------------------- Operations --------------------------------------------------
-
-(mu/defn update-transform-tags! :- :nil
-  "Update the tags associated with a transform using smart diff logic. Only modifies what has changed: deletes removed
-  tags, updates positions for moved tags, and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-  [transform-id :- [:maybe ::lib.schema.id/transform]
-   tag-ids      :- [:sequential ms/PositiveInt]]
-  (when transform-id
-    (t2/with-transaction [_conn]
-      (let [;; Deduplicate while preserving order of first occurrence
-            deduped-tag-ids      (vec (distinct tag-ids))
-            ;; Get current associations
-            current-associations (transforms.db/transform-tag-links [transform-id])
-            current-tag-ids      (mapv :tag_id current-associations)
-            ;; Validate that new tag IDs exist
-            valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
-            ;; Filter to only valid tags, preserving order
-            new-tag-ids          (if valid-tag-ids
-                                   (filterv valid-tag-ids deduped-tag-ids)
-                                   [])
-            ;; Calculate what needs to change
-            current-set          (set current-tag-ids)
-            new-set              (set new-tag-ids)
-            to-delete            (set/difference current-set new-set)
-            to-insert            (set/difference new-set current-set)
-            ;; Build position map for new ordering
-            new-positions        (zipmap new-tag-ids (range))]
-        ;; Delete removed associations
-        (when (seq to-delete)
-          (transforms.db/delete-transform-tag-links! transform-id to-delete))
-        ;; Update positions for existing tags that moved
-        (doseq [tag-id (filter current-set new-tag-ids)]
-          (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-transform-tag-position! transform-id tag-id new-pos)))
-        ;; Insert new associations with correct positions
-        (when (seq to-insert)
-          (transforms.db/insert-transform-tag-links! (for [tag-id to-insert]
-                                                       {:transform_id transform-id
-                                                        :tag_id       tag-id
-                                                        :position     (get new-positions tag-id)})))))
-    nil))
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (mr/def ::instance
-  "A Transform as the permission checks see it: a stored row, a hydrated one, one with pending changes merged in, or
-  a create request."
+  "A Transform as the permission checks see it: a stored row, a hydrated one, one with pending changes merged in, a
+  create request, or the snapshot of a Revision."
   [:or
    ::transforms.schema/transform
-   ::transforms.schema/transform.create])
+   ::transforms.u/create-body
+   ::transforms.schema/transform.revision])
 
 (mu/defn- transform-readable? :- :boolean
   "Whether the current user can read `instance`, with its source looked up in `models-cache` when given."
@@ -503,13 +388,319 @@
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
 
-;;; ----------------------------------------------------- Specs ------------------------------------------------------
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defmethod events/spec :model/Transform
-  [_model]
-  {:create :event/transform-create
-   :update :event/transform-update
-   :delete :event/transform-delete})
+(defenterprise delete-transform-tests-for-transforms!
+  "Deletes the tests of the transforms with `transform-ids` through their model, which publishes a delete event for each
+  and sets the test id of their runs to nil, as a database cascade would not; a no-op in OSS."
+  metabase-enterprise.data-testing.models
+  [_transform-ids]
+  nil)
+
+(defn- check-collections
+  "Throw unless each Collection with `collection-ids` satisfies these rules, all read in one query and checked in the
+  order of their first appearance (a missing one is a 404):
+
+  - it is in the transforms namespace
+  - it can hold the content of Transforms (not a Library or data-app Collection that refuses it)"
+  [collection-ids]
+  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (collection/collections-for-content-checks collection-ids)]
+      (doseq [collection-id collection-ids
+              :let [collection (or (collections collection-id) (collection/content-parent collection-id))]]
+        (collection/check-collection-namespace :model/Transform collection)
+        (collection/check-allowed-content :model/Transform collection)))))
+
+(defn- check-target-databases
+  "Throw a 400 unless each Database with `database-ids`, one that exists, satisfies these rules:
+
+  - it is not the sample Database
+  - it is not an audit Database
+  - it is not a destination of database routing"
+  [database-ids]
+  (let [database-ids (into [] (comp (remove nil?) (distinct)) database-ids)
+        id->database (u/index-by :id (when (seq database-ids) (transforms.db/databases-by-ids database-ids)))]
+    (doseq [database-id database-ids
+            :let        [database (id->database database-id)]
+            :when       database]
+      (when (:is_sample database)
+        (throw (ex-info (tru "Cannot run transforms on the sample database.") {:status-code 400})))
+      (when (:is_audit database)
+        (throw (ex-info (tru "Cannot run transforms on audit databases.") {:status-code 400})))
+      (when (:router_database_id database)
+        (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
+
+(defn- check-cycles
+  "Throws a 400 for the first of the query transforms among `transforms` that has become part of a cycle of transforms
+  feeding one another."
+  [transforms]
+  (when-let [queries (not-empty (filterv transforms-base.u/query-transform? transforms))]
+    (when-let [{:keys [cycle-str]} (some identity (transforms-base.ordering/get-transform-cycles queries))]
+      (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                      {:status-code 400})))))
+
+(defn- unresolved-merge-key-table-id
+  "The ID of the target Table of `transform` when its merge unique key still has columns known by name only, or nil."
+  [{:keys [source target target_table_id]}]
+  (when (and target_table_id
+             (transforms-base.u/merge-target? {:source source :target target})
+             (some #(nil? (:field-id %)) (get-in target [:target-incremental-strategy :unique-key])))
+    target_table_id))
+
+(defn- resolve-merge-key
+  "`target`, the target of a transform, with the `:field-id` of the columns of its merge unique key filled from
+  `name->id`, a map from the name of an active Field of its target table to its id."
+  [target name->id]
+  (update-in target [:target-incremental-strategy :unique-key]
+             (fn [unique-key]
+               (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
+                     unique-key))))
+
+(defn- definition-columns-changed?
+  "Whether `changes` give the `source` or the `target` of the stored `transform` another value."
+  [transform changes]
+  (boolean (some (fn [k] (and (contains? changes k) (not= (get transform k) (get changes k))))
+                 [:source :target])))
+
+(defn- resolve-merge-keys
+  "`changes-by-id`, a map from the id of a Transform to its changes, with the `:target` of each Transform whose merge
+  unique key would still have columns known by name only, once the changes apply to its row in `stored`, replaced by
+  one whose columns have their Field ids, the Fields of all their target tables read at once."
+  [changes-by-id stored]
+  (let [table-ids (into #{}
+                        (keep (fn [[id changes]] (unresolved-merge-key-table-id (merge (stored id) changes))))
+                        changes-by-id)
+        fields    (when (seq table-ids) (transforms.db/active-field-ids-by-names (vec table-ids)))]
+    (into {}
+          (map (fn [[id changes]]
+                 (let [merged (merge (stored id) changes)]
+                   [id (if-let [table-id (unresolved-merge-key-table-id merged)]
+                         (assoc changes :target (resolve-merge-key (:target merged) (get fields table-id {})))
+                         changes)])))
+          changes-by-id)))
+
+(mu/defn- replace-tags! :- :boolean
+  "Make the TransformTags linked to the Transform with `transform-id` those of `tag-ids`, in that order, deleting
+  removed tags, updating positions for moved tags and inserting new tags, leaving out duplicate and unknown tag ids,
+  and return whether the tags changed."
+  [transform-id :- ::lib.schema.id/transform
+   tag-ids      :- [:sequential ms/PositiveInt]]
+  (let [deduped-tag-ids      (vec (distinct tag-ids))
+        current-associations (transforms.db/transform-tag-links [transform-id])
+        current-tag-ids      (mapv :tag_id current-associations)
+        valid-tag-ids        (when (seq deduped-tag-ids)
+                               (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
+        new-tag-ids          (if valid-tag-ids
+                               (filterv valid-tag-ids deduped-tag-ids)
+                               [])
+        current-set          (set current-tag-ids)
+        new-set              (set new-tag-ids)
+        to-delete            (set/difference current-set new-set)
+        to-insert            (set/difference new-set current-set)
+        new-positions        (zipmap new-tag-ids (range))]
+    (when (seq to-delete)
+      (transform-transform-tag/delete-transform-transform-tags-for-transform! transform-id to-delete))
+    (transform-transform-tag/update-transform-transform-tags-for-transform! transform-id (select-keys new-positions current-set))
+    (when (seq to-insert)
+      (transform-transform-tag/create-transform-transform-tags!
+       (for [tag-id to-insert]
+         {:transform_id transform-id
+          :tag_id       tag-id
+          :position     (get new-positions tag-id)})))
+    (not= current-tag-ids new-tag-ids)))
+
+(defn- link-new-tags!
+  "Link each of the new `transforms` to the `:tag_ids` of its row of `rows`, in that order, leaving out duplicate and
+  unknown tag ids, with one insert for all."
+  [transforms rows]
+  (let [tag-ids (into [] (comp (mapcat :tag_ids) (distinct)) rows)
+        known   (if (seq tag-ids) (into #{} (transforms.db/existing-tag-ids tag-ids)) #{})
+        links   (vec (mapcat (fn [transform {:keys [tag_ids]}]
+                               (map-indexed (fn [position tag-id]
+                                              {:transform_id (:id transform) :tag_id tag-id :position position})
+                                            (filter known (distinct tag_ids))))
+                             transforms rows))]
+    (when (seq links)
+      (transform-transform-tag/create-transform-transform-tags! links))))
+
+(defn- check-new-transforms
+  "Throw unless every Transform of `rows` satisfies the rules of [[check-collections]] for its Collection and of
+  [[check-target-databases]] for its target Database."
+  [rows]
+  (check-collections (map :collection_id rows))
+  (check-target-databases (map (comp :target_db_id derived-columns) rows)))
+
+(defn- create-transform-batch!
+  "Check and insert `rows`, one batch of a call, link their tags, and return the inserted Transforms."
+  [rows]
+  (check-new-transforms rows)
+  (let [transforms (transforms.db/insert-transforms! (mapv #(dissoc % :tag_ids) rows))]
+    (link-new-tags! transforms rows)
+    transforms))
+
+(mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
+  "Insert the Transform `rows` in one transaction, linking the `:tag_ids` of each and publishing their create event,
+  throwing unless the Collection of each can hold Transforms and its target Database can hold the tables of a
+  transform, and return the inserted Transforms."
+  [rows :- [:sequential ::transforms.schema/transform.create]]
+  (t2/with-transaction [_conn]
+    (let [created (into [] (mapcat (comp create-transform-batch! vec)) (partition-all mdb/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/transform-create (events/create-event created)))
+      created)))
+
+(defn- moved-collection-ids
+  "The ids of the Collections that `id->changes` moves Transforms of `id->stored` into."
+  [id->stored id->changes]
+  (for [[id changes] id->changes
+        :when        (and (contains? changes :collection_id)
+                          (not= (:collection_id (id->stored id)) (:collection_id changes)))]
+    (:collection_id changes)))
+
+(defn- changed-definitions
+  "The Transforms that `id->changes` gives another source or target, as a map from id to the stored row with the changes
+  and its derived columns."
+  [id->stored id->changes]
+  (into {}
+        (keep (fn [[id changes]]
+                (when (definition-columns-changed? (id->stored id) changes)
+                  (let [merged (merge (id->stored id) changes)]
+                    [id (merge merged (derived-columns merged))]))))
+        id->changes))
+
+(defn- id->changes-of
+  "A map from id to the changes of each of `updates`, the id of a Transform and its columns to change, for the Transforms
+  in `id->stored`."
+  [updates id->stored]
+  (into {} (comp (filter (comp id->stored :id)) (map (juxt :id #(dissoc % :id)))) updates))
+
+(defn- check-transform-updates
+  "Throw unless these rules hold for the Transforms of `id->stored` that `updates` change:
+
+  - the Collection that a Transform moves to can hold Transforms
+  - the target Database of a changed definition can hold the tables of a transform
+  - the new definition of a query transform causes no cycle"
+  [updates id->stored]
+  (let [id->changes    (id->changes-of updates id->stored)
+        id->definition (changed-definitions id->stored id->changes)]
+    (check-collections (moved-collection-ids id->stored id->changes))
+    (check-target-databases (map :target_db_id (vals id->definition)))
+    (check-cycles (vals id->definition))))
+
+(defn- mark-changed-definitions!
+  "Mark the index requests of the Transforms of `id->stored` that `id->changes` gives another source or target for
+  revalidation."
+  [id->stored id->changes]
+  (when-let [ids (not-empty (filterv #(definition-columns-changed? (id->stored %) (id->changes %)) (keys id->changes)))]
+    (table-index/mark-for-revalidation! ids)))
+
+(defn- prepare-transform-updates
+  "The `updates` of the Transforms of `id->stored` with the Field ids of each merge unique key filled once its target
+  table exists, after marking the index requests of a changed definition for revalidation."
+  [updates id->stored]
+  (let [id->changes  (id->changes-of updates id->stored)
+        id->resolved (resolve-merge-keys id->changes id->stored)]
+    (mark-changed-definitions! id->stored id->changes)
+    (into [] (comp (map :id) (filter id->resolved) (distinct) (map #(assoc (id->resolved %) :id %))) updates)))
+
+(defn- check-and-prepare-transform-updates
+  "Check `updates` against `id->stored` with [[check-transform-updates]] and return what [[prepare-transform-updates]]
+  makes of them."
+  [updates id->stored]
+  (check-transform-updates updates id->stored)
+  (prepare-transform-updates updates id->stored))
+
+(defn- publish-transform-update!
+  "Publish the update event of the Transforms of `id->stored` that `updates` change, with their rows `id->updated`."
+  [opts updates id->stored id->updated]
+  (events/publish-event! :event/transform-update
+                         (events/update-event id->stored updates (assoc opts :objects id->updated))))
+
+(mu/defn update-transforms! :- :nil
+  "Apply `updates`, each the id of a Transform and the columns to change, in one transaction, publishing their update
+  event, throwing unless the new Collections and target Databases can hold Transforms and the new definitions of query
+  transforms cause no cycle, marking the index requests of a changed definition for revalidation, and filling the
+  Field ids of a merge unique key once its target table exists."
+  ([updates :- [:sequential ::transforms.schema/transform.update]]
+   (update-transforms! updates nil))
+  ([updates :- [:sequential ::transforms.schema/transform.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (mdb/update-batched! :model/Transform updates
+                        {:before-update check-and-prepare-transform-updates
+                         :reread?       true
+                         :after-update  #(publish-transform-update! opts %1 %2 %3)})))
+
+(defn- update-transform-columns!
+  "Check and write the `columns` to change of the Transform `stored`, and return the update event of the write, or nil
+  when there are no columns."
+  [stored columns opts]
+  (when (seq columns)
+    (let [id->stored {(:id stored) stored}
+          updates    [(assoc columns :id (:id stored))]]
+      (check-transform-updates updates id->stored)
+      (let [updates (prepare-transform-updates updates id->stored)]
+        (transforms.db/update-transforms! updates)
+        (events/update-event id->stored updates
+                             (assoc opts :objects (transforms.db/transforms-by-ids [(:id stored)])))))))
+
+(mu/defn update-transform! :- :nil
+  "Apply the `changes`, columns of the Transform with `id` and the `:tag_ids` it has afterwards, in one transaction,
+  with the checks of [[update-transforms!]], publishing one update event: of its columns, or a touch when only its
+  tags changed."
+  ([id      :- ::lib.schema.id/transform
+    changes :- ::transforms.schema/transform.update-with-tags]
+   (update-transform! id changes nil))
+  ([id      :- ::lib.schema.id/transform
+    changes :- ::transforms.schema/transform.update-with-tags
+    opts    :- :metabase.events.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (when-let [stored (get (transforms.db/transforms-by-ids [id]) id)]
+       (let [columns-event (update-transform-columns! stored (dissoc changes :tag_ids) opts)
+             tags-changed? (and (contains? changes :tag_ids) (replace-tags! id (vec (:tag_ids changes))))]
+         (cond
+           columns-event (events/publish-event! :event/transform-update columns-event)
+           tags-changed? (events/publish-event! :event/transform-update (events/touch-event [stored] opts))))))
+   nil))
+
+(defn- delete-tests-and-publish!
+  "Delete the tests of `transforms`, then publish their delete event."
+  [transforms]
+  (delete-transform-tests-for-transforms! (mapv :id transforms))
+  (events/publish-event! :event/transform-delete (events/delete-event transforms)))
+
+(mu/defn delete-transforms! :- :nil
+  "Delete the Transforms with `ids`, and their tests, in one transaction, publishing their delete event right before the
+  statement."
+  [ids :- [:sequential ::lib.schema.id/transform]]
+  (mdb/delete-batched! :model/Transform ids {:before-delete delete-tests-and-publish!}))
+
+(defmethod transforms-base.u/record-run-changes! :model/Transform
+  [_model transform-id changes]
+  (update-transforms! [(assoc changes :id transform-id)])
+  nil)
+
+(mu/defn set-table-dependencies! :- :int
+  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, a cache no rule
+  reads and no event reports, in one plain statement."
+  [transform-id      :- ::lib.schema.id/transform
+   dependencies-json :- :string]
+  (transforms.db/set-table-dependencies! transform-id dependencies-json))
+
+(defmethod database/delete-for-databases! :model/Transform
+  [_model databases]
+  (delete-transforms! (transforms.db/transform-ids-for-source-databases (mapv :id databases))))
+
+(defn- revert-transform!
+  "Return the Transform with `id` to the `snapshot` of a Transform that a Revision recorded."
+  [id _user-id snapshot]
+  (update-transforms! [(assoc snapshot :id id)] {:writer :revert}))
+
+(def ^:private revision-columns
+  "The columns a revision of a Transform records and a revert restores."
+  [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
+   :target :target_db_id])
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Transform [_model]
   {:skip? false})
@@ -524,6 +715,9 @@
                          :source_database_id serialization/database-transform
                          :source             transforms.serialization/source-transform
                          :target             transforms.serialization/target-transform}
+   :insert!             create-transforms!
+   :update!             #(update-transforms! % {:writer :import})
+   :delete!             delete-transforms!
    :children            {:tags    :model/TransformTransformTag
                          :indexes :model/TableIndex}
    :storage-paths       transforms.serialization/transform-storage-paths
@@ -535,10 +729,11 @@
   {:synced-items transforms.db/synced-transform-items})
 
 (defmethod revisions/spec :model/Transform [_model]
-  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
-               :target :target_db_id]
+  {:track     revision-columns
    :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
-   :authorize :snapshot})
+   :schema    ::transforms.schema/transform.revision
+   :authorize :snapshot
+   :revert!   revert-transform!})
 
 (defmethod audit/spec :model/Transform [_model]
   {:track          [:name :description :target]
@@ -582,7 +777,8 @@
 
 (defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
-   :swap-source        transforms.replacement/swap-source})
+   :swap-source        transforms.replacement/swap-source
+   :update!            update-transforms!})
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})

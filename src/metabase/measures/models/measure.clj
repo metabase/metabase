@@ -3,6 +3,7 @@
    exactly one aggregation expression."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
@@ -11,7 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.measure :as lib.schema.measure]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.db :as measures.db]
    [metabase.measures.dependencies :as measures.dependencies]
    [metabase.measures.replacement :as measures.replacement]
@@ -46,45 +47,26 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (defn- definition-table-id
-  "The id of the Table `definition`, a full query, is built on."
+  "The id of the Table `definition`, a full query, is built on, read without the app DB."
   [definition]
-  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+  (:source-table (lib-be/query-first-stage definition)))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-definition
-  "Throws unless `definition` is a full query that fits a Measure."
-  [definition]
-  (when-not (and (seq definition)
-                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-    (throw (ex-info (tru "Measure definition must be a full query with a source table.") {:status-code 400})))
-  (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
-
-(defn- check-referenced-measures-exist
-  "Throws unless every Measure that `definition`, a new Measure's, refers to exists."
-  [definition]
-  (lib/check-measure-overwrite nil (lib-be/normalize-query definition)))
-
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (check-definition definition)
-  (check-referenced-measures-exist definition)
   (assoc measure :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Measure
-  [{:keys [id definition] :as measure}]
+  [{:keys [definition] :as measure}]
   (let [changes (t2/changes measure)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-measure-overwrite id (lib-be/normalize-query definition)))
     (cond-> measure
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 
@@ -141,20 +123,99 @@
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-definitions-of-new-measures
+  "Throws unless every Measure that the definition of each of the new Measure `rows` refers to exists."
+  [rows]
+  (run! #(lib/check-measure-overwrite nil (lib-be/normalize-query (:definition %))) rows))
+
+(mu/defn create-measures! :- [:sequential (ms/InstanceOf :model/Measure)]
+  "Insert the Measure `rows` and return the inserted instances, in one transaction, publishing their create event, a
+  definition that refers to a Measure that does not exist throwing."
+  [rows :- [:sequential ::measures.schema/measure.create]]
+  (app-db/create-batched! :model/Measure rows
+                          {:before-create check-definitions-of-new-measures
+                           :after-create  #(events/publish-event! :event/measure-create (events/create-event %))}))
+
+(defn- check-changed-definition
+  "Throws when the new definition in `changes` of one of the Measures with `ids`, `stored` as they are, differs from the
+  stored one and refers to the Measure itself or to a Measure that makes a cycle."
+  [ids changes stored]
+  (when (contains? changes :definition)
+    (let [definition (lib-be/normalize-query (:definition changes))]
+      (doseq [id    ids
+              :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
+        (lib/check-measure-overwrite id definition)))))
+
+(defn- check-measure-updates
+  "Throw a 400 unless every one of `updates`, over the Measures `id->stored`, satisfies these rules:
+
+  - a new definition does not refer to the Measure itself or make a cycle of Measures"
+  [updates id->stored]
+  (doseq [{:keys [id] :as row} updates]
+    (check-changed-definition [id] (dissoc row :id) id->stored)))
+
+(defn- assoc-measure-tables
+  "`updates` of Measures, each with the table its new definition gives, computed once for each distinct definition."
+  [updates _id->stored]
+  (let [table-ids (into {} (map (fn [definition] [definition (definition-table-id definition)]))
+                        (distinct (keep :definition updates)))]
+    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) updates)))
+
+(mu/defn update-measures! :- :nil
+  "Apply `updates`, each the `:id` of a Measure with the columns to give it, in one transaction, publishing their update
+  event with the `:writer` and `:context` of `opts`."
+  ([updates :- [:sequential ::measures.schema/measure.update]]
+   (update-measures! updates nil))
+  ([updates :- [:sequential ::measures.schema/measure.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (app-db/update-batched! :model/Measure updates
+                           {:before-update (fn [updates id->stored]
+                                             (check-measure-updates updates id->stored)
+                                             (assoc-measure-tables updates id->stored))
+                            :reread?       true
+                            :after-update  (fn [updates id->stored id->updated]
+                                             (when (seq updates)
+                                               (events/publish-event! :event/measure-update
+                                                                      (events/update-event id->stored updates
+                                                                                           (assoc opts :objects id->updated)))))})))
+
+(mu/defn set-measure-dimensions!
+  "Set the dimensions and dimension mappings of the Measure with `id`, publishing its update event."
+  [id                 :- ::lib.schema.id/measure
+   dimensions         :- [:maybe [:sequential ::measures.schema/measure.dimension]]
+   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
+  (t2/with-transaction [_conn]
+    (when-let [previous (measures.db/measure id)]
+      (measures.db/set-measure-dimensions! id dimensions dimension-mappings)
+      (events/publish-event! :event/measure-update
+                             (events/update-event {id previous}
+                                                  [{:id id :dimensions dimensions :dimension_mappings dimension-mappings}])))))
+
+(mu/defn delete-measures! :- :nil
+  "Delete the Measures with `ids` in one transaction, publishing their delete event right before the first statement."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (app-db/delete-batched! :model/Measure ids
+                          {:before-delete #(events/publish-event! :event/measure-delete (events/delete-event %))}))
+
+(def ^:private revision-columns
+  "The columns of a Measure that its Revisions track and a revert restores."
+  [:name :description :definition :archived :table_id])
+
+(defn- revert-measure!
+  "Return the Measure with `id` to the `snapshot` of a Measure that a Revision recorded."
+  [id _user-id snapshot]
+  (update-measures! [(assoc snapshot :id id)] {:writer :revert}))
+
 ;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+    (set-measure-dimensions! measure-id dimensions dimension-mappings)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Measure
-  [_model]
-  {:create :event/measure-create
-   :update :event/measure-update
-   :delete :event/measure-delete})
 
 (defmethod app-db-copy/spec :model/Measure [_model]
   {:skip? false})
@@ -167,7 +228,10 @@
                          :definition measures.serialization/definition-transform}
    :defaults            {:archived false}
    :import-dependencies measures.serialization/import-dependencies
-   :storage-paths       measures.serialization/storage-paths})
+   :storage-paths       measures.serialization/storage-paths
+   :insert!             create-measures!
+   :update!             #(do (update-measures! % {:writer :import}) %)
+   :delete!             delete-measures!})
 
 (defmethod remote-sync/spec :model/Measure
   [_model]
@@ -175,9 +239,11 @@
    :synced-filter-clause measures.db/synced-measures-clause})
 
 (defmethod revisions/spec :model/Measure [_model]
-  {:track        [:name :description :definition :archived :table_id]
+  {:track        revision-columns
    :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
+   :schema       ::measures.schema/measure.revision
    :same?        {:definition revisions/same-definition?}
+   :revert!      revert-measure!
    :diff-columns [:name :description :definition]})
 
 (defmethod audit/spec :model/Measure [_model]
@@ -228,7 +294,8 @@
 
 (defmethod replacement/spec :model/Measure [_model]
   {:upgrade-field-refs measures.replacement/upgrade-field-refs
-   :swap-source        measures.replacement/swap-source})
+   :swap-source        measures.replacement/swap-source
+   :update!            #(do (update-measures! % {:writer :replacement}) %)})
 
 (defmethod eid-translation/spec :model/Measure [_model]
   {:names [:measure]})

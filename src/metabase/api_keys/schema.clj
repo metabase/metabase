@@ -2,10 +2,7 @@
   (:require
    [clojure.math :as math]
    [clojure.string :as str]
-   [malli.core :as mc]
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret]))
@@ -112,31 +109,6 @@
    ;; added by the model's after-select hook
    [:masked_key           {:optional true} :string]])
 
-(defn- insert-schema [map-schema]
-  (into [:map {:closed true}]
-        (map (fn [[k properties schema]]
-               (if properties
-                 [k
-                  (cond-> properties
-                    (::insert.optional properties) (assoc :optional true))
-                  schema]
-                 [k schema])))
-        (mc/children (mr/resolve-schema map-schema))))
-
-(mr/def ::api-key.insert
-  (insert-schema ::api-key))
-
-(defn- update-schema [map-schema]
-  (into [:map {:closed true}]
-        (map (fn [[k properties schema]]
-               [k
-                (assoc properties :optional true)
-                schema]))
-        (mc/children (mr/resolve-schema map-schema))))
-
-(mr/def ::api-key.update
-  (update-schema ::api-key))
-
 (mr/def ::api-key.create
   "What an insert of a ApiKey accepts: every column of `:api_key` except `id`, all optional, plus `:metabase.api-keys.core/unhashed-key` consumed by the model's hooks."
   [:map {:closed true}
@@ -151,9 +123,30 @@
    [:scope                               {:optional true} [:maybe [:or :keyword :string]]]
    [:metabase.api-keys.core/unhashed-key {:optional true} ::key.unhashed-or-secret]])
 
-(mr/def ::api-key.inserted
-  "What inserting an ApiKey returns: the selected row plus the `:group` and `:updated_by` hydrated by the after-insert hook."
-  (mut/merge ::api-key
-             [:map
-              [:group      {:optional true} [:map {:closed true} [:id [:maybe pos-int?]] [:name [:maybe :string]]]]
-              [:updated_by {:optional true} ::users.schema/user]]))
+(mr/def ::api-key.update
+  "What an update of an ApiKey takes: its `:id` and a new name, the group of the User created for the key under
+  `:metabase.api-keys.core/group-id`, or a regenerated key."
+  [:map {:closed true}
+   [:id                              ::id]
+   [:name                           {:optional true} ::name]
+   [:metabase.api-keys.core/group-id {:optional true} pos-int?]
+   [:key                             {:optional true} [:ref ::key.hashed]]
+   [:key_prefix                      {:optional true} [:ref ::prefix]]
+   [:updated_by_id                   {:optional true} pos-int?]])
+
+(mr/def ::api-key-usage-log.create
+  "What recording one ApiKeyUsageLog takes: the request an API key authenticated, as the usage middleware sees it."
+  [:map {:closed true}
+   [:api_key_id         [:maybe ::id]]
+   [:user_id            [:maybe ::lib.schema.id/user]]
+   [:created_by_id      [:maybe ::lib.schema.id/user]]
+   [:route_template     :string]
+   [:http_method        [:maybe :string]]
+   [:status             [:maybe :int]]
+   [:duration_ms        [:maybe number?]]
+   [:occurred_at        [:ref ::timestamp]]
+   [:client_name        [:maybe :string]]
+   [:embedding_client   [:maybe :string]]
+   [:embedding_hostname [:maybe :string]]
+   [:user_agent         {:optional true} [:maybe :string]]
+   [:ip_address         {:optional true} [:maybe :string]]])

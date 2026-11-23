@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.response :as api.response]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -20,8 +21,9 @@
 
 (deftest list-timelines-test
   (testing "GET /api/timeline"
-    (mt/with-temp [:model/Collection collection {:name "Important Data"}]
-      (let [id        (u/the-id collection)
+    (mt/with-model-cleanup [:model/Collection]
+      (let [collection (first (collection/create-collections! [{:location "/" :name "Important Data"}]))
+            id        (u/the-id collection)
             events-of (fn [tls]
                         (into #{} (comp (filter (comp #{id} :collection_id))
                                         (map :name))
@@ -104,49 +106,51 @@
 
 (deftest timelines-range-test
   (testing "GET /api/timeline/:id?include=events&start=TIME&end=TIME"
-    (mt/with-temp [:model/Collection    collection {:name "Collection"}
-                   :model/Timeline      tl-a       {:name          "Timeline A"
-                                                    :collection_id (u/the-id collection)}
-                   ;; the temp defaults set {:time_matters true}
-                   :model/TimelineEvent _          {:name        "event-a"
-                                                    :timeline_id (u/the-id tl-a)
-                                                    :timestamp   #t "2020-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _          {:name        "event-b"
-                                                    :timeline_id (u/the-id tl-a)
-                                                    :timestamp   #t "2021-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _          {:name        "event-c"
-                                                    :timeline_id (u/the-id tl-a)
-                                                    :timestamp   #t "2022-01-01T10:00:00.0Z"}
-                   :model/TimelineEvent _          {:name        "event-d"
-                                                    :timeline_id (u/the-id tl-a)
-                                                    :timestamp   #t "2023-01-01T10:00:00.0Z"}]
-      (testing "Events are properly filtered when given only `start=` parameter"
-        (is (= #{"event-c" "event-d"}
-               (event-names (timelines-range-request tl-a {:start "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given only `end=` parameter"
-        (is (= #{"event-a" "event-b" "event-c"}
-               (event-names (timelines-range-request tl-a {:end "2022-01-01T10:00:00.0Z"})))))
-      (testing "Events are properly filtered when given `start=` and `end=` parameters"
-        (is (= #{"event-b" "event-c"}
-               (event-names (timelines-range-request tl-a {:start "2020-12-01T10:00:00.0Z"
-                                                           :end   "2022-12-01T10:00:00.0Z"})))))
-      (mt/with-temp [:model/TimelineEvent _event-a2 {:name         "event-a2"
-                                                     :timeline_id  (u/the-id tl-a)
-                                                     :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                                     :time_matters false}]
-        (testing "Events are properly filtered considering the `time_matters` state."
-          ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
-          ;; time_matters = false effectively means "We care only about the DATE of this event", so
-          ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
-          (is (= #{"event-a2"}
-                 (event-names (timelines-range-request tl-a {:start "2020-01-01T11:00:00.0Z"
-                                                             :end   "2020-12-01T10:00:00.0Z"})))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [collection (first (collection/create-collections! [{:location "/" :name "Collection"}]))]
+        (mt/with-temp [:model/Timeline      tl-a       {:name          "Timeline A"
+                                                        :collection_id (u/the-id collection)}
+                       ;; the temp defaults set {:time_matters true}
+                       :model/TimelineEvent _          {:name        "event-a"
+                                                        :timeline_id (u/the-id tl-a)
+                                                        :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                       :model/TimelineEvent _          {:name        "event-b"
+                                                        :timeline_id (u/the-id tl-a)
+                                                        :timestamp   #t "2021-01-01T10:00:00.0Z"}
+                       :model/TimelineEvent _          {:name        "event-c"
+                                                        :timeline_id (u/the-id tl-a)
+                                                        :timestamp   #t "2022-01-01T10:00:00.0Z"}
+                       :model/TimelineEvent _          {:name        "event-d"
+                                                        :timeline_id (u/the-id tl-a)
+                                                        :timestamp   #t "2023-01-01T10:00:00.0Z"}]
+          (testing "Events are properly filtered when given only `start=` parameter"
+            (is (= #{"event-c" "event-d"}
+                   (event-names (timelines-range-request tl-a {:start "2022-01-01T10:00:00.0Z"})))))
+          (testing "Events are properly filtered when given only `end=` parameter"
+            (is (= #{"event-a" "event-b" "event-c"}
+                   (event-names (timelines-range-request tl-a {:end "2022-01-01T10:00:00.0Z"})))))
+          (testing "Events are properly filtered when given `start=` and `end=` parameters"
+            (is (= #{"event-b" "event-c"}
+                   (event-names (timelines-range-request tl-a {:start "2020-12-01T10:00:00.0Z"
+                                                               :end   "2022-12-01T10:00:00.0Z"})))))
+          (mt/with-temp [:model/TimelineEvent _event-a2 {:name         "event-a2"
+                                                         :timeline_id  (u/the-id tl-a)
+                                                         :timestamp    #t "2020-01-01T10:00:00.0Z"
+                                                         :time_matters false}]
+            (testing "Events are properly filtered considering the `time_matters` state."
+              ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
+              ;; time_matters = false effectively means "We care only about the DATE of this event", so
+              ;; if a start or end timestamp is on the same DATE (regardless of time), include the event
+              (is (= #{"event-a2"}
+                     (event-names (timelines-range-request tl-a {:start "2020-01-01T11:00:00.0Z"
+                                                                 :end   "2020-12-01T10:00:00.0Z"})))))))))))
 
 (deftest create-timeline-test
   (testing "POST /api/timeline"
     (mt/with-model-cleanup [:model/Timeline]
-      (mt/with-temp [:model/Collection collection {:name "Important Data"}]
-        (let [id (u/the-id collection)]
+      (mt/with-model-cleanup [:model/Collection]
+        (let [collection (first (collection/create-collections! [{:location "/" :name "Important Data"}]))
+              id (u/the-id collection)]
           (testing "Create a new timeline"
             ;; make an API call to create a timeline
             (mt/user-http-request :rasta :post 200 "timeline"
@@ -255,36 +259,37 @@
 
 (deftest timeline-hydration-test
   (testing "GET /api/timeline/:id?include=events"
-    (mt/with-temp [:model/Collection collection {:name "Important Data"}
-                   :model/Timeline empty-tl {:name          "Empty TL"
-                                             :collection_id (u/the-id collection)}
-                   :model/Timeline unarchived-tl {:name          "Un-archived Events TL"
-                                                  :collection_id (u/the-id collection)}
-                   :model/Timeline archived-tl {:name          "Archived Events TL"
-                                                :collection_id (u/the-id collection)}
-                   :model/Timeline timeline {:name          "All Events TL"
-                                             :collection_id (u/the-id collection)}
-                   :model/TimelineEvent _ {:name        "event-a"
-                                           :timeline_id (u/the-id unarchived-tl)}
-                   :model/TimelineEvent _ {:name        "event-b"
-                                           :timeline_id (u/the-id unarchived-tl)}
-                   :model/TimelineEvent _ {:name        "event-c"
-                                           :timeline_id (u/the-id archived-tl)
-                                           :archived    true}
-                   :model/TimelineEvent _ {:name        "event-d"
-                                           :timeline_id (u/the-id archived-tl)
-                                           :archived    true}
-                   :model/TimelineEvent _ {:name        "event-e"
-                                           :timeline_id (u/the-id timeline)}
-                   :model/TimelineEvent _ {:name        "event-f"
-                                           :timeline_id (u/the-id timeline)
-                                           :archived    true}]
-      (testing "a timeline with no events returns an empty list"
-        (is (= '() (:events (include-events-request empty-tl false)))))
-      (testing "a timeline with both (un-)archived events"
-        (testing "Returns only unarchived events when archived is false"
-          (is (= #{"event-e"}
-                 (event-names (include-events-request timeline false)))))
-        (testing "Returns all events when archived is true"
-          (is (= #{"event-e" "event-f"}
-                 (event-names (include-events-request timeline true)))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [collection (first (collection/create-collections! [{:location "/" :name "Important Data"}]))]
+        (mt/with-temp [:model/Timeline empty-tl {:name          "Empty TL"
+                                                 :collection_id (u/the-id collection)}
+                       :model/Timeline unarchived-tl {:name          "Un-archived Events TL"
+                                                      :collection_id (u/the-id collection)}
+                       :model/Timeline archived-tl {:name          "Archived Events TL"
+                                                    :collection_id (u/the-id collection)}
+                       :model/Timeline timeline {:name          "All Events TL"
+                                                 :collection_id (u/the-id collection)}
+                       :model/TimelineEvent _ {:name        "event-a"
+                                               :timeline_id (u/the-id unarchived-tl)}
+                       :model/TimelineEvent _ {:name        "event-b"
+                                               :timeline_id (u/the-id unarchived-tl)}
+                       :model/TimelineEvent _ {:name        "event-c"
+                                               :timeline_id (u/the-id archived-tl)
+                                               :archived    true}
+                       :model/TimelineEvent _ {:name        "event-d"
+                                               :timeline_id (u/the-id archived-tl)
+                                               :archived    true}
+                       :model/TimelineEvent _ {:name        "event-e"
+                                               :timeline_id (u/the-id timeline)}
+                       :model/TimelineEvent _ {:name        "event-f"
+                                               :timeline_id (u/the-id timeline)
+                                               :archived    true}]
+          (testing "a timeline with no events returns an empty list"
+            (is (= '() (:events (include-events-request empty-tl false)))))
+          (testing "a timeline with both (un-)archived events"
+            (testing "Returns only unarchived events when archived is false"
+              (is (= #{"event-e"}
+                     (event-names (include-events-request timeline false)))))
+            (testing "Returns all events when archived is true"
+              (is (= #{"event-e" "event-f"}
+                     (event-names (include-events-request timeline true)))))))))))

@@ -118,11 +118,3 @@
   "The id, database, name, display name, schema, and published flag (nil when not set) of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select selection-columns {:left-join settings-join, :where [:in (table-column :id) table-ids]}))
-
-(mu/defn delete-field-values-for-tables!
-  "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/FieldValues
-              :field_id [:in ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/Field)]
-                                               :where  [:in :table_id table-ids]}]))

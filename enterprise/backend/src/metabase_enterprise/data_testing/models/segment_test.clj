@@ -10,9 +10,9 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -32,7 +32,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
@@ -40,20 +39,13 @@
   :model/Segment)
 
 (t2/deftransforms :model/SegmentTest
-  {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
-   :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
+  {:inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :last_run]
   "Add the newest run, or nil, to each segment test."
   [_model _k segment-tests]
   (data-testing.models/with-last-runs :segment segment-tests))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/SegmentTest [segment-test]
-  (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
-  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
-  segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -97,35 +89,6 @@
   (and (mi/can-write? instance)
        (can-save-test? (:segment_id changes (:segment_id instance)))))
 
-;;; ---------------------------------------------------- Writes ----------------------------------------------------
-
-(mu/defn create-segment-test! :- ::data-testing.schema/segment-test
-  "Insert the SegmentTest `segment-test` returning the inserted test."
-  [segment-test :- [:merge
-                    ::data-testing.schema/segment-test.create
-                    [:map {:closed true}
-                     [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-segment-test! segment-test))
-
-(mu/defn update-segment-test! :- :nil
-  "Apply `changes` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/segment-test.update]
-  (data-testing.db/update-segment-test! id changes)
-  nil)
-
-(mu/defn delete-segment-test! :- :nil
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-segment-test! id)
-  nil)
-
-(defenterprise delete-segment-tests!
-  "Deletes the tests of the segment `segment-id` whatever the token says, since the rows outlive the feature."
-  :feature :none
-  [segment-id]
-  (data-testing.db/delete-segment-tests! segment-id))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-segment :- [:maybe :map]
@@ -164,6 +127,34 @@
    :subject    #(testable-segment (:segment_id %))
    :can-run?   can-run?})
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
+  "Insert the SegmentTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
+  [rows :- [:sequential ::data-testing.schema/segment-test.create]]
+  (data-testing.models/create-saved-tests! :model/SegmentTest rows))
+
+(mu/defn update-segment-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms of
+  the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
+   (update-segment-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]
+    opts :- :metabase.events.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
+
+(mu/defn delete-segment-tests! :- :nil
+  "Delete the SegmentTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
+
+(defenterprise delete-segment-tests-for-segments!
+  "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [segment-ids]
+  (delete-segment-tests! (data-testing.db/saved-test-ids-of-subjects :model/SegmentTest :segment_id (vec segment-ids))))
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -171,7 +162,7 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (update-segment-test! id (select-keys snapshot revision-columns)))
+  (update-segment-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -184,17 +175,14 @@
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-(defmethod events/spec :model/SegmentTest
-  [_model]
-  {:create :event/segment-test-create
-   :update :event/segment-test-update
-   :delete :event/segment-test-delete})
-
 (defmethod app-db-copy/spec :model/SegmentTest [_model]
   {:skip? false})
 
 (defmethod serialization/spec :model/SegmentTest [_]
   {:schema              ::data-testing.schema/external-segment-test
+   :insert!             create-segment-tests!
+   :update!             #(update-segment-tests! % {:writer :import})
+   :delete!             delete-segment-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:segment_id (serialization/fk-transform :model/Segment)
                          :creator_id serialization/user-transform}
@@ -209,6 +197,7 @@
 (defmethod revisions/spec :model/SegmentTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/segment-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-segment-test!})
