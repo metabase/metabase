@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.expression.window-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    #?@(:clj  ([metabase.lib.core :as lib]
               [metabase.lib.metadata :as lib.metadata]
               [metabase.lib.serialize :as lib.serialize]
               [metabase.lib.test-metadata :as meta]
               [metabase.util.json :as json]))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest are #?@(:clj [is testing])]]
    [metabase.lib.normalize :as lib.normalize]))
 

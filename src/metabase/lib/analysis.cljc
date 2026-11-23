@@ -9,7 +9,7 @@
 
 (defn ->mbql
   "Convert the given analysis stage into MBQL."
-  [{:keys [kind base_query date_range granularity]
+  [{:keys [kind base_query granularity]
     habit-values :habit.values
     person-column-key :columns.person timestamp-column-key :columns.timestamp
     :as _analysis}]

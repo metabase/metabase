@@ -1,12 +1,14 @@
 (ns metabase.lib.analysis-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.analysis :as analysis]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.column :as column]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.test-runner.assert-exprs.approximately-equal]))
+   [metabase.lib.test-metadata :as meta]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-habit-test
   (let [mp meta/metadata-provider
