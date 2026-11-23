@@ -99,7 +99,7 @@ A check that needs another row runs in the write function, before the statement,
 ```
 
 - Named `check-<what>`, no `!`, throws inside; the docstring lists its rules with `-`. It takes what the call is about
-  to write: the rows on create, the stored rows merged with the changes on update.
+  to write: the rows on create, the updates and `id->stored` on update. It runs in the helper's `:before-…` option.
 - It reads through `db.clj` functions and may run several statements, a fixed number per call and never one per row.
   The cheap shape is one query that returns only the referenced rows that break a rule, then the precise error for the
   first of them in the caller's order.
@@ -122,43 +122,73 @@ A check that needs another row runs in the write function, before the statement,
 
 The `Writes` section of the model file, directly before `Specs`, holds the only production writers of the model.
 
-- Three general functions per model: `create-<model>s! [models opts]`, `update-<model>s! [ids changes opts]` (ONE
-  change map applied to every id) and `delete-<model>s! [ids opts]`. No single-row twin (callers pass `[x]`), no
-  `foo*` layer, no `-where!` variant. Keep them thin: per-row work goes to hook expressions and to `db.clj`.
-- A consumer whose rows each carry their own values, or whose data size needs another statement, gets a bespoke
-  function named `<op>-<model>s-for-<consumer or owner>!` with its own input: `update-cards-for-import! [rows]`,
-  `update-fields-for-sync!`, `delete-pulses-for-dashboards!`, `delete-task-history-for-cleanup! [cutoff]`. It needs a
-  reason of size or call pattern (import, metadata sync, an archive cascade, deleting a database's content); other
-  callers use the general function, also in a small loop. Every model with a SerDes spec has
-  `update-<model>s-for-import!`, which may write row by row.
-- A write that fits none keeps a named case function (`increment-view-counts!`).
+- One function per operation and model, each taking a list. No single-row twin (callers pass `[x]`), no `foo*`
+  layer, no `-where!` and no per-writer `-for-<consumer>!` variant.
+  - `create-<model>s! [rows opts]` returns the created rows.
+  - `update-<model>s! [updates opts]` takes rows of `:id` and the columns to change, and returns nil.
+  - `delete-<model>s! [ids opts]` returns nil.
+- A caller calls the function once with everything it has, never in a loop: a loop publishes one event per row.
+- Each is one call of a helper in `metabase.app-db.core`, which opens the transaction, partitions the input and writes:
+
+```clojure
+(mu/defn update-data-apps! :- :nil
+  "Apply `updates`, the id of a DataApp and the columns to change, in one transaction, publishing their update event."
+  [updates :- [:sequential ::data-apps.schema/data-app.update] opts :- ::write-opts]
+  (app-db/update-batched! :model/DataApp updates
+    {:before-update (fn [updates id->stored]
+                      (check-data-app-updates updates id->stored)
+                      (cond-> updates (= :import (:writer opts)) (without-held-bundles id->stored)))
+     :reread?       true
+     :after-update  (fn [updates id->stored id->updated]
+                      (events/publish-event! :event/data-app-update
+                                             (events/update-event id->stored updates {:objects id->updated})))}))
+```
+
+| Helper | Partition | Options, each a function |
+|---|---|---|
+| `create-batched! [model rows opts]` | `create-partition-size`, 1000 | `:before-create [rows]`, per batch; `:after-create [created]`, once |
+| `update-batched! [model updates opts]` | `update-partition-size`, 1000 | `:before-update [updates id->stored]`, per batch; `:after-update [updates id->stored id->updated]`, once; `:reread?` fills `id->updated` |
+| `delete-batched! [model ids opts]` | `delete-partition-size`, 10000 | `:before-delete [rows]` and `:after-delete [rows]`, once each, with every row read |
+
+- Checks go in a `:before-…` function, which throws before any row of its batch is written. A `:before-create` or
+  `:before-update` that returns rows replaces the batch; one that only checks returns nil. Events go in `:after-create`
+  and `:after-update`, and in `:before-delete` (see Events): one event per call, never one per batch.
+- A helper throws on an option it does not know, and calls each function with exactly the arguments above. A named
+  function passed to it must take that many: the linter does not see this.
+- `app-db/update-grouped! [model updates]` is the statement behind every update: one `t2/update!` per distinct change
+  map, for all the ids that share it, in order of first appearance. Never a Toucan call in a loop.
+- A write function reads top to bottom at one level: the helper call, with private functions for its steps. The split
+  is checking (`check-<what>`, reads and throws) against the work (`…!`, writes). A low-level chunk gets its own
+  private function. No private function that only passes its arguments on. No function named `with-…`: that prefix
+  is for macros.
+- A model the helper does not fit stays hand-written in the same order (transaction, partition, checks, statement,
+  one event) and says why: a parent that writes its parts, a row whose default read hides columns the event needs
+  (User), a keyed upsert, a delete that must not read its rows.
+- A write that fits no list keeps a named case function (`increment-view-counts!`).
 - Optional last `opts`: a closed map of data, holding only keys the function uses; no `opts` argument when none is.
   - `:writer`, an enum: `:import`, `:revert`, `:replacement`, `:sync`, `:cascade`. Absent means a user's write. A
     function may branch on it (`update-cards!` skips result-metadata inference for any writer).
   - `:context`, the event context (`::events.schema/context`): `:revision-message`, `:archived-with`, `:details`.
-  - Rows the caller already holds, as a list of instances under the plural model name. The keys that exist are
-    `:tables`, `:fields` and `:databases`; the function does not read those rows again.
-- A spec customises with a literal: `:insert! #(create-cards! % {:writer :import})`.
-- No functions, partials or thunks passed between layers, `db.clj` included: pass data. No HoneySQL in arguments:
-  a caller selects ids through a `<module>.db` read function and calls the normal write function.
-- Batch (`partition-all`) only where very many ids are expected (sync's `update-tables!`), not everywhere.
-- A write function opens its own `t2/with-transaction` and publishes its events inside it. A child function has
-  none: it runs in its parent's. Atomicity across several calls is the caller's outer `t2/with-transaction`; no
-  do-in-transaction helpers.
-- A write function does not validate the shape of its input: the boundary did. Its `mu/defn` schemas run in dev and
-  test only.
-- Toucan calls live only in `<module>/db.clj` (see `backend-module-conventions`), called from the Writes section.
-  A general update is one `db.clj` statement for all ids.
+  - Rows the caller already holds, as a list of instances under the plural model name (`:tables`, `:fields`,
+    `:databases`); the function does not read those rows again.
+- A SerDes spec customises with a literal, and its `:update!` returns the rows it was given:
+  `:insert! #(create-cards! % {:writer :import})`, `:update! #(do (update-cards! % {:writer :import}) %)`.
+- No HoneySQL in arguments: a caller selects ids through a `<module>.db` read function and calls the write function.
+  A `db.clj` read used by id returns a map and is bound as `id->x`.
+- Whoever feeds a write function in batches uses the same constants: an event consumer partitions with them, and
+  SerDes and remote sync batch by `app-db/update-partition-size`.
+- A caller never uses what an update or delete returns: both return nil. Return what the endpoint returned before.
+- A plain value is validated at the entry point (request schema, SerDes spec `:schema`, a file reader), never
+  silently changed: no trimming, no blank string to nil. A write function does not validate the shape of its input;
+  its `mu/defn` schemas run in dev and test only.
+- Toucan calls live in `<module>/db.clj` (see `backend-module-conventions`) and in the helpers.
 - In `db.clj`, no trivial select after a write: `t2/insert-returning-instances!` when the caller needs the rows it
-  inserted, `t2/insert-returning-pks!` when it needs only the ids; never insert and then select the same rows by id.
-- A bulk insert of rows with different key sets goes through `u/map-by-key-set`, as `segments.db/insert-segments!`:
-  one insert of mixed rows puts NULL where a row leaves a column out, which a NOT NULL column with a default refuses.
+  inserted, `t2/insert-returning-pks!` when it needs only the ids.
 - An upsert over a unique key is one statement per app DB in `db.clj` (`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`,
-  `MERGE`), as `metabot.db/upsert-row!`. Where hooks add columns the statement would skip, or an event needs the
-  stored row (`upsert-field-user-settings!`), `db.clj` has a plain select, insert and update, and the write function
-  resolves a lost insert race once, by re-reading the row and updating it.
-- More belongs in `db.clj` than in the write function: `INSERT ... SELECT` over read-then-insert, and a write by owner
-  with a subquery over selecting ids first, unless an event needs the rows.
+  `MERGE`), as `metabot.db/upsert-row!`. On H2 it is a plain `MERGE` with no retry.
+- More belongs in `db.clj` than in the write function: `INSERT ... SELECT` over read-then-insert.
+- A time the database stamps comes from a statement-level clock: on Postgres `now()` is the start of the transaction,
+  so two rows written in one transaction would get the same time (`task-history.db/now-clause`).
 - An entry point shared by REST and MCP or Metabot validates in the shared function (`create-segment!` in
   `metabase.segments.rest.api` checks the definition), so no caller skips the check.
 - A cascade to another model calls that model's write functions. Where requiring it would be a load cycle, the cause
@@ -174,7 +204,7 @@ the Document's function calls `create-cards!` / `update-cards!`.
 
 - Child functions (`dashboard-card/create-dashboard-cards!`) are plain writes: no events and no transaction of their
   own, since the parent function that calls them has opened one.
-- A parent has two updates: plural `update-<parent>s! [ids changes opts]` for its own columns, and singular
+- A parent has two updates: plural `update-<parent>s! [updates opts]` for its own columns, and singular
   `update-<parent>! [id changes opts]` whose `changes` may carry the parts (`:dashcards`, `:tabs`). The singular one
   owns the column change and every child write and publishes ONE parent event. It is the only singular function
   beside a plural one.
@@ -225,8 +255,8 @@ the Document's function calls `create-cards!` / `update-cards!`.
 | Schema | Holds |
 |---|---|
 | `::segment` | the row: primary key required, other columns and hydrated keys optional; what `db.clj` reads return |
-| `::segment.create` | what `create-segments!` takes |
-| `::segment.update` | what `update-segments!` takes, with `:id` where rows carry it |
+| `::segment.create` | one row of what `create-segments!` takes, built from `(mut/dissoc ::segment.update :id)` |
+| `::segment.update` | one row of what `update-segments!` takes: required `:id`, every column optional |
 | `::segment.revision` | a snapshot as a Revision stores it; a parent's nests its children's (`::dashboard.revision`) |
 
 - A write-function variant with non-column keys, or a `db.clj` function whose input fits neither, has its schema
