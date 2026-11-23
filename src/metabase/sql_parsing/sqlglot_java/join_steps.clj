@@ -227,24 +227,10 @@
                        "joins"       (conj (mapv ast/copy (pop chain)) last')})
           with-node)))))
 
-(defn- merged-with
-  "One WITH clause holding the CTEs of `withs`, outermost first, or nil for none."
-  [withs dialect]
-  (case (count withs)
-    0 nil
-    1 (first withs)
-    ;; One WITH list cannot hold a CTE and the inner one that shadows it, nor one scope's modifiers for all of them.
-    (if-not (and (apply distinct? (map #(effective-name (ast/this (ast/arg % "alias")) dialect)
-                                       (mapcat ast/expressions withs)))
-                 (every? (fn [with-node] (every? #{"expressions" "recursive"} (set-args with-node))) withs))
-      (throw (unsupported "not-a-select"))
-      (doto (ast/copy (first withs))
-        (ast/set-arg! "expressions" (into [] (comp (mapcat ast/expressions) (map ast/copy)) withs))
-        (ast/set-arg! "recursive" (boolean (some #(ast/arg % "recursive") withs)))))))
-
 (defn- whole-query
   "`stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
-  Throws a `not-a-select` refusal for brackets with a clause other than WITH, ORDER BY, LIMIT or OFFSET.
+  Throws a `not-a-select` refusal for brackets with a clause other than WITH, ORDER BY, LIMIT or OFFSET, or for several
+  WITH scopes.
   Port of `_whole_query`."
   [stmt dialect]
   (loop [stmt stmt, withs []]
@@ -253,10 +239,18 @@
         (when-not (every? #{"this" "with_" "order" "limit" "offset"} (set-args stmt))
           (throw (unsupported "not-a-select")))
         (recur (ast/this stmt) (cond-> withs (ast/arg stmt "with_") (conj (ast/arg stmt "with_")))))
-      [stmt (merged-with (cond-> withs
-                           (and (instance? Expressions$Select stmt) (ast/arg stmt "with_"))
-                           (conj (ast/arg stmt "with_")))
-                         dialect)])))
+      (let [withs     (cond-> withs
+                        (and (instance? Expressions$Select stmt) (ast/arg stmt "with_"))
+                        (conj (ast/arg stmt "with_")))
+            with-node (first withs)
+            names     (map #(effective-name (ast/this (ast/arg % "alias")) dialect)
+                           (some-> with-node ast/expressions))]
+        ;; One WITH list cannot stand in for several scopes. sqlglot flattens some of them itself, leaving a repeated
+        ;; name.
+        (when (or (next withs)
+                  (and (seq names) (not (apply distinct? names))))
+          (throw (unsupported "not-a-select")))
+        [stmt with-node]))))
 
 (defn- parse-statement
   "The first statement in `sql`, without brackets around the whole of it, and its WITH clause, as `[stmt with-node]`.

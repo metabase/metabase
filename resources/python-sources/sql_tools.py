@@ -549,7 +549,7 @@ def _whole_query(stmt, dialect):
     """`stmt` without brackets around the whole of it, and the WITH clause it runs under, or None.
 
     A trailing ORDER BY or LIMIT on the brackets is dropped with the rest of what is outside FROM and JOIN.
-    Raises `_JoinStepsUnsupported` for brackets with any other clause of their own.
+    Raises `_JoinStepsUnsupported` for brackets with any other clause of their own, or several WITH scopes.
     """
     withs = []
     while isinstance(stmt, exp.Subquery) and not stmt.alias:
@@ -560,16 +560,14 @@ def _whole_query(stmt, dialect):
         stmt = stmt.this
     if isinstance(stmt, exp.Select) and stmt.args.get("with_"):
         withs.append(stmt.args["with_"])
-    if len(withs) < 2:
-        return stmt, (withs[0] if withs else None)
-    # One WITH list cannot hold a CTE and the inner one that shadows it, nor one scope's modifiers for all of them.
-    names = [_effective_name(cte.args["alias"].this, dialect) for with_ in withs for cte in with_.expressions]
-    if len(names) != len(set(names)) or any(_set_args(with_) - {"expressions", "recursive"} for with_ in withs):
+    # One WITH list cannot stand in for several scopes. sqlglot flattens some of them itself, leaving a repeated name.
+    if len(withs) > 1:
         raise _JoinStepsUnsupported("not-a-select")
-    merged = withs[0].copy()
-    merged.set("expressions", [cte.copy() for with_ in withs for cte in with_.expressions])
-    merged.set("recursive", any(with_.args.get("recursive") for with_ in withs))
-    return stmt, merged
+    with_ = withs[0] if withs else None
+    names = [_effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else [])]
+    if len(names) != len(set(names)):
+        raise _JoinStepsUnsupported("not-a-select")
+    return stmt, with_
 
 
 def _count_select(from_, joins, with_=None):

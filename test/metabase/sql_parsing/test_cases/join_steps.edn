@@ -550,21 +550,15 @@
    :dialect "sqlite",
    :sql "SELECT * FROM a, json_each(a.j) j WHERE a.id = j.key",
    :expected {:status "unsupported", :reason "comma-join"}}
-  {:name "quoted CTEs that differ only by case in nested scopes are both kept",
+  {:name "several WITH scopes are refused, even with distinct names",
    :dialect "postgres",
    :sql "WITH \"C\" AS (SELECT 1 AS id) (WITH \"c\" AS (SELECT 2 AS id) SELECT * FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id) LIMIT 1",
-   :expected
-   {:status "ok",
-    :from {:source "cte", :table nil, :alias "C"},
-    :base_sql "WITH \"C\" AS (SELECT 1 AS id), \"c\" AS (SELECT 2 AS id) SELECT COUNT(*) AS n FROM \"C\"",
-    :steps
-    [{:source "cte",
-      :table nil,
-      :alias "c",
-      :strategy "inner",
-      :sql
-      "WITH \"C\" AS (SELECT 1 AS id), \"c\" AS (SELECT 2 AS id) SELECT COUNT(*) AS n FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id"}]}}
+   :expected {:status "unsupported", :reason "not-a-select"}}
   {:name "a comma and an explicit CROSS JOIN are told apart by position, past a DISTINCT FROM in the select list",
    :dialect "sqlite",
    :sql "SELECT a.x IS DISTINCT FROM 1 FROM a CROSS JOIN b, c WHERE b.id = c.id",
-   :expected {:status "unsupported", :reason "comma-join"}}]}
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a CTE repeated by bare brackets, which sqlglot flattens, is refused",
+   :dialect "postgres",
+   :sql "WITH c AS (SELECT 1 AS id) (WITH c AS (SELECT 2 AS id) SELECT * FROM a JOIN c ON a.id = c.id)",
+   :expected {:status "unsupported", :reason "not-a-select"}}]}
