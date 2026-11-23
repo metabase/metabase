@@ -1,0 +1,41 @@
+.track {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background-color: var(--mb-color-border-neutral);
+}
+
+.allowed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.25rem;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 45%,
+    var(--mb-color-background_surface-primary)
+  );
+}
+
+.marker {
+  position: absolute;
+  top: 50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  border: 2px solid var(--mb-color-background_surface-primary);
+  transform: translate(-50%, -50%);
+}
+
+.labels {
+  position: relative;
+  height: 1.25rem;
+}
+
+.label {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--mb-color-text-secondary);
+}
