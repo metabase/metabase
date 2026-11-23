@@ -28,6 +28,7 @@ import {
   SelectItem,
   Stack,
   Text,
+  TextInput,
 } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -380,15 +381,8 @@ const EditMap = ({
       <Stack className={CS.flexNoShrink} gap="xl">
         <SettingContainer description={t`What do you want to call this map?`}>
           <div className={CS.flex}>
-            <input
-              type="text"
-              className={cx(
-                AdminS.AdminInput,
-                AdminS.SettingsInput,
-                CS.bordered,
-                CS.rounded,
-                CS.h3,
-              )}
+            <TextInput
+              w={400}
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -401,15 +395,8 @@ const EditMap = ({
           description={t`URL for the GeoJSON file you want to use`}
         >
           <div className={CS.flex}>
-            <input
-              type="text"
-              className={cx(
-                AdminS.AdminInput,
-                AdminS.SettingsInput,
-                CS.bordered,
-                CS.rounded,
-                CS.h3,
-              )}
+            <TextInput
+              w={400}
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -418,7 +405,6 @@ const EditMap = ({
             />
             <Button
               ml="sm"
-              size="lg"
               disabled={!map.url}
               variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}
