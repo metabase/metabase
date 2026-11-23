@@ -59,6 +59,7 @@ import {
   restoreSharedPackages,
 } from "./package-loading.ts";
 import { globals, tryTo } from "./properties.ts";
+import { isReactStuck } from "./react-state.ts";
 import {
   recordRealmBaseline,
   restoreEnvironment,
@@ -88,6 +89,7 @@ import {
   clearPendingTimers,
   fakeClock,
   isPoisoned,
+  poisonWorker,
   realSystemTime,
   restoreTimerGlobals,
   trackTimers,
@@ -332,7 +334,7 @@ async function runChildren(
 ): Promise<void> {
   for (const child of suite.children) {
     if (child.type === "suite") {
-      const skip = child.suite.mode === "skip";
+      const skip = isPoisoned() || child.suite.mode === "skip";
       if (skip) {
         recordNotRun(child.suite);
       }
@@ -407,6 +409,12 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
   if (!failure) {
     recordPassed(identity);
     return;
+  }
+  if (isReactStuck()) {
+    poisonWorker();
+    process.stderr.write(
+      `[harness] "${testScope.name}" left React inside a commit. The rest of its file is skipped, and a new worker runs the next file.\n`,
+    );
   }
   recordFailure(testScope.name, failure.error, output, identity);
   throw failure.error;

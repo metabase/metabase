@@ -193,6 +193,13 @@ export function isPoisoned(): boolean {
 }
 
 /**
+ * Skips the rest of the file, and replaces the worker after it.
+ */
+export function poisonWorker(): void {
+  poisoned = true;
+}
+
+/**
  * Runs a test body or a hook with a deadline on Node's own clock, and fails it
  * when it adds more heap than one test should. A runaway test can fill the
  * heap long before the deadline, and running out of memory would take the
