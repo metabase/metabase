@@ -1082,6 +1082,28 @@
                      {:type :finish :finish-reason :max-iterations}]
                     (take-last 3 parts)))))))))
 
+(deftest step-limit-reply-input-test
+  (mt/as-admin
+    (testing "the last call of a turn at its step limit sends what the previous call sent, then the new step and the
+             instruction, and does not build the history again"
+      (let [build-history (mt/original-fn #'messages/build-message-history)
+            builds        (atom 0)
+            {:keys [requests]}
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))]
+              (step-limit-turn! :document-generate-content
+                                #(mut/mock-llm-response [{:type :text :text "The orders table has no revenue."}])))
+            [_ {input-2 :input} {input-3 :input}] requests
+            added (drop (count input-2) input-3)]
+        (is (= [1 3] [@builds (count requests)]))
+        (is (= input-2 (take (count input-2) input-3)))
+        (is (= 3 (count added)))
+        (is (=? [{:type :tool-input :id "t2"}
+                 {:type :tool-output :id "t2"}
+                 {:role :user :content #(str/includes? % "step limit")}]
+                added))))))
+
 (deftest step-limit-reply-fallback-test
   (mt/as-admin
     (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
@@ -1213,21 +1235,27 @@
           (is (not-any? #(= :error (:type %)) parts))
           (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
 
-(deftest step-limit-reply-history-failure-test
-  (testing "a failure while the last call's history is built leaves the fixed reply and the earlier usage"
+(deftest step-limit-reply-input-failure-test
+  (testing "a failure while the last call's input is built leaves the fixed reply and the earlier usage"
     (mt/as-admin
       (let [build-history (mt/original-fn #'messages/build-message-history)
+            steps->parts  (mt/original-fn #'messages/steps->parts)
             builds        (atom 0)
-            third-fails   (fn [& args]
-                            (if (= 3 (swap! builds inc))
-                              (throw (ex-info "The viewing context is gone" {}))
-                              (apply build-history args)))
+            conversions   (atom 0)
             {:keys [parts requests]}
-            (mt/with-dynamic-fn-redefs [messages/build-message-history third-fails]
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))
+                                        ;; The first call converts the steps of the history it builds, the second
+                                        ;; the step added since, and the third, the call at the step limit, fails.
+                                        messages/steps->parts           (fn [steps]
+                                                                          (if (= 3 (swap! conversions inc))
+                                                                            (throw (ex-info "A step can't be converted" {}))
+                                                                            (steps->parts steps)))]
               (mt/with-log-level [metabase.metabot.agent.core :fatal]
                 (step-limit-turn! :document-generate-content
                                   #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))))]
-        (is (= [3 2] [@builds (count requests)]))
+        (is (= [1 3 2] [@builds @conversions (count requests)]))
         (is (=? [{:type :text :text step-limit-text}
                  {:type :data :data-type "state"}
                  {:type :finish :finish-reason :max-iterations}]
@@ -1673,6 +1701,73 @@
                   (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
                            {:role "user" :content [{:type "tool_result"}]}]
                           (drop (count messages-1) messages-2))))))))))))
+
+(deftest later-calls-do-not-render-the-context-again-test
+  (testing "only the first call of a turn renders the context, and each later call sends what the previous call sent,
+           then the new steps"
+    (doseq [[case-name context preload?]
+            [["without a SQL dialect"
+              {:current_user_time "2026-10-05T12:00:00Z"}
+              false]
+             ["with a SQL dialect preload"
+              {:current_user_time "2026-10-05T12:00:00Z"
+               :capabilities      ["permission:write_sql_queries"]
+               :user_is_viewing   [{:type       "adhoc"
+                                    :sql_engine "postgres"
+                                    :query      (lib/native-query (mt/metadata-provider) "SELECT 1")}]}
+              true]]]
+      (testing case-name
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [inputs      (atom [])
+                renders     (atom 0)
+                orig-render (mt/original-fn #'user-context/enrich-context-for-template)]
+            (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                        (fn [ctx] (swap! renders inc) (orig-render ctx))
+                                        openrouter/openrouter
+                                        (fn [{:keys [input]}]
+                                          (mut/mock-llm-response
+                                           ;; The links fill the registry, so the tails of calls 2 and 3 go
+                                           ;; through a real inversion.
+                                           (case (count (swap! inputs conj input))
+                                             1 [{:type :text :text "See [Orders](metabase://model/1)."}
+                                                {:type      :tool-input
+                                                 :id        "call-1"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["orders"]}}]
+                                             2 [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                                                {:type      :tool-input
+                                                 :id        "call-2"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["people"]}}]
+                                             [{:type :text :text "Found them."}])))
+                                        metabot-search/search (constantly [])]
+              (run-agent-loop! {:messages   [{:role :user :content "Show me orders and people"}]
+                                :state      {}
+                                :profile-id :internal
+                                :context    context})
+              (let [[input-1 input-2 input-3] @inputs]
+                (is (= 3 (count @inputs)))
+                (is (= 1 @renders))
+                (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
+                (is (= input-1 (take (count input-1) input-2)))
+                (is (= input-2 (take (count input-2) input-3)))
+                (is (=? [{:type :text :text "See "}
+                         {:type :text :text "[Orders](metabase://model/1)."}
+                         {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                         {:type     :tool-output
+                          :id       "call-1"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-1) input-2)))
+                (is (=? [{:type :text :text "See "}
+                         {:type :text :text "[Ops](metabase://dashboard/2)."}
+                         {:type :tool-input :id "call-2" :function "search" :arguments {:keyword_queries ["people"]}}
+                         {:type     :tool-output
+                          :id       "call-2"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-2) input-3)))))))))))
 
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"

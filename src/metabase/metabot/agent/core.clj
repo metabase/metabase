@@ -330,14 +330,22 @@
           parts)))
 
 (defn- turn-input-parts
-  "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
-  Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
-  the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
-  before it has changed."
-  [sent-parts context memory tools link-registry]
-  (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
-                      link-registry)))
+  "The AISDK parts for this call of the turn.
+
+  Only the first call builds the history, which renders the viewing context. A later call sends what the previous
+  call sent, exactly as sent, then the parts of the steps added since. The steps' parts come last in
+  [[messages/build-message-history]], so the result has the same order as a new build.
+
+  `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
+  [sent-parts sent-steps context memory tools link-registry]
+  (if sent-steps
+    ;; Do not build the history again. A new build reads the viewing context again and inverts links against a
+    ;; registry that grows within the turn. Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed
+    ;; thinking block once anything before it has changed.
+    (into sent-parts
+          (invert-links (messages/steps->parts (drop sent-steps (memory/get-steps memory)))
+                        link-registry))
+    (invert-links (messages/build-message-history context memory tools) link-registry)))
 
 (defn- call-llm
   "Call the LLM and stream processed parts.
@@ -670,6 +678,7 @@
      :status              :continue
      :usage-atom          usage-atom
      :sent-parts          []
+     :sent-steps          nil
      :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
@@ -764,8 +773,10 @@
   serves was canceled. When building its input or making it throws, its parts are only the usage it reported before
   that, which the turn's saved usage still has to count. The tools stay declared, since a changed tool set misses the
   prompt cache's tool and system prefix and invalidates the thinking that Claude replays, but the `none` tool choice
-  lets the model call none of them."
-  [{:keys [agent iteration usage-atom]} sent-parts]
+  lets the model call none of them.
+
+  `sent-parts` and `sent-steps` are what the turn's last loop call sent, in the form [[turn-input-parts]] takes."
+  [{:keys [agent iteration usage-atom]} sent-parts sent-steps]
   (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
         memory @memory-atom]
     (when-not (some-> (:request-canceled-chan memory) a/poll!)
@@ -773,7 +784,7 @@
             link-registry-atom (atom (get-in memory [:state :link-registry] {}))
             parts-atom         (atom [])]
         (try
-          (let [input-parts (conj (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          (let [input-parts (conj (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
                                   {:role :user :content step-limit-instruction})]
             (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                          :ai/model     (:model profile)}
@@ -820,7 +831,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts sent-steps undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -830,7 +841,9 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
+          ;; the steps that `input-parts` holds: `memory` is read before this call's step is added
+          input-steps        (memory/iteration-count memory)
           xf                 (comp (call-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -873,16 +886,17 @@
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state
-                     :result result'
-                     :iteration (inc iteration)
-                     :sent-parts input-parts
+                     :result              result'
+                     :iteration           (inc iteration)
+                     :sent-parts          input-parts
+                     :sent-steps          input-steps
                      :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
                 ;; A model that must call a tool can't reply; elsewhere the web chat and Slack show a notice
                 (if (and (= reason :max-iterations) (:required-tool-call? profile))
-                  (let [reply-parts (step-limit-reply-parts loop-state input-parts)
+                  (let [reply-parts (step-limit-reply-parts loop-state input-parts input-steps)
                         reply?      (text-reply? reply-parts)]
                     (ended-loop-state loop-state
                                       (result-after-parts rf result' (cond->> reply-parts
