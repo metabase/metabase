@@ -1,4 +1,4 @@
-(ns metabase.sync.metadata-sync.sync-after-seed-test
+(ns ^:mb/driver-tests metabase.sync.metadata-sync.sync-after-seed-test
   "A seeded Database's own sync, on a real warehouse: the seed is only worth it if that sync finds the metadata
   already there."
   (:require

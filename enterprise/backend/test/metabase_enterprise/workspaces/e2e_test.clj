@@ -1113,10 +1113,9 @@
                     rows      (fn [table-name]
                                 (mt/with-db (t2/select-one :model/Database :id receiver)
                                   (try
-                                    (set (mt/rows (mt/process-query {:database receiver
-                                                                     :type     :query
-                                                                     :query    {:source-table
-                                                                                (:id (table receiver table-name))}})))
+                                    (let [mp       (mt/metadata-provider)
+                                          table-id (:id (table receiver table-name))]
+                                      (set (mt/rows (mt/process-query (lib/query mp (lib.metadata/table mp table-id))))))
                                     (catch Throwable t [::failed (ex-message t)]))))
                     seed!     #(seed-over-http! api-key sender-name receiver)
                     canonical #{[99 "pre-existing"] [98 "still-pre-existing"]}
