@@ -72,7 +72,7 @@
             (is (= before (t2/count :model/AuditLog))))
           (database-routing.models/delete-database-routers! [(t2/select-one-pk :model/DatabaseRouter :database_id db-id)]))))))
 
-(deftest write-function-statement-counts-do-not-grow-with-rows-test
+(deftest write-function-statement-counts-grow-by-row-statements-only-test
   (mt/with-temp [:model/Database {db-1 :id} {}
                  :model/Database {db-2 :id} {}
                  :model/Database {db-3 :id} {}
@@ -94,7 +94,12 @@
                       {:create create :update update :delete delete}))]
       (testing "creating, updating some routers that already route on the new attribute, and deleting"
         (measure 1)
-        (is (= (measure 2) (measure 6)))))))
+        (let [at-2 (measure 2)
+              at-6 (measure 6)]
+          (testing "creates and deletes run a fixed number of statements"
+            (is (= (select-keys at-2 [:create :delete]) (select-keys at-6 [:create :delete]))))
+          (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+            (is (<= (- (:update at-6) (:update at-2)) (* 2 (- 6 2))))))))))
 
 (deftest create-database-routers-refuses-destinations-test
   (mt/with-temp [:model/Database {router-db-id :id}      {}

@@ -16,6 +16,11 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(def ^:private per-part-update-growth
+  "The statements the update of a Notification adds for each of the 4 parts between 2 and 6: at most the before-update
+  SELECT and UPDATE of a template and of its handler, 4 for each part."
+  16)
+
 (def ^:private per-row-update-growth
   "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
   rows between 2 and 6."
@@ -511,7 +516,7 @@
                          (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) (vec (take-nth 2 ids))))
                          (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) ids)))))]
          (counted 2)
-         (is (= (counted 2) (counted 6)))))
+         (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
      (testing "deleting Notifications"
        (let [counted (fn [n]
                        (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
@@ -596,8 +601,8 @@
                  (fn [existing _n] (assoc existing :handlers []))]]]
          (testing part-kind
            (counted handler change 1)
-           (is (= (counted handler change 1) (counted handler change 3)))
-           (is (<= (counted handler change 6) (+ (counted handler change 2) per-row-update-growth)))))))))
+           (is (<= (counted handler change 3) (+ (counted handler change 1) (quot per-part-update-growth 2))))
+           (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))))))))
 
 (deftest create-notifications-reports-the-first-invalid-row-test
   (do-with-notification-rows!

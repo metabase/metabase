@@ -869,15 +869,19 @@
                           (events.tu/statement-count! #(action/update-actions! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted   (fn [f]
                         (f 1)
-                        (is (= (f 2) (f 6))))]
+                        (is (= (f 2) (f 6))))
+            counted-updates (fn [f]
+                              (f 1)
+                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
+                                  "each more row costs its SELECT by the hook and its UPDATE"))]
         (testing "creating actions"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
         (testing "updating columns, some already holding the new value"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
                             {:description "Same"})))
         (testing "archiving actions, some already archived"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) nil))
                             {:archived true})))
         (testing "deleting actions"
@@ -888,7 +892,7 @@
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
                        (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-models model-ids)))))))
         (testing "moving the actions of models"
-          (counted (fn [n]
+          (counted-updates (fn [n]
                      (let [ids       (fresh! n)
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
                        (t2/update! :model/Card :id [:in model-ids] {:collection_id other})

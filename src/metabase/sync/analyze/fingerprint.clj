@@ -70,15 +70,19 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
-(defn- save-fingerprints!
-  "Write the `fingerprints` of `fields`, in the same order, in one update, and return their stats."
-  [fields fingerprints]
-  (let [pairs (map vector fields fingerprints)]
-    (when-let [rows (not-empty (into [] (keep (fn [[field fingerprint]] (fingerprint-row field fingerprint))) pairs))]
-      (field/update-fields! rows {:fields (vec fields)}))
-    (reduce (fn [stats [_ fingerprint]] (update stats (fingerprint-outcome fingerprint) inc))
-            (empty-stats-map (count fingerprints))
-            pairs)))
+(mu/defn- save-fingerprints!
+  "Write `rows`, the update rows of the fingerprints of `fields`, in one update."
+  [rows   :- [:sequential :map]
+   fields :- [:sequential i/FieldInstance]]
+  (when (seq rows)
+    (field/update-fields! rows {:fields (vec fields)})))
+
+(defn- fingerprint-stats
+  "The stats of `fingerprints`, those of the Fields of one sample."
+  [fingerprints]
+  (reduce (fn [stats fingerprint] (update stats (fingerprint-outcome fingerprint) inc))
+          (empty-stats-map (count fingerprints))
+          fingerprints))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *truncation-size*
@@ -94,7 +98,8 @@
               (redux/post-complete
                (analyze/fingerprint-fields fields)
                (fn [fingerprints]
-                 (save-fingerprints! fields fingerprints))))
+                 (save-fingerprints! (into [] (keep identity) (map fingerprint-row fields fingerprints)) (vec fields))
+                 (fingerprint-stats fingerprints))))
         driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]
     (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}

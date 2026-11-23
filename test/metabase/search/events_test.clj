@@ -926,3 +926,11 @@
           (testing "a revert makes its user the indexed editor"
             (is (= [(mt/user->id :rasta) (mt/user->id :rasta)]
                    [(indexed-editor "card" card-id) (indexed-editor "dashboard" dash-id)]))))))))
+
+(deftest handle-rows-across-partitions-test
+  (testing "an event with more rows than one batch has every row handed to the index"
+    (let [batches (atom [])]
+      (with-redefs [mdb/create-partition-size 2]
+        (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances] (swap! batches conj (count instances)))]
+          (#'search.events/handle! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)) nil)))
+      (is (= [2 2 1] @batches)))))

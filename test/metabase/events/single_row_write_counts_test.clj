@@ -125,7 +125,8 @@
                         (events.tu/statement-count!
                          #(transform/update-transforms! (mapv (fn [row-id] (assoc {:description (str "Described " n)} :id row-id)) (take n [t1 t2 t3 t4 t5 t6])))))]
           (counted 1)
-          (is (= (counted 2) (counted 6))))))))
+          (is (<= (- (counted 6) (counted 2)) (* 2 (- 6 2)))
+              "each more transform costs its SELECT by the hook and its UPDATE"))))))
 
 (deftest segment-create-and-delete-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)

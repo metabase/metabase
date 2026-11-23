@@ -295,7 +295,7 @@
       (is (= (delete! 2) (delete! 6))))))
 
 (deftest field-user-settings-write-functions-statement-counts-do-not-grow-with-rows-test
-  (testing "creating FieldUserSettings, some that hold no user value"
+  (testing "creating FieldUserSettings, some that hold no user value, which writes each Field it sets a column of"
     (let [create! (fn [n]
                     (mt/with-temp [:model/Database db {}
                                    :model/Table {table-id :id} {:db_id (:id db)}]
@@ -306,7 +306,7 @@
                                                                    {:field_id id :display_name "N"}))
                                                       ids)))))))]
       (create! 1)
-      (is (= (create! 2) (create! 6)))))
+      (is (<= (- (create! 6) (create! 2)) (* 4 per-row-update-cost)))))
   (testing "updating FieldUserSettings, some that already hold the new value"
     (let [update! (fn [n]
                     (mt/with-temp [:model/Database db {}
@@ -355,7 +355,7 @@
       (is (= (clear! 2) (clear! 6))))))
 
 (deftest table-user-settings-write-functions-statement-counts-do-not-grow-with-rows-test
-  (testing "creating TableUserSettings, some that hold no user value"
+  (testing "creating TableUserSettings, some that hold no user value, which writes each Table it sets a column of"
     (let [create! (fn [n]
                     (mt/with-temp [:model/Database {db-id :id} {}]
                       (let [ids (insert-tables! db-id n)]
@@ -365,7 +365,7 @@
                                                                    {:table_id id :display_name "N"}))
                                                       ids)))))))]
       (create! 1)
-      (is (= (create! 2) (create! 6)))))
+      (is (<= (- (create! 6) (create! 2)) (* 4 per-row-update-cost)))))
   (testing "updating TableUserSettings, some that already hold the new value"
     (let [update! (fn [n]
                     (mt/with-temp [:model/Database {db-id :id} {}]

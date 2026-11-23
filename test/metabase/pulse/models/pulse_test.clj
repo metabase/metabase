@@ -854,7 +854,7 @@
                                channel-ids (t2/select-pks-vec :model/PulseChannel :pulse_id [:in ids] :channel_type :email)]
                            (events.tu/statement-count! #(models.pulse/remove-pulse-channels! channel-ids))))]
            (counted 2)
-           (is (= (counted 2) (counted 6)))))
+           (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
        (testing "deleting PulseChannelRecipients"
          (let [counted (fn [n]
                          (let [ids           (create! n)

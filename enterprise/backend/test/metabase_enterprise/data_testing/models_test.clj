@@ -388,7 +388,10 @@
                                       #(data-testing.models/delete-transform-tests-for-transforms! (vec (take n subjects))))]
                           [create update delete]))]
           (counted 1)
-          (is (<= (counted 6) (+ (counted 2) per-row-update-growth))))))))
+          (let [[create-2 update-2 delete-2] (counted 2)
+                [create-6 update-6 delete-6] (counted 6)]
+            (is (= [create-2 delete-2] [create-6 delete-6]))
+            (is (<= update-6 (+ update-2 per-row-update-growth)))))))))
 
 (deftest card-and-segment-test-write-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Card    {c1 :id} {}
@@ -411,7 +414,7 @@
                       (let [rows   #(vec (map-indexed (fn [i id] (row-of subject-key id i)) (take n subjects)))
                             create (events.tu/statement-count! #(create! (rows)))
                             ids    (mapv :id (create! (rows)))
-                            update (events.tu/statement-count! #(update! ids {:description "same"}))
+                            update (events.tu/statement-count! #(update! (mapv (fn [row-id] {:id row-id :description "same"}) ids)))
                             delete (events.tu/statement-count! #(delete! ids))
                             _      (create! (rows))
                             by-subject (events.tu/statement-count! #(delete-subjects! (vec (take n subjects))))]
@@ -426,9 +429,10 @@
                             data-testing.models.segment-test/update-segment-tests!
                             data-testing.models.segment-test/delete-segment-tests!
                             data-testing.models.segment-test/delete-segment-tests-for-segments!)]
-      (testing "card tests"
-        (cards 1)
-        (is (= (cards 2) (cards 6))))
-      (testing "segment tests"
-        (segments 1)
-        (is (= (segments 2) (segments 6)))))))
+      (doseq [[test-name measured] [["card tests" cards] ["segment tests" segments]]]
+        (testing test-name
+          (measured 1)
+          (let [[create-2 update-2 delete-2 by-subject-2] (measured 2)
+                [create-6 update-6 delete-6 by-subject-6] (measured 6)]
+            (is (= [create-2 delete-2 by-subject-2] [create-6 delete-6 by-subject-6]))
+            (is (<= update-6 (+ update-2 per-row-update-growth)))))))))

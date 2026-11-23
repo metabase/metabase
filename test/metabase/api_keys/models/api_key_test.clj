@@ -8,7 +8,10 @@
    [metabase.app-db.core :as app-db]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest do-not-mark-user-inactive-when-deleting-api-key-for-normal-user-test
   (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_1234567890"

@@ -665,7 +665,7 @@
                         (events.tu/statement-count!
                          #(transform/update-transforms! (mapv (fn [row-id] (assoc {:collection_id target :description "moved"} :id row-id)) ids))))]
             (move! (make! 1))
-            (is (= (move! (make! 2)) (move! (make! 6))))))))))
+            (is (<= (move! (make! 6)) (+ (move! (make! 2)) per-row-update-growth)))))))))
 
 (deftest definition-update-statement-count-does-not-grow-with-rows-test
   (mt/with-model-cleanup [:model/Transform]

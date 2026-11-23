@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
@@ -131,3 +132,16 @@
         (let [f (mk-finding! :dashboard id)]
           (dashboard/update-dashboards! [{:id id :archived true}])
           (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))
+
+(deftest invalidates-rows-across-partitions-test
+  (testing "the findings of every row of an event with more rows than one batch are invalidated"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (let [card-ids (vec (for [_ (range 5)]
+                                (t2/insert-returning-pk! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                                            :collection_id coll-id))))
+                findings (mapv #(mk-finding! :card %) card-ids)]
+            (with-redefs [app-db/delete-partition-size 2]
+              (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))
+            (is (every? invalidated? findings))))))))

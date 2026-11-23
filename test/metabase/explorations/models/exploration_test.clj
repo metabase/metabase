@@ -227,23 +227,31 @@
                         (events.tu/statement-count! #(exploration/update-explorations! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted (fn [f]
                       (f 1)
-                      (is (= (f 2) (f 6))))]
+                      (is (= (f 2) (f 6))))
+            counted-updates (fn [f]
+                              (f 1)
+                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
+                                  "each more row costs its SELECT by the hook and its UPDATE"))
+            counted-cascading (fn [f]
+                                (f 1)
+                                (is (<= (- (f 6) (f 2)) (* 4 (- 6 2)))
+                                    "each more row costs its SELECT and UPDATE and those of what it carries"))]
         (testing "creating explorations"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
         (testing "updating columns, some already holding the new value"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
                             {:description "Same"})))
         (testing "archiving explorations and their summary documents, some already archived"
-          (counted (partial update!
+          (counted-cascading (partial update!
                             (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived true})))
         (testing "restoring explorations and their summary documents, some already live"
-          (counted (partial update!
+          (counted-cascading (partial update!
                             (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived false})))
         (testing "moving explorations, some already in the Collection"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
                             {:collection_id other})))
         (testing "deleting explorations"

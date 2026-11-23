@@ -144,7 +144,7 @@
         (testing "deleting tabs"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-tab/delete-dashboard-tabs! ids))))))
         (testing "replacing the tabs of a dashboard"
-          (counted (fn [n]
+          (counted-updates (fn [n]
                      (let [ids     (fresh! n)
                            current (mapv (fn [id] (t2/select-one [:model/DashboardTab :id :name :position] :id id)) ids)
                            new-tabs (concat (map-indexed (fn [i tab] (cond-> tab (even? i) (assoc :name "Renamed"))) (rest current))

@@ -35,21 +35,22 @@
   (mt/with-temp [:model/User {user-1 :id} {}
                  :model/User {user-2 :id} {}
                  :model/User {other :id}  {}]
-    (let [code! (fn [user-id]
-                  (oauth-authorization-code/create-oauth-authorization-code!
-                   {:code         (str (random-uuid))
-                    :user_id      user-id
-                    :client_id    "test-client"
-                    :redirect_uri "https://example.com/callback"
-                    :scope        []
-                    :nonce        nil
-                    :expiry       (+ (System/currentTimeMillis) 60000)}))]
-      (doseq [user-id [user-1 user-1 user-2 other]]
-        (code! user-id))
-      (is (= 3 (oauth-authorization-code/delete-oauth-authorization-codes!
-                (oauth-server.db/authorization-code-ids-of-users [user-1 user-2]))))
-      (is (empty? (oauth-server.db/authorization-code-ids-of-users [user-1 user-2])))
-      (is (= 1 (count (oauth-server.db/authorization-code-ids-of-users [other])))))))
+    (mt/with-model-cleanup [:model/OAuthAuthorizationCode]
+      (let [code! (fn [user-id]
+                    (oauth-authorization-code/create-oauth-authorization-code!
+                     {:code         (str (random-uuid))
+                      :user_id      user-id
+                      :client_id    "test-client"
+                      :redirect_uri "https://example.com/callback"
+                      :scope        []
+                      :nonce        nil
+                      :expiry       (+ (System/currentTimeMillis) 60000)}))]
+        (doseq [user-id [user-1 user-1 user-2 other]]
+          (code! user-id))
+        (is (= 3 (oauth-authorization-code/delete-oauth-authorization-codes!
+                  (oauth-server.db/authorization-code-ids-of-users [user-1 user-2]))))
+        (is (empty? (oauth-server.db/authorization-code-ids-of-users [user-1 user-2])))
+        (is (= 1 (count (oauth-server.db/authorization-code-ids-of-users [other]))))))))
 
 (deftest deactivation-revokes-every-user-of-event-across-batches-test
   (mt/with-temp [:model/User {user-1 :id} {}

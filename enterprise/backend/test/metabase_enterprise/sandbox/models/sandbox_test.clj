@@ -61,8 +61,8 @@
 (deftest attribute-remappings-shape-test
   (testing "schema"
     (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
-      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
-    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings {"cat" "CATEGORY_ID"}})))
   (testing "update normalizes the stored remappings"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                    :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)

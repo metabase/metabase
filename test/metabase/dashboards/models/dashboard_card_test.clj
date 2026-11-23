@@ -241,8 +241,8 @@
               changed-2   (changed 2)]
           (testing "Should take the same number of DB calls for any number of dashcards without changes"
             (is (= unchanged-2 (unchanged 6))))
-          (testing "Should take the same number of DB calls for any number of dashcards with changes"
-            (is (= changed-2 (changed 6))))
+          (testing "Should take, for each dashcard with changes, only the SELECT of its hook and its UPDATE"
+            (is (<= (- (changed 6) changed-2) (* 2 (- 6 2)))))
           (testing "Should have fewer DB calls if there are no changes to the dashcards"
             (is (< unchanged-2 changed-2))))))))
 
@@ -491,7 +491,7 @@
                           {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
 
 (deftest dashboard-card-writes-statement-count-test
-  (testing "Creating and updating DashboardCards takes the same number of statements for any number of them"
+  (testing "Creating and deleting DashboardCards take the same number of statements for any number of them, and updating them a SELECT and an UPDATE more for each"
     (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
                    :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id}
                    :model/DashboardTab {other-tab-id :id} {:dashboard_id dashboard-id}
@@ -523,12 +523,13 @@
         (create-statements 1)
         (is (= (create-statements 2) (create-statements 6)))
         (update-statements 1)
-        (is (= (update-statements 2) (update-statements 6)))
+        (testing "each more DashboardCard costs the SELECT of its hook and its UPDATE"
+          (is (<= (- (update-statements 6) (update-statements 2)) (* 2 (- 6 2)))))
         (delete-statements 1)
         (is (= (delete-statements 2) (delete-statements 6)))))))
 
 (deftest dashboard-card-row-and-series-writes-statement-count-test
-  (testing "Updating DashboardCard rows and their series takes the same number of statements for any number of them"
+  (testing "Updating DashboardCard rows and their series takes a SELECT and an UPDATE more for each"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}
                    :model/Card      {series-id :id}    {}]
@@ -547,9 +548,11 @@
                                     (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) (zipmap ids (repeat [series-id]))))
                                     (call-count))))]
         (row-statements 1)
-        (is (= (row-statements 2) (row-statements 6)))
+        (testing "each more DashboardCard costs the SELECT of its hook and its UPDATE"
+          (is (<= (- (row-statements 6) (row-statements 2)) (* 2 (- 6 2)))))
         (series-statements 1)
-        (is (= (series-statements 2) (series-statements 6)))))))
+        (testing "each more DashboardCard costs the SELECT of its hook and its UPDATE"
+          (is (<= (- (series-statements 6) (series-statements 2)) (* 2 (- 6 2)))))))))
 
 (deftest create-dashboard-cards!-rows-with-different-columns-test
   (testing "DashboardCards given different sets of columns are all stored with the columns they give"

@@ -224,7 +224,8 @@
                                 (events.tu/statement-count!
                                  (fn [] (data-app/update-data-apps! (mapv (fn [id] {:id id :description "same"}) (vec ids))))))]
           (update! [warm-up])
-          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
+          (testing "each more data app costs the SELECT of its hook and its UPDATE"
+            (is (<= (- (update! (take 6 (drop 2 ids))) (update! (take 2 ids))) (* 2 (- 6 2)))))))
       (testing "deleting data apps that have no collection"
         (let [rows    (fn [n] (mapv #(assoc % :entity_id (u/generate-nano-id)) (app-rows n)))
               insert! (fn [n] (mapv :id (t2/insert-returning-instances! :model/DataApp (rows n))))

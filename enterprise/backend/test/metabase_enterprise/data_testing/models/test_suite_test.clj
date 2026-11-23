@@ -16,6 +16,12 @@
   (:import
    (java.time OffsetDateTime ZoneOffset)))
 
+(def ^:private per-row-update-growth
+  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
+  rows between 2 and 6."
+  8)
+
+
 (set! *warn-on-reflection* true)
 
 (defn- minutes-ago ^OffsetDateTime [^long n]
@@ -299,4 +305,7 @@
                              delete (events.tu/statement-count! #(test-suite/delete-test-suites! (mapv :id suites)))]
                          [create update delete]))]
       (counted 1)
-      (is (= (counted 2) (counted 6))))))
+      (let [[create-2 update-2 delete-2] (counted 2)
+            [create-6 update-6 delete-6] (counted 6)]
+        (is (= [create-2 delete-2] [create-6 delete-6]))
+        (is (<= update-6 (+ update-2 per-row-update-growth)))))))

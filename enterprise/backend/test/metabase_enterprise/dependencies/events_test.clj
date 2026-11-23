@@ -4,10 +4,11 @@
    [java-time.api :as t]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.events :as deps.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.app-db.core :as app-db]
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.test-util :as events.tu]
@@ -24,7 +25,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  metabase-enterprise.dependencies.events/keep-me)
+  deps.events/keep-me)
 
 (def ^:private table-query deps.test/table-query)
 
@@ -428,3 +429,15 @@
                                                                    {:dashboardcard_id id :card_id card-id :position 0}))))]
           (count! 1)
           (is (= (count! 2) (count! 6))))))))
+
+(deftest mark-rows-across-partitions-test
+  (testing "an event with more rows than one batch has every batch marked, and the jobs triggered once"
+    (mt/with-premium-features #{:dependencies}
+      (let [flushed   (atom 0)
+            triggered (atom 0)]
+        (with-redefs [app-db/delete-partition-size 2]
+          (with-redefs-fn {#'deps.events/flush-marks!  (fn [_marks] (swap! flushed inc))
+                           #'deps.events/trigger-jobs! (fn [] (swap! triggered inc))}
+            #(#'deps.events/mark-events! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)))))
+        (is (= 3 @flushed))
+        (is (= 1 @triggered))))))

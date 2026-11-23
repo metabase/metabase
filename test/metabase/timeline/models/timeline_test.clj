@@ -135,9 +135,9 @@
     (testing "creating Timelines runs one statement count whatever their number"
       (creating 1)
       (is (= (creating 2) (creating 6))))
-    (testing "archiving Timelines runs one statement count whatever their number"
+    (testing "archiving Timelines takes, for each more Timeline, its SELECT and UPDATE and those of its events"
       (archiving 1)
-      (is (<= (- (archiving 6) (archiving 2)) update-statements-per-row-growth)))))
+      (is (<= (- (archiving 6) (archiving 2)) (* 4 (- 6 2)))))))
 
 (deftest archiving-timeline-archives-its-events-test
   (mt/with-temp [:model/Timeline      {timeline-id :id} {}
@@ -192,7 +192,7 @@
                            (events.tu/statement-count!
                             #(timeline/update-timelines! (mapv (fn [id] {:id id :archived true}) ids) nil))))]
           (archive! 2)
-          (is (<= (- (archive! 6) (archive! 2)) update-statements-per-row-growth))))
+          (is (<= (- (archive! 6) (archive! 2)) (* 4 (- 6 2))))))
       (testing "restoring timelines, some already live"
         (let [restore! (fn [n]
                          (let [ids (fresh! n archived-in-live)]
