@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
@@ -12,6 +13,7 @@ import type {
   Field,
   ParameterValue,
   ParameterValues,
+  RowValue,
 } from "metabase-types/api";
 import {
   createMockField,
@@ -27,6 +29,7 @@ type SetupOpts = {
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
   fieldSettings?: Partial<Field>;
+  value?: ComponentProps<typeof ParameterFieldWidget>["value"];
 };
 
 function setup({
@@ -34,6 +37,7 @@ function setup({
   parameterValues = createMockParameterValues(),
   parameterSearchValues = {},
   fieldSettings,
+  value,
 }: SetupOpts = {}) {
   setupParameterValuesEndpoints(parameterValues);
   Object.entries(parameterSearchValues).forEach(([query, values]) => {
@@ -46,12 +50,13 @@ function setup({
       ...fieldSettings,
     }),
   );
-  const setValue = jest.fn();
+  const setValue = jest.fn<void, [RowValue[]]>();
   renderWithProviders(
     <ParameterFieldWidget
       parameter={parameter}
       fields={[field]}
       setValue={setValue}
+      value={value}
     />,
   );
 
@@ -70,6 +75,81 @@ describe("ParameterFieldWidget", () => {
     });
     const parameterValues = createMockParameterValues({
       values: [["foo"]],
+    });
+
+    it.each([
+      {
+        key: "{Enter}",
+        value: undefined,
+        query: "be",
+        buttonName: "Add filter",
+      },
+      { key: " ", value: "Alpha", query: "be", buttonName: "Update filter" },
+      {
+        key: "{Enter}",
+        value: undefined,
+        query: "Beta",
+        buttonName: "Add filter",
+      },
+    ])(
+      'keeps "$query" narrowed after selecting with $key and tabs to $buttonName',
+      async ({ key, value, query, buttonName }) => {
+        const values: ParameterValue[] = [["Alpha"], ["Beta"], ["Gamma"]];
+        const { setValue } = setup({
+          parameter: {
+            ...parameter,
+            values_source_config: { values },
+          },
+          parameterValues: createMockParameterValues({ values }),
+          value,
+        });
+
+        const search = await screen.findByRole("textbox", {
+          name: "Search filter values",
+        });
+        await userEvent.type(search, query);
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("button", { name: "Gamma" }),
+          ).not.toBeInTheDocument(),
+        );
+        await userEvent.keyboard(`{ArrowDown}${key}`);
+        expect(screen.getByRole("button", { name: "Beta" })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        expect(search).toHaveValue(query);
+        expect(
+          screen.queryByRole("button", { name: "Gamma" }),
+        ).not.toBeInTheDocument();
+        expect(setValue).not.toHaveBeenCalled();
+
+        await userEvent.tab();
+        expect(screen.getByRole("button", { name: buttonName })).toHaveFocus();
+        await userEvent.keyboard("{Enter}");
+        expect(setValue).toHaveBeenCalledTimes(1);
+        expect(setValue).toHaveBeenCalledWith(["Beta"]);
+      },
+    );
+
+    it("submits the selected option from the unchanged search instead of adding the search text", async () => {
+      const values: ParameterValue[] = [["Alpha"], ["Beta"], ["Gamma"]];
+      const { setValue } = setup({
+        parameter: { ...parameter, values_source_config: { values } },
+        parameterValues: createMockParameterValues({ values }),
+      });
+      const search = await screen.findByRole("textbox", {
+        name: "Search filter values",
+      });
+      await userEvent.type(search, "be");
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Beta" }),
+      );
+      expect(search).toHaveValue("be");
+      expect(setValue).not.toHaveBeenCalled();
+      await userEvent.type(search, "{Enter}");
+      expect(setValue).toHaveBeenCalledTimes(1);
+      expect(setValue).toHaveBeenCalledWith(["Beta"]);
     });
 
     it("should submit a value on enter", async () => {

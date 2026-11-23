@@ -1,13 +1,11 @@
 import type { ChangeEventHandler } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { Box, Input, TextInput } from "metabase/ui";
-import { delay } from "metabase/utils/delay";
+import { Box, Input, TextInput, UnstyledButton } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -21,8 +19,6 @@ import {
 import S from "./SingleSelectListField.module.css";
 import type { Option, SingleSelectListFieldProps } from "./types";
 
-const DEBOUNCE_FILTER_TIME = delay(100);
-
 export const SingleSelectListField = ({
   onChange,
   value,
@@ -32,6 +28,8 @@ export const SingleSelectListField = ({
   onSearchChange,
   isDashboardFilter,
 }: SingleSelectListFieldProps) => {
+  const searchRef = useRef<HTMLInputElement>(null);
+  const optionsRef = useRef<HTMLUListElement>(null);
   const normalizedValue = useMemo(
     () => normalizeValuesToOptionKeys(value, options),
     [value, options],
@@ -73,30 +71,17 @@ export const SingleSelectListField = ({
   );
 
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
-
-  const isFilterInValues = optionItemEqualsFilter(
-    tc(getOptionDisplayName(value)),
-    filter,
-  );
 
   const filteredOptions = useMemo(() => {
-    const formattedFilter = debouncedFilter.trim().toLowerCase();
+    const formattedFilter = filter.trim().toLowerCase();
     if (formattedFilter.length === 0) {
-      return sortedOptions;
-    }
-
-    // When the user selects a value, this populates the search field, but this
-    // should not filter the list. This way, the user can select a value, and
-    // then select a different value
-    if (isFilterInValues) {
       return sortedOptions;
     }
 
     return sortedOptions.filter((option) =>
       optionMatchesFilter(option, formattedFilter, tc),
     );
-  }, [debouncedFilter, sortedOptions, isFilterInValues, tc]);
+  }, [filter, sortedOptions, tc]);
 
   const shouldShowEmptyState =
     filter.length > 0 && filteredOptions.length === 0;
@@ -104,24 +89,61 @@ export const SingleSelectListField = ({
   const onClickOption = (option: RowValue) => {
     if (selectedValue !== option) {
       setSelectedValue(option);
-      const maybeTranslatedOption =
-        typeof option === "string" ? tc(option) : String(option);
-      setFilter(maybeTranslatedOption);
       onChange([option]);
     }
   };
+
+  const lastOptionIndex = filteredOptions.length - 1;
+  const focusOption = (index: number) =>
+    optionsRef.current?.children.item(index)?.querySelector("button")?.focus();
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.nativeEvent.isComposing) {
       return;
     }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (filteredOptions.length > 0) {
+        event.preventDefault();
+        focusOption(event.key === "ArrowDown" ? 0 : lastOptionIndex);
+      }
+      return;
+    }
     if (
       event.key === "Enter" &&
+      selectedValue == null &&
       filter.trim().length > 0 &&
       !augmentedOptions.some((option) => optionItemEqualsFilter(option, filter))
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
+    }
+  };
+
+  const handleOptionKeyDown = (event: React.KeyboardEvent, index: number) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        focusOption(Math.min(index + 1, lastOptionIndex));
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        if (index === 0) {
+          searchRef.current?.focus();
+        } else {
+          focusOption(index - 1);
+        }
+        break;
+      case "Home":
+        event.preventDefault();
+        focusOption(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusOption(lastOptionIndex);
+        break;
     }
   };
 
@@ -142,11 +164,14 @@ export const SingleSelectListField = ({
     onChange([]);
     setSelectedValue(null);
     onSearchChange?.("");
+    searchRef.current?.focus();
   };
 
   return (
     <>
       <TextInput
+        ref={searchRef}
+        aria-label={t`Search filter values`}
         autoFocus
         placeholder={placeholder}
         value={filter}
@@ -155,7 +180,11 @@ export const SingleSelectListField = ({
         rightSectionPointerEvents="all"
         rightSection={
           filter.length > 0 ? (
-            <Input.ClearButton c="text-secondary" onClick={handleResetClick} />
+            <Input.ClearButton
+              aria-label={t`Clear search`}
+              c="text-secondary"
+              onClick={handleResetClick}
+            />
           ) : null
         }
         mb={isDashboardFilter ? 0 : "sm"}
@@ -170,16 +199,21 @@ export const SingleSelectListField = ({
 
       <Box
         component="ul"
+        ref={optionsRef}
+        aria-label={t`Filter values`}
         className={S.optionsList}
         mah={isDashboardFilter ? 300 : undefined}
         pt="sm"
       >
-        {filteredOptions.map((option) => {
+        {filteredOptions.map((option, index) => {
           const isSelected = selectedValue === option[0];
 
           return (
             <li key={String(option[0])}>
-              <Box
+              <UnstyledButton
+                type="button"
+                aria-pressed={isSelected}
+                onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 className={S.optionItem}
                 data-testid={`${option[0]}-filter-value`}
                 display="inline-block"
@@ -192,7 +226,7 @@ export const SingleSelectListField = ({
                 onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
-              </Box>
+              </UnstyledButton>
             </li>
           );
         })}
