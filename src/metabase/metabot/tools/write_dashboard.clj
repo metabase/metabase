@@ -870,8 +870,11 @@
        (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
              (map describe broken)))
      (when (pos? n-unreadable)
-       (str "The save also archived " n-unreadable (if (seq readable) " more " " ")
-            (u/format-plural n-unreadable "subscription") " the user can't see."))
+       (let [noun (u/format-plural n-unreadable "subscription")]
+         (if (seq readable)
+           (str "The save also archived " n-unreadable " more " noun " the user can't see.")
+           (str "The save archived " n-unreadable " " noun " the user can't see, which used filters the dashboard "
+                "no longer has."))))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
           "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))
 

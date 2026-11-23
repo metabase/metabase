@@ -463,7 +463,7 @@
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
   (testing "only unreadable subscriptions are counted without saying \"more\""
-    (is (= "The save also archived 2 subscriptions the user can't see."
+    (is (= "The save archived 2 subscriptions the user can't see, which used filters the dashboard no longer has."
            (->> (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))
                 flatten
                 (remove nil?)
