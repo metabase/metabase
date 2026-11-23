@@ -7,7 +7,7 @@
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$And Expressions$Column Expressions$EQ Expressions$GT Expressions$GTE
                              Expressions$Identifier Expressions$LT Expressions$LTE Expressions$Lateral
-                             Expressions$Literal Expressions$NEQ Expressions$Parameter
+                             Expressions$Literal Expressions$NEQ Expressions$Parameter Expressions$Paren
                              Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
                              Expressions$Subquery Expressions$Table Expressions$TableSample Expressions$Values)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
@@ -166,11 +166,12 @@
   [Expressions$EQ Expressions$GT Expressions$GTE Expressions$LT Expressions$LTE Expressions$NEQ])
 
 (defn- conjuncts
-  "The operands of the top-level ANDs in `node`."
+  "The operands of the top-level ANDs in `node`, looking through brackets."
   [node]
-  (if (instance? Expressions$And node)
-    (into (conjuncts (ast/this node)) (conjuncts (ast/arg node "expression")))
-    [node]))
+  (cond
+    (instance? Expressions$Paren node) (conjuncts (ast/this node))
+    (instance? Expressions$And node)   (into (conjuncts (ast/this node)) (conjuncts (ast/arg node "expression")))
+    :else                              [node]))
 
 (defn- source-name
   "The effective name a column calls the source `node` by, or nil for a source with no name.
@@ -181,36 +182,47 @@
     (when (instance? Expressions$Identifier identifier)
       (effective-name identifier dialect))))
 
-(defn- in-subquery?
-  "Whether `column` is in a subquery of `conjunct`.
-  Port of `_in_subquery`."
-  [column conjunct]
-  (loop [node column]
-    (cond
-      (identical? node conjunct)                       false
-      (instance? Expressions$Select (ast/parent node)) true
-      :else                                            (recur (ast/parent node)))))
+(defn- where-column-source
+  "The source in `names` that `column` of a WHERE conjunct belongs to, `::inner` or nil if it is unknown.
+  A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
+  A column belongs to a subquery of `conjunct` if it is qualified with one of that subquery's sources.
+  An otherwise unresolved column is taken to belong to the nearest subquery with a FROM clause.
+  Port of `_where_column_source`."
+  [column conjunct names dialect]
+  (let [parts (into []
+                    (keep (fn [part]
+                            (let [identifier (ast/arg column part)]
+                              (when (instance? Expressions$Identifier identifier)
+                                (effective-name identifier dialect)))))
+                    ["catalog" "db" "table"])]
+    (loop [node column, has-from? false]
+      (if (identical? node conjunct)
+        (or (some names parts)
+            (when has-from? ::inner))
+        (let [parent    (ast/parent node)
+              from-node (when (instance? Expressions$Select parent)
+                          (ast/arg parent "from_"))]
+          (if (and from-node
+                   (some (into #{}
+                               (keep #(source-name % dialect))
+                               (cons (ast/this from-node) (map ast/this (ast/arg parent "joins"))))
+                         parts))
+            ::inner
+            (recur parent (or has-from? (some? from-node)))))))))
 
 (defn- where-may-join?
   "Whether a conjunct of `where` may be the condition of a comma join to a source in `comma-names`.
   The step queries leave WHERE out, so they would count the whole cross product of such a join.
   A conjunct may be one when it compares such a source with another, or has several columns of unknown source.
-  Inside a subquery, only a column qualified with a source of the query (`names`) refers to the outer row.
   Port of `_where_may_join`."
   [where names comma-names dialect]
   (boolean
    (some (fn [conjunct]
            (let [columns (into []
-                               (keep (fn [column]
-                                       (let [table (ast/arg column "table")
-                                             name  (when (and (instance? Expressions$Identifier table)
-                                                              (nil? (ast/arg column "db")))
-                                                     (effective-name table dialect))]
-                                         (when (or (contains? names name)
-                                                   (not (in-subquery? column conjunct)))
-                                           [name]))))
+                               (comp (map #(where-column-source % conjunct names dialect))
+                                     (remove #{::inner}))
                                (ast/find-all conjunct Expressions$Column))
-                 sources (into #{} (map first) columns)]
+                 sources (set columns)]
              (and (> (count columns) 1)
                   (or (contains? sources nil)
                       (and (> (count sources) 1)

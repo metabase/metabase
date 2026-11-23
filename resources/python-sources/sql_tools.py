@@ -569,7 +569,9 @@ _JOIN_COMPARISONS = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
 
 
 def _conjuncts(node):
-    """The operands of the top-level ANDs in `node`."""
+    """The operands of the top-level ANDs in `node`, looking through brackets."""
+    if isinstance(node, exp.Paren):
+        return _conjuncts(node.this)
     if isinstance(node, exp.And):
         return _conjuncts(node.this) + _conjuncts(node.expression)
     return [node]
@@ -582,14 +584,33 @@ def _source_name(node, dialect):
     return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
 
 
-def _in_subquery(column, conjunct):
-    """Whether `column` is in a subquery of `conjunct`."""
+_INNER_COLUMN = object()
+
+
+def _where_column_source(column, conjunct, names, dialect):
+    """The source in `names` that `column` of a WHERE conjunct belongs to, `_INNER_COLUMN` or None if it is unknown.
+
+    A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
+    A column belongs to a subquery of `conjunct` if it is qualified with one of that subquery's sources.
+    An otherwise unresolved column is taken to belong to the nearest subquery with a FROM clause.
+    """
+    parts = [
+        _effective_name(column.args[part], dialect)
+        for part in ("catalog", "db", "table")
+        if isinstance(column.args.get(part), exp.Identifier)
+    ]
+    has_from = False
     node = column
     while node is not conjunct:
         node = node.parent
-        if isinstance(node, exp.Select):
-            return True
-    return False
+        from_ = node.args.get("from_") if isinstance(node, exp.Select) else None
+        if from_ is not None:
+            has_from = True
+            sources = [from_.this, *(join.this for join in node.args.get("joins") or [])]
+            if set(parts) & {_source_name(source, dialect) for source in sources}:
+                return _INNER_COLUMN
+    source = next((part for part in parts if part in names), None)
+    return _INNER_COLUMN if source is None and has_from else source
 
 
 def _where_may_join(where, names, comma_names, dialect):
@@ -597,16 +618,13 @@ def _where_may_join(where, names, comma_names, dialect):
 
     The step queries leave WHERE out, so they would count the whole cross product of such a join.
     A conjunct may be one when it compares such a source with another, or has several columns of unknown source.
-    Inside a subquery, only a column qualified with a source of the query (`names`) refers to the outer row.
     """
     for conjunct in _conjuncts(where.this):
-        columns = []
-        for column in conjunct.find_all(exp.Column):
-            table = column.args.get("table")
-            plain = isinstance(table, exp.Identifier) and column.args.get("db") is None
-            name = _effective_name(table, dialect) if plain else None
-            if name in names or not _in_subquery(column, conjunct):
-                columns.append(name)
+        columns = [
+            source
+            for source in (_where_column_source(c, conjunct, names, dialect) for c in conjunct.find_all(exp.Column))
+            if source is not _INNER_COLUMN
+        ]
         sources = set(columns)
         if len(columns) > 1 and (None in sources or (len(sources) > 1 and sources & comma_names)):
             return True

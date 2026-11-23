@@ -288,6 +288,53 @@
       :alias "b",
       :strategy "cross",
       :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "a comma join with bracketed filters on one source each counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE (a.x > 1 AND b.y < 2)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join with a subquery on the same table counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.id IN (SELECT b.id FROM b WHERE active)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join comparing struct fields of one source counts the cross product",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a, b WHERE a.payload.x = a.payload.y",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "a comma join to a struct column of another source is refused",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a, b WHERE a.id = payload.id",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a comma join with a condition in a subquery with no FROM is refused",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE EXISTS (SELECT 1 WHERE a_key = b_key)",
+   :expected {:status "unsupported", :reason "comma-join"}}
   {:name "a comma join comparing unqualified columns is refused: they may be its condition",
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE x = y",
