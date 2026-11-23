@@ -79,7 +79,7 @@ export type GoalValueInputProps = {
    * labels on the chart).
    */
   formatOptions?: ColumnSettings;
-  /** Sources of every goal the inputs next to this one edit, so they share one request. */
+  // Sources of all neighboring GoalValueInput instances, so they share one goal-resolving request.
   goalSources?: GoalForeignEntityRef[];
   id: string;
   placeholder?: string;
