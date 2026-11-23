@@ -35,11 +35,11 @@ export const dynamicGoalApi = Api.injectEndpoints({
       GoalSourceResultsRequest
     >({
       query: getGoalSourceResultsQuery,
-      // a refresh that ignores the cache updates the results a chart already reads
       serializeQueryArgs: ({ endpointName, endpointDefinition, queryArgs }) =>
         defaultSerializeQueryArgs({
           endpointName,
           endpointDefinition,
+          // a refresh that ignores the cache updates the results a chart already reads
           queryArgs: _.omit(queryArgs, "ignore_cache"),
         }),
     }),
