@@ -22,8 +22,6 @@ import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
-import { FUNCTION_ICONS } from "../../ExpressionSidePanel/content";
-import { SIDE_PANEL_ICONS } from "../../ExpressionSidePanel/icons";
 import { DOCS_SUGGESTION_TYPE } from "../suggest";
 
 import S from "./Listbox.module.css";
@@ -85,9 +83,11 @@ export function Listbox({
                   {completion.heading}
                 </li>
               )}
-              {completion.type === DOCS_SUGGESTION_TYPE && (
-                <li role="presentation" className={S.docsDivider} />
-              )}
+              {index > 0 &&
+                getSectionName(completion) !==
+                  getSectionName(options[index - 1]) && (
+                  <li role="presentation" className={S.divider} />
+                )}
               {completion.type === "empty" ? (
                 // No column of the type the function takes: nothing to pick.
                 <li role="presentation" className={S.empty}>
@@ -207,12 +207,13 @@ function CompletionItem({
 
 function CompletionIcon({ completion }: { completion: ExpressionSuggestion }) {
   if (completion.clauseName != null) {
-    const name = completion.displayLabel ?? completion.label;
-    const FunctionIcon =
-      SIDE_PANEL_ICONS[FUNCTION_ICONS[name] ?? "function-general"];
-    return <FunctionIcon className={cx(S.icon, S.functionIcon)} aria-hidden />;
+    return <Icon name="function" className={cx(S.icon, S.functionIcon)} />;
   }
   return <Icon name={completion.icon} className={S.icon} />;
+}
+
+function getSectionName({ section }: ExpressionSuggestion) {
+  return typeof section === "string" ? section : section?.name;
 }
 
 const SEPARATOR = " → ";

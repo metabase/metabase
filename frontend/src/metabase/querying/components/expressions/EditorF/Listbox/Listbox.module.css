@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm);
 
   &:not(:first-child) {
     border-top: 1px solid var(--mb-color-border-neutral);
@@ -33,7 +33,7 @@
   padding-inline: var(--mantine-spacing-sm);
   color: var(--mb-color-text-secondary);
   font-size: 12px;
-  line-height: 1.15;
+  line-height: 16px;
 }
 
 /* "There are no text columns to use here.", when no column fits the value */
@@ -88,7 +88,7 @@
   min-width: 0;
   color: var(--mb-color-text-primary);
   font-family: var(--mb-default-monospace-font-family);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.22;
   white-space: nowrap;
 
@@ -108,14 +108,12 @@
     height: 16px;
   }
 
-  /* All functions have the color of the function icon. The shape tells the
-     category. */
-  .functionIcon path:not([fill="none"], [fill="white"]) {
-    fill: #dd377f;
+  .functionIcon {
+    color: var(--mb-color-core-red-saturated);
   }
 
   .columnIcon {
-    color: #0188ff;
+    color: var(--mb-color-icon-brand);
   }
 }
 
@@ -152,21 +150,21 @@
   font-weight: bold;
 }
 
-/* The line above "Open the docs", across the whole list. 16px above and
-   below it, like the padding of the list. */
-.docsDivider {
+/* The line between the groups (functions, columns, others, docs), across
+   the whole list. 8px above and below it, like the padding of the list. */
+.divider {
   flex-shrink: 0;
-  margin: var(--mantine-spacing-md) calc(-1 * var(--mantine-spacing-md));
+  margin: var(--mantine-spacing-sm) calc(-1 * var(--mantine-spacing-sm));
   border-top: 0.5px solid var(--mb-color-border-neutral-strong);
 }
 
-/* "Open the docs": text, not code, with a book icon in the brand color. */
+/* "Open docs": text, not code. */
 .docs .name {
   font-family: inherit;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 1.22;
 }
 
 .docs .icon {
-  color: var(--mb-color-text-brand);
+  color: var(--mb-color-text-primary);
 }

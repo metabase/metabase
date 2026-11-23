@@ -11,12 +11,19 @@
 
 /* The autocomplete is wider, with the description of each function. */
 .dropdown.completions {
+  /* The shadow draws the outline. */
+  border: none;
   border-radius: 12px;
   box-shadow: var(--mantine-shadow-sm_outline);
 
   .tooltip {
-    width: 760px;
+    width: 680px;
     max-width: calc(100vw - 2rem);
+  }
+
+  /* Columns only: a 200px name and a 200px table name. */
+  &.narrow .tooltip {
+    width: 439px;
   }
 }
 

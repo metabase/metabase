@@ -33,6 +33,8 @@ type Options = {
   database: Pick<Database, "features"> | undefined;
   /** Opens the docs side panel. Must not change, or the editor reconfigures. */
   openDocs: () => void;
+  /** True while the docs side panel is open. Must not change either. */
+  isDocsOpen: () => boolean;
   /** See `SuggestOptions`. */
   highlightFirstSuggestion?: boolean;
   extensions?: Extension[];
@@ -60,6 +62,7 @@ export function useExtensions(options: Options): Extension[] {
     availableMetrics,
     database,
     openDocs,
+    isDocsOpen,
     highlightFirstSuggestion,
     extensions: extra = [],
   } = options;
@@ -93,6 +96,7 @@ export function useExtensions(options: Options): Extension[] {
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
         getColumnValues,
         openDocs,
+        isDocsOpen,
         highlightFirstSuggestion,
       }),
       tooltips({
@@ -113,6 +117,7 @@ export function useExtensions(options: Options): Extension[] {
     hasColumnsOutsideBrackets,
     getColumnValues,
     openDocs,
+    isDocsOpen,
     highlightFirstSuggestion,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,

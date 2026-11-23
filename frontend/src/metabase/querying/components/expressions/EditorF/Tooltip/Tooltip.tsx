@@ -48,6 +48,10 @@ export function Tooltip({
   const hasCompletions = completions.some(
     (completion) => completion.type !== DOCS_SUGGESTION_TYPE,
   );
+  // Without functions, the list is narrower: no descriptions.
+  const hasFunctions = completions.some(
+    (completion) => completion.clauseName != null,
+  );
 
   return (
     <Popover
@@ -68,6 +72,7 @@ export function Tooltip({
         data-testid="custom-expression-editor-suggestions"
         className={cx(S.dropdown, {
           [S.completions]: hasCompletions,
+          [S.narrow]: !hasFunctions,
         })}
         data-ignore-editor-clicks="true"
       >

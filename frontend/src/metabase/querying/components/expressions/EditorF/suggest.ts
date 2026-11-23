@@ -4,7 +4,9 @@
  * quiet on a request in words (requests have their own AI mode in B).
  */
 import {
+  type CompletionResult as CodeMirrorResult,
   type CompletionContext,
+  type CompletionSection,
   type CompletionSource,
   autocompletion,
   closeCompletion,
@@ -70,6 +72,8 @@ export type SuggestOptionsB = {
   getColumnValues?: GetColumnValues;
   /** Opens the docs side panel, from the last row of the list. */
   openDocs: () => void;
+  /** True while the docs side panel is open: it already lists the functions. */
+  isDocsOpen?: () => boolean;
 };
 
 /** The `type` of the "Open the docs" row, which the list draws on its own. */
@@ -85,7 +89,7 @@ export function suggestionsB(options: SuggestOptionsB) {
     override: [
       quietOnTemplateBlanks(suggestColumnValues(options)),
       ...[
-        quietOnTemplateBlanks(popular),
+        quietWhenDocsOpen(quietOnTemplateBlanks(popular), options.isDocsOpen),
         quietOnTemplateBlanks(suggestLiterals()),
         // Offers the allowed values on a placeholder too.
         suggestAllowedValues(),
@@ -101,7 +105,9 @@ export function suggestionsB(options: SuggestOptionsB) {
         quietOnTemplateBlanks(suggestRelatedColumns(options)),
       ].map(quietOnColumnValues),
       suggestDocs(options.openDocs),
-    ].filter(isNotNull),
+    ]
+      .filter(isNotNull)
+      .map(inSections),
   });
   return [
     completion,
@@ -122,8 +128,8 @@ export function suggestionsB(options: SuggestOptionsB) {
 function suggestDocs(openDocs: () => void): CompletionSource {
   const option: ExpressionSuggestion = {
     type: DOCS_SUGGESTION_TYPE,
-    label: t`Open the docs`,
-    icon: "book_open",
+    label: t`Open docs`,
+    icon: "reference",
     boost: -99,
     apply: (view) => {
       closeCompletion(view);
@@ -176,6 +182,20 @@ function quietOnTemplateBlanks(
       : null;
 }
 
+/**
+ * No "Suggested" list on an empty editor while the docs side panel is open:
+ * the panel already shows the functions.
+ */
+function quietWhenDocsOpen(
+  source: CompletionSource | null,
+  isDocsOpen: (() => boolean) | undefined,
+): CompletionSource | null {
+  if (source === null || isDocsOpen == null) {
+    return source;
+  }
+  return (context) => (isDocsOpen() ? null : source(context));
+}
+
 /** In a text value that is compared to a column, only its values show. */
 function quietOnColumnValues(
   source: CompletionSource | null,
@@ -184,4 +204,53 @@ function quietOnColumnValues(
     return null;
   }
   return (context) => (isOnColumnValue(context.state) ? null : source(context));
+}
+
+/**
+ * The groups of the list, in this order: functions, columns, other options
+ * (like metrics and values), and the docs row. The list draws a line between
+ * groups. CodeMirror sorts by group first, so the keyboard order is the same.
+ */
+export const SECTIONS = {
+  functions: { name: "functions", rank: 0 },
+  columns: { name: "columns", rank: 1 },
+  other: { name: "other", rank: 2 },
+  docs: { name: "docs", rank: 3 },
+} satisfies Record<string, CompletionSection>;
+
+function getSection(option: ExpressionSuggestion): CompletionSection {
+  if (option.type === DOCS_SUGGESTION_TYPE) {
+    return SECTIONS.docs;
+  }
+  if (option.clauseName != null) {
+    return SECTIONS.functions;
+  }
+  if (option.column != null) {
+    return SECTIONS.columns;
+  }
+  return SECTIONS.other;
+}
+
+/** Puts every option of a source in its group. */
+function inSections(source: CompletionSource): CompletionSource {
+  // Keeps a sync source sync: a promise makes CodeMirror wait a tick.
+  return (context) => {
+    const result = source(context);
+    return result instanceof Promise
+      ? result.then(withSections)
+      : withSections(result);
+  };
+}
+
+function withSections<T extends CodeMirrorResult | null>(result: T): T {
+  return result == null
+    ? result
+    : {
+        ...result,
+        options: result.options.map((option) => ({
+          ...option,
+          // All the sources here give ExpressionSuggestion options.
+          section: getSection(option as ExpressionSuggestion),
+        })),
+      };
 }

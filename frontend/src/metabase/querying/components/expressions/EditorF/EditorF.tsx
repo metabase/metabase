@@ -332,11 +332,14 @@ export function EditorF(props: EditorFProps) {
   // placeholders of a function, so they call the latest callbacks via refs.
   const openDocsRef = useRef(() => {});
   openDocsRef.current = () => setOpenSidebar("functions");
+  const isDocsOpenRef = useRef(false);
+  isDocsOpenRef.current = openSidebar === "functions";
   const exitCodeRef = useRef(onExitCode);
   exitCodeRef.current = onExitCode;
   const stableExtensions = useMemo(
     () => ({
       openDocs: () => openDocsRef.current(),
+      isDocsOpen: () => isDocsOpenRef.current,
       prefix: codePrefix(() => exitCodeRef.current?.()),
     }),
     [],
@@ -349,6 +352,7 @@ export function EditorF(props: EditorFProps) {
     availableMetrics,
     database,
     openDocs: stableExtensions.openDocs,
+    isDocsOpen: stableExtensions.isDocsOpen,
     // In the custom column editor, Enter saves, so a suggestion for a plain
     // word isn't highlighted until Down.
     highlightFirstSuggestion: !inline,
