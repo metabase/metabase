@@ -216,7 +216,7 @@
                         (let [model-ids (mapv :model_id (configs (create! n)))]
                           (events.tu/statement-count!
                            #(cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" (into model-ids (map (partial * 10)) model-ids))
-                                                 {:context {:details {}}}))))]
+                                                                {:context {:details {}}}))))]
           (counted 1)
           (is (= (counted 2) (counted 6)))))
       (testing "deleting the configs of deleted questions"
@@ -252,8 +252,10 @@
                                             :strategy {:type :ttl :multiplier 2 :min_duration_ms 3}})
           (mt/with-test-user :crowberto
             (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" [model-id])
-                                               {:context {:details {}}}))
-          (is (=? {:model-id  model-id
-                   :new-value {}}
+                                                {:context {:details {}}}))
+          (is (=? {:model     "question"
+                   :model-id  model-id
+                   :old-value {:strategy "ttl" :config {:multiplier 2 :min_duration_ms 3}}
+                   :new-value nil}
                   (:details (t2/select-one :model/AuditLog :topic "cache-config-update"
                                            {:order-by [[:id :desc]]})))))))))

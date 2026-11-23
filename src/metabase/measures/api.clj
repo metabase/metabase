@@ -109,7 +109,7 @@
     (api/update-check existing new-body)
     (when changes
       (measure/update-measures! [(assoc (cond-> changes
-                                  (:definition changes) (update :definition checked-definition)) :id id)] {:context {:revision-message revision_message}}))
+                                          (:definition changes) (update :definition checked-definition)) :id id)] {:context {:revision-message revision_message}}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

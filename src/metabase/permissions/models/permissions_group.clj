@@ -284,23 +284,30 @@
             (recur (filterv (complement ready?) pending) (into ordered ready))))))))
 
 (defn- check-group-updates
-  "Throws a 400 unless every row of `updates`, whose stored PermissionsGroups `stored` holds, satisfies these rules:
+  "Throws a 400 unless every row of `updates`, whose stored PermissionsGroups `stored` holds, satisfies these rules,
+  with the refusal of the first row that breaks one, in this order for each:
 
-  - the hooks of the group accept the row merged into its stored row (a magic group keeps its name)
-  - no two renames of the batch take the same name, compared lower-cased
+  - a rename does not take the name of an earlier rename of the batch, compared lower-cased
   - a rename does not take the name of a group as it stands after the renames of the batch, compared lower-cased, so
     a name another row of the batch renames away is free
+  - the hooks of the group accept the row merged into its stored row (a magic group keeps its name)
   - the renames of the batch do not take each other's names in a cycle"
   [stored updates]
-  (doseq [{id :id :as row} updates]
-    (t2.before-update/before-update :model/PermissionsGroup (merge (stored id) (dissoc row :id))))
-  (when-let [renames (not-empty (filterv #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))) updates))]
-    (let [lower-names (mapv (comp u/lower-case-en :name) renames)]
-      (when (or (not (apply distinct? lower-names))
-                (permissions.db/group-exists-with-lower-names-outside? lower-names (mapv :id renames)))
-        (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
-  (when (nil? (rename-order stored updates))
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
+  (let [renames (filterv #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))) updates)
+        taken   (if (seq renames)
+                  (permissions.db/lower-names-taken-outside (mapv (comp u/lower-case-en :name) renames) (mapv :id renames))
+                  #{})
+        renamed (into #{} (map :id) renames)]
+    (reduce (fn [earlier-names {id :id :as row}]
+              (let [lower-name (some-> (:name row) u/lower-case-en)]
+                (when (and (renamed id) (or (taken lower-name) (earlier-names lower-name)))
+                  (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))
+                (t2.before-update/before-update :model/PermissionsGroup (merge (stored id) (dissoc row :id)))
+                (cond-> earlier-names (renamed id) (conj lower-name))))
+            #{}
+            updates)
+    (when (nil? (rename-order stored updates))
+      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
 
 (defn- write-group-updates!
   "Write `updates` over the `stored` PermissionsGroups, a statement per row, each rename after the one that frees its

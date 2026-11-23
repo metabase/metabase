@@ -611,7 +611,7 @@
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
                      (dashboard/update-dashboards! [{:id dashboard-id :public_uuid       <>
-                                                    :made_public_by_id api/*current-user-id*}])))]
+                                                     :made_public_by_id api/*current-user-id*}])))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -626,7 +626,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (dashboard/update-dashboards! [{:id dashboard-id :public_uuid       nil
-                                 :made_public_by_id nil}])
+                                  :made_public_by_id nil}])
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

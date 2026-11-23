@@ -878,12 +878,12 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted-updates (partial update!
-                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
-                            {:description "Same"})))
+                                    (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
+                                    {:description "Same"})))
         (testing "archiving actions, some already archived"
           (counted-updates (partial update!
-                            (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) nil))
-                            {:archived true})))
+                                    (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) nil))
+                                    {:archived true})))
         (testing "deleting actions"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(action/delete-actions! ids))))))
         (testing "deleting the actions of models"
@@ -893,10 +893,10 @@
                        (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-models model-ids)))))))
         (testing "moving the actions of models"
           (counted-updates (fn [n]
-                     (let [ids       (fresh! n)
-                           model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
-                       (t2/update! :model/Card :id [:in model-ids] {:collection_id other})
-                       (events.tu/statement-count! #(action/update-actions-for-models! (zipmap model-ids (repeat other))))))))
+                             (let [ids       (fresh! n)
+                                   model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
+                               (t2/update! :model/Card :id [:in model-ids] {:collection_id other})
+                               (events.tu/statement-count! #(action/update-actions-for-models! (zipmap model-ids (repeat other))))))))
         (testing "deleting the actions on tables"
           (counted (fn [n]
                      (let [tables (mapv (fn [_] (table-id (mt/id))) (range n))]

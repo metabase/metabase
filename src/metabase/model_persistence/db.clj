@@ -176,11 +176,10 @@
    [:state_change_at {:optional true} [:= :%now]]])
 
 (defn- update-persisted-info-rows!
-  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, through the model, one statement per batch of
-  [[mdb/update-partition-size]] ids."
+  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, through the model, one statement per row."
   [rows changes]
-  (doseq [batch (partition-all mdb/update-partition-size (map :id rows))]
-    (t2/update! :model/PersistedInfo :id [:in (vec batch)] changes))
+  (doseq [{:keys [id]} rows]
+    (t2/update! :model/PersistedInfo :id [:auto/param id] changes))
   nil)
 
 (mu/defn update-persisted-infos!

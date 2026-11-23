@@ -189,7 +189,7 @@
               (let [new-card (m.document/clone-card! source @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (queries.card/update-cards! [{:id (:id new-card) :archived          (boolean (:archived card))
-                                               :archived_directly (boolean (:archived_directly card))}]))
+                                                :archived_directly (boolean (:archived_directly card))}]))
                 (assoc accum (:id card) (:id new-card))))
             {}
             (map vector cards-to-copy sources))))
@@ -216,9 +216,9 @@
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
                            (m.document/update-documents! [(assoc (m.document/update-cards-in-ast
-                                                          {:document (:document existing-document)
-                                                           :content_type (:content_type existing-document)}
-                                                          card-id-map) :id new-document-id)]))
+                                                                  {:document (:document existing-document)
+                                                                   :content_type (:content_type existing-document)}
+                                                                  card-id-map) :id new-document-id)]))
                          (m.document/get-document new-document-id)))]
     new-document))
 
@@ -259,7 +259,7 @@
       {:uuid existing-uuid}
       (do
         (m.document/update-documents! [{:id document-id :public_uuid       (str (random-uuid))
-                                       :made_public_by_id api/*current-user-id*}])
+                                        :made_public_by_id api/*current-user-id*}])
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
@@ -278,7 +278,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
   (m.document/update-documents! [{:id document-id :public_uuid       nil
-                                 :made_public_by_id nil}])
+                                  :made_public_by_id nil}])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map

@@ -516,8 +516,8 @@
                                            :to_entity_type :card :to_entity_id parent-id}]
          (analyzed-by-job!)
          (card/update-cards! [{:id parent-id :dataset_query   (lib/native-query mp "select * from orders")
-                                          :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
-                                                                   [:data :results_metadata :columns])}])
+                               :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
+                                                        [:data :results_metadata :columns])}])
          (deps.test/synchronously-run-dependency-job!)
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))
@@ -555,7 +555,7 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (is (nil? (transform.model/update-transforms! [{:id transform-id :source {:type :query
-                                                                                  :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])))))))))
+                                                                                     :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -570,7 +570,7 @@
                                                                       :type :table}}]
            (analyzed-by-job!)
            (transform.model/update-transforms! [{:id transform-id :source {:type :query
-                                                                        :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])
+                                                                           :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -584,7 +584,7 @@
                                                                     :name "sample"
                                                                     :type :table}}]
          (is (nil? (transform.model/update-transforms! [{:id transform-id :source {:type :query
-                                                                                :query (lib/native-query mp "select * from orders")}}]))))))))
+                                                                                   :query (lib/native-query mp "select * from orders")}}]))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!

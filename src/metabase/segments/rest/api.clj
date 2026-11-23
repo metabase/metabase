@@ -83,7 +83,7 @@
     (api/update-check existing new-body)
     (when changes
       (segment/update-segments! [(assoc (cond-> changes
-                                  (:definition changes) (update :definition checked-definition)) :id id)] {:context {:revision-message revision_message}}))
+                                          (:definition changes) (update :definition checked-definition)) :id id)] {:context {:revision-message revision_message}}))
     (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

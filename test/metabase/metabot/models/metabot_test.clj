@@ -13,7 +13,6 @@
   rows between 2 and 6."
   8)
 
-
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest metabot-prompts-hydration-test

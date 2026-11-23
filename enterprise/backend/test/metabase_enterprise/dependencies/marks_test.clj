@@ -164,14 +164,14 @@
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:analysis [:card-b] :result-metadata [:card-b]})
                    (marks! world #(card/update-cards! [{:id (id-of world :card-a) :result_metadata (mapv (fn [col] (assoc col :display_name "Renamed"))
-                                                                                                      metadata)}]))))))
+                                                                                                         metadata)}]))))))
         (testing "a result metadata change dependents don't see marks nothing"
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:triggers? false})
                    (marks! world #(card/update-cards! [{:id (id-of world :card-a) :result_metadata (mapv (fn [col]
-                                                                                                        (assoc col :fingerprint
-                                                                                                               {:global {:distinct-count 3}}))
-                                                                                                      metadata)}]))))))
+                                                                                                           (assoc col :fingerprint
+                                                                                                                  {:global {:distinct-count 3}}))
+                                                                                                         metadata)}]))))))
         (testing "a card type change marks its own dependency and analysis, and what reads it"
           (is (= (marked {:dependency [:card-a] :analysis [:card-a :card-b] :result-metadata [:card-b]})
                  (marks! world #(card/update-cards! [{:id (id-of world :card-a) :type :model}])))))
@@ -203,13 +203,13 @@
                           :analysis        [:card-d :card-e]
                           :result-metadata [:card-d :card-e]})
                  (marks! world #(measure/update-measures! [{:id (id-of world :measure) :definition (lib/aggregate (deps.test/table-query :orders)
-                                                                                                               (lib/count)) :name "Renamed measure"}])))))
+                                                                                                                  (lib/count)) :name "Renamed measure"}])))))
         (testing "a segment definition change marks its own dependency and analysis and its direct dependents"
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
                           :result-metadata [:card-g]})
                  (marks! world #(segment/update-segments! [{:id (id-of world :segment) :definition (lib/filter (deps.test/table-query :checkins)
-                                                                                                            (lib/= 2 2))}])))))
+                                                                                                               (lib/= 2 2))}])))))
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
@@ -342,7 +342,7 @@
         (testing "a transform source change marks its own dependency and analysis"
           (is (= (marked {:dependency [:transform] :analysis [:transform]})
                  (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :source {:type  :query
-                                                                                                         :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}])))))
+                                                                                                            :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}])))))
         (testing "a transform rename marks nothing"
           (is (= (marked {:triggers? false})
                  (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :name "Renamed"}])))))

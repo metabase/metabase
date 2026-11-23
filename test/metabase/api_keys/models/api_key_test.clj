@@ -51,9 +51,7 @@
                                                                  :updated_by_id         admin-id)))]
                           (events.tu/statement-count! #(api-key/create-api-keys! rows))))]
           (counted 1)
-          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
-            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
-              (is (= (- c6 c4) (- c4 c2)))))))
+          (is (= (counted 2) (counted 6)))))
       (testing "deleting keys, half of them with a user of their own"
         (let [counted (fn [n]
                         (let [ids (mt/with-current-user admin-id
@@ -69,8 +67,10 @@
                                           (range n)))]
                           (events.tu/statement-count! #(api-key/delete-api-keys! ids))))]
           (counted 1)
-          (is (= (counted 2) (counted 6)))))
-      (testing "renaming keys to one name, half of them with a user of their own"
+          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+            (testing "a delete grows only by the per-row update of each deactivated key User, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2)))))))
+      (testing "renaming keys, half of them with a user of their own"
         (let [counted (fn [n]
                         (let [ids (mt/with-current-user admin-id
                                     (mapv (fn [i]
@@ -82,11 +82,12 @@
                                                              :user_id               admin-id
                                                              :creator_id            admin-id
                                                              :updated_by_id         admin-id}])))))
-                                          (range n)))
-                              new-name (mt/random-name)]
-                          (events.tu/statement-count! #(api-key/update-api-keys! (mapv (fn [id] {:id id :name new-name}) ids)))))]
+                                          (range n)))]
+                          (events.tu/statement-count! #(api-key/update-api-keys! (mapv (fn [id] {:id id :name (mt/random-name)}) ids)))))]
           (counted 1)
-          (is (= (counted 2) (counted 6)))))
+          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2)))))))
       (testing "recording key usage"
         (let [[{api-key-id :id}] (api-key/create-api-keys! [{::api-keys/unhashed-key (api-key/key-with-unique-prefix)
                                                              :name                  (mt/random-name)

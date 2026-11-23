@@ -665,18 +665,6 @@
   [stored changes]
   (into {} (remove (fn [[k v]] (= (get stored k ::absent) v))) changes))
 
-(defn group-ids-by-changes
-  "The `rows` to update, each an `:id` and the columns to set, as `[changes ids]` pairs in the order the changes first
-  appear, where the changes of a row are its [[effective-changes]] against its row in `stored`, a map from id to the row
-  as read; rows left with no change are dropped. Toucan runs one UPDATE for each pair."
-  [stored rows]
-  (let [pairs (into [] (keep (fn [{:keys [id] :as row}]
-                               (when-let [changes (not-empty (effective-changes (get stored id) (dissoc row :id)))]
-                                 [changes id])))
-                    rows)
-        ids   (reduce (fn [m [changes id]] (update m changes (fnil conj []) id)) {} pairs)]
-    (into [] (comp (map first) (distinct) (map (fn [changes] [changes (get ids changes)]))) pairs)))
-
 (defn do-after-select
   "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
   [modelable row-map]

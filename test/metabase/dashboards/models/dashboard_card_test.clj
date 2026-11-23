@@ -593,10 +593,10 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-card/create-dashboard-cards! rows))))))
         (testing "updating dashcards, some already holding the new values"
           (counted-updates (fn [n]
-                     (let [ids (fresh! n)
-                           row (fn [id] {:id id :size_x 5 :dashboard_tab_id other-tab-id :series [other-series-id]})]
-                       (dashboard-card/update-dashboard-cards! (mapv row (take-nth 2 ids)))
-                       (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
+                             (let [ids (fresh! n)
+                                   row (fn [id] {:id id :size_x 5 :dashboard_tab_id other-tab-id :series [other-series-id]})]
+                               (dashboard-card/update-dashboard-cards! (mapv row (take-nth 2 ids)))
+                               (events.tu/statement-count! #(dashboard-card/update-dashboard-cards! (mapv row ids)))))))
         (testing "deleting dashcards"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-card/delete-dashboard-cards! ids))))))))))
 

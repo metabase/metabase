@@ -20,7 +20,6 @@
   rows between 2 and 6."
   8)
 
-
 (comment transform-job/keep-me)
 
 (def ^:private values {"hourly"

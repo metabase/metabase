@@ -581,17 +581,17 @@
       (let [published (fn [n]
                         (mt/with-model-cleanup [:model/User]
                           (mt/with-temp [:model/PermissionsGroup group {:name (format "SCIM removal group %s" (random-uuid))}]
-                          (let [user-ids  (t2/insert-returning-pks! :model/User (for [_ (range n)] (mt/with-temp-defaults :model/User)))
-                                _         (t2/insert! :model/PermissionsGroupMembership
-                                                      (for [user-id user-ids] {:user_id user-id :group_id (:id group)}))
-                                entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
-                                body      {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
-                                           :id          entity-id
-                                           :displayName (:name group)
-                                           :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}
-                                topics    (events.tu/published-topics!
-                                           #(scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) body))]
-                            (is (empty? (t2/select :model/PermissionsGroupMembership :group_id (:id group) :user_id [:in user-ids])))
-                            (get (frequencies topics) :event/group-membership-delete)))))]
+                            (let [user-ids  (t2/insert-returning-pks! :model/User (for [_ (range n)] (mt/with-temp-defaults :model/User)))
+                                  _         (t2/insert! :model/PermissionsGroupMembership
+                                                        (for [user-id user-ids] {:user_id user-id :group_id (:id group)}))
+                                  entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+                                  body      {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                                             :id          entity-id
+                                             :displayName (:name group)
+                                             :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}
+                                  topics    (events.tu/published-topics!
+                                             #(scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) body))]
+                              (is (empty? (t2/select :model/PermissionsGroupMembership :group_id (:id group) :user_id [:in user-ids])))
+                              (get (frequencies topics) :event/group-membership-delete)))))]
         (is (= 1 (published 2)))
         (is (= (published 2) (published 6)))))))

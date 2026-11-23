@@ -240,20 +240,20 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted-updates (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            {:description "Same"})))
+                                    (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                                    {:description "Same"})))
         (testing "archiving explorations and their summary documents, some already archived"
           (counted-cascading (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
-                            {:archived true})))
+                                      (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived true})))
         (testing "restoring explorations and their summary documents, some already live"
           (counted-cascading (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
-                            {:archived false})))
+                                      (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived false})))
         (testing "moving explorations, some already in the Collection"
           (counted-updates (partial update!
-                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                            {:collection_id other})))
+                                    (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                                    {:collection_id other})))
         (testing "deleting explorations"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))
 

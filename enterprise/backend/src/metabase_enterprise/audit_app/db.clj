@@ -154,4 +154,4 @@
   "Deactivate the active Notifications created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (models.notification/update-notifications! (mapv #(hash-map :id % :active false)
-                                                  (t2/select-pks-vec :model/Notification :creator_id user-id :active true))))
+                                                   (t2/select-pks-vec :model/Notification :creator_id user-id :active true))))

@@ -894,9 +894,9 @@
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
            (card/update-cards! [{:id card-id :dimension_mappings [{:type         :table
-                                                                :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                                                :table-id     (mt/id :categories)
-                                                                :target       (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}]}])
+                                                                   :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                                   :table-id     (mt/id :categories)
+                                                                   :target       (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}]}])
            (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
@@ -1074,8 +1074,8 @@
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
            (segment/update-segments! [{:id segment-id :definition (let [mp (mt/metadata-provider)]
-                                                                 (-> (lib/query mp (lib.metadata/table mp products-id))
-                                                                     (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))}])
+                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))}])
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -1134,7 +1134,7 @@
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
              (measure/update-measures! [{:id measure-id :definition (-> (lib/query mp orders)
-                                                                     (lib/aggregate (lib/sum subtotal)))}])
+                                                                        (lib/aggregate (lib/sum subtotal)))}])
              (assert-pending :measure measure-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure

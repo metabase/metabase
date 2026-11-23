@@ -37,9 +37,9 @@
                           n action table-name "metabase.change-log.core")))
   (run! (comp change-log.db/insert-entries! vec)
         (partition-all app-db/create-partition-size (for [[table-name row-ids action] changes
-                                  id                          row-ids
-                                  :when                       (integer? id)]
-                              {:table_name table-name, :row_id id, :action action})))
+                                                          id                          row-ids
+                                                          :when                       (integer? id)]
+                                                      {:table_name table-name, :row_id id, :action action})))
   (when-not config/is-test?
     (change-log.numbering/stay-awake!)))
 

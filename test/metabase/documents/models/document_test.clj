@@ -899,20 +899,20 @@
             (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(document/create-documents! rows))))))
           (testing "updating columns, some already holding the new value"
             (counted-updates (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
-                              {:name "Same"})))
+                                      (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                                      {:name "Same"})))
           (testing "archiving documents and their cards, some already archived"
             (counted-cascading (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
-                              {:archived true})))
+                                        (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                                        {:archived true})))
           (testing "restoring documents and their cards, some already live"
             (counted-cascading (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
-                              {:archived false})))
+                                        (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
+                                        {:archived false})))
           (testing "moving documents and their cards, some already in the Collection"
             (counted-cascading (partial update!
-                              (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                              {:collection_id other})))
+                                        (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                                        {:collection_id other})))
           (testing "deleting documents"
             (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(document/delete-documents! ids))))))
           (testing "counting views"

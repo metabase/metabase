@@ -1016,8 +1016,8 @@
   [model-id->collection-id :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]]
   (when (seq model-id->collection-id)
     (update-actions! (mapv (fn [{:keys [id model_id]}] {:id id :collection_id (get model-id->collection-id model_id)})
-                               (actions.db/action-model-ids (vec (keys model-id->collection-id))))
-                         nil)
+                           (actions.db/action-model-ids (vec (keys model-id->collection-id))))
+                     nil)
     nil))
 
 (mu/defn action-ids-of-models :- [:sequential ::lib.schema.id/action]

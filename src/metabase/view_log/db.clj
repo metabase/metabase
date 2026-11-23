@@ -25,8 +25,8 @@
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
   (vec (t2/select-pks-vec :model/ViewLog {:where    [:<= time-column [:auto/param cutoff]]
-                                         :order-by [[:id :asc]]
-                                         :limit    batch-size})))
+                                          :order-by [[:id :asc]]
+                                          :limit    batch-size})))
 
 (mu/defn delete-view-logs!
   "Delete the ViewLogs with `ids`, returning the number deleted."

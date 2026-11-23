@@ -351,8 +351,8 @@
         (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id
                                                         :exploration_id   (exploration-id row)}])
         (exploration-query/update-queries! [{:id (:id row) :status      "done"
-                                            :started_at  started
-                                            :finished_at (OffsetDateTime/now)}])))
+                                             :started_at  started
+                                             :finished_at (OffsetDateTime/now)}])))
     true
     (catch Exception e
       (if (explorations.db/query-result-exists? (:id row))

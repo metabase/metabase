@@ -23,7 +23,6 @@
   rows between 2 and 6."
   8)
 
-
 (deftest channel-details-is-encrypted
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
   (mt/with-temp-empty-app-db [_conn :h2]

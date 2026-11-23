@@ -617,13 +617,14 @@
   [lower-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
 
-(mu/defn group-exists-with-lower-names-outside? :- :boolean
-  "Whether a PermissionsGroup other than those with `excluded-ids` has a lower-cased name among `lower-names`."
+(mu/defn lower-names-taken-outside :- [:set :string]
+  "The lower-cased names among `lower-names` that a PermissionsGroup other than those with `excluded-ids` has."
   [lower-names  :- [:sequential {:min 1} :string]
    excluded-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/PermissionsGroup {:where [:and
-                                               [:in :%lower.name [:auto/param (vec (distinct lower-names))]]
-                                               [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]}))
+  (set (t2/select-fn-set (comp u/lower-case-en :name) [:model/PermissionsGroup :name]
+                         {:where [:and
+                                  [:in :%lower.name [:auto/param (vec (distinct lower-names))]]
+                                  [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]})))
 
 (mu/defn group-exists-with-lower-names? :- :boolean
   "Whether a PermissionsGroup exists whose lower-cased name is one of `lower-names`."

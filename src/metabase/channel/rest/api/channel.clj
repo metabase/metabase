@@ -98,7 +98,7 @@
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
   (api/write-check (channel.db/channel id))
-  (models.channel/update-channels! [id] body)
+  (models.channel/update-channels! [(assoc body :id id)])
   (channel.db/channel id))
 
 (defn- test-channel-connection!

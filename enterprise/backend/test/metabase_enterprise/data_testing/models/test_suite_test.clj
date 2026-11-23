@@ -21,7 +21,6 @@
   rows between 2 and 6."
   8)
 
-
 (set! *warn-on-reflection* true)
 
 (defn- minutes-ago ^OffsetDateTime [^long n]

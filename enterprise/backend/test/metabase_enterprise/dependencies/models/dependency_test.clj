@@ -74,10 +74,10 @@
                 (testing "when updating an existing card"
                   (testing "to add a new table dep"
                     (card/update-cards! [{:id (:id card1) :dataset_query (let [mp (mt/metadata-provider)]
-                                                                        (lib/join (deps.test/table-query :orders)
-                                                                                  (lib/join-clause (lib.metadata/table mp (mt/id :products))
-                                                                                                   [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                                                                                           (lib.metadata/field mp (mt/id :products :id)))])))}])
+                                                                           (lib/join (deps.test/table-query :orders)
+                                                                                     (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                                                                      [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                                                                              (lib.metadata/field mp (mt/id :products :id)))])))}])
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
                               (depends-on-> :card (:id card1) :table (mt/id :products))}

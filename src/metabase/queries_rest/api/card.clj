@@ -716,7 +716,7 @@
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
             (queries.card/update-cards! [{:id (u/the-id moved-card) :collection_position idx
-                                         :collection_id       new-collection-id-or-nil}]))
+                                          :collection_id       new-collection-id-or-nil}]))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
           ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
           ;; can avoid changing the index of cards we haven't yet updated
@@ -890,7 +890,7 @@
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
                      (queries.card/update-cards! [{:id card-id :public_uuid       <>
-                                                  :made_public_by_id api/*current-user-id*}])))]
+                                                   :made_public_by_id api/*current-user-id*}])))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

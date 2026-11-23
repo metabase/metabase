@@ -134,7 +134,7 @@
   [metric dimensions dimension-mappings]
   (when-let [metric-id (:id metric)]
     (update-cards! [{:id metric-id :dimensions         dimensions
-                                :dimension_mappings dimension-mappings}])))
+                     :dimension_mappings dimension-mappings}])))
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
   [metric]
@@ -1965,9 +1965,9 @@
           :let                     [dependents (seq (dependent-cards-to-update (mapv :id group) old-db-id))]
           :when                    dependents]
     (update-cards! (mapv (fn [{dep-id :id, dep-query :dataset_query}]
-                                 {:id dep-id :dataset_query (assoc dep-query :database new-db-id)})
-                               dependents)
-                         {:writer :cascade})))
+                           {:id dep-id :dataset_query (assoc dep-query :database new-db-id)})
+                         dependents)
+                   {:writer :cascade})))
 
 (defn- update-associated-parameters!
   "Updates the parameter mappings of the DashboardCards of the Cards among `entries` whose query changes, to follow

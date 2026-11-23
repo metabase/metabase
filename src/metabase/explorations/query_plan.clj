@@ -245,7 +245,7 @@
   [thread-id]
   (let [now (OffsetDateTime/now)]
     (exploration-thread/update-threads! [{:id thread-id :analysis_started_at now
-                                         :completed_at        now}])))
+                                          :completed_at        now}])))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence

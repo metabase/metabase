@@ -563,8 +563,8 @@
                     (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
             (testing "update values_source_config.card_id will update ParameterCard"
               (card/update-cards! [{:id card-id :parameters [(merge default-params
-                                                                 {:values_source_type    :card
-                                                                  :values_source_config {:card_id source-card-id-2}})]}])
+                                                                    {:values_source_type    :card
+                                                                     :values_source_config {:card_id source-card-id-2}})]}])
               (is (=? [{:card_id                   source-card-id-2
                         :parameterized_object_type :card
                         :parameterized_object_id   card-id
@@ -653,9 +653,9 @@
               ;; update card with removing the products.category
               (testing "on update result_metadata"
                 (card/update-cards! [(assoc (mt/card-with-source-metadata-for-query
-                                     (-> (table-query :products)
-                                         (lib/with-fields [(lib.metadata/field (mt/metadata-provider) (mt/id :products :title))])
-                                         (lib/limit 5))) :id source-card-id)])
+                                             (-> (table-query :products)
+                                                 (lib/with-fields [(lib.metadata/field (mt/metadata-provider) (mt/id :products :title))])
+                                                 (lib/limit 5))) :id source-card-id)])
                 (testing "ParameterCard for dashboard is removed"
                   (is (=? [{:card_id                   source-card-id
                             :parameter_id              "param_1"
@@ -1270,9 +1270,9 @@
                    :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query (venues-query)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't have parameters"
                             (card/update-cards! [{:id card-id :parameters [{:id   "venue"
-                                                                         :slug "venue"
-                                                                         :name "Venue"
-                                                                         :type :string/=}]}])))
+                                                                            :slug "venue"
+                                                                            :name "Venue"
+                                                                            :type :string/=}]}])))
       (testing "an empty list is no parameters"
         (mt/with-temp [:model/Card {other-id :id} {:collection_id collection-id :dataset_query (venues-query) :parameters []}]
           (is (= [] (t2/select-one-fn :parameters :model/Card :id other-id))))))))
@@ -1893,9 +1893,9 @@
                                   (comp reverse (mt/original-fn #'queries.db/cards-queries-info))]
         (mt/with-test-user :crowberto
           (card/update-cards! [{:id (:id model) :dataset_query {:lib/type :mbql/query
-                                                             :database db2-id
-                                                             :stages   [{:lib/type :mbql.stage/native
-                                                                         :native   "SELECT 1"}]}}])))
+                                                                :database db2-id
+                                                                :stages   [{:lib/type :mbql.stage/native
+                                                                            :native   "SELECT 1"}]}}])))
       (doseq [question [question1 question2 question3 question4 question5]]
         (is (=? {:database_id   db2-id
                  :dataset_query {:database db2-id}}
@@ -2555,8 +2555,8 @@
       (mt/with-temp [:model/Card source {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
                      :model/Card card   {:dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :users)))}]
         (card/update-cards! [{:id (:id card) :dataset_query (lib-be/normalize-query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                                                  :type     :query
-                                                                                  :query    {:source-table (str "card__" (:id source))}})}])
+                                                                                     :type     :query
+                                                                                     :query    {:source-table (str "card__" (:id source))}})}])
         (is (=? {:database_id (mt/id) :table_id (mt/id :venues) :source_card_id (:id source)}
                 (t2/select-one :model/Card :id (:id card))))))))
 
@@ -2590,31 +2590,31 @@
                          (events.tu/statement-count! #(card/create-cards! rows))))))
           (testing "updating columns, some already holding the new value"
             (counted-updates (partial update!
-                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
-                              {:name "Same"})))
+                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
+                                      {:name "Same"})))
           (testing "archiving cards, some already archived"
             (counted-updates (partial update!
-                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
-                              {:archived true})))
+                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived true})))
           (testing "restoring cards, some already live"
             (counted-updates (partial update!
-                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
-                              {:archived false})))
+                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived false})))
           (testing "moving cards, some already in the Collection"
             (counted-updates (partial update!
-                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
-                              {:collection_id to-id})))
+                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
+                                      {:collection_id to-id})))
           (testing "moving cards from a Collection of their own each to one Collection"
-            (counted (fn [n]
-                       (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
-                             ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
-                                           sources)]
-                         (events.tu/statement-count!
-                          #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
+            (counted-updates (fn [n]
+                               (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
+                                     ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
+                                                   sources)]
+                                 (events.tu/statement-count!
+                                  #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
           (testing "changing the type of cards, some already of the type"
             (counted-updates (partial update!
-                              (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
-                              {:type :model})))
+                                      (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
+                                      {:type :model})))
           (testing "deleting cards"
             (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(card/delete-cards! ids))))))
           (testing "touching and counting uses"

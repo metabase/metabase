@@ -686,9 +686,9 @@
                                           (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
       (when (seq cards-to-update-in-ast)
         (update-documents! [(assoc (update-cards-in-ast
-                            {:document document
-                             :content_type prose-mirror/prose-mirror-content-type}
-                            cards-to-update-in-ast) :id document-id)]))
+                                    {:document document
+                                     :content_type prose-mirror/prose-mirror-content-type}
+                                    cards-to-update-in-ast) :id document-id)]))
       document-id)))
 
 (mu/defn update-document-with-cards!
@@ -731,16 +731,16 @@
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
         (update-documents! [(assoc (cond-> document-updates
-                             document (merge (update-cards-in-ast
-                                              {:document document
-                                               :content_type (:content_type existing-document)}
-                                              card-id-map))
-                             name (assoc :name name)
-                             (contains? body :collection_id) (assoc :collection_id collection_id)
-                             ;; First body save clears the auto-created Summary placeholder flag.
-                             (and (:is_placeholder existing-document)
-                                  (contains? body :document))
-                             (assoc :is_placeholder false)) :id document-id)])
+                                     document (merge (update-cards-in-ast
+                                                      {:document document
+                                                       :content_type (:content_type existing-document)}
+                                                      card-id-map))
+                                     name (assoc :name name)
+                                     (contains? body :collection_id) (assoc :collection_id collection_id)
+                                     ;; First body save clears the auto-created Summary placeholder flag.
+                                     (and (:is_placeholder existing-document)
+                                          (contains? body :document))
+                                     (assoc :is_placeholder false)) :id document-id)])
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))

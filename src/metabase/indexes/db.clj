@@ -2,7 +2,6 @@
   "Application database queries for the indexes module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
@@ -85,11 +84,10 @@
   (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
 
 (defn- update-by-changes!
-  "Apply `changes` to the TableIndexes of `rows`, through the model, one statement per batch of
-  [[mdb/update-partition-size]] ids, `where` narrowing each."
+  "Apply `changes` to the TableIndexes of `rows`, through the model, one statement per row, `where` narrowing each."
   [rows changes where]
-  (doseq [batch (partition-all mdb/update-partition-size (map :id rows))]
-    (t2/update! :model/TableIndex (into {:id [:in (vec batch)]} where) changes)))
+  (doseq [{:keys [id]} rows]
+    (t2/update! :model/TableIndex (into {:id [:auto/param id]} where) changes)))
 
 (mu/defn mark-table-indexes-running!
   "Apply `changes` to the TableIndexes of `rows`, as stored, whose status is in `from-statuses`."

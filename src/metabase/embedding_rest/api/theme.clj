@@ -58,8 +58,8 @@
                                [:settings {:optional true} [:maybe ::embedding.schema/embedding-theme.settings]]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (embedding-theme/update-embedding-themes! [(assoc (cond-> {}
-                                              name (assoc :name name)
-                                              settings (assoc :settings settings)) :id id)])
+                                                      name (assoc :name name)
+                                                      settings (assoc :settings settings)) :id id)])
   (embedding-rest.db/embedding-theme id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

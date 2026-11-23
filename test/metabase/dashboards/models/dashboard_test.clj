@@ -235,8 +235,8 @@
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (dashboard/update-dashboards! [{:id dashboard-id :parameters [(merge default-parameter
-                                                         {:values_source_type    :card
-                                                          :values_source_config {:card_id card-id}})]}])
+                                                                           {:values_source_type    :card
+                                                                            :values_source_config {:card_id card-id}})]}])
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -708,7 +708,7 @@
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
                                                                             {:values_source_type :card :values_source_config {:card_id card-id}})]}]
       (dashboard/update-dashboards! [{:id dashboard-id :parameters [(merge default-parameter
-                                                         {:values_source_type :card :values_source_config {:card_id card-2-id}})]}])
+                                                                           {:values_source_type :card :values_source_config {:card_id card-2-id}})]}])
       (is (= [card-2-id] (t2/select-fn-vec :card_id :model/ParameterCard :parameterized_object_id dashboard-id)))
       (dashboard/update-dashboards! [{:id dashboard-id :parameters [default-parameter]}])
       (is (= [] (t2/select :model/ParameterCard :parameterized_object_id dashboard-id))))))
@@ -841,30 +841,30 @@
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard/create-dashboards! rows))))))
         (testing "updating columns, some already holding the new value"
           (counted-updates (partial update!
-                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Same"}) ids)))
-                            {:description "Same"})))
+                                    (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                                    {:description "Same"})))
         (testing "archiving dashboards and their questions, some already archived"
           (counted-cascading (partial update!
-                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
-                            {:archived true})))
+                                      (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived true})))
         (testing "restoring dashboards and their questions, some already live"
           (counted-cascading (partial update!
-                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
-                            {:archived false})))
+                                      (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
+                                      {:archived false})))
         (testing "moving dashboards and their questions, some already in the Collection"
           (counted-cascading (partial update!
-                            (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :collection_id other}) ids)))
-                            {:collection_id other})))
+                                      (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                                      {:collection_id other})))
         (testing "adding, updating and removing dashcards"
           (counted (fn [n]
                      (let [ids (fresh! n)
                            rows (mapv (fn [id] {:dashboard_id id :card_id card-id :row 5 :col 0 :size_x 4 :size_y 4 :series [series-id]}) ids)]
                        (events.tu/statement-count! #(dashboard/add-dashcards! rows)))))
           (counted-updates (fn [n]
-                     (let [ids       (fresh! n)
-                           dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
-                       (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
-                       (events.tu/statement-count! #(dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) dashcards))))))
+                             (let [ids       (fresh! n)
+                                   dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
+                               (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
+                               (events.tu/statement-count! #(dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) dashcards))))))
           (counted (fn [n]
                      (let [ids       (fresh! n)
                            dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]

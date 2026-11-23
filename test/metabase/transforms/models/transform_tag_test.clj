@@ -17,7 +17,6 @@
   rows between 2 and 6."
   8)
 
-
 (comment transform-tag/keep-me)
 
 (deftest initial-tags-translated-on-select

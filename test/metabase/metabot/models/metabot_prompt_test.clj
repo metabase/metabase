@@ -61,6 +61,6 @@
                              [{:metabot_id metabot-id :card_id metric-id :prompt "one"}
                               {:metabot_id metabot-id :card_id metric-id :prompt "two"}]))]
         (metabot-prompt/update-metabot-prompts! [{:id a :card_id model-id :prompt "same"}
-                                                            {:id b :prompt "other"}])
+                                                 {:id b :prompt "other"}])
         (is (= [[:model "same"] [:metric "other"]]
                (mapv (comp (juxt :model :prompt) #(t2/select-one :model/MetabotPrompt :id %)) [a b])))))))
