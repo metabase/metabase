@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]))
@@ -204,3 +205,40 @@
   (testing "the drivers these tests format for load and initialize without a database"
     (is (= :postgres (driver/the-initialized-driver :postgres)))
     (is (= :h2 (driver/the-initialized-driver :h2)))))
+
+;;; -------------------------------------------- rewrite-query --------------------------------------------
+
+(defn- rewrite
+  "`compiled` rewritten for Postgres with no replacements, its SQL passed through `check`, or the `:error-type` of the
+  refusal."
+  [compiled check]
+  (try
+    (data-testing.compile/rewrite-query :postgres compiled {} check)
+    (catch clojure.lang.ExceptionInfo e
+      (:error-type (ex-data e)))))
+
+(deftest rewrite-query-keeps-each-value-on-its-placeholder-test
+  (testing "control: a query whose rewrite keeps its placeholders in place keeps its values in order"
+    (is (= {:query "SELECT * FROM t WHERE a = ? AND b = ?" :params ["x" "y"]}
+           (rewrite {:query "SELECT * FROM t WHERE a = ? AND b = ?" :params ["x" "y"]} identity))))
+  (testing "a rewrite that swaps two placeholders swaps their values with them"
+    (is (= {:query "SELECT POSITION(? IN ?) AS id" :params ["cd" "abcdef"]}
+           (rewrite {:query "SELECT strpos(?, ?) AS id" :params ["abcdef" "cd"]}
+                    #(str/replace % #"strpos\((\w+), (\w+)\)" "POSITION($2 IN $1)")))))
+  (testing "a ? in a string literal, a quoted name or a comment is not a placeholder"
+    (is (= {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}
+           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]} identity))))
+  (testing "a query with no values is rewritten without naming anything"
+    (is (= {:query "SELECT '?' AS a" :params []}
+           (rewrite {:query "SELECT '?' AS a" :params []} identity))))
+  (testing "values that the parser reads no placeholder for are refused"
+    (is (= ::data-testing.errors/parameters-not-kept
+           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]} identity))))
+  (testing "a rewrite that drops a placeholder is refused"
+    (is (= ::data-testing.errors/parameters-not-kept
+           (rewrite {:query "SELECT ? AS a, ? AS b" :params ["x" "y"]}
+                    #(str/replace % #"\w+_1\b" "NULL")))))
+  (testing "a rewrite that repeats a placeholder is refused"
+    (is (= ::data-testing.errors/parameters-not-kept
+           (rewrite {:query "SELECT ? AS a" :params ["x"]}
+                    #(str/replace % #"(\w+_0) AS a" "$1 AS a, $1 AS b"))))))

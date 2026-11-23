@@ -37,6 +37,9 @@
     either string, the reconstruction of a statement of the allowed type must also pass the same checks, reconstruct
     to itself, and for Postgres read as one statement with `standard_conforming_strings` on; with
     `\"rebuild-both-settings\"`, also with it off.")
+  (name-placeholders [parser dialect sql prefix]
+    "The SQL with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the
+    order the placeholders appear, as a keywordized map of `:sql` and `:count`, the placeholders replaced.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 

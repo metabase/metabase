@@ -34,6 +34,25 @@
       (catch Exception _
         sql))))
 
+(defn name-placeholders
+  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
+  the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that the dialect's tokenizer
+  reads inside a string literal, a quoted name or a comment is not a placeholder, and stays.
+  Port of `name_placeholders`."
+  [dialect sql prefix]
+  (let [^String sql (split-placeholder-casts sql dialect)
+        sb          (StringBuilder.)
+        [last-end n] (reduce (fn [[last-end n] [token-type text start]]
+                               (if (and (= token-type "PLACEHOLDER") (= text "?"))
+                                 (do (.append sb (subs sql last-end start))
+                                     (.append sb (str prefix n))
+                                     [(inc (long start)) (inc n)])
+                                 [last-end n]))
+                             [0 0]
+                             (ast/tokenize sql dialect))]
+    (.append sb (subs sql last-end))
+    {:sql (str sb) :count n}))
+
 ;; Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
 ;; creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
 ;; Spark and Hive's `SELECT TRANSFORM (...) USING '<command>'` pipes rows through a program on the cluster.

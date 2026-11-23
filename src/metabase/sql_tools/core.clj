@@ -284,6 +284,13 @@
   [driver sql stmt-type]
   (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
+(defn name-placeholders
+  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
+  the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that `driver`'s dialect reads
+  inside a string literal, a quoted name or a comment is not a placeholder, and stays."
+  [driver sql prefix]
+  (sql-parsing/name-placeholders (sqlglot-parser) (sqlglot/driver->dialect driver) sql prefix))
+
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
   the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than

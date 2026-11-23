@@ -6,6 +6,7 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.shadow :as shadow]
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as sqlglot-java.field-references]
@@ -130,6 +131,23 @@
             (is (= reason (:reason result)))
             (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type check-rebuild)
                    result))))))))
+
+(deftest name-placeholders-match-graalpy-test
+  (testing "both parsers name the same placeholders the same way"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [[dialect sql] [["postgres"   "SELECT strpos(?, ?) AS id FROM t OFFSET ? LIMIT ?"]
+                             ["postgres"   "SELECT ?::date AS d, '?' AS q, \"?\" AS n -- ?\n FROM t"]
+                             ["postgres"   "SELECT '\uD83D\uDE00' AS e, ? AS id"]
+                             ["postgres"   "SELECT $q$?$q$ AS a, ? AS b"]
+                             ["mysql"      "SELECT INSTR(?, ?) AS id FROM t # ?\n LIMIT ?, ?"]
+                             ["redshift"   "SELECT ? AS a /* ? */"]
+                             ["clickhouse" "SELECT position(?, ?) AS id FROM t LIMIT ?"]
+                             ["tsql"       "SELECT [?] AS a, ? AS b FROM t ORDER BY a OFFSET ? ROWS"]]]
+        (testing (pr-str dialect sql)
+          ;; Compared as the shadow parser compares them: Python writes `?::` as `p_0 ::`, Java as `p_0::`.
+          (is (= (shadow/logical-value :name-placeholders (protocol/name-placeholders graal dialect sql "p_"))
+                 (shadow/logical-value :name-placeholders (protocol/name-placeholders java dialect sql "p_")))))))))
 
 (defn- python-statement-count
   "`_postgres_statement_count` of `sql` with `standard_conforming_strings` as given, run by the GraalPy parser."

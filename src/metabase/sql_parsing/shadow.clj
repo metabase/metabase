@@ -65,6 +65,7 @@
      :replace-names)          (sql-tokens value)
     :field-references         (results/field-references value)
     :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
+    :name-placeholders        (update value :sql sql-tokens)
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
                                 (select-keys value [:status :reason]))))
@@ -268,6 +269,8 @@
       (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
         (run ctx :single-stmt-of-type dialect sql [stmt-type]
              #(protocol/single-stmt-of-type % dialect sql stmt-type check-rebuild)))
+      (name-placeholders [_ dialect sql prefix]
+        (run ctx :name-placeholders dialect sql [prefix] #(protocol/name-placeholders % dialect sql prefix)))
       (transpile-sql [_ sql from-dialect to-dialect]
         (run ctx :transpile-sql from-dialect sql [to-dialect]
              #(protocol/transpile-sql % sql from-dialect to-dialect))))))

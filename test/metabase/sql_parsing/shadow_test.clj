@@ -20,6 +20,7 @@
     (field-references [_ dialect sql] (f :field-references [dialect sql]))
     (replace-names [_ dialect sql replacements] (f :replace-names [dialect sql replacements]))
     (single-stmt-of-type [_ dialect sql stmt-type check-rebuild] (f :single-stmt-of-type [dialect sql stmt-type check-rebuild]))
+    (name-placeholders [_ dialect sql prefix] (f :name-placeholders [dialect sql prefix]))
     (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))))
 
 (defn- shadow-parser
@@ -59,6 +60,7 @@
    :field-references         (protocol/field-references parser "postgres" "sql")
    :replace-names            (protocol/replace-names parser "postgres" "sql" {})
    :single-stmt-of-type      (protocol/single-stmt-of-type parser "postgres" "sql" "read" nil)
+   :name-placeholders        (protocol/name-placeholders parser "postgres" "sql" "p")
    :transpile-sql            (protocol/transpile-sql parser "sql" "postgres" "mysql")})
 
 (deftest every-method-answers-with-the-primary-test

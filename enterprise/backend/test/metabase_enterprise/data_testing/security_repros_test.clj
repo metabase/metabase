@@ -19,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -48,25 +49,31 @@
   (reify java.sql.Connection))
 
 (defn- with-recorder!
-  "Calls `thunk` with the warehouse replaced by a recorder. Returns `{:result :sent :roles}`: what `thunk` returned or
-  `{:thrown message}`, each statement handed to the warehouse in order, and the impersonation role of the current user
-  at each connection checkout, as `set-role-if-supported!` computes it outside a query."
+  "Calls `thunk` with the warehouse replaced by a recorder. Returns `{:result :sent :params :roles}`: what `thunk`
+  returned or `{:thrown message}`, each statement handed to the warehouse in order, the parameters bound to each, and
+  the impersonation role of the current user at each connection checkout, as `set-role-if-supported!` computes it
+  outside a query."
   [thunk]
-  (let [sent  (atom [])
-        roles (atom [])]
+  (let [sent   (atom [])
+        params (atom [])
+        roles  (atom [])
+        record (fn [sql statement-params]
+                 (swap! sent conj sql)
+                 (swap! params conj (vec statement-params)))]
     ;; `with-redefs`: these are multimethods, and the API run happens on a server thread.
     (with-redefs [driver/do-with-test-connection (fn [_driver database f]
                                                    (swap! roles conj (impersonation.driver/connection-impersonation-role
                                                                       database))
                                                    (f no-op-connection))
-                  driver/execute-on-connection!  (fn [_driver _conn [sql _params]]
-                                                   (swap! sent conj sql)
+                  driver/execute-on-connection!  (fn [_driver _conn [sql statement-params]]
+                                                   (record sql statement-params)
                                                    {:rows-affected 0})
-                  driver/query-on-connection     (fn [_driver _conn [sql _params] _opts]
-                                                   (swap! sent conj sql)
+                  driver/query-on-connection     (fn [_driver _conn [sql statement-params] _opts]
+                                                   (record sql statement-params)
                                                    {:columns [{:name "id" :database_type "int4"}] :rows []})]
       {:result (try (thunk) (catch Exception e {:thrown (ex-message e)}))
        :sent   @sent
+       :params @params
        :roles  @roles})))
 
 (defn- more-than-one-statement
@@ -414,3 +421,39 @@
              (is (= "card-test.not-a-single-select" (:error-code result)) (pr-str result))
              (is (= [] sent))
              (is (zero? (t2/count :model/DataTestRun :test_id test-id))))))))))
+
+(defn- strpos-bindings
+  "The string and the substring that the sent statement `sql`, with `params`, passes to its `strpos` call, written
+  `strpos(?, ?)` or `POSITION(? IN ?)`, or nil when it holds neither."
+  [sql params]
+  (cond
+    (str/includes? sql "strpos(?, ?)")     {:string (first params) :substring (second params)}
+    (str/includes? sql "POSITION(? IN ?)") {:string (second params) :substring (first params)}))
+
+(deftest data-test-binds-each-parameter-to-its-placeholder-test
+  (mt/with-premium-features #{:transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (let [mp    (lib-be/application-database-metadata-provider db-id)
+             query (as-> (lib/native-query mp "SELECT strpos({{a}}, {{b}}) AS id FROM public.orders") q
+                     (lib/with-template-tags q (mapv #(assoc % :default ({"a" "abcdef" "b" "cd"} (:name %)))
+                                                     (lib/template-tags q))))]
+         (testing "premise: the card's query compiles to strpos(?, ?) with the string, then the substring"
+           (is (= ["SELECT strpos(?, ?) AS id FROM public.orders" ["abcdef" "cd"]]
+                  ((juxt :query (comp vec :params)) (qp.compile/compile query)))))
+         (mt/with-temp [:model/Card     {card-id :id} {:dataset_query query}
+                        :model/CardTest {test-id :id} {:card_id      card-id
+                                                       :inputs       [{:table orders :format :sql :sql "SELECT 1 AS id"}]
+                                                       :expectations [{:type :empty :name "check"
+                                                                       :sql  "SELECT * FROM {{output}} WHERE 1 = 0"}]}]
+           (let [{:keys [result sent params]}
+                 (with-recorder! #(data-testing.test-util/run-as-admin! :card
+                                                                        (t2/select-one :model/Card :id card-id)
+                                                                        (t2/select-one :model/CardTest :id test-id)))
+                 bindings (keep identity (map strpos-bindings sent params))]
+             (testing "control: the run passes and sends the query under test"
+               (is (= :passed (:status result)) (pr-str result))
+               (is (seq bindings) (pr-str sent)))
+             (testing "every statement holding the call passes it the string, then the substring, as the card does"
+               (is (every? #{{:string "abcdef" :substring "cd"}} bindings)
+                   (pr-str (map vector sent params)))))))))))

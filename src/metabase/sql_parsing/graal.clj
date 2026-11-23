@@ -387,6 +387,8 @@
       (call "replace_names" sql (json/encode replacements) dialect))
     (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
       (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect check-rebuild)))
+    (name-placeholders [_ dialect sql prefix]
+      (json/decode+kw (call "name_placeholders" sql prefix dialect)))
     (transpile-sql [_ sql from-dialect to-dialect]
       (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))))
 

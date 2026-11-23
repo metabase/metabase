@@ -10,12 +10,14 @@
   bare, and every value is a bound parameter, so nothing an author writes is spliced into the SQL."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -140,12 +142,53 @@
                             {:tables replacements}
                             {:allow-unused? true})))
 
+(defn- placeholder-name
+  "A pattern of the names [[rewrite-query]] gives the placeholders of a query for one rewrite, with the number of each
+  as the group. The nonce keeps the names apart from anything the query already holds."
+  [nonce]
+  (re-pattern (str "\\bmb_param_" nonce "_(\\d+)\\b")))
+
+(mu/defn- bind-in-order :- ::compiled-query
+  "`sql`, which holds the names [[rewrite-query]] gave the placeholders of a query whose values are `params`, with each
+  name written `?` again and `params` reordered to the order the names now appear in. Throws
+  `::data-testing.errors/parameters-not-kept` unless `sql` holds each name exactly once."
+  [sql    :- :string
+   nonce  :- :string
+   params :- [:sequential ::lib.schema.common/field-value]]
+  (let [pattern (placeholder-name nonce)
+        order   (mapv (comp parse-long second) (re-seq pattern sql))]
+    (when-not (= (sort order) (range (count params)))
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/parameters-not-kept
+              (tru "The query under test has parameters, and its rewrite to read the test''s tables does not keep each of them exactly once, so the test cannot bind their values.")
+              {})))
+    {:query  (str/replace sql pattern "?")
+     :params (mapv params order)}))
+
 (mu/defn rewrite-query :- ::compiled-query
-  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace."
+  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace, its SQL as `check`
+  returns it. Each value of `:params` stays bound to the placeholder it was bound to, whatever order the rewrite and
+  `check` put the placeholders in: before the rewrite, each placeholder becomes a name, and after `check`, each name
+  becomes a placeholder again, the values in the order of the names. Values never enter the SQL.
+
+  Throws `::data-testing.errors/parameters-not-kept` when the placeholders the parser reads are not one per value, or
+  the rewrite does not keep each exactly once."
   [driver       :- :keyword
    compiled     :- ::compiled-query
-   replacements :- ::table-replacements]
-  (update compiled :query #(replace-tables driver % replacements)))
+   replacements :- ::table-replacements
+   check        :- ifn?]
+  (let [{:keys [query params]} compiled]
+    (if (empty? params)
+      (update compiled :query #(check (replace-tables driver % replacements)))
+      (let [nonce                           (format "%08x" (rand-int Integer/MAX_VALUE))
+            {named :sql named-count :count} (sql-tools/name-placeholders driver query (str "mb_param_" nonce "_"))]
+        (when (not= named-count (count params))
+          (throw (data-testing.errors/ex
+                  ::data-testing.errors/parameters-not-kept
+                  (tru "The query under test has {0} parameter value(s), and the SQL check reads {1} placeholder(s) in it, so the test cannot bind them."
+                       (count params) named-count)
+                  {})))
+        (bind-in-order (check (replace-tables driver named replacements)) nonce (vec params))))))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 

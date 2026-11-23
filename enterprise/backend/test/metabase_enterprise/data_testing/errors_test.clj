@@ -50,6 +50,7 @@
    ::errors/unsupported-h2             422
    ::errors/uncompilable-subject       422
    ::errors/query-failed               422
+   ::errors/parameters-not-kept        422
    ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
@@ -93,6 +94,7 @@
              ::errors/unsupported-h2
              ::errors/uncompilable-subject
              ::errors/query-failed
+             ::errors/parameters-not-kept
              ::errors/duplicate-output-columns
              ::errors/setup-failed
              ::errors/expectation-failed}
@@ -136,6 +138,7 @@
    ::errors/unsupported-h2             "transform-test.unsupported-h2"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
    ::errors/query-failed               "transform-test.query-failed"
+   ::errors/parameters-not-kept        "transform-test.parameters-not-kept"
    ::errors/duplicate-output-columns   "transform-test.duplicate-output-columns"
    ::errors/setup-failed               "transform-test.setup-failed"
    ::errors/expectation-failed         "transform-test.expectation-failed"

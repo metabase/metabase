@@ -379,8 +379,8 @@
         output-table   (driver/temp-table-name driver)
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
-        rewritten      (-> (data-testing.compile/rewrite-query driver compiled replacements)
-                           (update :query #(data-testing.validator/ensure-single-select driver % nil)))
+        rewritten      (data-testing.compile/rewrite-query driver compiled replacements
+                                                           #(data-testing.validator/ensure-single-select driver % nil))
         input->query   (into {} (map (fn [input] [input (input-query driver input)])) inputs)
         expectation->query
         (data-testing.validator/validate
