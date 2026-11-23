@@ -329,8 +329,11 @@
    "anthropic.claude-sonnet-5-5" {:display-name "Claude Sonnet 5.5"     :context-window 1000000}
    "anthropic.claude-sonnet-5"   {:display-name "Claude Sonnet 5"       :context-window 1000000}
    "anthropic.claude-haiku-4-5"  {:display-name "Claude Haiku 4.5"      :context-window 200000}
-   ;; Astra's input window is its 1,050,000 token context minus up to 128,000 output tokens.
+   ;; The GPT-6 family's input window is its 1,050,000 token context minus up to 128,000 output tokens, per the AWS
+   ;; model cards, e.g. https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-6-2-sol.html
    "openai.gpt-6-astra"          {:display-name "GPT-6 Astra"           :context-window 922000}
+   "openai.gpt-6.2-astra"        {:display-name "GPT-6.2 Astra"         :context-window 922000}
+   "openai.gpt-6.2-sol"          {:display-name "GPT-6.2 Sol"           :context-window 922000}
    "openai.gpt-5.4"              {:display-name "GPT-5.4"               :context-window 272000}
    "openai.gpt-5.4-2026-03-05"   {:display-name "GPT-5.4 (2026-03-05)"  :context-window 272000}
    "openai.gpt-5.5"              {:display-name "GPT-5.5"               :context-window 272000}

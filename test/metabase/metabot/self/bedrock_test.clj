@@ -48,8 +48,12 @@
   (testing "whitelisted models are supported"
     (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5-5" "anthropic.claude-opus-5"
                 "anthropic.claude-opus-4-8" "anthropic.claude-sonnet-5-5" "anthropic.claude-sonnet-5"
-                "openai.gpt-5.5" "openai.gpt-6-astra"]]
+                "openai.gpt-5.5" "openai.gpt-6-astra" "openai.gpt-6.2-astra"
+                "openai.gpt-6.2-sol"]]
       (is (contains? bedrock/supported-models id) id)))
+  (testing "the GPT-6 family's input window leaves room for its 128,000 output tokens"
+    (doseq [id ["openai.gpt-6-astra" "openai.gpt-6.2-astra" "openai.gpt-6.2-sol"]]
+      (is (= 922000 (bedrock/context-window-tokens id)) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
                 "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]

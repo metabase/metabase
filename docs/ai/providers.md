@@ -65,6 +65,8 @@ Supported models:
 | GPT-5.6 Sol   | `gpt-5.6-sol`   | 922,000                 |
 | GPT-5.6 Terra | `gpt-5.6-terra` | 922,000                 |
 | GPT-6 Astra   | `gpt-6-astra`   | 922,000                 |
+| GPT-6.2 Astra | `gpt-6.2-astra` | 922,000                 |
+| GPT-6.2 Sol   | `gpt-6.2-sol`   | 922,000                 |
 
 Credentials:
 
@@ -105,6 +107,8 @@ Supported models:
 | GPT-5.6 Luna           | `openai/gpt-5.6-luna`             | 922,000                 |
 | GPT-5.6 Sol            | `openai/gpt-5.6-sol`              | 922,000                 |
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
+| GPT-6.2 Astra          | `openai/gpt-6.2-astra`            | 922,000                 |
+| GPT-6.2 Sol            | `openai/gpt-6.2-sol`              | 922,000                 |
 | Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
@@ -288,6 +292,8 @@ Supported models:
 | GPT-5.5              | `openai.gpt-5.5`              | 272,000                 |
 | GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`   | 272,000                 |
 | GPT-6 Astra          | `openai.gpt-6-astra`          | 922,000                 |
+| GPT-6.2 Astra        | `openai.gpt-6.2-astra`        | 922,000                 |
+| GPT-6.2 Sol          | `openai.gpt-6.2-sol`          | 922,000                 |
 
 Credentials:
 
