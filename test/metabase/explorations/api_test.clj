@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -1324,12 +1323,11 @@
             (t2/update! :model/ExplorationQuery :id qid (assoc stamp :status "done"))
             (t2/update! :model/ExplorationThread :id thread-id stamp)
             (let [body (mt/user-http-request u :get 200 (str "exploration/" (:id resp)))
-                  keys-in-body (atom #{})]
+                  keys-in-body (into #{} cat (match/match-all body #'map? (keys &match)))]
               (is (= [qid] (->> body :threads (mapcat :queries) (map :id)))
                   "sanity: queries are present")
-              (walk/postwalk (fn [x] (when (map? x) (swap! keys-in-body into (keys x))) x) body)
-              (is (not (contains? @keys-in-body :data_access_token)))
-              (is (not (contains? @keys-in-body :resolved_source_ids))))))))))
+              (is (not (contains? keys-in-body :data_access_token)))
+              (is (not (contains? keys-in-body :resolved_source_ids))))))))))
 
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"

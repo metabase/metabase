@@ -109,34 +109,23 @@
   "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
   encountered. Helpful for debugging!"
   [x]
-  (-> (walk/postwalk
-       (fn add-names* [form]
-         (letfn [(add-name-to-field-id [id]
-                   (when id
-                     (let [[field-name table-name] (field-and-table-name id)]
-                       (symbol (format "#_\"%s.%s\"" field-name table-name)))))
-                 (field-id->name-form [field-id]
-                   (list 'do (add-name-to-field-id field-id) field-id))]
-           (match/replace form
-             [:field (id :guard pos-int?) opts]
-             [:field id (add-name-to-field-id id) (cond-> opts
-                                                    (pos-int? (:source-field opts))
-                                                    (update :source-field field-id->name-form))]
-
-             (:and m {:source-table #'pos-int?})
-             (add-names* (update m :source-table add-table-id-name))
-
-             (:and m {:metabase.query-processor.util.add-alias-info/source-table #'pos-int?})
-             (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
-
-             (:and m {:fk-field-id #'pos-int?})
-             (add-names* (update m :fk-field-id field-id->name-form))
-
-             ;; don't recursively replace the `do` lists above, other we'll get vectors.
-             (l :guard (and (seq? l) (= (first l) 'do)))
-             &match)))
-       x)
-      ->sorted-mbql-query-map))
+  (letfn [(add-name-to-field-id [id]
+            (when id
+              (let [[field-name table-name] (field-and-table-name id)]
+                (symbol (format "#_\"%s.%s\"" field-name table-name)))))
+          (field-id->name-form [field-id]
+            (list 'do (add-name-to-field-id field-id) field-id))
+          (update-key-if-int [m k f]
+            (m/update-existing m k #(cond-> % (pos-int? %) f)))]
+    (-> (match/replace-all x
+          [:field (id :guard pos-int?) opts]
+          [:field id (add-name-to-field-id id) (update-key-if-int opts :source-field field-id->name-form)]
+          #'map?
+          (-> &match
+              (update-key-if-int :source-table add-table-id-name)
+              (update-key-if-int :metabase.query-processor.util.add-alias-info/source-table add-table-id-name)
+              (update-key-if-int :fk-field-id field-id->name-form)))
+        ->sorted-mbql-query-map)))
 
 ;;;; [[process-query-debug]]
 

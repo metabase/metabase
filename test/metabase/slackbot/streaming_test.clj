@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
@@ -539,6 +540,54 @@
                 (testing "the next turn in the same thread picks it up instead of {}"
                   (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
+
+(deftest ^:synchronized slackbot-later-turn-sends-the-full-context-block-test
+  (testing "a later turn in a Slack thread still sends the user information: Slack does not replay the full block"
+    (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)
+          first-event    (assoc-in tu/base-dm-event [:event :text] "How many orders do we have?")
+          second-event   (update tu/base-dm-event :event assoc
+                                 :text      "And last month?"
+                                 :ts        "1234567890.000003"
+                                 :event_ts  "1234567890.000003"
+                                 :thread_ts "1234567890.000001")
+          ;; What Slack holds once the first turn is answered: the first message and the bot's reply.
+          earlier-thread {:ok       true
+                          :messages [(:event first-event)
+                                     {:ts "1234567890.000002" :bot_id "B123" :text "There are 18,760 orders."}]}
+          thread         (atom {:ok true :messages []})
+          requests       (atom [])]
+      (tu/with-slackbot-setup
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {}
+            (fn [{:keys [stop-stream-calls]}]
+              (mt/with-dynamic-fn-redefs [agent/run-agent-loop         run-agent-loop
+                                          slackbot.client/fetch-thread (fn [_ _] @thread)
+                                          metabot.self/call-llm        (fn [_model _system parts _tools _tracking _opts]
+                                                                         (swap! requests conj parts)
+                                                                         (mut/mock-llm-response
+                                                                          [{:type :text :text "There are 18,760 orders."}]))]
+                (letfn [(send! [event n]
+                          (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event) event)
+                          (u/poll {:thunk      #(>= (count @stop-stream-calls) n)
+                                   :done?      true?
+                                   :timeout-ms 5000}))
+                        (last-user-message [parts]
+                          (:content (last (filter #(= :user (:role %)) parts))))]
+                  (send! first-event 1)
+                  (reset! thread earlier-thread)
+                  (send! second-event 2)
+                  (is (= 2 (count @requests)))
+                  (let [[first-parts second-parts] @requests]
+                    (testing "the first turn sends the full block"
+                      (is (re-find #"(?s)^<context>\n.*information about the user.*</context>\nHow many orders do we have\?$"
+                                   (last-user-message first-parts))))
+                    (testing "the second turn replays the first message and sends the full block again"
+                      (is (= ["How many orders do we have?" "And last month?"]
+                             (map #(str/replace (:content %) #"(?s)^<context>.*</context>\n" "")
+                                  (filter #(= :user (:role %)) second-parts))))
+                      (is (re-find #"(?s)^<context>\n.*information about the user.*</context>\nAnd last month\?$"
+                                   (last-user-message second-parts))))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
