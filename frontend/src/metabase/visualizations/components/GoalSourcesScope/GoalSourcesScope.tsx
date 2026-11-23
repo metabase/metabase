@@ -12,7 +12,6 @@ type GoalSourcesScopeProviderProps = {
   scope: GoalSourcesScope;
 };
 
-/** Sets where the charts inside fetch their goal source results from. */
 export function GoalSourcesScopeProvider({
   children,
   scope,
@@ -24,7 +23,6 @@ export function GoalSourcesScopeProvider({
   );
 }
 
-/** The scope set by the closest provider. Signed-in, with no dashboard, without one. */
 export function useGoalSourcesScope(): GoalSourcesScope {
   return useContext(GoalSourcesScopeContext);
 }
