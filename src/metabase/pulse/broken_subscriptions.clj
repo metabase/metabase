@@ -134,14 +134,14 @@
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived.
    For a readable subscription it is
    `{:id :creator-name :parameters :channels :recipient-count :already-broken? :readable?}`.
+   For an unreadable one it is only `{:readable? false}`, so a caller can count it and nothing more.
    The `:parameters` are the missing filters the update removed, or every missing filter when it removed none.
    A removed filter is named as the dashboard named it before the update, or by its id when that name is blank.
    An already-missing filter keeps the name the subscription stored.
    The `:channels` and `:recipient-count` are what [[delivery]] describes for `pulse-id->channels`.
    The `:already-broken?` flag is true when the update removed none of the missing filters.
    The `:readable?` flag says whether the current user can read the subscription, from `readable-ids`.
-   For an unreadable one it is only `{:readable? false}`, so a caller can count it and nothing more.
-   It always leaves out the recipients' names and emails and the filter values."
+   Neither shape has the recipients' names and emails or the filter values."
   [original-dashboard-params readable-ids pulse-id->channels {:keys [pulse-id bad-parameters pulse-creator]}]
   (if-not (contains? readable-ids pulse-id)
     ;; The user can't see or restore it, and its creator is emailed. Its id and stored filters are another user's

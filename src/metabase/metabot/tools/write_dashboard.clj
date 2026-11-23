@@ -859,21 +859,21 @@
                                 " with no recipients")
                               ", which used " (str/join ", " (map filter-label parameters))))
         {readable   true
-         unreadable false} (group-by (comp boolean :readable?) subscriptions)
+         unreadable false} (group-by :readable? subscriptions)
         {broken true
-         caused false}     (group-by (comp boolean :already-broken?) readable)
-        n-unreadable       (count unreadable)]
+         caused false}     (group-by :already-broken? readable)]
     [(when (seq caused)
        (cons "The change removed filters that these subscriptions set values for, so they were archived:"
              (map describe caused)))
      (when (seq broken)
        (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
              (map describe broken)))
-     (when (pos? n-unreadable)
-       (let [noun (u/format-plural n-unreadable "subscription")]
+     (when (seq unreadable)
+       (let [n    (count unreadable)
+             noun (u/format-plural n "subscription")]
          (if (seq readable)
-           (str "The save also archived " n-unreadable " more " noun " the user can't see.")
-           (str "The save archived " n-unreadable " " noun " the user can't see, which used filters the dashboard "
+           (str "The save also archived " n " more " noun " the user can't see.")
+           (str "The save archived " n " " noun " the user can't see, which used filters the dashboard "
                 "no longer has."))))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
           "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))

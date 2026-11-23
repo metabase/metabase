@@ -462,12 +462,11 @@
                       {:readable? false}]))))))
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
-  (testing "only unreadable subscriptions are counted without saying \"more\""
-    (is (= "The save archived 2 subscriptions the user can't see, which used filters the dashboard no longer has."
-           (->> (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))
-                flatten
-                (remove nil?)
-                first)))))
+  (testing "only unreadable subscriptions are counted with the reason, without a header or \"more\""
+    (is (= ["The save archived 2 subscriptions the user can't see, which used filters the dashboard no longer has."
+            (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
+                 "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))))))))
 
 (deftest add-tab-leaves-existing-overlap-test
   (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Overlapping"}

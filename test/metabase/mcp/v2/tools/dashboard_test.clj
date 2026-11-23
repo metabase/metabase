@@ -514,12 +514,13 @@
                      :model/Pulse     _    {:dashboard_id (:id dash)
                                             :creator_id   (mt/user->id :crowberto)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
-        (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                                              (wire {:method "update"
-                                                     :id     (:id dash)
-                                                     :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))]
-          (is (=? {:archived_subscription_count 1} result))
-          (is (not (contains? result :archived_subscriptions))))))))
+        (is (= {:archived_subscription_count 1}
+               (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                               (wire {:method "update"
+                                      :id     (:id dash)
+                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
+                   tool-result
+                   (select-keys [:archived_subscription_count :archived_subscriptions]))))))))
 
 (deftest write-only-token-gets-archived-subscription-count-test
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
