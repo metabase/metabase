@@ -18,12 +18,12 @@
                         (lib/returned-columns query))
         created-at-field (column/column-unique-key (columns "Created At"))
         user-id-field (column/column-unique-key (columns "User ID"))
-        analysis {:kind "habit"
-                  :base_query query
+        analysis {:kind :habit
+                  :base-query query
                   :columns.person user-id-field
                   :columns.timestamp created-at-field
-                  :habit.values "count" ; or "percent"
-                  :granularity "day"}]
+                  :habit.values :count ; or :percent
+                  :granularity :day}]
     (testing "basic habit"
       (is (=? {:lib/type :mbql/query
                :stages [{:lib/type :mbql.stage/mbql
@@ -43,18 +43,14 @@
                                              :base-type :type/Integer}
                                      "periods"]]}]}
               (analysis/->mbql analysis))))
-    ;; TODO: blocked on window functions
-    #_(testing "habit with percent"
-        (let [analysis (assoc analysis :habit.values "percent")]
-          (is (=? {:lib/type :mbql.stage/mbql
-                   :aggregation [[:count {}]]
-                   :filters [[:= {} 12
-                              [:field {:effective-type :type/Integer
-                                       :base-type :type/Integer}
-                               (:id user-id-field)]]]
-                   :breakout [[:field {:effective-type :type/Integer
-                                       :base-type :type/Integer}
-                               "count"]]}
-                  (-> (analysis/->mbql analysis)
-                      :stages second)))))
-    #_(testing "breakout field ref setting")))
+    (testing "habit with percent"
+      (let [analysis (assoc analysis :habit.values :percent)]
+        (is (=? {:lib/type :mbql.stage/mbql
+                 :aggregation [[:/ {:name "people"}
+                                [:count {}]
+                                [:window {}
+                                 [:sum {} [:count {}]]
+                                 {:partition-by []}]]]}
+                (-> (analysis/->mbql analysis)
+                    :stages
+                    second)))))))

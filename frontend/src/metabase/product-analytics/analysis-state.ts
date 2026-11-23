@@ -77,6 +77,6 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
     "columns.person": Lib.columnUniqueKey(personColumn),
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
     granularity: settings.granularity,
-    "habit.values": "count",
+    "habit.values": settings.habit_values,
   };
 }

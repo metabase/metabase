@@ -35,7 +35,12 @@ export type CommonSettingsOptions = {
   granularities: readonly [Granularity, ...Granularity[]];
 };
 
-export type HabitSettings = CommonSettings;
+/** What a habit chart's y-axis reports: raw people counts, or each slice's share of the total. */
+export type HabitValues = "count" | "percent";
+
+export type HabitSettings = CommonSettings & {
+  habit_values: HabitValues;
+};
 
 export type AnalysisSettingsByKind = {
   habit: HabitSettings;

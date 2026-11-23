@@ -2,25 +2,26 @@ import { Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Table, TableId } from "metabase-types/api";
 
-import type { CommonSettings, CommonSettingsOptions } from "../analyses/types";
+import type { CommonSettingsOptions, HabitSettings } from "../analyses/types";
 
 import { EventTablePicker } from "./EventTablePicker";
 import { ViewSqlButton } from "./ViewSqlButton";
 import { CountingMenu } from "./toolbar/CountingMenu";
 import { DateRangeButton } from "./toolbar/DateRangeButton";
 import { GranularityButton } from "./toolbar/GranularityButton";
+import { HabitValuesMenu } from "./toolbar/HabitValuesMenu";
 
 type AnalysisToolbarProps = {
   table: Table | undefined;
   isTableLoading: boolean;
   isTablePickerInitiallyOpened: boolean;
   /** Undefined until the analysis's settings are computed. */
-  settings: CommonSettings | undefined;
+  settings: HabitSettings | undefined;
   options: CommonSettingsOptions;
   /** Undefined until the analysis's query is built. */
   query: Lib.Query | undefined;
   onTableChange: (tableId: TableId) => void;
-  onChangeSettings: (changes: Partial<CommonSettings>) => void;
+  onChangeSettings: (changes: Partial<HabitSettings>) => void;
 };
 
 /** The controls every analysis shares. */
@@ -43,6 +44,12 @@ export const AnalysisToolbar = ({
         onChange={onTableChange}
       />
       {settings !== undefined && <CountingMenu value={settings.counting} />}
+      {settings !== undefined && (
+        <HabitValuesMenu
+          value={settings.habit_values}
+          onChange={(habit_values) => onChangeSettings({ habit_values })}
+        />
+      )}
     </Group>
     <Group gap="sm">
       {settings !== undefined && (
