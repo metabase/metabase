@@ -99,7 +99,7 @@ type TestResult = {
   skipped: boolean;
   leaks: boolean;
   openHandles: Error[];
-  console: ConsoleEntry[];
+  console?: ConsoleEntry[];
 };
 
 type FormatResultsErrors = (
@@ -326,7 +326,7 @@ function toTestResult(
       failureMessages.length > 0 ? failureMessages.join("\n") : null,
     ...(testExecError && { testExecError }),
     testResults,
-    console: result.console,
+    ...(result.console.length > 0 && { console: result.console }),
     perfStats: {
       start,
       end: start + runtime,

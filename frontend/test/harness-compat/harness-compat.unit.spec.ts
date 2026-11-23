@@ -82,9 +82,9 @@ describe("the node:test runner", () => {
         const printed = runJestOutput(runner, [spec]);
         expect(printed).toContain("console output while the file loads");
         expect(printed).toContain("console output of a passing test");
-        expect(runJestOutput(runner, ["--silent", spec])).not.toContain(
-          "console output",
-        );
+        const silent = runJestOutput(runner, ["--silent", spec]);
+        expect(silent).not.toContain("console output");
+        expect(silent).not.toContain("● Console");
       }
     },
     RUN_TIMEOUT_MS,
