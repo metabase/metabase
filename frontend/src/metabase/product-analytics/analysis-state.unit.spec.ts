@@ -1,12 +1,16 @@
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { EventTableSettings, Table } from "metabase-types/api";
-import { createOrdersTable } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, createOrdersTable } from "metabase-types/api/mocks/presets";
 
 import type { HabitSettings } from "./analyses/types";
 import { getAnalysisState } from "./analysis-state";
+import { getTableQuery } from "./base-query";
+
+const TABLE_QUERY = getTableQuery(SAMPLE_PROVIDER, ORDERS_ID);
 
 const SETTINGS: HabitSettings = {
+  base_query: Lib.toJsQuery(TABLE_QUERY),
   date_range: "past90days",
   counting: "person",
   granularity: "week",
@@ -26,15 +30,15 @@ const EVENT_TABLE = createEventTable({
 type SetupOpts = {
   table?: Table;
   settings?: HabitSettings;
+  baseQuery?: Lib.Query;
 };
 
-const setup = ({ table = EVENT_TABLE, settings = SETTINGS }: SetupOpts = {}) =>
-  getAnalysisState({
-    kind: "habit",
-    settings,
-    table,
-    metadataProvider: SAMPLE_PROVIDER,
-  });
+const setup = ({
+  table = EVENT_TABLE,
+  settings = SETTINGS,
+  baseQuery = TABLE_QUERY,
+}: SetupOpts = {}) =>
+  getAnalysisState({ kind: "habit", settings, table, baseQuery });
 
 const getClauseNames = (
   query: Lib.Query,
@@ -71,6 +75,32 @@ describe("getAnalysisState", () => {
     const query = Lib.buildProductAnalyticsQuery(setup());
 
     expect(getClauseNames(query, 0, Lib.filters(query, 0))).toEqual([
+      "Created At is in the previous 90 days",
+    ]);
+  });
+
+  it("keeps the base query's filters, before the date range's", () => {
+    const baseQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 100 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const query = Lib.buildProductAnalyticsQuery(setup({ baseQuery }));
+
+    expect(getClauseNames(query, 0, Lib.filters(query, 0))).toEqual([
+      "Total is greater than 100",
       "Created At is in the previous 90 days",
     ]);
   });

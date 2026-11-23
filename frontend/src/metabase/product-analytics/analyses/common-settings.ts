@@ -1,5 +1,7 @@
+import * as Lib from "metabase-lib";
 import { isOneOf } from "metabase-types/guards";
 
+import { getTableQuery, readBaseQuery } from "../base-query";
 import { parseDateRange } from "../date-range";
 
 import type {
@@ -15,6 +17,12 @@ export const getCommonSettings = ({
   grains,
   granularities,
 }: CommonSettingsOptions): AnalysisSettingDefinitions<CommonSettings> => ({
+  base_query: {
+    getDefault: ({ table, metadataProvider }) =>
+      Lib.toJsQuery(getTableQuery(metadataProvider, table.id)),
+    isValid: ({ metadataProvider }, settings) =>
+      readBaseQuery(metadataProvider, settings.base_query) !== null,
+  },
   date_range: {
     getDefault: () => DEFAULT_DATE_RANGE,
     isValid: (_context, settings) =>

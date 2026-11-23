@@ -1,7 +1,10 @@
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
+import { useDisclosure } from "@mantine/hooks";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { isEventTableSetUp } from "metabase/product-analytics-core";
 import { Paper, Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { ProductAnalyticsKind, TableId } from "metabase-types/api";
 
 import { getAnalysisConfig } from "../analyses/config";
@@ -13,7 +16,10 @@ import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
 import S from "./AnalysisWorkspace.module.css";
+import { FilterPills } from "./FilterPills";
 import { TableNotSetUp } from "./TableNotSetUp";
+
+const STAGE_INDEX = -1;
 
 type AnalysisWorkspaceProps = {
   kind: ProductAnalyticsKind;
@@ -31,29 +37,36 @@ export const AnalysisWorkspace = ({
   tableId,
   onTableChange,
 }: AnalysisWorkspaceProps) => {
-  const {
-    data: table,
-    isLoading,
-    error,
-  } = useGetTableQueryMetadataQuery(
-    // Data Studio offers sensitive columns for the event table's roles, so
-    // checking the table's setup needs them too.
-    tableId !== undefined
-      ? { id: tableId, include_sensitive_fields: true }
-      : skipToken,
-  );
+  // Filters can use the columns of the tables the event table links to.
+  const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
+    includeForeignTables: true,
+  });
   const isTableSetUp = table !== undefined && isEventTableSetUp(table);
   const eventTable = isTableSetUp ? table : undefined;
+  const [areFiltersExpanded, { open: expandFilters, toggle: toggleFilters }] =
+    useDisclosure(false);
   const { storedSettings, onChangeSettings } =
     useStoredSettings<AnalysisSettingsByKind[ProductAnalyticsKind]>();
   const {
     settings,
+    baseQuery,
     analysis,
     query,
     rawSeries,
     isRunning,
     error: analysisError,
   } = useAnalysis({ kind, table: eventTable, storedSettings });
+
+  const filterCount =
+    baseQuery !== undefined ? Lib.filters(baseQuery, STAGE_INDEX).length : 0;
+
+  const handleBaseQueryChange = (newBaseQuery: Lib.Query) =>
+    onChangeSettings({ base_query: Lib.toJsQuery(newBaseQuery) });
+
+  const handleFirstFilterAdd = (newBaseQuery: Lib.Query) => {
+    handleBaseQueryChange(newBaseQuery);
+    expandFilters();
+  };
 
   return (
     <Stack flex={1} h="100%" gap={0} bg="background_page-secondary">
@@ -74,9 +87,16 @@ export const AnalysisWorkspace = ({
           settings={settings}
           options={getAnalysisConfig(kind).options}
           query={query}
+          baseQuery={baseQuery}
+          areFiltersExpanded={areFiltersExpanded}
           onTableChange={onTableChange}
           onChangeSettings={onChangeSettings}
+          onToggleFilters={toggleFilters}
+          onAddFirstFilter={handleFirstFilterAdd}
         />
+        {areFiltersExpanded && baseQuery !== undefined && filterCount > 0 && (
+          <FilterPills query={baseQuery} onChange={handleBaseQueryChange} />
+        )}
       </Stack>
       {tableId !== undefined && (
         <Stack flex={1} mih={0} py="lg" pl="xxl" pr="lg">
