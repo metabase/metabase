@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.models.revision :as revision]
@@ -11,6 +12,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -49,10 +51,16 @@
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
+(mr/def ::faked-card.revision
+  [:map {:closed true}
+   [:name       {:optional true} [:maybe :string]]
+   [:serialized {:optional true} [:maybe :boolean]]])
+
 (defmethod revisions.spec/spec ::FakedCard
   [_model]
   {:track    [:name :serialized]
    :skip     []
+   :schema   ::faked-card.revision
    :snapshot snapshot-serialized
    :revert!  revert-faked-card!
    :describe describe-faked-card})
@@ -139,7 +147,7 @@
                                                             :model/CardTest      "Card test"
                                                             :model/SegmentTest   "Segment test"))]
       ;; a model with a revision spec has Revisions.
-      (is (= (set (remove revisions.spec/parent (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models))))
+      (is (= (set (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models)))
              (set (keys model->display-name))))
       (doseq [[model display-name] model->display-name]
         (testing model
@@ -562,6 +570,7 @@
                            (call-count (fn [] (revision/revisions :model/Card card-id))))]
         (move! coll-a)
         (move! coll-b)
+        (extra)
         (let [one-move (extra)]
           (move! coll-c)
           (move! coll-a)
@@ -572,3 +581,29 @@
                    (map (comp str :description) (take 3 (details))))))
           (testing "further moves cost no further queries past loading their revisions"
             (is (= one-move (extra)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Revision]
+    (let [user-id  (mt/user->id :rasta)
+          next-id  (atom 1000000)
+          rows     (fn [n]
+                     (mapv (fn [_] {:model "Dashboard" :model_id (swap! next-id inc) :user_id user-id
+                                    :object {:name (mt/random-name)} :is_creation false :is_reversion false})
+                           (range n)))
+          fresh!   (fn [n]
+                     (let [rows (rows n)]
+                       (dotimes [_ 3] (revision/create-revisions! rows))
+                       (mapv (juxt :model :model_id) rows)))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating revisions"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(revision/create-revisions! rows))))))
+      (testing "settling the revisions of entities whose newest revision is their only one"
+        (counted (fn [n]
+                   (let [rows (rows n)]
+                     (revision/create-revisions! rows)
+                     (events.tu/statement-count! #(revision/settle-revisions! (mapv (juxt :model :model_id) rows)))))))
+      (testing "deleting the revisions of entities"
+        (counted (fn [n] (let [entities (fresh! n)]
+                           (events.tu/statement-count! #(revision/delete-revisions-for-entities! "Dashboard" (mapv second entities))))))))))

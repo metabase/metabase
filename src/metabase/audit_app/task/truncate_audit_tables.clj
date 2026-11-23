@@ -8,27 +8,39 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.db :as audit-app.db]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.audit-app.task.partitions :as partitions]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
+   [metabase.view-log.core :as view-log.core]
+   [metabase.view-log.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- delete-for-cleanup!
+  "Delete the rows of `model`, one the retention policy trims, whose `time-column` is before `cutoff`, `batch-size` at
+  a time, through the model's write function."
+  [model time-column cutoff batch-size]
+  (case model
+    :model/QueryExecution (query-execution/delete-older-than! time-column cutoff batch-size)
+    :model/AuditLog       (let [ids (audit-app.db/audit-log-ids-before time-column cutoff batch-size)]
+                            (audit-log/delete-audit-logs! ids)
+                            (count ids))
+    :model/ViewLog        (let [ids (view-log.core/view-log-ids-before time-column cutoff batch-size)]
+                            (view-log/delete-view-logs! ids)
+                            (count ids))))
+
 (defn- truncate-table-batched!
-  [table-name time-column]
+  [model time-column]
   (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
-    (case (mdb/db-type)
-      (:postgres :h2)
-      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
-
-      :mysql
-      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
+    (delete-for-cleanup! model time-column cutoff batch-size)))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
@@ -41,7 +53,7 @@
         (try
           (log/infof "Cleaning up %s table" table-name)
           (loop [total-rows-deleted 0]
-            (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
+            (let [batch-rows-deleted (truncate-table-batched! model time-column)]
               ;; Only try to delete another batch if the last batch was full
               (if (= batch-rows-deleted (audit-app.settings/audit-table-truncation-batch-size))
                 (recur (+ total-rows-deleted (long batch-rows-deleted)))

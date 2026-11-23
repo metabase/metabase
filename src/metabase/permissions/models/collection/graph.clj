@@ -178,17 +178,17 @@
   revision number, which is used for consistency checks when updating the graph."
   [current-revision-number]
   (when api/*current-user-id*
-    (permissions.db/insert-collection-permission-graph-revision-returning-instance!
-     {:id      (inc current-revision-number)
-      :user_id api/*current-user-id*
-      :before  ""
-      :after   ""})))
+    (first (c-perm-revision/create-collection-permission-graph-revisions!
+            [{:id      (inc current-revision-number)
+              :user_id api/*current-user-id*
+              :before  ""
+              :after   ""}]))))
 
 (defn fill-revision-details!
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
    called after the revision number is updated."
   [revision-id before changes]
-  (future (permissions.db/update-collection-graph-revision! revision-id {:before before :after changes})))
+  (future (c-perm-revision/update-collection-permission-graph-revisions! [{:id revision-id :before before :after changes}])))
 
 (defn- personal-collection-ids
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.

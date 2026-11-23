@@ -4,11 +4,13 @@
   drops out of the served set immediately instead of lingering until the next scan."
   (:require
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]))
 
 (def ^:private entity-types
   "The entity type of the findings of each model that has them."
@@ -27,24 +29,20 @@
       (and (= :model/Collection model) archived?)        [:collection row]
       (and (entity-types model) (or (nil? object) archived?)) [(entity-types model) (:id row)])))
 
-(defn- owner
-  "The one owner of every event of a batch that invalidates findings, nil for the others and without the feature."
+(defn- invalidates?
+  "Whether the `event` invalidates findings, which it does only with the feature."
   [event]
-  (when (and (invalidation event) (premium-features/has-feature? :content-diagnostics))
-    ::findings))
+  (boolean (and (invalidation event) (premium-features/has-feature? :content-diagnostics))))
 
 (defn- invalidate-batch!
-  "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
-  collections with the subtrees of those archived directly, logging the error of that statement, which fails the write on Postgres, where an error aborts the transaction."
-  [_owner events _all-events]
+  "Invalidate in one statement the active findings of the entities that `events`, one batch of an event, archive or
+  delete, and of the archived collections with the subtrees of those archived directly, logging the error of that
+  statement, which fails the write on Postgres, where an error aborts the transaction."
+  [events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
-        collection-ids (into #{}
-                             (mapcat (fn [row]
-                                       (cons (:id row)
-                                             (when (:archived_directly row)
-                                               (collection/descendant-ids row)))))
-                             collections)
+        collection-ids (into (set (map :id collections))
+                             (collection/descendant-ids-of-all (filterv :archived_directly collections)))
         entity-ids     (reduce (fn [acc [k id]]
                                  (cond-> acc (not= :collection k) (update k (fnil conj #{}) id)))
                                {}
@@ -55,4 +53,15 @@
         (log/errorf "Failed to invalidate content-diagnostics findings of %d entities: %s"
                     (count invalidations) (ex-message e))))))
 
-(events/register-owned-consumer! ::invalidate owner invalidate-batch!)
+(defn- invalidate!
+  "Invalidate the findings that `events` call for, in batches of `delete-partition-size` events, the size of a statement
+  keyed by ids."
+  [events]
+  (run! invalidate-batch! (partition-all app-db/delete-partition-size events)))
+
+(events/derive! :metabase/lifecycle-event ::invalidate)
+
+(methodical/defmethod events/publish-event! ::invalidate
+  [topic event]
+  (when-let [events (not-empty (filterv invalidates? (u.events/row-events topic event)))]
+    (invalidate! events)))

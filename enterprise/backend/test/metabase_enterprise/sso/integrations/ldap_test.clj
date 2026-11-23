@@ -84,7 +84,6 @@
                (#'ee.ldap/syncable-user-attributes
                 {:objectclass ["top" "person"] :userpassword "secret" :mail "a@b.com" :extra "x"})))))
     (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
-                                       ldap-sync-user-attributes-blacklist []
                                        ldap-sync-user-attributes-allowlist ["multi" "single" "blank" "nested" "@reserved"]]
       (testing "multi-value attributes are joined; nil/map values are dropped; @-prefixed keys are reserved"
         (is (= {"multi" "a,b" "single" "s"}
@@ -92,7 +91,6 @@
                 {:multi ["a" "b"] :single "s" :blank nil :nested {:k 1} (keyword "@reserved") "x"}))))))
   (testing "an allowlist restricts syncing to named keys (allowlist match is case-insensitive)"
     (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
-                                       ldap-sync-user-attributes-blacklist []
                                        ldap-sync-user-attributes-allowlist ["Mail"]]
       (is (= {"mail" "a@b.com"}
              (#'ee.ldap/syncable-user-attributes {:mail "a@b.com" :other "nope"})))))

@@ -1,5 +1,9 @@
 (ns metabase.embedding.util
-  "Utility functions for common operations related to embedding.")
+  "Utility functions for common operations related to embedding."
+  (:require
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedded-analytics-js-client "embedding-simple")
@@ -25,3 +29,21 @@
   [request]
   (contains? #{embedding-sdk-client embedded-analytics-js-client}
              (get-in request [:headers "x-metabase-client"])))
+
+(defn enabled-param-slugs
+  "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
+  those explicitly whitelisted as \"enabled\" in `embedding-params`. Anything else — absent from the whitelist, or
+  listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
+  [dashboard-or-card-params embedding-params]
+  (into #{}
+        (comp (filter #(= (get embedding-params (:slug %)) "enabled"))
+              (map (comp keyword :slug)))
+        dashboard-or-card-params))
+
+(mu/defn enabled-params
+  "Keep only the `parameters` an embed viewer may set: those whose slug is listed as `enabled` in the
+  `embedding-params` whitelist. A `disabled`, `locked` or unlisted param is dropped."
+  [parameters       :- [:maybe [:sequential ::parameters.schema/parameter]]
+   embedding-params :- ms/EmbeddingParams]
+  (let [param-slugs-to-keep (enabled-param-slugs parameters embedding-params)]
+    (filter #(contains? param-slugs-to-keep (keyword (:slug %))) parameters)))

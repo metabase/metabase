@@ -183,15 +183,16 @@
   (testing "a collection the caller CAN read, nested under one they cannot, still appears — pulled up to its
             nearest visible ancestor, the way `collections->tree` renders A > C when B is hidden. Grouping
             children by their direct parent id would drop it from the tree entirely."
-    (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
-                   :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
-                   :model/Collection _deep  {:name "browse-vis-deep" :location (collection/children-location hidden)}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
-      (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
-        (is (not (contains? names "browse-vis-hidden"))
-            "the unreadable collection itself stays out")
-        (is (contains? names "browse-vis-deep")
-            "but its readable child is surfaced under the nearest visible ancestor")))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[top] (collection/create-collections! [{:name "browse-vis-top"}])
+            [hidden] (collection/create-collections! [{:name "browse-vis-hidden" :location (collection/children-location top)}])
+            _deep (collection/create-collections! [{:name "browse-vis-deep" :location (collection/children-location hidden)}])]
+        (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
+        (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
+          (is (not (contains? names "browse-vis-hidden"))
+              "the unreadable collection itself stays out")
+          (is (contains? names "browse-vis-deep")
+              "but its readable child is surfaced under the nearest visible ancestor"))))))
 
 (deftest ^:parallel tree-leaf-has-no-marker-test
   (testing "a childless node reports empty children and carries no truncation marker"

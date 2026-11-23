@@ -4,7 +4,6 @@
   (:require
    [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -33,11 +32,11 @@
                         :where  [:= :user_id user-id]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission-exists?
-  "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
+(mu/defn permission :- [:maybe ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions row of `perm-type` of the group with `group-id`, or nil."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+  (t2/select-one :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
@@ -127,11 +126,6 @@
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.update]
-  (t2/insert! :model/AiUsageLog row))
-
 (defn- usage-window-expr
   [period-start user-id tenant-id]
   [:and
@@ -165,8 +159,3 @@
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
                            (seq sources) (conj [:in :source sources])
                            request-id    (conj [:not= :request_id request-id]))}))
-
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))

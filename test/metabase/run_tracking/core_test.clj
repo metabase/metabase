@@ -40,6 +40,11 @@
 
 ;;; --------------------------------------------- reap-rows! -----------------------------------------------
 
+(defn- set-terminal-fn
+  "A `:set-terminal!` that runs [[rt/terminal-statement]] for `model`, `active` and `terminal`."
+  [model active terminal]
+  (fn [ids] (t2/query (rt/terminal-statement model active ids terminal))))
+
 (deftest reap-rows!-is-active-test
   (testing "is_active-based active guard: reaps and returns only the stale active row"
     (mt/with-premium-features #{:transforms-basic}
@@ -54,8 +59,9 @@
                                                       :last_heartbeat (minutes-ago 1)}]
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
                                      :stale [{:column :last_heartbeat :age 5 :unit :minute}]
-                                     :terminal {:status "timeout" :is_active nil :end_time :%now
-                                                :message "reaped"}})]
+                                     :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
+                                                                     {:status "timeout" :is_active nil :end_time :%now
+                                                                      :message "reaped"})})]
           (is (= [stale] (mapv :id reaped)))
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale)))
           (is (nil? (t2/select-one-fn :is_active :model/TransformRun :id stale)))
@@ -64,7 +70,8 @@
         (testing "second sweep is empty — the row is no longer active"
           (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
                                       :stale [{:column :last_heartbeat :age 5 :unit :minute}]
-                                      :terminal {:status "timeout" :is_active nil :end_time :%now}}))))))))
+                                      :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
+                                                                      {:status "timeout" :is_active nil :end_time :%now})}))))))))
 
 (deftest reap-rows!-or-stale-test
   (testing "an :or stale predicate reaps on either branch (fresh heartbeat, old start_time)"
@@ -76,7 +83,8 @@
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
                                      :stale [{:column :last_heartbeat :age 5 :unit :minute}
                                              {:column :start_time :age 60 :unit :minute}]
-                                     :terminal {:status "timeout" :is_active nil :end_time :%now}})]
+                                     :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
+                                                                     {:status "timeout" :is_active nil :end_time :%now})})]
           (is (= [old-start] (mapv :id reaped)))
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-start))))))))
 
@@ -90,14 +98,14 @@
                                                :updated_at (minutes-ago 1) :process_uuid "test"}]
       (let [reaped (rt/reap-rows! {:model :model/TaskRun :active [:status "started"]
                                    :stale [{:column :updated_at :age 60 :unit :minute}]
-                                   :terminal {:status "abandoned"}})]
+                                   :set-terminal! (set-terminal-fn :model/TaskRun [:status "started"] {:status "abandoned"})})]
         (is (= [stale] (mapv :id reaped)))
         (is (= :abandoned (t2/select-one-fn :status :model/TaskRun :id stale)))
         (is (= :started (t2/select-one-fn :status :model/TaskRun :id fresh)))))))
 
-;;; --------------------------------------------- heartbeat-ids! -------------------------------------------
+;;; ------------------------------------------ heartbeat-statement -----------------------------------------
 
-(deftest heartbeat-ids!-test
+(deftest heartbeat-statement-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-temp [:model/Transform    {t1 :id}   {}
                    :model/Transform    {t2 :id}   {}
@@ -111,10 +119,9 @@
                    :model/TransformRun {done :id} {:transform_id t1 :status :succeeded :is_active nil
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}]
-      (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat [beat done])
+      (t2/query (rt/heartbeat-statement :model/TransformRun [:is_active true] :last_heartbeat [beat done]))
       (let [recent? (fn [id] (.isAfter ^OffsetDateTime (t2/select-one-fn :last_heartbeat :model/TransformRun :id id)
                                        (minutes-ago 1)))]
         (is (recent? beat) "a passed, still-active id is stamped")
         (is (not (recent? skip)) "an id not in the list is left to go stale")
-        (is (not (recent? done)) "an inactive id is not stamped (active guard)")
-        (is (nil? (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat [])) "empty id list is a no-op")))))
+        (is (not (recent? done)) "an inactive id is not stamped (active guard)")))))

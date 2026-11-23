@@ -33,6 +33,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
@@ -206,11 +207,11 @@
          [:ids [:sequential ms/PositiveInt]]]
         table-update-entries))
 
-(mu/defn ^:private update-table!*
-  "Takes an existing table and the changes, updates in the database, and hydrates the Fields of the result when its
-  field order changed."
-  [{:keys [id] :as existing-table} :- :metabase.warehouse-schema.schema/table
-   body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
+(mu/defn ^:private update-existing-tables!
+  "Takes the existing tables and the changes, updates them all in the database with one write of their user settings,
+  and returns them as the database holds them, read once, hydrating the Fields of those whose field order changed."
+  [existing-tables :- [:sequential :metabase.warehouse-schema.schema/table]
+   body            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
@@ -219,11 +220,16 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
-  (let [updated-table (warehouse-schema-rest.db/table id)]
-    (if (not= (:field_order updated-table) (:field_order existing-table))
-      (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values])
-      updated-table)))
+    (schema.table-user-settings/upsert-table-user-settings-for-tables! (into #{} (map :id) existing-tables) changes))
+  (let [updated-by-id (u/index-by :id (warehouse-schema-rest.db/tables-by-ids (mapv :id existing-tables)))
+        reordered-ids (into #{}
+                            (comp (filter #(not= (:field_order (updated-by-id (:id %))) (:field_order %)))
+                                  (map :id))
+                            existing-tables)
+        hydrated      (when (seq reordered-ids)
+                        (u/index-by :id (t2/hydrate (mapv updated-by-id reordered-ids)
+                                                    [:fields [:target :has_field_values] :dimensions :has_field_values])))]
+    (mapv (fn [{:keys [id]}] (get hydrated id (updated-by-id id))) existing-tables)))
 
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
@@ -240,7 +246,7 @@
     (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
-    (let [updated-tables (events/with-batched-events (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (t2/with-transaction [_conn] (update-existing-tables! existing-tables body))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync/sync-tables-in-background! newly-unhidden)
@@ -358,7 +364,7 @@
                     [:id ms/PositiveInt]]]
   (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
-    (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
+    (field-values/delete-field-values! (field-values/ids-of-fields (vec field-ids))))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

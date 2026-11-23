@@ -18,10 +18,10 @@
   failure, even though callers only see a single [[record-api-key-usage!]] entry point."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.core :as api-keys]
+   [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
@@ -124,7 +124,7 @@
     (when (seq rows)
       (log/debugf "Inserting %d api_key_usage_log rows" (count rows))
       (try
-        (ee.api-keys.db/insert-usage-logs! rows)
+        (api-key-usage-log/create-api-key-usage-logs! rows)
         (catch Throwable e
           (log/warn e "Failed to insert API key usage log rows"))))))
 

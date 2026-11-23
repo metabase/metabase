@@ -14,6 +14,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -1009,20 +1010,21 @@
 
 (deftest download-config-local-file-ssl-root-cert-test
   (testing "GET /:id/config answers 422 naming the database when its SSL root certificate is a file on the server"
-    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
-                                                :details {:ssl                   true
-                                                          :ssl-root-cert-options "local"
-                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
-                   :model/Workspace {ws-id :id} {:name "Cert WS"}
-                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
-                                               :database_id      db-id
-                                               :database_details {}
-                                               :output_namespace ""
-                                               :input_schemas    ["public"]
-                                               :status           :provisioned}]
-      (is (= (str "The SSL root certificate of database \"Cert DW\" is a file on this instance's server, which "
-                  "workspaces don't copy. Upload the file in the database's connection settings instead.")
-             (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config")))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[{db-id :id}] (database/create-databases! [{:name    "Cert DW" :engine :postgres
+                                                        :details {:ssl                   true
+                                                                  :ssl-root-cert-options "local"
+                                                                  :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}])]
+        (mt/with-temp [:model/Workspace {ws-id :id} {:name "Cert WS"}
+                       :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                   :database_id      db-id
+                                                   :database_details {}
+                                                   :output_namespace ""
+                                                   :input_schemas    ["public"]
+                                                   :status           :provisioned}]
+          (is (= (str "The SSL root certificate of database \"Cert DW\" is a file on this instance's server, which "
+                      "workspaces don't copy. Upload the file in the database's connection settings instead.")
+                 (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config")))))))))
 
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))

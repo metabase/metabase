@@ -7,8 +7,10 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.analysis-finding-status :as models.analysis-finding-status]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.models.dependency-status :as models.dependency-status]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -38,7 +40,7 @@
                                             entity
                                             (dependencies.db/direct-dependent-ids entity-type (:id entity)))
             :when (seq dependent-ids)]
-      (dependencies.db/delete-dependencies-on! dependent-type (vec dependent-ids) entity-type (:id entity)))))
+      (models.dependency/delete-dependencies-for-dependents! dependent-type (vec dependent-ids) entity-type (:id entity)))))
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
@@ -60,11 +62,11 @@
     (t2/with-transaction [_]
       (when (seq (models.dependency/new-dependencies entity-type (:id entity) deps))
         (when (= :card entity-type)
-          (dependencies.db/mark-result-metadata-statuses-stale! own))
+          (models.result-metadata-status/mark-result-metadata-statuses-stale! own))
         (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
-          (dependencies.db/mark-analysis-finding-statuses-stale! own))
+          (models.analysis-finding-status/mark-analysis-finding-statuses-stale! own))
         (when (= :snippet entity-type)
-          (dependencies.db/mark-analysis-finding-statuses-stale!
+          (models.analysis-finding-status/mark-analysis-finding-statuses-stale!
            (models.dependency/transitive-dependents {:snippet [entity]}))))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (drop-stale-dependents! entity-type entity))))
@@ -77,9 +79,24 @@
   (let [entity-ids (dependencies.db/dependency-deleted-entity-ids entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
-        (dependencies.db/delete-dependencies-from! entity-type entity-ids)
-        (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
+        (models.dependency/delete-dependencies-for-entities! entity-type entity-ids)
+        (models.dependency-status/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
+
+(mu/defn- record-failure! :- :nil
+  "Count a failure `e` to compute the dependencies of `entity-type` `entity-id`. The analysis only runs on current
+  dependencies, so an analyzable entity the job gives up on gets `e` as its finding, and is marked stale so the
+  analysis replaces that finding once its dependencies compute again."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (log/errorf "Computing the dependencies of %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (when (models.dependency-status/record-dependency-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the dependencies of %s %s until it changes" (name entity-type) entity-id)
+    (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
+      (models.analysis-finding-status/mark-analysis-finding-statuses-stale! {entity-type #{entity-id}})
+      (deps.analysis-finding/record-failed-finding! entity-type entity-id e)))
+  nil)
 
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
@@ -88,19 +105,20 @@
    batch-size  :- ms/PositiveInt]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
-          statuses  (deps.dependency-status/take-pending-statuses! entity-type batch-size)
+          statuses  (models.dependency-status/take-pending-statuses! entity-type batch-size)
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (doseq [entity (when (seq statuses) (hydrated-entities entity-type (set (keys stale))))]
+      (doseq [entity (when (seq statuses)
+                       (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                          (set (keys stale))
+                                                          #(record-failure! entity-type %1 %2)))]
         (try
           (compute-deps-for-entity! entity-type entity)
-          (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
+          (models.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
-            (log/errorf "Computing the dependencies of %s %s failed: %s" type-name (:id entity) (ex-message e))
-            (when (dependencies.db/record-dependency-failure! entity-type (:id entity)
-                                                              (deps.settings/dependency-max-failures))
-              (log/warnf "Giving up on the dependencies of %s %s until it changes" type-name (:id entity)))
+            (dependencies.db/throw-unless-app-db-reachable! e)
+            (record-failure! entity-type (:id entity) e)
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
       (count statuses))))
@@ -163,6 +181,16 @@
    :delay-minutes    deps.settings/dependency-backfill-delay-minutes
    :variance-minutes deps.settings/dependency-backfill-variance-minutes
    :run-batch!       #'run-batch!})
+
+(mu/defn run-batch-in-place! :- ::task.util/batch-outcome
+  "Run a batch of the UpdateDependencies job now rather than on its schedule."
+  []
+  (task.util/run-batch-in-place! job))
+
+(mu/defn enabled? :- :boolean
+  "Whether the UpdateDependencies job runs."
+  []
+  (task.util/enabled? job))
 
 (mu/defn trigger-dependency-job! :- :any
   "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive

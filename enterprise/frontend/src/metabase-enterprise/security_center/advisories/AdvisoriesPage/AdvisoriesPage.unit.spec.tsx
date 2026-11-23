@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupNotificationChannelsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -39,6 +42,11 @@ function setup(
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupNotificationChannelsEndpoints({
+    email: { configured: true },
+    slack: { configured: false },
+  });
+
   jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
       email: {

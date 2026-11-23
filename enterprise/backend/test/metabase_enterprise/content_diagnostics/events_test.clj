@@ -7,7 +7,13 @@
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.app-db.query :as app-db.query]
+   [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -66,24 +72,24 @@
       (testing "card archive invalidates; a non-archive update does not"
         (mt/with-temp [:model/Card card {}]
           (let [f (mk-finding! :card (:id card))]
-            (t2/update! :model/Card :id (:id card) {:name "renamed"})
+            (card/update-cards! [{:id (:id card) :name "renamed"}])
             (is (not (invalidated? f)) "still active after a non-archive update")
-            (t2/update! :model/Card :id (:id card) {:archived true})
+            (card/update-cards! [{:id (:id card) :archived true}])
             (is (invalidated? f) "invalidated once archived"))))
       (testing "dashboard archive invalidates"
         (mt/with-temp [:model/Dashboard {id :id} {}]
           (let [f (mk-finding! :dashboard id)]
-            (t2/update! :model/Dashboard :id id {:archived true})
+            (dashboard/update-dashboards! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "document archive invalidates"
         (mt/with-temp [:model/Document {id :id} {}]
           (let [f (mk-finding! :document id)]
-            (t2/update! :model/Document :id id {:archived true})
+            (document/update-documents! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "transform hard delete invalidates"
         (mt/with-temp [:model/Transform {id :id} {}]
           (let [f (mk-finding! :transform id)]
-            (t2/delete! :model/Transform :id id)
+            (transform/delete-transforms! [id])
             (is (invalidated? f))))))))
 
 (deftest collection-archive-invalidates-subtree-test
@@ -97,7 +103,7 @@
         (let [self-finding  (mk-finding! :collection (:id parent))
               child-finding (mk-finding! :card child-card-id (:id child))
               outside       (mk-finding! :card other-card-id)]
-          (t2/update! :model/Collection :id (:id parent) {:archived true})
+          (collection/update-collections! [{:id (:id parent) :archived true}] nil)
           (is (invalidated? self-finding) "the archived collection's own finding")
           (is (invalidated? child-finding) "a finding for a card in a descendant collection")
           (is (not (invalidated? outside)) "an unrelated finding is untouched"))))))
@@ -115,14 +121,27 @@
                   updates  (atom 0)]
               (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (let [f (mt/original-fn #'cd.db/invalidate-findings-where!)]
                                                                              (fn [where] (swap! updates inc) (f where)))]
-                (t2/update! :model/Collection :id coll-id {:archived true}))
+                (collection/update-collections! [{:id coll-id :archived true}] nil))
               (is (every? invalidated? findings))
-              (is (= 1 @updates)))))))))
+              (is (= 2 @updates) "one statement for the collection event and one for the cards it carries"))))))))
 
 (deftest archive-is-noop-without-feature-test
   (mt/with-premium-features #{}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (let [f (mk-finding! :dashboard id)]
-          (t2/update! :model/Dashboard :id id {:archived true})
+          (dashboard/update-dashboards! [{:id id :archived true}])
           (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))
+
+(deftest invalidates-rows-across-partitions-test
+  (testing "the findings of every row of an event with more rows than one batch are invalidated"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (let [card-ids (vec (for [_ (range 5)]
+                                (t2/insert-returning-pk! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                                            :collection_id coll-id))))
+                findings (mapv #(mk-finding! :card %) card-ids)]
+            (with-redefs [app-db.query/delete-partition-size 2]
+              (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))
+            (is (every? invalidated? findings))))))))

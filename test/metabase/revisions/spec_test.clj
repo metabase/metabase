@@ -1,11 +1,13 @@
 (ns metabase.revisions.spec-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.revisions.spec :as revisions.spec]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.registry :as mr]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -26,30 +28,16 @@
         (is (= (set/difference (spec-test-util/table-columns model) revisions.spec/implicit-columns)
                (set (concat track skip))))))))
 
-(defn- ancestors-of
-  "The models above `model`, its parent first."
-  [model]
-  (when-let [parent (:model (revisions.spec/parent model))]
-    (cons parent (ancestors-of parent))))
-
-(deftest parent-test
+(deftest schema-test
   (doseq [model (revisioned-models!)
-          :let  [{parent-model :model, parent-key :key} (revisions.spec/parent model)]
-          :when parent-model]
+          :let  [{:keys [track schema snapshot]} (revisions.spec/spec model)]]
     (testing (str model)
-      (testing "belongs to a model with a spec, through a column of its table"
-        (is (revisions.spec/revisioned? parent-model))
-        (is (contains? (spec-test-util/table-columns model) parent-key)))
-      (testing "reaches a model with Revisions of its own that nests it, or the parent that does"
-        (let [chain (cons model (ancestors-of model))
-              root  (last chain)
-              top   (last (butlast chain))]
-          (is (nil? (revisions.spec/parent root)))
-          (is (contains? (into #{} (map :model) (vals (revisions.spec/children root))) top)))))))
-
-(deftest children-test
-  (doseq [model (revisioned-models!)
-          [k {child-model :model, hydration-key :as}] (revisions.spec/children model)]
-    (testing (str model " nests " child-model " under " k)
-      (is (= model (:model (revisions.spec/parent child-model))))
-      (is (keyword? hydration-key)))))
+      (testing "has a schema of its snapshots, registered as `::<model>.revision`"
+        (is (some? schema))
+        (is (str/ends-with? (name schema) ".revision"))
+        (is (some? (mr/registered-schema schema))))
+      (testing "lists each tracked column in it, and other keys only when the spec adds them to its snapshots"
+        (let [keys* (set (revisions.spec/snapshot-keys model))]
+          (is (set/subset? (set track) keys*))
+          (when-not snapshot
+            (is (= (set track) keys*))))))))

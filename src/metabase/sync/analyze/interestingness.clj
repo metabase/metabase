@@ -18,16 +18,25 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.field :as field]))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- score-and-save!
-  "Score a single field's dimension role and persist the composite score."
+(mu/defn- score
+  "The dimension interestingness score of `field`, or the Exception scoring it threw, which is logged."
   [field :- i/FieldInstance]
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
-    (let [dim-score (interestingness/dimension-interestingness field)]
-      (sync.db/update-field! (u/the-id field) {:dimension_interestingness dim-score}))))
+    (interestingness/dimension-interestingness field)))
+
+(mu/defn- score-and-save! :- [:sequential i/FieldInstance]
+  "Score `fields` and write their scores in one update, returning the Fields whose scoring threw."
+  [fields :- [:sequential i/FieldInstance]]
+  (let [scored (mapv (juxt identity score) fields)
+        rows   (into [] (keep (fn [[field s]] (when-not (instance? Exception s) {:id (:id field) :dimension_interestingness s}))) scored)]
+    (when (seq rows)
+      (field/update-fields! rows {:fields (vec fields)}))
+    (into [] (keep (fn [[field s]] (when (instance? Exception s) field))) scored)))
 
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."
@@ -40,13 +49,8 @@
   (if-let [fields (fields-to-score table)]
     (do
       (log/debugf "Scoring interestingness for %d fields in %s" (count fields) (sync-util/name-for-logging table))
-      (reduce (fn [stats field]
-                (let [result (score-and-save! field)]
-                  (if (instance? Exception result)
-                    (update stats :fields-failed inc)
-                    (update stats :fields-scored inc))))
-              {:fields-scored 0 :fields-failed 0}
-              fields))
+      (let [failed (score-and-save! (vec fields))]
+        {:fields-scored (- (count fields) (count failed)) :fields-failed (count failed)}))
     {:fields-scored 0 :fields-failed 0}))
 
 (mr/def ::leftover-stats
@@ -75,17 +79,13 @@
   "Score and persist the Fields with `field-ids`, skipping any that already failed in this process."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]
    stats     :- ::leftover-stats]
-  (let [failed @failed-leftover-field-ids]
-    (reduce (fn [stats field]
-              (let [result (score-and-save! field)]
-                (if (instance? Exception result)
-                  (do
-                    (swap! failed-leftover-field-ids conj (u/the-id field))
-                    (update stats :fields-failed inc))
-                  (update stats :fields-scored inc))))
-            stats
-            (remove #(contains? failed (u/the-id %))
-                    (sync.db/fields-for-interestingness-scoring field-ids)))))
+  (let [skipped @failed-leftover-field-ids
+        fields  (into [] (remove #(contains? skipped (u/the-id %))) (sync.db/fields-for-interestingness-scoring field-ids))
+        failed  (score-and-save! fields)]
+    (swap! failed-leftover-field-ids into (map u/the-id) failed)
+    (-> stats
+        (update :fields-scored + (- (count fields) (count failed)))
+        (update :fields-failed + (count failed)))))
 
 (defn- warn-skipped-failures!
   "Say so when Fields failed scoring earlier in this process and are being skipped."
