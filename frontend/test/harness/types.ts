@@ -78,9 +78,20 @@ export type FileResult = {
    */
   suiteErrors: TestFailure[];
   /**
+   * What the file wrote to the console, for jest's reporters. Empty with
+   * --silent.
+   */
+  console: ConsoleEntry[];
+  /**
    * Absent when the file did not get as far as its snapshots.
    */
   snapshot?: SnapshotSummary;
+};
+
+export type ConsoleEntry = {
+  message: string;
+  origin: string;
+  type: "log" | "info" | "warn" | "error" | "debug";
 };
 
 /**

@@ -7,6 +7,7 @@ import path from "node:path";
 import { root } from "./jest-config.ts";
 import { createPool } from "./pool.ts";
 import type {
+  ConsoleEntry,
   ConsoleOutputDetail,
   FileDone,
   SourceFrame,
@@ -24,6 +25,7 @@ type GlobalConfig = {
   collectCoverage: boolean;
   noStackTrace: boolean;
   testTimeout: number;
+  silent?: boolean;
 };
 
 type ProjectConfig = {
@@ -97,6 +99,7 @@ type TestResult = {
   skipped: boolean;
   leaks: boolean;
   openHandles: Error[];
+  console: ConsoleEntry[];
 };
 
 type FormatResultsErrors = (
@@ -212,9 +215,11 @@ export default class HarnessRunner {
   }
 
   #workerEnvironment(): NodeJS.ProcessEnv {
-    const { testNamePattern, testTimeout, updateSnapshot } = this.#globalConfig;
+    const { silent, testNamePattern, testTimeout, updateSnapshot } =
+      this.#globalConfig;
     return {
       NT_UPDATE_SNAPSHOTS: updateSnapshot,
+      ...(!silent && { NT_KEEP_CONSOLE: "1" }),
       // jest's own value, which --testTimeout changes. A debug run that sets
       // NT_TIMEOUT keeps it.
       ...(process.env.NT_TIMEOUT === undefined && {
@@ -321,6 +326,7 @@ function toTestResult(
       failureMessages.length > 0 ? failureMessages.join("\n") : null,
     ...(testExecError && { testExecError }),
     testResults,
+    console: result.console,
     perfStats: {
       start,
       end: start + runtime,

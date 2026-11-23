@@ -291,6 +291,7 @@ function failedFileResult(test: string, message: string): FileResult {
     skippedTests: [],
     todoTests: [],
     suiteErrors: [],
+    console: [],
     failures: [
       {
         test,

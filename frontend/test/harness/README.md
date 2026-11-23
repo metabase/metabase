@@ -40,8 +40,9 @@ packages again.
 
 ## Read the output
 
-`test-unit` prints jest's own output. `test-unit-agent` prints plain
-text with fixed prefixes, through `jest-agent-reporter.ts`:
+`test-unit` prints jest's own output, with the console output of each file
+unless you add `--silent`. `test-unit-agent` prints plain text with fixed
+prefixes, through `jest-agent-reporter.ts`:
 
 ```
 FAIL frontend/src/metabase/foo/foo.unit.spec.ts:41 > describe name > test name
