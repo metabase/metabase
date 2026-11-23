@@ -83,9 +83,9 @@
                                                      :temperature 0.3})))
 
 (deftest ^:parallel request-body-drops-temperature-for-models-that-reject-it-test
-  (testing "the GPT-5 and o-series families take no explicit temperature"
-    (doseq [model ["openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4" "openai/gpt-5.4-mini"
-                   "openai/o1" "openai/o3-mini"]]
+  (testing "the GPT-5, GPT-6 and o-series families take no explicit temperature"
+    (doseq [model ["openai/gpt-6.2-astra" "openai/gpt-6.2-sol" "openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4"
+                   "openai/gpt-5.4-mini" "openai/o1" "openai/o3-mini"]]
       (testing model
         (is (nil? (request-body-temperature model))))))
   (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
@@ -253,7 +253,7 @@
       (is (= 512 (:max_tokens body)))
       (is (= {:enabled false} (:reasoning body)))))
   (testing "the floor is keyed on the mandatory flag, not the class: the renderable-default pros get it too"
-    (doseq [model ["openai/gpt-5.5-pro" "openai/gpt-5.4-pro"]]
+    (doseq [model ["openai/gpt-6.2-astra" "openai/gpt-6.2-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"]]
       (testing model
         (let [body (body-for {:model model :schema {:type "object"} :max-tokens 512})]
           (is (= 2048 (:max_tokens body)))
@@ -272,8 +272,8 @@
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
                                "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.2"}
-          renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
-                               "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
+          renderable-default #{"openai/gpt-6.2-astra" "openai/gpt-6.2-sol" "openai/gpt-5.6-sol" "openai/gpt-5.6-terra"
+                               "openai/gpt-5.6-luna" "openai/gpt-5.5" "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
           budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"}]
       (is (= (set (keys @#'openrouter/supported-models))
              (into renderable (concat renderable-default budget))))

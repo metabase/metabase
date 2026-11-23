@@ -7,6 +7,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
@@ -15,6 +17,7 @@
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.json-schema :as mu.json-schema]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
@@ -26,6 +29,20 @@
         (let [m (meta tool-var)]
           (is (string? (:tool-name m)))
           (is (some? (:schema m))))))))
+
+(deftest ^:synchronized tool-parameters-have-no-one-of-or-all-of-test
+  (testing "OpenAI rejects a tool whose parameters contain `oneOf` (GPT-6.2 even outside strict mode) or `allOf`"
+    ;; every feature on, so feature-gated parameters are published too
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
+      (let [tool-vars (distinct (conj (mapcat :tools (vals @@#'profiles/*profiles)) #'agent-tools/load-skill-tool))
+            ;; a schema is free of both when dropping them from every subschema changes nothing
+            free?     (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
+        (is (= []
+               ;; one tool at a time, since tools in different profiles may share a name
+               (for [tool-var tool-vars
+                     entry    (vals (agent-tools/wrap-tools-with-state {(:tool-name (meta tool-var)) tool-var} (atom {}) nil :nlq))
+                     :when    (not (free? (:parameters (self.schema/tool-function entry))))]
+                 tool-var)))))))
 
 (deftest wrap-tools-with-state-carries-title-fn-test
   (testing "a tool var's :title-fn metadata reaches the tool-def map"

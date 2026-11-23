@@ -284,7 +284,11 @@
       "openai/gpt-5.6-terra"          922000
       "openai/gpt-5.6-luna"           922000
       "openai/gpt-5.6-sol-2026-07-09" 922000
-      "openai/gpt-5.5"                922000))
+      "openai/gpt-5.5"                922000
+      "openai/gpt-6-astra"            922000
+      "openai/gpt-6.2-astra"          922000
+      "openai/gpt-6.2-sol"            922000
+      "openai/gpt-6.2-sol-2026-11-17" 922000))
   (testing "a gpt-5.5-pro deployment gets the window of the gpt-5.5 prefix"
     (is (= 922000 (azure/context-window-tokens "openai/gpt-5.5-pro")))))
 
