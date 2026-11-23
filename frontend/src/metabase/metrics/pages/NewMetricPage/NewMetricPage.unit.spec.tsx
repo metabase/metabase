@@ -37,6 +37,7 @@ import {
   createMockCollectionItem,
   createMockColumn,
   createMockDataset,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -122,6 +123,16 @@ function setup() {
     ORDERS_MODEL,
     createMockCardQueryMetadata({ databases: [SAMPLE_DB] }),
   );
+  // v65 loads the metadata of a picked card from its virtual table
+  fetchMock.get(
+    `path:/api/table/card__${ORDERS_MODEL.id}/query_metadata`,
+    createMockTable({
+      id: `card__${ORDERS_MODEL.id}`,
+      db_id: SAMPLE_DB_ID,
+      display_name: ORDERS_MODEL.name,
+    }),
+    { name: `card-${ORDERS_MODEL.id}-table-query-metadata` },
+  );
 
   renderWithProviders(
     <Route path="/metric/new" element={<NewMetricPage />} />,
@@ -174,7 +185,7 @@ describe("NewMetricPage", () => {
   it("does not offer a new stage after the formula of a metric based on a model", async () => {
     setup();
     // The source and its Count load only after the card metadata arrives.
-    fetchMock.modifyRoute(`card-${ORDERS_MODEL.id}-query-metadata`, {
+    fetchMock.modifyRoute(`card-${ORDERS_MODEL.id}-table-query-metadata`, {
       delay: 750,
     });
 
