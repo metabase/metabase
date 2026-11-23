@@ -31,7 +31,6 @@ import {
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
   createMockCollection,
-  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockListBrokenGraphNodesResponse,
@@ -589,7 +588,6 @@ function setupFlow({
 }) {
   setupListEndpoint({ mode, nodes, sortOrders });
   const savedParams = setupSavedListParamsEndpoints(mode);
-  setupDependencyCountsEndpoint();
   fetchMock.get("path:/api/ee/dependencies/graph/broken", (call) => {
     const searchParams = new URL(call.url, "http://localhost").searchParams;
     const key = `${searchParams.get("type")}:${searchParams.get("id")}`;
@@ -1102,7 +1100,7 @@ describe("DependencyDiagnosticsPage (list flows)", () => {
           dashboard: null,
           creator: BOBBY,
           result_metadata: [
-            createMockColumn({
+            createMockField({
               name: "USER_ID",
               display_name: "User ID",
             }),
