@@ -210,15 +210,15 @@
       :type/ArrayIndex            :Semantic/*
       :type/Version               :Semantic/*
       ;; time roles
-      :type/EventTimestamp        :type/Temporal
-      :type/MilestoneTimestamp    :type/Temporal
+      :type/EventTimestamp        :type/DateTime
+      :type/MilestoneTimestamp    :type/DateTime
       :type/StartTimestamp        :type/MilestoneTimestamp
       :type/EndTimestamp          :type/MilestoneTimestamp
-      :type/ValidFrom             :type/Temporal
-      :type/ValidTo               :type/Temporal
-      :type/PeriodKey             :type/Temporal
-      :type/LoadTimestamp         :type/Temporal
-      :type/LastActivityTimestamp :type/Temporal
+      :type/ValidFrom             :type/DateTime
+      :type/ValidTo               :type/DateTime
+      :type/PeriodKey             :type/Date
+      :type/LoadTimestamp         :type/DateTime
+      :type/LastActivityTimestamp :type/DateTime
       :type/TimeZone              :type/Category
       ;; measures
       :type/Balance               :type/Number

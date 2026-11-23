@@ -448,21 +448,21 @@
 ;;; Time roles: which timestamp is the grain, and which only describe the row
 
 (derive :type/EventTimestamp :Semantic/*)   ; the moment the fact happened
-(derive :type/EventTimestamp :type/Temporal)
+(derive :type/EventTimestamp :type/DateTime)
 (derive :type/MilestoneTimestamp :Semantic/*) ; one step of a process: approved_at, shipped_at
-(derive :type/MilestoneTimestamp :type/Temporal)
+(derive :type/MilestoneTimestamp :type/DateTime)
 (derive :type/StartTimestamp :type/MilestoneTimestamp)
 (derive :type/EndTimestamp :type/MilestoneTimestamp)
 (derive :type/ValidFrom :Semantic/*)        ; SCD2 validity interval
-(derive :type/ValidFrom :type/Temporal)
+(derive :type/ValidFrom :type/DateTime)
 (derive :type/ValidTo :Semantic/*)
-(derive :type/ValidTo :type/Temporal)
+(derive :type/ValidTo :type/DateTime)
 (derive :type/PeriodKey :Semantic/*)        ; the period of a snapshot row
-(derive :type/PeriodKey :type/Temporal)
+(derive :type/PeriodKey :type/Date)
 (derive :type/LoadTimestamp :Semantic/*)    ; when the loader wrote the row
-(derive :type/LoadTimestamp :type/Temporal)
+(derive :type/LoadTimestamp :type/DateTime)
 (derive :type/LastActivityTimestamp :Semantic/*)
-(derive :type/LastActivityTimestamp :type/Temporal)
+(derive :type/LastActivityTimestamp :type/DateTime)
 (derive :type/TimeZone :type/Category)
 
 ;;; Measures: whether a column can be summed, and over what
