@@ -64,12 +64,12 @@
 (def ^:private capped-non-blank-string-schema
   [:and ms/NonBlankString [:string {:max max-string-input-chars}]])
 
-(def ^:private column-type-schema
+(def ^:private type-hint-schema
   [:and
    capped-non-blank-string-schema
    (mu/with-api-error-message
     [:re #"\A[A-Za-z0-9 _./-]+\z"]
-    (deferred-tru "Column types can only have letters, digits, spaces and _ . / -"))])
+    (deferred-tru "Types can only have letters, digits, spaces and _ . / -"))])
 
 (def ^:private escaped-reference-schema
   [:and
@@ -80,20 +80,20 @@
     [:re #"\A\[(?:[^\[\]\\\x08\t\n\f\r\x0B]|\\[^\n\r])+\]\z"]
     (deferred-tru "Column, metric and measure names must be references like [Total], with any [ or ] escaped."))])
 
-(def ^:private escaped-references-schema
-  [:maybe [:sequential {:max max-seq-items} escaped-reference-schema]])
+(def ^:private typed-references-schema
+  [:sequential {:max max-seq-items}
+   [:map {:closed true}
+    [:name escaped-reference-schema]
+    [:type {:optional true} [:maybe type-hint-schema]]]])
 
 (mr/def ::request-schema
   ;; The rules on which inputs each mode needs are in [[check-inputs!]], so that their errors have a message.
   [:map {:closed true}
    [:mode        (into [:enum] expression-modes)]
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
-   [:columns     [:sequential {:max max-seq-items}
-                  [:map {:closed true}
-                   [:name escaped-reference-schema]
-                   [:type {:optional true} [:maybe column-type-schema]]]]]
-   [:metrics     {:optional true} escaped-references-schema]
-   [:measures    {:optional true} escaped-references-schema]
+   [:columns     typed-references-schema]
+   [:metrics     {:optional true} [:maybe typed-references-schema]]
+   [:measures    {:optional true} [:maybe typed-references-schema]]
    [:table_name  {:optional true} [:maybe capped-non-blank-string-schema]]
    [:database_id ms/PositiveInt]
    [:metabot_id  capped-non-blank-string-schema]])
@@ -203,15 +203,15 @@
   [request]
   (-> request
       (update :columns #(remove-tagged :name %))
-      (update :metrics #(remove-tagged identity %))
-      (update :measures #(remove-tagged identity %))))
+      (update :metrics #(remove-tagged :name %))
+      (update :measures #(remove-tagged :name %))))
 
-(defn- format-column
-  [{column-name :name column-type :type}]
-  (str column-name
-       (when column-type
-         ;; The [[column-type-schema]] rejects < and >, but escape anyway just in case.
-         (str " (" (llm-shape/escape-xml-content column-type) ")"))))
+(defn- format-reference
+  [{reference-name :name reference-type :type}]
+  (str reference-name
+       (when reference-type
+         ;; The [[type-hint-schema]] rejects < and >, but escape anyway just in case.
+         (str " (" (llm-shape/escape-xml-content reference-type) ")"))))
 
 (defn- user-message
   [{:keys [prompt columns metrics measures table_name]}]
@@ -219,8 +219,8 @@
   ;; listed together under "metrics".
   (->> [(format-xml "table-name" (when-not (str/blank? table_name)
                                    [(llm-shape/escape-xml-content table_name)]))
-        (format-xml "columns" (map format-column columns))
-        (format-xml "metrics" (concat metrics measures))
+        (format-xml "columns" (map format-reference columns))
+        (format-xml "metrics" (map format-reference (concat metrics measures)))
         (format-xml "user-request" [(llm-shape/escape-xml-content prompt)])]
        (remove nil?)
        (str/join "\n")))
