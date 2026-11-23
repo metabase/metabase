@@ -112,8 +112,10 @@ describe("BrowseNavSection", () => {
       screen.getByRole("listitem", { name: "Browse databases" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("listitem", { name: "Browse metrics" }),
-    ).toBeInTheDocument();
+      within(
+        screen.getByRole("listitem", { name: "Browse metrics" }),
+      ).getByRole("link", { name: /Metrics/ }),
+    ).toHaveAttribute("href", "/browse/metrics");
   });
 
   describe("interactive embedding with `entity_types` (EMB-229)", () => {

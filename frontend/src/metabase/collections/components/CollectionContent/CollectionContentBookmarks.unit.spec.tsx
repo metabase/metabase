@@ -12,6 +12,7 @@ import {
   setupDeleteBookmarkEndpoint,
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
+  setupStatefulBookmarksEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -77,6 +78,19 @@ const CHILD_COLLECTION = createMockCollectionItem({
   model: "collection",
 });
 
+const PINNED_METRIC = createMockCollectionItem({
+  id: 7,
+  name: "Count of orders",
+  model: "metric",
+  collection_position: 3,
+});
+
+const METRIC = createMockCollectionItem({
+  id: 8,
+  name: "Count of orders over time",
+  model: "metric",
+});
+
 const COLLECTION_ITEMS = [
   PINNED_QUESTION,
   PINNED_DASHBOARD,
@@ -84,11 +98,14 @@ const COLLECTION_ITEMS = [
   DASHBOARD,
   MODEL,
   CHILD_COLLECTION,
+  PINNED_METRIC,
+  METRIC,
 ];
 
 const BOOKMARK_TYPES: Record<string, BookmarkType> = {
   card: "card",
   dataset: "card",
+  metric: "card",
   dashboard: "dashboard",
   collection: "collection",
 };
@@ -105,9 +122,14 @@ const getItemBookmark = (item: CollectionItem) =>
 
 interface SetupOpts {
   bookmarks?: Bookmark[];
+  /** Bookmark writes change the list that GET /api/bookmark returns */
+  isBookmarkListStateful?: boolean;
 }
 
-async function setup({ bookmarks = [] }: SetupOpts = {}) {
+async function setup({
+  bookmarks = [],
+  isBookmarkListStateful = false,
+}: SetupOpts = {}) {
   const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
 
   setupCollectionByIdEndpoint({ collections: [COLLECTION] });
@@ -116,7 +138,11 @@ async function setup({ bookmarks = [] }: SetupOpts = {}) {
     collection: COLLECTION,
     collectionItems: COLLECTION_ITEMS,
   });
-  setupBookmarksEndpoints(bookmarks);
+  if (isBookmarkListStateful) {
+    setupStatefulBookmarksEndpoints(bookmarks);
+  } else {
+    setupBookmarksEndpoints(bookmarks);
+  }
   setupDatabasesEndpoints([]);
   setupSearchEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
@@ -233,6 +259,7 @@ describe("CollectionContent bookmarks", () => {
       { item: DASHBOARD, eventDetail: "dashboard" },
       { item: MODEL, eventDetail: "model" },
       { item: CHILD_COLLECTION, eventDetail: "collection" },
+      { item: METRIC, eventDetail: "metric" },
     ])(
       "bookmarks an unpinned $eventDetail from its menu and tracks it",
       async ({ item, eventDetail }) => {
@@ -263,6 +290,7 @@ describe("CollectionContent bookmarks", () => {
       { item: DASHBOARD, eventDetail: "dashboard" },
       { item: MODEL, eventDetail: "model" },
       { item: CHILD_COLLECTION, eventDetail: "collection" },
+      { item: METRIC, eventDetail: "metric" },
     ])(
       "removes the bookmark of an unpinned $eventDetail from its menu without tracking it",
       async ({ item }) => {
@@ -290,6 +318,7 @@ describe("CollectionContent bookmarks", () => {
     it.each([
       { item: PINNED_QUESTION, eventDetail: "question" },
       { item: PINNED_DASHBOARD, eventDetail: "dashboard" },
+      { item: PINNED_METRIC, eventDetail: "metric" },
     ])(
       "bookmarks a pinned $eventDetail from its card menu and tracks it",
       async ({ item, eventDetail }) => {
@@ -314,5 +343,53 @@ describe("CollectionContent bookmarks", () => {
         ]);
       },
     );
+
+    it("removes the bookmark of a pinned metric from its card menu without tracking it", async () => {
+      setupDeleteBookmarkEndpoint({ type: "card", item_id: PINNED_METRIC.id });
+      const { trackSimpleEvent } = await setup({
+        bookmarks: [getItemBookmark(PINNED_METRIC)],
+      });
+
+      await openPinnedItemMenu(PINNED_METRIC);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Remove from bookmarks/ }),
+      );
+
+      await waitFor(() =>
+        expect(bookmarkCalls("card", PINNED_METRIC.id, "DELETE")).toHaveLength(
+          1,
+        ),
+      );
+      expect(bookmarkCalls("card", PINNED_METRIC.id, "POST")).toHaveLength(0);
+      expect(getBookmarkAddedEvents(trackSimpleEvent)).toEqual([]);
+    });
+  });
+
+  it("updates the pinned metric menu after bookmarking it and after removing the bookmark", async () => {
+    await setup({ isBookmarkListStateful: true });
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Bookmark/ }),
+    );
+    await waitFor(() =>
+      expect(bookmarkCalls("card", PINNED_METRIC.id, "POST")).toHaveLength(1),
+    );
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Remove from bookmarks/ }),
+    );
+    await waitFor(() =>
+      expect(bookmarkCalls("card", PINNED_METRIC.id, "DELETE")).toHaveLength(1),
+    );
+
+    await openPinnedItemMenu(PINNED_METRIC);
+    expect(
+      await screen.findByRole("menuitem", { name: /^Bookmark/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Remove from bookmarks/ }),
+    ).not.toBeInTheDocument();
   });
 });
