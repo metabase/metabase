@@ -469,7 +469,12 @@ def _set_args(node):
     return {k for k, v in node.args.items() if v}
 
 
-def _join_step_source(node, cte_names):
+def _effective_name(identifier, dialect):
+    """The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one."""
+    return normalize_identifiers(identifier.copy(), dialect=dialect).name
+
+
+def _join_step_source(node, cte_names, dialect):
     """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
 
     Raises `_JoinStepsUnsupported` for a source `join_steps` cannot rebuild.
@@ -480,7 +485,7 @@ def _join_step_source(node, cte_names):
         parts = table_parts(node)
         if parts is None:
             raise _JoinStepsUnsupported("unsupported-source")
-        if not node.db and not node.catalog and node.name.lower() in cte_names:
+        if not node.db and not node.catalog and _effective_name(node.this, dialect) in cte_names:
             return {"source": "cte", "table": None, "alias": node.alias_or_name}
         return {"source": "table", "table": list(parts), "alias": node.alias_or_name}
     if isinstance(node, exp.Subquery):
@@ -612,13 +617,15 @@ def join_steps(sql: str, dialect: str = None) -> str:
             raise _JoinStepsUnsupported("comma-join")
 
         with_ = stmt.args.get("with_")
-        cte_names = {cte.alias.lower() for cte in (with_.expressions if with_ else []) if cte.alias}
+        cte_names = {
+            _effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else []) if cte.alias
+        }
         joins = stmt.args.get("joins") or []
-        from_source = _join_step_source(from_.this, cte_names)
+        from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):
             # The source first: a LATERAL or APPLY source looks like a comma join to the strategy check.
-            source = _join_step_source(join.this, cte_names)
+            source = _join_step_source(join.this, cte_names, dialect)
             strategy = _join_step_strategy(join)
             step = dict(source, strategy=strategy)
             if strategy in ("left", "right", "full"):

@@ -8,7 +8,7 @@
    (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Parameter Expressions$Placeholder
                              Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table)
-   (com.metabase.sqlglot.reference ParseError)
+   (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
    (java.util Collection)))
 
 (set! *warn-on-reflection* true)
@@ -65,10 +65,16 @@
   (let [node-alias (ast/node-alias node)]
     (if (seq node-alias) node-alias (ast/node-name node))))
 
+(defn- effective-name
+  "The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one.
+  Port of `_effective_name`."
+  [identifier dialect]
+  (ast/node-name (NormalizeIdentifiers/normalizeIdentifiers ^Expr (ast/copy identifier) ^String dialect false)))
+
 (defn- step-source
   "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.
   Port of `_join_step_source`."
-  [node cte-names]
+  [node cte-names dialect]
   (cond
     (instance? Expressions$Table node)
     (let [parts (references/table-parts node)]
@@ -78,7 +84,7 @@
         (throw (unsupported "unsupported-source")))
       (if (and (empty? (ast/text node "db"))
                (empty? (ast/text node "catalog"))
-               (contains? cte-names (ast/lower (ast/node-name node))))
+               (contains? cte-names (effective-name (ast/this node) dialect)))
         {:source "cte", :table nil, :alias (alias-or-name node)}
         {:source "table", :table parts, :alias (alias-or-name node)}))
 
@@ -223,17 +229,18 @@
                       (throw (unsupported "comma-join")))
           with-node (ast/arg stmt "with_")
           cte-names (into #{}
-                          (keep #(not-empty (ast/lower (ast/node-alias %))))
+                          (keep #(when (seq (ast/node-alias %))
+                                   (effective-name (ast/this (ast/arg % "alias")) dialect)))
                           (some-> with-node ast/expressions))
           joins     (vec (ast/arg stmt "joins"))]
       {:status   "ok"
-       :from     (step-source (ast/this from-node) cte-names)
+       :from     (step-source (ast/this from-node) cte-names dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
        :steps    (vec (map-indexed
                        (fn [i join]
                          (let [;; The source first: a LATERAL or APPLY source looks like a comma join to the
                                ;; strategy check.
-                               source   (step-source (ast/this join) cte-names)
+                               source   (step-source (ast/this join) cte-names dialect)
                                strategy (step-strategy join)
                                chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)

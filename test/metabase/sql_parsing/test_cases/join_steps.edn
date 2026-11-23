@@ -253,4 +253,43 @@
   {:name "ClickHouse SETTINGS are refused, since they can change what a join returns",
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id SETTINGS join_use_nulls = 0",
-   :expected {:status "unsupported", :reason "unsupported-join"}}]}
+   :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a quoted name in another case is a table, not the CTE, where the dialect keeps its case",
+   :dialect "postgres",
+   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"Foo\" JOIN foo f ON \"Foo\".id = f.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "Foo"], :alias "Foo"},
+    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"Foo\"",
+    :steps
+    [{:source "cte",
+      :table nil,
+      :alias "f",
+      :strategy "inner",
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"Foo\" JOIN foo AS f ON \"Foo\".id = f.id"}]}}
+  {:name "an unquoted name in another case is the CTE",
+   :dialect "postgres",
+   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM FOO JOIN b ON FOO.id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "cte", :table nil, :alias "FOO"},
+    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM FOO",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM FOO JOIN b ON FOO.id = b.id"}]}}
+  {:name "a quoted upper-case name is the CTE where the dialect folds unquoted names up",
+   :dialect "snowflake",
+   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "cte", :table nil, :alias "FOO"},
+    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\"",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}]}
