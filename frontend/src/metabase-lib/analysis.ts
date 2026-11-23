@@ -4,7 +4,7 @@ import type {
   ProductAnalyticsKind,
 } from "metabase-types/api";
 
-import type { Query } from "./query/types";
+import type { FilterClause, Query } from "./query/types";
 
 /** What the product analytics planner builds an analysis's query from. */
 export type AnalysisState = {
@@ -15,9 +15,20 @@ export type AnalysisState = {
   "columns.person": string;
   /** The `columnUniqueKey` of the query's column with each event's time. */
   "columns.timestamp": string;
-  /** What the analysis buckets events by. */
   granularity: DateTimeAbsoluteUnit;
+  "habit.active": AnalysisEvent | null;
   "habit.values": "count";
+};
+
+/**
+ * An event the planner reads. Other keys, like the event's name, are ignored.
+ */
+export type AnalysisEvent = {
+  /**
+   * Conditions on the base query's columns. An event matches when all of
+   * them do. There's at least one.
+   */
+  conditions: FilterClause[];
 };
 
 export function buildProductAnalyticsQuery(

@@ -681,6 +681,33 @@
            (lib.js/metadataProvider 1 #js {})
            #js {:database 1, :type "query", :query #js {:source-table 2}}))))
 
+(deftest ^:parallel filter-clause-to-js-test
+  (let [mp       (lib.tu/mock-metadata-provider meta/metadata-provider
+                                                {:segments [{:id         1
+                                                             :name       "Large orders"
+                                                             :table-id   (meta/id :orders)
+                                                             :definition nil}]})
+        query    (lib/query mp (meta/table-metadata :orders))
+        category (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+        filters  (-> query
+                     (lib/filter (lib/= category "Widget"))
+                     (lib/filter (lib/> (meta/field-metadata :orders :total) 100))
+                     (lib/filter (lib.metadata/segment mp 1))
+                     lib/filters)]
+    (testing "a filter clause survives a round trip through JSON"
+      (doseq [filter-clause filters]
+        (is (= filter-clause
+               (-> filter-clause
+                   lib.js/to-js-filter-clause
+                   js/JSON.stringify
+                   js/JSON.parse
+                   lib.js/from-js-filter-clause)))))
+    (testing "a value that isn't a filter clause reads as nil"
+      (are [value] (nil? (lib.js/from-js-filter-clause value))
+        "not a filter"
+        #js ["not-an-operator" #js {} 1]
+        nil))))
+
 (deftest ^:parallel query-equals-should-work-on-js-and-cljs-mbql-4-and-5
   (let [queries {"Cljs MBQL 4" {:database 1, :type :query, :query {:source-table 2}}
                  "JS MBQL 4"   #js {:database 1, :type :query, :query #js {:source-table 2}}
