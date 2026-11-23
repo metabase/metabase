@@ -8,9 +8,11 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
+   [metabase-enterprise.sso.schema :as sso.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -36,6 +38,12 @@
   at their IdP; the SAML assertion's own validity window is the real freshness gate."
   (* 30 60))
 
+(t2/define-before-insert :model/SsoRelayState
+  [relay-state]
+  (cond-> relay-state
+    (not (contains? relay-state :expires_at))
+    (assoc :expires_at (sso.db/expires-at-clause ttl-seconds))))
+
 (defn relay-state-key?
   "Is `relay-state` one of our generated keys (vs. a legacy Base64-encoded continue URL)?"
   [relay-state]
@@ -50,46 +58,42 @@
 (defn generate-key
   "Generate a fresh opaque RelayState key — 16 bytes (128 bits) of cryptographically secure randomness behind
   the [[key-prefix]]. The key is the unguessable proof that ties an IdP callback to a login we initiated. It
-  is generated before the SAML AuthnRequest (which embeds it) and only [[persist!]]ed once that succeeds."
+  is generated before the SAML AuthnRequest (which embeds it) and only [[create-sso-relay-state!]]ed once that succeeds."
   ^String []
   (str key-prefix (random/secure-hex 16)))
 
-(defn persist!
-  "Persist the SAML callback `context` under its already-generated `:id` (from [[generate-key]]). Returns the id.
-
-  `context` keys:
-  - `:id`           - the RelayState key (see [[generate-key]]); stored hashed, never in plaintext
-  - `:continue-url` - where to send the user after login (redirect target, or popup fallback URL)
-  - `:origin`       - postMessage target origin (embedding popup only)
-  - `:embedding?`   - whether this is a modular-embedding popup login"
-  [{:keys [id continue-url origin embedding?]}]
-  (sso.db/insert-relay-state! {:id           (hash-key id)
-                               :continue_url continue-url
-                               :origin       origin
-                               :embedding    (boolean embedding?)
-                               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
-  id)
-
 (defn find-unexpired
   "Return the stored, unexpired RelayState row for the (plaintext) `key`, or `nil`. Look-up only — it does NOT
-  delete the entry. The entry is consumed via [[delete!]] only after the login succeeds, so a failed or
+  delete the entry. The entry is consumed via [[delete-sso-relay-state!]] only after the login succeeds, so a failed or
   retried callback doesn't burn the key."
   [key]
   (when (relay-state-key? key)
-    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
+    (sso.db/unexpired-relay-state (hash-key key))))
 
-(defn delete!
-  "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single
-  `DELETE` is atomic and idempotent (a concurrent or replayed callback that loses the race simply deletes
-  nothing)."
-  [key]
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-sso-relay-state! :- :string
+  "Store the SAML callback `context` under the hash of its plaintext key `:id` from [[generate-key]], with the URL to
+  send the user to after login (`:continue-url`), the postMessage origin of an embedding popup (`:origin`) and whether
+  the login is a modular-embedding popup (`:embedding?`), and return the key."
+  [{:keys [id continue-url origin embedding?]} :- ::sso.schema/sso-relay-state.create]
+  (sso.db/insert-relay-state! {:id           (hash-key id)
+                               :continue_url continue-url
+                               :origin       origin
+                               :embedding    (boolean embedding?)})
+  id)
+
+(mu/defn delete-sso-relay-state! :- [:maybe :int]
+  "Delete the RelayState entry of the plaintext `key` after a successful login, in one statement that deletes nothing
+  for a concurrent or replayed callback that comes second."
+  [key :- [:maybe :string]]
   (when (relay-state-key? key)
     (sso.db/delete-relay-state! (hash-key key))))
 
-(defn delete-expired!
-  "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
-  []
-  (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))
+(mu/defn delete-sso-relay-states-for-cleanup! :- :int
+  "Delete the RelayState entries of abandoned logins, expired at `cutoff`, and return the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (sso.db/delete-relay-states-expired-at! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

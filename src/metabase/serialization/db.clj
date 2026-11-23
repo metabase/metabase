@@ -1,7 +1,7 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
-   [metabase.events.core :as events]
+   [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -137,7 +137,7 @@
    rows  :- [:sequential ::row]]
   (let [pks       (t2/primary-keys model)
         pk-of     (apply juxt pks)
-        instances (t2/insert-returning-instances! model rows)]
+        instances (app-db/insert-returning-instances! model rows)]
     (if (every? #(contains? (first rows) %) pks)
       (let [by-pk (into {} (map (juxt pk-of identity)) instances)]
         (mapv (comp by-pk pk-of) rows))
@@ -163,7 +163,7 @@
   delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (thunk))))
 
 (defn do-in-repeatable-read-transaction

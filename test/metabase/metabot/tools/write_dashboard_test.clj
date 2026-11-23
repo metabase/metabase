@@ -20,6 +20,7 @@
    [metabase.metabot.tools.write-dashboard :as write-dashboard]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -104,7 +105,7 @@
                                                                    :size_y       6}
                    :model/Dashboard        {other-id :id}         {:name "Marketing", :collection_id coll-id}
                    :model/PermissionsGroup {group-id :id}         {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
       (perms/grant-collection-readwrite-permissions! group-id coll)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (f {:coll-id     coll-id

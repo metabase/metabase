@@ -77,7 +77,14 @@
   spec]
  [metabase.app-db.query
   compile
+  create-batched!
+  create-partition-size
   current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  delete-partition-size
+  increment-counts!
+  insert-returning-instances!
   isa
   join
   qualify
@@ -87,6 +94,9 @@
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
+  update-batched!
+  update-grouped!
+  update-partition-size
   with-conflict-retry]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]

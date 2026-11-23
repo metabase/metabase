@@ -8,6 +8,8 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
+   [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
@@ -227,24 +229,24 @@
   must be non-empty — an empty map would match every message."
   [conditions deleted-by-user-id]
   {:pre [(seq conditions)]}
-  (metabot.db/soft-delete-messages-where! conditions deleted-by-user-id))
+  (metabot-message/soft-delete-metabot-messages! conditions deleted-by-user-id))
 
 (defn- insert-assistant-placeholder!
   "Insert a turn's in-flight assistant row (`:finished` nil until
   [[finalize-assistant-turn!]] resolves it); returns its pk."
   [conversation-id profile-id external-id ai-proxy? & {:keys [user-id channel-id]}]
-  (metabot.db/insert-message-returning-pk!
-   (cond-> {:conversation_id conversation-id
-            :data            []
-            :data_version    schema.v2/current-data-version
-            :role            :assistant
-            :profile_id      profile-id
-            :external_id     external-id
-            :total_tokens    0
-            :ai_proxied      (boolean ai-proxy?)
-            :finished        nil}
-     user-id    (assoc :user_id user-id)
-     channel-id (assoc :channel_id channel-id))))
+  (:id (first (metabot-message/create-metabot-messages!
+               [(cond-> {:conversation_id conversation-id
+                         :data            []
+                         :data_version    schema.v2/current-data-version
+                         :role            :assistant
+                         :profile_id      profile-id
+                         :external_id     external-id
+                         :total_tokens    0
+                         :ai_proxied      (boolean ai-proxy?)
+                         :finished        nil}
+                  user-id    (assoc :user_id user-id)
+                  channel-id (assoc :channel_id channel-id))]))))
 
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
@@ -301,41 +303,38 @@
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
         (soft-delete-messages! {:id delete-message-ids} originator-id))
-      (metabot.db/upsert-conversation!
+      (metabot-conversation/upsert-metabot-conversation!
        conversation-id
-       (fn [existing]
-         ;; `:user_id` is the originator — set on insert, never overwritten.
-         (cond-> {}
-           (nil? existing)
-           (assoc :user_id originator-id)
-           (and hostname (nil? (:embedding_hostname existing)))
-           (assoc :embedding_hostname hostname)
-           (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
-           (assoc :embedding_path (:embedding_path pii-info))
-           (and (:user_agent pii-info) (nil? (:user_agent existing)))
-           (assoc :user_agent (:user_agent pii-info))
-           (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
-           (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
-           (and (:ip_address pii-info) (nil? (:ip_address existing)))
-           (assoc :ip_address (:ip_address pii-info))
-           (and slack-team-id (nil? (:slack_team_id existing)))
-           (assoc :slack_team_id slack-team-id)
-           (and channel-id (nil? (:slack_channel_id existing)))
-           (assoc :slack_channel_id channel-id)
-           (and slack-thread-ts (nil? (:slack_thread_ts existing)))
-           (assoc :slack_thread_ts slack-thread-ts))))
-      (metabot.db/insert-messages!
-       (cond-> {:conversation_id conversation-id
-                :data            [{:type "text" :text (:content user-message)}]
-                :data_version    schema.v2/current-data-version
-                :role            :user
-                :profile_id      profile-id
-                :external_id     user-external-id
-                :total_tokens    0
-                :ai_proxied      (boolean ai-proxy?)}
-         originator-id (assoc :user_id originator-id)
-         channel-id    (assoc :channel_id channel-id)
-         slack-msg-id  (assoc :slack_msg_id slack-msg-id)))
+       originator-id
+       (cond-> {}
+         hostname
+         (assoc :embedding_hostname hostname)
+         (:embedding_path pii-info)
+         (assoc :embedding_path (:embedding_path pii-info))
+         (:user_agent pii-info)
+         (assoc :user_agent (:user_agent pii-info))
+         (:sanitized_user_agent pii-info)
+         (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
+         (:ip_address pii-info)
+         (assoc :ip_address (:ip_address pii-info))
+         slack-team-id
+         (assoc :slack_team_id slack-team-id)
+         channel-id
+         (assoc :slack_channel_id channel-id)
+         slack-thread-ts
+         (assoc :slack_thread_ts slack-thread-ts)))
+      (metabot-message/create-metabot-messages!
+       [(cond-> {:conversation_id conversation-id
+                 :data            [{:type "text" :text (:content user-message)}]
+                 :data_version    schema.v2/current-data-version
+                 :role            :user
+                 :profile_id      profile-id
+                 :external_id     user-external-id
+                 :total_tokens    0
+                 :ai_proxied      (boolean ai-proxy?)}
+          originator-id (assoc :user_id originator-id)
+          channel-id    (assoc :channel_id channel-id)
+          slack-msg-id  (assoc :slack_msg_id slack-msg-id))])
       (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?
                                               :user-id user-id
                                               :channel-id channel-id)]
@@ -439,28 +438,28 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (metabot.db/update-message! assistant-msg-id
-                                (cond-> {:data           content
-                                         :data_version   schema.v2/current-data-version
-                                         :usage          usage
-                                         :total_tokens   (->> (vals usage)
-                                                              (map #(+ (:prompt %) (:completion %)))
-                                                              (reduce + 0))
-                                         :context_tokens context-tokens
-                                         :finished       (boolean finished?)
-                                         ;; Recorded whatever else the turn did: a turn the client
-                                         ;; abandoned, or one that also errored, was still truncated
-                                         ;; or filtered, and support and EE analytics read that back.
-                                         ;; `row->status` ranks aborted and errored ahead of it, so
-                                         ;; the status the client sees is unchanged.
-                                         :finish_reason  finish-reason
-                                         :error          (safe-encode-error error)}
-                                  turn-state   (assoc :state turn-state)
-                                  slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                                  channel-id   (assoc :channel_id channel-id)
-                                  ;; Set only on a full turn, so every other row keeps NULL.
-                                  (filled-context-window? finish-reason context-tokens context-window-tokens)
-                                  (assoc :context_window_full true)))
+    (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
+                                                        :data           content
+                                                        :data_version   schema.v2/current-data-version
+                                                        :usage          usage
+                                                        :total_tokens   (->> (vals usage)
+                                                                             (map #(+ (:prompt %) (:completion %)))
+                                                                             (reduce + 0))
+                                                        :context_tokens context-tokens
+                                                        :finished       (boolean finished?)
+                                                        ;; Recorded whatever else the turn did: a turn the client
+                                                        ;; abandoned, or one that also errored, was still truncated
+                                                        ;; or filtered, and support and EE analytics read that back.
+                                                        ;; `row->status` ranks aborted and errored ahead of it, so
+                                                        ;; the status the client sees is unchanged.
+                                                        :finish_reason  finish-reason
+                                                        :error          (safe-encode-error error)}
+                                                 turn-state   (assoc :state turn-state)
+                                                 slack-msg-id (assoc :slack_msg_id slack-msg-id)
+                                                 channel-id   (assoc :channel_id channel-id)
+                                                 ;; Set only on a full turn, so every other row keeps NULL.
+                                                 (filled-context-window? finish-reason context-tokens context-window-tokens)
+                                                 (assoc :context_window_full true))])
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -599,13 +598,13 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (metabot.db/update-message! msg-id {:slack_msg_id slack-msg-id})))
+    (metabot-message/update-metabot-messages! [{:id msg-id :slack_msg_id slack-msg-id}])))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."
   [conversation-id title]
   (when (and conversation-id (not (str/blank? title)))
-    (metabot.db/set-conversation-title-if-missing! conversation-id title)))
+    (metabot-conversation/set-metabot-conversation-title-if-missing! conversation-id title)))
 
 (defn conversation-title
   "Return the current persisted title for a conversation."
@@ -904,8 +903,8 @@
       (let [to-clone            (conj (vec before) target)
             new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
-          (metabot.db/insert-conversation! new-conversation-id
-                                           {:user_id                     user-id
-                                            :forked_from_conversation_id conversation-id})
-          (metabot.db/insert-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
+          (metabot-conversation/create-metabot-conversations! [{:id                          new-conversation-id
+                                                                :user_id                     user-id
+                                                                :forked_from_conversation_id conversation-id}])
+          (metabot-message/create-metabot-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

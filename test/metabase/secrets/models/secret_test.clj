@@ -9,6 +9,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.io DataInputStream File)
@@ -212,12 +213,14 @@
                   file-bytes (mt/file->bytes file)]
               (is (=? uploaded-bytes file-bytes))
               (is (=? uploaded-str-value (secret/value-as-string :secret-test-driver details "keystore")))
-              (mt/with-temp [:model/Database {db-details :details} {:engine "secret-test-driver"
-                                                                    :details details}]
-                (is (=? uploaded-bytes
-                        (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
-                (is (=? uploaded-str-value
-                        (secret/value-as-string :secret-test-driver db-details "keystore")))))))))))
+              (mt/with-model-cleanup [:model/Database :model/Secret]
+                (let [[{db-details :details}] (database/create-databases! [{:engine  :secret-test-driver
+                                                                            :name    "Secret Test"
+                                                                            :details details}])]
+                  (is (=? uploaded-bytes
+                          (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
+                  (is (=? uploaded-str-value
+                          (secret/value-as-string :secret-test-driver db-details "keystore"))))))))))))
 
 (deftest ssl-cert-base-file-path
   (testing "file secrets aren't mangled by encoding"
@@ -239,12 +242,14 @@
                   file-bytes (mt/file->bytes file)]
               (is (=? uploaded-bytes file-bytes))
               (is (=? uploaded-str-value (secret/value-as-string :secret-test-driver details "keystore")))
-              (mt/with-temp [:model/Database {db-details :details} {:engine "secret-test-driver"
-                                                                    :details details}]
-                (is (=? uploaded-bytes
-                        (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
-                (is (=? uploaded-str-value
-                        (secret/value-as-string :secret-test-driver db-details "keystore")))))))))))
+              (mt/with-model-cleanup [:model/Database :model/Secret]
+                (let [[{db-details :details}] (database/create-databases! [{:engine  :secret-test-driver
+                                                                            :name    "Secret Test"
+                                                                            :details details}])]
+                  (is (=? uploaded-bytes
+                          (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
+                  (is (=? uploaded-str-value
+                          (secret/value-as-string :secret-test-driver db-details "keystore"))))))))))))
 
 (deftest use-latest-version-test
   (testing "when reading a secret from the DB, the latest version is taken (#33116)"

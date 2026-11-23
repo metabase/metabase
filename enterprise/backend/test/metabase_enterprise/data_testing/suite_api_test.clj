@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
@@ -174,14 +174,14 @@
   until the second request has waited a second inside `update-test-suite!`. Returns the status and error message of
   both responses, and whether the second request was still waiting when the first was released."
   [path first-members second-members]
-  (let [original       (mt/original-fn #'data-testing.db/update-test-suite!)
+  (let [original       (mt/original-fn #'test-suite/update-test-suite!)
         calls          (atom 0)
         first-wrote    (promise)
         second-entered (promise)
         release        (promise)
         put!           #(let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :put path {:members %})]
                           {:status status :message (:message body)})]
-    (mt/with-dynamic-fn-redefs [data-testing.db/update-test-suite!
+    (mt/with-dynamic-fn-redefs [test-suite/update-test-suite!
                                 (fn [& args]
                                   (if (= 1 (swap! calls inc))
                                     (t2/with-transaction [_conn]

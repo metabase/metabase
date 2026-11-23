@@ -4,12 +4,13 @@
    on the `-rest` module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -22,6 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -174,37 +176,43 @@
 (mu/defn create-transform! :- ::transforms.schema/transform
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
-  ([body :- ::transforms.schema/transform.create]
+  ([body :- ::transforms.u/create-body]
    (create-transform! body nil))
-  ([body       :- ::transforms.schema/transform.create
+  ([body       :- ::transforms.u/create-body
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
      (check-references definition (written-parts body))
      (check-target-table-free definition))
    (let [creator-id (or creator-id api/*current-user-id*)
-         transform  (events/with-batched-events
+         transform  (t2/with-transaction [_conn]
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
                                             (or (:owner_user_id body) creator-id))
-                            transform     (transforms.db/insert-transform!
-                                           (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
-                                                  :creator_id creator-id
-                                                  :owner_user_id owner-user-id))]
-                        ;; Add tag associations if provided
-                        (when (seq tag-ids)
-                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                            transform     (first
+                                           (transform.model/create-transforms!
+                                            [(cond-> (assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                               :collection_id :owner_email])
+                                                            :creator_id creator-id
+                                                            :owner_user_id owner-user-id)
+                                               (seq tag-ids) (assoc :tag_ids tag-ids))]))]
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      transform)))
+
+(mr/def ::update-body
+  "What updates a Transform: the columns to change and the `:tag_ids` to link."
+  [:merge
+   (mut/dissoc ::transforms.schema/transform.update :id)
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn update-transform! :- ::transforms.schema/transform
   "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
   associations hydrated."
   [id   :- ::lib.schema.id/transform
-   body :- ::transforms.schema/transform.create]
-  (let [transform (events/with-batched-events
+   body :- ::update-body]
+  (let [transform (t2/with-transaction [_conn]
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
                           definition    (transforms.u/->definition new)
@@ -213,14 +221,12 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (transforms.db/update-transform! id (dissoc body :tag_ids))
+                      (transform.model/update-transform! id (cond-> (dissoc body :tag_ids)
+                                                              (contains? body :tag_ids) (assoc :tag_ids (:tag_ids body))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    ;; Update tag associations if provided
-                    (when (contains? body :tag_ids)
-                      (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (-> transform
         transforms.u/add-source-readable)))
@@ -228,7 +234,7 @@
 (mu/defn delete-transform! :- :nil
   "Delete a transform."
   [transform :- ::transforms.schema/transform]
-  (transforms.db/delete-transform! (:id transform))
+  (transform.model/delete-transforms! [(:id transform)])
   nil)
 
 (mu/defn delete-transforms-folder! :- :nil
@@ -254,8 +260,6 @@
     (when delete-tables?
       (run! transforms-base.u/delete-target-table! transforms))
     (t2/with-transaction [_]
-      ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
-      ;; deletes the subfolders.
-      (run! delete-transform! transforms)
-      (transforms.db/delete-collection! (:id collection)))
+      (transform.model/delete-transforms! (mapv :id transforms))
+      (collection/delete-collections! [(:id collection)]))
     nil))

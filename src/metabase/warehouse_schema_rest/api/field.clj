@@ -4,7 +4,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
@@ -20,6 +19,7 @@
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -29,8 +29,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(events/derive! :event/field-update :metabase/event)
 
 (comment
   ;; idk why condo complains on this not being used when it is, in a keyword down there
@@ -195,15 +193,14 @@
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
     (check-can-point-at-field human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
-      (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
-                                                  {:type                    dimension-type
-                                                   :name                    dimension-name
-                                                   :human_readable_field_id human-readable-field-id})
-      (warehouse-schema-rest.db/insert-dimension!
-       {:field_id                id
-        :type                    dimension-type
-        :name                    dimension-name
-        :human_readable_field_id human-readable-field-id})))
+      (dimension/update-dimensions! [{:id                      (u/the-id dimension)
+                                      :type                    dimension-type
+                                      :name                    dimension-name
+                                      :human_readable_field_id human-readable-field-id}])
+      (first (dimension/create-dimensions! [{:field_id                id
+                                             :type                    dimension-type
+                                             :name                    dimension-name
+                                             :human_readable_field_id human-readable-field-id}]))))
   (warehouse-schema-rest.db/dimension-for-field id))
 
 (api.macros/defendpoint :delete "/:id/dimension" :- ::api/generic-204-no-content
@@ -211,7 +208,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
-  (warehouse-schema-rest.db/delete-dimensions-for-field! id)
+  (when-let [dimension (warehouse-schema-rest.db/dimension-for-field id)]
+    (dimension/delete-dimensions! [(:id dimension)]))
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -242,7 +240,7 @@
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [values                (map first value-pairs)
           human-readable-values (not-empty (into [] (comp (filter #(= 2 (count %))) (map second)) value-pairs))
-          updated-pk            (warehouse-schema-rest.db/update-or-insert-full-field-values!
+          updated-pk            (field-values/update-or-create-full-field-values!
                                  (u/the-id field) values human-readable-values)]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
@@ -276,7 +274,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
+  (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id (api/write-check (warehouse-schema-rest.db/field id)))]))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------

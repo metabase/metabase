@@ -18,6 +18,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
@@ -240,7 +241,7 @@
    body :- ::table-selectors]
   (api/check-data-studio-access)
   (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
-    (data-studio.db/delete-field-values-for-tables! (map :id tables))
+    (field-values/delete-field-values! (field-values/ids-of-tables (mapv :id tables)))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

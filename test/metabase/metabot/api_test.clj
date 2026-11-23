@@ -801,6 +801,15 @@
                          :source_type "table"
                          :positive    true}))))))
 
+(deftest ^:parallel source-feedback-refuses-unsupported-source-type-test
+  (testing "POST /metabot/source-feedback refuses a source type other than a table, card or model"
+    (is (=? {:errors {:source_type some?}}
+            (mt/user-http-request :rasta :post 400 "metabot/source-feedback"
+                                  {:message_id  (str (random-uuid))
+                                   :source_id   42
+                                   :source_type "dashboard"
+                                   :positive    true})))))
+
 (deftest source-feedback-returns-no-content-test
   (testing "POST /metabot/source-feedback returns 204 after persisting feedback"
     (let [conversation-id (str (random-uuid))

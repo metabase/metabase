@@ -30,6 +30,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -47,6 +48,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
@@ -539,6 +541,15 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
+  "Inserts a Collection for a temporary Tenant whose attributes name none, because `tenant_collection_id` is not null."
+  [model explicit-attributes f]
+  (if (contains? explicit-attributes :tenant_collection_id)
+    (next-method model explicit-attributes f)
+    (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:type      collection/tenant-specific-root-collection-type
+                                                                    :namespace :tenant-specific}]
+      (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -1164,11 +1175,10 @@
             model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
-        (moderation-review/create-review!
-         {:moderated_item_id   (u/the-id model-or-id)
-          :moderated_item_type (name item-type)
-          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status})))
+        (moderation-review/create-moderation-reviews! [{:moderated_item_id   (u/the-id model-or-id)
+                                                        :moderated_item_type (name item-type)
+                                                        :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+                                                        :status              status}])))
     (thunk)))
 
 (defmacro with-verified!
@@ -1681,15 +1691,16 @@
   [[directory-binding dir-name] & body]
   `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
-(defn do-with-user-in-groups
-  ([f groups-or-ids]
-   (t2.with-temp/with-temp [:model/User user]
-     (do-with-user-in-groups f user groups-or-ids)))
-  ([f user [group-or-id & more]]
-   (if group-or-id
-     (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
-     (f user))))
+(defn do-with-user-in-groups!
+  [f groups-or-ids]
+  (do-with-model-cleanup
+   [:model/User]
+   (fn []
+     (let [[user] (user/create-users! [{:email      (u.random/random-email)
+                                        :first_name (u.random/random-name)
+                                        :last_name  (u.random/random-name)}])]
+       (perms-group-membership/add-users-to-groups! (for [group groups-or-ids] {:user user :group (u/the-id group)}))
+       (f user)))))
 
 (defmacro with-user-in-groups
   "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
@@ -1709,7 +1720,7 @@
       `(t2.with-temp/with-temp [:model/PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]
-      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
+      `(do-with-user-in-groups! (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

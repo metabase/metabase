@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -50,6 +51,14 @@
   (-> (api/read-check :model/CardTest id)
       (t2/hydrate :last_run)))
 
+(mr/def ::create-request
+  "What a client sends to create a test."
+  (data-testing.schema/test-create :card_id ::lib.schema.id/card))
+
+(mr/def ::update-request
+  "What a client sends to update a test. Omitted fields are left unchanged."
+  (data-testing.schema/test-update :card_id ::lib.schema.id/card))
+
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/card-test
   "Create a card test. Its expectations read the result of the card's query without remapped columns and without the
   default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other
@@ -70,10 +79,10 @@
   A test of a card with no query is refused as one whose query cannot be compiled."
   [_route-params
    _query-params
-   {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
+   {:keys [card_id] :as body} :- ::create-request]
   (api/create-check :model/CardTest body)
   (validate-test! card_id (data-testing.runner/test-definition body))
-  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.card-test/create-card-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test. The update is refused when it leaves the test on an archived card.
@@ -84,12 +93,12 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/card-test.update]
+   body :- ::update-request]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
     (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-test! id body)))
+      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -97,7 +106,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-test! id)
+  (data-testing.models.card-test/delete-card-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

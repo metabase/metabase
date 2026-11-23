@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz :as app-db.quartz]
    [metabase.cloud-migration.db :as cloud-migration.db]
+   [metabase.cloud-migration.schema :as cloud-migration.schema]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -20,6 +21,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
@@ -105,6 +108,8 @@
   []
   (>= (cloud-migration.db/quartz-node-count) 2))
 
+(declare set-cloud-migration-progress! set-cloud-migration-state!)
+
 (defn- progress-file-input-stream
   "File input stream that calls on-percent-progress with current read progress as int from 0 to 100."
   ^InputStream [^File file on-percent-progress]
@@ -128,15 +133,6 @@
         ([^bytes b off len]
          (f (.read input-stream b off len))))
       (close [] (.close input-stream)))))
-
-(defn- set-progress
-  "Attempt to set id to state and progress.
-  Throws if the migration has already reached a terminal state (e.g. cancelled).
-  This is the main cluster coordination mechanism for migrations, since any instance
-  can cancel the migration, not just the one that initiated it."
-  [id state progress]
-  (when (= 0 (cloud-migration.db/set-cloud-migration-progress-if-not-in-states! id terminal-states state progress))
-    (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 (defn abs-progress
   "Returns absolute progress from a relative progress.
@@ -168,7 +164,7 @@
 
 (defn- upload [{:keys [id external_id upload_url]} ^File dump-file]
   (let [;; memoize so we don't have repeats for each percent and don't go back on retries
-        set-progress-memo (memoize set-progress)
+        set-progress-memo (memoize set-cloud-migration-progress!)
         ;; 50 is set before we start the upload
         on-progress       #(set-progress-memo id :upload (abs-progress % 51 99))
         ;; the migration-dump-file setting is used for testing older dumps in the rich comment
@@ -232,9 +228,9 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (cloud-migration.db/set-cloud-migration-state! id :init))
+        (set-cloud-migration-state! id :init))
       (log/info "Setting read-only mode")
-      (set-progress id :setup 1)
+      (set-cloud-migration-progress! id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
@@ -242,14 +238,14 @@
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
-      (set-progress id :dump 20)
+      (set-cloud-migration-progress! id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
       (when-not (cloud-migration.settings/read-only-mode)
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
       (cloud-migration.settings/read-only-mode! false)
       (log/info "Uploading dump to store")
-      (set-progress id :upload 50)
+      (set-cloud-migration-progress! id :upload 50)
       (upload migration dump-file)
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
@@ -259,13 +255,12 @@
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
       (log/info "Migration finished")
-      (set-progress id :done 100)
+      (set-cloud-migration-progress! id :done 100)
       (catch Exception e
-        ;; See set-progress for when :terminal is set.
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (cloud-migration.db/set-cloud-migration-state! id :error)
+            (set-cloud-migration-state! id :error)
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
@@ -283,6 +278,33 @@
       json/decode+kw
       (select-keys [:id :upload_url])
       (set/rename-keys {:id :external_id})))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-cloud-migration!
+  "Insert a CloudMigration for the Store migration `row` and return it."
+  [row :- ::cloud-migration.schema/cloud-migration.create]
+  (cloud-migration.db/insert-cloud-migration! row))
+
+(mu/defn cancel-cloud-migrations!
+  "Cancel every CloudMigration that has not reached a terminal state."
+  []
+  (cloud-migration.db/cancel-cloud-migrations-not-in-states! terminal-states))
+
+(mu/defn set-cloud-migration-state!
+  "Set the state of the CloudMigration with `id`."
+  [id    :- ms/PositiveInt
+   state :- :keyword]
+  (cloud-migration.db/set-cloud-migration-state! id state))
+
+(mu/defn set-cloud-migration-progress!
+  "Set the state and progress of the CloudMigration with `id`, throwing when it has already reached a terminal state,
+  which is how any instance of a cluster cancels a migration."
+  [id       :- ms/PositiveInt
+   state    :- :keyword
+   progress :- :int]
+  (when (= 0 (cloud-migration.db/set-cloud-migration-progress-if-not-in-states! id terminal-states state progress))
+    (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -306,7 +328,7 @@
   #_(def ^:private part-size 6e6)
 
   ;; add new
-  (cloud-migration.db/insert-cloud-migration! (get-store-migration))
+  (create-cloud-migration! (get-store-migration))
 
   ;; get migration
   @(def mig (cloud-migration.db/latest-cloud-migration))
@@ -318,4 +340,4 @@
   (migrate! mig :retry? true)
 
   ;; cancel all
-  (cloud-migration.db/cancel-cloud-migrations-not-in-states! terminal-states))
+  (cancel-cloud-migrations!))

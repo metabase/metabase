@@ -11,7 +11,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.model-persistence.core :as model-persistence]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.queries.models.card :as queries.card]
    [metabase.replacement.core :as replacement]
    [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
@@ -191,6 +192,6 @@
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
      (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
-       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+       (persisted-info/mark-persisted-infos-for-pruning! [(:id persisted-info)] "off"))
      ;; phase 4: convert the model to a saved question
-     (replacement.db/update-card! card-id {:type :question}))))
+     (queries.card/update-cards! [{:id card-id :type :question}]))))

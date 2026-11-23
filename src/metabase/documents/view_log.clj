@@ -2,7 +2,7 @@
   "Integrates view logging events for documents"
   (:require
    [java-time.api :as t]
-   [metabase.activity-feed.core :as activity-feed]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.batch-processing.core :as grouper]
    [metabase.documents.db :as documents.db]
@@ -60,6 +60,6 @@
       ;; owning Exploration, and are hidden from search and collection listings. Skip recording
       ;; recent views for them so they don't crowd out real document views in the bucket cap.
       (when (nil? (documents.db/document-exploration-id object-id))
-        (activity-feed/update-users-recent-views! user-id :model/Document object-id :view))
+        (recent-views/update-users-recent-views! user-id :model/Document object-id :view))
       (catch Throwable e
         (log/warnf "Failed to process document view event. %s: %s" topic (ex-message e))))))

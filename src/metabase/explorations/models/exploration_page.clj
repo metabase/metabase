@@ -3,9 +3,13 @@
    (currently, those that share a card, dimension, and query_type)."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,6 +28,23 @@
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-pages! :- [:sequential (ms/InstanceOf :model/ExplorationPage)]
+  "Insert the ExplorationPage `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-page.create]]
+  (app-db/create-batched! :model/ExplorationPage rows {}))
+
+(mu/defn update-pages! :- :nil
+  "Apply `updates`, each the `:id` of an ExplorationPage with the columns to give it, in one transaction."
+  [updates :- [:sequential ::explorations.schema/exploration-page.update]]
+  (app-db/update-batched! :model/ExplorationPage updates {}))
+
+(mu/defn delete-pages! :- :nil
+  "Delete the ExplorationPages with `page-ids` in one transaction."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/ExplorationPage page-ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

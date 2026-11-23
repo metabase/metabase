@@ -43,6 +43,7 @@
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
@@ -502,34 +503,36 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (mt/with-temp [:model/Database db {:engine  :oracle
-                                           :name    "clobs-test-db"
-                                           :details (tx/dbdef->connection-details
-                                                     :oracle
-                                                     :server
-                                                     (tx/get-dataset-definition defs/test-data))}]
-          (mt/with-db db
-            (with-temp-user [username]
-              (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
-              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
-              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-              (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
-                (sync/sync-database! (mt/id) {:scan :schema}))
-              (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
-                    id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
-                (testing "The CLOB is synced as a text field"
-                  (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
-                    ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
-                    (is (= :type/OracleCLOB base-type))
-                    (is (isa? base-type :type/Text))))
-                (is (= [[1M "Hello"]
-                        [2M nil]]
-                       (mt/rows
-                        (qp/process-query
-                         {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (u/the-id table)
-                                     :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))))
+        (mt/with-model-cleanup [:model/Database :model/Secret]
+          (let [[db] (database/create-databases! [{:engine   :oracle
+                                                   :name     "clobs-test-db"
+                                                   :details  (tx/dbdef->connection-details
+                                                              :oracle
+                                                              :server
+                                                              (tx/get-dataset-definition defs/test-data))
+                                                   :settings {:database-source-dataset-name "test-data"}}])]
+            (mt/with-db db
+              (with-temp-user [username]
+                (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
+                (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
+                (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
+                (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
+                  (sync/sync-database! (mt/id) {:scan :schema}))
+                (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
+                      id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+                  (testing "The CLOB is synced as a text field"
+                    (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                      ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
+                      (is (= :type/OracleCLOB base-type))
+                      (is (isa? base-type :type/Text))))
+                  (is (= [[1M "Hello"]
+                          [2M nil]]
+                         (mt/rows
+                          (qp/process-query
+                           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (u/the-id table)
+                                       :order-by     [[:asc [:field (u/the-id id-field) nil]]]}})))))))))))))
 
 (deftest handle-slashes-test
   (mt/test-driver :oracle
@@ -615,7 +618,8 @@
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
         (let [ssl-details  (#'oracle.tx/connection-details)
-              orig-user-id api/*current-user-id*]
+              orig-user-id api/*current-user-id*
+              source-db-id (mt/id)]
           (testing "Oracle can-connect? with SSL connection"
             (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
@@ -636,29 +640,31 @@
                                               (dissoc :ssl-truststore-path))
                                           "SSL with Truststore Upload"]]]
                 (testing (str " " variant)
-                  (mt/with-temp [:model/Database database {:engine  :oracle,
-                                                           :name    (format (str variant " version of %d") (mt/id)),
-                                                           :details details}]
-                    (mt/with-db database
-                      (testing " can sync correctly"
-                        (sync/sync-database! (:id database) {:scan :schema})
-                        ;; should be four tables from test-data
-                        (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
-                        (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
-                                  ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
-                                  ;; actually the name of the database, and not some variation on the :name specified
-                                  ;; above, so that the table names resolve correctly in the generated query we can't
-                                  ;; simply call this new temp database "test-data", because then it will no longer be
-                                  ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
-                                  ;; database, and the logic within metabase.test.data.interface/metabase-instance would
-                                  ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
-                                  ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                                  tx/*database-name-override* "test-data"
-                                  ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
-                                  ;; results in errors because of column name formatting.
-                                  te/*test-drivers* (constantly #{:oracle})] ; codespell:ignore te
-                          (testing " and execute a query correctly"
-                            (qp-test.order-by-test/order-by-test))))))))))))
+                  (mt/with-model-cleanup [:model/Database :model/Secret]
+                    (let [[database] (database/create-databases! [{:engine   :oracle
+                                                                   :name     (format (str variant " version of %d") source-db-id)
+                                                                   :details  details
+                                                                   :settings {:database-source-dataset-name "test-data"}}])]
+                      (mt/with-db database
+                        (testing " can sync correctly"
+                          (sync/sync-database! (:id database) {:scan :schema})
+                          ;; should be four tables from test-data
+                          (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                          (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                                    ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
+                                    ;; actually the name of the database, and not some variation on the :name specified
+                                    ;; above, so that the table names resolve correctly in the generated query we can't
+                                    ;; simply call this new temp database "test-data", because then it will no longer be
+                                    ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
+                                    ;; database, and the logic within metabase.test.data.interface/metabase-instance would
+                                    ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
+                                    ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
+                                    tx/*database-name-override* "test-data"
+                                    ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
+                                    ;; results in errors because of column name formatting.
+                                    te/*test-drivers* (constantly #{:oracle})] ; codespell:ignore te
+                            (testing " and execute a query correctly"
+                              (qp-test.order-by-test/order-by-test)))))))))))))
       (log/warn (u/format-color 'yellow
                                 "Skipping %s because %s env var is not set"
                                 "oracle-connect-with-ssl-test"
