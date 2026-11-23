@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
@@ -170,3 +171,15 @@
         (let [result (provider/authenticate :provider/support-access-grant {:token token})]
           (is (false? (:success? result)))
           (is (= :expired-token (:error result))))))))
+
+(deftest support-user-expired-password-is-not-a-forced-reset-test
+  (testing "a support user's password expired by the end of their grant is not a forced reset"
+    (mt/with-temp [:model/User {user-id :id :as user}]
+      (auth-identity/set-password! user-id "support-pw-1!Abc" {:expires-at (t/minus (t/instant) (t/hours 1))})
+      (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                       :provider    "support-access-grant"
+                                       :credentials {:token_hash "not-a-real-hash"}})
+      (is (false? (auth-identity/password-reset-required? user-id)))
+      (is (= :authentication-expired
+             (:error (auth-identity/authenticate :provider/password {:email    (:email user)
+                                                                     :password "support-pw-1!Abc"})))))))
