@@ -6,10 +6,14 @@ import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCardsUsingModelEndpoint,
+  setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupExecuteActionEndpoint,
   setupModelActionsEndpoints,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import {
@@ -23,6 +27,7 @@ import {
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { Palette } from "metabase/palette/components/Palette";
 import { Outlet, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -33,6 +38,7 @@ import type {
   Collection,
   Database,
   ListDatabasesResponse,
+  SearchResult,
   Settings,
   Table,
   WritebackAction,
@@ -42,12 +48,14 @@ import {
   createMockQueryAction as _createMockQueryAction,
   createMockActionParameter,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockSearchResult,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
@@ -185,6 +193,8 @@ type SetupOpts = {
   settings?: Partial<Settings>;
   deferDatabaseList?: boolean;
   isAdmin?: boolean;
+  /** Mounts the command palette in the same store, with these search results */
+  paletteSearchResults?: SearchResult[];
 };
 
 async function setup({
@@ -196,6 +206,7 @@ async function setup({
   settings = {},
   deferDatabaseList = false,
   isAdmin = true,
+  paletteSearchResults,
 }: SetupOpts) {
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -248,6 +259,15 @@ async function setup({
   );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
+  const withPalette = paletteSearchResults != null;
+  if (withPalette) {
+    setupSearchEndpoints(paletteSearchResults);
+    setupRecentViewsEndpoints([]);
+    setupUserMetabotPermissionsEndpoint();
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: "root" })],
+    });
+  }
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
@@ -259,6 +279,7 @@ async function setup({
         <>
           <Outlet />
           <UndoListing />
+          {withPalette && <Palette />}
         </>
       }
     >
@@ -275,7 +296,12 @@ async function setup({
       </Route>
       <Route path="/question/:slug" element={null} />
     </Route>,
-    { withRouter: true, initialRoute: baseUrl, storeInitialState },
+    {
+      withRouter: true,
+      withKBar: withPalette,
+      initialRoute: baseUrl,
+      storeInitialState,
+    },
   );
 
   await waitForLoaderToBeRemoved();
@@ -801,6 +827,87 @@ describe("ModelActions", () => {
 
   describe("action list changes", () => {
     const modelCard = createStructuredModelCard();
+
+    it("keeps showing the actions after searching for one in the command palette (metabase#29378)", async () => {
+      const updateQuery = "UPDATE orders SET quantity = quantity";
+      const otherAction = createMockQueryAction({
+        id: 1,
+        name: "Ship orders",
+        model_id: modelCard.id,
+      });
+      const searchedAction = _createMockQueryAction({
+        id: 2,
+        name: "Update orders quantity",
+        description: "Set orders quantity to the same value",
+        model_id: modelCard.id,
+        can_write: true,
+        dataset_query: createMockNativeDatasetQuery({
+          database: TEST_DATABASE_ID,
+          native: createMockNativeQuery({ query: updateQuery }),
+        }),
+      });
+      await setupActions({
+        model: modelCard,
+        actions: [otherAction, searchedAction],
+        paletteSearchResults: [
+          createMockSearchResult({
+            id: otherAction.id,
+            model: "action",
+            name: otherAction.name,
+          }),
+          createMockSearchResult({
+            id: searchedAction.id,
+            model: "action",
+            name: searchedAction.name,
+          }),
+        ],
+      });
+
+      const getActionItem = (name: string) =>
+        within(screen.getByRole("list", { name: "Action list" })).getByRole(
+          "listitem",
+          { name },
+        );
+      expect(
+        await screen.findByRole("listitem", { name: searchedAction.name }),
+      ).toHaveTextContent(updateQuery);
+
+      await userEvent.keyboard("[ControlLeft>]k");
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search for anything/i),
+        searchedAction.name,
+      );
+      const palette = await screen.findByTestId("command-palette");
+      expect(
+        await within(palette).findByRole(
+          "option",
+          { name: searchedAction.name },
+          { timeout: 3000 },
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(palette).queryByRole("option", { name: otherAction.name }),
+      ).not.toBeInTheDocument();
+      const paletteSearches = fetchMock.callHistory
+        .calls("path:/api/search")
+        .map((call) => new URL(call.url).searchParams)
+        .filter((params) => params.get("context") === "command-palette");
+      expect(paletteSearches.map((params) => params.get("q"))).toEqual([
+        searchedAction.name,
+      ]);
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument(),
+      );
+
+      expect(
+        within(getActionItem(searchedAction.name)).getByText(updateQuery),
+      ).toBeInTheDocument();
+      expect(
+        within(getActionItem(otherAction.name)).getByText(TEST_QUERY),
+      ).toBeInTheDocument();
+    });
 
     it("lists the most recently created actions first", async () => {
       const actions = [
