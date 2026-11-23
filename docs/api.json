@@ -14930,6 +14930,9 @@
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
           },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
+          },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
           },
@@ -15044,6 +15047,9 @@
           },
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
+          },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
@@ -15189,6 +15195,9 @@
           },
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
+          },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
