@@ -257,6 +257,8 @@
                :when                (not (current node))]
            node))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (mu/defn replace-dependencies! :- [:maybe :int]
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with the ones specified in
   `dependencies-by-type`, returning the number inserted, or nil when none are."
@@ -281,6 +283,21 @@
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
+
+(mu/defn delete-dependencies-for-entities!
+  "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (dependencies.db/delete-dependencies-for-entities! entity-type entity-ids))
+
+(mu/defn delete-dependencies-for-dependents!
+  "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
+  number deleted."
+  [from-type :- ::dependencies.schema/entity-type
+   from-ids  :- [:sequential ms/PositiveInt]
+   to-type   :- ::dependencies.schema/entity-type
+   to-id     :- ms/PositiveInt]
+  (dependencies.db/delete-dependencies-for-dependents! from-type from-ids to-type to-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -152,10 +153,10 @@
              reactivated? (and (#{:active :error} match-status)
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
-         (security-center.db/record-advisory-evaluation! (:id advisory)
-                                                         (cond-> {:match_status match-status}
-                                                           reactivated? (assoc :acknowledged_at nil
-                                                                               :acknowledged_by nil))))))))
+         (security-advisory/record-advisory-evaluation! (:id advisory)
+                                                        (cond-> {:match_status match-status}
+                                                          reactivated? (assoc :acknowledged_at nil
+                                                                              :acknowledged_by nil))))))))
 
 (defn evaluate-all-advisories!
   "Re-evaluate every advisory, including acknowledged ones — an acked
@@ -169,5 +170,5 @@
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
-                 (security-center.db/record-advisory-evaluation! (:id advisory)
-                                                                 {:match_status :error}))))))))
+                 (security-advisory/record-advisory-evaluation! (:id advisory)
+                                                                {:match_status :error}))))))))

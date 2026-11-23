@@ -2621,6 +2621,7 @@
                                     :query    {:source-table (mt/id :products)}}}
                    :model/Card {metric-id :id, metric-eid :entity_id}
                    {:name "Multi-stage card metric" :type :metric
+                    :table_id (mt/id :products)
                     :dataset_query {:database (mt/id)
                                     :type     :query
                                     :query    {:source-query {:source-table (str "card__" question-id)}
@@ -2920,7 +2921,7 @@
     (mt/with-temp [:model/Card {c1-id :id}
                    {:name "C1" :type :question :dataset_query (table-query :orders)}
                    :model/Card {c2-id :id, c2-eid :entity_id}
-                   {:name "C2" :type :question :dataset_query (card-query c1-id)}
+                   {:name "C2" :type :question :table_id (mt/id :orders) :dataset_query (card-query c1-id)}
                    :model/Card {products-metric-eid :entity_id}
                    {:name "Product count" :type :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}
@@ -2928,7 +2929,7 @@
                    {:name "Order count" :type :metric
                     :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
-                   {:name "Two-stage count" :type :metric
+                   {:name "Two-stage count" :type :metric :table_id (mt/id :orders)
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
       (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)

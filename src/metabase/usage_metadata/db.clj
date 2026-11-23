@@ -60,7 +60,7 @@
 (mu/defn insert-segment-composite-rollups!
   "Insert `rows` into SourceSegmentCompositeDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-segment-composite-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-segment-composite-daily.update :id)]]
   (t2/insert! :model/SourceSegmentCompositeDaily rows))
 
 (mu/defn delete-metric-rollups-before!
@@ -76,7 +76,7 @@
 (mu/defn insert-metric-rollups!
   "Insert `rows` into SourceMetricDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-metric-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-metric-daily.update :id)]]
   (t2/insert! :model/SourceMetricDaily rows))
 
 (mu/defn delete-dimension-rollups-before!
@@ -92,7 +92,7 @@
 (mu/defn insert-dimension-rollups!
   "Insert `rows` into SourceDimensionDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-dimension-daily.update :id)]]
   (t2/insert! :model/SourceDimensionDaily rows))
 
 (mu/defn delete-dimension-profile-rollups-before!
@@ -108,7 +108,7 @@
 (mu/defn insert-dimension-profile-rollups!
   "Insert `rows` into SourceDimensionProfileDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-profile-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-dimension-profile-daily.update :id)]]
   (t2/insert! :model/SourceDimensionProfileDaily rows))
 
 (mu/defn field-names

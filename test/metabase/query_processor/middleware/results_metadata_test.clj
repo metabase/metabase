@@ -17,9 +17,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -621,8 +621,7 @@
                                  [:data :results_metadata :columns]))]
     (is (seq baseline))
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query reduced-query}]
-      ;; set-card-result-metadata! bypasses populate hooks, so the stale baseline sticks.
-      (query-processor.db/set-card-result-metadata! card-id baseline)
+      (queries.card/update-cards! [{:id card-id :result_metadata baseline :updated_at :updated_at}])
       (mt/as-admin
         (qp/process-query-for-card
          (t2/select-one :model/Card :id card-id) :api

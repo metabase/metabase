@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
@@ -14,10 +15,18 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.dependencies :as queries.dependencies]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform.model]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -47,6 +56,27 @@
                                   (apply upsert! entity-type entity-id args))]
       (thunk))
     @analyzed))
+
+(deftest ^:synchronized upsert-finding-keeps-one-row-per-entity-test
+  (mt/with-model-cleanup [:model/AnalysisFinding]
+    (let [entity-id 987654321
+          old       (java.time.OffsetDateTime/parse "2020-01-01T00:00:00Z")
+          stored    #(t2/select-one [:model/AnalysisFinding :result :analyzed_at] :entity_type :card :entity_id entity-id)]
+      (testing "the first call inserts the row with its time"
+        (dependencies.db/upsert-finding! :card entity-id true)
+        (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
+        (is (true? (:result (stored))))
+        (is (some? (:analyzed_at (stored)))))
+      (t2/update! :model/AnalysisFinding {:entity_type :card :entity_id entity-id} {:analyzed_at old})
+      (testing "the same result keeps the stored time"
+        (dependencies.db/upsert-finding! :card entity-id true)
+        (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
+        (is (= (.toInstant old) (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))))))
+      (testing "a different result is stored with a newer time"
+        (dependencies.db/upsert-finding! :card entity-id false)
+        (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
+        (is (false? (:result (stored))))
+        (is (.isAfter (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))) (.toInstant old)))))))
 
 (deftest ^:synchronized can-analyze-entity-batches-test
   (backfill-all-entity-analyses!)
@@ -182,6 +212,91 @@
                                           :entity_type :card :entity_id card-id)))
             (is (empty? (filter #{card-id} (analyzed-ids! run-jobs!))))))))))
 
+(defn- finding [card-id]
+  (t2/select-one :model/AnalysisFinding :entity_type :card :entity_id card-id))
+
+(deftest ^:synchronized unreadable-entity-fails-alone-in-analysis-batch-test
+  (testing "a card the analysis job cannot read gets a failed finding and one counted failure, and the rest of its batch
+           is analyzed"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {bad-id :id}  {:dataset_query (lib/query mp products)}
+                         :model/Card {good-id :id} {:dataset_query (lib/query mp products)}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [entities (mt/original-fn #'dependencies.db/entities)]
+              (mt/with-dynamic-fn-redefs [dependencies.db/entities
+                                          (fn [entity-type ids]
+                                            (when (and (= :card entity-type) (contains? ids bad-id))
+                                              (throw (ex-info "Unreadable row" {})))
+                                            (entities entity-type ids))]
+                (deps.analysis-finding/analyze-batch! 1000)))
+            (is (=? {:result false} (finding bad-id)))
+            (is (=? [{:error_type :validation-exception-error :error_detail "Unreadable row"}]
+                    (models.analysis-finding-error/errors-for-entity :card bad-id)))
+            (is (=? {:fail_count 1} (status :card bad-id)))
+            (is (=? {:result true} (finding good-id)))
+            (is (not (deps.test/analysis-finding-pending? :card good-id)))))))))
+
+(deftest ^:synchronized analysis-error-records-failed-finding-and-rethrows-test
+  (testing "an Error thrown by an entity's analysis records its failed finding and is rethrown"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [analysis (mt/original-fn #'queries.dependencies/analysis)]
+              (mt/with-dynamic-fn-redefs [queries.dependencies/analysis
+                                          (fn [card]
+                                            (if (= card-id (:id card))
+                                              (throw (AssertionError. "Analysis broke"))
+                                              (analysis card)))]
+                (is (thrown-with-msg? AssertionError #"Analysis broke"
+                                      (deps.analysis-finding/analyze-batch! 1000)))))
+            (is (=? {:result false} (finding card-id)))
+            (is (=? [{:error_type :validation-exception-error :error_detail "Analysis broke"}]
+                    (models.analysis-finding-error/errors-for-entity :card card-id)))))))))
+
+(deftest ^:synchronized failure-while-app-db-unreachable-test
+  (testing "an analysis failing while the app DB is unreachable fails the batch, recording and counting nothing"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {bad-id :id}  {:dataset_query (lib/query mp products)}
+                         :model/Card {good-id :id} {:dataset_query (lib/query mp products)}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [analysis         (mt/original-fn #'queries.dependencies/analysis)
+                  upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)
+                  fail-bad-check   (fn [card]
+                                     (when (= bad-id (:id card))
+                                       (throw (ex-info "connection lost" {})))
+                                     (analysis card))
+                  fail-bad-outside (fn [entity]
+                                     (when (= bad-id (:id entity))
+                                       (throw (ex-info "connection lost" {})))
+                                     (upsert-analysis! entity))]
+              (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
+                (testing "when checking the entity fails"
+                  (mt/with-dynamic-fn-redefs [queries.dependencies/analysis fail-bad-check]
+                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000)))))
+                (testing "when the analysis fails outside the check"
+                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000))))))
+              (is (nil? (finding bad-id)))
+              (is (empty? (models.analysis-finding-error/errors-for-entity :card bad-id)))
+              (is (=? {:fail_count 0 :terminal false} (status :card bad-id)))
+              (testing "and records and counts it while the app DB answers, without blocking the rest"
+                (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                  (deps.analysis-finding/analyze-batch! 1000))
+                (is (=? {:result false} (finding bad-id)))
+                (is (=? {:fail_count 1} (status :card bad-id)))
+                (is (=? {:result true} (finding good-id)))))))))))
+
 (deftest ^:synchronized analysis-re-analyzes-changed-entity-and-direct-dependents-test
   (testing "after a card's query changes, the analysis finding job re-analyzes it and the cards directly depending on
            it, and nothing for a question's rename"
@@ -198,9 +313,9 @@
                          :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
-            (t2/update! :model/Card :id gp-id {:name "Renamed"})
+            (card/update-cards! [{:id gp-id :name "Renamed"}])
             (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
-            (t2/update! :model/Card :id gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+            (card/update-cards! [{:id gp-id :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}])
             (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
 
@@ -215,7 +330,8 @@
                                               :to_entity_type :table :to_entity_id (mt/id :products)}]
             (run-jobs!)
             (is (not (deps.test/analysis-finding-pending? :card card-id)))
-            (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description "Changed"}
+            (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description nil}
+              (field/update-fields! [{:id (mt/id :products :title) :description "Changed"}])
               (is (deps.test/analysis-finding-pending? :table (mt/id :products)))
               (is (some #{card-id} (analyzed-ids! run-jobs!))))))))))
 
@@ -364,7 +480,7 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+           (card/update-cards! [{:id parent-card-id :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}])
            (assert-has-analyses
             {:card {parent-card-id nil}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFindingStatus
@@ -385,7 +501,7 @@
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
            (analyzed-by-job!)
-           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
+           (card/update-cards! [{:id parent-card-id :dataset_query (lib/query mp orders)}])
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:card parent-card-id] [:card child-card-id]}
                   (analyzed-among! [:card parent-card-id] [:card child-card-id])))))))))
@@ -399,9 +515,9 @@
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
                                            :to_entity_type :card :to_entity_id parent-id}]
          (analyzed-by-job!)
-         (t2/update! :model/Card :id parent-id {:dataset_query   (lib/native-query mp "select * from orders")
-                                                :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
-                                                                         [:data :results_metadata :columns])})
+         (card/update-cards! [{:id parent-id :dataset_query   (lib/native-query mp "select * from orders")
+                               :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
+                                                        [:data :results_metadata :columns])}])
          (deps.test/synchronously-run-dependency-job!)
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))
@@ -423,7 +539,7 @@
                                                                         :type   :table}}
                           :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
              (analyzed-by-job!)
-             (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
+             (card/update-cards! [{:id parent-card-id :dataset_query (lib/query mp orders)}])
              (is (= #{[:card parent-card-id] [:transform transform-id]}
                     (analyzed-among! [:card parent-card-id] [:transform transform-id] [:card other-card-id]))))))))))
 
@@ -438,9 +554,8 @@
                                                              :target {:schema "public"
                                                                       :name "sample"
                                                                       :type :table}}]
-           (is (= 1 (t2/update! :model/Transform :id transform-id
-                                {:source {:type :query
-                                          :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
+           (is (nil? (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                                     :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -454,8 +569,8 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (analyzed-by-job!)
-           (t2/update! :model/Transform :id transform-id {:source {:type :query
-                                                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
+           (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                           :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}])
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -468,9 +583,8 @@
                                                            :target {:schema "public"
                                                                     :name "sample"
                                                                     :type :table}}]
-         (is (= 1 (t2/update! :model/Transform :id transform-id
-                              {:source {:type :query
-                                        :query (lib/native-query mp "select * from orders")}}))))))))
+         (is (nil? (transform.model/update-transforms! [{:id transform-id :source {:type :query
+                                                                                   :query (lib/native-query mp "select * from orders")}}]))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -516,8 +630,7 @@
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
        (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-         (is (= 1 (t2/update! :model/Segment :id segment-id
-                              {:definition (price-segment-definition lib/<)}))))))))
+         (is (nil? (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}]))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!
@@ -529,7 +642,7 @@
                                                                                 (lib.metadata/segment (mt/metadata-provider)
                                                                                                       segment-id))}]
              (analyzed-by-job!)
-             (t2/update! :model/Segment :id segment-id {:definition (price-segment-definition lib/<)})
+             (segment/update-segments! [{:id segment-id :definition (price-segment-definition lib/<)}])
              (is (= #{[:segment segment-id] [:card card-id]}
                     (analyzed-among! [:segment segment-id] [:card card-id]))))))))))
 
@@ -545,8 +658,10 @@
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
            (analyzed-by-job!)
-           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
-             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
+           (mt/with-model-cleanup [:model/TableUserSettings]
+             (mt/with-temp-vals-in-db :model/Table products-id {:display_name "Products"}
+               (table-user-settings/create-table-user-settings! [{:table_id products-id :display_name "Products renamed"}])
+               (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id])))))))))))
 
 (deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -572,9 +687,11 @@
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
            (analyzed-by-job!)
-           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category)
-                                                      :display_name "Category renamed"}]
-             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
+           (mt/with-model-cleanup [:model/FieldUserSettings]
+             (mt/with-temp-vals-in-db :model/Field (mt/id :products :category) {:display_name "Category"}
+               (field-user-settings/create-field-user-settings! [{:field_id     (mt/id :products :category)
+                                                                  :display_name "Category renamed"}])
+               (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id])))))))))))
 
 (deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!

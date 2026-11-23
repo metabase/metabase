@@ -34,7 +34,7 @@ export function useQueryActionDraft({
     () => getQueryActionDefinition(query, getDefaultFormSettings(formSettings)),
     [query, formSettings],
   );
-  const isDirty = !Lib.areLegacyQueriesEqual(datasetQuery, initialDatasetQuery);
+  const isDirty = !Lib.areQueriesEqual(datasetQuery, initialDatasetQuery);
   const isValid = definition != null && Lib.canSave(query, "question");
 
   return { datasetQuery, definition, isDirty, isValid, setDatasetQuery };

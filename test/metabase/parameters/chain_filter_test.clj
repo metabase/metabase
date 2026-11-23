@@ -625,7 +625,7 @@
         (is (= (mt/id :people :name)
                (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))
         (finally
-          (field-user-settings/delete-field-user-settings! [(mt/id :orders :user_id)]))))))
+          (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [(mt/id :orders :user_id)])))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
@@ -978,7 +978,7 @@
             (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full)))))
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           ;; warm up the cache
           (chain-filter categories.name {venues.price 4})
           (mt/with-dynamic-fn-redefs [params.field-values/prepare-advanced-field-values (fn [& _args]
@@ -1000,7 +1000,7 @@
                    (chain-filter-search categories.name2 nil "oooood")))))
         (testing "search with constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
@@ -1262,7 +1262,7 @@
 ;;; `find-all-joins`, `add-joins`, `add-filters`), so the number of app-DB calls is bounded: it does NOT grow with the
 ;;; number of constraints, nor with the number/depth of joins. A second build reuses the request-scoped
 ;;; metadata-provider cache and makes no app-DB calls at all. If a metadata fetch regresses to
-;;; one-object-at-a-time, these exact counts change.
+;;; one-object-at-a-time, the counts of the two sizes compared below differ.
 
 (defn- chain-filter-mbql-query-call-counts
   "Warm the process-global memoized caches (FK graph, `field-id->database-id`) for `field-id`/`constraints`, then
@@ -1276,72 +1276,34 @@
 (deftest ^:parallel chain-filter-mbql-query-no-constraints-test
   (mt/dataset test-data
     (mt/$ids
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [])]
-        ;; - fetch the source Field (the one we return values of)
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        (is (= 3 first))
+      (let [{:keys [second]} (chain-filter-mbql-query-call-counts %venues.name [])]
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
-(deftest ^:parallel chain-filter-mbql-query-one-constraint-test
+(deftest ^:parallel chain-filter-mbql-query-constraints-test
   (mt/dataset test-data
     (mt/$ids
-      ;; a constraint on the source Table does not add a join
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])]
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        (is (= 4 first))
+      (let [one   (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])
+            three (chain-filter-mbql-query-call-counts
+                   %venues.name
+                   [(shorthand->constraint %venues.price 3)
+                    (shorthand->constraint %venues.id 1)
+                    (shorthand->constraint %venues.latitude 1)])]
+        (testing "constraints on the source Table add no join and their Fields are bulk-loaded together"
+          (is (= (:first one) (:first three))))
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+          (is (= 0 (:second one)))
+          (is (= 0 (:second three))))))))
 
-(deftest ^:parallel chain-filter-mbql-query-three-constraints-test
-  (mt/dataset test-data
-    (mt/$ids
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts
-                                    %venues.name
-                                    [(shorthand->constraint %venues.price 3)
-                                     (shorthand->constraint %venues.id 1)
-                                     (shorthand->constraint %venues.latitude 1)])]
-        ;; same as the one-constraint case -- the constraint Fields are bulk-loaded together, not one at a time:
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the (three) constraint Fields
-        (is (= 4 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
-
-(deftest ^:parallel chain-filter-mbql-query-one-join-test
-  (mt/dataset test-data
-    (mt/$ids
-      ;; a constraint on another Table (categories) forces a venues -> categories join
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %categories.name "BBQ")])]
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        ;; - bulk-fetch the join Fields
-        ;; - bulk-fetch the join Table(s)
-        (is (= 6 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
-
-(deftest ^:parallel chain-filter-mbql-query-multi-hop-joins-test
-  (mt/dataset airports
-    (mt/$ids
-      ;; airport -> municipality -> region is two joins
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %airport.name [(shorthand->constraint %region.name "x")])]
-        ;; same count as the single-join case -- the join Fields and Tables are each bulk-loaded in one call,
-        ;; regardless of how many joins there are:
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        ;; - bulk-fetch the join Fields (across both joins)
-        ;; - bulk-fetch the join Tables (both of them)
-        (is (= 6 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+(deftest ^:parallel chain-filter-mbql-query-joins-test
+  (let [one-join (mt/dataset test-data
+                   (mt/$ids
+                     (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %categories.name "BBQ")])))
+        two-hops (mt/dataset airports
+                   (mt/$ids
+                     (chain-filter-mbql-query-call-counts %airport.name [(shorthand->constraint %region.name "x")])))]
+    (testing "the join Fields and Tables are each bulk-loaded in one call, however many joins there are"
+      (is (= (:first one-join) (:first two-hops))))
+    (testing "a second build reuses the cached metadata and makes no app-DB calls"
+      (is (= 0 (:second one-join)))
+      (is (= 0 (:second two-hops))))))

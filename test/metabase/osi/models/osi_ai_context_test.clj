@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.osi.schema :as osi.schema]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
@@ -42,7 +43,7 @@
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context "Use for revenue questions.")]
       (is (= {:instructions "Use for revenue questions."} (:ai_context (by-key entity)))))))
 
-(deftest hooks-nudge-a-targeted-reconcile-test
+(deftest writes-request-targeted-reconcile-test
   (testing "insert, update and delete each nudge the entity's reconcile once — deferred until the txn commits"
     (let [nudges (atom [])
           ref    ["table" 42]]
@@ -52,17 +53,17 @@
         (try
           (testing "insert"
             (t2/with-transaction [_conn]
-              (t2/insert! :model/OsiAiContext (assoc entity :ai_context ai-context))
+              (osi-ai-context/upsert-osi-ai-context! "table" 42 ai-context)
               (is (= [] @nudges) "not nudged while the transaction is still open"))
             (is (= [ref] @nudges) "nudged once, after commit"))
           (testing "update"
             (t2/with-transaction [_conn]
-              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:ai_context {:instructions "changed"}})
+              (osi-ai-context/upsert-osi-ai-context! "table" 42 {:instructions "changed"})
               (is (= [ref] @nudges) "still only the insert's nudge while open"))
             (is (= [ref ref] @nudges) "nudged again, after commit"))
           (testing "delete"
             (t2/with-transaction [_conn]
-              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)
+              (osi-ai-context/delete-osi-ai-context! "table" 42)
               (is (= [ref ref] @nudges) "not nudged while open"))
             (is (= [ref ref ref] @nudges) "nudged again, after commit"))
           (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))))
@@ -75,7 +76,7 @@
                                                                 nil)]
         (u/ignore-exceptions
           (t2/with-transaction [_conn]
-            (t2/insert! :model/OsiAiContext (assoc entity :entity_local_id 43 :ai_context ai-context))
+            (osi-ai-context/upsert-osi-ai-context! "table" 43 ai-context)
             (throw (ex-info "roll back" {}))))
         (is (= [] @nudges))
         (is (nil? (by-key (assoc entity :entity_local_id 43))))))))

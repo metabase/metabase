@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- nested
@@ -124,24 +123,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn delete-field-values!
-  "Delete the FieldValues with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/FieldValues :id id))
-
 (mu/defn advanced-field-values
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
-
-(mu/defn find-or-insert-advanced-field-values!
-  "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
-  `insert-fn` if none exists yet."
-  [field-id  :- ::lib.schema.id/field
-   hash-key  :- :string
-   insert-fn :- fn?]
-  (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
 (mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."

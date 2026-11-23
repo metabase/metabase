@@ -180,6 +180,13 @@
   (classloader/require 'metabase.cmd.mcp-tools-dox)
   ((resolve 'metabase.cmd.mcp-tools-dox/generate-dox!)))
 
+(defn ^:command driver-features-documentation
+  "Generates `docs/databases/feature-support.md`, which shows which officially supported database supports which
+  feature. Needs the driver modules on the classpath: `clojure -M:ee:drivers:doc driver-features-documentation`."
+  []
+  (classloader/require 'metabase.cmd.driver-feature-dox)
+  ((resolve 'metabase.cmd.driver-feature-dox/generate-dox!)))
+
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."
@@ -190,11 +197,13 @@
 (def ^:private doc-generators
   "The commands that `all-documentation` runs, in order.
   Commands that load only their own namespaces run first. The two settings generators load every Metabase namespace,
-  so they run last and cannot change the output of the others."
+  so they run last and cannot change the output of the others. `driver-features-documentation` needs the driver
+  modules on the classpath, so run `all-documentation` with the `:drivers` alias."
   [#'mcp-tools-documentation
    #'ai-providers-documentation
    #'api-documentation
    #'command-documentation
+   #'driver-features-documentation
    #'config-template
    #'environment-variables-documentation])
 

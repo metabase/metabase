@@ -9,8 +9,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -23,20 +25,21 @@
 
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Card `card-id` with the inputs, expectations and `now` of `definition` unless it could run."
-  [card-id    :- ms/PositiveInt
+  [card-id    :- ::lib.schema.id/card
    definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) definition)))
+  (refusing #(data-testing.models.card-test/validate-test card-id definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
-  "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
-  access.
+  "List the card tests the caller can read, with their newest runs, optionally only those of one card. The tests of
+  archived cards are left out unless `include-archived` is true. Needs Data Studio access.
 
   A card test, with its inputs and expectations, is readable by every user who can read its card."
   [_route-params
-   {:keys [card-id]} :- [:map {:closed true}
-                         [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [card-id include-archived]} :- [:map {:closed true}
+                                          [:card-id          {:optional true} [:maybe ms/PositiveInt]]
+                                          [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
-  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id}))
+  (-> (mi/readable (data-testing.db/card-tests {:card-id card-id :include-archived? include-archived}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
@@ -47,6 +50,14 @@
                     [:id ms/PositiveInt]]]
   (-> (api/read-check :model/CardTest id)
       (t2/hydrate :last_run)))
+
+(mr/def ::create-request
+  "What a client sends to create a test."
+  (data-testing.schema/test-create :card_id ::lib.schema.id/card))
+
+(mr/def ::update-request
+  "What a client sends to update a test. Omitted fields are left unchanged."
+  (data-testing.schema/test-update :card_id ::lib.schema.id/card))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/card-test
   "Create a card test. Its expectations read the result of the card's query without remapped columns and without the
@@ -61,16 +72,20 @@
   whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that
   the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
-  declared name that differs from the table's only in case does not match it."
+  declared name that differs from the table's only in case does not match it.
+
+  A test of an archived card is refused.
+
+  A test of a card with no query is refused as one whose query cannot be compiled."
   [_route-params
    _query-params
-   {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
+   {:keys [card_id] :as body} :- ::create-request]
   (api/create-check :model/CardTest body)
   (validate-test! card_id (data-testing.runner/test-definition body))
-  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.card-test/create-card-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
-  "Update a card test.
+  "Update a card test. The update is refused when it leaves the test on an archived card.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
@@ -78,14 +93,12 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/card-test.update]
+   body :- ::update-request]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (when (some #(contains? body %) (cons :card_id data-testing.runner/definition-keys))
-      (let [{:keys [card_id] :as merged} (merge card-test body)]
-        (validate-test! card_id (data-testing.runner/test-definition merged))))
+    (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-test! id body)))
+      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -93,7 +106,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-test! id)
+  (data-testing.models.card-test/delete-card-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
@@ -109,12 +122,17 @@
 
   Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
   `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
-  carries none."
+  carries none.
+
+  A run of a test whose card is archived is refused. A run of a test of a card with no query is refused as one whose
+  query cannot be compiled."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/check-403 (data-testing.models.card-test/can-run? card-test))
-    (refusing #(data-testing.runner/run-test! :card (data-testing.db/card (:card_id card-test)) card-test))))
+    (refusing #(data-testing.runner/run-test! :card
+                                              (data-testing.models.card-test/testable-card (:card_id card-test))
+                                              card-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/card-test` routes."

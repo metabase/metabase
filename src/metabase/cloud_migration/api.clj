@@ -28,7 +28,7 @@
 
     :else
     (try
-      (let [cloud-migration (cloud-migration.db/insert-cloud-migration! (cloud-migration/get-store-migration))]
+      (let [cloud-migration (cloud-migration/create-cloud-migration! (cloud-migration/get-store-migration))]
         (future (cloud-migration/migrate! cloud-migration))
         cloud-migration)
       (catch Exception e
@@ -56,4 +56,4 @@
   []
   (api/check-superuser)
   (cloud-migration.settings/read-only-mode! false)
-  (cloud-migration.db/cancel-cloud-migrations-not-in-states! cloud-migration/terminal-states))
+  (cloud-migration/cancel-cloud-migrations!))

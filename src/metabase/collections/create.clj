@@ -6,7 +6,6 @@
   (:require
    [malli.util]
    [metabase.api.common :as api]
-   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.events.core :as events]
@@ -56,8 +55,8 @@
   "Creates a Collection after its create check and publishes its touch event."
   [coll-data :- CreateCollectionArguments]
   (api/create-check :model/Collection coll-data)
-  (u/prog1 (collections.db/insert-collection!
-            (->> (-> (apply-defaults-to-collection coll-data)
-                     write-check-authority-level)
-                 (lib/normalize ::collections.schema/collection.update)))
+  (u/prog1 (first (collection/create-collections!
+                   [(->> (-> (apply-defaults-to-collection coll-data)
+                             write-check-authority-level)
+                         (lib/normalize ::collections.schema/collection.create))]))
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))

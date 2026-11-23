@@ -56,17 +56,23 @@ const DEFAULT_BOUNDING_CLIENT_RECT: DOMRect = {
  * otherwise-undefined `top`/`left`.
  */
 export function mockGetBoundingClientRect(rect: Partial<DOMRect> = {}) {
-  const original = HTMLElement.prototype.getBoundingClientRect;
-
   beforeEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = jest.fn(() => ({
-      ...DEFAULT_BOUNDING_CLIENT_RECT,
-      ...rect,
-    }));
+    jest
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(() => ({
+        ...DEFAULT_BOUNDING_CLIENT_RECT,
+        ...rect,
+      }));
   });
 
+  // `mockRestore` removes the own property that the spy added, so a later
+  // spy on `Element.prototype` applies to HTML elements again. The spy is
+  // already gone when the test called `jest.restoreAllMocks`.
   afterEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = original;
+    const mock = HTMLElement.prototype.getBoundingClientRect;
+    if (jest.isMockFunction(mock)) {
+      mock.mockRestore();
+    }
   });
 }
 

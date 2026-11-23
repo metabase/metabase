@@ -29,11 +29,6 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ModelIndex :id [:not-in ids]))
 
-(mu/defn delete-model-index!
-  "Delete the ModelIndex with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/ModelIndex :id id))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -77,8 +72,3 @@
   "Insert the ModelIndexValue `rows`, returning the number inserted."
   [rows :- [:sequential (mut/select-keys ::indexed-entities.schema/model-index-value.update [:model_index_id :model_pk :name])]]
   (t2/insert! :model/ModelIndexValue rows))
-
-(mu/defn insert-model-index!
-  "Insert the ModelIndex `row` and return the inserted instance."
-  [row :- ::indexed-entities.schema/model-index.update]
-  (t2/insert-returning-instance! :model/ModelIndex [row]))

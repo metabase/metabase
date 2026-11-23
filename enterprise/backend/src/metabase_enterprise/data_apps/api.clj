@@ -3,7 +3,6 @@
   their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
@@ -22,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -122,7 +122,7 @@
 (defn- kebab-case-keys
   "`x` with the keys of every map in it kebab-cased, as the SDK's camelCase keys are in Lib's test query spec."
   [x]
-  (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
+  (match/replace-all x #'map? (update-keys &match (comp keyword u/->kebab-case-en name))))
 
 (defn- definitions-schema
   "Request schema for definitions by export name."
@@ -206,9 +206,8 @@
   (api/create-check :model/DataApp body)
   (api/check (not (data-apps.db/data-app-exists? (:slug body)))
              [409 (tru "A data app with this slug already exists.")])
-  (let [app (data-apps.db/data-app
-             (data-apps.db/insert-data-app-returning-pk! (merge create-defaults {:name (:slug body)} body)))]
-    (data-app-response app)))
+  (let [{:keys [id]} (first (data-app/create-data-apps! [(merge create-defaults {:name (:slug body)} body)]))]
+    (data-app-response (data-apps.db/data-app id))))
 
 (defn- update-app!
   "Apply `changes` to the data app with `slug` and return the updated app."
@@ -216,7 +215,7 @@
   (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
     (api/update-check app changes)
     (when (seq changes)
-      (data-apps.db/update-data-app! id changes))
+      (data-app/update-data-apps! [(assoc changes :id id)]))
     (let [app (data-apps.db/data-app id)]
       (data-app-response app))))
 
@@ -240,7 +239,7 @@
   "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/delete-data-app! (:id app)))
+    (data-app/delete-data-apps! [(:id app)]))
   nil)
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles

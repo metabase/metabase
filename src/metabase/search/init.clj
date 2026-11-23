@@ -6,6 +6,7 @@
    [metabase.search.events]
    [metabase.search.in-place.engine]
    [metabase.search.in-place.legacy]
+   [metabase.search.models.search-index-metadata]
    [metabase.search.semantic.core]
    [metabase.search.settings]
    [metabase.search.task.search-index]))

@@ -96,7 +96,7 @@
           failed   (tasks/run-now! {:type "export" :branch "main"} (fn [_report] {:status :error :message "Failed"}))]
       (t2/update! :model/RemoteSyncTask :id [:in [(:id old-sync) (:id failed)]] {:started_at #t "2020-01-01T00:00Z"})
       (testing "cleanup deletes old tasks but the one of the last sync"
-        (remote-sync.db/delete-tasks-started-before! #t "2021-01-01T00:00Z" (:id (remote-sync.db/last-synced-task)))
+        (remote-sync.db/delete-remote-sync-tasks-for-cleanup! #t "2021-01-01T00:00Z" (:id (remote-sync.db/last-synced-task)))
         (is (t2/exists? :model/RemoteSyncTask :id (:id old-sync)))
         (is (not (t2/exists? :model/RemoteSyncTask :id (:id failed))))
         (is (= "v1" (tasks/base-version)))))))

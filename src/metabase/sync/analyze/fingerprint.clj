@@ -5,7 +5,6 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
@@ -29,12 +28,6 @@
   {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})
 
-(mu/defn- save-fingerprint!
-  [field       :- i/FieldInstance
-   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
-  (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (sync.db/update-field! (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
-
 (mu/defn- mark-fingerprinting-failed!
   "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
   fingerprinting fails for a non-transient reason, so that the Fields are not re-selected by [[fields-to-fingerprint]]
@@ -42,7 +35,25 @@
   left untouched so they are retried."
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (when-let [ids (seq (map u/the-id fields))]
-    (sync.db/set-fields-fingerprint-version! ids i/*latest-fingerprint-version*)))
+    (field/update-fields! (for [id (vec ids)] {:id id :fingerprint_version i/*latest-fingerprint-version*}) {:fields fields})))
+
+(defn- fingerprint-outcome
+  "What fingerprinting a Field gave, `fingerprint` being a Throwable when it failed: the stat it counts under."
+  [fingerprint]
+  (cond
+    (instance? Throwable fingerprint)                  :failed-fingerprints
+    (some-> fingerprint :global :distinct-count zero?) :no-data-fingerprints
+    :else                                              :updated-fingerprints))
+
+(defn- fingerprint-row
+  "The update row of `field` for its `fingerprint`: a failure only advances its fingerprint version, a Field with no data
+  gets none."
+  [field fingerprint]
+  (case (fingerprint-outcome fingerprint)
+    :failed-fingerprints  {:id (:id field) :fingerprint_version i/*latest-fingerprint-version*}
+    :no-data-fingerprints nil
+    :updated-fingerprints (do (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
+                              (assoc (incomplete-analysis-kvs) :id (:id field) :fingerprint fingerprint))))
 
 (mr/def ::FingerprintStats
   [:map {:closed true}
@@ -59,6 +70,20 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+(mu/defn- save-fingerprints!
+  "Write `rows`, the update rows of the fingerprints of `fields`, in one update."
+  [rows   :- [:sequential :map]
+   fields :- [:sequential i/FieldInstance]]
+  (when (seq rows)
+    (field/update-fields! rows {:fields (vec fields)})))
+
+(defn- fingerprint-stats
+  "The stats of `fingerprints`, those of the Fields of one sample."
+  [fingerprints]
+  (reduce (fn [stats fingerprint] (update stats (fingerprint-outcome fingerprint) inc))
+          (empty-stats-map (count fingerprints))
+          fingerprints))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *truncation-size*
   "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
@@ -73,22 +98,8 @@
               (redux/post-complete
                (analyze/fingerprint-fields fields)
                (fn [fingerprints]
-                 (reduce (fn [count-info [field fingerprint]]
-                           (cond
-                             (instance? Throwable fingerprint)
-                             (do
-                               (mark-fingerprinting-failed! [field])
-                               (update count-info :failed-fingerprints inc))
-
-                             (some-> fingerprint :global :distinct-count zero?)
-                             (update count-info :no-data-fingerprints inc)
-
-                             :else
-                             (do
-                               (save-fingerprint! field fingerprint)
-                               (update count-info :updated-fingerprints inc))))
-                         (empty-stats-map (count fingerprints))
-                         (map vector fields fingerprints)))))
+                 (save-fingerprints! (into [] (keep identity) (map fingerprint-row fields fingerprints)) (vec fields))
+                 (fingerprint-stats fingerprints))))
         driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]
     (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
