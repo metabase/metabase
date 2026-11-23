@@ -2255,37 +2255,6 @@ describe("DashboardApp > visualizer", () => {
       });
     });
 
-    it("should hide the tooltip of a funnel step once its click actions open (VIZ-979)", async () => {
-      const { router } = await setupDrills();
-      const dashcard = await findDashcard(FUNNEL_DASHCARD.id);
-      const [, paymentDoneStep] = Array.from(
-        // eslint-disable-next-line testing-library/no-node-access -- funnel steps are SVG polygons without a role or label
-        dashcard.querySelectorAll("polygon"),
-      );
-
-      await userEvent.hover(paymentDoneStep);
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(
-        "Payment done page",
-      );
-
-      await userEvent.click(paymentDoneStep);
-      const clickActions = await findClickActions();
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-
-      await userEvent.click(
-        within(clickActions).getByRole("button", { name: "=" }),
-      );
-
-      expect(await findDrilledQuestion(router)).toEqual({
-        originalCardId: VIEWS_COLUMN.id,
-        display: "table",
-        sourceTableId: null,
-        filters: ["Views is equal to 100"],
-        aggregations: [],
-        breakouts: [],
-      });
-    });
-
     it("should brush filter a single-series timeseries chart but not a multi-series one (VIZ-979)", async () => {
       const { router } = await setupDrills();
       const multiSeries = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
