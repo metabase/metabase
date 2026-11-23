@@ -30,6 +30,7 @@ import {
   TEST_STRUCTURED_CARD,
   setup,
   triggerVisualizationQueryChange,
+  waitForQueryToStart,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 

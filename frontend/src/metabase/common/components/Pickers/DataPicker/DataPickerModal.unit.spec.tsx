@@ -641,9 +641,8 @@ describe("DataPickerModal", () => {
 
       await userEvent.click(await findSearchResult("Orders Model"));
       expect(onChange).toHaveBeenCalledTimes(1);
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, model: "dataset" }),
-      );
+      // On 65, the picker reports a picked model as its virtual table id
+      expect(onChange).toHaveBeenCalledWith("card__1");
     });
 
     it("does not list models when nested queries are disabled", async () => {

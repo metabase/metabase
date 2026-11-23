@@ -30,7 +30,6 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardType,
@@ -1047,7 +1046,11 @@ describe("QueryBuilder > models", () => {
       await userEvent.click(
         within(menu).getByRole("menuitem", { name: /Turn into a model/ }),
       );
-      const modal = await screen.findByRole("dialog", { name: "Models" });
+      // On 65, the modal has no accessible name
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByRole("heading", { name: "Models" }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(modal).getByRole("button", { name: "Turn this into a model" }),
       );
@@ -1158,12 +1161,13 @@ describe("QueryBuilder > models", () => {
       return createMockCard({
         id: 4,
         name: "Native question",
-        query_type: "native",
         type: opts.type ?? "question",
         dataset_query: Lib.toJsQuery(
           Lib.withTemplateTags(
             Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: opts.query }),
-            opts.templateTags ?? [],
+            Object.fromEntries(
+              (opts.templateTags ?? []).map((tag) => [tag.name, tag]),
+            ),
           ),
         ),
       });
@@ -1177,7 +1181,7 @@ describe("QueryBuilder > models", () => {
             name: "ID",
             "display-name": "ID",
             type: "dimension",
-            "field-id": PRODUCTS.ID,
+            dimension: ["field", PRODUCTS.ID, null],
             "widget-type": "category",
           }),
         ],
@@ -1193,13 +1197,19 @@ describe("QueryBuilder > models", () => {
       await userEvent.click(
         within(menu).getByRole("menuitem", { name: /Turn into a model/ }),
       );
-      const modal = await screen.findByRole("dialog", {
-        name: "Variables in models aren't supported yet",
-      });
+      // On 65, the modal has no accessible name
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByRole("heading", {
+          name: "Variables in models aren't supported yet",
+        }),
+      ).toBeInTheDocument();
       expect(
         within(modal).queryByRole("button", { name: "Turn this into a model" }),
       ).not.toBeInTheDocument();
-      await userEvent.click(within(modal).getByLabelText("Close"));
+      await userEvent.click(
+        within(modal).getByRole("img", { name: "close icon" }),
+      );
       await waitFor(() => expect(modal).not.toBeInTheDocument());
 
       await expectToBeQuestion();
@@ -1237,7 +1247,11 @@ describe("QueryBuilder > models", () => {
       await userEvent.click(
         within(menu).getByRole("menuitem", { name: /Turn into a model/ }),
       );
-      const modal = await screen.findByRole("dialog", { name: "Models" });
+      // On 65, the modal has no accessible name
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByRole("heading", { name: "Models" }),
+      ).toBeInTheDocument();
       await userEvent.click(
         within(modal).getByRole("button", { name: "Turn this into a model" }),
       );
@@ -1341,7 +1355,7 @@ describe("QueryBuilder > questions based on a model", () => {
     name: "Orders Model",
     type: "model",
     display: "table",
-    result_metadata: MODEL_COLUMNS,
+    result_metadata: toResultMetadata(MODEL_COLUMNS),
     dataset_query: Lib.toJsQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [{ source: { type: "table", id: ORDERS_ID } }],
@@ -1590,8 +1604,8 @@ describe("QueryBuilder > questions based on a model", () => {
     // Registered before `setup` so the source model is part of the metadata.
     fetchMock.get(
       `path:/api/card/${question.id}/query_metadata`,
-      createMockCardQueryMetadata({
-        databases: [TEST_DB],
+      // The response also carries the source model, which the type leaves out.
+      Object.assign(createMockCardQueryMetadata({ databases: [TEST_DB] }), {
         cards: [archivedModel],
       }),
     );
@@ -1628,8 +1642,8 @@ describe("QueryBuilder > questions based on a model", () => {
     );
     fetchMock.post(
       "path:/api/dataset/query_metadata",
-      createMockCardQueryMetadata({
-        databases: [TEST_DB],
+      // The response also carries the source model, which the type leaves out.
+      Object.assign(createMockCardQueryMetadata({ databases: [TEST_DB] }), {
         cards: [ORDERS_MODEL],
       }),
     );
@@ -1702,8 +1716,7 @@ describe("QueryBuilder > questions based on a model", () => {
       name: "Product Model",
       type: "model",
       display: "table",
-      query_type: "native",
-      result_metadata: nativeColumns,
+      result_metadata: toResultMetadata(nativeColumns),
       dataset_query: Lib.toJsQuery(
         Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: "SELECT * FROM PRODUCTS",
