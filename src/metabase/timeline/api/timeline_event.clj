@@ -64,7 +64,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (api/read-check :model/TimelineEvent (eid-translation/->id-or-404 :model/TimelineEvent id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -74,7 +74,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    {:keys [timestamp]
     :as   timeline-event-updates} :- [:map {:closed true}
@@ -104,7 +104,7 @@
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[TimelineEvent]]. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                             [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/TimelineEvent id-or-entity-id)]
     (api/write-check :model/TimelineEvent id)
     (timeline-event/delete-timeline-events! [id])

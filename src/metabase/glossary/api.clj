@@ -42,7 +42,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry. `id` is a numeric id or an entity id."
-  [{id-or-entity-id :id} :- [:map {:closed true} [:id [:or ms/PositiveInt ms/NanoIdString]]]
+  [{id-or-entity-id :id} :- [:map {:closed true} [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:term ::glossary.schema/glossary.term]
@@ -54,7 +54,7 @@
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry. `id` is a numeric id or an entity id."
-  [{id-or-entity-id :id} :- [:map {:closed true} [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  [{id-or-entity-id :id} :- [:map {:closed true} [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/Glossary id-or-entity-id)]
     (api/write-check (glossary.db/glossary-entry id))
     (glossary/delete-glossaries! [id])

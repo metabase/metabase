@@ -135,7 +135,8 @@
       (update-translation-count! [status])
       (if-not (= :ok status)
         (throw (ex-info "problem looking up id from entity_id"
-                        {:api-name-or-model api-name-or-model
+                        {::lookup-failed?   true
+                         :api-name-or-model api-name-or-model
                          :model model
                          :id id
                          :status status}))
@@ -154,8 +155,8 @@
   [api-name-or-model :- ApiNameOrModel id :- [:or #_id :int #_entity-id :string]]
   (try
     (->id api-name-or-model id)
-    (catch Exception e
-      (if (and (= (:status (ex-data e)) :not-found)
-               (= (.getMessage e) "problem looking up id from entity_id"))
-        (throw (ex-info "Not found." {:status-code 404}))
-        (throw e)))))
+    (catch clojure.lang.ExceptionInfo e
+      (let [{::keys [lookup-failed?] :keys [status]} (ex-data e)]
+        (if (and lookup-failed? (= :not-found status))
+          (throw (ex-info "Not found." {:status-code 404}))
+          (throw e))))))

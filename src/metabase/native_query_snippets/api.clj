@@ -51,7 +51,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (get-native-query-snippet (eid-translation/->id-or-404 :model/NativeQuerySnippet id)))
 
 (defn- check-snippet-name-is-unique [snippet-name]
@@ -104,7 +104,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:archived      {:optional true} [:maybe :boolean]]

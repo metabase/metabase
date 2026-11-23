@@ -51,16 +51,16 @@
   "Fetch an Action. `action-id` is a numeric id or an entity id."
   {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (-> (actions/select-action :id (eid-translation/->id-or-404 :action action-id) :archived false)
+                           [:action-id ms/IdOrEntityId]]]
+  (-> (actions/select-action :id (eid-translation/->id-or-404 :model/Action action-id) :archived false)
       (t2/hydrate :creator :can_write)
       api/read-check))
 
 (api.macros/defendpoint :delete "/:action-id" :- ::api/generic-204-no-content
   "Delete an Action. `action-id` is a numeric id or an entity id."
   [{id-or-entity-id :action-id} :- [:map {:closed true}
-                                    [:action-id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [action-id (eid-translation/->id-or-404 :action id-or-entity-id)
+                                    [:action-id ms/IdOrEntityId]]]
+  (let [action-id (eid-translation/->id-or-404 :model/Action id-or-entity-id)
         action    (api/write-check :model/Action action-id)]
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
@@ -98,7 +98,7 @@
                              [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    action :- ::actions.schema/action.update-request]
-  (let [id              (eid-translation/->id-or-404 :action id-or-entity-id)
+  (let [id              (eid-translation/->id-or-404 :model/Action id-or-entity-id)
         existing-action (api/write-check :model/Action id)
         action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
@@ -225,7 +225,7 @@
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
    request]
-  (let [resolved-id (eid-translation/->id-or-404 :action id)
+  (let [resolved-id (eid-translation/->id-or-404 :model/Action id)
         _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (analytics/track-event! :snowplow/action

@@ -75,7 +75,7 @@
   "Fetch the `Timeline` with `id`, a numeric id or an entity id. Include `include=events` to unarchived events
   included on the timeline. Add `archived=true` to return all events on the timeline, both archived and unarchived."
   [{:keys [id]}                         :- [:map {:closed true}
-                                            [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                                            [:id ms/IdOrEntityId]]
    {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
                                             [:archived {:default false}  ms/BooleanValue]
@@ -102,7 +102,7 @@
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    timeline-updates :- [:map {:closed true}
                         [:name          {:optional true} [:maybe ::timeline.schema/name]]
@@ -123,7 +123,7 @@
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[Timeline]]. Will cascade delete its events as well. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                             [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/Timeline id-or-entity-id)]
     (api/write-check :model/Timeline id)
     (timeline/delete-timelines! [id])

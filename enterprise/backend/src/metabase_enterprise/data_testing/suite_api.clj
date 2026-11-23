@@ -54,7 +54,7 @@
   test, or `missing` when this instance lacks the test; only a `readable` member has `test_id` and `name`. `id` is a
   numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (suite-response (eid-translation/->id-or-404 :model/TestSuite id)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/test-suite.response
@@ -74,7 +74,7 @@
   exception: a current member that the caller cannot read, or whose test is missing, is kept when named by `test_type`
   and `test_entity_id`. A test can be in a suite at most once. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- UpdateTestSuiteRequest]
   (let [id (eid-translation/->id-or-404 :model/TestSuite id-or-entity-id)]
@@ -91,7 +91,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a test suite. The tests in it are not deleted. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                             [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/TestSuite id-or-entity-id)]
     (api/write-check (data-testing.db/test-suite id))
     (test-suite/delete-test-suites! [id])

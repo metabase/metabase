@@ -190,7 +190,7 @@
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (let [transform (transforms.core/get-transform (eid-translation/->id-or-404 :model/Transform id))]
     (-> transform
         (u/update-some :last_run transforms-base.u/present-run)
@@ -293,7 +293,7 @@
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name {:optional true} :string]
@@ -312,7 +312,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform (eid-translation/->id-or-404 :model/Transform id))))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil

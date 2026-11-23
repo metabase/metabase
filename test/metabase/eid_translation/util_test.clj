@@ -192,3 +192,15 @@
   (testing "->id-or-404 should preserve original error for invalid format"
     (is (thrown-with-msg? Exception #"problem looking up id from entity_id"
                           (eid-translation.util/->id-or-404 :card "invalid-format")))))
+
+(deftest ->id-or-404-reads-ex-data-test
+  (testing "->id marks its failed lookups in their ex-data, which ->id-or-404 reads instead of their message"
+    (is (=? {::eid-translation.util/lookup-failed? true :status :not-found}
+            (try (eid-translation.util/->id :card "abcdefghijklmnopqrstu")
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    (testing "and an exception without the mark is not a 404, whatever its message"
+      (mt/with-dynamic-fn-redefs [eid-translation.util/->id (fn [_ _]
+                                                              (throw (ex-info "problem looking up id from entity_id"
+                                                                              {:status :not-found})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"problem looking up id from entity_id"
+                              (eid-translation.util/->id-or-404 :card "abcdefghijklmnopqrstu")))))))

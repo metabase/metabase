@@ -35,7 +35,7 @@
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/transform-test.response
   "Get a transform test with its newest run. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (-> (api/read-check :model/TransformTest (eid-translation/->id-or-404 :model/TransformTest id))
       (t2/hydrate :last_run)))
 
@@ -67,7 +67,7 @@
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
   "Update a transform test. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- ::update-request]
   (let [id             (eid-translation/->id-or-404 :model/TransformTest id-or-entity-id)
@@ -85,7 +85,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform test. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                             [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/TransformTest id-or-entity-id)]
     (api/write-check :model/TransformTest id)
     (data-testing.models/delete-transform-tests! [id])

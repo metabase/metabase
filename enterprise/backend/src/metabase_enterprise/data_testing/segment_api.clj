@@ -50,7 +50,7 @@
   A segment test, with its inputs and expectations, is readable by every user who can read its segment. `id` is a
   numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (-> (api/read-check :model/SegmentTest (eid-translation/->id-or-404 :model/SegmentTest id))
       (t2/hydrate :last_run)))
 
@@ -93,7 +93,7 @@
   "Update a segment test. The update is refused when it leaves the test on an archived segment. `id` is a numeric id
   or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- ::update-request]
   (let [id           (eid-translation/->id-or-404 :model/SegmentTest id-or-entity-id)
@@ -107,7 +107,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a segment test. `id` is a numeric id or an entity id."
   [{id-or-entity-id :id} :- [:map {:closed true}
-                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                             [:id ms/IdOrEntityId]]]
   (let [id (eid-translation/->id-or-404 :model/SegmentTest id-or-entity-id)]
     (api/write-check :model/SegmentTest id)
     (data-testing.models.segment-test/delete-segment-tests! [id])

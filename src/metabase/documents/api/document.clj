@@ -126,7 +126,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID, a numeric id or an entity id."
-  [{:keys [document-id]} :- [:map {:closed true} [:document-id [:or ms/PositiveInt ms/NanoIdString]]]]
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/IdOrEntityId]]]
   ;; `m.document/get-document` already does the 404 and read check internally.
   (m.document/get-document (eid-translation/->id-or-404 :model/Document document-id)))
 
@@ -137,7 +137,7 @@
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`. `document-id` is a numeric id or an entity id."
   [{:keys [document-id]} :- [:map {:closed true}
-                             [:document-id [:or ms/PositiveInt ms/NanoIdString]]]
+                             [:document-id ms/IdOrEntityId]]
    _query-params
    body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
@@ -153,7 +153,7 @@
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document. `document-id` is a numeric id or an entity id."
   [{id-or-entity-id :document-id} :- [:map {:closed true}
-                                      [:document-id [:or ms/PositiveInt ms/NanoIdString]]]]
+                                      [:document-id ms/IdOrEntityId]]]
   (let [document-id (eid-translation/->id-or-404 :model/Document id-or-entity-id)
         document    (api/check-404 (documents.db/document document-id))]
     (api/write-check document)

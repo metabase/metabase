@@ -40,7 +40,7 @@
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag. `tag-id` is a numeric id or an entity id."
   [{id-or-entity-id :tag-id} :- [:map {:closed true}
-                                 [:tag-id [:or ms/PositiveInt ms/NanoIdString]]]
+                                 [:tag-id ms/IdOrEntityId]]
    _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
@@ -53,7 +53,7 @@
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs. `tag-id` is a numeric id or an entity id."
   [{id-or-entity-id :tag-id} :- [:map {:closed true}
-                                 [:tag-id [:or ms/PositiveInt ms/NanoIdString]]]]
+                                 [:tag-id ms/IdOrEntityId]]]
   (let [tag-id (eid-translation/->id-or-404 :model/TransformTag id-or-entity-id)]
     (log/info "Deleting transform tag" tag-id)
     (api/write-check (transforms-rest.db/tag tag-id))

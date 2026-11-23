@@ -81,7 +81,7 @@
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [measure (hydrated-measure (eid-translation/->id-or-404 :model/Measure id) (boolean include-orphaned))]
@@ -116,7 +116,7 @@
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::measures.schema/measure.name]]

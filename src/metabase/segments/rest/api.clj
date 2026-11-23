@@ -57,7 +57,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id ms/IdOrEntityId]]]
   (hydrated-segment (eid-translation/->id-or-404 :model/Segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -94,7 +94,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::segments.schema/segment.name]]
@@ -115,7 +115,7 @@
   "Archive a Segment, by a numeric id or an entity id. (DEPRECATED -- Just pass updated value of `:archived` to the
   `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {:keys [revision_message]} :- [:map {:closed true}
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
