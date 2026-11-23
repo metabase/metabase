@@ -18,7 +18,6 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Dataset,
@@ -685,7 +684,7 @@ describe("QueryBuilder > structured models", () => {
           stages: [{ source: { type: "table", id: ORDERS_ID } }],
         }),
       ),
-      result_metadata: ORDERS_COLS,
+      result_metadata: toResultMetadata(ORDERS_COLS),
     });
     const DATASET = createMockDataset({
       data: {

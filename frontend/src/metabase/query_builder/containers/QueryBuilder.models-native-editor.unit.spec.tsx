@@ -24,6 +24,7 @@ import type {
   Card,
   Dataset,
   DatasetColumn,
+  Field,
   RowValues,
 } from "metabase-types/api";
 import {
@@ -41,6 +42,10 @@ import { TEST_DB, setup } from "./test-utils";
 jest.unmock("metabase/querying/components/NativeQueryEditor");
 
 registerVisualizations();
+
+const toResultMetadata = (columns: DatasetColumn[]) =>
+  // The API returns dataset columns as the model metadata, which `Field` does not type.
+  columns as unknown as Field[];
 
 const NATIVE_COLUMN = (name: string) =>
   createMockColumn({
@@ -68,10 +73,9 @@ const createNativeModel = (query: string, cols: DatasetColumn[]) =>
     id: 1,
     name: "Native model",
     type: "model",
-    query_type: "native",
     display: "table",
     dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query }),
-    result_metadata: cols,
+    result_metadata: toResultMetadata(cols),
   });
 
 /** Gets the serialized query of a run or a saved card, returns its results. */
