@@ -973,7 +973,8 @@
     (testing "an exploration holds several threads once \"Explore further\" is used, each with its own Restart"
       (mt/with-model-cleanup [:model/User]
         (let [[u] (user/create-users! [{:email "rs-multi@example.com"}])
-              created  (mt/user-http-request u :post 200 "exploration" {:name "multi"})
+              created  (mt/with-dynamic-fn-redefs [explorations.queues/start-thread! (fn [_thread-id])]
+                         (mt/user-http-request u :post 200 "exploration" {:name "multi"}))
               expl-id  (:id created)
               root-tid (-> created :threads first :id)
               ;; A later thread, as "Explore further" creates: higher position, so it's the one the

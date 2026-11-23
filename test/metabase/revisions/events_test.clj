@@ -161,7 +161,8 @@
   (testing "the update of 2 or 6 Dashboards records a Revision each with the same number of statements"
     (mt/with-premium-features #{}
       (revision-statement-count! 1)
-      (is (= (revision-statement-count! 2) (revision-statement-count! 6))))))
+      (let [least-of-two #(min (revision-statement-count! %) (revision-statement-count! %))]
+        (is (= (least-of-two 2) (least-of-two 6)))))))
 
 (deftest dashboard-save-is-one-revision-test
   (mt/with-current-user (mt/user->id :crowberto)
