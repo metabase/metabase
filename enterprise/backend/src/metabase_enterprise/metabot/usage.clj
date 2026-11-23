@@ -109,7 +109,8 @@
 
 (defn- usage-query
   "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
-  Returns a token sum or a message count depending on `metabot-limit-unit`. A message count leaves out the agent
+  Returns a token sum or a message count depending on `metabot-limit-unit`. A token sum leaves out the tokens read
+  from the provider prompt cache, see [[metabot.db/usage-token-sum]]. A message count leaves out the agent
   loop that asks, `request-id`, see [[metabot.db/usage-message-count]]."
   [& {:keys [user-id tenant-id request-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)
