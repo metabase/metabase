@@ -6,7 +6,8 @@
    [metabase.util :as u])
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Column Expressions$Identifier Expressions$Parameter
-                             Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
+                             Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
+                             Expressions$Subquery
                              Expressions$Table)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
    (java.util Collection)))
