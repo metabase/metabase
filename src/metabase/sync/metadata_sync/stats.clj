@@ -16,13 +16,13 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::field-values
-  [:map {:closed true}
+  [:map
    [:field           [:sequential {:min 1} :string]]
    [:values          ms/FieldValues]
    [:has_more_values :boolean]])
 
 (mr/def ::entry
-  [:map {:closed true}
+  [:map
    [:estimated_row_count {:optional true} :int]
    [:field_values        [:sequential ::field-values]]])
 

@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.pages :as pages]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -19,17 +20,26 @@
   [:sequential {:min 1} ms/NonBlankString])
 
 (mr/def ::target
-  [:map {:closed true}
+  [:map
    [:schema [:maybe :string]]
    [:table  ms/NonBlankString]
    [:field  ::field-path]])
 
+(mr/def ::fk-link
+  [:map
+   [:kind     [:= "fk"]]
+   [:field    ::field-path]
+   [:target   ::target]
+   ;; a user of the sender set the target, so the receiver marks it as set when it fills it
+   [:user_set {:optional true} [:= true]]])
+
 (mr/def ::link
-  "A link. `kind` is always `fk` in this version; it is there so that a later version can send other kinds."
-  [:map {:closed true}
-   [:kind   [:= "fk"]]
-   [:field  ::field-path]
-   [:target ::target]])
+  "A link. This version sends and applies the kind `fk`; a receiver leaves out a link of another kind, which a newer
+  sender sends."
+  [:multi {:dispatch :kind}
+   ["fk"                ::fk-link]
+   [:malli.core/default [:map {:description "a link of a kind that only a newer version knows"}
+                         [:kind ms/NonBlankString]]]])
 
 (defn- target [tables-by-id table-id field-name]
   (when-let [{table-schema :schema table-name :name} (tables-by-id table-id)]
@@ -38,11 +48,12 @@
 (defn- fk-links
   "The FK links of the Tables with `table-ids`, as `[table-id link]`, whose target is in `tables-by-id`."
   [table-ids tables-by-id]
-  (for [{:keys [table_id field_name target_table_id target_field_name]}
+  (for [{:keys [table_id field_name target_table_id target_field_name user_set]}
         (pages/in-batches sync.db/fk-links-of-tables table-ids)
         :let  [link-target (target tables-by-id target_table_id target_field_name)]
         :when link-target]
-    [table_id {:kind "fk" :field [field_name] :target link-target}]))
+    [table_id (cond-> {:kind "fk" :field [field_name] :target link-target}
+                (true? user_set) (assoc :user_set true))]))
 
 (mu/defn table-links :- [:map-of ::lib.schema.id/table [:sequential {:min 1} ::link]]
   "The links of each of `tables`, by Table id, in a fixed order: by Field path, then by kind. `tables` and `selection`
@@ -50,7 +61,7 @@
   `selection`, or is not a described Field, is left out. A Table with no links is left out."
   [tables    :- [:sequential ::sync.db/described-table]
    selection :- [:sequential ::sync.db/described-table]]
-  (let [tables-by-id (into {} (map (juxt :id identity)) selection)
+  (let [tables-by-id (u/index-by :id selection)
         table-ids    (mapv :id tables)]
     (update-vals (group-by first (fk-links table-ids tables-by-id))
                  (fn [entries]

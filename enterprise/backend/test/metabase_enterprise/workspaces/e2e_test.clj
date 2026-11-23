@@ -1121,6 +1121,8 @@
                     seed!     #(seed-over-http! api-key sender-name receiver)
                     canonical #{[99 "pre-existing"] [98 "still-pre-existing"]}
                     written   #{[1 "a"] [2 "b"] [3 "c"]}]
+                (testing "the receiver has no Tables before the seed, so the Tables it has after come from the seed"
+                  (is (zero? (t2/count :model/Table :db_id receiver))))
                 (testing "the seed gives the receiver the sender's Tables, Fields and fingerprints, over HTTP"
                   (let [{:keys [statuses error counts]} (seed!)]
                     (is (nil? error))

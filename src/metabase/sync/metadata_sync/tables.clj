@@ -80,14 +80,16 @@
    [:base_type     ms/NonBlankString]
    [:database_type ms/NonBlankString]
    [:last_analyzed {:optional true} ms/NonBlankString]
-   [:user_set      {:optional true} [:sequential {:min 1} (into [:enum] field-user-set-columns)]]])
+   ;; a column name that only a newer version knows is left out by the receiver
+   [:user_set      {:optional true} [:sequential {:min 1} ms/NonBlankString]]])
 
 (mr/def ::table
   [:map {:description "a Table's entry: each of `table-columns` that has a value, and its Fields"}
    [:name        ms/NonBlankString]
    [:schema      {:optional true} :string]
-   [:data_source {:optional true} (into [:enum] (sort sent-data-sources))]
-   [:user_set    {:optional true} [:sequential {:min 1} (into [:enum] table-user-set-columns)]]
+   ;; a value or a column name that only a newer version knows is left out by the receiver
+   [:data_source {:optional true} ms/NonBlankString]
+   [:user_set    {:optional true} [:sequential {:min 1} ms/NonBlankString]]
    [:fields      [:sequential ::field]]])
 
 (defn- wire-value
@@ -112,12 +114,33 @@
                               :when         (true? (get flags flag))]
                           (name column))))))
 
+(def ^:private sensitive-left-out-columns
+  "The columns of a sensitive Field that are not sent. Its fingerprint holds values of its column, such as the least
+  and the greatest, and sync no longer keeps it up to date, so the analysis columns go with it."
+  [:fingerprint :fingerprint_version :last_analyzed])
+
+(defn- without-analysis-of-sensitive
+  "`field` without the [[sensitive-left-out-columns]] when it is sensitive."
+  [field]
+  (if (= :sensitive (keyword (:visibility_type field)))
+    (apply dissoc field sensitive-left-out-columns)
+    field))
+
+(defn- field-user-set
+  "The names of the columns that `flags` says a user set on `field`. An FK target a user set is named only when the
+  Field has none, which a user cleared: one with a target says so on its link."
+  [field flags]
+  (let [names (user-set warehouse-schema.user-settings/field-set-flags flags)]
+    (not-empty (vec (cond->> names
+                      (some? (:fk_target_field_id field)) (remove #{"fk_target_field_id"}))))))
+
 (defn- field-entry [field path flags]
   (-> (select-keys field field-columns)
+      without-analysis-of-sensitive
       coercion-pair
       (update-vals wire-value)
       (assoc :path path
-             :user_set (user-set warehouse-schema.user-settings/field-set-flags flags))
+             :user_set (field-user-set field flags))
       u/remove-nils))
 
 (defn- field-paths
@@ -202,7 +225,7 @@
   "The entries of `tables`, which are rows from [[selection]], in the same order."
   [tables :- [:sequential ::sync.db/described-table]]
   (let [table-ids       (mapv :id tables)
-        rows            (into {} (map (juxt :id identity)) (pages/in-batches sync.db/tables-with-ids table-ids))
+        rows            (u/index-by :id (pages/in-batches sync.db/tables-with-ids table-ids))
         fields-by-table (group-by :table_id (pages/in-batches sync.db/described-fields table-ids))
         flags-by-table  (m/index-by :table_id (pages/in-batches sync.db/table-user-set-flags table-ids))
         flags-by-field  (m/index-by :field_id (pages/in-batches sync.db/field-user-set-flags table-ids))]

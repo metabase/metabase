@@ -3039,7 +3039,6 @@
            api
            app-db
            audit-app
-           change-log
            database-routing
            driver
            events
@@ -3050,7 +3049,6 @@
            models
            premium-features
            query-processor
-           search
            settings
            sync.analyze
            task

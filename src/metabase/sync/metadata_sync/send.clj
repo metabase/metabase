@@ -13,7 +13,8 @@
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,8 +50,25 @@
     (throw (ex-info (tru "The schema filter of the request is not a list of schema patterns.")
                     {:status-code 400 :error-code wire/bad-schema-filter}))))
 
+(defn- check-format-versions!
+  "Throw an API error when `format-versions`, the versions the receiver reads, does not hold the one this sender
+  writes. No versions is a receiver of the first version."
+  [format-versions]
+  (when-not (some #{wire/format-version} (or format-versions [wire/first-format-version]))
+    (throw (ex-info (tru "The receiver reads format versions {0}, and this Metabase writes version {1}."
+                         (pr-str (vec (filter int? format-versions))) (str wire/format-version))
+                    {:status-code 400 :error-code wire/format-version-not-read}))))
+
+(defn- check-cursor!
+  "Throw an API error when `cursor` is not one that this sender writes: another version wrote it. The message does
+  not repeat it."
+  [cursor]
+  (when-not (or (nil? cursor) (mr/validate ::pages/cursor cursor))
+    (throw (ex-info (tru "The cursor of the request is not one that this Metabase writes.")
+                    {:status-code 400 :error-code wire/bad-cursor}))))
+
 (defn- counts-by-table [rows count-key]
-  (into {} (map (juxt :table_id count-key)) rows))
+  (u/index-by :table_id count-key rows))
 
 (defn- candidates
   "For each kind, the Tables of `selected` it pages and the weight of each, from grouped counts that read no values.
@@ -153,9 +171,9 @@
     (loop [cursor (past-empty-kinds (or after {:kind (first pages/kinds)}) by-kind)]
       (if (nil? cursor)
         {:batch nil :next nil}
-        (let [{:keys [kind key]}        cursor
-              {:keys [batch last more]} (page (by-kind kind) kind key selected)
-              next-cursor               (past-empty-kinds (pages/next-cursor kind last more) by-kind)]
+        (let [{:keys [kind] after-key :key}      cursor
+              {:keys [batch more] last-key :last} (page (by-kind kind) kind after-key selected)
+              next-cursor                         (past-empty-kinds (pages/next-cursor kind last-key more) by-kind)]
           (if (or batch (nil? next-cursor))
             {:batch batch :next next-cursor}
             (recur next-cursor)))))))
@@ -164,15 +182,17 @@
   "The answer to `request`: the next page of the metadata of the Database it names, and the cursor of the page after
   it, when there is one. The first answer, with no `after`, also holds the database values first. Every answer names
   the request's Database and engine."
-  [{database-name :database :keys [engine schema_filters after]} :- ::wire/request]
+  [{database-name :database :keys [engine format_versions schema_filters after]} :- ::wire/request]
+  (check-format-versions! format_versions)
+  (check-cursor! after)
   (check-schema-filter! schema_filters)
   (let [{database-id :id :as database} (served-database database-name engine)
         selected                       (tables/selection database-id schema_filters)
-        {:keys [batch next]}           (next-page database-id selected after)]
+        {:keys [batch] next-cursor :next} (next-page database-id selected after)]
     (cond-> {:format_version wire/format-version
              :database       database-name
              :engine         engine
              :batches        (cond-> []
                                (nil? after) (conj (merge {:type "database"} (wire/database-values database)))
                                batch        (conj batch))}
-      next (assoc :next next))))
+      next-cursor (assoc :next next-cursor))))

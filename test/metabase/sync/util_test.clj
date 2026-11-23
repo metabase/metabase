@@ -453,7 +453,9 @@
         (finally
           (reset! predicates registered)))
       (testing "the predicates are asked again after the sync counts as running, so one of the two always yields"
-        (is (false? @ran))))))
+        (is (false? @ran)))
+      (testing "a sync skipped at the second check records no run, as one skipped at the first does not"
+        (is (not (t2/exists? :model/TaskRun :entity_type "database" :entity_id (:id database))))))))
 
 (deftest sync-running-test
   (mt/with-temp [:model/Database database {:engine :h2}]

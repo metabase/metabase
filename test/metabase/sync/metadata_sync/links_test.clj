@@ -91,3 +91,19 @@
         (t2/update! :model/Field :id (orders field) {:fk_target_field_id target}))
       (testing "an FK from or into a retired or nested Field is not a link"
         (is (= {} (links-by-key db-id)))))))
+
+(deftest an-fk-a-user-set-says-so-on-its-link-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (let [people (add-table! db-id ["PUBLIC" "people"] ["id"])
+          orders (add-table! db-id ["PUBLIC" "orders"] ["user_id" "buyer_id"])]
+      (t2/update! :model/Field :id (orders "user_id") {:fk_target_field_id (people "id")})
+      (t2/update! :model/Field :id (orders "buyer_id") {:fk_target_field_id (people "id")})
+      (t2/insert! :model/FieldUserSettings {:field_id (orders "user_id") :fk_target_field_id (people "id")
+                                            :fk_target_field_id_set true})
+      (testing "the link of an FK that a user set says so, so the receiver marks it as set when it fills it"
+        (is (= [{:kind "fk" :field ["buyer_id"] :target {:schema "PUBLIC" :table "people" :field ["id"]}}
+                {:kind     "fk"
+                 :field    ["user_id"]
+                 :target   {:schema "PUBLIC" :table "people" :field ["id"]}
+                 :user_set true}]
+               (get (links-by-key db-id) ["PUBLIC" "orders"])))))))

@@ -326,29 +326,30 @@
   (if-let [busy (external-busy database)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
-    (let [run-type (operation->run-type operation)]
-      (task-history/with-task-run (when run-type
-                                    {:run_type    run-type
-                                     :entity_type :database
-                                     :entity_id   (u/the-id database)})
-        (let [step    (partial do-with-error-handling (format "Error in sync step %s" message) f)
-              run     (with-sync-events
-                       operation database
-                       (with-start-and-finish-logging
-                        message
-                        (with-db-logging-disabled
-                         (sync-in-context database step))))
-              sync-fn (with-duplicate-ops-prevented
-                       operation database
-                       (fn []
-                         (if-let [busy (external-busy database)]
-                           (log/warnf "Skipping %s for database %d: %s"
-                                      (name operation) (u/the-id database) (:reason busy))
-                           (run))))
-              result (database-routing/with-anonymous-router-access (sync-fn))]
-          (when (instance? Throwable result)
-            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
-          result)))))
+    (let [run-type (operation->run-type operation)
+          step     (partial do-with-error-handling (format "Error in sync step %s" message) f)
+          run      (with-sync-events
+                    operation database
+                    (with-start-and-finish-logging
+                     message
+                     (with-db-logging-disabled
+                      (sync-in-context database step))))
+          ;; The task run starts only once the operation runs, so a skipped one records no run.
+          sync-fn  (with-duplicate-ops-prevented
+                    operation database
+                    (fn []
+                      (if-let [busy (external-busy database)]
+                        (log/warnf "Skipping %s for database %d: %s"
+                                   (name operation) (u/the-id database) (:reason busy))
+                        (task-history/with-task-run (when run-type
+                                                      {:run_type    run-type
+                                                       :entity_type :database
+                                                       :entity_id   (u/the-id database)})
+                          (run)))))
+          result   (database-routing/with-anonymous-router-access (sync-fn))]
+      (when (instance? Throwable result)
+        (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+      result)))
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs

@@ -45,6 +45,7 @@
   (t2/update! :model/Field :id (field-id (tables "orders") "user_id")
               {:fk_target_field_id (field-id (tables "people") "id")})
   (t2/update! :model/Table :id (tables "orders") {:estimated_row_count 3})
+  (t2/update! :model/Field :id (field-id (tables "orders") "total") {:has_field_values :list})
   (t2/insert! :model/FieldValues {:field_id (field-id (tables "orders") "total") :type :full :values ["1" "2"]}))
 
 (defn- through-json [x]
@@ -148,6 +149,7 @@
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
     (let [tables (add-tables! db-id [["PUBLIC" "a" ["x" "y"]] ["PUBLIC" "b" ["x"]] ["PUBLIC" "c" ["x"]]])]
       (doseq [[table-name field-name] [["a" "x"] ["a" "y"] ["b" "x"]]]
+        (t2/update! :model/Field :id (field-id (tables table-name) field-name) {:has_field_values :list})
         (t2/insert! :model/FieldValues {:field_id (field-id (tables table-name) field-name) :type :full
                                         :values   (vec (map str (range 20)))}))
       (t2/update! :model/Table :id (tables "c") {:estimated_row_count 9})
@@ -268,3 +270,19 @@
     (testing "a schema filter that is not a pattern is refused, and is not a server error"
       (is (= {:status-code 400 :error-code "metadata-sync-bad-schema-filter"}
              (error-data db-name {:schema_filters {:type "inclusion" :patterns "["}}))))))
+
+(deftest format-versions-of-the-request-test
+  (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
+    (testing "a request that names the format versions its receiver reads gets an answer in one of them"
+      (is (= wire/format-version (:format_version (answer db-name {:format_versions [wire/format-version 99]})))))
+    (testing "a request that names none is from a receiver of the first version, which reads the first version"
+      (is (= 1 (:format_version (answer db-name)))))
+    (testing "a request whose receiver reads no version this sender writes is refused, with the versions named"
+      (is (= {:status-code 400 :error-code "metadata-sync-format-version-not-read"}
+             (error-data db-name {:format_versions [99]}))))))
+
+(deftest a-cursor-the-sender-does-not-know-is-refused-test
+  (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
+    (testing "a cursor of a kind this sender does not page, as a newer sender wrote it, is refused, not a server error"
+      (is (= {:status-code 400 :error-code "metadata-sync-bad-cursor"}
+             (error-data db-name {:after {:kind "remaps" :key nil}}))))))

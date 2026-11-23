@@ -39,8 +39,17 @@
           (map (fn [field]
                  [[(tables (:table_id field)) (:name field)]
                   (select-keys field [:base_type :database_type :semantic_type :fingerprint :fingerprint_version
-                                      :last_analyzed :fk_target_field_id])]))
+                                      :last_analyzed :fk_target_field_id :visibility_type :has_field_values
+                                      :preview_display])]))
           (t2/select :model/Field :table_id [:in (keys tables)] :active true))))
+
+(defn- as-seeded
+  "The `field-state` of a sender as a seed copies it: a sensitive Field without its analysis, which is not sent."
+  [field-state]
+  (update-vals field-state (fn [field]
+                             (cond-> field
+                               (= :sensitive (:visibility_type field))
+                               (assoc :fingerprint nil :fingerprint_version 0 :last_analyzed nil)))))
 
 (defn- table-state
   "The active Tables of the Database with `db-id`, by name, with the columns that a sync of the Tables updates, except
@@ -92,7 +101,7 @@
         (let [seeded        (field-state receiver-id)
               seeded-tables (table-state receiver-id)]
           (testing "the seed copied every active Table and Field, with their fingerprints and FKs"
-            (is (= (update-vals (field-state (:id sender)) #(dissoc % :fk_target_field_id))
+            (is (= (update-vals (as-seeded (field-state (:id sender))) #(dissoc % :fk_target_field_id))
                    (update-vals seeded #(dissoc % :fk_target_field_id))))
             (is (= (fk-targets (:id sender)) (fk-targets receiver-id))))
           (testing "the seed did not copy whether the sender's login can write a Table: the receiver's sync reads it"

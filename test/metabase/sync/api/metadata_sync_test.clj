@@ -2,12 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.wire :as wire]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
@@ -151,9 +151,12 @@
              (error-code apply-url {:database_id db-id
                                     :response    (assoc (answer-of db-id one-table)
                                                         :format_version (inc wire/format-version))}))))
-    (testing "an answer with a batch type this version does not know gets 422"
-      (is (= [422 "metadata-sync-unknown-batch-type"]
-             (error-code apply-url {:database_id db-id :response (answer-of db-id one-table {:type "remaps"})}))))
+    (testing "a batch of a type this version does not know is left out, and the answer is applied"
+      (is (=? {:next {:kind "tables"} :counts {:tables_inserted 0}}
+              (mt/user-http-request :crowberto :post 200 apply-url
+                                    {:database_id db-id
+                                     :response    (assoc (answer-of db-id {:type "remaps" :tables [{:a 1}]})
+                                                         :next {:kind "tables"})}))))
     (testing "a malformed answer gets 422"
       (is (= [422 "metadata-sync-malformed-response"]
              (error-code apply-url {:database_id db-id
@@ -169,8 +172,8 @@
         (is (= [409 "metadata-sync-sync-running"]
                (during #(error-code apply-url {:database_id db-id :response (answer-of db-id one-table)}))))))
     (testing "a write that fails gets 422, and the body says nothing of the cause"
-      (mt/with-dynamic-fn-redefs [sync.db/insert-table-rows! (fn [_rows]
-                                                               (throw (ex-info "the app DB refused wrens" {})))]
+      (mt/with-dynamic-fn-redefs [table/create-tables! (fn [_rows]
+                                                         (throw (ex-info "the app DB refused wrens" {})))]
         (let [{:keys [status body]} (mt/user-http-request-full-response
                                      :crowberto :post apply-url
                                      {:database_id db-id :response (answer-of db-id one-table)})]

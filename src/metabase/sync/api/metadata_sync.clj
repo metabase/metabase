@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
    [metabase.sync.metadata-sync.wire :as wire]
@@ -20,7 +19,8 @@
 
 (api.macros/defendpoint :post "/metadata/changes" :- ::wire/response
   "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the
-  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each
+  cursor `after`, or from the start without one, in a format version that `format_versions` names (version 1 when it
+  names none). The first answer holds the database values, then the tables (each
   Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a
   page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`
   while it has one. Needs a superuser.
@@ -29,6 +29,8 @@
   endpoint:
 
   - 400 `metadata-sync-bad-schema-filter`: the `schema_filters` patterns cannot be read.
+  - 400 `metadata-sync-format-version-not-read`: `format_versions` does not name the version this Metabase writes.
+  - 400 `metadata-sync-bad-cursor`: `after` is not a cursor this Metabase writes, such as one of another version.
   - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit
     Database and the destination Databases of database routing are left out.
   - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.
@@ -43,8 +45,8 @@
   "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database
   with `database_id`, from the cursor `after`. Needs a superuser.
 
-  A request also starts a seed, or keeps it going: for 10 minutes after each request and each applied answer, no sync
-  of the Database runs in this Metabase process, until the last answer is applied.
+  A request also starts a seed, or keeps it going: for 10 minutes after each call to this endpoint or to `apply`, no
+  sync of the Database runs in this Metabase process, until the last answer is applied.
 
   Errors, each with an `error-code` in the body:
 
@@ -56,7 +58,7 @@
    _query-params
    {:keys [database_id after]} :- [:map {:closed true}
                                    [:database_id ::lib.schema.id/database]
-                                   [:after       {:optional true} [:maybe ::pages/cursor]]]]
+                                   [:after       {:optional true} [:maybe ::wire/cursor]]]]
   (api/check-superuser)
   (receive/request! database_id after))
 
@@ -75,13 +77,15 @@
   An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. A Table the
   Database already had is not changed, except that an empty FK target, row count or list of field values is filled.
 
+  What only a newer sender sends is left out: a key, a batch type or a link kind that this version does not know, and a
+  value it does not take, such as a type that only a newer Metabase knows. The counts say how many values
+  (`values_dropped`) and Tables (`tables_skipped`) it left out.
+
   Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any
   write:
 
-  - `metadata-sync-format-version-differs`: the answer has another format version.
-  - `metadata-sync-unknown-batch-type`: the answer has a batch of a type this version does not know.
-  - `metadata-sync-malformed-response`: the answer does not have the right shape, or has a value that this version
-    does not accept, such as a type that only a newer Metabase knows.
+  - `metadata-sync-format-version-differs`: the answer has a format version that this version does not read.
+  - `metadata-sync-malformed-response`: the answer does not have the right shape.
   - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.
 
   And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer."

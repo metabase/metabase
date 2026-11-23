@@ -251,3 +251,46 @@
         (is (not (contains? (entries-by-key ["public" "gulls"]) :user_set))))
       (testing "the entries are valid"
         (is (every? #(mr/validate ::tables/table %) (vals entries-by-key)))))))
+
+(deftest a-sensitive-field-sends-no-fingerprint-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id :schema "public" :name "people"}
+                 :model/Field    _              {:table_id            table-id
+                                                 :name                "salary"
+                                                 :base_type           :type/Integer
+                                                 :database_type       "INT"
+                                                 :visibility_type     :sensitive
+                                                 :fingerprint         {:type {:type/Number {:min 1 :max 9}}}
+                                                 :fingerprint_version 5
+                                                 :last_analyzed       #t "2026-01-01T00:00:00Z"}
+                 :model/Field    _              {:table_id            table-id
+                                                 :name                "age"
+                                                 :base_type           :type/Integer
+                                                 :database_type       "INT"
+                                                 :fingerprint         {:type {:type/Number {:min 1 :max 9}}}
+                                                 :fingerprint_version 5
+                                                 :last_analyzed       #t "2026-01-01T00:00:00Z"}]
+    (let [doc (get (entries db-id) ["public" "people"])]
+      (testing "a sensitive Field is sent, as sensitive, without its fingerprint, which holds values of its column"
+        (is (=? {:visibility_type "sensitive"} (field-named doc "salary")))
+        (is (= #{} (set (keys (select-keys (field-named doc "salary")
+                                           [:fingerprint :fingerprint_version :last_analyzed]))))))
+      (testing "another Field keeps its fingerprint"
+        (is (=? {:fingerprint {:type {:type/Number {:min 1 :max 9}}} :fingerprint_version 5 :last_analyzed string?}
+                (field-named doc "age")))))))
+
+(deftest a-user-set-fk-is-named-on-the-field-only-when-it-has-no-target-test
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {people :id}   {:db_id db-id :schema "public" :name "people"}
+                 :model/Field    {person :id}   {:table_id people :name "id" :base_type :type/Integer}
+                 :model/Table    {orders :id}   {:db_id db-id :schema "public" :name "orders"}
+                 :model/Field    {user-id :id}  {:table_id orders :name "user_id" :base_type :type/Integer
+                                                 :fk_target_field_id person}
+                 :model/Field    {cleared :id}  {:table_id orders :name "cleared_id" :base_type :type/Integer}]
+    (t2/insert! :model/FieldUserSettings {:field_id user-id :fk_target_field_id person :fk_target_field_id_set true})
+    (t2/insert! :model/FieldUserSettings {:field_id cleared :fk_target_field_id nil :fk_target_field_id_set true})
+    (let [orders-entry (get (entries db-id) ["public" "orders"])]
+      (testing "a user-set FK with a target is not named on its Field: its link says so"
+        (is (not (contains? (field-named orders-entry "user_id") :user_set))))
+      (testing "an FK that a user cleared is named on its Field: it has no link, and the receiver's sync must not set it"
+        (is (= ["fk_target_field_id"] (:user_set (field-named orders-entry "cleared_id"))))))))

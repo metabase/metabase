@@ -31923,6 +31923,11 @@
         "description" : "An identity provider's groups mapped to the Metabase group IDs that membership in them grants. The keys are the\n  provider's -- LDAP group DNs, SAML and JWT group names -- so the map is string-keyed on its way in; it is stored as a\n  JSON setting and read back through that setting's own decoder.",
         "type" : "object"
       },
+      "metabase.sync.api.metadata-sync.answer" : {
+        "description" : "the other Metabase's answer, which the receiver checks",
+        "properties" : { },
+        "type" : "object"
+      },
       "metabase.sync.metadata-sync.links.field-path" : {
         "description" : "A Field's name, after the names of its parents. Always one name today.",
         "items" : {
@@ -31933,9 +31938,7 @@
         "minItems" : 1,
         "type" : "array"
       },
-      "metabase.sync.metadata-sync.links.link" : {
-        "additionalProperties" : false,
-        "description" : "A link. `kind` is always `fk` in this version; it is there so that a later version can send other kinds.",
+      "metabase.sync.metadata-sync.links.fk-link" : {
         "properties" : {
           "field" : {
             "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
@@ -31945,13 +31948,32 @@
           },
           "target" : {
             "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.target"
+          },
+          "user_set" : {
+            "const" : true
           }
         },
         "required" : [ "kind", "field", "target" ],
         "type" : "object"
       },
+      "metabase.sync.metadata-sync.links.link" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.fk-link"
+        }, {
+          "description" : "a link of a kind that only a newer version knows",
+          "properties" : {
+            "kind" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [ "kind" ],
+          "type" : "object"
+        } ],
+        "description" : "A link. This version sends and applies the kind `fk`; a receiver leaves out a link of another kind, which a newer\n  sender sends."
+      },
       "metabase.sync.metadata-sync.links.target" : {
-        "additionalProperties" : false,
         "properties" : {
           "field" : {
             "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
@@ -31971,40 +31993,6 @@
         },
         "required" : [ "schema", "table", "field" ],
         "type" : "object"
-      },
-      "metabase.sync.metadata-sync.pages.cursor" : {
-        "additionalProperties" : false,
-        "description" : "Where an answer starts: the kind of part, and the key of the last Table that an earlier answer covered of that\n  kind. No key is the start of the kind.",
-        "properties" : {
-          "key" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.key"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "kind" : {
-            "enum" : [ "tables", "links", "stats" ],
-            "type" : "string"
-          }
-        },
-        "required" : [ "kind" ],
-        "type" : "object"
-      },
-      "metabase.sync.metadata-sync.pages.key" : {
-        "description" : "A Table's place in the order of a Database's Tables: its schema, nil first, then its name.",
-        "maxItems" : 2,
-        "minItems" : 2,
-        "prefixItems" : [ {
-          "anyOf" : [ {
-            "type" : "string"
-          }, {
-            "type" : "null"
-          } ]
-        }, {
-          "type" : "string"
-        } ],
-        "type" : "array"
       },
       "metabase.sync.metadata-sync.receive.counts" : {
         "additionalProperties" : false,
@@ -32030,9 +32018,15 @@
           },
           "tables_inserted" : {
             "type" : "integer"
+          },
+          "tables_skipped" : {
+            "type" : "integer"
+          },
+          "values_dropped" : {
+            "type" : "integer"
           }
         },
-        "required" : [ "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
+        "required" : [ "values_dropped", "tables_skipped", "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
         "type" : "object"
       },
       "metabase.sync.metadata-sync.receive.result" : {
@@ -32043,7 +32037,7 @@
           },
           "next" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
             }, {
               "type" : "null"
             } ]
@@ -32052,8 +32046,22 @@
         "required" : [ "counts" ],
         "type" : "object"
       },
+      "metabase.sync.metadata-sync.stats.entry" : {
+        "properties" : {
+          "estimated_row_count" : {
+            "type" : "integer"
+          },
+          "field_values" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "field_values" ],
+        "type" : "object"
+      },
       "metabase.sync.metadata-sync.stats.field-values" : {
-        "additionalProperties" : false,
         "properties" : {
           "field" : {
             "items" : {
@@ -32123,7 +32131,8 @@
           },
           "user_set" : {
             "items" : {
-              "enum" : [ "description", "fk_target_field_id", "semantic_type" ],
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
               "type" : "string"
             },
             "minItems" : 1,
@@ -32152,7 +32161,8 @@
         "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
         "properties" : {
           "data_source" : {
-            "enum" : [ "ingested", "source-data", "transform", "unknown" ],
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
             "type" : "string"
           },
           "fields" : {
@@ -32171,7 +32181,8 @@
           },
           "user_set" : {
             "items" : {
-              "enum" : [ "data_layer", "data_source", "description", "visibility_type" ],
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
               "type" : "string"
             },
             "minItems" : 1,
@@ -32190,10 +32201,38 @@
           "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-batch"
         }, {
           "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-batch"
+        }, {
+          "description" : "a batch of a type that only a newer version knows",
+          "properties" : {
+            "type" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [ "type" ],
+          "type" : "object"
         } ]
       },
+      "metabase.sync.metadata-sync.wire.cursor" : {
+        "description" : "the cursor of an answer, which only the sender that wrote it reads",
+        "properties" : { },
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.database" : {
+        "properties" : {
+          "dbms_version" : {
+            "description" : "the version a driver reports, in its shape",
+            "properties" : { },
+            "type" : "object"
+          },
+          "timezone" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "metabase.sync.metadata-sync.wire.database-batch" : {
-        "additionalProperties" : false,
         "properties" : {
           "dbms_version" : {
             "description" : "the version a driver reports, in its shape",
@@ -32211,7 +32250,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.links-batch" : {
-        "additionalProperties" : false,
         "properties" : {
           "tables" : {
             "items" : {
@@ -32227,7 +32265,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.links-table" : {
-        "additionalProperties" : false,
         "properties" : {
           "links" : {
             "items" : {
@@ -32255,7 +32292,7 @@
         "properties" : {
           "after" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
             }, {
               "type" : "null"
             } ]
@@ -32270,6 +32307,13 @@
             "minLength" : 1,
             "type" : "string"
           },
+          "format_versions" : {
+            "items" : {
+              "type" : "integer"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
           "schema_filters" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.schema-filter"
@@ -32282,7 +32326,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.response" : {
-        "additionalProperties" : false,
         "description" : "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an\n  answer that is for another Database.",
         "properties" : {
           "batches" : {
@@ -32306,7 +32349,7 @@
           },
           "next" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
             }, {
               "type" : "null"
             } ]
@@ -32316,7 +32359,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.stats-batch" : {
-        "additionalProperties" : false,
         "properties" : {
           "tables" : {
             "items" : {
@@ -32332,7 +32374,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.stats-table" : {
-        "additionalProperties" : false,
         "properties" : {
           "estimated_row_count" : {
             "type" : "integer"
@@ -32358,7 +32399,6 @@
         "type" : "object"
       },
       "metabase.sync.metadata-sync.wire.tables-batch" : {
-        "additionalProperties" : false,
         "properties" : {
           "tables" : {
             "items" : {
@@ -84311,7 +84351,7 @@
     },
     "/api/warehouse/metadata/apply" : {
       "post" : {
-        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. A Table the\n  Database already had is not changed, except that an empty FK target, row count or list of field values is filled.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has another format version.\n  - `metadata-sync-unknown-batch-type`: the answer has a batch of a type this version does not know.\n  - `metadata-sync-malformed-response`: the answer does not have the right shape, or has a value that this version\n    does not accept, such as a type that only a newer Metabase knows.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`. A seed only adds: it inserts the Tables the Database has no row for, with their Fields,\n  and fills FK targets, row counts and field values that are empty. Returns the cursor of the next request, `next`,\n  when there is one, and counts of what it did. Each inserted Table counts as synced at once, and after the last\n  answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. A Table the\n  Database already had is not changed, except that an empty FK target, row count or list of field values is filled.\n\n  What only a newer sender sends is left out: a key, a batch type or a link kind that this version does not know, and a\n  value it does not take, such as a type that only a newer Metabase knows. The counts say how many values\n  (`values_dropped`) and Tables (`tables_skipped`) it left out.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has a format version that this version does not read.\n  - `metadata-sync-malformed-response`: the answer does not have the right shape.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
         "operationId" : "post-api-warehouse-metadata-apply",
         "parameters" : [ ],
         "requestBody" : {
@@ -84324,9 +84364,7 @@
                     "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                   },
                   "response" : {
-                    "description" : "the other Metabase's answer, which the receiver checks",
-                    "properties" : { },
-                    "type" : "object"
+                    "$ref" : "#/components/schemas/metabase.sync.api.metadata-sync.answer"
                   }
                 },
                 "required" : [ "database_id", "response" ],
@@ -84359,7 +84397,7 @@
     },
     "/api/warehouse/metadata/changes" : {
       "post" : {
-        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one. The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-bad-schema-filter`: the `schema_filters` patterns cannot be read.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one, in a format version that `format_versions` names (version 1 when it\n  names none). The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-bad-schema-filter`: the `schema_filters` patterns cannot be read.\n  - 400 `metadata-sync-format-version-not-read`: `format_versions` does not name the version this Metabase writes.\n  - 400 `metadata-sync-bad-cursor`: `after` is not a cursor this Metabase writes, such as one of another version.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
         "operationId" : "post-api-warehouse-metadata-changes",
         "parameters" : [ ],
         "requestBody" : {
@@ -84395,7 +84433,7 @@
     },
     "/api/warehouse/metadata/request" : {
       "post" : {
-        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser.\n\n  A request also starts a seed, or keeps it going: for 10 minutes after each request and each applied answer, no sync\n  of the Database runs in this Metabase process, until the last answer is applied.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.\n  - 409 `metadata-sync-sync-running`: a sync of the Database runs. Ask again when it ends.",
+        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser.\n\n  A request also starts a seed, or keeps it going: for 10 minutes after each call to this endpoint or to `apply`, no\n  sync of the Database runs in this Metabase process, until the last answer is applied.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.\n  - 409 `metadata-sync-sync-running`: a sync of the Database runs. Ask again when it ends.",
         "operationId" : "post-api-warehouse-metadata-request",
         "parameters" : [ ],
         "requestBody" : {
@@ -84406,7 +84444,7 @@
                 "properties" : {
                   "after" : {
                     "anyOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.sync.metadata-sync.pages.cursor"
+                      "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
                     }, {
                       "type" : "null"
                     } ]
