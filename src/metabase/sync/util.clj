@@ -271,6 +271,15 @@
            e)
          (throw e))))))
 
+(defn rethrow-fatal
+  "Throw `result` when it is a Throwable with an Error or an interrupt in its chain, which no sync step retries past;
+  else return it."
+  [result]
+  (if (and (instance? Throwable result)
+           (some #(or (instance? Error %) (instance? InterruptedException %)) (u/full-exception-chain result)))
+    (throw result)
+    result))
+
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
   Pass a `message` to help provide information about what failed for the log message.

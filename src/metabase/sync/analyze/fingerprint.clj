@@ -187,9 +187,10 @@
   returning the results."
   [results]
   (if (and (next results)
-           (not (:throwable (sync-util/with-returning-throwable "Error saving fingerprints"
-                              (save-fingerprints! (into [] (mapcat :rows) results)
-                                                  (into [] (mapcat :fields) results))))))
+           (not (sync-util/rethrow-fatal
+                 (:throwable (sync-util/with-returning-throwable "Error saving fingerprints"
+                               (save-fingerprints! (into [] (mapcat :rows) results)
+                                                   (into [] (mapcat :fields) results)))))))
     results
     (mapv save-table-fingerprints! results)))
 

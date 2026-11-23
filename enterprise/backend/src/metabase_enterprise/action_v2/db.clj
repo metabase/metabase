@@ -64,9 +64,9 @@
                       [:= :semantic_type "type/Category"]]}))
 
 (mu/defn field-values-of-fields
-  "The value lists of the FieldValues of the Fields with `field-ids`."
+  "The `:field_id` and `:values` of the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
+  (t2/select [:model/FieldValues :field_id :values] :field_id [:in field-ids]))
 
 (defn- scope-and-user-expr
   [scope user-id]

@@ -839,9 +839,10 @@
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
 (mu/defn unarchived-metric-cards-for-tables
-  "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
+  "The unarchived metric Cards of the Tables with `table-ids`, ordered by name, with their stored columns only: no
+  `:query_description`, which the Card computes per row from the metric's query."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
+  (t2/select [:model/Card :*] :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
 
 (mu/defn transforms-by-target-table-id
   "A map of Table ID to the Transform whose target is that Table, for `table-ids`."

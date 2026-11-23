@@ -12,7 +12,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest bcc-enabled-test
   (testing "When bcc is not enabled, return an email that uses to:"
@@ -245,3 +246,30 @@
            (testing "branding link is hidden with whitelabel"
              (mt/with-premium-features #{:whitelabel}
                (is (not (str/includes? (render!) "Made with")))))))))))
+
+(defn- statements-of-alert-send!
+  "The app-DB statements of sending an alert to `n-handlers` email handlers, outside task history."
+  [n-handlers]
+  (notification.tu/with-notification-testing-setup!
+    (notification.tu/with-card-notification
+      [notification {:card         {:name          "Orders question"
+                                    :dataset_query (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                         (lib/limit 1)))}
+                     :subscriptions [{:type          :notification-subscription/cron
+                                      :cron_schedule "0 0 0 * * ? *"}]
+                     :handlers      (vec (repeat n-handlers
+                                                 {:channel_type :channel/email
+                                                  :recipients   [{:type    :notification-recipient/user
+                                                                  :user_id (mt/user->id :crowberto)}]}))}]
+      (t2/with-call-count [call-count]
+        (notification.tu/with-captured-channel-send!
+          (#'notification.send/send-notification-sync! notification))
+        (call-count)))))
+
+(deftest alert-send-statements-per-email-handler-test
+  (testing "an extra email handler of an alert costs its two task history statements and the Database read of its export"
+    (statements-of-alert-send! 2)
+    (let [two (statements-of-alert-send! 2)
+          six (statements-of-alert-send! 6)]
+      (is (<= (- six two) (* 3 (- 6 2)))))))

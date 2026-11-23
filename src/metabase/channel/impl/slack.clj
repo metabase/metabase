@@ -104,6 +104,8 @@
   ([part]
    (part->sections! {} part))
   ([all-params part]
+   (part->sections! all-params part nil))
+  ([all-params part timezone]
    (let [part (channel.shared/maybe-realize-data-rows part)]
      (case (:type part)
        :card
@@ -112,7 +114,7 @@
                {card-id :id card-name :name :as card} card
                title                                  (or (-> dashcard :visualization_settings :card.title)
                                                           card-name)
-               rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+               rendered-info                          (channel.render/render-pulse-card :inline (or timezone (channel.render/defaulted-timezone card)) card dashcard result)
                title-link                             (if dashcard
                                                         (urls/dashcard-url dashcard)
                                                         (when-not (= :table-editable (:display card))
@@ -212,7 +214,7 @@
                          :text {:type "plain_text"
                                 :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                 :emoji true}}]
-                       (part->sections! (:card_part payload)))]
+                       (part->sections! {} (:card_part payload) (:timezone payload)))]
     (doall (for [channel (map notification-recipient->channel recipients)]
              {:channel channel
               :blocks  blocks}))))
@@ -296,7 +298,7 @@
                                  ;; placeholder block so the remaining cards still deliver (#74007).
                                  (mapcat (fn [part]
                                            (try
-                                             (part->sections! all-params part)
+                                             (part->sections! all-params part (:timezone payload))
                                              (catch Throwable e
                                                (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))

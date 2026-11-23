@@ -1148,6 +1148,25 @@
                                                   (map first))
                                             card-changes))))
 
+(defn first-update-refused
+  "The first of `card-changes`, `[card changes]` pairs of Cards hydrated with `:can_write`, that [[mi/can-update?]]
+  refuses, throwing the 404 it throws for a Collection that does not exist, from one read of the Collections, nil when
+  it refuses none."
+  [card-changes]
+  (some (fn [[[card changes :as pair] move]]
+          (cond
+            (not (can-update-apart-from-collection-and-sandboxes? card changes
+                                                                  (summary-owner-writable [pair])
+                                                                  (dashboards-move-permitted? [pair])))
+            pair
+
+            (= :not-found move) (api/check-404 nil)
+            (not move)          pair
+
+            (not (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns)))
+            pair))
+        (map vector card-changes (collection/move-answers card-changes))))
+
 (defmethod mi/can-update-all? :model/Card
   [_model cards changes]
   (can-update-cards? (mapv #(vector % changes) cards)))
@@ -2392,6 +2411,21 @@
                                                              :collection_position (({:+ inc :- dec} direction)
                                                                                    (:collection_position card))})
                                                           previous)))))))
+
+(defmethod collection/reconcile-freed-positions-in-collection! :model/Card
+  [_model collection-id freed-positions]
+  (when-let [updates (not-empty (collection/position-updates
+                                 (queries.db/card-positions-from collection-id (inc (first freed-positions)))
+                                 freed-positions))]
+    (update-cards! updates)))
+
+(defmethod collection/positioned-rows-in-collections :model/Card
+  [_model collection-ids]
+  (queries.db/positioned-cards-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Card
+  [_model id->position]
+  (update-cards! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
 
 (mu/defn invalidate-cached-results! :- :int
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, in one statement through the model, so

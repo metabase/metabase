@@ -660,35 +660,47 @@
                                  [search-model [:= :this.id id]])))
         card))))
 
+(defn- reconcile-freed-positions!
+  "Closes the gaps in the Collections that `moved-cards`, which had a `collection_position`, left, once for each."
+  [moved-cards]
+  (doseq [[collection-id cards] (group-by :collection_id moved-cards)]
+    (collection/reconcile-freed-positions! collection-id (mapv :collection_position cards))))
+
 (defn move-cards!
   "Moves the Cards with `card-ids` to the Collection or Dashboard that `card-updates`, a `:collection_id` and a
   `:dashboard_id`, name, as [[update-card!]] does for each of them, taking their DashboardCards off the Dashboards they
-  leave, but checking all of them together and writing the Cards that have no position in their Collection with one
-  call, those that have one being moved one by one as their positions are reconciled in order."
+  leave, but checking all of them together and writing them with one call. The Cards that have a position in their
+  Collection go to the end of the new one, in the order they had, or lose it in a Dashboard, and the gaps they leave in
+  the old Collections are closed once."
   [card-ids card-updates]
-  (let [cards            (t2/hydrate (let [id->card (queries-rest.db/cards-by-id (vec (distinct card-ids)))]
-                                       (mapv #(api/check-404 (id->card %)) (distinct card-ids)))
-                                     :can_write :in_dashboards)
-        {pinned true, others false} (group-by (comp some? :collection_position) cards)]
-    (doseq [card pinned]
-      (update-card! (:id card) card-updates true))
-    (when (seq others)
-      (run! api/write-check others)
-      (let [collection-id (when (or (contains? card-updates :collection_id)
-                                    (contains? card-updates :dashboard_id))
-                            (queries/actual-collection-id card-updates))
-            card-changes  (mapv #(vector % (populate-collection-id % card-updates collection-id)) others)]
-        (queries/check-allowed-to-update-cards! card-changes)
-        (let [card-changes (mapv (fn [[card changes]]
-                                   [card (merge changes
-                                                (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
-                                                           (:dashboard_id changes))
-                                                  (api/check-400 (not (:archived changes)))
-                                                  {:archived false}))])
-                                 card-changes)]
-          (queries.card/place-updated-dashboard-questions! card-changes true)
-          (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
-                                            card-changes)))))))
+  (let [cards (t2/hydrate (let [id->card (queries-rest.db/cards-by-id (vec (distinct card-ids)))]
+                            (mapv #(api/check-404 (id->card %)) (distinct card-ids)))
+                          :can_write :in_dashboards)]
+    (run! api/write-check cards)
+    (let [collection-id (when (or (contains? card-updates :collection_id)
+                                  (contains? card-updates :dashboard_id))
+                          (queries/actual-collection-id card-updates))
+          card-changes  (mapv #(vector % (populate-collection-id % card-updates collection-id)) cards)]
+      (queries/check-allowed-to-update-cards! card-changes)
+      (let [card-changes (mapv (fn [[card changes]]
+                                 [card (merge changes
+                                              (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
+                                                         (:dashboard_id changes))
+                                                (api/check-400 (not (:archived changes)))
+                                                {:archived false}))])
+                               card-changes)
+            moves        (into []
+                               (keep (fn [[card changes]]
+                                       (when (and (:collection_position card)
+                                                  (not= (:collection_id card) (:collection_id changes))
+                                                  (contains? changes :collection_id))
+                                         {:id (:id card) :collection_id (:collection_id card) :to (:collection_id changes)})))
+                               card-changes)
+            positions    (when (seq moves) (collection/moved-positions moves))]
+        (queries.card/place-updated-dashboard-questions! card-changes true)
+        (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
+                                          card-changes))
+        (when positions (collection/write-positions! positions))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -778,10 +790,8 @@
                                                     (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))
                                               cards))
             ;; We are removing these cards from their `collection_id` so we need to reconcile any `collection_position`
-            ;; entries left behind by this move. These are reversed because of the classic issue when removing an item
-            ;; from array. If we remove an item at index 1, everything above index 1 will get decremented.
-            (doseq [{:keys [collection_id collection_position]} (reverse with-position)]
-              (collection/reconcile-position-for-collection! collection_id collection_position nil)))))
+            ;; entries left behind by this move.
+            (reconcile-freed-positions! with-position))))
       nil))
 
   (when new-collection-id-or-nil

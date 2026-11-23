@@ -179,24 +179,34 @@
   Useful when bulk loading cards from different databases."
   nil)
 
-(mu/defn- card-instance :- [:and
-                            (ms/InstanceOf :model/Card)
-                            [:map [:collection_id [:maybe ms/PositiveInt]]]]
-  [card-id :- ::lib.schema.id/card]
-  (or (get *card-instances* card-id)
-      (if (qp.store/initialized?)
-        (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
-          (t2/instance :model/Card {:collection_id collection-id}))
-        (query-permissions.db/card-collection-id card-id))
+(mu/defn- card-instances :- [:map-of ::lib.schema.id/card [:and
+                                                           (ms/InstanceOf :model/Card)
+                                                           [:map [:collection_id [:maybe ms/PositiveInt]]]]]
+  "The Card with its `:collection_id` of each of `card-ids` that exists, by id: from [[*card-instances*]], else the QP
+  store when one is bound, else the app DB, read for all of them at once."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (let [bound   (into {} (keep #(some->> (get *card-instances* %) (vector %))) card-ids)
+        missing (into [] (comp (remove bound) (distinct)) card-ids)]
+    (merge bound
+           (cond
+             (empty? missing)        {}
+             (qp.store/initialized?) (into {}
+                                           (keep (fn [card-id]
+                                                   (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
+                                                     [card-id (t2/instance :model/Card {:collection_id collection-id})])))
+                                           missing)
+             :else                   (query-permissions.db/cards-with-collection-ids missing)))))
+
+(defn- found-card
+  "The Card with `card-id` in `id->card`, or throws."
+  [id->card card-id]
+  (or (get id->card card-id)
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- can-read-card-collections? :- :boolean
-  "Whether the current user reads the Collection of each of the Cards with `card-ids`, which running a query over the
-  Cards needs, answered together."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (let [collection-ids (mapv #(:collection_id (card-instance %)) card-ids)
-        permissions    (perms/collection-permissions-for-user (api/current-user-info) collection-ids {:root-namespace nil})]
-    (every? #(perms/collection-permission-at-least? (get permissions %) :read) collection-ids)))
+(defn- card-instance
+  "The Card with `card-id` with its `:collection_id`, or throws when there is none."
+  [card-id]
+  (found-card (card-instances [card-id]) card-id))
 
 (defn- preprocess-query [query]
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
@@ -376,6 +386,117 @@
               (perms/at-least-as-permissive? perm-type (get permissions table-id) required-perm))
             table-id->required-perm)))
 
+(def ^:private query-perm-types
+  "The data permission types a query needs, which [[check-data-perms]] checks."
+  [:perms/view-data :perms/create-queries])
+
+(defn- database-permission-answers
+  "`{db-id value}`: the current user's `perm-type` value on every Table of the Database of each of `checks`,
+  `{:query :required-perms}` maps, that needs it for the whole Database, read for all of them at once."
+  [perm-type checks]
+  (let [db-ids (into []
+                     (comp (filter #(keyword? (get-in % [:required-perms perm-type])))
+                           (map (comp :database :query))
+                           (filter pos-int?)
+                           (distinct))
+                     checks)]
+    (if (seq db-ids)
+      (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) perm-type db-ids)
+      {})))
+
+(defn- table-id->db-id-maps
+  "`table-db-pairs`, `[table-id db-id]` pairs, as the fewest `{table-id db-id}` maps that hold them all: one, unless a
+  Table is asked about with more than one Database."
+  [table-db-pairs]
+  (reduce (fn [maps [table-id db-id]]
+            (let [i (or (first (keep-indexed (fn [i m] (when (= db-id (get m table-id db-id)) i)) maps))
+                        (count maps))]
+              (assoc-in (cond-> maps (= i (count maps)) (conj {})) [i table-id] db-id)))
+          []
+          (distinct table-db-pairs)))
+
+(defn- table-permission-answers
+  "`{[db-id table-id] value}`: the current user's `perm-type` value on each Table that one of `checks`,
+  `{:query :required-perms}` maps, needs it on, in the Database of that query, read for all of them at once."
+  [perm-type checks]
+  (let [user-info (perms/user-info api/*current-user-id*)
+        pairs     (for [{{db-id :database} :query :keys [required-perms]} checks
+                        :let  [table-id->perm (get required-perms perm-type)]
+                        :when (and (map? table-id->perm) (pos-int? db-id))
+                        table-id (keys table-id->perm)]
+                    [table-id db-id])]
+    (into {}
+          (mapcat (fn [table-id->db-id]
+                    (map (fn [[table-id value]] [[(table-id->db-id table-id) table-id] value])
+                         (perms/table-permissions-for-user user-info perm-type table-id->db-id))))
+          (table-id->db-id-maps pairs))))
+
+(declare card-read-answers)
+
+(defn- permission-answers
+  "Delays of the current user's answers to the permission questions that [[check-data-perms]] and
+  [[check-cards-read-perms]] ask about each of `checks`, `{:query :required-perms}` maps: each kind of answer is read
+  for all of them at once, when it is first needed."
+  [checks]
+  (let [id->card (delay (card-instances (into [] (comp (mapcat (comp :source-card-ids :required-perms)) (distinct)) checks)))]
+    {:id->card               id->card
+     :collection-permissions (delay (perms/collection-permissions-for-user (api/current-user-info)
+                                                                           (into [] (comp (map :collection_id) (distinct)) (vals @id->card))
+                                                                           {:root-namespace nil}))
+     :database-permissions   (into {} (map (fn [perm-type] [perm-type (delay (database-permission-answers perm-type checks))]))
+                                   query-perm-types)
+     :table-permissions      (into {} (map (fn [perm-type] [perm-type (delay (table-permission-answers perm-type checks))]))
+                                   query-perm-types)
+     :sandboxed-database?    (into {} (map (fn [db-id] [db-id (delay (perms/sandboxed-user-for-db? db-id))]))
+                                   (into #{} (map (comp :database :query)) checks))
+     :cards                  (delay (card-read-answers (for [{{db-id :database} :query :keys [required-perms]} checks
+                                                             :when (seq (:card-ids required-perms))]
+                                                         [db-id (:card-ids required-perms)])))}))
+
+(defn- single-check-answers
+  "[[permission-answers]] for `query`, which needs `required-perms`."
+  [query required-perms]
+  (permission-answers [{:query query :required-perms required-perms}]))
+
+(defn- can-read-card-collections?
+  "Whether the current user reads the Collection of each of the Cards with `card-ids`, which running a query over the
+  Cards needs, from `answers`."
+  [answers card-ids]
+  (let [collection-ids (mapv #(:collection_id (found-card @(:id->card answers) %)) card-ids)
+        permissions    @(:collection-permissions answers)]
+    (every? #(perms/collection-permission-at-least? (get permissions %) :read) collection-ids)))
+
+(defn- has-perm-for-query-with?
+  "[[has-perm-for-query?]] from `answers`, asking alone only what they do not hold."
+  [answers {db-id :database} perm-type required-perms]
+  (boolean
+   (if-let [db-or-table-perms (perm-type required-perms)]
+     (cond
+       (keyword? db-or-table-perms)
+       (let [values @(get-in answers [:database-permissions perm-type])]
+         (if (contains? values db-id)
+           (perms/at-least-as-permissive? perm-type (get values db-id) db-or-table-perms)
+           (has-perm-for-db? perm-type db-or-table-perms db-id)))
+
+       (map? db-or-table-perms)
+       (let [values @(get-in answers [:table-permissions perm-type])]
+         (if (every? #(contains? values [db-id %]) (keys db-or-table-perms))
+           (every? (fn [[table-id required-perm]]
+                     (perms/at-least-as-permissive? perm-type (get values [db-id table-id]) required-perm))
+                   db-or-table-perms)
+           (has-perm-for-table? perm-type db-or-table-perms db-id)))
+
+       :else
+       (throw (ex-info (tru "Invalid permissions format") required-perms)))
+     true)))
+
+(defn- sandboxed-database?
+  "Whether the current user has an enforced sandbox on the Database with `db-id`, from `answers`."
+  [answers db-id]
+  (if-let [answer (get-in answers [:sandboxed-database? db-id])]
+    @answer
+    (perms/sandboxed-user-for-db? db-id)))
+
 (defn- card
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
@@ -427,21 +548,50 @@
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{db-id :database :as _query} :- ::query
+  [query                        :- ::query
    perm-type                    :- [:enum :perms/view-data :perms/create-queries]
    required-perms               :- ::required-perms]
-  (boolean
-   (if-let [db-or-table-perms (perm-type required-perms)]
-     (cond
-       (keyword? db-or-table-perms)
-       (has-perm-for-db? perm-type db-or-table-perms db-id)
+  (has-perm-for-query-with? (single-check-answers query required-perms) query perm-type required-perms))
 
-       (map? db-or-table-perms)
-       (has-perm-for-table? perm-type db-or-table-perms db-id)
+(defn- card-read-answers
+  "`{[database-id card-id] card}` for each `[database-id card-ids]` of `database-card-ids`: the Card [[card]] gives in
+  that Database, hydrated with `:can_read` together with all the others, or what looking it up throws."
+  [database-card-ids]
+  (let [database-id->card-ids (reduce (fn [m [database-id card-ids]] (update m database-id (fnil into []) card-ids))
+                                      {}
+                                      database-card-ids)
+        entries               (into []
+                                    (mapcat (fn [[database-id card-ids]]
+                                              (let [card-ids (vec (distinct card-ids))]
+                                                (try
+                                                  (qp.store/with-metadata-provider database-id
+                                                    (lib.metadata/bulk-metadata (qp.store/metadata-provider) :metadata/card card-ids)
+                                                    (mapv (fn [card-id]
+                                                            [[database-id card-id] (try (card database-id card-id)
+                                                                                        (catch Throwable e e))])
+                                                          card-ids))
+                                                  (catch Throwable e
+                                                    (mapv (fn [card-id] [[database-id card-id] e]) card-ids))))))
+                                    database-id->card-ids)
+        found                 (filterv #(not (instance? Throwable (second %))) entries)]
+    (merge (into {} entries)
+           (zipmap (map first found) (t2/hydrate (mapv second found) :can_read)))))
 
-       :else
-       (throw (ex-info (tru "Invalid permissions format") required-perms)))
-     true)))
+(defn- check-cards-readable
+  "Throws, as [[check-cards-read-perms]] does, unless the current user reads each Card of `card-ids` in the Database
+  with `database-id`, from `answers`."
+  [answers database-id card-ids]
+  (when (seq card-ids)
+    (let [card-ids (vec card-ids)
+          id->card @(:cards answers)
+          cards    (mapv #(get id->card [database-id %]) card-ids)]
+      (when-let [e (first (filter #(instance? Throwable %) cards))]
+        (throw e))
+      (doseq [[card-id card] (map vector card-ids cards)]
+        (when-not (mi/can-read? card)
+          (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
+                                  {:card-ids #{card-id}}
+                                  {:card-id card-id})))))))
 
 (mu/defn check-cards-read-perms
   "Check that the current user has permissions to read each Card of `card-ids`, or throw an Exception for the first
@@ -449,20 +599,31 @@
   [database-id :- [:maybe ::lib.schema.id/database]
    card-ids    :- [:seqable ::lib.schema.id/card]]
   (when (seq card-ids)
-    (qp.store/with-metadata-provider database-id
-      (let [card-ids (vec card-ids)
-            cards    (t2/hydrate (mapv #(card database-id %) card-ids) :can_read)]
-        (doseq [[card-id card] (map vector card-ids cards)]
-          (when-not (mi/can-read? card)
-            (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
-                                    {:card-ids #{card-id}}
-                                    {:card-id card-id}))))))))
+    (check-cards-readable {:cards (delay (card-read-answers [[database-id card-ids]]))} database-id card-ids)))
 
 (mu/defn check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
   (check-cards-read-perms database-id [card-id]))
+
+(defn- check-data-perms-with
+  "Throws, as [[check-data-perms]] does, unless the current user has the data permissions `query` needs,
+  `required-perms`, from `answers`; returns true."
+  [answers query required-perms]
+  (when-let [source-card-ids (:source-card-ids required-perms)]
+    (or (can-read-card-collections? answers source-card-ids)
+        (throw (perms-exception required-perms))))
+  ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
+  (when (or (not (has-perm-for-query-with? answers query :perms/view-data required-perms))
+            (not (has-perm-for-query-with? answers query :perms/create-queries required-perms)))
+    (throw (perms-exception required-perms)))
+  ;; Native queries bypass sandboxing, so a user with an enforced sandbox on the database can't run them there, even
+  ;; if one of their groups grants native access.
+  (when (and (= :query-builder-and-native (:perms/create-queries required-perms))
+             (sandboxed-database? answers (:database query)))
+    (throw (perms-exception required-perms)))
+  true)
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
@@ -471,33 +632,25 @@
   [query required-perms & {:keys [throw-exceptions?]
                            :or   {throw-exceptions? true}}]
   (try
-    (when-let [source-card-ids (:source-card-ids required-perms)]
-      (or (can-read-card-collections? source-card-ids)
-          (throw (perms-exception required-perms))))
-    ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
-    (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
-              (not (has-perm-for-query? query :perms/create-queries required-perms)))
-      (throw (perms-exception required-perms)))
-    ;; Native queries bypass sandboxing, so a user with an enforced sandbox on the database can't run them there, even
-    ;; if one of their groups grants native access.
-    (when (and (= :query-builder-and-native (:perms/create-queries required-perms))
-               (perms/sandboxed-user-for-db? (:database query)))
-      (throw (perms-exception required-perms)))
-    true
+    (check-data-perms-with (single-check-answers query required-perms) query required-perms)
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
         (throw e)
         false))))
 
+(defn- check-query-allowed
+  "Throws unless the current user may run `query`, which needs `required-perms`, from `answers`; returns true."
+  [answers {database-id :database :as query} required-perms]
+  (check-data-perms-with answers query required-perms)
+  ;; Check card read permissions for any cards referenced in subqueries!
+  (check-cards-readable answers database-id (:card-ids required-perms))
+  true)
+
 (defn- can-run-query*
-  [{database-id :database :as query} {:keys [throw-exceptions?] :as perms-opts}]
+  [query {:keys [throw-exceptions?] :as perms-opts}]
   (try
     (let [required-perms (required-perms-for-query query perms-opts)]
-      (check-data-perms query required-perms)
-      ;; Check card read permissions for any cards referenced in subqueries!
-      (when-let [card-ids (seq (:card-ids required-perms))]
-        (check-cards-read-perms database-id card-ids))
-      true)
+      (check-query-allowed (single-check-answers query required-perms) query required-perms))
     (catch clojure.lang.ExceptionInfo e
       (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))
         (throw e)
@@ -557,7 +710,98 @@
           (throw (ex-info (tru "You must have data permissions to add a parameter referencing this Field.")
                           {:status-code 403})))))))
 
-(mu/defn check-run-permissions-for-query
+(mr/def ::run-check-options
+  "Options of [[check-run-permissions-for-query]]."
+  [:maybe [:map {:closed true}
+           [:allow-sensitive-fields? {:optional true} :boolean]]])
+
+(defn- preprocessed-queries
+  "Each of `queries` preprocessed as an admin, or nil for a nil one or one that cannot be."
+  [queries]
+  (try
+    (request/as-admin
+      (mapv #(when %
+               (try
+                 (qp.preprocess/preprocess %)
+                 (catch Throwable _
+                   nil)))
+            queries))
+    (catch Throwable _
+      (mapv (constantly nil) queries))))
+
+(defn- prepared-run-checks
+  "What [[check-run-permissions-for-queries]] checks for each of `queries`: `{:query :expanded? :required-perms}`, the
+  query preprocessed when it can be and the permissions it needs or what working them out threw, or `{:error e}` when
+  the check of sensitive columns threw `e`."
+  [queries {:keys [allow-sensitive-fields?]}]
+  (let [errors   (mapv #(try
+                          (when-not allow-sensitive-fields?
+                            (qp.sensitive-fields/check-query-can-be-saved! %))
+                          nil
+                          (catch Throwable e
+                            e))
+                       queries)
+        queries  (mapv #(dissoc % :query-permissions/perms) queries)
+        expanded (preprocessed-queries (mapv (fn [query error] (when-not error query)) queries errors))]
+    (mapv (fn [query error expanded]
+            (if error
+              {:error error}
+              (let [query     (or expanded query)
+                    expanded? (some? expanded)]
+                {:query          query
+                 :expanded?      expanded?
+                 :required-perms (try
+                                   (required-perms-for-query query {:already-preprocessed? expanded? :throw-exceptions? false})
+                                   (catch Throwable e
+                                     e))})))
+          queries errors expanded)))
+
+(defn- throw-cannot-save
+  "Throws the 403 that refuses to save `query`, with the permissions it needs."
+  [query expanded?]
+  (let [required-perms (try
+                         (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
+                         (catch Throwable e
+                           e))]
+    (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                    {:status-code    403
+                     :query          query
+                     :required-perms (if (instance? Throwable required-perms)
+                                       :error
+                                       required-perms)}
+                    (when (instance? Throwable required-perms)
+                      required-perms)))))
+
+(defn- check-prepared-run-check
+  "Throws what [[check-run-permissions-for-query]] throws for the query of `prepared`, one of [[prepared-run-checks]], from
+  `answers`."
+  [answers {:keys [error query expanded? required-perms]}]
+  (when error
+    (throw error))
+  (when-not (try
+              (when (instance? Throwable required-perms)
+                (throw required-perms))
+              (check-query-allowed answers query required-perms)
+              (catch clojure.lang.ExceptionInfo _
+                false))
+    (throw-cannot-save query expanded?)))
+
+(mu/defn check-run-permissions-for-queries :- :nil
+  "[[check-run-permissions-for-query]] for each of `queries` in order, throwing what it throws for the first one it
+  refuses. Each query is preprocessed on its own, all of them as one admin; the permissions they need are read for all
+  of them at once."
+  ([queries :- [:sequential ::query]]
+   (check-run-permissions-for-queries queries nil))
+  ([queries :- [:sequential ::query]
+    options :- ::run-check-options]
+   (let [prepared (prepared-run-checks queries options)
+         answers  (permission-answers (into []
+                                            (comp (filter (comp map? :required-perms))
+                                                  (map #(select-keys % [:query :required-perms])))
+                                            prepared))]
+     (run! #(check-prepared-run-check answers %) prepared))))
+
+(mu/defn check-run-permissions-for-query :- :nil
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!
 
@@ -565,29 +809,7 @@
   is saved content being restored rather than a new query."
   ([query :- ::query]
    (check-run-permissions-for-query query nil))
-  ([query                             :- ::query
-    {:keys [allow-sensitive-fields?]} :- [:maybe [:map {:closed true}
-                                                  [:allow-sensitive-fields? {:optional true} :boolean]]]]
+  ([query   :- ::query
+    options :- ::run-check-options]
    {:pre [(map? query)]}
-   (when-not allow-sensitive-fields?
-     (qp.sensitive-fields/check-query-can-be-saved! query))
-   (let [query    (dissoc query :query-permissions/perms)
-         expanded (try
-                    (preprocess-query query)
-                    (catch Throwable _
-                      nil))
-         query    (or expanded query)
-         expanded? (some? expanded)]
-     (when-not (can-run-query? query expanded?)
-       (let [required-perms (try
-                              (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
-                              (catch Throwable e
-                                e))]
-         (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                         {:status-code    403
-                          :query          query
-                          :required-perms (if (instance? Throwable required-perms)
-                                            :error
-                                            required-perms)}
-                         (when (instance? Throwable required-perms)
-                           required-perms))))))))
+   (check-run-permissions-for-queries [query] options)))

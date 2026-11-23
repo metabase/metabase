@@ -6,10 +6,10 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn card-collection-id
-  "The `:collection_id` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
+(mu/defn cards-with-collection-ids
+  "The Cards with `card-ids`, each with its `:id` and `:collection_id`, by id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn identity [:model/Card :id :collection_id] :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-not-in-database
   "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."

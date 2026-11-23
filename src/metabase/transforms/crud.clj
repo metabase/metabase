@@ -252,10 +252,10 @@
         folders        (transforms.db/collections-by-ids collection-ids)
         transforms     (transforms.db/transforms-in-collections collection-ids)]
     ;; The delete removes every subfolder, so it needs write permission on each of them, as an archive does.
-    (run! api/write-check folders)
+    (run! api/write-check (t2/hydrate folders :can_write))
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
-    (run! api/write-check transforms)
+    (run! api/write-check (t2/hydrate transforms :can_write))
     ;; Drop the tables before the transaction, in the order of the single delete in the frontend (table, then
     ;; transform). A failed drop stops the delete with every Transform row in place, so the user can retry; the tables
     ;; dropped before it stay dropped. `delete-target-table!` needs the Transform row to find its target.

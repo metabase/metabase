@@ -19,6 +19,7 @@
   (log/with-context {:card_id (:card_id payload)}
     (let [card-id     (:card_id payload)
           part        (notification.execute/execute-card creator_id card-id)
+          card        (notification.db/card card-id)
           card-result (:result part)]
       (when (not= :completed (:status card-result))
         (throw (ex-info (format "Failed to execute card with error: %s" (:error card-result))
@@ -26,7 +27,8 @@
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (notification.db/card card-id)
+       :card             card
+       :timezone         (channel.render/defaulted-timezone card)
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}

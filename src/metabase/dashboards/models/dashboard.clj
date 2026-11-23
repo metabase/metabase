@@ -234,12 +234,10 @@
   (or (changes-only-public-link? dashboard changes)
       (mi/can-write? dashboard)))
 
-(defn- can-move-and-share?
-  "Whether the current user may do what `changes` do to the Collection, the embedding and the public link of
-  `dashboard`."
+(defn- can-share?
+  "Whether the current user may do what `changes` do to the embedding and the public link of `dashboard`."
   [dashboard changes]
-  (and (collection/can-move? dashboard changes)
-       (can-change-embedding? dashboard changes)
+  (and (can-change-embedding? dashboard changes)
        (can-change-public-link? dashboard changes)))
 
 (defmethod mi/can-update? :model/Dashboard
@@ -251,7 +249,8 @@
   (boolean
    (and (every? #(writable-for? % changes) dashboards)
         (mi/archive-followers-updatable? dashboards changes :model/Card following-questions)
-        (every? #(can-move-and-share? % changes) dashboards))))
+        (collection/can-move-all-or-404? dashboards changes)
+        (every? #(can-share? % changes) dashboards))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -779,6 +778,21 @@
 (defmethod collection/shift-positions-in-collection! :model/Dashboard
   [_model collection-id positions direction]
   (dashboards.db/shift-dashboard-positions! collection-id positions direction))
+
+(defmethod collection/reconcile-freed-positions-in-collection! :model/Dashboard
+  [_model collection-id freed-positions]
+  (when-let [updates (not-empty (collection/position-updates
+                                 (dashboards.db/dashboard-positions-from collection-id (inc (first freed-positions)))
+                                 freed-positions))]
+    (update-dashboards! updates)))
+
+(defmethod collection/positioned-rows-in-collections :model/Dashboard
+  [_model collection-ids]
+  (dashboards.db/positioned-dashboards-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Dashboard
+  [_model id->position]
+  (update-dashboards! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
 
 (defmethod card/update-followers! :model/Dashboard
   [_model rows]

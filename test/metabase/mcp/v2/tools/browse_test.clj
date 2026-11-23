@@ -546,6 +546,35 @@
               (is (= [t] (map :id (:tables envelope)))
                   "25 copies of one table is one table — served, not rejected as over the cap"))))))))
 
+(deftest get-fields-include-hidden-statement-count-test
+  (testing "get_fields with include_hidden runs as many statements for 5 tables as for 20, the cap, with hidden fields"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (mt/with-full-data-perms-for-all-users!
+          (let [statements (fn [n]
+                             (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                       (for [i (range n)]
+                                                                         {:db_id db-id :schema "public" :name (format "hidden_%d_%d" n i)
+                                                                          :active true}))]
+                               (t2/insert! :model/Field (for [table-id table-ids
+                                                              [position visibility] [[0 :normal] [1 :hidden]]]
+                                                          {:table_id        table-id
+                                                           :name            (str (name visibility) "_column")
+                                                           :base_type       :type/Integer
+                                                           :database_type   "INTEGER"
+                                                           :position        position
+                                                           :visibility_type visibility}))
+                               (mt/with-test-user :rasta
+                                 (t2/with-call-count [call-count]
+                                   (let [[envelope] (call! {:action         "get_fields"
+                                                            :table_ids      table-ids
+                                                            :include_hidden true})]
+                                     (is (= (repeat n ["normal_column" "hidden_column"])
+                                            (map #(map :name (:fields %)) (:tables envelope))))
+                                     (call-count))))))]
+            (statements 2)
+            (is (= (statements 5) (statements 20)))))))))
+
 ;;; ------------------------------------------------ Byte budget ---------------------------------------------------
 
 (deftest ^:parallel assemble-tables-within-budget-test

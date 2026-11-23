@@ -149,3 +149,46 @@
             (is (= (create! 2) (create! 6)))
             (delete! 1)
             (is (= (delete! 2) (delete! 6)))))))))
+
+(deftest can-update-each-resolve-test
+  (testing "mi/can-update-each? of Comments answers a resolve as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Comment :model/Document :model/Collection]
+      (let [collection!  (fn [writable?]
+                           (let [id (t2/insert-returning-pk! :model/Collection
+                                                             (merge (mt/with-temp-defaults :model/Collection) {:name (str "bulk " (random-uuid))}))]
+                             (if writable?
+                               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) id)
+                               (perms/grant-collection-read-permissions! (perms-group/all-users) id))
+                             id))
+            comments-in  (fn [writable? n]
+                           (let [ids (mapv (fn [_]
+                                             (let [doc (t2/insert-returning-pk! :model/Document
+                                                                                (merge (mt/with-temp-defaults :model/Document)
+                                                                                       {:collection_id (collection! writable?)}))]
+                                               (t2/insert-returning-pk! :model/Comment
+                                                                        (merge (mt/with-temp-defaults :model/Comment)
+                                                                               {:target_type "document" :target_id doc :creator_id (mt/user->id :rasta)}))))
+                                           (range n))]
+                             (t2/select :model/Comment :id [:in ids])))
+            writable     (comments-in true 2)
+            read-only    (comments-in false 1)
+            changes      {:is_resolved true}
+            per-row      (fn [rows] (every? #(mi/can-update? % changes) (t2/hydrate (vec rows) :can_write)))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "comments on documents the user writes"
+            (is (true? (mi/can-update-each? :model/Comment writable changes)))
+            (is (= (per-row writable) (mi/can-update-each? :model/Comment writable changes))))
+          (testing "a comment on a document the user only reads among comments on documents the user writes"
+            (let [rows (concat writable read-only)]
+              (is (false? (mi/can-update-each? :model/Comment rows changes)))
+              (is (= (per-row rows) (mi/can-update-each? :model/Comment rows changes))))))
+        (doseq [user [:crowberto :rasta]]
+          (testing (str "statement count as " user)
+            (mt/with-current-user (mt/user->id user)
+              (let [counted (fn [n]
+                              (let [rows (comments-in true n)]
+                                (events.tu/real-statement-count! #(mi/can-update-each? :model/Comment rows changes))))]
+                (counted 2)
+                (let [few  (counted 10)
+                      many (counted 40)]
+                  (is (= few many)))))))))))

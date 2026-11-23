@@ -931,6 +931,30 @@
         (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
             "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
 
+(deftest fetch-database-metadata-metrics-statement-count-test
+  (testing "GET /api/database/:id/metadata takes as many statements for many tables with a metric as for few, as a non-admin"
+    (let [metadata! (fn [n]
+                      (mt/with-temp [:model/Database {db-id :id} {}]
+                        (mt/with-model-cleanup [:model/Card]
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+                          (doseq [i (range n)]
+                            (let [table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public" :name (str "t" i) :active true})
+                                  _        (t2/insert! :model/Field {:table_id table-id :name "id" :base_type :type/Integer
+                                                                     :database_type "INTEGER"})
+                                  mp       (lib-be/application-database-metadata-provider db-id)]
+                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                             {:name          (str "metric " i)
+                                                              :type          :metric
+                                                              :database_id   db-id
+                                                              :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                                                                                            (lib/count))}))))
+                          (t2/with-call-count [call-count]
+                            (is (= n (count (mapcat :metrics (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))))))
+                            (call-count)))))]
+      (metadata! 1)
+      (is (= (metadata! 2) (metadata! 6))))))
+
 (deftest fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"

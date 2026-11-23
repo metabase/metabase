@@ -343,6 +343,58 @@
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+(defn- check-application-access-changes
+  "Throws as [[grant-application-permissions!]] and [[revoke-application-permissions!]] would for the first of
+  `changes`, `[group-id perm-type value]` triples, that they refuse, where the groups with `revoking-group-ids` hold rows
+  a revoke deletes, with the groups read once."
+  [changes revoking-group-ids]
+  (let [granting-ids (into #{} (keep (fn [[group-id perm-type value]]
+                                       (when (and (= value :yes) (not= perm-type :subscription))
+                                         group-id)))
+                           changes)
+        tenant?      (when (seq granting-ids)
+                       (permissions.db/group-tenant-flags granting-ids))]
+    (doseq [[group-id perm-type value] changes]
+      (case value
+        :yes (when (and (get tenant? group-id) (not= perm-type :subscription))
+               (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
+        :no  (when (contains? revoking-group-ids group-id)
+               (assert-not-admin-group {:group_id group-id}))))))
+
+(defn- grant-paths!
+  "Grants each `[group-id path]` of `grants` in one insert, or one at a time as [[grant-permissions!]] does when that
+  insert fails."
+  [grants]
+  (when (seq grants)
+    (try
+      (create-permissions! (for [[group-id path] grants
+                                 object (distinct (conj (perms.u/->v2-path path) path))]
+                             {:group_id group-id :object object}))
+      (catch Throwable _
+        (doseq [[group-id path] grants]
+          (grant-permissions! group-id path))))))
+
+(mu/defn update-application-accesses!
+  "Grants (`:yes`) or revokes (`:no`) the application permission of each of `changes`, `[group-id perm-type value]`
+  triples, as [[grant-application-permissions!]] and [[revoke-application-permissions!]] would one triple at a time,
+  with the same refusals before any write."
+  [changes :- [:sequential [:tuple ms/PositiveInt [:enum :setting :monitoring :subscription] [:enum :yes :no]]]]
+  (let [paths   (for [[group-id perm-type value] changes]
+                  [group-id (permissions.path/application-perms-path perm-type) value])
+        related (for [[group-id path value] paths
+                      :when (= value :no)]
+                  [group-id path (conj (perms.u/->v2-path path) path)])
+        rows    (into [] (comp (mapcat #(permissions.db/related-permission-rows (vec %))) (distinct))
+                      (partition-all app-db/update-partition-size related))]
+    (check-application-access-changes changes (into #{} (map :group_id) rows))
+    (doseq [[group-id group-rows] (group-by :group_id rows)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
+    (when (seq rows)
+      (delete-permissions! (mapv :id rows)))
+    (grant-paths! (for [[group-id path value] paths
+                        :when (= value :yes)]
+                    [group-id path]))))
+
 ;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))

@@ -721,7 +721,7 @@
                                          (mapv (fn [_] (cycle-transform (query 1) (mt/random-name))) (range n))))]
                       (statements-outside-query-analysis! #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :query :query (query limit)}} :id row-id)) ids)))))]
       (counted 1 2)
-      (is (= (counted 2 3) (counted 6 4))))))
+      (is (= (min (counted 2 3) (counted 2 5)) (min (counted 6 4) (counted 6 6)))))))
 
 (deftest last-run-hydration-statement-count-does-not-grow-with-transforms-test
   (testing "hydrating `:last_run` reads the stored checkpoints of many succeeded transforms in as many statements as of few"

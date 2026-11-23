@@ -332,18 +332,6 @@
   [page-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_block_id :model/ExplorationPage :id page-id))
 
-(mu/defn page-id-for-key
-  "The ID of the ExplorationPage of the given block, Card, dimension, and query type, or nil."
-  [block-id     :- ms/PositiveInt
-   card-id      :- [:maybe ::lib.schema.id/card]
-   dimension-id :- [:or :string :int]
-   query-type   :- [:maybe :string]]
-  (t2/select-one-pk :model/ExplorationPage
-                    :exploration_block_id block-id
-                    :card_id              card-id
-                    :dimension_id         dimension-id
-                    :query_type           query-type))
-
 (mu/defn pages-for-blocks
   "The ExplorationPages of the ExplorationBlocks with `block-ids`."
   [block-ids :- [:sequential ms/PositiveInt]]

@@ -127,3 +127,40 @@
       (field-values-call-count! 1)
       (is (= (field-values-call-count! 2)
              (field-values-call-count! 6))))))
+
+(defn- impersonated-field-values-call-count!
+  "The number of statements `read!` issues for the current user with one Field of each of `n` fresh Tables whose advanced
+  FieldValues for that user are stored, checking that it returns them."
+  [n read!]
+  (mt/with-model-cleanup [:model/Table]
+    (let [fields (vec (for [i (range n)]
+                        (let [table-id (t2/insert-returning-pk! :model/Table {:db_id (mt/id) :name (str "stored_" i)
+                                                                              :active true})]
+                          (t2/select-one :model/Field :id (t2/insert-returning-pk! :model/Field
+                                                                                   {:table_id         table-id
+                                                                                    :name             "field"
+                                                                                    :base_type        :type/Text
+                                                                                    :database_type    "VARCHAR"
+                                                                                    :has_field_values :list})))))]
+      (doseq [field fields]
+        (t2/insert! :model/FieldValues {:field_id (:id field)
+                                        :type     :advanced
+                                        :hash_key (str (hash (params.field-values/hash-input-for-field-values field)))
+                                        :values   ["stored" (str (:id field))]}))
+      (t2/with-call-count [call-count]
+        (is (= (into {} (for [{:keys [id]} fields] [id ["stored" (str id)]]))
+               (update-vals (read! fields) :values)))
+        (call-count)))))
+
+(deftest impersonated-stored-field-values-call-count-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "impersonation_role"}}
+      (doseq [[what read!] [["field-id->field-values-for-current-user"
+                             #(params.field-values/field-id->field-values-for-current-user (map :id %))]
+                            ["get-or-create-field-values-by-field-id!"
+                             #(params.field-values/get-or-create-field-values-by-field-id! (t2/hydrate % :table))]]]
+        (testing (str what " issues as many statements for stored FieldValues of Fields of 6 Tables as of 2")
+          (impersonated-field-values-call-count! 1 read!)
+          (is (= (impersonated-field-values-call-count! 2 read!)
+                 (impersonated-field-values-call-count! 6 read!))))))))

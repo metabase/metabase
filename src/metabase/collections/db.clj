@@ -372,15 +372,17 @@
               :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
 (mu/defn subtree-locations-to-flag :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
-  "The `:id` and `:location` of the ::collections.schema/collection with `collection-id` and of the Collections whose
-  location starts with `children-location`, among those whose `:is_remote_synced` is not `remote-synced?`."
-  [collection-id     :- ::lib.schema.id/collection
-   children-location :- :string
-   remote-synced?    :- :boolean]
+  "The `:id` and `:location` of the Collections with `collection-ids` and of those whose location starts with one of
+  `children-locations`, among those whose `:is_remote_synced` is not `remote-synced?`."
+  [collection-ids     :- [:sequential ::lib.schema.id/collection]
+   children-locations :- [:sequential :string]
+   remote-synced?     :- :boolean]
   (t2/select [:model/Collection :id :location]
              {:where [:and
                       [:not= :is_remote_synced remote-synced?]
-                      [:or [:= :id collection-id] [:like :location (str children-location "%")]]]}))
+                      (into [:or [:in :id [:auto/param collection-ids]]]
+                            (map (fn [location] [:like :location [:auto/param (str location "%")]]))
+                            children-locations)]}))
 
 (mu/defn remote-synced-collection-locations :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
   "The `:id` and `:location` of every remote-synced ::collections.schema/collection."

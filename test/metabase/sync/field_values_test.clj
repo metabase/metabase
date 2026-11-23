@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.driver.util :as driver.u]
+   [metabase.query-processor :as qp]
    [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.core :as sync]
    [metabase.sync.db :as sync.db]
@@ -385,7 +386,7 @@
                      :model/Field plain-c  {:table_id tbl-id, :name "plain"
                                             :base_type :type/Text, :has_field_values :list}]
         (mt/with-dynamic-fn-redefs [sync.field-values/fetch-distinct-for-table
-                                    (fn [_table fields]
+                                    (fn [_driver _table fields]
                                       (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries 1
@@ -465,9 +466,9 @@
                                                       :created_at expired :updated_at expired}))))
 
 (defn- distinct-values-a-and-b
-  "Distinct values `a` and `b` of each of `fields`, as [[distinct-batch/run-distinct-batch]] gives them."
-  [_table fields]
-  (into {} (map (fn [field] [(:id field) {:values ["a" "b"] :raw-count 2}])) fields))
+  "Rows `a` and `b` of every arm of a query of [[distinct-batch/run-distinct-batch]], as the warehouse gives them."
+  [_query]
+  {:data {:rows (for [arm (range distinct-batch/*batch-size*) value ["a" "b"]] [arm value])}})
 
 (defn- update-field-values!
   "Run both steps of field values sync over `database`, returning the result of each."
@@ -476,7 +477,7 @@
    :updated (#'sync.field-values/update-field-values-for-database! database)})
 
 (deftest update-field-values-statement-count-test
-  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+  (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
     (testing "field values sync issues as many statements for 16 Tables as for 4"
       (testing "when FieldValues are cleared and expired ones deleted"
         (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field add-field-values! update-field-values!)]
@@ -502,7 +503,7 @@
 
 (deftest update-field-values-clears-and-expires-field-values-test
   (testing "field values sync deletes FieldValues of Fields that should have none and expired advanced ones"
-    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
       (mt/with-temp [:model/Database db      {:engine :h2}
                      :model/Table    table-1 {:db_id (u/the-id db) :active true}
                      :model/Table    table-2 {:db_id (u/the-id db) :active true}
@@ -537,7 +538,7 @@
   (add-full-field-values! database ["x"] (t/offset-date-time)))
 
 (deftest update-field-values-unused-or-changed-statement-count-test
-  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+  (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
     (doseq [[what prepare!] [["FieldValues are not used recently" add-unused-field-values!]
                              ["FieldValues change" add-other-field-values!]]]
       (testing (str "field values sync issues as many statements for 16 Tables as for 4 when " what)
@@ -561,7 +562,7 @@
     (prepare! database)))
 
 (deftest update-field-values-for-on-demand-dbs-statement-count-test
-  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+  (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
     (doseq [[what prepare!] [["Fields have no FieldValues" (constantly nil)]
                              ["FieldValues change" add-other-field-values!]]]
       (testing (str "on-demand field values update issues as many statements for 16 Tables as for 4 when " what)
@@ -575,7 +576,7 @@
 
 (deftest update-field-values-for-on-demand-dbs-writes-every-field-test
   (testing "on-demand field values update creates missing FieldValues and updates changed ones of every Table"
-    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
       (mt/with-temp [:model/Database db      {:engine :h2 :is_on_demand true}
                      :model/Table    table-1 {:db_id (u/the-id db) :active true}
                      :model/Table    table-2 {:db_id (u/the-id db) :active true}
@@ -590,7 +591,7 @@
 
 (deftest update-field-values-saves-other-fields-when-one-write-fails-test
   (testing "field values sync saves the FieldValues of other Fields when writing those of one Field throws"
-    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
       (mt/with-temp [:model/Database db      {:engine :h2}
                      :model/Table    table-1 {:db_id (u/the-id db) :active true}
                      :model/Table    table-2 {:db_id (u/the-id db) :active true}
@@ -610,3 +611,20 @@
         (is (= {(u/the-id broken) ["x"] (u/the-id other-1) ["a" "b"] (u/the-id other-2) ["a" "b"]}
                (t2/select-fn->fn :field_id :values :model/FieldValues
                                  :field_id [:in (map u/the-id [broken other-1 other-2])] :type :full)))))))
+
+(deftest update-field-values-error-is-not-retried-per-field-test
+  (testing "field values sync throws an Error of writing all FieldValues without writing those of each Field"
+    (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    table-1 {:db_id (u/the-id db) :active true}
+                     :model/Table    table-2 {:db_id (u/the-id db) :active true}
+                     :model/Field    _       {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values :auto-list}
+                     :model/Field    _       {:table_id (u/the-id table-2) :base_type :type/Text :has_field_values :auto-list}]
+        (add-other-field-values! db)
+        (let [writes (atom 0)]
+          (mt/with-dynamic-fn-redefs [field-values/save-field-values-changes! (fn [_changes]
+                                                                                (swap! writes inc)
+                                                                                (throw (StackOverflowError.)))]
+            (is (thrown? StackOverflowError
+                         (update-field-values! (driver.u/lib-database (u/the-id db))))))
+          (is (= 1 @writes)))))))

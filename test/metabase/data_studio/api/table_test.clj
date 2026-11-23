@@ -5,10 +5,12 @@
    [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
@@ -207,6 +209,39 @@
                 (is (= [t1 t2 t4 t5] (map :id @tables)))))))
         (finally
           (.shutdownNow pool))))))
+
+(mt/when-ee-evailable
+ (deftest bulk-table-actions-audit-statement-count-test
+   (mt/with-premium-features #{:audit-app :advanced-permissions}
+     (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
+       (mt/with-db-perms-for-group! (perms-group/all-users) db-id {:perms/manage-table-metadata :yes}
+         (mt/with-data-analyst-role! (mt/user->id :lucky)
+           (mt/with-model-cleanup [:model/Table :model/AuditLog]
+             (mt/with-dynamic-fn-redefs [quick-task/submit-task! (constantly nil)]
+               (doseq [[endpoint topic] [["rescan-values" "table-manual-scan"] ["sync-schema" "table-manual-sync"]]]
+                 (let [statements (fn [n]
+                                    (let [ids (t2/insert-returning-pks! :model/Table
+                                                                        (for [i (range n)]
+                                                                          {:name   (str endpoint "_" n "_" i)
+                                                                           :db_id  db-id
+                                                                           :active true}))]
+                                      (u/prog1 (events.tu/real-statement-count!
+                                                #(mt/user-http-request :lucky :post 204 (str "data-studio/table/" endpoint)
+                                                                       {:table_ids ids}))
+                                        (is (= (sort ids)
+                                               (sort (t2/select-fn-vec :model_id :model/AuditLog
+                                                                       :topic topic :model_id [:in ids])))))))]
+                   (statements 2)
+                   (testing (str "POST /api/data-studio/table/" endpoint " costs as many statements for 10 tables as for 40")
+                     (is (= (statements 10) (statements 40))))
+                   (testing "each audit row names its Table and the user"
+                     (let [table-id (t2/insert-returning-pk! :model/Table {:name (str endpoint "_one") :db_id db-id :active true})]
+                       (mt/user-http-request :lucky :post 204 (str "data-studio/table/" endpoint) {:table_ids [table-id]})
+                       (is (=? {:user_id  (mt/user->id :lucky)
+                                :model    "Table"
+                                :model_id table-id
+                                :details  {:id table-id :name (str endpoint "_one") :db_id db-id}}
+                               (mt/latest-audit-log-entry topic table-id)))))))))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (testing "Non-admins should not be allowed to trigger discard values"

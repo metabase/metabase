@@ -1,7 +1,11 @@
 (ns metabase.collections.test-utils
   "Test utilities and macros for collection-related tests."
   (:require
+   [clojure.test :refer [is testing]]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -124,3 +128,54 @@
   {:style/indent 1}
   [[binding] & body]
   `(do-with-library (fn [~binding] ~@body)))
+
+(defn- new-collection!
+  "The id of a new top level Collection that the All Users group writes when `writable?` and only reads otherwise."
+  [writable?]
+  (let [id (t2/insert-returning-pk! :model/Collection
+                                    (merge (mt/with-temp-defaults :model/Collection) {:name (str "bulk " (random-uuid))}))]
+    (if writable?
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) id)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) id))
+    id))
+
+(defn check-bulk-can-update-collection-move!
+  "Checks that [[mi/can-update-each?]] of the rows of `model` that `make-row!`, a function of a Collection id, makes
+  answers a move into another Collection as [[mi/can-update?]] answers row by row, for a batch of rows of Collections
+  the user writes, of one the user only reads, and into a Collection the user only reads, and that it takes as many
+  statements for many rows as for few, for a superuser and for a user."
+  [model make-row!]
+  (mt/with-model-cleanup [model :model/Collection]
+    (let [writable-target (new-collection! true)
+          read-only-target (new-collection! false)
+          rows-in          (fn [collection-ids]
+                             (t2/select model :id [:in (mapv make-row! collection-ids)]))
+          writable         (rows-in [(new-collection! true) (new-collection! true)])
+          read-only        (rows-in [(new-collection! false)])
+          per-row          (fn [rows changes]
+                             (every? #(mi/can-update? % changes) (t2/hydrate (vec rows) :can_write)))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label rows changes expected] [["rows the user writes into a Collection the user writes" writable {:collection_id writable-target} true]
+                                               ["a row the user only reads among rows the user writes" (concat writable read-only) {:collection_id writable-target} false]
+                                               ["rows the user writes into a Collection the user only reads" writable {:collection_id read-only-target} false]]]
+          (testing label
+            (is (= expected (mi/can-update-each? model rows changes)))
+            (is (= (per-row rows changes) (mi/can-update-each? model rows changes))))))
+      (testing "a move to a Collection that does not exist is a 404, as for one row"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= 404 (try (mi/can-update? (first (t2/hydrate (vec writable) :can_write)) {:collection_id Integer/MAX_VALUE})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (is (= 404 (try (mi/can-update-each? model writable {:collection_id Integer/MAX_VALUE})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))))
+      (doseq [user [:crowberto :rasta]]
+        (testing (str "statement count as " user)
+          (mt/with-current-user (mt/user->id user)
+            (let [counted (fn [n]
+                            (let [rows (rows-in (repeatedly n #(new-collection! true)))]
+                              (events.tu/real-statement-count! #(mi/can-update-each? model rows {:collection_id writable-target}))))]
+              (counted 2)
+              (let [few  (counted 10)
+                    many (counted 40)]
+                (is (= few many))))))))))

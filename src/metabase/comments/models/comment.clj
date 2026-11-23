@@ -108,13 +108,29 @@
   [_model comment]
   (boolean (some-> (target comment) (t2/hydrate :can_read) mi/can-read?)))
 
+(defn- writable-target-keys
+  "The `[target_type target_id]` of the entities `comments` are on that the current user writes, loaded together per type."
+  [comments]
+  (into #{}
+        (for [[target-type rows] (group-by :target_type comments)
+              :let  [model (target-type->model target-type)]
+              :when model
+              entity (t2/hydrate (comments.db/targets model (into #{} (map :target_id) rows)) :can_write)
+              :when (mi/can-write? entity)]
+          [target-type (:id entity)])))
+
 (defmethod mi/can-update? :model/Comment
   [comment changes]
-  (boolean (and (mi/can-read? comment)
-                (or (not (contains? changes :content))
-                    (mi/can-write? comment))
-                (or (not (contains? changes :is_resolved))
-                    (some-> (target comment) (t2/hydrate :can_write) mi/can-write?)))))
+  (mi/can-update-all? :model/Comment [comment] changes))
+
+(defmethod mi/can-update-all? :model/Comment
+  [_model comments changes]
+  (let [writable-targets (when (contains? changes :is_resolved) (writable-target-keys comments))]
+    (boolean (and (every? mi/can-read? comments)
+                  (or (not (contains? changes :content))
+                      (every? mi/can-write? comments))
+                  (or (not (contains? changes :is_resolved))
+                      (every? #(contains? writable-targets [(:target_type %) (:target_id %)]) comments))))))
 
 ;;;
 

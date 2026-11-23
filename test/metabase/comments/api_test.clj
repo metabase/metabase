@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.seed :as notification.seed]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -636,3 +637,49 @@
         (testing "is not derived on read for a comment that carries none"
           (let [created (post! {:highlighted highlighted})]
             (is (nil? (get-in (fetch (:id created)) [:context :highlight_label])))))))))
+
+(deftest reply-finds-notifications-once-test
+  (testing "POST /api/comment finds the notifications of its event once, and every earlier participant gets an email"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-model-cleanup [:model/Comment :model/Notification]
+        (mt/with-temp [:model/Document {doc-id :id} {:name "Thread Doc" :creator_id (mt/user->id :crowberto)}]
+          (mt/with-fake-inbox
+            (notification.seed/seed-notification!)
+            (let [lookup  (mt/original-fn #'notification.db/active-system-event-notifications)
+                  reply!  (fn [n]
+                            (let [users (t2/insert-returning-instances!
+                                         :model/User
+                                         (for [i (range n)]
+                                           (assoc (mt/with-temp-defaults :model/User)
+                                                  :email (str "thread-" n "-" i "@example.com"))))]
+                              (try
+                                (let [root-id (t2/insert-returning-pk! :model/Comment {:target_type "document"
+                                                                                       :target_id   doc-id
+                                                                                       :content     (tiptap [:p "root"])
+                                                                                       :creator_id  (:id (first users))})]
+                                  (doseq [user (rest users)]
+                                    (t2/insert! :model/Comment {:target_type       "document"
+                                                                :target_id         doc-id
+                                                                :parent_comment_id root-id
+                                                                :content           (tiptap [:p "reply"])
+                                                                :creator_id        (:id user)}))
+                                  (reset! mt/inbox {})
+                                  (let [lookups (atom 0)]
+                                    (mt/with-dynamic-fn-redefs [notification.db/active-system-event-notifications
+                                                                (fn [& args] (swap! lookups inc) (apply lookup args))]
+                                      (mt/user-http-request :rasta :post 200 "comment/"
+                                                            {:target_type       "document"
+                                                             :target_id         doc-id
+                                                             :parent_comment_id root-id
+                                                             :content           (tiptap [:p "answer"])}))
+                                    {:lookups @lookups
+                                     :emails  (into #{} (filter #(str/starts-with? % (str "thread-" n "-"))) (keys @mt/inbox))
+                                     :wanted  (into #{} (map :email) users)}))
+                                (finally
+                                  (t2/delete! :model/Comment :target_type "document" :target_id doc-id)
+                                  (t2/delete! :model/User :id [:in (map :id users)])))))
+                  small   (reply! 2)
+                  large   (reply! 6)]
+              (is (= (:lookups small) (:lookups large)))
+              (is (= (:wanted small) (:emails small)))
+              (is (= (:wanted large) (:emails large))))))))))

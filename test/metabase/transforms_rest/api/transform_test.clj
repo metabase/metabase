@@ -2338,6 +2338,59 @@
           (mt/user-http-request :rasta :delete 204 url)
           (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]]))))))))
 
+(defn- transforms-folder!
+  "Insert a transforms folder with `n` subfolders, give All Users write on each, and return the folder's id and the
+  subfolders' ids."
+  [n prefix]
+  (let [folder-id     (t2/insert-returning-pk! :model/Collection {:name (str prefix " folder") :namespace :transforms})
+        subfolder-ids (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                    {:name      (str prefix " subfolder " i)
+                                                                     :namespace :transforms
+                                                                     :location  (format "/%d/" folder-id)}))]
+    (doseq [collection-id (cons folder-id subfolder-ids)]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id))
+    [folder-id subfolder-ids]))
+
+(deftest delete-transforms-folder-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-model-cleanup [:model/Collection]
+      (let [statements (fn [n]
+                         (let [[folder-id subfolder-ids] (transforms-folder! n (str "Statements " n))]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :rasta :delete 204 (format "transform/collection/%d" folder-id))
+                             (u/prog1 (call-count)
+                               (is (false? (t2/exists? :model/Collection :id [:in (cons folder-id subfolder-ids)])))))))]
+        (statements 2)
+        (testing "DELETE /api/transform/collection/:id costs as many statements for 10 subfolders as for 40"
+          (is (= (statements 10) (statements 40))))
+        (testing "a folder with one subfolder user can only view is not deleted"
+          (let [[folder-id subfolder-ids] (transforms-folder! 3 "Refused")]
+            (perms/revoke-collection-permissions! (perms-group/all-users) (second subfolder-ids))
+            (perms/grant-collection-read-permissions! (perms-group/all-users) (second subfolder-ids))
+            (mt/user-http-request :rasta :delete 403 (format "transform/collection/%d" folder-id))
+            (is (= 4 (t2/count :model/Collection :id [:in (cons folder-id subfolder-ids)])))))))))
+
+(mt/when-ee-evailable
+ (deftest delete-transforms-folder-with-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+     (mt/with-model-cleanup [:model/Collection :model/Transform]
+       (mt/with-data-analyst-role! (mt/user->id :lucky)
+         (with-transform-db-perms!
+           (let [statements (fn [n]
+                              (let [[folder-id] (transforms-folder! 0 (str "Transforms " n))
+                                    ids         (t2/insert-returning-pks! :model/Transform
+                                                                          (for [i (range n)]
+                                                                            (assoc (mt/with-temp-defaults :model/Transform)
+                                                                                   :name          (str "Transform " n " " i)
+                                                                                   :collection_id folder-id)))]
+                                (t2/with-call-count [call-count]
+                                  (mt/user-http-request :lucky :delete 204 (format "transform/collection/%d" folder-id))
+                                  (u/prog1 (call-count)
+                                    (is (false? (t2/exists? :model/Transform :id [:in ids])))))))]
+             (statements 2)
+             (testing "DELETE /api/transform/collection/:id costs as many statements for 10 transforms as for 40"
+               (is (= (statements 10) (statements 40)))))))))))
+
 (deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
   (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
                  :model/Transform  {transform-id :id} {:collection_id folder-id}]

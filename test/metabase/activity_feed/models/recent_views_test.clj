@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
@@ -749,3 +750,19 @@
                            (t2/delete! :model/User :id [:in user-ids])))))]
         (flush! 2)
         (is (= (flush! 10) (flush! 40)))))))
+
+(deftest collection-moves-recent-views-statement-count-test
+  (testing "moving 10 collections in one update runs as many statements as moving 40, recording views of them"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [move! (fn [n]
+                    (let [parent-id (t2/insert-returning-pk! :model/Collection {:name (str "Parent " n) :location "/"})
+                          ids       (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                                  {:name (str "Moved " n " " i) :location "/"}))]
+                      (mt/with-current-user (mt/user->id :rasta)
+                        (u/prog1 (events.tu/real-statement-count!
+                                  #(collection/update-collections! (for [id ids] {:id id :location (str "/" parent-id "/")})))
+                          (is (= (min n recent-views/*recent-views-stored-per-user-per-model*)
+                                 (t2/count :model/RecentViews :user_id (mt/user->id :rasta)
+                                           :model "collection" :model_id [:in ids])))))))]
+        (move! recent-views/*recent-views-stored-per-user-per-model*)
+        (is (= (move! 10) (move! 40)))))))

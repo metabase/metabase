@@ -224,12 +224,11 @@
       owner-writable
       (mi/can-write? document))))
 
-(defn- can-move-and-share?
-  "Whether the current user may do what `changes` do to the Collection and the public link of `document`."
-  [document changes]
-  (and (collection/can-move? document changes)
-       (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
-           (mi/superuser?))))
+(defn- can-share?
+  "Whether the current user may do what `changes` do to the public link of a Document."
+  [changes]
+  (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+      (mi/superuser?)))
 
 (defmethod mi/can-update? :model/Document
   [document changes]
@@ -241,7 +240,8 @@
     (boolean
      (and (every? #(writable-for? % changes owner-writable) documents)
           (mi/archive-followers-updatable? documents changes :model/Card following-cards)
-          (every? #(can-move-and-share? % changes) documents)))))
+          (collection/can-move-all-or-404? documents changes)
+          (can-share? changes)))))
 
 (defn- check-new-card
   "The checks a new Card of a Document goes through, those `POST /api/card` runs before saving: create access to the
@@ -272,8 +272,10 @@
     (let [sources (queries.card/readable-cards-by-id (into #{} (keep :source-card-id) entries))]
       (and sources
            (queries.card/can-create-all? (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))
-           (do (run! #(query-perms/check-run-permissions-for-query (dissoc % :query-permissions/perms))
-                     (into #{} (keep (comp :dataset_query :data)) entries))
+           (do (query-perms/check-run-permissions-for-queries
+                (into []
+                      (comp (keep (comp :dataset_query :data)) (distinct) (map #(dissoc % :query-permissions/perms)))
+                      entries))
                true)
            (card/parameter-source-cards-readable? (into [] (mapcat (comp :parameters :data)) entries))
            (do (query-perms/check-parameter-field-permissions
@@ -747,6 +749,21 @@
 (defmethod collection/shift-positions-in-collection! :model/Document
   [_model collection-id positions direction]
   (documents.db/shift-document-positions! collection-id positions direction))
+
+(defmethod collection/reconcile-freed-positions-in-collection! :model/Document
+  [_model collection-id freed-positions]
+  (when-let [updates (not-empty (collection/position-updates
+                                 (documents.db/document-positions-from collection-id (inc (first freed-positions)))
+                                 freed-positions))]
+    (update-documents! updates)))
+
+(defmethod collection/positioned-rows-in-collections :model/Document
+  [_model collection-ids]
+  (documents.db/positioned-documents-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Document
+  [_model id->position]
+  (update-documents! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
 
 (mu/defn revert-document! :- :int
   "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update."

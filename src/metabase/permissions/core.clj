@@ -106,6 +106,7 @@
   grant-permissions!
   revoke-application-permissions!
   revoke-collection-permissions!
+  update-application-accesses!
   update-collection-accesses!]
  [metabase.permissions.models.permissions-group
   group-display-name

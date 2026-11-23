@@ -1438,12 +1438,13 @@
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
 (defn set-remote-synced!
-  "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
-  [collection remote-synced?]
-  (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (:id collection)
-                                                                         (children-location collection)
-                                                                         remote-synced?)
-                               remote-synced?))
+  "Marks `collections` and their descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
+  [collections remote-synced?]
+  (when (seq collections)
+    (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (mapv :id collections)
+                                                                           (mapv children-location collections)
+                                                                           remote-synced?)
+                                 remote-synced?)))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -2004,6 +2005,40 @@
         (and (can-write-all-collections-or-root? (map :collection_id moving) {:root-namespace nil})
              (can-write-all-collections-or-root? [(:collection_id changes)] {:root-namespace nil})))))
 
+(defn move-answers
+  "For each `[row changes]` pair of `pairs`, what [[can-move?]] answers, `:not-found` where it throws the 404 for a
+  Collection that does not exist, from one read of the Collections."
+  [pairs]
+  (let [moving?  (fn [[row changes]]
+                   (api/column-will-change? (:collection_id row) (get changes :collection_id ::api/not-provided)))
+        ids      (into [] (comp (filter moving?)
+                                (mapcat (fn [[row changes]] [(:collection_id row) (:collection_id changes)]))
+                                (remove nil?)
+                                (distinct))
+                       pairs)
+        stored   (into {} (mapcat #(collections.db/collections-by-ids (vec %))) (partition-all mdb/update-partition-size ids))
+        writable (into {} (map (juxt :id (comp boolean mi/can-write?))) (t2/hydrate (vec (vals stored)) :can_write))
+        root     (when (some #(and (moving? %) (or (nil? (:collection_id (first %))) (nil? (:collection_id (second %))))) pairs)
+                   (boolean (mi/can-write? (t2/hydrate (root-collection-with-ui-details nil) :can_write))))
+        answer   (fn [id] (cond (nil? id) root (contains? writable id) (get writable id) :else :not-found))]
+    (mapv (fn [[row changes :as pair]]
+            (if (moving? pair)
+              (let [old (answer (:collection_id row))]
+                (if (true? old) (answer (:collection_id changes)) old))
+              true))
+          pairs)))
+
+(defn can-move-all-or-404?
+  "As [[can-move-all?]], but throws the 404 that [[can-move?]] throws when the Collection `changes` move `rows` to does
+  not exist and the user writes the old Collections of those that move."
+  [rows changes]
+  (let [new-id (:collection_id changes)
+        moving (filterv #(api/column-will-change? (:collection_id %) (get changes :collection_id ::api/not-provided)) rows)]
+    (or (empty? moving)
+        (and (can-write-all-collections-or-root? (map :collection_id moving) {:root-namespace nil})
+             (or (nil? new-id) (some? (api/check-404 (collections.db/collection new-id))))
+             (can-write-all-collections-or-root? [new-id] {:root-namespace nil})))))
+
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
@@ -2378,6 +2413,107 @@
   (doseq [model positioned-models]
     (t2/resolve-model model)
     (shift-positions-in-collection! model collection-id positions direction)))
+
+(defmulti reconcile-freed-positions-in-collection!
+  "Gives the rows of `model` in the Collection with `collection-id` whose position is above the smallest of
+  `freed-positions`, sorted, the position that [[position-updates]] gives them, which a model that has a position in its
+  Collection implements with its own read and write functions."
+  {:arglists '([model collection-id freed-positions])}
+  (fn [model _collection-id _freed-positions] model))
+
+(defn position-updates
+  "The `{:id :collection_position}` of each of `rows`, with an `:id` and a `:collection_position`, whose position changes
+  once the sorted `freed-positions` are taken out of the Collection: each loses one for every freed position below it."
+  [rows freed-positions]
+  (into []
+        (keep (fn [{:keys [id collection_position]}]
+                (let [new-position (- collection_position (count (take-while #(< % collection_position) freed-positions)))]
+                  (when (not= new-position collection_position)
+                    {:id id :collection_position new-position}))))
+        rows))
+
+(mu/defn reconcile-freed-positions!
+  "Closes the gaps that `freed-positions`, the positions that rows left in the Collection with `collection-id`, leave,
+  in one read and one write per model that has a position in its Collection, giving every row the position that
+  reconciling the freed positions one by one, the highest first, gives it."
+  [collection-id    :- [:maybe ms/PositiveInt]
+   freed-positions  :- [:sequential ms/PositiveInt]]
+  (when (seq freed-positions)
+    (let [freed (vec (sort freed-positions))]
+      (doseq [model positioned-models]
+        (t2/resolve-model model)
+        (reconcile-freed-positions-in-collection! model collection-id freed)))))
+
+(defmulti positioned-rows-in-collections
+  "The `:id`, `:collection_id` and `:collection_position` of the rows of `model` that have a position in the Collections
+  with `collection-ids`, nil for the root, which a model that has a position in its Collection implements with its own
+  read function."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
+(defmulti update-positions!
+  "Gives the rows of `model` the positions that `id->position` holds, which a model that has a position in its
+  Collection implements with its own write function."
+  {:arglists '([model id->position])}
+  (fn [model _id->position] model))
+
+(defn collection-ids-clause
+  "The HoneySQL condition that `:collection_id` is one of `collection-ids`, nil for the root."
+  [collection-ids]
+  (let [ids (into [] (remove nil?) collection-ids)]
+    (cond
+      (empty? ids)                        [:= :collection_id nil]
+      (not-any? nil? collection-ids)      [:in :collection_id [:auto/param ids]]
+      :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
+
+(defn- shift-after-move
+  "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the Collection `old-id`,
+  which closes its gap, and enters `new-id`, where it makes room for its position, as the single Card path does."
+  [state card-key old-id new-id]
+  (let [position (get-in state [card-key :collection_position])]
+    (-> (update-vals state
+                     (fn [{:keys [collection_id collection_position] :as row}]
+                       (cond
+                         (and (= collection_id old-id) (> collection_position position)) (update row :collection_position dec)
+                         (and (= collection_id new-id) (>= collection_position position)) (update row :collection_position inc)
+                         :else                                                           row)))
+        (assoc-in [card-key :collection_id] new-id))))
+
+(defn positions-after-moves
+  "The positions, `{model {id position}}`, that the positioned rows `rows`, `{:model :id :collection_id
+  :collection_position}`, have after the Cards of `moves`, `{:id :collection_id :to}` of a Card with a position, one
+  after the other in order, each leave their Collection and enter `:to` keeping their position, as moving them one by
+  one with [[maybe-reconcile-collection-position!]] does, only for those that change."
+  [rows moves]
+  (let [start (into {} (map (fn [row] [[(:model row) (:id row)] (select-keys row [:collection_id :collection_position])])) rows)
+        end   (reduce (fn [state {:keys [id collection_id to]}]
+                        (shift-after-move state [:model/Card id] collection_id to))
+                      start
+                      moves)]
+    (reduce-kv (fn [acc [model id] {:keys [collection_position]}]
+                 (cond-> acc
+                   (not= collection_position (get-in start [[model id] :collection_position]))
+                   (assoc-in [model id] collection_position)))
+               {}
+               end)))
+
+(mu/defn moved-positions :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]
+  "The positions, `{model {id position}}`, that the rows in the Collections the Cards `moves` leave and enter have after
+  the Cards move one after the other, see [[positions-after-moves]], from one read per model."
+  [moves :- [:sequential [:map [:id ms/PositiveInt] [:collection_id [:maybe ms/PositiveInt]] [:to [:maybe ms/PositiveInt]]]]]
+  (let [collection-ids (into #{} (mapcat (juxt :collection_id :to)) moves)]
+    (positions-after-moves (into []
+                                 (mapcat (fn [model]
+                                           (t2/resolve-model model)
+                                           (map #(assoc % :model model) (positioned-rows-in-collections model collection-ids))))
+                                 positioned-models)
+                           moves)))
+
+(mu/defn write-positions!
+  "Gives the rows the positions `model->id->position`, as [[moved-positions]] answers, with one write per model."
+  [model->id->position :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]]
+  (doseq [[model id->position] model->id->position]
+    (update-positions! model id->position)))
 
 (mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
@@ -2910,8 +3046,8 @@
             (restore-subtrees! restoring root-id)))))
     (when (seq moved)
       (move-descendants! moved by-id)
-      (doseq [{:keys [before]} moved]
-        (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
+      (events/publish-event! :event/collection-touch {:collection-ids (mapv (comp :id :before) moved)
+                                                      :user-id        api/*current-user-id*}))
     columns))
 
 (defn- update-collection-batch!

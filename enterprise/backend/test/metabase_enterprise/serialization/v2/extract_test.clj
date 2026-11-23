@@ -842,6 +842,42 @@
               (is (= #{coll-eid} (ids-by-model "Collection" extraction)))
               (is (= #{card-eid} (ids-by-model "Card" extraction))))))))))
 
+(deftest selection-statement-count-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [top-level  (fn [n prefix]
+                       (let [colls (t2/insert-returning-instances! :model/Collection
+                                                                   (for [i (range n)] {:name (str prefix " " i) :location "/"}))]
+                         (t2/insert! :model/Collection (for [{:keys [id]} colls] {:name     (str prefix " child " id)
+                                                                                  :location (str "/" id "/")}))
+                         colls))
+          statements (fn [opts-fn n]
+                       (let [opts (opts-fn (top-level n (str "Selection " n)))]
+                         (t2/with-call-count [call-count]
+                           (#'extract/selection opts)
+                           (call-count))))
+          by-id      (fn [colls] {:targets (mapv (fn [{:keys [id]}] [:model/Collection id]) colls)})
+          by-eid     (fn [colls] {:targets (mapv (fn [{:keys [entity_id]}] ["Collection" entity_id]) colls)})
+          untargeted (fn [_colls] {:user-id (mt/user->id :crowberto)})]
+      (doseq [[desc opts-fn] [["an export of every collection" untargeted]
+                              ["an export of n collections targeted by id" by-id]
+                              ["an export of n collections targeted by entity id" by-eid]]]
+        (statements opts-fn 2)
+        (testing (str "selecting " desc " costs as many statements for 10 top-level collections as for 40")
+          (is (= (statements opts-fn 10) (statements opts-fn 40)))))
+      (testing "targets resolve to the collections and their children"
+        (let [colls (top-level 3 "Resolved")]
+          (is (= (into (set (map :id colls))
+                       (t2/select-pks-set :model/Collection :location [:in (map #(str "/" (:id %) "/") colls)]))
+                 (:collection-set (#'extract/selection (by-eid colls)))))))
+      (testing "the first missing target in order is refused"
+        (let [[a b] (top-level 2 "Missing")]
+          (is (= {:status-code 400 :model "Collection" :id Integer/MAX_VALUE}
+                 (select-keys (ex-data (extract-ex [[:model/Collection (:id a)]
+                                                    [:model/Collection Integer/MAX_VALUE]
+                                                    ["Collection" "abcdefghijklmnopqrstu"]
+                                                    [:model/Collection (:id b)]]))
+                              [:status-code :model :id]))))))))
+
 (deftest exploration-content-left-out-test
   (testing "exploration Documents and Cards their Summary document materializes are not exported"
     (mt/with-empty-h2-app-db!

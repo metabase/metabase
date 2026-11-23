@@ -2399,3 +2399,15 @@
        (collection-permissions-call-count! 1)
        (is (= (collection-permissions-call-count! 2)
               (collection-permissions-call-count! 6)))))))
+
+(deftest move-to-missing-collection-test
+  (testing "a move to a Collection that does not exist is a 404 for can-move? and can-move-all-or-404?, and false for can-move-all?"
+    (mt/with-temp [:model/Collection {from-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) from-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [rows    [{:collection_id from-id}]
+              changes {:collection_id Integer/MAX_VALUE}
+              status  (fn [f] (try (f) nil (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))]
+          (is (= 404 (status #(collection/can-move? (first rows) changes))))
+          (is (= 404 (status #(collection/can-move-all-or-404? rows changes))))
+          (is (false? (collection/can-move-all? rows changes))))))))

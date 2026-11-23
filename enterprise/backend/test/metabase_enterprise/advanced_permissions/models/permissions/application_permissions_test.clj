@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
    [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
@@ -93,3 +94,83 @@
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph)))))))
+
+(defn- application-rows
+  "The `[group-id object]` pairs of the application permission rows of the groups with `group-ids`."
+  [group-ids]
+  (into #{}
+        (filter #(str/starts-with? (second %) "/application/"))
+        (t2/select-fn-set (juxt :group_id :object) :model/Permissions :group_id [:in group-ids])))
+
+(defn- update-one-at-a-time!
+  "Grant or revoke each application permission of the graph `groups` one at a time."
+  [groups]
+  (doseq [[group-id group-changes] groups
+          [perm-type value]        group-changes]
+    (case value
+      :yes (perms/grant-application-permissions! group-id perm-type)
+      :no  (perms/revoke-application-permissions! group-id perm-type))))
+
+(defn- rows-after-one-at-a-time!
+  "The application rows of the groups with `group-ids` after [[update-one-at-a-time!]] with `groups`, rolled back."
+  [groups group-ids]
+  (let [rows (atom nil)]
+    (try
+      (t2/with-transaction [_conn]
+        (update-one-at-a-time! groups)
+        (reset! rows (application-rows group-ids))
+        (throw (ex-info "rollback" {::rollback true})))
+      (catch clojure.lang.ExceptionInfo e
+        (when-not (::rollback (ex-data e))
+          (throw e))))
+    @rows))
+
+(deftest update-graph!-stores-rows-of-one-at-a-time-update-test
+  (testing "updating application permissions of several groups stores what granting and revoking one at a time stores"
+    (mt/with-temp [:model/PermissionsGroup {granted-1 :id} {}
+                   :model/PermissionsGroup {granted-2 :id} {}
+                   :model/PermissionsGroup {revoked :id}   {}
+                   :model/PermissionsGroup {unchanged :id} {}]
+      (perms/grant-application-permissions! revoked :setting)
+      (perms/grant-application-permissions! revoked :monitoring)
+      (perms/grant-application-permissions! unchanged :setting)
+      (let [group-ids [granted-1 granted-2 revoked unchanged]
+            changes   {granted-1 {:setting :yes :monitoring :yes}
+                       granted-2 {:setting :yes :subscription :no}
+                       revoked   {:setting :no}}
+            expected  (rows-after-one-at-a-time! changes group-ids)]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (g-perms/update-graph! (update (g-perms/graph) :groups #(merge-with merge % changes))))
+        (is (= expected (application-rows group-ids)))
+        (is (= #{[granted-1 "/application/setting/"] [granted-1 "/application/monitoring/"]
+                 [granted-2 "/application/setting/"]
+                 [revoked "/application/monitoring/"]
+                 [unchanged "/application/setting/"]}
+               (application-rows group-ids)))))))
+
+(deftest update-graph!-refuses-before-any-write-test
+  (mt/with-temp [:model/PermissionsGroup {granted :id} {}
+                 :model/PermissionsGroup {revoked :id} {}
+                 :model/PermissionsGroup {tenant :id}  {:is_tenant_group true}]
+    (perms/grant-application-permissions! revoked :monitoring)
+    (let [group-ids [granted revoked tenant (:id (perms-group/admin))]
+          before    (application-rows group-ids)
+          update!   (fn [refused]
+                      (mt/with-current-user (mt/user->id :crowberto)
+                        (g-perms/update-graph! (update (g-perms/graph) :groups
+                                                       #(merge-with merge % {granted {:setting :yes}
+                                                                             revoked {:monitoring :no}}
+                                                                    refused)))))]
+      (testing "a tenant group granted a setting permission refuses the whole update"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                              (update! {tenant {:setting :yes}})))
+        (is (= before (application-rows group-ids))))
+      (testing "the Admin group losing a permission refuses the whole update"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot create or revoke permissions for the 'Admin' group\."
+                              (update! {(:id (perms-group/admin)) {:setting :no}})))
+        (is (= before (application-rows group-ids))))
+      (testing "a tenant group granted a subscription permission is allowed"
+        (update! {tenant {:subscription :yes}})
+        (is (= (conj (disj before [revoked "/application/monitoring/"])
+                     [granted "/application/setting/"] [tenant "/application/subscription/"])
+               (application-rows group-ids)))))))

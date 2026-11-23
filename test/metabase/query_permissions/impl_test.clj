@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,6 +14,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log.capture :as log.capture]
@@ -692,3 +694,119 @@
           [{:table-ids #{1 2} :table-query-ids #{1} :native? false :referenced-card-ids #{20}}
            nil
            {:table-ids #{3} :table-query-ids #{3} :card-ids #{10} :native? true :referenced-card-ids #{21}}]))))
+
+;;; ------------------------------------------ Run permissions of many queries ------------------------------------------
+
+(defn- run-check-outcome
+  "What `thunk`, a run permissions check, does: `:allowed`, or the message, data without the query, and cause message
+  of what it throws."
+  [thunk]
+  (try
+    (thunk)
+    :allowed
+    (catch Throwable e
+      {:message  (ex-message e)
+       :data     (dissoc (ex-data e) :query)
+       :cause    (some-> (ex-cause e) ex-message)})))
+
+(defn- run-check-queries
+  "The queries of the run permissions matrix, by name: on the Database with `db-b-id` for `:native-b`, and on Cards
+  `card-ok-id` and `card-hidden-id` for the others named so."
+  [db-b-id card-ok-id card-hidden-id]
+  (let [mp   (lib-be/application-database-metadata-provider (mt/id))
+        mp-b (lib-be/application-database-metadata-provider db-b-id)]
+    [[:mbql-t1     (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+     [:mbql-t1-t2  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :checkins))
+                                                  [(lib/= (lib.metadata/field mp (mt/id :venues :id))
+                                                          (lib.metadata/field mp (mt/id :checkins :venue_id)))])))]
+     [:native-a    (lib/native-query mp "SELECT 1")]
+     [:native-b    (lib/native-query mp-b "SELECT 1")]
+     [:card-ok     (lib/query mp (lib.metadata/card mp card-ok-id))]
+     [:card-hidden (lib/query mp (lib.metadata/card mp card-hidden-id))]]))
+
+(defn- grant-run-check-scenario!
+  "Gives All Users the data permissions of `scenario` on the test Database, none on the Database with `db-b-id`."
+  [scenario db-b-id]
+  (let [group (perms/all-users-group)]
+    (perms/set-database-permission! group db-b-id :perms/create-queries :no)
+    (case scenario
+      :superuser       nil
+      :query-builder-a (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-database-permission! group (mt/id) :perms/create-queries :query-builder))
+      :native-a        (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-database-permission! group (mt/id) :perms/create-queries :query-builder-and-native))
+      :table-t1-only   (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)))))
+
+(def ^:private run-check-expected
+  "Which queries of [[run-check-queries]] each scenario may run."
+  {:superuser       #{:mbql-t1 :mbql-t1-t2 :native-a :native-b :card-ok :card-hidden}
+   :query-builder-a #{:mbql-t1 :mbql-t1-t2 :card-ok}
+   :native-a        #{:mbql-t1 :mbql-t1-t2 :native-a :card-ok}
+   :table-t1-only   #{:mbql-t1 :card-ok}})
+
+(deftest check-run-permissions-for-queries-matches-single-check-test
+  (testing "each query of a batch is allowed or refused, with the same error, exactly as when it is checked alone"
+    (mt/with-temp [:model/Database   {db-b-id :id}        {:engine :h2 :details (:details (mt/db))}
+                   :model/Collection {coll-ok-id :id}     {}
+                   :model/Collection {coll-hidden-id :id} {}
+                   :model/Card       {card-ok-id :id}     {:collection_id coll-ok-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                   :model/Card       {card-hidden-id :id} {:collection_id coll-hidden-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-ok-id)
+        (doseq [scenario (keys run-check-expected)]
+          (testing scenario
+            (mt/with-no-data-perms-for-all-users!
+              (grant-run-check-scenario! scenario db-b-id)
+              (mt/with-test-user (if (= scenario :superuser) :crowberto :rasta)
+                (let [queries (run-check-queries db-b-id card-ok-id card-hidden-id)
+                      single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-query q))]))
+                                    queries)
+                      allowed (into [] (comp (filter #(= :allowed (single (first %)))) (map second)) queries)]
+                  (testing "the single check answers as expected"
+                    (is (= (run-check-expected scenario)
+                           (into #{} (comp (filter #(= :allowed (val %))) (map key)) single))))
+                  (testing "a refusal says which permissions are missing"
+                    (doseq [[k outcome] single
+                            :when (not= :allowed outcome)]
+                      (is (=? {:message "You cannot save this Question because you do not have permissions to run its query."
+                               :data    {:status-code 403}}
+                              outcome)
+                          (str k))))
+                  (doseq [[k q] queries]
+                    (testing (str k " checked last in a batch after every allowed query")
+                      (is (= (single k)
+                             (run-check-outcome #(query-perms/check-run-permissions-for-queries (conj allowed q)))))))
+                  (testing "a batch of every query throws for the first refused one"
+                    (is (= (or (some #(when (not= :allowed (single (first %))) (single (first %))) queries)
+                               :allowed)
+                           (run-check-outcome #(query-perms/check-run-permissions-for-queries (mapv second queries)))))))))))))))
+
+(deftest check-run-permissions-for-queries-statement-count-test
+  (testing "the run permissions of many queries take as many statements as those of few, as a non-admin"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-test-user :rasta
+        (let [mp      (lib-be/application-database-metadata-provider (mt/id))
+              queries [(lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/native-query mp "SELECT 1")
+                       (lib/query mp (lib.metadata/card mp card-id))]
+              count!  (fn [f n]
+                        (lib-be/with-metadata-provider-cache
+                          (f (into [] cat (repeat 1 queries)))
+                          (t2/with-call-count [call-count]
+                            (f (into [] cat (repeat n queries)))
+                            (call-count))))
+              check!      (partial count! query-perms/check-run-permissions-for-queries)
+              preprocess! (partial count! #(request/as-admin (run! qp.preprocess/preprocess %)))]
+          (testing "only preprocessing, which the query processor does per query, grows with the queries"
+            (is (= (- (check! 6) (check! 2))
+                   (- (preprocess! 6) (preprocess! 2))))))))))

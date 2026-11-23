@@ -1151,10 +1151,7 @@
            metabase.events.impl
            metabase.events.init}
    :uses #{models util}
-   :model-imports #{:model/Collection
-                    :model/SecurityAdvisory
-                    :model/Table
-                    :model/User}}
+   :model-imports #{:model/Collection :model/SecurityAdvisory :model/Table}}
 
   explorations
   {:team "UX West"
@@ -4790,8 +4787,7 @@
            request
            session
            users
-           util}
-   :model-imports #{:model/User}}
+           util}}
 
   enterprise/sso
   {:team "Security"

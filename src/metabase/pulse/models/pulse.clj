@@ -1088,6 +1088,21 @@
   [_model collection-id positions direction]
   (pulse.db/shift-pulse-positions! collection-id positions direction))
 
+(defmethod collection/reconcile-freed-positions-in-collection! :model/Pulse
+  [_model collection-id freed-positions]
+  (when-let [updates (not-empty (collection/position-updates
+                                 (pulse.db/pulse-positions-from collection-id (inc (first freed-positions)))
+                                 freed-positions))]
+    (update-pulses! updates)))
+
+(defmethod collection/positioned-rows-in-collections :model/Pulse
+  [_model collection-ids]
+  (pulse.db/positioned-pulses-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Pulse
+  [_model id->position]
+  (update-pulses! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
+
 (defmethod collection/archive-in-collections! :model/Pulse
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]

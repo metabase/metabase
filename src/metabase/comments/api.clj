@@ -173,8 +173,8 @@
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
-    (doseq [email recipients]
-      (events/publish-event! :event/comment-created (assoc payload :email email)))))
+    (when (seq recipients)
+      (events/publish-event! :event/comment-created {:events (mapv #(assoc payload :email %) recipients)}))))
 
 (defn notify-comment-id!
   "Send a notification using only comment id"

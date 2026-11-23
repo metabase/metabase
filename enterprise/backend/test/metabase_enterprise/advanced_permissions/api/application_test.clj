@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest application-permissions-test
   (mt/with-temp [:model/PermissionsGroup _]
@@ -92,3 +93,24 @@
                               :setting      "yes"
                               :subscription "yes"}}
                             (:groups result))))))))))
+
+(defn- update-graph-statement-count!
+  "The statements of a PUT of the application graph that grants two permissions to and revokes one from each of `n`
+  new groups."
+  [n]
+  (mt/with-model-cleanup [:model/PermissionsGroup :model/ApplicationPermissionsRevision]
+    (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup (for [i (range n)]
+                                                                        {:name (format "application graph %d of %d" i n)}))
+          graph     (assoc (a-perms/graph)
+                           :groups (into {} (for [group-id group-ids]
+                                              [group-id {:setting :yes :monitoring :yes :subscription :no}])))]
+      (t2/with-call-count [call-count]
+        (mt/user-http-request :crowberto :put 200 "ee/advanced-permissions/application/graph?skip-graph=true" graph)
+        (call-count)))))
+
+(deftest update-application-graph-statement-count-test
+  (testing "PUT /api/ee/advanced-permissions/application/graph issues as many statements for 8 groups as for 2"
+    (mt/with-premium-features #{:advanced-permissions :audit-app}
+      (update-graph-statement-count! 1)
+      (is (= (update-graph-statement-count! 2)
+             (update-graph-statement-count! 8))))))

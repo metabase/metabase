@@ -56,10 +56,10 @@
              :id [:in field-ids]
              :database_is_nullable true))
 
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
+(defn active-user-ids
+  "The ids among `user-ids` of active Users."
+  [user-ids]
+  (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
 
 (defn dashboard-parameters
   "The `parameters` of the Dashboard with `dashboard-id`, or nil."

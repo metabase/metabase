@@ -67,18 +67,18 @@
   {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
 
 (defn- fetch-distinct-for-table
-  "Run all UNION batches for `fields` from `table`. Returns
+  "Run all UNION batches for `fields` from `table` of a Database of `driver`. Returns
    `{:results {field-id -> {:values [...]}}, :queries <int>, :failed-fields #{field-id ...}}`.
 
    Per-batch failures are caught via `sync-util/with-error-handling` — recoverable errors
    contribute the batch's field-ids to `:failed-fields` and the loop continues; non-recoverable
    errors propagate out and abort the sync."
-  [table fields]
+  [driver table fields]
   (reduce (fn [acc batch]
             (let [batch-result (sync-util/with-error-handling
                                 (format "Error fetching union distinct values for %s"
                                         (sync-util/name-for-logging table))
-                                 (distinct-batch/run-distinct-batch table batch))
+                                 (distinct-batch/run-distinct-batch driver table batch))
                   acc'         (update acc :queries inc)]
               (if (instance? Throwable batch-result)
                 (update acc' :failed-fields into (map :id batch))
@@ -130,7 +130,7 @@
           per-field-fields             (concat nested (when-not batch? plain))
           {:keys [results queries failed-fields]}
           (merge-fetch-results
-           (when (seq batch-fields)     (fetch-distinct-for-table table batch-fields))
+           (when (seq batch-fields)     (fetch-distinct-for-table (:engine database) table batch-fields))
            (when (seq per-field-fields) (fetch-distinct-per-field per-field-fields)))]
       {:queries queries
        :changes (mapv (fn [field]
@@ -149,8 +149,9 @@
   [pairs]
   (let [ok      (into [] (remove (comp #(instance? Throwable %) second)) pairs)
         saved?  (and (next ok)
-                     (not (instance? Throwable (sync-util/with-error-handling "Error updating field values"
-                                                 (field-values/save-field-values-changes! (mapv second ok))))))
+                     (not (instance? Throwable (sync-util/rethrow-fatal
+                                                (sync-util/with-error-handling "Error updating field values"
+                                                  (field-values/save-field-values-changes! (mapv second ok)))))))
         outcome (fn [[field change]]
                   (cond
                     (instance? Throwable change) change

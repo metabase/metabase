@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [personal-collection-id]]
+   [metabase.collections.test-utils :as collections.tu :refer [personal-collection-id]]
    [metabase.documents.models.document :as document]
    [metabase.documents.schema :as documents.schema]
    [metabase.documents.test-util :as documents.tu]
@@ -1093,3 +1093,10 @@
           (archive-call-count (subvec writable 0 2))
           (is (= (archive-call-count (subvec writable 0 10))
                  (archive-call-count writable))))))))
+
+(deftest can-update-each-moves-test
+  (testing "mi/can-update-each? of Documents answers a move as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Document]
+      (collections.tu/check-bulk-can-update-collection-move!
+       :model/Document
+       #(t2/insert-returning-pk! :model/Document (merge (mt/with-temp-defaults :model/Document) {:collection_id %}))))))

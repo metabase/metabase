@@ -136,6 +136,13 @@
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
+(mu/defn advanced-field-values-of-fields
+  "The advanced FieldValues of the Fields with `field-ids` whose hash key is one of `hash-keys`, by descending id."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   hash-keys :- [:sequential :string]]
+  (t2/select :model/FieldValues :field_id [:in field-ids], :type :advanced, :hash_key [:in hash-keys]
+             {:order-by [[:id :desc]]}))
+
 (mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]

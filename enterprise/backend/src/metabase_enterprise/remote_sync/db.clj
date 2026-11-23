@@ -51,11 +51,6 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
-
 (mu/defn synced-card-counts-by-type :- [:map-of :keyword :int]
   "The number of Cards remote sync syncs, by `:type`."
   []

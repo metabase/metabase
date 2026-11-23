@@ -94,17 +94,45 @@
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
+(defn- attachment-wanted?
+  "Whether `part` asks for a result attachment and has rows to put in it."
+  [{:keys [card result]}]
+  (and (or (:include_csv card) (:include_xls card))
+       (pos-int? (:row_count result))))
+
+(defn download-levels
+  "The download level of the user with `creator-id` for the query of each of `parts` that wants a result attachment, in
+  order, nil for the others: read for all of them at once, or one by one when that throws, each failure in place of its
+  level."
+  [parts creator-id]
+  (let [parts   (vec parts)
+        indexes (filterv #(attachment-wanted? (parts %)) (range (count parts)))
+        queries (mapv #(get-in (parts %) [:card :dataset_query]) indexes)
+        levels  (when (seq queries)
+                  (try
+                    (perms/download-perms-levels queries creator-id)
+                    (catch Throwable _
+                      (mapv #(try
+                               (perms/download-perms-level % creator-id)
+                               (catch Throwable e
+                                 e))
+                            queries))))]
+    (reduce (fn [acc [i level]] (assoc acc i level))
+            (vec (repeat (count parts) nil))
+            (map vector indexes levels))))
+
 (defn result-attachment
-  "Create result attachments for an email. `creator-id` is the subscription creator, whose download
-  permissions gate the attachment at send time."
+  "Create result attachments for an email. `download-level` is the subscription creator's download level for the query
+  of `part`, from [[download-levels]], which gates the attachment at send time."
   [{{format-rows :format_rows pivot-results :pivot_results :as card} :card
     dashcard :dashcard
-    result :result
     :as part}
-   creator-id]
-  (when (and (or (:include_csv card) (:include_xls card))
-             (pos-int? (:row_count result))
-             (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
+   download-level]
+  (when (instance? Throwable download-level)
+    (throw download-level))
+  (when (and (attachment-wanted? part)
+             (keyword? download-level)
+             (not= download-level :no))
     (let [result           (:result (channel.shared/maybe-realize-data-rows part))
           ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
           ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).

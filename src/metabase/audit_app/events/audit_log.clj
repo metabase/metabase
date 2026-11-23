@@ -208,15 +208,22 @@
 (defn- moment-rows
   "The rows that the spec of a model derives from a column that its writes change."
   [events]
-  (for [{:keys [model operation user-id] :as event} events
-        :when (and user-id (contains? #{:create :update} operation))
-        {moment-topic :topic, applies? :when, moment-details :details} (:moments (audit.spec/spec model))
-        :when (applies? event)
-        :let  [[subject-model subject-id] (subject-of event)]]
-    (audit-log/audit-row moment-topic {:user-id  user-id
-                                       :model    subject-model
-                                       :model-id subject-id
-                                       :details  (if moment-details (moment-details event) {})})))
+  (let [pairs   (vec (for [{:keys [model operation user-id] :as event} events
+                           :when (and user-id (contains? #{:create :update} operation))
+                           {applies? :when, :as moment} (:moments (audit.spec/spec model))
+                           :when (applies? event)]
+                       [event moment]))
+        details (reduce (fn [acc [details-fn entries]]
+                          (cond-> acc
+                            details-fn (into (map vector (map first entries) (details-fn (mapv (comp first second) entries))))))
+                        {}
+                        (group-by (comp :details second second) (map-indexed vector pairs)))]
+    (for [[i [{:keys [user-id] :as event} {moment-topic :topic}]] (map-indexed vector pairs)
+          :let [[subject-model subject-id] (subject-of event)]]
+      (audit-log/audit-row moment-topic {:user-id  user-id
+                                         :model    subject-model
+                                         :model-id subject-id
+                                         :details  (get details i {})}))))
 
 (defn- record-lifecycle-events!
   "Record the rows of the lifecycle events of the audited models of one event."
@@ -295,11 +302,21 @@
     :else
     {}))
 
+(defn- manual-params
+  "The params of the audit row of `topic` of a manual action on `object`, the event `params` with what its spec stores
+  of `object` in the details."
+  [topic object params]
+  (assoc params :details (merge (:details params) (manual-details topic object))))
+
 (defn- record-manual!
-  "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object."
-  [topic {:keys [object] :as params}]
+  "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object,
+  or one row for each of its `:objects`, in one insert, as [[record-each!]] does."
+  [topic {:keys [object objects] :as params}]
   (when (premium-features/log-enabled?)
-    (record! topic (assoc params :details (merge (:details params) (manual-details topic object))))))
+    (if objects
+      (record-each! #(audit-log/audit-row topic (manual-params topic % (assoc (dissoc params :objects) :object %)))
+                    objects)
+      (record! topic (manual-params topic object params)))))
 
 (events/derive! ::table-event ::event)
 (events/derive! :event/table-manual-scan ::table-event)
@@ -415,12 +432,26 @@
     (record! topic (assoc event :details (merge (:details event) (user-details topic object))))))
 
 (events/derive! ::session-event ::event)
-(events/derive! :event/session-revoked ::session-event)
 (events/derive! :event/sessions-revoked ::session-event)
 
 (methodical/defmethod events/publish-event! ::session-event
   [topic event]
   (record-manual! topic event))
+
+(events/derive! ::session-revoked-event ::event)
+(events/derive! :event/session-revoked ::session-revoked-event)
+
+(methodical/defmethod events/publish-event! ::session-revoked-event
+  "Record one row for each User whose sessions `:objects` holds with their `:count`, in one insert, as [[record-each!]]
+  does."
+  [topic {:keys [user-id details objects]}]
+  (when (premium-features/log-enabled?)
+    (record-each! (fn [{:keys [id count]}]
+                    (audit-log/audit-row topic {:user-id  user-id
+                                                :model    :model/User
+                                                :model-id id
+                                                :details  (assoc details :count count)}))
+                  objects)))
 
 (events/derive! ::user-joined-event ::event)
 (events/derive! :event/user-joined ::user-joined-event)

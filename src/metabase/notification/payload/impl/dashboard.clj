@@ -48,15 +48,18 @@
           parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
           attached-ids (attached-card-ids dashboard_subscription)
           only-card-ids (when (attachment-only? handlers)
-                          attached-ids)]
-      {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters
-                                                                                {:only-card-ids     only-card-ids
-                                                                                 :attached-card-ids attached-ids})
-                                 (:skip_if_empty dashboard_subscription)
-                                 (remove (fn [{part-type :type :as part}]
-                                           (and
-                                            (= part-type :card)
-                                            (zero? (get-in part [:result :row_count] 0))))))
+                          attached-ids)
+          dashboard-parts (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters
+                                                                           {:dashboard         dashboard
+                                                                            :only-card-ids     only-card-ids
+                                                                            :attached-card-ids attached-ids})
+                            (:skip_if_empty dashboard_subscription)
+                            (remove (fn [{part-type :type :as part}]
+                                      (and
+                                       (= part-type :card)
+                                       (zero? (get-in part [:result :row_count] 0))))))]
+      {:dashboard_parts        dashboard-parts
+       :timezone               (some->> dashboard-parts (some :card) channel.render/defaulted-timezone)
        :dashboard              dashboard
        :style                  {:color_text_dark   channel.render/color-text-dark
                                 :color_text_light  channel.render/color-text-light

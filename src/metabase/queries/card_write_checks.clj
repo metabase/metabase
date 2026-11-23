@@ -8,7 +8,6 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
@@ -117,6 +116,6 @@
   (when-not (queries.card/can-update-cards? card-changes)
     (events/publish-event! :event/update-permission-failure
                            {:user-id api/*current-user-id*
-                            :object  (first (or (first (remove (fn [[card changes]] (mi/can-update? card changes)) card-changes))
+                            :object  (first (or (queries.card/first-update-refused card-changes)
                                                 (first card-changes)))})
     (api/check-403 false)))

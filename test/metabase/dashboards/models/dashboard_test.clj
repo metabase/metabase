@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.query :as app-db.query]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.write :as dashboards.write]
@@ -950,3 +951,10 @@
           (archive-call-count (subvec writable 0 2))
           (is (= (archive-call-count (subvec writable 0 10))
                  (archive-call-count writable))))))))
+
+(deftest can-update-each-moves-test
+  (testing "mi/can-update-each? of Dashboards answers a move as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (collections.tu/check-bulk-can-update-collection-move!
+       :model/Dashboard
+       #(t2/insert-returning-pk! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id %}))))))

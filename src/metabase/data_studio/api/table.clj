@@ -200,11 +200,6 @@
      :published_downstream_tables (into [] (comp (filter :is_published) (map bulk-table-info)) downstream-tables)
      :unpublished_upstream_tables (into [] (comp (remove :is_published) (map bulk-table-info)) upstream-tables)}))
 
-(defn- sync-schema-async!
-  [table user-id]
-  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
-
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
@@ -224,8 +219,9 @@
         (catch Throwable e
           (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
+    (events/publish-event! :event/table-manual-sync {:objects tables :user-id api/*current-user-id*})
     (doseq [table tables]
-      (sync-schema-async! table api/*current-user-id*))))
+      (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))))
 
 (api.macros/defendpoint :post "/rescan-values" :- :nil
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
@@ -235,9 +231,9 @@
   (api/check-data-studio-access)
   (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-      (request/as-admin
+    (events/publish-event! :event/table-manual-scan {:objects tables :user-id api/*current-user-id*})
+    (request/as-admin
+      (doseq [table tables]
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil

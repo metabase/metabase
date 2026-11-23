@@ -109,33 +109,41 @@
     (mt/with-temp [:model/Channel chn-1 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))
                    :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
       (notification.tu/with-temporary-event-topics! #{:event/testing}
-        (doseq [_ (range 2)]
-          (models.notification/create-notifications! [{:payload_type :notification/testing
-                                                       :subscriptions [{:type :notification-subscription/system-event
-                                                                        :event_name :event/testing}]
-                                                       :handlers [{:channel_type notification.tu/test-channel-type
-                                                                   :channel_id   (:id chn-1)
-                                                                   :template_id  nil
-                                                                   :recipients   [{:type :notification-recipient/user
-                                                                                   :user_id (mt/user->id :crowberto)}]}
-                                                                  {:channel_type notification.tu/test-channel-type
-                                                                   :channel_id   (:id chn-2)
-                                                                   :template_id  nil
-                                                                   :recipients   [{:type :notification-recipient/user
-                                                                                   :user_id (mt/user->id :rasta)}]}]}]))
-        (t2/select :model/NotificationSubscription)
-        (t2/delete! :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]])
-        (events/publish-event! :event/testing {})
-        (testing "each notification should have a task history, in which each channel-send will have a task history"
-          (is (= {"notification-trigger" 1
-                  "notification-send"    2 ; 2 notifications, each send to 2 channels
-                  "channel-send"         4}
-                 (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
-                   (filter (let [ids (set (take-last 2 (sort (t2/select-pks-vec :model/Notification))))]
-                             #(contains? ids (get-in % [:task_details :notification_id] (first ids))))
-                           th)
-                   (group-by :task th)
-                   (update-vals th count)))))))))
+        (let [notification-ids (into #{} (mapcat (fn [_] (map :id (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                                                               :subscriptions [{:type :notification-subscription/system-event
+                                                                                                                                :event_name :event/testing}]
+                                                                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                                                                           :channel_id   (:id chn-1)
+                                                                                                                           :template_id  nil
+                                                                                                                           :recipients   [{:type :notification-recipient/user
+                                                                                                                                           :user_id (mt/user->id :crowberto)}]}
+                                                                                                                          {:channel_type notification.tu/test-channel-type
+                                                                                                                           :channel_id   (:id chn-2)
+                                                                                                                           :template_id  nil
+                                                                                                                           :recipients   [{:type :notification-recipient/user
+                                                                                                                                           :user_id (mt/user->id :rasta)}]}]}]))))
+                                     (range 2))
+              channel-ids      #{(:id chn-1) (:id chn-2)}
+              own?             (fn [{:keys [task task_details]}]
+                                 (case task
+                                   "notification-send" (contains? notification-ids
+                                                                  (or (:notification_id task_details)
+                                                                      (get-in task_details [:original-info :notification_id])))
+                                   "channel-send"      (contains? channel-ids
+                                                                  (or (:channel_id task_details)
+                                                                      (get-in task_details [:original-info :channel_id])))
+                                   true))]
+          (t2/select :model/NotificationSubscription)
+          (t2/delete! :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]])
+          (events/publish-event! :event/testing {})
+          (testing "each notification should have a task history, in which each channel-send will have a task history"
+            (is (= {"notification-trigger" 1
+                    "notification-send"    2 ; 2 notifications, each send to 2 channels
+                    "channel-send"         4}
+                   (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
+                     (filter own? th)
+                     (group-by :task th)
+                     (update-vals th count))))))))))
 
 (deftest create-notifications-statement-count-test
   (testing "creating 10 notifications runs as many statements as creating 40, with one audit row for each"

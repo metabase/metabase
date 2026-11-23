@@ -463,3 +463,20 @@
               (is (=? {:fingerprint         nil
                        :fingerprint_version i/*latest-fingerprint-version*}
                       (t2/select-one [:model/Field :fingerprint :fingerprint_version] :id (u/the-id bad-fd)))))))))))
+
+(deftest fingerprint-save-error-is-not-retried-per-table-test
+  (mt/test-driver :h2
+    (testing "an Error of saving the fingerprints of all Tables is thrown without saving those of each Table"
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    table-1 {:db_id (u/the-id db) :name "T1"}
+                     :model/Table    table-2 {:db_id (u/the-id db) :name "T2"}
+                     :model/Field    _       {:table_id (u/the-id table-1) :base_type :type/Text :fingerprint_version 0}
+                     :model/Field    _       {:table_id (u/the-id table-2) :base_type :type/Text :fingerprint_version 0}]
+        (let [saves (atom 0)]
+          (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints stub-sample-fingerprints
+                                      sync.fingerprint/save-fingerprints!  (fn [_rows _fields]
+                                                                             (swap! saves inc)
+                                                                             (throw (StackOverflowError.)))]
+            (is (thrown? StackOverflowError
+                         (fingerprint-db! (driver.u/lib-database (u/the-id db))))))
+          (is (= 1 @saves)))))))

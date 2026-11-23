@@ -249,7 +249,6 @@
 (defn- new-card-row
   "The row to create the Card `card` from."
   [card]
-  (query-perms/check-run-permissions-for-query (:dataset_query card))
   (->> (-> card
            (update :result_metadata #(or % (-> card
                                                :dataset_query
@@ -263,11 +262,11 @@
 (defn- create-new-cards!
   "Creates the new Cards of `dashcards`, each of which has its `::slot`, in one call and returns them in slot order."
   [dashcards]
-  (let [rows (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
-                            (filter ::slot)
-                            (map new-card-row))
-                   dashcards)]
-    (if (seq rows) (queries.card/create-cards! rows) [])))
+  (let [cards (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                             (filter ::slot))
+                    dashcards)]
+    (query-perms/check-run-permissions-for-queries (mapv :dataset_query cards))
+    (if (seq cards) (queries.card/create-cards! (mapv new-card-row cards)) [])))
 
 (defn- save-card!
   [id->existing-card created-cards card]

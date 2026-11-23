@@ -876,6 +876,22 @@
    positions     :- ::collections.schema/positions]
   (t2/select :model/Card :collection_id collection-id :collection_position (collection/position-clause positions)))
 
+(mu/defn card-positions-from :- [:sequential :map]
+  "The `:id` and `:collection_position` of the Cards in the Collection with `collection-id` whose position is at or
+  above `from`."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   from          :- ms/PositiveInt]
+  (t2/select [:model/Card :id :collection_position]
+             :collection_id collection-id
+             :collection_position (collection/position-clause {:from from})))
+
+(mu/defn positioned-cards-in-collections :- [:sequential :map]
+  "The `:id`, `:collection_id` and `:collection_position` of the Cards that have a position in the Collections with
+  `collection-ids`, nil for the root."
+  [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]
+  (t2/select [:model/Card :id :collection_id :collection_position]
+             {:where [:and [:not= :collection_position nil] (collection/collection-ids-clause collection-ids)]}))
+
 (mu/defn set-cards-cache-invalidated-at!
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]

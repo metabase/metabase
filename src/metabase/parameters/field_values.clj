@@ -109,6 +109,23 @@
     (fn [{:keys [id table_id]}]
       (some-> (table-id->hash-input table_id) (assoc :field-id id)))))
 
+(defn- stored-advanced-field-values
+  "A function of a Field id and a hash key that returns the stored advanced FieldValues of that pair, for the pairs of
+  `fields` that `hash-input` keys as advanced, read at once."
+  [fields hash-input]
+  (let [keyed   (for [field fields
+                      :let [input (hash-input field)]
+                      :when (and input
+                                 (not= input {:field-id (:id field)})
+                                 (field-values/field-should-have-field-values? field))]
+                  [(:id field) (str (hash input))])
+        by-pair (when (seq keyed)
+                  (into {} (map (juxt (juxt :field_id :hash_key) identity))
+                        (parameters.db/advanced-field-values-of-fields (vec (distinct (map first keyed)))
+                                                                       (vec (distinct (map second keyed))))))]
+    (fn [field-id hash-key]
+      (get by-pair [field-id hash-key]))))
+
 (defn field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
     {field-id FieldValues-instance}
@@ -126,9 +143,10 @@
        (default-field-id->field-values-for-current-user
         (map u/the-id normal-fields)))
      ;; for sandboxed (or otherwise advanced) fields, fetch the sandboxed values individually.
-     (into {} (for [{field-id :id, :as field} advanced-fields]
-                [field-id (select-keys (get-or-create-field-values-with-hash-input! field nil (hash-input field))
-                                       [:values :human_readable_values :field_id])])))))
+     (let [stored (stored-advanced-field-values advanced-fields hash-input)]
+       (into {} (for [{field-id :id, :as field} advanced-fields]
+                  [field-id (select-keys (get-or-create-field-values-with-hash-input! field nil (hash-input field) nil stored)
+                                         [:values :human_readable_values :field_id])]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Advanced FieldValues                                               |
@@ -176,12 +194,12 @@
       :values                values})))
 
 (defn- get-or-create-advanced-field-values!
-  [field constraints hash-input extra]
+  [field constraints hash-input extra stored]
   (let [hash-key (str (hash hash-input))
         ;; look first on this thread: a hit is one SELECT, and handing that to a background
         ;; thread costs more than it saves. Only a miss is worth detaching, because only a
         ;; miss scans the warehouse.
-        fv (or (parameters.db/advanced-field-values (:id field) hash-key)
+        fv (or (stored (:id field) hash-key)
                (field-values/detached-fetch!
                 [:advanced (:id field) hash-key]
                 (fn []
@@ -192,16 +210,18 @@
       (do
         ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
         (field-values/delete-field-values! [(:id fv)])
-        (recur field constraints hash-input extra))
+        (recur field constraints hash-input extra parameters.db/advanced-field-values))
       fv)))
 
 (defn- get-or-create-field-values-with-hash-input!
   ([field constraints hash-input]
    (get-or-create-field-values-with-hash-input! field constraints hash-input nil))
   ([field constraints hash-input extra]
+   (get-or-create-field-values-with-hash-input! field constraints hash-input extra parameters.db/advanced-field-values))
+  ([field constraints hash-input extra stored]
    (when (and hash-input (field-values/field-should-have-field-values? field))
      (if (not= hash-input {:field-id (u/the-id field)})
-       (get-or-create-advanced-field-values! field constraints hash-input extra)
+       (get-or-create-advanced-field-values! field constraints hash-input extra stored)
        (field-values/get-or-create-full-field-values! field)))))
 
 (defn get-or-create-field-values!
@@ -226,11 +246,12 @@
                           :when (and (= (hash-input field) {:field-id (:id field)})
                                      (field-values/field-should-have-field-values? field))]
                       (:id field)))
-        last-used  (field-values/fields-last-used-at (vec (vals cached)))]
+        last-used  (field-values/fields-last-used-at (vec (vals cached)))
+        stored     (stored-advanced-field-values fields hash-input)]
     (into {} (for [{:keys [id] :as field} fields
                    :let [fv (get cached id)]]
                [id (or (when (and fv (not (field-values/inactive? fv (get last-used id)))) fv)
-                       (get-or-create-field-values-with-hash-input! field nil (hash-input field))
+                       (get-or-create-field-values-with-hash-input! field nil (hash-input field) nil stored)
                        {})]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

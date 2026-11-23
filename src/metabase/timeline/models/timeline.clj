@@ -64,8 +64,12 @@
 
 (defmethod mi/can-update? :model/Timeline
   [timeline changes]
-  (and (mi/can-write? timeline)
-       (collection/can-move? timeline changes)))
+  (mi/can-update-all? :model/Timeline [timeline] changes))
+
+(defmethod mi/can-update-all? :model/Timeline
+  [_model timelines changes]
+  (and (every? mi/can-write? timelines)
+       (collection/can-move-all-or-404? timelines changes)))
 
 ;;; ---------------------------------------------------- Hooks -------------------------------------------------------
 

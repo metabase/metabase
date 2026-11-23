@@ -17,6 +17,7 @@
   check-card-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms
+  check-run-permissions-for-queries
   check-run-permissions-for-query
   has-perm-for-query?
   merge-resolved-source-ids

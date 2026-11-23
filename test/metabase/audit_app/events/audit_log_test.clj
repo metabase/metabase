@@ -864,3 +864,25 @@
       (testing model
         (audit-statement-count! model column 1)
         (is (= (audit-statement-count! model column 2) (audit-statement-count! model column 6)))))))
+
+(defn- publication-statement-count!
+  "The statements that the audit log runs for the publication of `n` new Tables in one batch."
+  [n]
+  (let [table-ids (t2/insert-returning-pks! :model/Table (repeatedly n #(assoc (mt/with-temp-defaults :model/Table)
+                                                                               :name (str "Published " (random-uuid)))))]
+    (try
+      (mt/with-current-user (mt/user->id :crowberto)
+        (events.tu/consumer-statement-count! :model/TableUserSettings
+                                             (map (fn [id] {:table_id id :is_published false}) table-ids)
+                                             (fn [ids]
+                                               (table-user-settings/update-table-user-settings!
+                                                (mapv (fn [id] {:id id :is_published true}) ids)))
+                                             #(mt/with-premium-features #{:audit-app} (%))
+                                             #(mt/with-premium-features #{} (%))))
+      (finally
+        (t2/delete! :model/Table :id [:in table-ids])))))
+
+(deftest batch-of-publications-records-with-fixed-statements-test
+  (testing "the publication of 2 or 6 Tables in one batch records their audit rows with the same number of statements"
+    (publication-statement-count! 1)
+    (is (= (publication-statement-count! 2) (publication-statement-count! 6)))))

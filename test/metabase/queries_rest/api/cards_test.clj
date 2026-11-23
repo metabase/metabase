@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.cards-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -196,6 +197,60 @@
           (let [few  (move! 10)
                 many (move! 40)]
             (is (= few many))))))))
+
+(defn- position-by-name
+  "The `collection_position` by name of the Cards in the Collection `collection-id`."
+  [collection-id]
+  (t2/select-fn->fn :name :collection_position :model/Card :collection_id collection-id))
+
+(deftest move-pinned-cards-refuses-unwritable-card-test
+  (testing "POST /api/cards/move moves nothing when one of the pinned Cards is in a Collection that is not writable"
+    (mt/with-temp [:model/Collection {writable :id}  {}
+                   :model/Collection {read-only :id} {}
+                   :model/Collection {to-id :id}     {}
+                   :model/Card       a {:name "a" :collection_id writable :collection_position 1}
+                   :model/Card       _ {:name "b" :collection_id writable :collection_position 2}
+                   :model/Card       c {:name "c" :collection_id read-only :collection_position 1}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/user-http-request :rasta :post 403 "cards/move" {:card_ids [(:id a) (:id c)] :collection_id to-id})
+      (is (= {"a" 1 "b" 2} (position-by-name writable)))
+      (is (= {"c" 1} (position-by-name read-only)))
+      (is (= {} (position-by-name to-id))))))
+
+(defn- insert-pinned-cards!
+  "The ids of `n` new Cards in the Collection `collection-id`, with the positions 1 to `n`."
+  [n collection-id]
+  (mapv (fn [i]
+          (t2/insert-returning-pk! :model/Card
+                                   (merge (mt/with-temp-defaults :model/Card)
+                                          {:name (str "pinned " i) :collection_id collection-id :collection_position (inc i)})))
+        (range n)))
+
+(deftest move-pinned-cards-statement-count-test
+  (testing "POST /api/cards/move takes at most 3 statements more per pinned Card, for the position that differs from card to card, however many Cards"
+    (mt/with-temp [:model/Collection {to-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection]
+        (doseq [[where destination] [["a Collection" (fn [] {:collection_id to-id})]
+                                     ["a Dashboard" (fn [] {:dashboard_id (insert-dashboard! to-id)})]]]
+          (testing where
+            (let [move! (fn [n]
+                          (let [from-id (t2/insert-returning-pk! :model/Collection
+                                                                 (merge (mt/with-temp-defaults :model/Collection)
+                                                                        {:name (str "from " (random-uuid))}))
+                                _       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+                                ids     (insert-pinned-cards! n from-id)
+                                body    (assoc (destination) :card_ids ids)]
+                            (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                           {:name "staying" :collection_id from-id :collection_position (inc n)}))
+                            (events.tu/real-statement-count!
+                             #(mt/user-http-request :rasta :post 200 "cards/move" body))))]
+              (move! 2)
+              (let [few  (move! 10)
+                    many (move! 40)]
+                (is (<= (- many few) (* 3 (- 40 10))))))))))))
 
 (deftest dashboards-of-cards-statement-count-test
   (testing "POST /api/cards/dashboards takes as many statements for Cards on many Dashboards as for few"

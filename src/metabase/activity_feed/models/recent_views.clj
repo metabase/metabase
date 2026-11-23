@@ -335,18 +335,28 @@
           :capacity recent-views-queue-capacity
           :interval (* recent-views-interval-seconds 1000))))
 
+(mu/defn update-users-recent-views-of-each!
+  "Updates the RecentViews table for a given user with a new view of each of the `model` rows with `model-ids`, and
+  prunes old views, in one batch."
+  [user-id   :- [:maybe ms/PositiveInt]
+   model     :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
+   model-ids :- [:sequential ms/PositiveInt]
+   context   :- [:enum :view :selection]]
+  (when user-id
+    (grouper/submit-all! @recent-views-queue (for [model-id model-ids]
+                                               {:user-id   user-id
+                                                :model     model
+                                                :model-id  model-id
+                                                :context   context
+                                                :timestamp (t/offset-date-time)}))))
+
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id :- [:maybe ms/PositiveInt]
    model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
    model-id :- ms/PositiveInt
    context :- [:enum :view :selection]]
-  (when user-id
-    (grouper/submit! @recent-views-queue {:user-id   user-id
-                                          :model     model
-                                          :model-id  model-id
-                                          :context   context
-                                          :timestamp (t/offset-date-time)})))
+  (update-users-recent-views-of-each! user-id model [model-id] context))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

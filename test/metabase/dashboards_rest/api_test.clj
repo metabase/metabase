@@ -6120,6 +6120,22 @@
           (mt/user-http-request :rasta :post 403 (str "dashboard/save/collection/" hidden-coll-id) (transient-dashboard-body 5))
           (is (zero? (t2/count :model/Card :collection_id hidden-coll-id))))))))
 
+(deftest save-transient-dashboard-refuses-batch-whose-last-query-cannot-run-test
+  (testing "a transient dashboard whose last new card has a query the user cannot run saves nothing"
+    (search.tu/with-index-disabled
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+          (let [body (update (transient-dashboard-body 4) :dashcards
+                             (fn [dashcards]
+                               (update dashcards 3 assoc-in [:card :dataset_query]
+                                       (dissoc (lib/native-query (mt/metadata-provider) "SELECT 1") :lib/metadata))))]
+            (mt/user-http-request :rasta :post 403 (str "dashboard/save/collection/" coll-id) body)
+            (is (zero? (t2/count :model/Card :collection_id coll-id)))
+            (is (zero? (t2/count :model/Dashboard :collection_id coll-id)))))))))
+
 ;;; +--------------------------------------------------------------------------------------------------+
 ;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
 ;;; |       See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)       |

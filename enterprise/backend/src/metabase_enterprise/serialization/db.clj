@@ -24,11 +24,12 @@
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select-pks-set model {:where [:in :id ids]}))
 
-(mu/defn instance-exists?
-  "Whether an instance of `model` whose primary key is `id` exists."
+(mu/defn existing-pks :- [:set :any]
+  "The subset of `pks` that are primary keys of `model` rows."
   [model :- :keyword
-   id    :- [:maybe ms/PositiveInt]]
-  (t2/exists? model (first (t2/primary-keys model)) id))
+   pks   :- [:sequential ms/PositiveInt]]
+  (let [pk (first (t2/primary-keys model))]
+    (set (t2/select-fn-set pk [model pk] pk [:in [:auto/param pks]]))))
 
 (mu/defn root-collections-for-user
   "The top-level non-analytics Collections that are not personal or belong to the User with `user-id`."
@@ -74,12 +75,12 @@
   (t2/reducible-select model {:where    where
                               :order-by (mapv (fn [column] [column :asc]) order-columns)}))
 
-(mu/defn entity-pk
-  "The primary key of the `model` row with `entity-id`, or nil."
-  [model     :- :keyword
-   entity-id :- :string]
+(mu/defn entity-id->pk :- [:map-of :string :any]
+  "The primary key of each `model` row with one of `entity-ids`, by entity id."
+  [model      :- :keyword
+   entity-ids :- [:sequential :string]]
   (let [pk (first (t2/primary-keys model))]
-    (t2/select-one-fn pk [model pk] :entity_id entity-id)))
+    (into {} (t2/select-fn->fn :entity_id pk [model pk :entity_id] :entity_id [:in [:auto/param entity-ids]]))))
 
 (mu/defn ids-for-export :- [:set :any]
   "The primary keys of the `model` rows matching the honey SQL `where` clause."
