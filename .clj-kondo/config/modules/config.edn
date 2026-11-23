@@ -1244,7 +1244,11 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.core metabase.geojson.init metabase.geojson.settings}
-   :uses #{settings util util.config}}
+   :uses #{premium-features
+           settings
+           startup
+           util
+           util.config}}
 
   geojson.rest
   {:team "UX West"
