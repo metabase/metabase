@@ -1786,13 +1786,19 @@
     (when (seq all)
       (actions.models/delete-actions! (actions.models/action-ids-of-models all)))))
 
+(defn- change-invalidates-alerts?
+  "Whether `changes` to the Card `before` touch what its alerts depend on and invalidate them, `after` holding the Cards
+  by id as they are after their writes."
+  [before changes after]
+  (and (some #(contains? changes %) [:display :visualization_settings :dataset_query])
+       (pulse/card-change-invalidates-alerts? before (get after (:id before)))))
+
 (defn- delete-alerts-of-changed-cards!
   "Deletes the alerts of the Cards among `updates` that their change from `before` to `after` invalidates."
   [updates after]
   (let [ids (into []
                   (keep (fn [{:keys [before changes]}]
-                          (when (and (some #(contains? changes %) [:display :visualization_settings :dataset_query])
-                                     (pulse/card-change-invalidates-alerts? before (get after (:id before))))
+                          (when (change-invalidates-alerts? before changes after)
                             (:id before))))
                   updates)]
     (when (seq ids)
@@ -2022,16 +2028,19 @@
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of `notifications`, those of the alerts of the Cards among `entries` read before the change,
-  that the alerts were deleted by the Cards being archived on their own or changed in a way that invalidates them."
+  once the change commits, that the alerts were deleted by the Cards being archived on their own or changed in a way
+  that invalidates them."
   [entries after notifications actor]
-  (pulse/notify-alerts-deleted!
-   actor
-   (for [{:keys [before changes]} entries
-         :let                     [id (:id before)]
-         :when                    (seq (get notifications id))
-         :when                    (or (not (:archived changes))
-                                      (boolean (get changes :archived_directly (:archived_directly before))))]
-     [before (or (get after id) (merge before changes)) (get notifications id)])))
+  (mdb/do-after-commit
+   #(pulse/notify-alerts-deleted!
+     actor
+     (for [{:keys [before changes]} entries
+           :let                     [id (:id before)]
+           :when                    (seq (get notifications id))
+           :when                    (or (change-invalidates-alerts? before changes after)
+                                        (and (:archived changes)
+                                             (get changes :archived_directly (:archived_directly before))))]
+       [before (or (get after id) (merge before changes)) (get notifications id)]))))
 
 (defn- cascade-database-changes!
   "Updates the Cards that use a Card among `entries` whose Database changes as a source, transitively, so that the

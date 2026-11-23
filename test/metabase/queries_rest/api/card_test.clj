@@ -14,6 +14,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -2486,7 +2487,9 @@
                          :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
-                            (f (t2/select-one :model/Card :id (-> notification :payload :card_id))))]
+                            ;; The transaction of a test never commits, so run the work that waits for the commit now.
+                            (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [thunk] (thunk))]
+                              (f (t2/select-one :model/Card :id (-> notification :payload :card_id)))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
                        :body    [{(str expected-email-re) (not should-re-not-match?)}]}
@@ -2594,6 +2597,51 @@
                                                {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                          [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :month}]
                                                                                              [:field (mt/id :checkins :date) {:temporal-unit :year}]])}))}))
+
+(defn- do-with-goal-alert!
+  "Calls `f` with the id of a line Card with a goal and two breakouts, overridden by `card`, and its email alert."
+  [card f]
+  (notification.tu/with-channel-fixtures [:channel/email]
+    (api.notification-test/with-send-messages-sync!
+      (notification.tu/with-card-notification
+        [notification {:card     (merge {:name                   "YOLO"
+                                         :display                :line
+                                         :visualization_settings {:graph.goal_value 10}
+                                         :dataset_query          (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                           [:query :breakout]
+                                                                           [[:field (mt/id :checkins :date) {:temporal-unit :month}]
+                                                                            [:field (mt/id :checkins :date) {:temporal-unit :year}]])}
+                                        card)
+                       :handlers [{:channel_type :channel/email
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :rasta)}]}]}]
+        (f (-> notification :payload :card_id) (:id notification))))))
+
+(deftest restoring-a-card-keeps-its-alert-without-an-email-test
+  (testing "Restoring a Card archived with its container leaves its alert active and emails nobody"
+    (do-with-goal-alert!
+     {:archived true, :archived_directly false}
+     (fn [card-id notification-id]
+       (mt/with-test-user :crowberto
+         (is (empty? (notification.tu/with-mock-inbox-email!
+                       (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [thunk] (thunk))]
+                         (card/update-cards! [{:id card-id, :archived false}]))))))
+       (is (t2/exists? :model/Notification :id notification-id))))))
+
+(deftest alert-stopped-email-waits-for-the-commit-test
+  (testing "A rolled-back change that would delete an alert keeps the alert and emails nobody"
+    (do-with-goal-alert!
+     nil
+     (fn [card-id notification-id]
+       (mt/with-test-user :crowberto
+         (is (empty? (notification.tu/with-mock-inbox-email!
+                       (try
+                         (t2/with-transaction [_conn]
+                           (card/update-cards! [{:id card-id, :display :table}])
+                           (throw (ex-info "Roll back" {})))
+                         (catch clojure.lang.ExceptionInfo _
+                           nil))))))
+       (is (t2/exists? :model/Notification :id notification-id))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (doseq [{:keys [message display]}
