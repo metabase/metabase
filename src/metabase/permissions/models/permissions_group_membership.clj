@@ -184,14 +184,20 @@
   once and the message of the first that breaks one:
 
   - a tenant user is not a group manager
-  - an admin is not a group manager
+  - an admin is not a group manager, nor is a user that `memberships` adds to Administrators of any other group
   - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one"
   [memberships]
   (when (seq memberships)
     (let [members           (permissions.db/member-flags-by-user-ids (into #{} (map :user_id) memberships))
-          group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))]
+          group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))
+          admin-id          (:id (perms-group/admin))
+          new-admins        (into #{} (comp (filter #(= admin-id (:group_id %))) (map :user_id)) memberships)]
       (doseq [membership memberships
-              :let       [member (get members (:user_id membership))]]
+              :let       [user-id (:user_id membership)
+                          member  (cond-> (get members user-id)
+                                    (and (contains? new-admins user-id)
+                                         (not= admin-id (:group_id membership)))
+                                    (assoc :is_superuser true))]]
         (check-group-manager-member membership member)
         (check-tenancy-matches membership member group-id->tenant?)))))
 
