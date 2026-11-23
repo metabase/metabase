@@ -268,6 +268,24 @@
   (assert table-id "Id cannot be nil")
   (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
+(defn- assoc-table-databases
+  "Reads the Database id of every distinct Table of `arg-maps` in one query and puts it in each arg map as `:database`,
+  for the table and data-grid row actions. An unknown Table is left to the normalizer, which fails as before."
+  [action-kw arg-maps]
+  (let [data-grid? (isa? actions.hierarchy/hierarchy action-kw :data-grid.row/common)
+        table?     (isa? actions.hierarchy/hierarchy action-kw :table.row/common)]
+    (if-not (or data-grid? table?)
+      arg-maps
+      (let [id->db (actions.db/table-database-ids (into #{} (comp (keep #(when (map? %) (:table-id %))) (filter pos-int?)) arg-maps))]
+        (for [arg-map arg-maps
+              :let [db-id (when (map? arg-map) (id->db (:table-id arg-map)))]]
+          (cond
+            (not (map? arg-map))                        arg-map
+            (and data-grid? db-id)                      (assoc arg-map :database db-id)
+            data-grid?                                  (dissoc arg-map :database)
+            (and db-id (not (:database arg-map)))       (assoc arg-map :database db-id)
+            :else                                       arg-map))))))
+
 (mu/defn- check-permissions
   [policy   :- :keyword
    arg-maps :- [:sequential [:or
@@ -318,7 +336,9 @@
                           (= "data-editing" (namespace action-kw))  :data-editing
                           :else                                     :ad-hoc-invocation))
           spec      (actions.args/action-arg-map-schema action-kw)
-          arg-maps  (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps)
+          arg-maps  (->> arg-maps
+                         (assoc-table-databases action-kw)
+                         (map (partial actions.args/normalize-action-arg-map action-kw)))
           _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]

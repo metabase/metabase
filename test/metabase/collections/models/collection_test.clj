@@ -14,6 +14,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -2411,3 +2412,32 @@
           (is (= 404 (status #(collection/can-move? (first rows) changes))))
           (is (= 404 (status #(collection/can-move-all-or-404? rows changes))))
           (is (false? (collection/can-move-all? rows changes))))))))
+
+(deftest archive-several-roots-statement-count-test
+  (testing "archiving 6 Collections in one call runs at most 2 more statements for each additional root than archiving 2"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (mt/with-test-user :crowberto
+        (let [archive! (fn [n]
+                         (let [roots (t2/insert-returning-pks! :model/Collection
+                                                               (for [i (range n)] {:name (str "Archived root " i) :location "/"}))
+                               below (t2/insert-returning-pks! :model/Collection
+                                                               (for [id roots] {:name "Archived child" :location (str "/" id "/")}))]
+                           (t2/insert! :model/Card
+                                       (for [id below]
+                                         {:name "Archived card" :collection_id id :display :table :type :question
+                                          :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                          :visualization_settings {} :creator_id (mt/user->id :crowberto)}))
+                           {:count (events.tu/real-statement-count!
+                                    #(collection/update-collections! (mapv (fn [id] {:id id :archived true}) roots) nil))
+                            :rows  (t2/select [:model/Collection :id :archived :archived_directly :archive_operation_id]
+                                              :id [:in (concat roots below)])
+                            :roots (set roots)}))]
+          (archive! 2)
+          (let [small (archive! 2)
+                large (archive! 6)]
+            (is (<= (- (:count large) (:count small)) (* 2 (- 6 2))))
+            (testing "rows get an archive operation and their cause"
+              (let [{:keys [rows roots]} large]
+                (is (every? :archived rows))
+                (is (every? :archive_operation_id rows))
+                (is (every? #(= (contains? roots (:id %)) (:archived_directly %)) rows))))))))))

@@ -56,8 +56,7 @@
 (defn- notify-stopped-alerts!
   "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
   [stopped actor]
-  (doseq [[card notifications] stopped]
-    (notification.card/notify-card-notifications-deleted! :card-archived actor card notifications)))
+  (notification.card/notify-card-notifications-deleted! :card-archived actor stopped))
 
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that

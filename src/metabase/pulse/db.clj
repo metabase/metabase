@@ -577,15 +577,6 @@
   [channel-ids :- [:sequential ms/PositiveInt]]
   (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in channel-ids])))
 
-(mu/defn pulse-positions-from :- [:sequential :map]
-  "The `:id` and `:collection_position` of the Pulses in the Collection with `collection-id` whose position is at or
-  above `from`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   from          :- ms/PositiveInt]
-  (t2/select [:model/Pulse :id :collection_position]
-             :collection_id collection-id
-             :collection_position (collection/position-clause {:from from})))
-
 (mu/defn positioned-pulses-in-collections :- [:sequential :map]
   "The `:id`, `:collection_id` and `:collection_position` of the Pulses that have a position in the Collections with
   `collection-ids`, nil for the root."

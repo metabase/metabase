@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
@@ -68,7 +69,7 @@
                                   :include_csv true
                                   :include_xls true}
             result (mt/with-dynamic-fn-redefs [render.util/is-visualizer-dashcard? (constantly true)]
-                     (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
+                     (email.result-attachment/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting from matching part config")
         (is (true? (-> result first :card :include_xls))
@@ -81,7 +82,7 @@
                                   :dashboard_card_id 999 ;; Different from the dashcard.id
                                   :include_csv true
                                   :format_rows true}
-            result (#'email.impl/assoc-attachment-booleans [matching-part-config] [regular-part])]
+            result (email.result-attachment/assoc-attachment-booleans [matching-part-config] [regular-part])]
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting using the fallback match")
         (is (true? (-> result first :card :format_rows))
@@ -248,14 +249,15 @@
                (is (not (str/includes? (render!) "Made with")))))))))))
 
 (defn- statements-of-alert-send!
-  "The app-DB statements of sending an alert to `n-handlers` email handlers, outside task history."
-  [n-handlers]
+  "The app-DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
+  [creator-id n-handlers]
   (notification.tu/with-notification-testing-setup!
     (notification.tu/with-card-notification
       [notification {:card         {:name          "Orders question"
                                     :dataset_query (let [mp (mt/metadata-provider)]
                                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                          (lib/limit 1)))}
+                     :notification {:creator_id creator-id}
                      :subscriptions [{:type          :notification-subscription/cron
                                       :cron_schedule "0 0 0 * * ? *"}]
                      :handlers      (vec (repeat n-handlers
@@ -268,8 +270,54 @@
         (call-count)))))
 
 (deftest alert-send-statements-per-email-handler-test
-  (testing "an extra email handler of an alert costs its two task history statements and the Database read of its export"
-    (statements-of-alert-send! 2)
-    (let [two (statements-of-alert-send! 2)
-          six (statements-of-alert-send! 6)]
-      (is (<= (- six two) (* 3 (- 6 2)))))))
+  (testing "an extra email handler of an alert costs its two task history statements"
+    (statements-of-alert-send! (mt/user->id :crowberto) 2)
+    (let [two (statements-of-alert-send! (mt/user->id :crowberto) 2)
+          six (statements-of-alert-send! (mt/user->id :crowberto) 6)]
+      (is (<= (- six two) (* 2 (- 6 2)))))))
+
+(deftest alert-send-statements-per-email-handler-download-levels-test
+  (mt/when-ee-evailable
+   (testing "an extra email handler of an alert sent for a non-admin creator costs its two task history statements"
+     (mt/with-premium-features #{:advanced-permissions}
+       (let [creator-id (mt/user->id :rasta)]
+         (statements-of-alert-send! creator-id 2)
+         (let [two (statements-of-alert-send! creator-id 2)
+               six (statements-of-alert-send! creator-id 6)]
+           (is (<= (- six two) (* 2 (- 6 2))))))))))
+
+(defn- statements-of-dashboard-email!
+  "The app-DB statements of rendering a dashboard email with `n` csv attachments of one Database."
+  [n]
+  (let [mp        (mt/metadata-provider)
+        query     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        result    (assoc (mt/process-query query) :database_id (mt/id))
+        dashcards (mapv #(test-dashcard (+ 1000 %) 1 (+ 2000 %)) (range n))
+        parts     (mapv (fn [dashcard]
+                          {:type      :card
+                           :card      {:id (:card_id dashcard) :name "Venues" :dataset_query query}
+                           :dashcard  dashcard
+                           :result    result})
+                        dashcards)
+        notification {:payload_type :notification/dashboard
+                      :payload      {:dashboard              {:id 1 :name "Test Dashboard"}
+                                     :parameters             []
+                                     :dashboard_parts        parts
+                                     :dashboard_subscription {:id 9
+                                                              :dashboard_subscription_dashcards
+                                                              (mapv #(assoc (select-keys % [:id :card_id]) :dashboard_card_id (:id %) :include_csv true)
+                                                                    dashcards)}}
+                      :creator_id   (mt/user->id :crowberto)}
+        recipients   [{:type :notification-recipient/user :user {:email "test@example.com"}}]]
+    (mt/with-dynamic-fn-redefs [email.impl/render-part (fn [_timezone _part _options] {:content [:div "BODY"]})]
+      (t2/with-call-count [call-count]
+        (let [messages (channel/render-notification :channel/email notification {:recipients recipients})]
+          [(call-count) (count (filter #(= :attachment (:type %)) (-> messages first :message)))])))))
+
+(deftest dashboard-email-statements-per-csv-attachment-test
+  (testing "csv attachments of one Database read the Database once"
+    (statements-of-dashboard-email! 2)
+    (let [[two two-attachments] (statements-of-dashboard-email! 2)
+          [six six-attachments] (statements-of-dashboard-email! 6)]
+      (is (< two-attachments six-attachments))
+      (is (= two six)))))

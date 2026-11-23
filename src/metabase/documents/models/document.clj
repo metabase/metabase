@@ -750,13 +750,6 @@
   [_model collection-id positions direction]
   (documents.db/shift-document-positions! collection-id positions direction))
 
-(defmethod collection/reconcile-freed-positions-in-collection! :model/Document
-  [_model collection-id freed-positions]
-  (when-let [updates (not-empty (collection/position-updates
-                                 (documents.db/document-positions-from collection-id (inc (first freed-positions)))
-                                 freed-positions))]
-    (update-documents! updates)))
-
 (defmethod collection/positioned-rows-in-collections :model/Document
   [_model collection-ids]
   (documents.db/positioned-documents-in-collections (vec collection-ids)))

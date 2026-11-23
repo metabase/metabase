@@ -876,15 +876,6 @@
    positions     :- ::collections.schema/positions]
   (t2/select :model/Card :collection_id collection-id :collection_position (collection/position-clause positions)))
 
-(mu/defn card-positions-from :- [:sequential :map]
-  "The `:id` and `:collection_position` of the Cards in the Collection with `collection-id` whose position is at or
-  above `from`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   from          :- ms/PositiveInt]
-  (t2/select [:model/Card :id :collection_position]
-             :collection_id collection-id
-             :collection_position (collection/position-clause {:from from})))
-
 (mu/defn positioned-cards-in-collections :- [:sequential :map]
   "The `:id`, `:collection_id` and `:collection_position` of the Cards that have a position in the Collections with
   `collection-ids`, nil for the root."

@@ -360,18 +360,22 @@
 (events/derive! :event/notification-unsubscribe ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
-  [topic {:keys [object previous-object user-id] :as event}]
+  "Record one row for each of the `:objects` of the event, each an `:object` with its `:previous-object`, in one
+  insert, as [[record-each!]] does. An event without `:objects` is one such item itself."
+  [topic {:keys [objects user-id] :as event}]
   (when (premium-features/log-enabled?)
-    (record! topic
-             {:details  (merge (:details event)
-                               (if (not-empty previous-object)
-                                 (audit-log/update-details (notification-details object)
-                                                           (notification-details previous-object))
-                                 (notification-details object)))
-              :object   object
-              :model    :model/Notification
-              :model-id (:id object)
-              :user-id  user-id})))
+    (record-each! (fn [{:keys [object previous-object]}]
+                    (audit-log/audit-row topic
+                                         {:details  (merge (:details event)
+                                                           (if (not-empty previous-object)
+                                                             (audit-log/update-details (notification-details object)
+                                                                                       (notification-details previous-object))
+                                                             (notification-details object)))
+                                          :object   object
+                                          :model    :model/Notification
+                                          :model-id (:id object)
+                                          :user-id  user-id}))
+                  (or objects [event]))))
 
 (events/derive! ::notification-create-event ::event)
 (events/derive! :event/notification-create ::notification-create-event)

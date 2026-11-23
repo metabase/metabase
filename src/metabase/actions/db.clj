@@ -59,6 +59,13 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
 
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param (vec table-ids)]])
+    {}))
+
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

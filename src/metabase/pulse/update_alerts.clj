@@ -71,18 +71,24 @@
   (when (some #(contains? card-updates %) alert-affecting-columns)
     (seq (models.notification/notifications-for-card (:id card)))))
 
-(defn notify-alerts-deleted!
-  "Tells the recipients of `notifications`, which [[alerts-of-card-being-changed]] read before the update, that the alerts
-  were deleted when the change from `old-card` to `new-card` archives the Card or invalidates its alerts, as the Card
-  hooks have then deleted them."
-  [& {:keys [old-card new-card actor notifications]}]
-  (when (seq notifications)
-    (cond
-      (card-archived? old-card new-card)
-      (notification.card/notify-card-notifications-deleted! :card-archived actor new-card notifications)
+(defn- alerts-deleted-reason
+  "Why the change from `old-card` to `new-card` deletes the alerts of the Card, nil when it does not."
+  [old-card new-card]
+  (cond
+    (card-archived? old-card new-card)     :card-archived
+    (card-change-broke-alert? old-card new-card) :card-changed))
 
-      (card-change-broke-alert? old-card new-card)
-      (notification.card/notify-card-notifications-deleted! :card-changed actor new-card notifications))))
+(defn notify-alerts-deleted!
+  "Tells the recipients of the notifications, which [[alerts-of-card-being-changed]] read before the update, that the
+  alerts were deleted when a change archives the Card or invalidates its alerts, as the Card hooks have then deleted
+  them, with one event for each reason. `changes` holds an `[old-card new-card notifications]` triple for each Card."
+  [actor changes]
+  (doseq [[reason triples] (group-by (fn [[old-card new-card]] (alerts-deleted-reason old-card new-card))
+                                     (filter (comp seq #(nth % 2)) changes))
+          :when            reason]
+    (notification.card/notify-card-notifications-deleted! reason actor
+                                                          (map (fn [[_old new-card notifications]] [new-card notifications])
+                                                               triples))))
 
 (defn card-change-invalidates-alerts?
   "Whether the change from `old-card` to `new-card`, other than archiving it, invalidates the alerts of the Card."

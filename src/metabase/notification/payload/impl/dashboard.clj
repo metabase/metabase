@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.dashboard
   (:require
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
@@ -57,9 +58,14 @@
                             (remove (fn [{part-type :type :as part}]
                                       (and
                                        (= part-type :card)
-                                       (zero? (get-in part [:result :row_count] 0))))))]
+                                       (zero? (get-in part [:result :row_count] 0))))))
+          attachment-parts (vec (email.result-attachment/assoc-attachment-booleans
+                                 (:dashboard_subscription_dashcards dashboard_subscription)
+                                 dashboard-parts))]
       {:dashboard_parts        dashboard-parts
        :timezone               (some->> dashboard-parts (some :card) channel.render/defaulted-timezone)
+       :download_levels        (email.result-attachment/download-levels attachment-parts creator_id)
+       :metadata_providers     (email.result-attachment/metadata-providers attachment-parts)
        :dashboard              dashboard
        :style                  {:color_text_dark   channel.render/color-text-dark
                                 :color_text_light  channel.render/color-text-light

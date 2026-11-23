@@ -2,6 +2,7 @@
   "Positions of the rows of a Collection after Cards move, pinned to what moving the Cards one by one left."
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -120,3 +121,34 @@
     (testing (str label " " endpoint (when dashboard? " to a dashboard"))
       (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Pulse :model/Document :model/Collection]
         (is (= positions (run-scenario! endpoint dashboard? (get scenarios label))))))))
+
+(defn- pinned-move-statements
+  "The statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of `n` Collections,
+  or all in one when not `distinct-sources?`, after one move as warm-up."
+  [n distinct-sources?]
+  (letfn [(collection! []
+            (let [id (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:name (str "c " (random-uuid))}))]
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) id)
+              id))
+          (move! []
+            (let [sources  (if distinct-sources? (vec (repeatedly n collection!)) (vec (repeat n (collection!))))
+                  card-ids (vec (map-indexed (fn [i source]
+                                               (t2/insert-returning-pk! :model/Card
+                                                                        (merge (mt/with-temp-defaults :model/Card)
+                                                                               {:name (str "pinned " i) :collection_id source
+                                                                                :collection_position (inc i)})))
+                                             sources))
+                  dest     (collection!)]
+              (t2/with-call-count [call-count]
+                (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids card-ids :collection_id dest})
+                (call-count))))]
+    (move!)
+    (move!)))
+
+(deftest ^:synchronous pinned-cards-from-many-collections-read-positions-once-test
+  (testing "POST /api/card/collections reads positions from a number of statements that does not grow with source collections"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [one-source-growth (- (pinned-move-statements 6 false) (pinned-move-statements 2 false))
+              many-growth       (- (pinned-move-statements 6 true) (pinned-move-statements 2 true))]
+          (is (<= many-growth one-source-growth)))))))

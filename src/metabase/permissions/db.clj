@@ -1100,6 +1100,35 @@
              :from   [[(t2/table-name :model/Collection) :perms_collection]]
              :where  [:in :perms_collection.id collection-ids]}))
 
+(mu/defn collection-ranks-for-users :- [:sequential [:map [:user-id ms/PositiveInt] [:id ms/PositiveInt] [:rank :int]]]
+  "For each of `users`, each with a user id, and each of the Collections with `collection-ids`, the rank
+  [[collection-ranks]] gives, from one statement."
+  [users          :- [:sequential [:and ::collection-user [:map [:user-id ms/PositiveInt]]]]
+   collection-ids :- [:sequential ms/PositiveInt]]
+  (into []
+        (map (fn [{:keys [user_id] :as row}] (-> row (dissoc :user_id) (assoc :user-id user_id))))
+        (t2/query {:union-all (mapv (fn [{:keys [user-id] :as user}]
+                                      ^:allow-subquery {:select [[[:inline user-id] :user_id]
+                                                                 :perms_collection.id
+                                                                 [(collection-rank-case user) :rank]]
+                                                        :from   [[(t2/table-name :model/Collection) :perms_collection]]
+                                                        :where  [:in :perms_collection.id collection-ids]})
+                                    users)})))
+
+(mu/defn root-collection-objects-for-users :- [:sequential [:map [:user-id ms/PositiveInt] [:object :string]]]
+  "The permission objects among `objects` that a group of each of the Users with `user-ids` holds a row for, from one
+  statement."
+  [user-ids :- [:sequential ms/PositiveInt]
+   objects  :- [:sequential :string]]
+  (mapv (fn [{:keys [user_id object]}] {:user-id user_id :object object})
+        (t2/query {:select-distinct [[:pgm.user_id :user_id] :p.object]
+                   :from            [[(t2/table-name :model/Permissions) :p]]
+                   :join            [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                     [:= :pgm.group_id :p.group_id]]
+                   :where           [:and
+                                     [:in :pgm.user_id user-ids]
+                                     [:in :p.object objects]]})))
+
 (mu/defn some-collection-rank :- :int
   "2 when `user` writes a listed Collection, 1 when they only read one, and 0 otherwise, stopping at the first match."
   [user :- ::collection-user]

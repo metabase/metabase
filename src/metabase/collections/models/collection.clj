@@ -2414,13 +2414,6 @@
     (t2/resolve-model model)
     (shift-positions-in-collection! model collection-id positions direction)))
 
-(defmulti reconcile-freed-positions-in-collection!
-  "Gives the rows of `model` in the Collection with `collection-id` whose position is above the smallest of
-  `freed-positions`, sorted, the position that [[position-updates]] gives them, which a model that has a position in its
-  Collection implements with its own read and write functions."
-  {:arglists '([model collection-id freed-positions])}
-  (fn [model _collection-id _freed-positions] model))
-
 (defn position-updates
   "The `{:id :collection_position}` of each of `rows`, with an `:id` and a `:collection_position`, whose position changes
   once the sorted `freed-positions` are taken out of the Collection: each loses one for every freed position below it."
@@ -2431,18 +2424,6 @@
                   (when (not= new-position collection_position)
                     {:id id :collection_position new-position}))))
         rows))
-
-(mu/defn reconcile-freed-positions!
-  "Closes the gaps that `freed-positions`, the positions that rows left in the Collection with `collection-id`, leave,
-  in one read and one write per model that has a position in its Collection, giving every row the position that
-  reconciling the freed positions one by one, the highest first, gives it."
-  [collection-id    :- [:maybe ms/PositiveInt]
-   freed-positions  :- [:sequential ms/PositiveInt]]
-  (when (seq freed-positions)
-    (let [freed (vec (sort freed-positions))]
-      (doseq [model positioned-models]
-        (t2/resolve-model model)
-        (reconcile-freed-positions-in-collection! model collection-id freed)))))
 
 (defmulti positioned-rows-in-collections
   "The `:id`, `:collection_id` and `:collection_position` of the rows of `model` that have a position in the Collections
@@ -2514,6 +2495,27 @@
   [model->id->position :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]]
   (doseq [[model id->position] model->id->position]
     (update-positions! model id->position)))
+
+(mu/defn reconcile-freed-positions!
+  "Closes the gaps that the positions `collection-id->freed-positions` hold, the positions that rows left in each
+  Collection, nil for the root, leave, from one read and one write per model that has a position in its Collection,
+  giving every row the position that reconciling the freed positions one by one, the highest first, gives it."
+  [collection-id->freed-positions :- [:map-of [:maybe ms/PositiveInt] [:sequential ms/PositiveInt]]]
+  (when (seq collection-id->freed-positions)
+    (let [collection-id->freed (update-vals collection-id->freed-positions (comp vec sort))
+          collection-ids       (vec (keys collection-id->freed))]
+      (write-positions!
+       (into {}
+             (keep (fn [model]
+                     (t2/resolve-model model)
+                     (when-let [updates (not-empty
+                                         (into {}
+                                               (mapcat (fn [[collection-id rows]]
+                                                         (map (juxt :id :collection_position)
+                                                              (position-updates rows (collection-id->freed collection-id)))))
+                                               (group-by :collection_id (positioned-rows-in-collections model collection-ids))))]
+                       [model updates])))
+             positioned-models)))))
 
 (mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
@@ -2952,13 +2954,14 @@
    (mapv (comp :id :before) entries)))
 
 (defn- publish-carried-updates!
-  "Publish the update event of the Collections `rows`, as the `changes` that the archive or restore of the Collection
-  `root-id` made to them."
-  [rows changes root-id]
-  (events/publish-event! :event/collection-update
-                         (events/update-event (into {} (map (juxt :id identity)) rows)
-                                              (mapv #(assoc changes :id (:id %)) rows)
-                                              {:context {:archived-with [:model/Collection root-id]}})))
+  "Publish one update event of the Collections of `rows-changes`, each a `[row changes]` pair of a Collection and the
+  changes that the archive or restore of the Collection `carrier-id` made to it."
+  [rows-changes carrier-id]
+  (when (seq rows-changes)
+    (events/publish-event! :event/collection-update
+                           (events/update-event (into {} (map (fn [[row]] [(:id row) row])) rows-changes)
+                                                (mapv (fn [[row changes]] (assoc changes :id (:id row))) rows-changes)
+                                                {:context {:archived-with [:model/Collection carrier-id]}}))))
 
 (defn- archive-subtrees!
   "Archives the Collections under the update `entries`, which archive their Collection on its own, with the archive
@@ -2975,11 +2978,15 @@
                          (sort-by (comp - count children-location :before))
                          first))
         by-root   (group-by (comp :id :before nearest) below)]
-    (doseq [[root-id descendants] by-root
-            :let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))
-                  changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]]
-      (collections.db/update-collections! (mapv :id descendants) changes)
-      (publish-carried-updates! descendants changes carrier-id))
+    (publish-carried-updates!
+     (into []
+           (mapcat (fn [[root-id descendants]]
+                     (let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))
+                           changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]
+                       (collections.db/update-collections! (mapv :id descendants) changes)
+                       (map #(vector % changes) descendants))))
+           by-root)
+     carrier-id)
     (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below)
                         {:context {:archived-with [:model/Collection carrier-id]}})))
 
@@ -2996,7 +3003,7 @@
     (when (seq below)
       (let [changes {:archived false, :archive_operation_id nil}]
         (collections.db/update-collections! (mapv :id below) changes)
-        (publish-carried-updates! below changes carrier-id)))
+        (publish-carried-updates! (mapv #(vector % changes) below) carrier-id)))
     (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below)
                         {:context {:archived-with [:model/Collection carrier-id]}})))
 

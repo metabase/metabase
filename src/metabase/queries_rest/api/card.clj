@@ -660,12 +660,6 @@
                                  [search-model [:= :this.id id]])))
         card))))
 
-(defn- reconcile-freed-positions!
-  "Closes the gaps in the Collections that `moved-cards`, which had a `collection_position`, left, once for each."
-  [moved-cards]
-  (doseq [[collection-id cards] (group-by :collection_id moved-cards)]
-    (collection/reconcile-freed-positions! collection-id (mapv :collection_position cards))))
-
 (defn move-cards!
   "Moves the Cards with `card-ids` to the Collection or Dashboard that `card-updates`, a `:collection_id` and a
   `:dashboard_id`, name, as [[update-card!]] does for each of them, taking their DashboardCards off the Dashboards they
@@ -791,7 +785,8 @@
                                               cards))
             ;; We are removing these cards from their `collection_id` so we need to reconcile any `collection_position`
             ;; entries left behind by this move.
-            (reconcile-freed-positions! with-position))))
+            (collection/reconcile-freed-positions! (update-vals (group-by :collection_id with-position)
+                                                                (partial mapv :collection_position))))))
       nil))
 
   (when new-collection-id-or-nil

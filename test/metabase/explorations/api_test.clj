@@ -227,9 +227,10 @@
   (testing "GET /api/exploration/dimensions heals metrics without dimensions with no more statements per metric than writing their dimensions, which differ from one metric to the next, takes"
     (with-sample-metrics-archived
       (mt/with-model-cleanup [:model/Card]
-        (let [query   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                           (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                               (lib/aggregate (lib/count)))))
+        (let [query   (dissoc (let [mp (mt/metadata-provider)]
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    (lib/aggregate (lib/count))))
+                              :lib/metadata)
               create! (fn [n]
                         (vec (for [i (range n)]
                                (:id (mt/user-http-request :crowberto :post 200 "card"

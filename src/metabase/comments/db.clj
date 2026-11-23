@@ -46,10 +46,15 @@
              :deleted_at nil
              {:group-by [:child_target_id]}))
 
-(mu/defn active-user-ids
-  "The ids among `user-ids` of active Users, or nil."
+(mu/defn active-users
+  "The `:user-id`, `:is-superuser?` and `:is-data-analyst?` of the active Users among `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
+  (t2/select [:model/User
+              [:id :user-id]
+              [:is_superuser :is-superuser?]
+              [:is_data_analyst :is-data-analyst?]]
+             :id [:in user-ids]
+             :is_active true))
 
 (mu/defn document
   "The Document with `id`, or nil."

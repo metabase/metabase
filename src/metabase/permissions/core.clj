@@ -45,6 +45,7 @@
  [metabase.permissions.collection-permissions
   collection-permission-at-least?
   collection-permissions-for-user
+  collection-permissions-for-users
   some-collection-permission-for-user
   visible-collections-filter-clause]
  [metabase.permissions.db

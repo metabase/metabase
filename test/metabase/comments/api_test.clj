@@ -4,9 +4,13 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
+   [metabase.comments.api :as comments.api]
+   [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
    [metabase.notification.seed :as notification.seed]
    [metabase.permissions.core :as perms]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.performance :refer [dropv]]
@@ -683,3 +687,90 @@
               (is (= (:lookups small) (:lookups large)))
               (is (= (:wanted small) (:emails small)))
               (is (= (:wanted large) (:emails large))))))))))
+
+(defn- mentioned-ids-per-user
+  "The ids among `user-ids` of active Users who read `entity`, one hydration of its `:can_read` as each of them."
+  [entity user-ids]
+  (->> (t2/select-pks-set :model/User :id [:in user-ids] :is_active true)
+       (filterv (fn [user-id]
+                  (request/with-current-user user-id
+                    (mi/can-read? (t2/hydrate entity :can_read)))))
+       set))
+
+(deftest mentioned-users-who-read-match-reads-of-each-user-test
+  (testing "the mentioned users told about a comment are those a read check as each of them lets through"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/PermissionsGroup {group-a :id} {}
+                     :model/PermissionsGroup {group-b :id} {}
+                     :model/User {admin-id :id}      {:is_superuser true}
+                     :model/User {one-group-id :id}  {}
+                     :model/User {two-groups-id :id} {}
+                     :model/User {no-access-id :id}  {}
+                     :model/User {owner-id :id}      {}
+                     :model/User {other-id :id}      {}
+                     :model/User {inactive-id :id}   {:is_active false}
+                     :model/PermissionsGroupMembership _ {:group_id group-a :user_id one-group-id}
+                     :model/PermissionsGroupMembership _ {:group_id group-a :user_id two-groups-id}
+                     :model/PermissionsGroupMembership _ {:group_id group-b :user_id two-groups-id}
+                     :model/PermissionsGroupMembership _ {:group_id group-a :user_id inactive-id}
+                     :model/Collection {shared-id :id} {}
+                     :model/Exploration {exploration-id :id} {:creator_id (mt/user->id :crowberto)}]
+        (perms/grant-collection-read-permissions! group-a shared-id)
+        (perms/grant-collection-read-permissions! group-b shared-id)
+        (let [owner-collection (:id (collection/user->personal-collection owner-id))
+              other-collection (:id (collection/user->personal-collection other-id))
+              user-ids         [admin-id one-group-id two-groups-id no-access-id owner-id other-id inactive-id]
+              creator-id       (mt/user->id :crowberto)
+              mentioned        #'comments.api/mentioned-ids-who-can-read]
+          (mt/with-temp [:model/Document root-doc         {:collection_id nil, :creator_id creator-id}
+                         :model/Document shared-doc       {:collection_id shared-id, :creator_id creator-id}
+                         :model/Document owner-doc        {:collection_id owner-collection, :creator_id creator-id}
+                         :model/Document other-doc        {:collection_id other-collection, :creator_id creator-id}
+                         :model/Document exploration-doc  {:collection_id shared-id, :creator_id creator-id
+                                                           :exploration_id exploration-id}
+                         :model/Exploration shared-exploration {:collection_id shared-id, :creator_id creator-id}
+                         :model/Exploration root-exploration   {:collection_id nil, :creator_id creator-id}]
+            (doseq [[label entity] {"document in the root collection"          root-doc
+                                    "document in a shared collection"          shared-doc
+                                    "document in the personal collection of a mentioned user" owner-doc
+                                    "document in the personal collection of another user"      other-doc
+                                    "document owned by an exploration"         exploration-doc
+                                    "exploration in a shared collection"       shared-exploration
+                                    "exploration in the root collection"       root-exploration}]
+              (testing label
+                (let [expected (mentioned-ids-per-user entity user-ids)]
+                  (is (= expected (set (mentioned entity user-ids))))
+                  (is (not (contains? expected inactive-id))))))
+            (testing "the matrix lets some mentioned users through and holds others back"
+              (is (= #{admin-id one-group-id two-groups-id} (set (mentioned shared-doc user-ids))))
+              (is (= #{admin-id owner-id} (set (mentioned owner-doc user-ids))))
+              (is (= #{admin-id} (set (mentioned root-doc user-ids)))))))))))
+
+(deftest mentions-read-statements-do-not-grow-with-mentions-test
+  (testing "POST /api/comment reads the same number of statements for 2 and 6 mentioned users who cannot read the document"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}
+                     :model/Collection {collection-id :id} {}
+                     :model/Document {doc-id :id} {:collection_id collection-id :creator_id (mt/user->id :rasta)}]
+        (perms/grant-collection-read-permissions! group-id collection-id)
+        (mt/with-model-cleanup [:model/Comment]
+          (let [post!  (fn [n]
+                         (let [users (mapv (fn [i] (t2/insert-returning-instance! :model/User
+                                                                                  {:first_name "Test" :last_name "User"
+                                                                                   :email (format "mention-%d-%s@example.com" i (random-uuid))
+                                                                                   :password "password"}))
+                                           (range n))]
+                           (try
+                             (t2/with-call-count [call-count]
+                               (mt/user-http-request :rasta :post 200 "comment"
+                                                     {:target_type "document"
+                                                      :target_id   doc-id
+                                                      :content     (tiptap (into [:p] (map (fn [u] [:smartLink {:model "user" :entityId (:id u)}])) users))})
+                               (call-count))
+                             (finally
+                               (t2/delete! :model/User :id [:in (map :id users)])))))
+                _warm  (post! 2)
+                small  (post! 2)
+                large  (post! 6)]
+            (is (= small large))))))))

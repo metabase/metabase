@@ -20,6 +20,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
+   [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -2708,3 +2709,41 @@
                           (events.tu/statement-count! #(card/place-new-dashboard-questions! cards rows))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))
+
+(defn- do-with-three-alerted-cards!
+  "Call `f` with the ids of 3 Cards that each have an alert emailing Rasta."
+  [f]
+  (notification.tu/with-channel-fixtures [:channel/email]
+    (let [handlers [{:channel_type :channel/email
+                     :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]]
+      (notification.tu/with-card-notification
+        [n1 {:card {:name "Alerted one" :display :line} :handlers handlers}]
+        (notification.tu/with-card-notification
+          [n2 {:card {:name "Alerted two" :display :line} :handlers handlers}]
+          (notification.tu/with-card-notification
+            [n3 {:card {:name "Alerted three" :display :line} :handlers handlers}]
+            (f (mapv #(-> % :payload :card_id) [n1 n2 n3]))))))))
+
+(deftest archive-cards-with-alerts-one-event-test
+  (testing "archiving 3 Cards with alerts publishes one event holding all 3 Cards"
+    (do-with-three-alerted-cards!
+     (fn [card-ids]
+       (let [events (atom [])]
+         (mt/with-test-user :crowberto
+           (with-redefs [events/publish-event! (fn [topic event]
+                                                 (when (= :event/card-update.notification-deleted.card-archived topic)
+                                                   (swap! events conj event)))]
+             (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids))))
+         (is (= 1 (count @events)))
+         (is (= (set card-ids) (set (map (comp :id :card) (:objects (first @events)))))))))))
+
+(deftest archive-cards-with-alerts-one-email-each-test
+  (testing "archiving 3 Cards with alerts emails the recipients once for each Card"
+    (do-with-three-alerted-cards!
+     (fn [card-ids]
+       (let [emails (notification.tu/with-mock-inbox-email!
+                      (api.notification-test/with-send-messages-sync!
+                        (mt/with-test-user :crowberto
+                          (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))))]
+         (is (= 3 (count emails)))
+         (is (every? #(= "One of your alerts has stopped working" (:subject %)) emails)))))))

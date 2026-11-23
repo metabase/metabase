@@ -2021,15 +2021,14 @@
   "Tells the recipients of `notifications`, those of the alerts of the Cards among `entries` read before the change,
   that the alerts were deleted by the Cards being archived on their own or changed in a way that invalidates them."
   [entries after notifications actor]
-  (doseq [{:keys [before changes]} entries
-          :let                     [id (:id before)]
-          :when                    (seq (get notifications id))
-          :when                    (or (not (:archived changes))
-                                       (boolean (get changes :archived_directly (:archived_directly before))))]
-    (pulse/notify-alerts-deleted! :old-card      before
-                                  :new-card      (or (get after id) (merge before changes))
-                                  :actor         actor
-                                  :notifications (get notifications id))))
+  (pulse/notify-alerts-deleted!
+   actor
+   (for [{:keys [before changes]} entries
+         :let                     [id (:id before)]
+         :when                    (seq (get notifications id))
+         :when                    (or (not (:archived changes))
+                                      (boolean (get changes :archived_directly (:archived_directly before))))]
+     [before (or (get after id) (merge before changes)) (get notifications id)])))
 
 (defn- cascade-database-changes!
   "Updates the Cards that use a Card among `entries` whose Database changes as a source, transitively, so that the
@@ -2411,13 +2410,6 @@
                                                              :collection_position (({:+ inc :- dec} direction)
                                                                                    (:collection_position card))})
                                                           previous)))))))
-
-(defmethod collection/reconcile-freed-positions-in-collection! :model/Card
-  [_model collection-id freed-positions]
-  (when-let [updates (not-empty (collection/position-updates
-                                 (queries.db/card-positions-from collection-id (inc (first freed-positions)))
-                                 freed-positions))]
-    (update-cards! updates)))
 
 (defmethod collection/positioned-rows-in-collections :model/Card
   [_model collection-ids]

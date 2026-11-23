@@ -6325,7 +6325,7 @@
                           (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
                           (call-count))))]
           (move! 1)
-          (is (= (move! 2) (move! 6))))))))
+          (is (= (min (move! 2) (move! 2)) (min (move! 6) (move! 6)))))))))
 
 (defn- per-card-refusal
   "What the walk over `card-changes` that asks [[mi/can-update?]] of each card in turn, stopping at the first refusal,

@@ -102,6 +102,69 @@
     (cond-> (collection-id->permission user-info ids)
       (some nil? collection-ids) (assoc nil (root-collection-permission user-info root-namespace)))))
 
+(def ^:private users-per-query
+  "How many users one permission query answers for."
+  100)
+
+(defn- users-collection-id->permission
+  "The permission of each of `user-infos` on each of the Collections with `collection-ids`, none of them nil, by user id."
+  [user-infos collection-ids]
+  (let [empty-answer (zipmap collection-ids (repeat :none))]
+    (reduce (fn [acc {:keys [user-id id rank]}]
+              (assoc-in acc [user-id id] (rank->permission rank)))
+            (zipmap (map :user-id user-infos) (repeat empty-answer))
+            (for [users (partition-all users-per-query user-infos)
+                  ids   (partition-all collection-ids-per-query collection-ids)
+                  :let  [users (mapv collection-user users)]
+                  row   (permissions.db/collection-ranks-for-users users (vec ids))]
+              row))))
+
+(defn- users-root-collection-permission
+  "The permission of each of `user-infos` on the root Collection of `root-namespace`, as [[root-collection-permission]]
+  answers for one, by user id."
+  [user-infos root-namespace]
+  (let [{:keys [write-object read-object]} (root-objects root-namespace)
+        needing-rows (into [] (remove #(or (:is-superuser? %)
+                                           (and (= (some-> root-namespace name) "transforms") (:is-data-analyst? %))))
+                           user-infos)
+        user-id->objects (->> (for [ids  (partition-all users-per-query (map :user-id needing-rows))
+                                    :when (seq ids)
+                                    row  (permissions.db/root-collection-objects-for-users (vec ids) [write-object read-object])]
+                                row)
+                              (reduce (fn [acc {:keys [user-id object]}] (update acc user-id (fnil conj #{}) object)) {}))]
+    (into {}
+          (map (fn [{:keys [user-id is-superuser? is-data-analyst?]}]
+                 [user-id
+                  (cond
+                    is-superuser?                                          :read-and-write
+                    (and (= (some-> root-namespace name) "transforms") is-data-analyst?) :read-and-write
+                    :else (let [objects (get user-id->objects user-id)]
+                            (cond
+                              (contains? objects write-object) :read-and-write
+                              (contains? objects read-object)  :read
+                              :else                            :none)))]))
+          user-infos)))
+
+(mu/defn collection-permissions-for-users :- [:map-of ms/PositiveInt [:map-of [:maybe ms/PositiveInt] [:enum :read-and-write :read :none]]]
+  "For each of `user-infos`, each a user with an id, the answer of [[collection-permissions-for-user]] for the
+  Collections with `collection-ids`, by user id, from one query per 100 users and 10,000 distinct Collection ids, and
+  one more per 100 users when a nil id is asked."
+  [user-infos                       :- [:sequential [:map {:closed true}
+                                                     [:user-id          ms/PositiveInt]
+                                                     [:is-superuser?    :boolean]
+                                                     [:is-data-analyst? :boolean]]]
+   collection-ids                   :- [:sequential [:maybe ms/PositiveInt]]
+   {root-namespace :root-namespace} :- ::permissions.schema/collection-options]
+  (let [ids       (into [] (comp (remove nil?) (distinct)) collection-ids)
+        by-user   (if (seq ids)
+                    (users-collection-id->permission user-infos ids)
+                    (zipmap (map :user-id user-infos) (repeat {})))
+        root-only (when (some nil? collection-ids)
+                    (users-root-collection-permission user-infos root-namespace))]
+    (reduce-kv (fn [acc user-id permission] (assoc-in acc [user-id nil] permission))
+               by-user
+               (or root-only {}))))
+
 (mu/defn collection-permission-at-least? :- :boolean
   "Whether `actual`, a Collection permission, is `required` or more."
   [actual   :- [:enum :read-and-write :read :none]

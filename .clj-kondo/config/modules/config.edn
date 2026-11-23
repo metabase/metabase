@@ -570,6 +570,7 @@
    :api  #{metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
+           metabase.channel.email.result-attachment
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
@@ -757,6 +758,7 @@
            lib
            lib.schema
            models
+           permissions
            request
            users
            util}

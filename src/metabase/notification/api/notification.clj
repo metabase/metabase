@@ -240,18 +240,21 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
-(defn publish-notification-update!
-  "Post-update side effects for a notification: recipient emails on `:active` transitions (or
-  recipient diffs) + an `:event/notification-update` audit event. Shared between the self-service
-  PUT endpoint and the admin bulk endpoint so the contract can't drift. Both args should be
-  hydrated notifications (see [[models.notification/hydrate-notification]])."
-  [updated-notification existing-notification]
-  (when (card-notification? existing-notification)
-    (notify-notification-updates! updated-notification existing-notification))
-  (events/publish-event! :event/notification-update
-                         {:object          updated-notification
-                          :previous-object existing-notification
-                          :user-id         api/*current-user-id*}))
+(defn publish-notification-updates!
+  "Post-update side effects for notifications: recipient emails on `:active` transitions (or recipient diffs) of each
+  `[updated existing]` pair of `pairs`, then one `:event/notification-update` audit event for all of them. Shared
+  between the self-service PUT endpoint and the admin bulk endpoint so the contract can't drift. Both notifications of
+  a pair should be hydrated (see [[models.notification/hydrate-notification]])."
+  [pairs]
+  (doseq [[updated existing] pairs
+          :when (card-notification? existing)]
+    (notify-notification-updates! updated existing))
+  (when (seq pairs)
+    (events/publish-event! :event/notification-update
+                           {:objects (mapv (fn [[updated existing]]
+                                             {:object updated :previous-object existing})
+                                           pairs)
+                            :user-id api/*current-user-id*})))
 
 (defn- body-with-authoritative-ids
   "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a payload, so that an update
@@ -274,7 +277,7 @@
     (let [body (body-with-authoritative-ids body existing-notification)]
       (models.notification/update-notification! id body {:notifications [existing-notification]})
       (u/prog1 (get-notification id)
-        (publish-notification-update! <> existing-notification)))))
+        (publish-notification-updates! [[<> existing-notification]])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

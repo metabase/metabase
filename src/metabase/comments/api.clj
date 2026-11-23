@@ -14,6 +14,7 @@
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -137,14 +138,32 @@
       ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
       {:comments (render-comments (comment/apply-context-gate target_type target_id comments))})))
 
+(defn- reads-by-collection-only?
+  "Whether the content gate of `entity` answers yes for every user: any entity but a Document owned by an Exploration."
+  [entity]
+  (or (not= :model/Document (t2/model entity))
+      (nil? (:exploration_id entity))))
+
 (defn- mentioned-ids-who-can-read
-  "Restrict mentioned user ids to active users who can themselves read `entity`."
+  "Restrict mentioned user ids to active users who can themselves read `entity`: those with read access to its
+  Collection, from one read of the Users and one of their Collection permissions, and, for a Document owned by an
+  Exploration, whose content gate answers for each user, those it lets through."
   [entity mention-ids]
   (when (seq mention-ids)
-    (->> (comments.db/active-user-ids mention-ids)
-         (filterv (fn [user-id]
-                    (request/with-current-user user-id
-                      (mi/can-read? (t2/hydrate entity :can_read))))))))
+    (let [users          (comments.db/active-users mention-ids)
+          collection-id  (:collection_id entity)
+          id->permission (perms/collection-permissions-for-users (mapv #(select-keys % [:user-id :is-superuser? :is-data-analyst?]) users)
+                                                                 [collection-id]
+                                                                 {:root-namespace nil})
+          user-ids       (into [] (comp (map :user-id)
+                                        (filter #(perms/collection-permission-at-least? (get-in id->permission [% collection-id]) :read)))
+                               users)]
+      (if (reads-by-collection-only? entity)
+        user-ids
+        (filterv (fn [user-id]
+                   (request/with-current-user user-id
+                     (mi/can-read? (t2/hydrate entity :can_read))))
+                 user-ids)))))
 
 (defn notify-comment!
   "Send a notification about comment"

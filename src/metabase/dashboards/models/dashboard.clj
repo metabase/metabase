@@ -779,13 +779,6 @@
   [_model collection-id positions direction]
   (dashboards.db/shift-dashboard-positions! collection-id positions direction))
 
-(defmethod collection/reconcile-freed-positions-in-collection! :model/Dashboard
-  [_model collection-id freed-positions]
-  (when-let [updates (not-empty (collection/position-updates
-                                 (dashboards.db/dashboard-positions-from collection-id (inc (first freed-positions)))
-                                 freed-positions))]
-    (update-dashboards! updates)))
-
 (defmethod collection/positioned-rows-in-collections :model/Dashboard
   [_model collection-ids]
   (dashboards.db/positioned-dashboards-in-collections (vec collection-ids)))
