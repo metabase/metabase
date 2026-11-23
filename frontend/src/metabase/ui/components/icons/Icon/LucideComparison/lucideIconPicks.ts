@@ -31,6 +31,7 @@ export const LUCIDE_ICON_PICKS: Partial<Record<IconName, string>> = {
   notebook: "LayoutPanelTop",
   pivot_table: "Table2",
   embed_interactive: "Gamepad",
+  sql: "SquareTerminal",
   sliders: "Settings2",
   table_index: "BetweenHorizontalStart",
   upload: "Upload",
