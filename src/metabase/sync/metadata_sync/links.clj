@@ -21,7 +21,7 @@
 
 (mr/def ::target
   [:map
-   [:schema [:maybe :string]]
+   [:schema {:optional true} [:maybe :string]]
    [:table  ms/NonBlankString]
    [:field  ::field-path]])
 
@@ -31,7 +31,7 @@
    [:field    ::field-path]
    [:target   ::target]
    ;; a user of the sender set the target, so the receiver marks it as set when it fills it
-   [:user_set {:optional true} [:= true]]])
+   [:user_set {:optional true} [:maybe :boolean]]])
 
 (mr/def ::link
   "A link. This version sends and applies the kind `fk`; a receiver leaves out a link of another kind, which a newer

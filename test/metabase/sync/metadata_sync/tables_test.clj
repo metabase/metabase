@@ -252,6 +252,24 @@
       (testing "the entries are valid"
         (is (every? #(mr/validate ::tables/table %) (vals entries-by-key)))))))
 
+(deftest user-set-columns-without-a-flag-are-named-test
+  (mt/with-temp [:model/Database {db-id :id}  {}
+                 :model/Table    {wrens :id}  {:db_id         db-id :schema "public" :name "wrens"
+                                               :entity_type   :entity/EventTable
+                                               :owner_user_id (mt/user->id :rasta)}
+                 :model/Field    {song :id}   {:table_id wrens :name "song" :base_type :type/Text
+                                               :visibility_type :details-only :display_name "Tune"}]
+    (t2/insert! :model/TableUserSettings {:table_id wrens :entity_type :entity/EventTable
+                                          :owner_user_id (mt/user->id :rasta)})
+    (t2/insert! :model/FieldUserSettings {:field_id song :visibility_type :details-only :display_name "Tune"})
+    (let [wrens-entry ((entries db-id) ["public" "wrens"])]
+      (testing "a Table names a column a user set that has no flag, by its value in the settings row"
+        (is (= ["entity_type"] (:user_set wrens-entry))))
+      (testing "a Field does too"
+        (is (= ["display_name" "visibility_type"] (:user_set (field-named wrens-entry "song")))))
+      (testing "a column that belongs to one instance, which is not sent, is not named"
+        (is (not (contains? wrens-entry :owner_user_id)))))))
+
 (deftest a-sensitive-field-sends-no-fingerprint-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id :schema "public" :name "people"}

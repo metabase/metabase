@@ -831,42 +831,10 @@
                            (field-values-field-clause :f :t)
                            [:= :metabase_fieldvalues.type "full"]]})))
 
-(mu/defn field-user-set-flags :- [:sequential [:map {:closed true}
-                                               [:field_id               ::lib.schema.id/field]
-                                               [:description_set        [:maybe :boolean]]
-                                               [:semantic_type_set      [:maybe :boolean]]
-                                               [:fk_target_field_id_set [:maybe :boolean]]]]
-  "The flags that say which columns a user set, for each Field of the Tables with `table-ids` that has a true one."
+(mu/defn table-user-settings-of-tables :- [:sequential ::warehouse-schema.schema/table-user-settings]
+  "The TableUserSettings of the Tables with `table-ids` that have one."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select [:s.field_id :s.description_set :s.semantic_type_set :s.fk_target_field_id_set]
-             :from   [[(t2/table-name :model/FieldUserSettings) :s]]
-             :join   [[(t2/table-name :model/Field) :f] [:= :f.id :s.field_id]]
-             :where  [:and
-                      [:in :f.table_id table-ids]
-                      [:or
-                       [:= :s.description_set true]
-                       [:= :s.semantic_type_set true]
-                       [:= :s.fk_target_field_id_set true]]]}))
-
-(mu/defn table-user-set-flags :- [:sequential [:map {:closed true}
-                                               [:table_id            ::lib.schema.id/table]
-                                               [:description_set     [:maybe :boolean]]
-                                               [:visibility_type_set [:maybe :boolean]]
-                                               [:data_layer_set      [:maybe :boolean]]
-                                               [:data_source_set     [:maybe :boolean]]]]
-  "The flags that say which columns a user set, for each Table with one of `table-ids` that has a true one."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select [:s.table_id :s.description_set :s.visibility_type_set :s.data_layer_set :s.data_source_set]
-             :from   [[(t2/table-name :model/TableUserSettings) :s]]
-             :where  [:and
-                      [:in :s.table_id table-ids]
-                      [:or
-                       [:= :s.description_set true]
-                       [:= :s.visibility_type_set true]
-                       [:= :s.data_layer_set true]
-                       [:= :s.data_source_set true]]]}))
-
-;;; -------------------------------------- Metadata sync: what is written --------------------------------------
+  (t2/select :model/TableUserSettings :table_id [:in table-ids]))
 
 (mu/defn tables-named :- [:sequential ::warehouse-schema.schema/table]
   "The Tables of the Database with `database-id` named one of `table-names`, active or not, in any schema."

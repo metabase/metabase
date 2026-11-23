@@ -1,10 +1,8 @@
 (ns metabase.sync.api.metadata-sync-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.util :as driver.u]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.wire :as wire]
-   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.table :as table]
@@ -115,10 +113,7 @@
         (is (= [409 "metadata-sync-database-ambiguous"] (error-code changes-url (request database-name)))))))
   (mt/with-temp [:model/Database {database-name :name} {:initial_sync_status "incomplete"}]
     (testing "a Database whose first sync is not complete gets 422"
-      (is (= [422 "metadata-sync-database-not-ready"] (error-code changes-url (request database-name))))))
-  (testing "a schema filter that is not a list of patterns gets 400, not a server error"
-    (is (= [400 "metadata-sync-bad-schema-filter"]
-           (error-code changes-url (request (mt/random-name) {:schema_filters {:type "inclusion" :patterns "["}}))))))
+      (is (= [422 "metadata-sync-database-not-ready"] (error-code changes-url (request database-name)))))))
 
 ;;; ------------------------------------------------ Receiver ------------------------------------------------
 
@@ -133,6 +128,15 @@
 (def ^:private one-table
   {:type "tables" :tables [{:schema "PUBLIC" :name "wrens"
                             :fields [{:path ["song"] :base_type "type/Text" :database_type "TEXT"}]}]})
+
+(deftest a-cursor-that-is-not-a-map-goes-through-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :initial_sync_status "incomplete"}]
+    (testing "a cursor of another shape, which a newer sender can write, is passed on as it is"
+      (is (= "opaque" (:after (mt/user-http-request :crowberto :post 200 request-url
+                                                    {:database_id db-id :after "opaque"}))))
+      (is (= ["tables" 3] (:next (mt/user-http-request :crowberto :post 200 apply-url
+                                                       {:database_id db-id
+                                                        :response    (assoc (answer-of db-id) :next ["tables" 3])})))))))
 
 (deftest receiver-errors-test
   (testing "no such Database, for a request and for an answer"
@@ -157,20 +161,14 @@
                                     {:database_id db-id
                                      :response    (assoc (answer-of db-id {:type "remaps" :tables [{:a 1}]})
                                                          :next {:kind "tables"})}))))
-    (testing "a malformed answer gets 422"
+    (testing "an answer without the envelope of an answer gets 422"
       (is (= [422 "metadata-sync-malformed-response"]
              (error-code apply-url {:database_id db-id
-                                    :response    (answer-of db-id {:type "tables" :tables "none"})}))))
+                                    :response    (assoc (answer-of db-id one-table) :batches "none")}))))
     (testing "an answer for another Database gets 422"
       (is (= [422 "metadata-sync-answer-of-another-database"]
              (error-code apply-url {:database_id db-id
                                     :response    (assoc (answer-of db-id one-table) :database "Another")}))))
-    (testing "while a sync of the Database runs, a request and an answer get 409"
-      (let [during (fn [thunk]
-                     ((sync-util/with-duplicate-ops-prevented :sync (driver.u/lib-database db-id) thunk)))]
-        (is (= [409 "metadata-sync-sync-running"] (during #(error-code request-url {:database_id db-id}))))
-        (is (= [409 "metadata-sync-sync-running"]
-               (during #(error-code apply-url {:database_id db-id :response (answer-of db-id one-table)}))))))
     (testing "a write that fails gets 422, and the body says nothing of the cause"
       (mt/with-dynamic-fn-redefs [table/create-tables! (fn [_rows]
                                                          (throw (ex-info "the app DB refused wrens" {})))]

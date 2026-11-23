@@ -265,12 +265,6 @@
       (testing "every answer names the Database of its request, by name and engine"
         (is (= #{[db-name "h2"]} (set (map (juxt :database :engine) (answers db-name)))))))))
 
-(deftest bad-schema-filter-test
-  (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
-    (testing "a schema filter that is not a pattern is refused, and is not a server error"
-      (is (= {:status-code 400 :error-code "metadata-sync-bad-schema-filter"}
-             (error-data db-name {:schema_filters {:type "inclusion" :patterns "["}}))))))
-
 (deftest format-versions-of-the-request-test
   (mt/with-temp [:model/Database {db-name :name} {:initial_sync_status "complete"}]
     (testing "a request that names the format versions its receiver reads gets an answer in one of them"

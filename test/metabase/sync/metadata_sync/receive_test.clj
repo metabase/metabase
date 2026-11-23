@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.driver.util :as driver.u]
    [metabase.search.core :as search]
+   [metabase.sync.metadata-sync.accept :as accept]
    [metabase.sync.metadata-sync.pages :as pages]
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
@@ -11,6 +11,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field :as field]
@@ -81,12 +82,21 @@
                                  {:path ["wings"] :base_type "type/Text" :database_type "TEXT"
                                   :effective_type "type/Integer"}]}]}))
 
+(defn- deleting-fields-of!
+  "Call `thunk`, then delete the Fields of the Databases with `db-ids`, the most nested first. `with-temp` deletes a
+  Database in one statement, and on MySQL its cascade fails on a Field that another Field is nested under."
+  [db-ids thunk]
+  (try
+    (thunk)
+    (finally
+      (field/delete-fields-for-databases! (vec db-ids)))))
+
 (defn- seed!
   "Seed the receiver's Database `receiver-id` from the sender's Database named `sender-name` as the app does: request,
   answer, apply, while there is a next cursor. Returns the number of rounds and the summed counts."
   [sender-name receiver-id]
   (loop [rounds 1 after nil counts {}]
-    (let [request              (receive/request! receiver-id after)
+    (let [request              (receive/request receiver-id after)
           {:keys [next] :as r} (receive/apply-response! receiver-id (sender-answer sender-name request))
           counts               (merge-with + counts (:counts r))]
       (cond
@@ -147,16 +157,16 @@
                                                             :details {:schema-filters-type     "inclusion"
                                                                       :schema-filters-patterns "PUBLIC"}}]
     (testing "a request names the Database by name and engine, and the format versions this receiver reads"
-      (is (= {:database db-name :engine "h2" :format_versions [wire/format-version]} (receive/request! db-id nil))))
+      (is (= {:database db-name :engine "h2" :format_versions [wire/format-version]} (receive/request db-id nil))))
     (testing "with its schema filters, when its driver has them"
       (is (=? {:engine "postgres" :schema_filters {:type "inclusion" :patterns "PUBLIC"}}
-              (receive/request! pg-id nil))))
+              (receive/request pg-id nil))))
     (testing "it carries the cursor it is given"
       (is (= {:kind "links" :key ["PUBLIC" "orders"]}
-             (:after (receive/request! db-id {:kind "links" :key ["PUBLIC" "orders"]})))))
+             (:after (receive/request db-id {:kind "links" :key ["PUBLIC" "orders"]})))))
     (testing "also one that only a newer sender writes: the receiver does not read a cursor"
       (is (= {:kind "remaps" :key nil :page 3}
-             (:after (receive/request! db-id {:kind "remaps" :key nil :page 3})))))))
+             (:after (receive/request db-id {:kind "remaps" :key nil :page 3})))))))
 
 ;;; ------------------------------------------------ Seed ------------------------------------------------
 
@@ -171,6 +181,7 @@
        (testing "the counts say what it wrote"
          (is (= {:values_dropped        0
                  :tables_skipped        0
+                 :left_out              0
                  :database_updated      1
                  :tables_inserted       3
                  :tables_existing       0
@@ -197,7 +208,7 @@
 (deftest synced-only-after-the-last-answer-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id _sender]
-     (let [first-answer (sender-answer sender-name (receive/request! receiver-id nil))]
+     (let [first-answer (sender-answer sender-name (receive/request receiver-id nil))]
        (is (some? (:next first-answer)))
        (receive/apply-response! receiver-id first-answer)
        (testing "an answer with a next cursor leaves the Database's first sync incomplete"
@@ -210,76 +221,10 @@
      (let [before (metadata receiver-id)
            {:keys [counts]} (seed! sender-name receiver-id)]
        (testing "a second seed only finds the Tables it has"
-         (is (= {:values_dropped 0 :tables_skipped 0 :database_updated 0 :tables_inserted 0 :tables_existing 3 :fields_inserted 0 :fks_set 0
-                 :row_counts_set 0 :field_values_inserted 0}
+         (is (= {:values_dropped 0 :tables_skipped 0 :left_out 0 :database_updated 0 :tables_inserted 0
+                 :tables_existing 3 :fields_inserted 0 :fks_set 0 :row_counts_set 0 :field_values_inserted 0}
                 counts))
          (is (= before (metadata receiver-id))))))))
-
-(deftest existing-rows-are-left-alone-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine (add-tables! receiver-id [["PUBLIC" "orders" ["total" "local_column"]]
-                                          ["PUBLIC" "people" ["id"]]
-                                          ["SALES" "leads" ["id"]]])]
-       (t2/update! :model/Table :id (mine "orders") {:description "Mine" :estimated_row_count 99})
-       (t2/update! :model/Table :id (mine "leads") {:active false})
-       (t2/insert! :model/FieldValues {:field_id (field-id (mine "orders") "total") :type :full :values ["mine"]})
-       (let [{:keys [counts]} (seed! sender-name receiver-id)]
-         (testing "a Table the receiver has, active or not, is not written: not its columns, Fields or stats"
-           (is (=? {:tables_inserted 0 :tables_existing 3 :fields_inserted 0 :row_counts_set 0
-                    :field_values_inserted 0}
-                   counts))
-           (is (=? {:description "Mine" :estimated_row_count 99} (t2/select-one :model/Table :id (mine "orders"))))
-           (is (= #{"total" "local_column"} (t2/select-fn-set :name :model/Field :table_id (mine "orders"))))
-           (is (= ["mine"] (t2/select-one-fn :values :model/FieldValues :field_id (field-id (mine "orders") "total"))))
-           (is (false? (t2/select-one-fn :active :model/Table :id (mine "leads"))))))))))
-
-(deftest empty-values-are-filled-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine             (add-tables! receiver-id [["PUBLIC" "orders" ["id" "total" "user_id"]]
-                                                      ["PUBLIC" "people" ["id" "name"]]])
-           _                (t2/update! :model/Field :id (field-id (mine "orders") "total") {:has_field_values :list})
-           {:keys [counts]} (seed! sender-name receiver-id)]
-       (testing "an existing Table with no row count, FK or field values gets the sender's"
-         (is (=? {:tables_inserted 1 :tables_existing 2 :fks_set 1 :row_counts_set 1 :field_values_inserted 1}
-                 counts))
-         (is (= 3 (t2/select-one-fn :estimated_row_count :model/Table :id (mine "orders"))))
-         (is (= (field-id (mine "people") "id")
-                (t2/select-one-fn :fk_target_field_id :model/Field :id (field-id (mine "orders") "user_id")))))))))
-
-(deftest a-set-fk-is-not-overwritten-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["id" "name"]]])]
-       (t2/update! :model/Field :id (field-id (mine "orders") "user_id")
-                   {:fk_target_field_id (field-id (mine "people") "name")})
-       (is (=? {:fks_set 0} (:counts (seed! sender-name receiver-id))))
-       (is (= (field-id (mine "people") "name")
-              (t2/select-one-fn :fk_target_field_id :model/Field :id (field-id (mine "orders") "user_id"))))))))
-
-(deftest a-link-to-a-missing-field-is-skipped-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["name"]]])
-     (testing "an FK whose target the receiver does not have is skipped, and the seed goes on"
-       (is (=? {:fks_set 0 :tables_inserted 1} (:counts (seed! sender-name receiver-id))))))))
-
-(deftest a-field-matches-case-insensitively-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine (add-tables! receiver-id [["PUBLIC" "orders" ["USER_ID"]] ["PUBLIC" "people" ["ID"]]])]
-       (is (=? {:fks_set 1} (:counts (seed! sender-name receiver-id))))
-       (is (= (field-id (mine "people") "ID")
-              (t2/select-one-fn :fk_target_field_id :model/Field :id (field-id (mine "orders") "USER_ID"))))))))
-
-(deftest database-values-are-filled-only-when-empty-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (t2/update! :model/Database :id receiver-id {:timezone "Europe/Paris"})
-     (seed! sender-name receiver-id)
-     (is (=? {:timezone "Europe/Paris" :dbms_version {:flavor "H2"}}
-             (t2/select-one :model/Database :id receiver-id))))))
 
 ;;; ------------------------------------------------ Refusals ------------------------------------------------
 
@@ -293,20 +238,19 @@
 (deftest refusals-write-nothing-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id _sender]
-     (let [good (sender-answer sender-name (receive/request! receiver-id nil))]
+     (let [good (sender-answer sender-name (receive/request receiver-id nil))]
        (testing "another format version"
          (is (= {:status-code 422 :error-code "metadata-sync-format-version-differs"}
                 (refusal! receiver-id (assoc good :format_version (inc wire/format-version))))))
        (testing "a malformed answer"
          (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
-                (refusal! receiver-id (assoc-in good [:batches 1 :tables 0 :fields] "not a list"))))
+                (refusal! receiver-id (assoc good :batches "not a list"))))
          (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
                 (refusal! receiver-id (update good :batches conj {:tables []})))))
        (testing "nothing was written"
          (is (= {} (metadata receiver-id))))
        (testing "the message says nothing of the answer's values"
-         (is (not (re-find #"orders" (try (receive/apply-response! receiver-id (assoc-in good [:batches 1 :tables 0
-                                                                                               :fields] "orders"))
+         (is (not (re-find #"orders" (try (receive/apply-response! receiver-id (assoc good :batches "orders"))
                                           ""
                                           (catch ExceptionInfo e (ex-message e)))))))))))
 
@@ -319,12 +263,12 @@
       (mt/with-temp [:model/Database {db-id :id} values]
         (is (= {:status-code 400 :error-code "metadata-sync-database-not-loadable"}
                (refusal! db-id {:format_version wire/format-version :batches []})))
-        (is (thrown-with-msg? ExceptionInfo #"does not take" (receive/request! db-id nil)))))))
+        (is (thrown-with-msg? ExceptionInfo #"does not take" (receive/request db-id nil)))))))
 
 (deftest a-failure-while-applying-writes-nothing-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id _sender]
-     (let [good (sender-answer sender-name (receive/request! receiver-id nil))]
+     (let [good (sender-answer sender-name (receive/request receiver-id nil))]
        (mt/with-dynamic-fn-redefs [field/create-fields! (fn [_rows]
                                                           (throw (ex-info "the app DB refused orders" {})))]
          (testing "a write that fails refuses the whole answer, with its own code"
@@ -350,7 +294,7 @@
 (deftest a-failure-while-applying-is-logged-test
   (do-with-sender-and-receiver!
    (fn [_tables sender-name receiver-id _sender]
-     (let [good (sender-answer sender-name (receive/request! receiver-id nil))]
+     (let [good (sender-answer sender-name (receive/request receiver-id nil))]
        (mt/with-dynamic-fn-redefs [field/create-fields!
                                    (fn [_rows]
                                      (throw (ex-info "the app DB refused orders" {}
@@ -365,16 +309,6 @@
              (testing "but with no message of a cause, which can hold the answer's values"
                (is (not (re-find #"orders" (:message (first logged)))))))))))))
 
-(deftest other-field-values-are-left-alone-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine  (add-tables! receiver-id [["PUBLIC" "orders" ["id" "total" "user_id"]]])
-           total (field-id (mine "orders") "total")]
-       (t2/insert! :model/FieldValues {:field_id total :type :sandbox :hash_key "abc" :values ["mine"]})
-       (testing "a Field with FieldValues of another type gets no :full row, so its other rows stay"
-         (is (=? {:field_values_inserted 0} (:counts (seed! sender-name receiver-id))))
-         (is (= [:sandbox] (t2/select-fn-vec :type :model/FieldValues :field_id total))))))))
-
 (deftest one-key-twice-in-a-batch-test
   (mt/with-temp [:model/Database {receiver-id :id} {}]
     (let [doc      {:schema "PUBLIC" :name "twice" :fields [{:path ["id"] :base_type "type/Integer"
@@ -383,14 +317,6 @@
       (testing "a key that an answer has twice inserts one Table"
         (is (=? {:counts {:tables_inserted 1}} (receive/apply-response! receiver-id response)))
         (is (= 1 (t2/count :model/Table :db_id receiver-id :name "twice")))))))
-
-(deftest an-empty-schema-and-no-schema-are-one-key-test
-  (mt/with-temp [:model/Database {receiver-id :id} {}
-                 :model/Table    _                 {:db_id receiver-id :schema "" :name "loose"}]
-    (testing "a Table with no schema is the receiver's Table with an empty schema, as the unique index says"
-      (is (=? {:counts {:tables_inserted 0 :tables_existing 1}}
-              (receive/apply-response! receiver-id (answer-of receiver-id {:type   "tables"
-                                                                           :tables [{:name "loose" :fields []}]})))))))
 
 ;;; ------------------------------------------ Checks before any write ------------------------------------------
 
@@ -440,8 +366,9 @@
               #(is (nil? (:has_field_values (species %))))]
              ["a value of the wrong kind for a keyword is left out" #(in-field % :has_field_values 5)
               #(is (nil? (:has_field_values (species %))))]
-             ["a fingerprint that is not a fingerprint is left out" #(in-field % :fingerprint "none")
-              #(is (nil? (:fingerprint (species %))))]
+             ["a fingerprint that is not a fingerprint is left out, with its version and time"
+              #(in-field % :fingerprint "none")
+              #(is (=? {:fingerprint nil :fingerprint_version 0 :last_analyzed nil} (species %)))]
              ["a display name that is not a string is left out" #(in-field % :display_name {:a 1})
               #(is (= "Species" (:display_name (species %))))]
              ["a time that is not a time is left out" #(in-field % :last_analyzed "not a time")
@@ -453,7 +380,18 @@
              ["a Table field order it does not know is left out" #(in-table % :field_order "sideways")
               #(is (= :database (:field_order (table %))))]
              ["a data source that belongs to one instance is left out" #(in-table % :data_source "metabase-transform")
-              #(is (nil? (:data_source (table %))))]]]
+              #(is (nil? (:data_source (table %))))]
+             ["a Field display name longer than its column is left out"
+              #(in-field % :display_name (apply str (repeat 300 "a")))
+              #(is (= "Species" (:display_name (species %))))]
+             ["a Table display name longer than its column is left out"
+              #(in-table % :display_name (apply str (repeat 300 "a")))
+              #(is (= "Bird Sightings" (:display_name (table %))))]
+             ["a position that a 32-bit column cannot hold is left out" #(in-field % :position 99999999999)
+              #(is (= 0 (:position (species %))))]
+             ["a data layer it does not know is left out with the visibility type, which goes with it"
+              #(-> % (in-table :visibility_type "hidden") (in-table :data_layer "nonsense"))
+              #(is (=? {:visibility_type nil :data_layer :internal} (table %)))]]]
       (testing what
         (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
           (testing "the Table is inserted with the rest of its values, and the answer counts what it left out"
@@ -496,13 +434,140 @@
                                                         :new_values_key 1}]}]})]
       (testing "keys and batch types it does not know are left out, and the cursor is passed on as it is"
         (is (=? {:next   {:kind "remaps" :key nil :page 3}
-                 :counts {:database_updated 1 :tables_inserted 1 :fields_inserted 4}}
+                 :counts {:database_updated 1 :tables_inserted 1 :fields_inserted 4 :left_out 1}}
                 (receive/apply-response! receiver-id tables))))
       (testing "a link of a kind it does not know is left out, and the FK next to it is filled"
-        (is (=? {:counts {:fks_set 1}} (receive/apply-response! receiver-id links))))
+        (is (=? {:counts {:fks_set 1 :left_out 1}} (receive/apply-response! receiver-id links))))
       (testing "stats with keys it does not know are applied"
         (is (=? {:counts {:row_counts_set 1 :field_values_inserted 1}}
                 (receive/apply-response! receiver-id stats)))))))
+
+(deftest nulls-and-left-out-optional-keys-are-applied-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [field  (fn [field-name] {:path [field-name] :base_type "type/Integer" :database_type "INT"
+                                   :last_analyzed nil :user_set nil :description nil})
+          answer (fn [& batches] (through-json (assoc (apply answer-of receiver-id batches) :next nil)))]
+      (testing "a null where this version leaves a key out, and a Table entry with no Fields"
+        (is (=? {:counts {:database_updated 0 :tables_inserted 3 :fields_inserted 2 :tables_skipped 0}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer {:type "database" :timezone nil :dbms_version nil}
+                         {:type   "tables"
+                          :tables [{:schema nil :name "people" :description nil :user_set nil :fields [(field "id")]}
+                                   {:schema nil :name "orders" :data_source nil :fields [(field "user_id")]}
+                                   {:schema nil :name "empty"}]}))))
+        (is (= #{nil} (t2/select-fn-set :schema :model/Table :db_id receiver-id))))
+      (testing "a links entry and a target with no schema, no links, and a link whose user_set is false"
+        (is (=? {:counts {:fks_set 1}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer {:type   "links"
+                          :tables [{:name  "orders"
+                                    :links [{:kind "fk" :field ["user_id"] :target {:table "people" :field ["id"]}
+                                             :user_set false}]}
+                                   {:name "people" :links []}]})))))
+      (testing "a stats entry with a null row count, or with no field values"
+        (is (=? {:counts {:row_counts_set 1}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer {:type   "stats"
+                          :tables [{:name "people" :estimated_row_count nil}
+                                   {:name "orders" :estimated_row_count 5 :field_values nil}]}))))))))
+
+(deftest a-fingerprint-with-nan-is-kept-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (receive/apply-response!
+     receiver-id
+     (through-json (assoc-in (one-table-answer receiver-id) [:batches 0 :tables 0 :fields 1 :fingerprint]
+                             {:type {:type/Number {:min ##NaN :max ##Inf :avg 1.5}}})))
+    (testing "NaN and Infinity, which JSON carries as strings, are read back as numbers, as the Field model reads them"
+      (let [{:keys [fingerprint fingerprint_version]}
+            (t2/select-one :model/Field :table_id (t2/select-one-pk :model/Table :db_id receiver-id) :name "species")]
+        (is (= 5 fingerprint_version))
+        (is (NaN? (get-in fingerprint [:type :type/Number :min])))
+        (is (= ##Inf (get-in fingerprint [:type :type/Number :max])))))))
+
+(deftest a-cursor-that-is-not-a-map-is-passed-on-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (doseq [cursor ["opaque" ["tables" 3]]]
+      (testing (pr-str cursor)
+        (is (= cursor (:next (receive/apply-response! receiver-id (assoc (answer-of receiver-id) :next cursor)))))
+        (is (= cursor (:after (receive/request receiver-id cursor))))))))
+
+(deftest a-database-value-longer-than-its-column-is-dropped-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (is (=? {:counts {:database_updated 1 :values_dropped 1}}
+            (receive/apply-response! receiver-id (answer-of receiver-id {:type         "database"
+                                                                         :timezone     (apply str (repeat 300 "a"))
+                                                                         :dbms_version {:flavor "H2"}}))))
+    (is (=? {:timezone nil :dbms_version {:flavor "H2"}} (t2/select-one :model/Database :id receiver-id)))))
+
+(deftest entries-of-the-wrong-shape-are-skipped-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [field (fn [& path] {:path (vec path) :base_type "type/Integer" :database_type "INT"})]
+      (testing "a Table entry of the wrong shape is skipped with its Fields, and counted"
+        (is (=? {:counts {:tables_inserted 1 :fields_inserted 1 :tables_skipped 4}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer-of receiver-id
+                            {:type   "tables"
+                             :tables [{:schema "PUBLIC" :name "people" :fields [(field "id")]}
+                                      {:schema "PUBLIC" :name "bad_fields" :fields "not a list"}
+                                      {:schema "PUBLIC" :fields []}
+                                      {:schema "PUBLIC" :name "orphan" :fields [(field "place" "lat")]}
+                                      {:schema "PUBLIC" :name "twice" :fields [(field "id") (field "id")]}]}))))
+        (is (= #{"people"} (t2/select-fn-set :name :model/Table :db_id receiver-id))))
+      (testing "a database batch, links and stats entries of the wrong shape are left out, and counted"
+        (is (=? {:counts {:database_updated 0 :fks_set 0 :row_counts_set 1 :left_out 4}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer-of receiver-id
+                            {:type "database" :timezone 5}
+                            {:type "links" :tables [{:schema "PUBLIC" :name "people"
+                                                     :links  [{:kind "fk" :field "id" :target {}}]}
+                                                    "not an entry"]}
+                            {:type "stats" :tables [{:schema "PUBLIC" :name "people" :estimated_row_count "many"}
+                                                    {:schema "PUBLIC" :name "people" :estimated_row_count 7
+                                                     :field_values []}]}))))))))
+
+(deftest a-name-longer-than-its-column-skips-the-table-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [long-name (apply str (repeat 300 "a"))
+          field     (fn [field-name] {:path [field-name] :base_type "type/Integer" :database_type "INT"})]
+      (testing "a Table or Field name this version's app DB cannot hold skips the Table, and is counted"
+        (is (=? {:counts {:tables_inserted 1 :tables_skipped 2}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer-of receiver-id
+                            {:type   "tables"
+                             :tables [{:schema "PUBLIC" :name long-name :fields []}
+                                      {:schema "PUBLIC" :name "long_field" :fields [(field long-name)]}
+                                      {:schema "PUBLIC" :name "fine" :fields [(field "id")]}]}))))))))
+
+(defn- app-db-columns
+  "`{column {:size n :type java.sql.Types int}}` of the app DB table `table-name`, from the JDBC metadata."
+  [table-name]
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [md (.getMetaData conn)]
+      (some (fn [table-name]
+              (with-open [rs (.getColumns md (.getCatalog conn) nil table-name nil)]
+                (not-empty (into {}
+                                 (map (fn [row] [(keyword (u/lower-case-en (:column_name row)))
+                                                 {:size (:column_size row) :type (:data_type row)}]))
+                                 (resultset-seq rs)))))
+            [table-name (u/upper-case-en table-name)]))))
+
+(deftest column-limits-are-the-app-db-ones-test
+  (doseq [[model table-name] {:model/Table "metabase_table" :model/Field "metabase_field"}
+          :let [columns (app-db-columns table-name)]]
+    (testing (str model " string columns hold at most the characters the receiver lets through")
+      (doseq [[column limit] (get @#'accept/string-limits model)]
+        (testing column
+          (is (<= limit (get-in columns [column :size]))))))
+    (testing (str model " integer columns are 32-bit")
+      (doseq [column (get @#'accept/int-columns model)]
+        (testing column
+          (is (= java.sql.Types/INTEGER (get-in columns [column :type]))))))))
 
 (deftest refusal-messages-hold-no-values-test
   (mt/with-temp [:model/Database {receiver-id :id} {}]
@@ -536,60 +601,57 @@
           (is (nil? (t2/select-one :model/TableUserSettings :table_id plain)))
           (is (nil? (t2/select-one :model/FieldUserSettings :field_id (field-id sightings "id")))))))))
 
+(deftest user-set-columns-without-a-flag-are-copied-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (receive/apply-response!
+     receiver-id
+     (-> (one-table-answer receiver-id)
+         (update-in [:batches 0 :tables 0] assoc :entity_type "entity/EventTable" :user_set ["entity_type"])
+         (update-in [:batches 0 :tables 0 :fields 1] assoc
+                    :visibility_type "details-only" :display_name "Kind" :user_set ["display_name" "visibility_type"])))
+    (let [table-id (t2/select-one-pk :model/Table :db_id receiver-id)]
+      (testing "a column a user set that has no flag is in the settings row with its value, so sync leaves it"
+        (is (=? {:entity_type :entity/EventTable} (t2/select-one :model/TableUserSettings :table_id table-id)))
+        (is (=? {:visibility_type :details-only :display_name "Kind"}
+                (t2/select-one :model/FieldUserSettings :field_id (field-id table-id "species")))))
+      (testing "and on the row"
+        (is (=? {:entity_type :entity/EventTable} (t2/select-one :model/Table :id table-id)))
+        (is (=? {:visibility_type :details-only :display_name "Kind"}
+                (t2/select-one :model/Field :id (field-id table-id "species"))))))))
+
+(deftest a-cleared-fk-takes-no-target-from-the-answer-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (receive/apply-response! receiver-id (update-in (one-table-answer receiver-id) [:batches 0 :tables 0 :fields 1]
+                                                    assoc
+                                                    :user_set ["fk_target_field_id"]
+                                                    :fk_target_field_id (mt/id :venues :id)))
+    (let [species (field-id (t2/select-one-pk :model/Table :db_id receiver-id) "species")]
+      (testing "an FK a user set is named in user_set only when cleared, so an id of the sender's is not taken"
+        (is (=? {:fk_target_field_id nil :fk_target_field_id_set true}
+                (t2/select-one :model/FieldUserSettings :field_id species)))
+        (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id species)))))))
+
 (deftest user-set-flags-of-a-nested-field-are-copied-test
   (mt/with-temp [:model/Database {receiver-id :id} {}]
-    (let [field (fn [path more] (merge {:path path :base_type "type/Text" :database_type "TEXT"} more))]
-      (receive/apply-response!
-       receiver-id
-       (answer-of receiver-id {:type   "tables"
-                               :tables [{:schema "PUBLIC" :name "sightings"
-                                         :fields [(field ["name"] {})
-                                                  (field ["place"] {:base_type "type/Dictionary"})
-                                                  (field ["place" "name"] {:user_set ["description"]})]}]}))
-      (let [table-id (t2/select-one-pk :model/Table :db_id receiver-id :name "sightings")
-            place    (t2/select-one-pk :model/Field :table_id table-id :name "place")
-            nested   (t2/select-one-pk :model/Field :table_id table-id :name "name" :parent_id place)]
-        (testing "the flag is on the nested Field, not on the top-level Field with the same name"
-          (is (= [nested] (t2/select-fn-vec :field_id :model/FieldUserSettings
-                                            :field_id [:in (t2/select-pks-vec :model/Field :table_id table-id)]))))))))
+    (deleting-fields-of!
+     [receiver-id]
+     (fn []
+       (let [field (fn [path more] (merge {:path path :base_type "type/Text" :database_type "TEXT"} more))]
+         (receive/apply-response!
+          receiver-id
+          (answer-of receiver-id {:type   "tables"
+                                  :tables [{:schema "PUBLIC" :name "sightings"
+                                            :fields [(field ["name"] {})
+                                                     (field ["place"] {:base_type "type/Dictionary"})
+                                                     (field ["place" "name"] {:user_set ["description"]})]}]}))
+         (let [table-id  (t2/select-one-pk :model/Table :db_id receiver-id :name "sightings")
+               place     (t2/select-one-pk :model/Field :table_id table-id :name "place")
+               nested    (t2/select-one-pk :model/Field :table_id table-id :name "name" :parent_id place)
+               field-ids (t2/select-pks-vec :model/Field :table_id table-id)]
+           (testing "the flag is on the nested Field, not on the top-level Field with the same name"
+             (is (= [nested] (t2/select-fn-vec :field_id :model/FieldUserSettings :field_id [:in field-ids]))))))))))
 
 ;;; ------------------------------------------------ Links and stats ------------------------------------------------
-
-(deftest a-filled-fk-is-marked-as-sync-marks-it-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine    (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["id"]]])
-           user-id (field-id (mine "orders") "user_id")]
-       (t2/update! :model/Field :id user-id {:has_field_values :auto-list})
-       (seed! sender-name receiver-id)
-       (testing "a Field whose FK target the seed fills is an FK with no automatic list, as sync makes it"
-         (is (=? {:fk_target_field_id (field-id (mine "people") "id")
-                  :semantic_type      :type/FK
-                  :has_field_values   nil}
-                 (t2/select-one :model/Field :id user-id))))))))
-
-(deftest a-filled-fk-keeps-what-a-user-set-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine    (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["id"]]])
-           user-id (field-id (mine "orders") "user_id")]
-       (t2/update! :model/Field :id user-id {:semantic_type :type/Category})
-       (t2/insert! :model/FieldUserSettings {:field_id user-id :semantic_type :type/Category})
-       (seed! sender-name receiver-id)
-       (testing "the target is filled, and the semantic type a user of the receiver set stays"
-         (is (=? {:fk_target_field_id (field-id (mine "people") "id")
-                  :semantic_type      :type/Category}
-                 (t2/select-one :model/Field :id user-id))))))))
-
-(deftest an-fk-a-user-of-the-receiver-cleared-stays-cleared-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine    (add-tables! receiver-id [["PUBLIC" "orders" ["user_id"]] ["PUBLIC" "people" ["id"]]])
-           user-id (field-id (mine "orders") "user_id")]
-       (t2/insert! :model/FieldUserSettings {:field_id user-id :fk_target_field_id nil :fk_target_field_id_set true})
-       (testing "a seed does not fill an FK that a user of the receiver cleared, on a Table the receiver had"
-         (is (=? {:fks_set 0} (:counts (seed! sender-name receiver-id))))
-         (is (=? {:fk_target_field_id nil :semantic_type nil} (t2/select-one :model/Field :id user-id))))))))
 
 (defn- fk-answers
   "A tables answer with orders.user_id and people.id, the `user_set` of user_id being `field-user-set`, and a links
@@ -598,7 +660,8 @@
   [(assoc (answer-of receiver-id
                      {:type   "tables"
                       :tables [{:schema "PUBLIC" :name "orders"
-                                :fields [(cond-> {:path ["user_id"] :base_type "type/Integer" :database_type "INT"}
+                                :fields [(cond-> {:path ["user_id"] :base_type "type/Integer" :database_type "INT"
+                                                  :semantic_type "type/FK"}
                                            field-user-set (assoc :user_set field-user-set))]}
                                {:schema "PUBLIC" :name "people"
                                 :fields [{:path ["id"] :base_type "type/Integer" :database_type "INT"}]}]})
@@ -625,6 +688,35 @@
           (is (=? {:fk_target_field_id person-id :fk_target_field_id_set true}
                   (t2/select-one :model/FieldUserSettings :field_id user-id))))))))
 
+(deftest a-filled-fk-keeps-the-senders-columns-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [[tables links] (fk-answers receiver-id nil {})]
+      (receive/apply-response! receiver-id (assoc-in tables [:batches 0 :tables 0 :fields 0 :has_field_values] "list"))
+      (receive/apply-response! receiver-id links)
+      (let [user-id (field-id (t2/select-one-pk :model/Table :db_id receiver-id :name "orders") "user_id")
+            id      (field-id (t2/select-one-pk :model/Table :db_id receiver-id :name "people") "id")]
+        (testing "a filled FK gets its target, and keeps the semantic type and list setting the sender sent"
+          (is (=? {:fk_target_field_id id :semantic_type :type/FK :has_field_values :list}
+                  (t2/select-one :model/Field :id user-id))))))))
+
+(deftest a-link-for-an-fk-a-user-cleared-is-not-filled-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [[tables links] (fk-answers receiver-id ["fk_target_field_id"] {})]
+      (receive/apply-response! receiver-id tables)
+      (testing "a link for a Field whose entry says a user cleared its FK, which a newer sender can send, is not filled"
+        (is (=? {:counts {:fks_set 0}} (receive/apply-response! receiver-id links)))
+        (is (=? {:counts {:fks_set 0}} (receive/apply-response! receiver-id links)))
+        (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field
+                                    :id (field-id (t2/select-one-pk :model/Table :db_id receiver-id :name "orders")
+                                                  "user_id"))))))))
+
+(deftest a-link-to-a-skipped-table-is-skipped-test
+  (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+    (let [[tables links] (fk-answers receiver-id nil {})]
+      (receive/apply-response! receiver-id (update-in tables [:batches 0 :tables] #(vec (take 1 %))))
+      (testing "an FK whose target the receiver does not have, such as one in a Table it skipped, is skipped"
+        (is (=? {:counts {:fks_set 0}} (receive/apply-response! receiver-id links)))))))
+
 (deftest an-fk-the-sender-cleared-is-copied-as-cleared-test
   (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
     (let [[tables] (fk-answers receiver-id ["fk_target_field_id"] {})]
@@ -636,19 +728,20 @@
                   (t2/select-one :model/FieldUserSettings :field_id user-id))))))))
 
 (deftest field-values-only-for-fields-that-may-have-them-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine  (add-tables! receiver-id [["PUBLIC" "orders" ["id" "total" "user_id"]]])
-           total (field-id (mine "orders") "total")]
-       (doseq [[what values] {"a sensitive Field"                {:visibility_type :sensitive :has_field_values :list}
-                              "a Field that does not list values" {:has_field_values :search}}]
-         (testing what
-           (t2/update! :model/Field :id total (merge {:visibility_type :normal} values))
-           (is (=? {:field_values_inserted 0} (:counts (seed! sender-name receiver-id))))
-           (is (zero? (t2/count :model/FieldValues :field_id total)))))
-       (testing "a Field that lists values gets them"
-         (t2/update! :model/Field :id total {:visibility_type :normal :has_field_values :list})
-         (is (=? {:field_values_inserted 1} (:counts (seed! sender-name receiver-id)))))))))
+  (doseq [[what species values] [["a sensitive Field" {:visibility_type "sensitive"} 0]
+                                 ["a Field that does not list values" {:has_field_values "search"} 0]
+                                 ["a Field that lists values" {} 1]]]
+    (testing what
+      (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
+        (receive/apply-response! receiver-id (update-in (one-table-answer receiver-id) [:batches 0 :tables 0 :fields 1]
+                                                        merge species))
+        (is (=? {:counts {:field_values_inserted values}}
+                (receive/apply-response!
+                 receiver-id
+                 (answer-of receiver-id {:type   "stats"
+                                         :tables [{:schema       "PUBLIC" :name "bird_sightings"
+                                                   :field_values [{:field ["species"] :values ["crow"]
+                                                                   :has_more_values false}]}]}))))))))
 
 (deftest stats-that-are-in-a-batch-twice-are-applied-once-test
   (mt/with-temp [:model/Database {receiver-id :id} {}
@@ -661,19 +754,6 @@
         (is (=? {:counts {:field_values_inserted 1}}
                 (receive/apply-response! receiver-id (answer-of receiver-id {:type "stats" :tables [entry entry]}))))
         (is (= 1 (t2/count :model/FieldValues :field_id species)))))))
-
-(deftest tables-the-receiver-had-keep-their-sync-status-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [mine (add-tables! receiver-id [["PUBLIC" "orders" []]])]
-       (t2/update! :model/Table :id (mine "orders") {:initial_sync_status "incomplete"})
-       (seed! sender-name receiver-id)
-       (testing "a Table the receiver had with no complete sync stays that way: its own sync completes it"
-         (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Table :id (mine "orders")))))
-       (testing "the Tables the seed inserted, and the Database, count as synced"
-         (is (= #{"complete"} (t2/select-fn-set :initial_sync_status :model/Table
-                                                :db_id receiver-id :id [:not= (mine "orders")])))
-         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id receiver-id))))))))
 
 ;;; ------------------------------------------------ Nested Fields ------------------------------------------------
 
@@ -701,29 +781,35 @@
                                                                  :base_type :type/Text :parent_id place}
                  :model/Field    _                              {:table_id table-id :name "name"
                                                                  :base_type :type/Text}]
-    (let [{:keys [counts]} (seed! sender-name receiver-id)]
-      (testing "every nested Field is copied, under the parent of the same path"
-        (is (= (field-paths sender) (field-paths receiver-id))))
-      (testing "and counted"
-        (is (= 5 (:fields_inserted counts)))))))
+    (deleting-fields-of!
+     [receiver-id]
+     (fn []
+       (let [{:keys [counts]} (seed! sender-name receiver-id)]
+         (testing "every nested Field is copied, under the parent of the same path"
+           (is (= (field-paths sender) (field-paths receiver-id))))
+         (testing "and counted"
+           (is (= 5 (:fields_inserted counts)))))))))
 
-(deftest broken-field-paths-are-refused-test
+(deftest broken-field-paths-skip-their-table-test
   (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
-    (let [field  (fn [& path] {:path (vec path) :base_type "type/Text" :database_type "TEXT"})
-          answer (fn [& fields]
-                   (answer-of receiver-id {:type "tables" :tables [{:schema "PUBLIC" :name "sightings"
-                                                                    :fields (vec fields)}]}))]
-      (testing "a nested Field whose parent is not in its Table's entry"
-        (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
-               (refusal! receiver-id (answer (field "place") (field "coords" "lat"))))))
-      (testing "a path that is in an entry twice"
-        (is (= {:status-code 422 :error-code "metadata-sync-malformed-response"}
-               (refusal! receiver-id (answer (field "place") (field "place"))))))
-      (testing "nothing was written"
-        (is (= {} (metadata receiver-id))))
-      (testing "a parent after its child is fine"
-        (is (=? {:counts {:fields_inserted 2}}
-                (receive/apply-response! receiver-id (answer (field "place" "lat") (field "place")))))))))
+    (deleting-fields-of!
+     [receiver-id]
+     (fn []
+       (let [field  (fn [& path] {:path (vec path) :base_type "type/Text" :database_type "TEXT"})
+             answer (fn [& fields]
+                      (answer-of receiver-id {:type "tables" :tables [{:schema "PUBLIC" :name "sightings"
+                                                                       :fields (vec fields)}]}))]
+         (testing "a nested Field whose parent is not in its Table's entry"
+           (is (=? {:counts {:tables_inserted 0 :tables_skipped 1}}
+                   (receive/apply-response! receiver-id (answer (field "place") (field "coords" "lat"))))))
+         (testing "a path that is in an entry twice"
+           (is (=? {:counts {:tables_inserted 0 :tables_skipped 1}}
+                   (receive/apply-response! receiver-id (answer (field "place") (field "place"))))))
+         (testing "nothing was written"
+           (is (= {} (metadata receiver-id))))
+         (testing "a parent after its child is fine"
+           (is (=? {:counts {:fields_inserted 2}}
+                   (receive/apply-response! receiver-id (answer (field "place" "lat") (field "place")))))))))))
 
 ;;; ------------------------------------------- What the model would do -------------------------------------------
 
@@ -814,60 +900,3 @@
         (receive/apply-response! receiver-id (one-table-answer receiver-id)))
       (is (= [[:model/Table (t2/select-one-pk :model/Table :db_id receiver-id)]]
              (map (juxt t2/model :id) @queued))))))
-
-;;; ------------------------------------------------ The lease ------------------------------------------------
-
-(defn- sync-runs?
-  "Whether a sync operation of the Database with `db-id` runs now, and not skipped."
-  [db-id]
-  (let [ran (atom false)]
-    (sync-util/do-explicit-sync-operation :sync (driver.u/lib-database db-id) "test" #(reset! ran true))
-    @ran))
-
-(deftest no-sync-during-a-seed-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id sender]
-     (testing "before a seed, a sync runs"
-       (is (sync-runs? receiver-id)))
-     (testing "from the first request, a sync of the receiving Database does not run"
-       (receive/request! receiver-id nil)
-       (is (not (sync-runs? receiver-id))))
-     (testing "a sync of another Database runs"
-       (is (sync-runs? sender)))
-     (testing "after the last answer, a sync runs again"
-       (seed! sender-name receiver-id)
-       (is (sync-runs? receiver-id))))))
-
-(deftest a-seed-that-stops-lets-sync-run-again-test
-  (do-with-sender-and-receiver!
-   (fn [_tables _sender-name receiver-id _sender]
-     (receive/request! receiver-id nil)
-     (is (not (sync-runs? receiver-id)))
-     (testing "once the lease is older than its time, a sync runs"
-       (swap! @#'receive/leases update receiver-id #(.minus ^java.time.Instant % @#'receive/lease-duration))
-       (is (sync-runs? receiver-id))))))
-
-(deftest no-seed-during-a-sync-test
-  (do-with-sender-and-receiver!
-   (fn [_tables sender-name receiver-id _sender]
-     (let [good    (sender-answer sender-name (receive/request! receiver-id nil))
-           refused (fn [thunk]
-                     (try (thunk) nil (catch ExceptionInfo e (select-keys (ex-data e) [:status-code :error-code]))))
-           during  (fn [thunk]
-                     ((sync-util/with-duplicate-ops-prevented :sync (driver.u/lib-database receiver-id)
-                                                              #(refused thunk))))]
-       (testing "while a sync of the Database runs, a request and an apply are refused"
-         (is (= {:status-code 409 :error-code "metadata-sync-sync-running"}
-                (during #(receive/request! receiver-id nil))))
-         (is (= {:status-code 409 :error-code "metadata-sync-sync-running"}
-                (during #(receive/apply-response! receiver-id good)))))
-       (testing "and nothing was written"
-         (is (= {} (metadata receiver-id))))))))
-
-(deftest a-refused-request-takes-no-lease-test
-  (mt/with-temp [:model/Database {receiver-id :id} {:engine :h2}]
-    (testing "a request that a running sync refuses does not stop the next sync"
-      (is (thrown-with-msg? ExceptionInfo #"sync of this Database is running"
-                            ((sync-util/with-duplicate-ops-prevented :sync (driver.u/lib-database receiver-id)
-                                                                     #(receive/request! receiver-id nil)))))
-      (is (sync-runs? receiver-id)))))

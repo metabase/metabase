@@ -7,7 +7,12 @@
    [metabase.sync.metadata-sync.receive :as receive]
    [metabase.sync.metadata-sync.send :as send]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -21,7 +26,7 @@
   and the answer gets the name of the request back."
   [sender-name receiver-id]
   (loop [after nil rounds 1]
-    (let [request  (receive/request! receiver-id after)
+    (let [request  (receive/request receiver-id after)
           response (-> (send/changes-response (through-json (assoc request :database sender-name)))
                        (assoc :database (:database request))
                        through-json)
@@ -117,3 +122,65 @@
           (testing "the receiver's own sync then adds, retires and analyzes nothing"
             (is (= (set (keys seeded)) (set (keys (field-state receiver-id)))))
             (is (= {} (differences seeded (field-state receiver-id))))))))))
+
+(defn- user-set-state
+  "What a user set on the active Tables and Fields of the Database with `db-id`, by name: the columns each settings
+  row says a user set, with their values on the row."
+  [db-id]
+  (let [tables      (t2/select :model/Table :db_id db-id :active true)
+        table-names (u/index-by :id :name tables)
+        fields      (t2/select :model/Field :table_id [:in (keys table-names)] :active true)
+        field-names (u/index-by :id #(vector (table-names (:table_id %)) (:name %)) fields)
+        tables-by-id (u/index-by :id tables)
+        fields-by-id (u/index-by :id fields)]
+    {:tables (into {}
+                   (map (fn [settings]
+                          [(table-names (:table_id settings))
+                           (select-keys (tables-by-id (:table_id settings))
+                                        (user-settings/user-set-table-columns settings))]))
+                   (t2/select :model/TableUserSettings :table_id [:in (keys table-names)]))
+     :fields (into {}
+                   (map (fn [settings]
+                          [(field-names (:field_id settings))
+                           (select-keys (fields-by-id (:field_id settings))
+                                        (disj (user-settings/user-set-field-columns settings) :fk_target_field_id))]))
+                   (t2/select :model/FieldUserSettings :field_id [:in (keys field-names)]))}))
+
+(defn- full-field-values
+  "The `:full` field values of the active Fields of the Database with `db-id`, by `[table-name field-name]`."
+  [db-id]
+  (let [tables (t2/select-pk->fn :name :model/Table :db_id db-id :active true)
+        fields (t2/select-pk->fn #(vector (tables (:table_id %)) (:name %)) :model/Field
+                                 :table_id [:in (keys tables)] :active true)]
+    (into {}
+          (map (juxt (comp fields :field_id) :values))
+          (t2/select :model/FieldValues :field_id [:in (keys fields)] :type :full))))
+
+(deftest sync-after-a-seed-keeps-what-users-set-and-the-field-values-test
+  (mt/test-drivers #{:h2 :postgres :mysql}
+    (mt/with-temp-copy-of-db
+      (let [sender-id   (mt/id)
+            sender-name (str "seed sender " (mt/random-name))]
+        ;; the copy has the name of the test data's Database, and a sender refuses a name that two Databases have
+        (t2/update! :model/Database :id sender-id {:name sender-name :initial_sync_status "complete"})
+        (table-user-settings/create-table-user-settings!
+         [{:table_id (mt/id :venues) :entity_type :entity/EventTable}
+          {:table_id (mt/id :users) :description "People who check in" :description_set true}])
+        (field-user-settings/create-field-user-settings!
+         [{:field_id (mt/id :venues :name) :visibility_type :details-only :display_name "Venue"}
+          {:field_id (mt/id :venues :price) :semantic_type :type/Score :semantic_type_set true
+           :description "How much" :description_set true}])
+        (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+        (let [sender (t2/select-one :model/Database :id sender-id)]
+          (mt/with-temp [:model/Database {receiver-id :id} {:engine              (:engine sender)
+                                                            :details             (:details sender)
+                                                            :initial_sync_status "incomplete"}]
+            (seed! sender-name receiver-id)
+            (testing "the seed copies what users set on the sender, with and without a flag, and the field values"
+              (is (= (user-set-state sender-id) (user-set-state receiver-id)))
+              (is (seq (full-field-values receiver-id)))
+              (is (= (full-field-values sender-id) (full-field-values receiver-id))))
+            (sync/sync-database! receiver-id)
+            (testing "the receiver's own sync then keeps them"
+              (is (= (user-set-state sender-id) (user-set-state receiver-id)))
+              (is (= (full-field-values sender-id) (full-field-values receiver-id))))))))))

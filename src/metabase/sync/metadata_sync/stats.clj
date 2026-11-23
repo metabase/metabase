@@ -19,12 +19,12 @@
   [:map
    [:field           [:sequential {:min 1} :string]]
    [:values          ms/FieldValues]
-   [:has_more_values :boolean]])
+   [:has_more_values {:optional true} [:maybe :boolean]]])
 
 (mr/def ::entry
   [:map
-   [:estimated_row_count {:optional true} :int]
-   [:field_values        [:sequential ::field-values]]])
+   [:estimated_row_count {:optional true} [:maybe :int]]
+   [:field_values        {:optional true} [:maybe [:sequential ::field-values]]]])
 
 (defn- latest-by-field
   "The newest of `rows` for each Field, by Table id: a Field can have several rows of one type."

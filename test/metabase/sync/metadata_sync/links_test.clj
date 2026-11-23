@@ -5,6 +5,7 @@
    [metabase.sync.metadata-sync.tables :as tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -77,20 +78,24 @@
 
 (deftest links-of-fields-an-entry-leaves-out-test
   (mt/with-temp [:model/Database {db-id :id} {}]
-    (let [people (add-table! db-id ["PUBLIC" "people"] ["id" "old_id" "parent"])
-          orders (add-table! db-id ["PUBLIC" "orders"] ["user_id" "old_user_id" "nested_user_id" "retired_user_id"])]
-      (t2/update! :model/Field :id (people "old_id") {:visibility_type :retired})
-      (t2/insert! :model/Field {:table_id (:table people) :name "child" :base_type :type/Integer :database_type "INT"
-                                :parent_id (people "parent")})
-      (t2/update! :model/Field :id (orders "nested_user_id") {:parent_id (orders "user_id")})
-      (t2/update! :model/Field :id (orders "retired_user_id") {:visibility_type :retired})
-      (doseq [[field target] [["user_id" (t2/select-one-pk :model/Field :name "child" :table_id (:table people))]
-                              ["old_user_id" (people "old_id")]
-                              ["nested_user_id" (people "id")]
-                              ["retired_user_id" (people "id")]]]
-        (t2/update! :model/Field :id (orders field) {:fk_target_field_id target}))
-      (testing "an FK from or into a retired or nested Field is not a link"
-        (is (= {} (links-by-key db-id)))))))
+    (try
+      (let [people (add-table! db-id ["PUBLIC" "people"] ["id" "old_id" "parent"])
+            orders (add-table! db-id ["PUBLIC" "orders"] ["user_id" "old_user_id" "nested_user_id" "retired_user_id"])]
+        (t2/update! :model/Field :id (people "old_id") {:visibility_type :retired})
+        (t2/insert! :model/Field {:table_id (:table people) :name "child" :base_type :type/Integer :database_type "INT"
+                                  :parent_id (people "parent")})
+        (t2/update! :model/Field :id (orders "nested_user_id") {:parent_id (orders "user_id")})
+        (t2/update! :model/Field :id (orders "retired_user_id") {:visibility_type :retired})
+        (doseq [[field target] [["user_id" (t2/select-one-pk :model/Field :name "child" :table_id (:table people))]
+                                ["old_user_id" (people "old_id")]
+                                ["nested_user_id" (people "id")]
+                                ["retired_user_id" (people "id")]]]
+          (t2/update! :model/Field :id (orders field) {:fk_target_field_id target}))
+        (testing "an FK from or into a retired or nested Field is not a link"
+          (is (= {} (links-by-key db-id)))))
+      (finally
+        ;; `with-temp` deletes the Database in one statement, and on MySQL its cascade fails on a nested Field.
+        (field/delete-fields-for-databases! [db-id])))))
 
 (deftest an-fk-a-user-set-says-so-on-its-link-test
   (mt/with-temp [:model/Database {db-id :id} {}]

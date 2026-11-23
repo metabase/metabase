@@ -43,14 +43,7 @@
       :else
       database)))
 
-(defn- check-schema-filter!
-  "Throw an API error when `schema-filter` cannot be read. The message does not repeat it."
-  [schema-filter]
-  (when-not (or (nil? schema-filter) (tables/valid-schema-filter? schema-filter))
-    (throw (ex-info (tru "The schema filter of the request is not a list of schema patterns.")
-                    {:status-code 400 :error-code wire/bad-schema-filter}))))
-
-(defn- check-format-versions!
+(defn- check-format-versions
   "Throw an API error when `format-versions`, the versions the receiver reads, does not hold the one this sender
   writes. No versions is a receiver of the first version."
   [format-versions]
@@ -59,7 +52,7 @@
                          (pr-str (vec (filter int? format-versions))) (str wire/format-version))
                     {:status-code 400 :error-code wire/format-version-not-read}))))
 
-(defn- check-cursor!
+(defn- check-cursor
   "Throw an API error when `cursor` is not one that this sender writes: another version wrote it. The message does
   not repeat it."
   [cursor]
@@ -183,9 +176,8 @@
   it, when there is one. The first answer, with no `after`, also holds the database values first. Every answer names
   the request's Database and engine."
   [{database-name :database :keys [engine format_versions schema_filters after]} :- ::wire/request]
-  (check-format-versions! format_versions)
-  (check-cursor! after)
-  (check-schema-filter! schema_filters)
+  (check-format-versions format_versions)
+  (check-cursor after)
   (let [{database-id :id :as database} (served-database database-name engine)
         selected                       (tables/selection database-id schema_filters)
         {:keys [batch] next-cursor :next} (next-page database-id selected after)]
