@@ -16,6 +16,10 @@ summary: Breaking changes to the Metabase API, listed by release.
 - `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
   engine and the host, and ignores a value in the request.
 
+- `POST /api/metabot/agent-streaming` ignores `context.first_day_of_week`. Metabot reads the first day of the week
+  from the `start-of-week` setting, which queries use to group by week. Before, Metabot used the value in the request,
+  or "Sunday" when the request did not have the key. The request still accepts the key.
+
 - `PUT /api/database/:id` on the Sample Database answers `403 Forbidden` instead of `400 Bad Request`.
 
 - `POST /api/ee/transform-test`, `PUT /api/ee/transform-test/:id` and `POST /api/ee/transform-test/:id/run` refuse a

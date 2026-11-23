@@ -332,16 +332,16 @@
 (defn- turn-input-parts
   "The AISDK parts for this call of the turn.
 
-  Only the first call builds the history, which renders the viewing context. A later call sends what the previous
-  call sent, exactly as sent, then the parts of the steps added since. The steps' parts come last in
-  [[messages/build-message-history]], so the result has the same order as a new build.
+  Only the first call builds the history, with the `<context>` block [[init-agent]] rendered for the turn. A later
+  call sends what the previous call sent, exactly as sent, then the parts of the steps added since. The steps' parts
+  come last in [[messages/build-message-history]], so the result has the same order as a new build.
 
   `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
   [sent-parts sent-steps context memory tools link-registry]
   (if sent-steps
-    ;; Do not build the history again. A new build reads the viewing context again and inverts links against a
-    ;; registry that grows within the turn. Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed
-    ;; thinking block once anything before it has changed.
+    ;; Do not build the history again. A new build inverts links against a registry that grows within the turn.
+    ;; Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has
+    ;; changed.
     (into sent-parts
           (invert-links (messages/steps->parts (drop sent-steps (memory/get-steps memory)))
                         link-registry))
@@ -597,8 +597,10 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
+  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps. The web
+  chat stores the turn with that block."
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
+           full-context-replayed?]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -624,7 +626,9 @@
                          (assoc :conversation-id conversation-id
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
-                         (memory/add-client-ids (client-content-ids context)))
+                         (memory/add-client-ids (client-content-ids context))
+                         (as-> m (memory/set-context-block
+                                  m (messages/render-context-block context m (not full-context-replayed?)))))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -1000,6 +1004,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
+            ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
+            ;; only the time and what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
+            [:full-context-replayed? {:optional true} [:maybe :boolean]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
