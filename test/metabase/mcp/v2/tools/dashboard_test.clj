@@ -449,6 +449,14 @@
                   "a user who can read the series card is told")
               (is (not (contains? (call :rasta) :dropped_connections))))))))))
 
+(defn- remove-gone-filter!
+  "The `dashboard_write` result of `user`, holding `scopes`, removing the filter `gone` from `dash`."
+  [user scopes dash]
+  (tool-result (call-tool! user scopes "dashboard_write"
+                           (wire {:method "update"
+                                  :id     (:id dash)
+                                  :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))))
+
 (deftest remove-parameter-reports-archived-subscriptions-test
   (mt/with-fake-inbox
     (mt/with-temp [:model/Dashboard             dash             {:name       "Sales"
@@ -474,12 +482,7 @@
                  :creator         "Rasta Toucan"
                  :channels        ["email"]
                  :recipient_count 1}]
-               (-> (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
-                               (wire {:method "update"
-                                      :id     (:id dash)
-                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
-                   tool-result
-                   :archived_subscriptions)))))))
+               (:archived_subscriptions (remove-gone-filter! :crowberto v2.tu/all-scopes dash))))))))
 
 (deftest unreadable-archived-subscription-is-only-counted-test
   (testing "a subscription the caller can't read adds to the count and is left out of the list"
@@ -501,10 +504,7 @@
                                                       :enabled      true}]
         (is (=? {:archived_subscriptions      [{:id own, :creator "Rasta Toucan"}]
                  :archived_subscription_count 2}
-                (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                                         (wire {:method "update"
-                                                :id     (:id dash)
-                                                :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))))))))
+                (remove-gone-filter! :rasta v2.tu/all-scopes dash)))))))
 
 (deftest only-unreadable-archived-subscriptions-test
   (testing "when the caller can read none of the archived subscriptions, the result has only their count"
@@ -515,12 +515,8 @@
                                             :creator_id   (mt/user->id :crowberto)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
         (is (= {:archived_subscription_count 1}
-               (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                               (wire {:method "update"
-                                      :id     (:id dash)
-                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
-                   tool-result
-                   (select-keys [:archived_subscription_count :archived_subscriptions]))))))))
+               (select-keys (remove-gone-filter! :rasta v2.tu/all-scopes dash)
+                            [:archived_subscription_count :archived_subscriptions])))))))
 
 (deftest write-only-token-gets-archived-subscription-count-test
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
@@ -530,12 +526,9 @@
                      :model/Pulse     _    {:dashboard_id (:id dash)
                                             :creator_id   (mt/user->id :rasta)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
-        (let [result (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
-                                              (wire {:method "update"
-                                                     :id     (:id dash)
-                                                     :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))]
-          (is (=? {:id (:id dash), :archived_subscription_count 1} result))
-          (is (not (contains? result :archived_subscriptions))))))))
+        (is (= {:id (:id dash), :archived_subscription_count 1}
+               (select-keys (remove-gone-filter! :crowberto #{"agent:content:write"} dash)
+                            [:id :archived_subscription_count :archived_subscriptions])))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over

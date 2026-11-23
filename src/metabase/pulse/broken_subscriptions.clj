@@ -132,9 +132,8 @@
 
 (defn- archived-subscription
   "What a caller may report about `broken-subscription`, from [[broken-subscription-data]], once it is archived.
-   For a readable subscription it is
-   `{:id :creator-name :parameters :channels :recipient-count :already-broken? :readable?}`.
-   For an unreadable one it is only `{:readable? false}`, so a caller can count it and nothing more.
+   A readable one is `{:id :creator-name :parameters :channels :recipient-count :already-broken? :readable?}`.
+   An unreadable one is only `{:readable? false}`, so a caller can count it and nothing more.
    The `:parameters` are the missing filters the update removed, or every missing filter when it removed none.
    A removed filter is named as the dashboard named it before the update, or by its id when that name is blank.
    An already-missing filter keeps the name the subscription stored.
