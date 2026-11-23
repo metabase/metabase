@@ -15,7 +15,10 @@ import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
 
 import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
-import { useSummaryFormulaBar } from "./SummaryFormulaBar";
+import {
+  useRequestedFormulaEdit,
+  useSummaryFormulaBar,
+} from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import type {
@@ -143,6 +146,7 @@ export function SummarySidebar({
         }
       },
     });
+  useRequestedFormulaEdit(query, stageIndex, formulaInputs.columns);
 
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
     handleWellAdd(addField(query, stageIndex, wellId, field), wellId);

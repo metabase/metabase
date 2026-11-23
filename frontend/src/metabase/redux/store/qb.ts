@@ -62,6 +62,8 @@ export interface QueryBuilderUIControls {
   isRunning: boolean;
   isShowingSummarySidebar: boolean;
   summaryGeneratedExpressions: SummaryGeneratedExpression[];
+  /** The custom column of a Group by formula to open in the formula bar once the summary sidebar shows it. */
+  summaryFormulaToEdit?: ExpressionClause;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
