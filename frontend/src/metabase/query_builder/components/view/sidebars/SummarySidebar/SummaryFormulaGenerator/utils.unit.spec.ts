@@ -1,6 +1,13 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import { createMockCard, createMockMeasure } from "metabase-types/api/mocks";
+import {
+  ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -32,6 +39,71 @@ function createQueryWithExpressions(names: string[]) {
   });
 }
 
+function createQueryWithMetricAndMeasure() {
+  const metric = createMockCard({
+    id: 1,
+    name: "Revenue",
+    type: "metric",
+    table_id: ORDERS_ID,
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", fieldId: ORDERS.SUBTOTAL }],
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  const measure = createMockMeasure({
+    id: 1,
+    name: "Order count",
+    table_id: ORDERS_ID,
+    definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+        },
+      ],
+    }),
+  });
+  const dateMeasure = createMockMeasure({
+    id: 2,
+    name: "First order",
+    table_id: ORDERS_ID,
+    definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              type: "operator",
+              operator: "min",
+              args: [{ type: "column", fieldId: ORDERS.CREATED_AT }],
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  const provider = createMetadataProvider({
+    metadata: createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [metric],
+      measures: [measure, dateMeasure],
+    }),
+  });
+  return Lib.createTestQuery(provider, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  });
+}
+
 describe("getFormulaRequest", () => {
   it("names the columns as escaped references with their types in aggregation mode", () => {
     const result = getFormulaRequest(
@@ -56,6 +128,40 @@ describe("getFormulaRequest", () => {
           { name: "[Product → Category]", type: "string" },
         ]),
       },
+    });
+  });
+
+  it("names the metrics and measures as escaped references with their types in aggregation mode", () => {
+    const result = getFormulaRequest(
+      createQueryWithMetricAndMeasure(),
+      STAGE_INDEX,
+      "values",
+      "revenue per order",
+    );
+
+    expect(result).toMatchObject({
+      status: "ok",
+      request: {
+        metrics: [{ name: "[Revenue]", type: "number" }],
+        measures: [
+          { name: "[Order count]", type: "number" },
+          { name: "[First order]", type: "datetime" },
+        ],
+      },
+    });
+  });
+
+  it("leaves out the metrics and measures in expression mode", () => {
+    const result = getFormulaRequest(
+      createQueryWithMetricAndMeasure(),
+      STAGE_INDEX,
+      "columns",
+      "order month",
+    );
+
+    expect(result).toMatchObject({
+      status: "ok",
+      request: { mode: "expression", metrics: [], measures: [] },
     });
   });
 

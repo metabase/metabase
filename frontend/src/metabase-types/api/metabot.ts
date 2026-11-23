@@ -247,17 +247,22 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
+export type GenerateCustomExpressionReference = {
+  name: string;
+  type?: string | null;
+};
+
 export type GenerateCustomExpressionRequest = {
   /** The type of expression to generate. */
   mode: "aggregation" | "expression";
   /** Prompt for describing the expression to generate, e.g. `average order total`. */
   prompt: string;
   /** Available columns, with names in escaped expression syntax, e.g. `[User → Name]` or `[Total\[USD\]]`. */
-  columns: { name: string; type?: string | null }[];
-  /** Metric references in escaped expression syntax. Only allowed in `aggregation` mode. */
-  metrics?: string[] | null;
-  /** Measure references in escaped expression syntax. Only allowed in `aggregation` mode. */
-  measures?: string[] | null;
+  columns: GenerateCustomExpressionReference[];
+  /** Available metrics, named like columns. Only allowed in `aggregation` mode. */
+  metrics?: GenerateCustomExpressionReference[] | null;
+  /** Available measures, named like columns. Only allowed in `aggregation` mode. */
+  measures?: GenerateCustomExpressionReference[] | null;
   table_name?: string | null;
   metabot_id: string;
   database_id: DatabaseId;

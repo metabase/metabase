@@ -7,8 +7,11 @@ import {
   formatIdentifier,
 } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
+  GenerateCustomExpressionReference,
   GenerateCustomExpressionRequest,
 } from "metabase-types/api";
 
@@ -22,6 +25,13 @@ const MAX_GENERATE_ERROR_MESSAGE_LENGTH = 200;
 type FormulaColumnType = "boolean" | "number" | "datetime" | "string";
 
 type FormulaReferenceKind = "column" | "metric" | "measure";
+
+type FormulaReferenceDisplayInfo = (
+  | Lib.MetricDisplayInfo
+  | Lib.MeasureDisplayInfo
+) & {
+  effectiveType?: string;
+};
 
 type FormulaRequestResult =
   | {
@@ -61,14 +71,37 @@ function getColumnType(column: Lib.ColumnMetadata): FormulaColumnType | null {
   return null;
 }
 
+function getEffectiveTypeCategory(
+  effectiveType: string | undefined,
+): FormulaColumnType | null {
+  if (isa(effectiveType, TYPE.Boolean)) {
+    return "boolean";
+  }
+  if (isa(effectiveType, TYPE.Number)) {
+    return "number";
+  }
+  if (isa(effectiveType, TYPE.Temporal)) {
+    return "datetime";
+  }
+  if (isa(effectiveType, TYPE.Text) || isa(effectiveType, TYPE.TextLike)) {
+    return "string";
+  }
+  return null;
+}
+
 function toReference(name: string): string | null {
   return name.trim().length > 0 ? formatIdentifier(name) : null;
 }
 
-function toReferences(names: string[]): string[] {
-  return names
-    .map(toReference)
-    .filter((reference): reference is string => reference != null);
+function toReferences(
+  displayInfos: FormulaReferenceDisplayInfo[],
+): GenerateCustomExpressionReference[] {
+  return displayInfos.flatMap(({ displayName, effectiveType }) => {
+    const name = toReference(displayName);
+    return name
+      ? [{ name, type: getEffectiveTypeCategory(effectiveType) }]
+      : [];
+  });
 }
 
 function getTooManyReferencesMessage(kind: FormulaReferenceKind): string {
@@ -112,14 +145,14 @@ function getReferenceTooLongMessage(kind: FormulaReferenceKind): string {
 }
 
 function getReferencesError(
-  references: string[],
+  references: GenerateCustomExpressionReference[],
   kind: FormulaReferenceKind,
 ): string | null {
   if (references.length > MAX_FORMULA_REFERENCES) {
     return getTooManyReferencesMessage(kind);
   }
   const isAnyTooLong = references.some(
-    (reference) => reference.length > MAX_FORMULA_REFERENCE_LENGTH,
+    ({ name }) => name.length > MAX_FORMULA_REFERENCE_LENGTH,
   );
   return isAnyTooLong ? getReferenceTooLongMessage(kind) : null;
 }
@@ -170,23 +203,20 @@ export function getFormulaRequest(
   const isAggregation = mode === "aggregation";
   const metrics = isAggregation
     ? toReferences(
-        Lib.availableMetrics(query, stageIndex).map(
-          (metric) => Lib.displayInfo(query, stageIndex, metric).displayName,
+        Lib.availableMetrics(query, stageIndex).map((metric) =>
+          Lib.displayInfo(query, stageIndex, metric),
         ),
       )
     : [];
   const measures = isAggregation
     ? toReferences(
-        Lib.availableMeasures(query, stageIndex).map(
-          (measure) => Lib.displayInfo(query, stageIndex, measure).displayName,
+        Lib.availableMeasures(query, stageIndex).map((measure) =>
+          Lib.displayInfo(query, stageIndex, measure),
         ),
       )
     : [];
   const referencesError =
-    getReferencesError(
-      columns.map(({ name }) => name),
-      "column",
-    ) ??
+    getReferencesError(columns, "column") ??
     getReferencesError(metrics, "metric") ??
     getReferencesError(measures, "measure");
   if (referencesError != null) {
