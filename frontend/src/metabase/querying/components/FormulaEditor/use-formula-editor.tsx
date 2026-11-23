@@ -92,7 +92,11 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       .then((formula) => {
         if (isMounted()) {
           setIsSubmitting(false);
-          onSubmit({ name: getDefaultFormulaName(formula), clause });
+          onSubmit({
+            name: getDefaultFormulaName(formula),
+            clause,
+            source: source.trim(),
+          });
         }
       });
   };

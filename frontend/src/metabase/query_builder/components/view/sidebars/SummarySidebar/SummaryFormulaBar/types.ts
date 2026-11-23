@@ -1,4 +1,3 @@
-import type { FormulaSourceStatus } from "metabase/querying/components/FormulaEditor";
 import type * as Lib from "metabase-lib";
 
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
@@ -25,6 +24,12 @@ export type SummaryFormulaBarOptions = {
   onEdit: (query: Lib.Query, options: SummaryQueryChangeOptions) => void;
 };
 
+/** The formula an edit starts from. Its text and name are known once it has loaded. */
+export type SummaryFormulaOriginal =
+  | { status: "loading" }
+  | { status: "failed" }
+  | { status: "ready"; source: string; hasCustomName: boolean };
+
 export type SummaryFormulaDraft = {
   key: number;
   wellId: SummaryWellId;
@@ -34,10 +39,7 @@ export type SummaryFormulaDraft = {
   | {
       kind: "edit";
       uuid: string;
-      /** The printed formula, once it has loaded. */
-      originalSource?: string;
-      sourceStatus: FormulaSourceStatus;
-      hasCustomName: boolean;
+      original: SummaryFormulaOriginal;
     }
 );
 

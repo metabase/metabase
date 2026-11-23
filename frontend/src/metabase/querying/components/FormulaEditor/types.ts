@@ -6,6 +6,8 @@ import type { Database } from "metabase-types/api";
 export type NamedExpression = {
   name: string;
   clause: Lib.ExpressionClause;
+  /** The formula as typed in the editor. */
+  source: string;
 };
 
 export type FormulaSourceStatus = "loading" | "ready" | "failed";
