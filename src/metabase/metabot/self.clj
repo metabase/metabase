@@ -204,10 +204,11 @@
            ;; A streamed `:error` part means the provider failed mid-response (e.g. an OpenAI
            ;; `response.failed`) without throwing, so nothing else logs it. Surface it here so it
            ;; shows up in the server logs alongside the metric and the persisted turn error.
+           ;; Only these fields: the others of a provider's error object can name an account or a project.
            (log/error "Metabot LLM stream returned an error"
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
-                       :error  (:error part)})
+                       :error  (select-keys (:error part) [:message :code :type :status :error-code])})
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -589,23 +590,26 @@
     (context-full-error)
     (provider-error provider (streamed-status error) error)))
 
-(defn- provider-error-xf
-  "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
+(defn- classified-error-part
+  "The streamed `:error` `part` with its `:error` reduced to what Metabot stores and shows: the [[streamed-error]], or
+  else the provider's `:message` and any `:error-code` of Metabot's own. The other fields of the provider's error
+  object can name an account or a project, so they do not go past this step.
+
+  Has the [[provider-failure-kind]] as `:provider-failure`, except for a context overflow, which is the request's
+  fault."
+  [provider {:keys [error] :as part}]
+  (let [kind (when-not (context-overflow-object? error)
+               (provider-failure-kind nil error))]
+    (cond-> (assoc part :error (or (streamed-error provider error)
+                                   (select-keys error [:message :error-code])))
+      kind (assoc :provider-failure kind))))
+
+(defn- streamed-error-xf
+  "Transducer that classifies each streamed `:error` part with [[classified-error-part]]."
   [provider]
   (map (fn [part]
-         (if-let [error (when (= :error (:type part))
-                          (streamed-error provider (:error part)))]
-           (assoc part :error error)
-           part))))
-
-(def ^:private streamed-failure-xf
-  "Transducer that puts the [[provider-failure-kind]] of a streamed `:error` part on the part as `:provider-failure`.
-
-  It reads the provider's own error object, so it runs before [[provider-error-xf]] replaces that object."
-  (map (fn [part]
-         (if-let [kind (when (= :error (:type part))
-                         (provider-failure-kind nil (:error part)))]
-           (assoc part :provider-failure kind)
+         (if (= :error (:type part))
+           (classified-error-part provider part)
            part))))
 
 (defn- missing-required-permission
@@ -742,8 +746,7 @@
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
-                                                streamed-failure-xf
-                                                (provider-error-xf provider)
+                                                (streamed-error-xf provider)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
                                           (stream-fn streaming-opts)))]

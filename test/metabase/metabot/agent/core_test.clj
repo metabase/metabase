@@ -2024,9 +2024,17 @@
       (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
       (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
                                   (agent-loop-streamed-error-parts! chunks)))))))
-  (testing "any other streamed error keeps no error code"
+  (testing "an overflow that is streamed with a 5xx status is the request's fault, not a provider failure"
+    (is (= [{:error {:error-code "ai_provider_context_full" :message context-full-copy}}]
+           (map #(select-keys % [:error :provider-failure])
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              (openrouter-midstream-error-chunks
+                               {:code     502
+                                :message  "Provider returned error"
+                                :metadata {:error_type "context_length_exceeded"}})))))))
+  (testing "any other streamed error keeps only its message"
     (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
-      (is (= [error]
+      (is (= [{:message "string too long"}]
              (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
 
 (deftest agent-loop-other-400s-keep-the-generic-error-part-test
@@ -2053,6 +2061,19 @@
       :not-configured (self.core/missing-api-key-ex "OpenRouter")
       ;; a 400 for a request that Metabot made has no kind
       nil             (rethrown-api-error! "openrouter" 400 openrouter-overflow-body))))
+
+(deftest agent-loop-streamed-error-part-keeps-only-the-message-test
+  (testing "a streamed provider error keeps its message and its kind, not the `details`, which can name a GCP project"
+    (is (= [{:error {:message "Permission denied."} :provider-failure :auth}]
+           (map #(select-keys % [:error :provider-failure])
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              "google/google/gemini-3.5-flash" (gemini/->aisdk-chunks-xf)
+                              [{:responseId "r1" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                               {:error {:code    403
+                                        :message "Permission denied."
+                                        :status  "PERMISSION_DENIED"
+                                        :details [{:reason   "IAM_PERMISSION_DENIED"
+                                                   :metadata {:resource "projects/my-project"}}]}}])))))))
 
 (deftest agent-loop-streamed-provider-failure-error-part-test
   (testing "a provider failure that OpenRouter streams after its 200 tags the error part with its kind"
