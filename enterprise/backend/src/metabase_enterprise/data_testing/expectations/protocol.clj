@@ -23,7 +23,8 @@
     "The queries this expectation needs, as `{probe-id {:query :params :max-rows}}`.
 
   `context` carries the driver, the name of the output temp table, the columns that table actually
-  has, the input-table replacements, and this expectation's own [[temp-tables]] by name, with their columns. Pure.")
+  has, for an expectation written in SQL the SQL to run for it as `:expectation-query` (the check has passed it), and
+  this expectation's own [[temp-tables]] by name, with their columns. Pure.")
   (interpret [this context results]
     "This expectation's result map, given the `context` [[probes]] had and `{probe-id {:rows :columns}}` from the probes.
 

@@ -1,28 +1,19 @@
 (ns metabase-enterprise.data-testing.expectations.empty-test
   "The `empty` expectation: what it asks to run, and what it makes of the answer. Pure — no database
-  and no warehouse connection; `probes` only parses and rewrites SQL."
+  and no warehouse connection."
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.empty]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.expectations.report :as expectations.report]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
-   [metabase.sql-tools.macaw.references]
-   [metabase.util :as u]))
+   [metabase.lib.core :as lib]))
 
-;; The expectation under test, and the namespace registering the schema its rewrite guard validates against.
+;; The expectation under test.
 (comment
-  metabase.sql-tools.macaw.references/keep-me
   metabase-enterprise.data-testing.expectations.empty/keep-me)
 
 (set! *warn-on-reflection* true)
-
-;; Rewriting a table reference dispatches on an initialized driver. No connection is opened.
-(use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (f)))
 
 (defn- empty-expectation
   "One `empty` record, normalized and validated the way the model's `:in` transform does it, rather
@@ -88,31 +79,17 @@
 
 ;;; ----------------------------------------------- probes -----------------------------------------------
 
-(def ^:private replacements
-  "PEOPLE stands in for the run's input temp table; the shape is what `compile/table-replacements`
-  produces."
-  {{:table "PEOPLE"} {:db nil :schema nil :table "TMP_IN_1"}})
+(def ^:private checked-query
+  "The SQL a run's plan carries for the expectation: its author's SQL as the statement check returned it."
+  "SELECT * FROM TMP_IN_1 WHERE ID IS NULL")
 
 (defn- probes []
   (expectations.protocol/probes @an-expectation
-                                {:driver         :h2
-                                 :output-table   "TMP_OUT"
-                                 :output-columns ["ID"]
-                                 :replacements   replacements}))
-
-(deftest probes-refuse-sql-of-more-than-one-statement-test
-  (testing "the query the run executes is the statement check's, so SQL of two statements is refused at run time too"
-    (is (= ::data-testing.errors/not-a-single-select
-           (try
-             (expectations.protocol/probes (empty-expectation {:type :empty :name "two"
-                                                               :sql  "SELECT * FROM PEOPLE; DROP TABLE PEOPLE"})
-                                           {:driver         :h2
-                                            :output-table   "TMP_OUT"
-                                            :output-columns ["ID"]
-                                            :replacements   replacements})
-             nil
-             (catch clojure.lang.ExceptionInfo e
-               (:error-type (ex-data e))))))))
+                                {:driver            :postgres
+                                 :output-table      "TMP_OUT"
+                                 :output-columns    ["ID"]
+                                 :replacements      {}
+                                 :expectation-query checked-query}))
 
 (deftest probes-shape-test
   (let [ps (probes)]
@@ -123,10 +100,6 @@
       (testing "the cap is the report's, so a runaway failure cannot be read into memory whole"
         (is (= expectations.report/row-cap max-rows))))))
 
-(deftest probes-query-is-the-authors-sql-rewritten-test
-  (let [query (u/lower-case-en (:query (:violations (probes))))]
-    (testing "the author's SQL is put through table replacement"
-      (is (str/includes? query "tmp_in_1"))
-      (is (not (str/includes? query "people"))))
-    (testing "the rest of the author's SQL survives the rewrite"
-      (is (str/includes? query "is null")))))
+(deftest probes-run-the-checked-query-test
+  (testing "the probe runs the SQL the run's context carries for the expectation, not the author's SQL"
+    (is (= checked-query (:query (:violations (probes)))))))

@@ -330,6 +330,18 @@
         (is (= ::errors/unparseable-source error-type))
         (is (nil? (parser-internals message)) (pr-str message))))))
 
+(deftest validate-returns-the-sql-a-run-executes-for-each-expectation-test
+  (testing "validate returns, by expectation name, the checked rewrite of each SQL expectation that a run executes"
+    (driver/the-initialized-driver :postgres)
+    (is (= {"later ids"  "SELECT * FROM MB_T1 WHERE ID > 1 /* c */"
+            "rows match" "SELECT ID FROM MB_T1"}
+           (validator/validate :postgres
+                               (assoc complete-test
+                                      :expectations [{:type :empty :name "later ids" :sql "SELECT * FROM PEOPLE WHERE ID > 1 -- c"}
+                                                     {:type :equals :name "rows match" :format :sql :sql "SELECT ID FROM PEOPLE"}
+                                                     {:type    :equals :name "written rows" :format :rows
+                                                      :columns [{:name "ID" :cast_type "integer"}] :rows [{"ID" 1}]}]))))))
+
 (deftest validate-refuses-expectation-sql-of-more-than-one-statement-test
   (testing "control: an expectation of one SELECT is accepted"
     (is (nil? (refusal (assoc complete-test :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}])))))

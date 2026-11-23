@@ -175,7 +175,8 @@
 
 (defn- validate
   "Run [[data-testing.validator/validate]] over a test declaring `inputs` and `expectations` against a transform
-  reading `sql`. Returns nil when it accepts the test, and throws its refusal when it does not."
+  reading `sql`. Returns the SQL a run executes for each SQL expectation, by name, when it accepts the test, and throws
+  its refusal when it does not."
   [inputs expectations sql]
   (let [replacements (replacements-for inputs)]
     (data-testing.validator/validate
@@ -196,17 +197,19 @@
       (is (thrown-with-msg?
            ExceptionInfo #"(?i)Expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
            (validate inputs [{:type :empty :name "leaks" :sql "SELECT * FROM ORDERS"}] source))))
-    (testing "an expectation reading the transform's output or a declared input is accepted"
-      (is (nil? (validate inputs
-                          [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
-                           {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
-                          source))))
+    (testing "an expectation reading the transform's output or a declared input is accepted, as its rewrite"
+      (is (= {"output" "SELECT * FROM TMP_OUT"
+              "input"  "SELECT * FROM TMP_IN_1"}
+             (validate inputs
+                       [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
+                        {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
+                       source))))
     (testing "an expectation whose SQL cannot be parsed is refused as an authoring error, not a parser escape"
       (is (thrown-with-msg?
            ExceptionInfo #"Expectation \"broken\" has SQL that could not be parsed"
            (validate inputs [{:type :empty :name "broken" :sql "SELECT * FROM WHERE ("}] source))))
     (testing "an expectation with no SQL of its own is nothing to check"
-      (is (nil? (validate inputs
+      (is (= {} (validate inputs
                           [{:type    :equals :name "rows" :format :rows
                             :columns [{:name "ID" :cast_type "INTEGER"}]
                             :rows    [{"ID" 1}]}]

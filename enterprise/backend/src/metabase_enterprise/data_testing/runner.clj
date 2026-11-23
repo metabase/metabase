@@ -70,15 +70,14 @@
 (mr/def ::plan
   "What [[validated-plan]] hands the run that follows it."
   [:map {:closed true}
-   [:driver       :keyword]
-   [:database     ::lib.schema.metadata/database]
-   [:input->table [:map-of ::data-testing.schema/input :string]]
-   [:input->query [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]]
-   [:output-table :string]
-   [:labels       ::labels]
-   [:replacements ::data-testing.compile/table-replacements]
-   [:output-token [:maybe ::data-testing.compile/output-token]]
-   [:compiled     ::data-testing.compile/compiled-query]])
+   [:driver             :keyword]
+   [:database           ::lib.schema.metadata/database]
+   [:input->table       [:map-of ::data-testing.schema/input :string]]
+   [:input->query       [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]]
+   [:output-table       :string]
+   [:labels             ::labels]
+   [:expectation->query [:map-of :string :string]]
+   [:compiled           ::data-testing.compile/compiled-query]])
 
 (mr/def ::built-expectation
   "An expectation built by [[expectations.protocol/build]]."
@@ -86,13 +85,12 @@
 
 (mr/def ::context
   "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
-  the columns it has, the input-table replacements, the token its SQL may write for the output, and the expectation's
-  own temp tables and their columns once they exist."
+  the columns it has, the SQL the run executes for an expectation written in SQL, and the expectation's own temp
+  tables and their columns once they exist."
   [:map {:closed true}
    [:driver             :keyword]
    [:output-table       :string]
-   [:replacements       ::data-testing.compile/table-replacements]
-   [:output-token       {:optional true} [:maybe ::data-testing.compile/output-token]]
+   [:expectation-query  {:optional true} :string]
    [:output-columns     {:optional true} [:sequential ::data-testing.schema/result-column]]
    [:temp-tables        {:optional true} [:map-of :string :string]]
    [:temp-table-columns {:optional true} [:map-of :string [:sequential ::data-testing.schema/result-column]]]])
@@ -296,17 +294,23 @@
     nil))
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
-  "The result of every expectation against the output temp table, passing ones included."
-  [driver       :- :keyword
-   conn         :- ::data-testing.schema/connection
-   context      :- ::context
-   expectations :- ::data-testing.schema/expectations
-   labels       :- ::labels]
+  "The result of every expectation against the output temp table, passing ones included. `expectation->query` is the
+  SQL the run executes for each expectation written in SQL, by name."
+  [driver             :- :keyword
+   conn               :- ::data-testing.schema/connection
+   context            :- ::context
+   expectations       :- ::data-testing.schema/expectations
+   expectation->query :- [:map-of :string :string]
+   labels             :- ::labels]
   (let [context (assoc context
                        :output-columns
                        (data-testing.executor/table-columns driver conn (:output-table context)))]
-    (mapv (fn [expectation]
-            (check-expectation driver conn context (expectations.protocol/build expectation) labels))
+    (mapv (fn [{:keys [name] :as expectation}]
+            (check-expectation driver conn
+                               (if-let [query (expectation->query name)]
+                                 (assoc context :expectation-query query)
+                                 context)
+                               (expectations.protocol/build expectation) labels))
           expectations)))
 
 (mu/defn- check-not-impersonated :- :nil
@@ -377,28 +381,28 @@
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
         rewritten      (-> (data-testing.compile/rewrite-query driver compiled replacements)
                            (update :query #(data-testing.validator/ensure-single-select driver % nil)))
-        input->query   (into {} (map (fn [input] [input (input-query driver input)])) inputs)]
-    (data-testing.validator/validate
-     driver
-     {:inputs              inputs
-      :expectations        expectations
-      :referenced-tables   source-tables
-      :rewritten-query (:query rewritten)
-      :replacements        replacements
-      :output-token        output-token
-      :default-schema      default-schema
-      :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
-                                         (:query compiled))
-      :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
-    {:driver       driver
-     :database     database
-     :input->table input->table
-     :input->query input->query
-     :output-table output-table
-     :labels       (table-labels output-label input->table output-table)
-     :replacements replacements
-     :output-token output-token
-     :compiled     rewritten}))
+        input->query   (into {} (map (fn [input] [input (input-query driver input)])) inputs)
+        expectation->query
+        (data-testing.validator/validate
+         driver
+         {:inputs              inputs
+          :expectations        expectations
+          :referenced-tables   source-tables
+          :rewritten-query (:query rewritten)
+          :replacements        replacements
+          :output-token        output-token
+          :default-schema      default-schema
+          :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
+                                             (:query compiled))
+          :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})]
+    {:driver             driver
+     :database           database
+     :input->table       input->table
+     :input->query       input->query
+     :output-table       output-table
+     :labels             (table-labels output-label input->table output-table)
+     :expectation->query expectation->query
+     :compiled           rewritten}))
 
 (mu/defn validate-test :- :nil
   "Refuse a test of `subject`, a `subject-type`, with the inputs, expectations and `now` of `definition` unless it could
@@ -421,7 +425,7 @@
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
    {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table input->query output-table labels replacements output-token compiled]}
+  (let [{:keys [driver database input->table input->query output-table labels expectation->query compiled]}
         (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
@@ -434,11 +438,9 @@
                  (create-inputs! driver conn input->table input->query labels)
                  (create-output! driver conn output-table compiled labels)
                  (let [results (check-expectations driver conn
-                                                   {:driver driver
-                                                    :output-table output-table
-                                                    :replacements replacements
-                                                    :output-token output-token}
-                                                   expectations labels)]
+                                                   {:driver       driver
+                                                    :output-table output-table}
+                                                   expectations expectation->query labels)]
                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
                     :expectations results
                     :tables       labels})

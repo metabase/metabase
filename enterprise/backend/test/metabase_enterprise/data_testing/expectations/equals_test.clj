@@ -238,35 +238,23 @@
   (build {:type :equals :name "sql form" :format :sql :sql sql}))
 
 (def ^:private sql-context
-  "A run's context for the SQL form, once its temp table `expected` exists: `tmp_orders` stands in for the input
-  `orders`, the output is `tmp_output`, and the expected table spells its columns as H2 folds them. The output token
-  becomes `__mb_output`, which no replacement maps."
+  "A run's context for the SQL form, once its temp table `expected` exists: the plan's checked SQL for the expectation,
+  the output `tmp_output`, and the expected table spelling its columns as H2 folds them."
   {:driver             :h2
    :output-table       "tmp_output"
    :output-token       "{{output}}"
    :replacements       {{:table "orders"} {:db nil :schema nil :table "tmp_orders"}}
+   :expectation-query  "SELECT o.id, o.name FROM tmp_orders AS o JOIN __mb_output AS x ON o.id = x.id"
    :output-columns     output-columns
    :temp-tables        {"expected" "tmp_expected"}
    :temp-table-columns {"expected" [{:name "NAME" :database_type "CHARACTER VARYING"}
                                     {:name "ID" :database_type "INTEGER"}]}})
 
 (deftest equals-sql-temp-table-test
-  (testing "the expected rows are the author's SQL, reading the input temp tables and the output's name"
-    (let [{:keys [query params]} (get (expectations.protocol/temp-tables
-                                       (equals-sql "SELECT o.id, o.name FROM orders o JOIN {{output}} x ON o.id = x.id")
-                                       sql-context)
-                                      "expected")]
-      (is (re-find #"FROM \"?tmp_orders\"? (AS )?o\b" query) query)
-      (is (re-find #"JOIN \"?__mb_output\"? (AS )?x\b" query) query)
-      (is (not (re-find #"(?<!tmp_)orders\b" query)) query)
-      (is (= [] params)))))
-
-(deftest equals-sql-temp-table-refuses-sql-of-more-than-one-statement-test
-  (testing "the query the run executes is the statement check's, so SQL of two statements is refused at run time too"
-    (is (= ::data-testing.errors/not-a-single-select
-           (:error-type (ex-data (caught #(expectations.protocol/temp-tables
-                                           (equals-sql "SELECT id FROM orders; DROP TABLE orders")
-                                           sql-context))))))))
+  (testing "the expected rows are the SQL the run's context carries for the expectation, not the author's SQL"
+    (is (= {"expected" {:query  (:expectation-query sql-context)
+                        :params []}}
+           (expectations.protocol/temp-tables (equals-sql "SELECT id, name FROM orders") sql-context)))))
 
 (deftest equals-sql-probes-test
   (let [probes (expectations.protocol/probes (equals-sql "SELECT name, id FROM orders") sql-context)]

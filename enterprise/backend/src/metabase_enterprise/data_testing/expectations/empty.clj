@@ -7,7 +7,6 @@
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.expectations.report :as expectations.report]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -45,8 +44,8 @@
   (temp-tables [_this _context]
     {})
 
-  (probes [_this {:keys [driver replacements output-token]}]
-    {:violations {:query    (data-testing.validator/expectation-query driver name sql replacements output-token)
+  (probes [_this {:keys [expectation-query]}]
+    {:violations {:query    expectation-query
                   :params   []
                   :max-rows expectations.report/row-cap}})
 
