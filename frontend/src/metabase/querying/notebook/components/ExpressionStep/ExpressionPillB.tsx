@@ -5,10 +5,14 @@ import { t } from "ttag";
 
 import { Icon, Tooltip, UnstyledButton } from "metabase/ui";
 
+import { getPillShadeVars } from "../NotebookCell/pill-shades";
+
 import S from "./ExpressionPillB.module.css";
 
 type ExpressionPillBProps = {
   name: string;
+  /** The color of the step: brand for custom columns. */
+  color?: string;
   isActive: boolean;
   readOnly?: boolean;
   /** Off for a draft, which has no clause to carry a name yet. */
@@ -16,6 +20,7 @@ type ExpressionPillBProps = {
   /** True while the column has the name it got by default, like "Untitled". */
   isNameDefault?: boolean;
   hasUnsavedChanges?: boolean;
+  hasRemoveButton?: boolean;
   onOpen: () => void;
   onRename: (name: string) => void;
   onRemove: () => void;
@@ -23,17 +28,18 @@ type ExpressionPillBProps = {
 
 /**
  * Prototype, pill style B: the custom column pill, with its name in a box
- * like a text field, to show that it can be renamed. The box shows while the
- * name is a default, and on hover or while the pill is selected. Behaves like
- * `ExpressionPill`.
+ * like a text field, to show that it can be renamed. A double-click renames
+ * it. Figma: Custom expressions file, frame 373:19836.
  */
 export function ExpressionPillB({
   name,
+  color = "core-brand",
   isActive,
   readOnly,
   canRename = true,
   isNameDefault = false,
   hasUnsavedChanges = false,
+  hasRemoveButton = !readOnly,
   onOpen,
   onRename,
   onRemove,
@@ -43,24 +49,27 @@ export function ExpressionPillB({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isRenaming) {
-      inputRef.current?.select();
+    const input = inputRef.current;
+    if (isRenaming && input != null) {
+      input.setSelectionRange(input.value.length, input.value.length);
     }
   }, [isRenaming]);
 
-  const canRenameNow = isActive && canRename && !readOnly;
+  const canRenameNow = canRename && !readOnly;
 
   const handleClick = useCallback(() => {
-    if (readOnly) {
-      return;
-    }
-    if (isActive && canRename) {
-      setDraftName(name);
-      setIsRenaming(true);
-    } else if (!isActive) {
+    if (!readOnly && !isActive) {
       onOpen();
     }
-  }, [readOnly, isActive, canRename, name, onOpen]);
+  }, [readOnly, isActive, onOpen]);
+
+  // A default name, like "Untitled", is a placeholder: renaming starts empty.
+  const handleDoubleClick = useCallback(() => {
+    if (canRenameNow) {
+      setDraftName(isNameDefault ? "" : name);
+      setIsRenaming(true);
+    }
+  }, [canRenameNow, isNameDefault, name]);
 
   const handleCommit = useCallback(() => {
     setIsRenaming(false);
@@ -91,8 +100,11 @@ export function ExpressionPillB({
       className={cx(S.pill, {
         [S.isActive]: isActive,
         [S.isReadOnly]: readOnly,
+        [S.isRenaming]: isRenaming,
       })}
+      style={getPillShadeVars(color)}
       onClick={isRenaming ? undefined : handleClick}
+      onDoubleClick={isRenaming ? undefined : handleDoubleClick}
       data-testid={isActive ? "selected-expression-pill" : "expression-pill"}
     >
       {hasUnsavedChanges && (
@@ -108,13 +120,13 @@ export function ExpressionPillB({
       )}
       <span
         className={cx(S.name, {
-          [S.isDefault]: isNameDefault && !isRenaming,
+          [S.isDefault]: isRenaming ? draftName === "" : isNameDefault,
           [S.isRenameable]: canRenameNow,
           [S.isRenaming]: isRenaming,
         })}
       >
-        <span className={S.nameText}>
-          {isRenaming ? draftName || " " : name}
+        <span className={cx(S.nameText, { [S.isSizer]: isRenaming })}>
+          {isRenaming ? draftName || name : name}
         </span>
         {isRenaming && (
           <input
@@ -123,6 +135,7 @@ export function ExpressionPillB({
             value={draftName}
             data-testid="expression-name"
             autoFocus
+            placeholder={isNameDefault ? name : undefined}
             aria-label={name}
             onChange={(event) => setDraftName(event.target.value)}
             onBlur={handleCommit}
@@ -130,9 +143,9 @@ export function ExpressionPillB({
           />
         )}
       </span>
-      {!readOnly && (
+      {hasRemoveButton && (
         <Icon
-          className={cx(S.closeIcon, { [S.hiddenWhileRenaming]: isRenaming })}
+          className={S.closeIcon}
           name="close"
           size={16}
           onClick={(event) => {
@@ -150,6 +163,7 @@ export function ExpressionAddButtonB({ onClick }: { onClick: () => void }) {
   return (
     <UnstyledButton
       className={S.addButton}
+      style={getPillShadeVars("core-brand")}
       aria-label={t`Add a custom column`}
       onClick={onClick}
     >

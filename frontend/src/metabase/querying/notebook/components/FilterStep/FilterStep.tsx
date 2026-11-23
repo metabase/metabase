@@ -110,7 +110,6 @@ export function FilterStep({
         renderInlineItem={(filter, index) =>
           isCustomFilter(filter) || inline.editedIndex === index ? (
             <ExpressionPill
-              hasStepSelectedColor
               name={renderFilterName(filter)}
               color={color}
               isActive={inline.editedIndex === index}
@@ -125,7 +124,6 @@ export function FilterStep({
         extraItems={
           inline.isDraftOpen && (
             <ExpressionPill
-              hasStepSelectedColor
               name={t`New filter`}
               color={color}
               isActive

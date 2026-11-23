@@ -6,6 +6,7 @@ import { Flex, type FlexProps, Icon, rem } from "metabase/ui";
 
 import S from "./NotebookCell.module.css";
 import { CONTAINER_PADDING } from "./constants";
+import { getPillShadeVars, hasPillShades } from "./pill-shades";
 
 const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
   return (
@@ -63,6 +64,9 @@ export const NotebookCellItem = forwardRef<
   ref,
 ) {
   const hasRightSide = isValidElement(right) && !readOnly;
+  // Prototype: the summary and filter pills take the colors of the custom
+  // expression design.
+  const hasShades = hasPillShades(color) && !inactive;
 
   return (
     <Flex
@@ -81,6 +85,7 @@ export const NotebookCellItem = forwardRef<
       )}
       style={{
         "--notebook-cell-item-container-color": `var(--mb-color-${color})`,
+        ...(hasShades ? getPillShadeVars(color) : undefined),
       }}
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
@@ -93,6 +98,7 @@ export const NotebookCellItem = forwardRef<
           {
             [S.selected]: selected,
             [S.inactive]: inactive,
+            [S.shades]: hasShades,
             [S.rightRoundedCorners]: !hasRightSide,
             [S.canHover]: !inactive && !readOnly && !disabled,
           },
@@ -114,6 +120,7 @@ export const NotebookCellItem = forwardRef<
             {
               [S.selected]: selected,
               [S.inactive]: inactive,
+              [S.shades]: hasShades,
               [S.canHover]: !inactive && !readOnly && !disabled,
             },
           )}
@@ -137,7 +144,12 @@ interface NotebookCellAddProps extends NotebookCellItemProps {
 export const NotebookCellAdd = forwardRef<HTMLDivElement, NotebookCellAddProps>(
   function NotebookCellAdd({ initialAddText, ...props }, ref) {
     return (
-      <NotebookCellItem {...props} inactive={!!initialAddText} ref={ref}>
+      <NotebookCellItem
+        {...props}
+        className={cx(S.addButton, props.className)}
+        inactive={!!initialAddText}
+        ref={ref}
+      >
         {initialAddText || <Icon name="add" className={CS.textWhite} />}
       </NotebookCellItem>
     );

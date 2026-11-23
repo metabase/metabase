@@ -12,7 +12,7 @@ import * as Lib from "metabase-lib";
 import type { GeneratedBreakout } from "../../../components/expressions/Editor/api";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep, useInlineClauseEditor } from "../ClauseStep";
-import { ExpressionPill } from "../ExpressionStep/ExpressionPill";
+import { ExpressionPillB } from "../ExpressionStep/ExpressionPillB";
 import {
   InlineExpressionEditor,
   useInlineExpressionEditorChunk,
@@ -190,10 +190,12 @@ export function AggregateStep({
       renderName={renderAggregationName}
       renderInlineItem={(aggregation, index) =>
         isCustomAggregation(aggregation) || inline.editedIndex === index ? (
-          <ExpressionPill
-            hasStepSelectedColor
+          <ExpressionPillB
             name={renderAggregationName(aggregation)}
             color={color}
+            isNameDefault={
+              !Lib.displayInfo(query, stageIndex, aggregation).isNamed
+            }
             isActive={inline.editedIndex === index}
             readOnly={readOnly}
             hasRemoveButton={hasRemoveButton}
@@ -205,10 +207,10 @@ export function AggregateStep({
       }
       extraItems={
         inline.isDraftOpen && (
-          <ExpressionPill
-            hasStepSelectedColor
+          <ExpressionPillB
             name={openDraftName ?? t`New summary`}
             color={color}
+            isNameDefault={openDraftName == null}
             isActive
             readOnly={readOnly}
             onOpen={noop}

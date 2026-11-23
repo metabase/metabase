@@ -92,3 +92,20 @@
     border-bottom-right-radius: 6px;
   }
 }
+
+/* Prototype: the colors of the custom expression design, on summary and
+   filter pills. After the rules above, to win over them. The "+" gets darker
+   on hover, the pills lighter. */
+.NotebookCellItemContentContainer.shades {
+  background-color: var(--pill-base);
+
+  &.canHover:hover {
+    background-color: var(--pill-hover);
+  }
+
+  &.selected,
+  &.selected.canHover:hover,
+  .addButton &.canHover:hover {
+    background-color: var(--pill-selected);
+  }
+}

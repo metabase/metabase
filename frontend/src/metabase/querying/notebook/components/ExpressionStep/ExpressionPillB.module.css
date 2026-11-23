@@ -1,7 +1,8 @@
 /* Prototype, pill style B. */
 
-/* The pill: brand blue, 36px tall, darker on hover and while selected.
-   6px left (around the name's box) and 10px right (after the ×). */
+/* The pill: brand blue, 36px tall; darker while selected, lighter on hover
+   and while renaming. 6px left (around the name's box) and 10px right (after
+   the ×). */
 .pill {
   display: flex;
   align-items: center;
@@ -12,7 +13,7 @@
   margin: 2px;
   padding: 0 10px 0 6px;
   border-radius: 6px;
-  background-color: var(--mb-color-background_surface-brand-strong);
+  background-color: var(--pill-base);
   color: var(--mb-color-text-primary-inverse);
   font-size: 14px;
   font-weight: 700;
@@ -20,9 +21,13 @@
   cursor: pointer;
   transition: background-color 150ms linear;
 
-  &:hover,
   &.isActive {
-    background-color: var(--mb-color-background_surface-brand-strong-hover);
+    background-color: var(--pill-selected);
+  }
+
+  &:hover:not(.isReadOnly),
+  &.isRenaming {
+    background-color: var(--pill-hover);
   }
 
   &.isReadOnly {
@@ -31,7 +36,7 @@
 }
 
 /* The name, in a box like a text field: 24px tall, 4px on the sides. The box
-   is invisible on a renamed column, until hover or selection. */
+   is darker on hover and while renaming. */
 .name {
   position: relative;
   display: flex;
@@ -39,16 +44,13 @@
   min-width: 0;
   height: 24px;
   padding: 0 4px;
-  border: 0.5px solid transparent;
+  border: 0.5px solid var(--mb-color-border-neutral-inverse-strong);
   border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
 
-  /* The box: on a default name, on hover, while selected and renaming. */
-  &.isDefault,
-  .pill:hover &,
-  .pill.isActive &,
+  .pill:hover:not(.isReadOnly) &,
   &.isRenaming {
-    border-color: var(--mb-color-border-neutral-inverse-strong);
-    background-color: var(--mb-color-background_surface-secondary);
+    background-color: var(--mb-color-background_surface-secondary-hover);
   }
 
   /* A default name, like "Untitled", is greyed out. */
@@ -81,6 +83,10 @@
   color: var(--mb-color-text-primary-inverse);
   font: inherit;
   letter-spacing: inherit;
+
+  &::placeholder {
+    color: var(--mb-color-text-disabled-inverse);
+  }
 }
 
 /* The × at the end, 16px. */
@@ -90,9 +96,9 @@
   cursor: pointer;
 }
 
-.hiddenWhileRenaming {
+/* The text under the input only sizes the box. */
+.isSizer {
   visibility: hidden;
-  pointer-events: none;
 }
 
 /* A dot before the name when the expression isn't saved. */
@@ -113,11 +119,11 @@
   height: 36px;
   margin: 2px;
   border-radius: 6px;
-  background-color: var(--mb-color-background_surface-brand-strong);
+  background-color: var(--pill-base);
   color: var(--mb-color-text-primary-inverse);
   transition: background-color 150ms linear;
 
   &:hover {
-    background-color: var(--mb-color-background_surface-brand-strong-hover);
+    background-color: var(--pill-selected);
   }
 }

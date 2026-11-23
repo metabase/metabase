@@ -19,11 +19,6 @@ type ExpressionPillProps = {
   canRename?: boolean;
   hasUnsavedChanges?: boolean;
   hasRemoveButton?: boolean;
-  /**
-   * True when the selected pill is a darker shade of the step color, not the
-   * grey of custom columns.
-   */
-  hasStepSelectedColor?: boolean;
   onOpen: () => void;
   onRename: (name: string) => void;
   onRemove: () => void;
@@ -37,7 +32,6 @@ export function ExpressionPill({
   canRename = true,
   hasUnsavedChanges = false,
   hasRemoveButton = !readOnly,
-  hasStepSelectedColor = false,
   onOpen,
   onRename,
   onRemove,
@@ -94,7 +88,6 @@ export function ExpressionPill({
       readOnly={readOnly}
       selected={isActive}
       className={cx(S.pill, {
-        [S.stepSelected]: hasStepSelectedColor,
         [S.renameable]: isActive && canRename && !readOnly,
       })}
       onClick={isRenaming ? undefined : handleClick}
