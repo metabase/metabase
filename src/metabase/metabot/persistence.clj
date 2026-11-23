@@ -570,14 +570,15 @@
     (tool-part->llm-messages part)))
 
 (defn- step->llm-messages
-  "The LLM history messages for the `parts` of one step: its text and tool calls in order, then the results of those
-  calls in the same order. This is how the agent loop sends a step, because the tools of a step run in parallel and
-  their results come after the LLM call ends (see [[metabase.metabot.self.core/tool-executor-xf]]). When history
-  puts each result after its call, a step with parallel calls replays in a different order, and the next turn's
-  request does not start with the bytes that this turn sent."
+  "The LLM history messages for one step's `parts`: text and tool calls in order, then results in call order."
   [parts]
-  (let [replayed (keep part->llm-messages parts)]
-    (concat (map first replayed) (keep second replayed))))
+  ;; The agent loop sends a step in this order, because [[metabase.metabot.self.core/tool-executor-xf]] adds the
+  ;; results after the LLM call ends. Any other order changes the start of the next turn's request, and the prompt
+  ;; cache misses.
+  (let [messages (mapcat part->llm-messages parts)
+        result?  #(= :tool (:role %))]
+    (concat (remove result? messages)
+            (filter result? messages))))
 
 (defn- agent-text-after-results?
   "Whether the assistant `row` can hold text that the agent added after the results of its last step, `last-step`.
