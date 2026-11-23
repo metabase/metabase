@@ -1928,7 +1928,7 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - Default: `[]`
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
-Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+MCP clients whose MCP Apps may call Metabase across origins, as comma-separated keys: claude, chatgpt, and cursor-vscode (for both Cursor and VS Code).
 
 ### `MB_METABOT_ADVANCED_PERMISSIONS`
 
