@@ -560,41 +560,39 @@ def _two_counts(first, second, with_=None):
     return select
 
 
-def _source_identifier(node):
-    """The identifier a join's ON clause calls the source `node` by, or None for a source with no name."""
-    alias = node.args.get("alias")
-    if alias is not None and alias.this is not None:
-        return alias.this
-    return node.this if isinstance(node, exp.Table) else None
+# The dialects whose databases have been run with the marker join of `_left_join_counts`, besides H2's lack of one.
+_JOIN_MARKER_DIALECTS = {"mysql", "postgres"}
 
 
 def _left_join_counts(from_, joins, with_, dialect):
     """The output and matched counts of a chain ending in a LEFT join, from one evaluation of it, or None.
 
-    The joined source is wrapped to carry a marker column, which is NULL on a row that found no match.
-    Returns None where that cannot be done:
-    ClickHouse fills unmatched columns with defaults by default, so its marker would not be NULL.
-    A wrapped source no longer answers to a schema-qualified column reference, nor can a source with no name be wrapped.
+    The joined source is cross joined with a one-row relation holding a marker, which is NULL on a row with no match.
+    The source itself stays as written, so its hidden columns and qualified names still resolve.
+    Returns None for a dialect not known to run this, a NATURAL join, whose keys the marker could join, and a query
+    that already uses the marker's names.
     """
     join = joins[-1]
-    name = _source_identifier(join.this)
-    on = join.args.get("on")
+    names = {i.name.lower() for node in [from_, *joins] for i in node.find_all(exp.Identifier)}
     if (
-        dialect == "clickhouse"
-        or name is None
-        or (on is not None and any(c.args.get("db") or c.args.get("catalog") for c in on.find_all(exp.Column)))
+        # `is not None` first: a null passed in from the JVM is not equal to the `None` a set could hold.
+        (dialect is not None and dialect not in _JOIN_MARKER_DIALECTS)
+        or (join.method or "").upper() == "NATURAL"
+        or names & {"mb_marker", "mb_matched"}
     ):
         return None
-    marked = exp.Select(
-        expressions=[exp.Column(this=exp.Star(), table=name.copy()), exp.alias_(exp.Literal.number(1), "mb_matched")],
-        from_=exp.From(this=join.this.copy()),
+    marker = exp.Subquery(
+        this=exp.Select(expressions=[exp.alias_(exp.Literal.number(1), "mb_matched")]),
+        alias=exp.TableAlias(this=exp.to_identifier("mb_marker")),
     )
+    source = join.this.copy()
+    source.set("joins", [exp.Join(this=marker, kind="CROSS")])
     last = join.copy()
-    last.set("this", exp.Subquery(this=marked, alias=exp.TableAlias(this=name.copy())))
+    last.set("this", exp.Subquery(this=source))
     select = exp.Select(
         expressions=[
             exp.alias_(exp.Count(this=exp.Star()), "n"),
-            exp.alias_(exp.Count(this=exp.Column(this=exp.to_identifier("mb_matched"), table=name.copy())), "m"),
+            exp.alias_(exp.Count(this=exp.column("mb_matched", table="mb_marker")), "m"),
         ],
         from_=from_.copy(),
         joins=[j.copy() for j in joins[:-1]] + [last],
@@ -632,8 +630,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
         => '{"status": "ok", "from": {"source": "table", "table": [null, null, "a"], "alias": "a"},
              "base_sql": "SELECT COUNT(*) AS n FROM a",
              "steps": [{"source": "table", "table": [null, null, "b"], "alias": "b", "strategy": "left",
-                        "sql": "SELECT COUNT(*) AS n, COUNT(b.mb_matched) AS m FROM a
-                                LEFT JOIN (SELECT b.*, 1 AS mb_matched FROM b) AS b ON a.id = b.a_id"}]}'
+                        "sql": "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM a
+                                LEFT JOIN (b CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON a.id = b.a_id"}]}'
 
         join_steps("SELECT * FROM a, b")
         => '{"status": "unsupported", "reason": "comma-join"}'

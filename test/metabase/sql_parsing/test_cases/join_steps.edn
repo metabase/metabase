@@ -12,7 +12,7 @@
       :alias "p",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(p.mb_matched) AS m FROM orders AS o LEFT JOIN (SELECT p.*, 1 AS mb_matched FROM people AS p) AS p ON p.id = o.user_id"}]}}
+      "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM orders AS o LEFT JOIN (people AS p CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON p.id = o.user_id"}]}}
   {:name "an INNER JOIN step counts the chain once, keeping a compound condition whole",
    :dialect "postgres",
    :sql "SELECT * FROM orders o JOIN products pr ON pr.id = o.product_id AND pr.category = 'Widget'",
@@ -41,7 +41,7 @@
       :alias "c",
       :strategy "left",
       :sql
-      "WITH c AS (SELECT id FROM people) SELECT COUNT(*) AS n, COUNT(c.mb_matched) AS m FROM orders AS o LEFT JOIN (SELECT c.*, 1 AS mb_matched FROM c) AS c ON c.id = o.user_id"}
+      "WITH c AS (SELECT id FROM people) SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM orders AS o LEFT JOIN (c CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON c.id = o.user_id"}
      {:source "derived",
       :table nil,
       :alias "d",
@@ -75,7 +75,7 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(b.mb_matched) AS m FROM a LEFT JOIN (SELECT b.*, 1 AS mb_matched FROM b) AS b USING (id)"}
+      "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM a LEFT JOIN (b CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) USING (id)"}
      {:source "table",
       :table [nil nil "c"],
       :alias "c",
@@ -122,7 +122,7 @@
       :alias "c",
       :strategy "left",
       :sql
-      "WITH c AS (SELECT 1 AS x) SELECT COUNT(*) AS n, COUNT(c.mb_matched) AS m FROM dbo.a LEFT JOIN (SELECT c.*, 1 AS mb_matched FROM c) AS c ON a.id = c.x"}]}}
+      "WITH c AS (SELECT 1 AS x) SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM dbo.a LEFT JOIN c ON a.id = c.x) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM dbo.a JOIN c ON a.id = c.x) AS m"}]}}
   {:name "a query with no joins has only the base count",
    :dialect "postgres",
    :sql "SELECT id FROM orders WHERE total > 1",
@@ -144,7 +144,7 @@
       :alias "p",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(p.mb_matched) AS m FROM PUBLIC.ORDERS AS o LEFT JOIN (SELECT p.*, 1 AS mb_matched FROM PUBLIC.PEOPLE AS p) AS p ON p.ID = o.USER_ID"}]}}
+      "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM PUBLIC.ORDERS AS o LEFT JOIN (PUBLIC.PEOPLE AS p CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON p.ID = o.USER_ID"}]}}
   {:name "a bracketed SELECT is read as the SELECT inside",
    :dialect "postgres",
    :sql "(SELECT * FROM a JOIN b ON a.id = b.id)",
@@ -293,7 +293,7 @@
       :alias "b",
       :strategy "inner",
       :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
-  {:name "a LEFT JOIN on a schema-qualified column counts the matches with the join made INNER",
+  {:name "a LEFT JOIN on a schema-qualified column keeps the reference",
    :dialect "postgres",
    :sql "SELECT * FROM s.a LEFT JOIN s.b ON s.b.id = s.a.id",
    :expected
@@ -306,7 +306,7 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s.a LEFT JOIN s.b ON s.b.id = s.a.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s.a JOIN s.b ON s.b.id = s.a.id) AS m"}]}}
+      "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM s.a LEFT JOIN (s.b CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON s.b.id = s.a.id"}]}}
   {:name "a ClickHouse LEFT JOIN counts the matches with the join made INNER, since unmatched columns get defaults",
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id",
@@ -321,7 +321,7 @@
       :strategy "left",
       :sql
       "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.id = b.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id) AS m"}]}}
-  {:name "a LEFT JOIN of a schema-qualified table wraps it under its bare name",
+  {:name "a LEFT JOIN of a schema-qualified table keeps it as written",
    :dialect "postgres",
    :sql "SELECT * FROM a LEFT JOIN s.b ON a.id = b.id",
    :expected
@@ -334,7 +334,7 @@
       :alias "b",
       :strategy "left",
       :sql
-      "SELECT COUNT(*) AS n, COUNT(b.mb_matched) AS m FROM a LEFT JOIN (SELECT b.*, 1 AS mb_matched FROM s.b) AS b ON a.id = b.id"}]}}
+      "SELECT COUNT(*) AS n, COUNT(mb_marker.mb_matched) AS m FROM a LEFT JOIN (s.b CROSS JOIN (SELECT 1 AS mb_matched) AS mb_marker) ON a.id = b.id"}]}}
   {:name "with no dialect, as for H2, a quoted upper-case name is the CTE",
    :dialect nil,
    :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
@@ -360,4 +360,43 @@
       :table [nil nil "b"],
       :alias "b",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\" JOIN b ON \"foo\".id = b.id"}]}}]}
+      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\" JOIN b ON \"foo\".id = b.id"}]}}
+  {:name "a NATURAL LEFT JOIN counts the matches with the join made INNER",
+   :dialect "postgres",
+   :sql "SELECT * FROM a NATURAL LEFT JOIN b",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "left",
+      :sql "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a NATURAL LEFT JOIN b) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a NATURAL JOIN b) AS m"}]}}
+  {:name "a query already using the marker name counts the matches with the join made INNER",
+   :dialect "postgres",
+   :sql "SELECT * FROM a LEFT JOIN b ON a.mb_matched = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "left",
+      :sql "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.mb_matched = b.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.mb_matched = b.id) AS m"}]}}
+  {:name "a dialect not run with the marker join counts the matches with the join made INNER",
+   :dialect "snowflake",
+   :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "left",
+      :sql "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.id = b.id) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id) AS m"}]}}]}
