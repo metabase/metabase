@@ -104,7 +104,11 @@
    [:database_is_generated      {:optional true} [:maybe :boolean]]
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
-   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
+   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]
+   ;; structural metadata, as stored: `facets` is the raw JSON string
+   [:is_grain                   {:optional true} [:maybe :boolean]]
+   [:attribute_scd_type         {:optional true} [:maybe :int]]
+   [:facets                     {:optional true} [:maybe :string]]])
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
@@ -141,7 +145,14 @@
    [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
-   [:fk_target_field_id_set {:optional true} :boolean]])
+   [:fk_target_field_id_set {:optional true} :boolean]
+   ;; structural metadata, as stored: `facets` is the raw JSON string
+   [:is_grain               {:optional true} [:maybe :boolean]]
+   [:attribute_scd_type     {:optional true} [:maybe :int]]
+   [:facets                 {:optional true} [:maybe :string]]
+   [:is_grain_set           {:optional true} :boolean]
+   [:attribute_scd_type_set {:optional true} :boolean]
+   [:facets_set             {:optional true} :boolean]])
 
 (mr/def ::field-values.human-readable-values
   [:sequential [:maybe ms/NonBlankString]])
@@ -228,7 +239,26 @@
    [:caveats_set             {:optional true} :boolean]
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
-   [:data_source_set         {:optional true} :boolean]])
+   [:data_source_set         {:optional true} :boolean]
+   ;; structural metadata, as stored: the JSON columns are raw JSON strings
+   [:table_role              {:optional true} [:maybe :string]]
+   [:grain                   {:optional true} [:maybe :string]]
+   [:grain_description       {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe :string]]
+   [:mutability              {:optional true} [:maybe :string]]
+   [:load_strategy           {:optional true} [:maybe :string]]
+   [:scd_type                {:optional true} [:maybe :int]]
+   [:history_definition      {:optional true} [:maybe :string]]
+   [:eav_definition          {:optional true} [:maybe :string]]
+   [:history_definition_set  {:optional true} :boolean]
+   [:eav_definition_set      {:optional true} :boolean]
+   [:period_granularity_set  {:optional true} :boolean]
+   [:table_role_set          {:optional true} :boolean]
+   [:grain_set               {:optional true} :boolean]
+   [:grain_description_set   {:optional true} :boolean]
+   [:mutability_set          {:optional true} :boolean]
+   [:load_strategy_set       {:optional true} :boolean]
+   [:scd_type_set            {:optional true} :boolean]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
@@ -283,7 +313,17 @@
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   ;; structural metadata, as stored: the JSON columns are raw JSON strings
+   [:table_role              {:optional true} [:maybe :string]]
+   [:grain                   {:optional true} [:maybe :string]]
+   [:grain_description       {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe :string]]
+   [:mutability              {:optional true} [:maybe :string]]
+   [:load_strategy           {:optional true} [:maybe :string]]
+   [:scd_type                {:optional true} [:maybe :int]]
+   [:history_definition      {:optional true} [:maybe :string]]
+   [:eav_definition          {:optional true} [:maybe :string]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."
