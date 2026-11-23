@@ -145,162 +145,16 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
-(def ^:private annotation-keys
-  "JSON Schema keywords that describe a value without constraining it."
-  ;; `:example` is the OpenAPI spelling, which Malli emits for `:json-schema/example`
-  #{:$comment :default :deprecated :description :example :examples :readOnly :title :writeOnly})
-
-(def ^:private keyword-types
-  "JSON Schema assertion keywords that apply only to values of one type, mapped to that type."
-  (merge (zipmap [:additionalProperties :dependentRequired :dependentSchemas :maxProperties :minProperties
-                  :patternProperties :properties :propertyNames :required]
-                 (repeat "object"))
-         (zipmap [:contains :items :maxContains :maxItems :minContains :minItems :prefixItems :uniqueItems]
-                 (repeat "array"))
-         (zipmap [:contentEncoding :contentMediaType :contentSchema :format :maxLength :minLength :pattern]
-                 (repeat "string"))
-         (zipmap [:exclusiveMaximum :exclusiveMinimum :maximum :minimum :multipleOf]
-                 (repeat "number"))))
-
-(def ^:private null-neutral-keys
-  "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
-  (into annotation-keys (keys keyword-types)))
-
-(def ^:private type-array-keys
-  "JSON Schema keywords a schema can carry and still take `null` into its `:type`: [[null-neutral-keys]], the `:type`
-  itself, and an `:enum`, which `null` joins."
-  (conj null-neutral-keys :type :enum))
-
-(defn- types
-  "The types the `:type` of JSON Schema `schema` names, as a vector, or nil when it has none."
-  [{:keys [type]}]
-  (cond
-    (string? type)     [type]
-    (sequential? type) (vec type)))
-
-(defn- value-type
-  "The type of the values a JSON Schema `type` describes, for telling which types overlap and which keywords apply."
-  [type]
-  ;; every integer is a number
-  (if (= "integer" type) "number" type))
-
-(defn- union->type-array
-  "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
-  Each branch must name its own types, no two branches' overlapping, and assert only [[keyword-types]] keywords that
-  apply to those types.
-  A branch may carry a string `:description`, which is joined, but no other annotation, since the type array would
-  lose it."
-  [branches]
-  (let [branch-types (map types branches)
-        own-keyword? (fn [branch k]
-                       (contains? (set (map value-type (types branch))) (keyword-types k)))]
-    (when (and (seq branches)
-               (every? seq branch-types)
-               (apply distinct? (map value-type (apply concat branch-types)))
-               ;; a localized description is translated when it is serialized, so joining it here would fix the
-               ;; locale of whoever builds the cached manifest first
-               (every? (comp (some-fn nil? string?) :description) branches)
-               (every? (fn [branch]
-                         (every? #(own-keyword? branch %) (remove #{:type :description} (keys branch))))
-                       branches))
-      (let [description (str/join " " (keep :description branches))]
-        (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
-            (assoc :type (into [] cat branch-types))
-            (cond-> (not (str/blank? description)) (assoc :description description)))))))
-
-(defn- flatten-union
-  "The JSON Schema `schema` with an `anyOf` beside only annotations replaced by its [[union->type-array]], joining the
-  descriptions, or `schema` itself when there is no such union."
-  [{:keys [anyOf description] :as schema}]
-  (or (when (and anyOf
-                 (every? annotation-keys (keys (dissoc schema :anyOf)))
-                 ((some-fn nil? string?) description))
-        (when-let [union (union->type-array anyOf)]
-          (let [descriptions (remove str/blank? [description (:description union)])]
-            (cond-> (merge (dissoc schema :anyOf :description) (dissoc union :description))
-              (seq descriptions) (assoc :description (str/join " " descriptions))))))
-      schema))
-
-(defn- nullable
-  "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
-  Where `schema`, or its [[flatten-union]], has a `:type` and otherwise only [[type-array-keys]], returns it with
-  `null` added to that type and to any `:enum`.
-  Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
-  [schema]
-  ;; A coercing client tries `anyOf` branches in order and coerces into the first one it can, so an explicit `null`
-  ;; becomes `0`, `false` or `""` there; a type array keeps it `null`.
-  (let [flat       (flatten-union schema)
-        type-names (types flat)]
-    ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
-    (if (and (seq type-names)
-             (every? type-array-keys (keys flat)))
-      (cond-> (assoc flat :type (vec (distinct (conj type-names "null"))))
-        ;; an enum rejects a `null` it does not list
-        (:enum flat) (update :enum #(vec (distinct (conj (vec %) nil)))))
-      (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
-        (:description schema) (assoc :description (:description schema))))))
-
-(defn- one-of-replacement
-  "What replaces the `oneOf` `branches`.
-  For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
-  For no branches, returns `{:not {}}`, which accepts nothing.
-  For any other branches, returns an `anyOf` of the same branches."
-  [[x y :as branches]]
-  (cond
-    (and (= 2 (count branches)) (= {:type "null"} y)) (nullable x)
-    ;; JSON Schema requires at least one branch in a `oneOf` or an `anyOf`
-    (empty? branches)                                 {:not {}}
-    :else                                             {:anyOf branches}))
-
-(defn- without-one-of
-  "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
-  Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win, except that two
-  descriptions are joined, the siblings' first.
-  Where any other keyword does, the replacement joins those keywords under `allOf`, and its description, if the
-  siblings have none, stays on the property."
-  [json-schema]
-  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so a falsy value valid for X matches
-  ;; both branches of a nullable `oneOf` and fails it, where an `anyOf` or a type array passes it.
-  ;; Malli validates a branching schema when any branch passes, so `anyOf` says what Malli checks.
-  ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
-  ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
-  (mu.json-schema/postwalk-schemas
-   (fn [{branches :oneOf :as node}]
-     (if (nil? branches)
-       node
-       (let [siblings    (dissoc node :oneOf)
-             replacement (one-of-replacement branches)]
-         ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
-         ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
-         ;; A sibling annotation wins over the replacement's, except that two descriptions are joined.
-         (cond
-           (every? annotation-keys (keys siblings))
-           (cond-> (merge replacement siblings)
-             ;; the `[:maybe]`'s description and its schema's both describe the property, outer first
-             (and (string? (:description siblings))
-                  (string? (:description replacement))
-                  (not= (:description siblings) (:description replacement)))
-             (assoc :description (str (:description siblings) " " (:description replacement))))
-
-           ;; clients and the docs generator read a property's description at its top level, not inside `allOf`
-           (and (:description replacement) (not (contains? siblings :description)))
-           (-> siblings
-               (assoc :description (:description replacement))
-               (update :allOf (fnil conj []) (dissoc replacement :description)))
-
-           :else
-           (update siblings :allOf (fnil conj []) replacement)))))
-   json-schema))
-
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
   `:map`, applies tool-description preferences, and transforms to JSON Schema.
-  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf` (see [[without-one-of]]).
+  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf`
+  (see [[mu.json-schema/without-one-of]]).
   Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
-    (without-one-of (mjs/transform prepared))))
+    (mu.json-schema/without-one-of (mjs/transform prepared))))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
