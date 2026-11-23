@@ -2,9 +2,9 @@ import { useGoalSourceResults } from "metabase/visualizations/hooks/use-goal-sou
 import { resolveForeignColumnRef } from "metabase/viz-core";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
+// Returns null when value is loading, or when it can't load
 type ResolveColumnValue = (column: string) => number | null;
 
-/** Values of the columns of `entity`, `null` until they load or when they can't. */
 export function useEntityColumnValues(
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
