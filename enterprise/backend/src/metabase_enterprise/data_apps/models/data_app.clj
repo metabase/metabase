@@ -15,7 +15,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -222,14 +221,11 @@
   A Collection that does not exist is left to the foreign key of `resource_collection_id`."
   [collection-id->app-id]
   (when (seq collection-id->app-id)
-    (let [collection-ids (vec (keys collection-id->app-id))
-          collections    (u/index-by :id (data-apps.db/resource-collections collection-ids))
-          owners         (reduce (fn [acc {:keys [id resource_collection_id]}]
-                                   (update acc resource_collection_id (fnil conj #{}) id))
-                                 {}
-                                 (data-apps.db/data-apps-with-collections collection-ids))]
+    (let [collection-ids     (vec (keys collection-id->app-id))
+          id->collection     (data-apps.db/resource-collections-by-ids collection-ids)
+          collection-id->ids (data-apps.db/data-app-ids-by-collection-ids collection-ids)]
       (doseq [[collection-id app-id] collection-id->app-id
-              :let                   [collection (collections collection-id)]]
+              :let                   [collection (id->collection collection-id)]]
         (when-not (or (nil? collection)
                       (and (= "data-apps" (some-> (:namespace collection) name))
                            (= "/" (:location collection))
@@ -237,116 +233,122 @@
                            (not-any? collection [:archived :is_sample])))
           (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
                           {:status-code 400, :collection-id collection-id})))
-        (when (seq (disj (get owners collection-id #{}) app-id))
+        (when (seq (disj (collection-id->ids collection-id #{}) app-id))
           (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                           {:status-code 400, :collection-id collection-id})))))))
 
-(mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
-  "Insert the DataApp `rows`, which the hooks of the model normalize, and return the inserted apps. A row
-  with a resource collection needs one that can be it; one without gets a collection of its own, named after its slug.
-  Throws a 400 when two rows share a collection."
-  [rows :- [:sequential ::data-apps.schema/data-app.create]]
-  (if (seq rows)
-    (let [given (keep :resource_collection_id rows)]
-      (when-not (apply distinct? (or (seq given) [nil]))
-        (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
-                        {:status-code 400})))
-      (check-resource-collections (zipmap given (repeat nil)))
-      (t2/with-transaction [_conn]
-        (let [missing        (filterv (comp nil? :resource_collection_id) rows)
-              new-collection (zipmap (map :slug missing)
-                                     (when (seq missing)
-                                       (mapv :id (collection/create-collections!
-                                                  (mapv (fn [{:keys [slug]}]
-                                                          {:name      (data-apps.db/resource-collection-name slug)
-                                                           :namespace "data-apps"})
-                                                        missing)))))
-              apps           (data-apps.db/insert-data-apps!
-                              (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
-                                    rows))]
-          (events/publish-event! :event/data-app-create (events/create-event apps))
+(defn- check-shared-resource-collection
+  "Throw a 400 when two of `collection-ids`, the resource collections that the apps of one batch get, are the same."
+  [collection-ids]
+  (when-not (apply distinct? (or (seq collection-ids) [nil]))
+    (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                    {:status-code 400}))))
+
+(defn- check-new-data-apps
+  "Throw a 400 unless the resource collections that the new `apps` come with satisfy these rules:
+
+  - no two apps share one
+  - each can be a resource collection, see [[check-resource-collections]]"
+  [apps]
+  (let [collection-ids (keep :resource_collection_id apps)]
+    (check-shared-resource-collection collection-ids)
+    (check-resource-collections (zipmap collection-ids (repeat nil)))))
+
+(defn- create-resource-collections!
+  "Create a resource collection, named after the slug, for each of `apps` that has none, and return the apps with it."
+  [apps]
+  (let [without          (filterv (comp nil? :resource_collection_id) apps)
+        slug->collection (zipmap (map :slug without)
+                                 (when (seq without)
+                                   (map :id (collection/create-collections!
+                                             (mapv (fn [{:keys [slug]}]
+                                                     {:name      (data-apps.db/resource-collection-name slug)
+                                                      :namespace "data-apps"})
+                                                   without)))))]
+    (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (slug->collection (:slug %))))
           apps)))
-    []))
+
+(defn- create-data-app-batch!
+  "Check and insert `apps`, one batch of a call, and return the inserted DataApps."
+  [apps]
+  (check-new-data-apps apps)
+  (data-apps.db/insert-data-apps! (create-resource-collections! apps)))
+
+(mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
+  "Insert `apps` in one transaction, publishing their create event, and return the inserted DataApps. An app without a
+  resource collection gets one of its own, named after its slug."
+  [apps :- [:sequential ::data-apps.schema/data-app.create]]
+  (t2/with-transaction [_conn]
+    (let [created (into []
+                        (mapcat (comp create-data-app-batch! vec))
+                        (partition-all app-db/create-partition-size apps))]
+      (when (seq created)
+        (events/publish-event! :event/data-app-create (events/create-event created)))
+      created)))
 
 (defn- without-held-bundles
-  "`rows`, the update rows of an import, without the bundle that the stored app of the row already holds."
-  [rows stored]
+  "The `updates` of an import without the bundle that the stored app of the row already holds."
+  [updates id->stored]
   (mapv (fn [{:keys [id bundle] :as row}]
           (cond-> row
-            (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle)))
-        rows))
+            (some-> ^bytes bundle bytes-hash (= (:bundle_hash (id->stored id)))) (dissoc :bundle)))
+        updates))
 
-(defn- check-new-resource-collections
-  "Throw a 400 unless the apps of `rows` that get their first resource collection, `stored` being the apps by id, satisfy
-  these rules:
+(defn- check-data-app-updates
+  "Throw a 400 unless the apps of `updates` that get their first resource collection satisfy these rules:
 
-  - no two of them get the same resource collection
-  - each gets a resource collection that can be one, see [[check-resource-collections]]"
-  [rows stored]
-  (let [pairs (into []
-                    (keep (fn [{:keys [id resource_collection_id]}]
-                            (when (and resource_collection_id (nil? (:resource_collection_id (get stored id))))
-                              [resource_collection_id id])))
-                    rows)]
-    (doseq [[collection-id group] (group-by first pairs)
-            :when                 (< 1 (count group))]
-      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
-                      {:status-code 400, :collection-id collection-id})))
-    (check-resource-collections (into {} pairs))))
-
-(defn- write-data-app-updates!
-  "Writes `rows`, updates of the `stored` DataApps, with one statement for each distinct set of changes, and returns what
-  the event needs, the changes of each row and the apps as they are after the write."
-  [stored rows]
-  (data-apps.db/update-data-apps! rows)
-  {:stored stored
-   :rows   rows
-   :objects (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))})
+  - no two apps share one
+  - each can be a resource collection, see [[check-resource-collections]]"
+  [updates id->stored]
+  (let [first-collections (filterv (fn [{:keys [id resource_collection_id]}]
+                                     (and resource_collection_id (nil? (:resource_collection_id (id->stored id)))))
+                                   updates)]
+    (check-shared-resource-collection (map :resource_collection_id first-collections))
+    (check-resource-collections (into {} (map (juxt :resource_collection_id :id)) first-collections))))
 
 (defn- update-data-app-batch!
-  "Writes the DataApps of `batch`, up to one partition of the call, without the bundles that the stored app already holds
-  for an import, and returns what the event needs."
-  [batch opts]
-  (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id batch)))]
-    (write-data-app-updates! stored (cond-> batch
-                                      (= :import (:writer opts)) (without-held-bundles stored)))))
+  "Check and write `updates`, one batch of a call, and return the rows written with the DataApps by id as stored before
+  and after."
+  [updates opts]
+  (let [ids        (mapv :id updates)
+        id->stored (data-apps.db/data-apps-by-ids ids)
+        updates    (cond-> updates
+                     (= :import (:writer opts)) (without-held-bundles id->stored))]
+    (check-data-app-updates updates id->stored)
+    (data-apps.db/update-data-apps! updates)
+    {:updates     updates
+     :id->stored  id->stored
+     :id->updated (data-apps.db/data-apps-by-ids ids)}))
 
-(defn- publish-data-app-updates!
-  "Publishes the update event of the DataApps that `batches`, what [[update-data-app-batch!]] returned, wrote."
-  [batches]
-  (when (some (comp seq :rows) batches)
-    (events/publish-event! :event/data-app-update
-                           (events/update-event (into {} (map :stored) batches)
-                                                (into [] (mapcat :rows) batches)
-                                                {:objects (into {} (map :objects) batches)}))))
-
-(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
-  "Apply `updates`, each the `:id` of a DataApp with the columns to give it, which the hooks of the model normalize, in
-  one transaction, publishing their update event. Throws unless a new resource collection can be one, which it cannot
-  for several apps. With `:writer :import` an app does not write a bundle that the stored app already holds. Returns
-  `updates`."
+(mu/defn update-data-apps! :- :nil
+  "Apply `updates`, each the `:id` of a DataApp and the columns to change, in one transaction, publishing their update
+  event. With `:writer :import` an app does not write a bundle that the stored app already holds."
   ([updates :- [:sequential ::data-apps.schema/data-app.update-row]]
    (update-data-apps! updates nil))
   ([updates :- [:sequential ::data-apps.schema/data-app.update-row]
     opts    :- [:maybe [:map {:closed true} [:writer {:optional true} [:enum :import]]]]]
    (t2/with-transaction [_conn]
-     (check-new-resource-collections updates (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id updates))))
-     (publish-data-app-updates!
-      (mapv #(update-data-app-batch! % opts) (partition-all app-db/update-partition-size updates))))
-   (vec updates)))
+     (let [batches (mapv #(update-data-app-batch! (vec %) opts)
+                         (partition-all app-db/update-partition-size updates))]
+       (when (seq batches)
+         (events/publish-event! :event/data-app-update
+                                (events/update-event (into {} (map :id->stored) batches)
+                                                     (into [] (mapcat :updates) batches)
+                                                     {:objects (into {} (map :id->updated) batches)})))))
+   nil))
 
 (mu/defn delete-data-apps! :- :nil
-  "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, publishing their
-  delete event. The collection's own hooks delete what it holds."
-  [data-app-ids :- [:sequential ms/PositiveInt]]
-  (when (seq data-app-ids)
-    (t2/with-transaction [_conn]
-      (let [apps           (data-apps.db/data-apps-by-ids (vec data-app-ids))
-            collection-ids (into [] (keep :resource_collection_id) apps)]
-        (when (seq collection-ids)
-          (collection/delete-collections! collection-ids))
+  "Delete the DataApps with `ids` in one transaction, each after its resource collection with the grants on it,
+  publishing their delete event. The hooks of the collection delete what it holds."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))
+          apps    (into [] (mapcat (comp vals data-apps.db/data-apps-by-ids)) batches)]
+      (when (seq apps)
+        (when-let [collection-ids (seq (keep :resource_collection_id apps))]
+          (collection/delete-collections! (vec collection-ids)))
         (events/publish-event! :event/data-app-delete (events/delete-event apps))
-        (data-apps.db/delete-data-apps! (vec data-app-ids)))))
+        (run! data-apps.db/delete-data-apps! batches))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
@@ -372,7 +374,7 @@
                                                   :import import-bundles}}
    :before-load         default-versions
    :insert!             create-data-apps!
-   :update!             #(update-data-apps! % {:writer :import})
+   :update!             #(do (update-data-apps! % {:writer :import}) %)
    :delete!             delete-data-apps!
    :storage-paths       storage-paths
    :resource-paths      resource-paths

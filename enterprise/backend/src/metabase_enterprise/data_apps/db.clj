@@ -67,20 +67,24 @@
   [slug :- :string]
   (format "Data App: %s" slug))
 
-(mu/defn data-apps-by-ids :- [:sequential ::data-apps.schema/data-app]
-  "The DataApps with `data-app-ids` without their bundles."
+(mu/defn data-apps-by-ids :- [:map-of ms/PositiveInt ::data-apps.schema/data-app]
+  "The DataApps with `data-app-ids`, without their bundles, by id."
   [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select non-blob-model :id [:in [:auto/param data-app-ids]]))
+  (t2/select-pk->fn identity non-blob-model :id [:in [:auto/param data-app-ids]]))
 
-(mu/defn data-apps-with-collections :- [:sequential [:map [:id ms/PositiveInt] [:resource_collection_id ms/PositiveInt]]]
-  "The `:id` and `:resource_collection_id` of the DataApps whose resource collection is one of `collection-ids`."
+(mu/defn data-app-ids-by-collection-ids :- [:map-of ms/PositiveInt [:set ms/PositiveInt]]
+  "The ids of the DataApps whose resource collection is one of `collection-ids`, by that collection's id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:in [:auto/param collection-ids]]))
+  (reduce (fn [collection-id->ids {:keys [id resource_collection_id]}]
+            (update collection-id->ids resource_collection_id (fnil conj #{}) id))
+          {}
+          (t2/select [:model/DataApp :id :resource_collection_id]
+                     :resource_collection_id [:in [:auto/param collection-ids]])))
 
-(mu/defn resource-collections :- [:sequential :map]
-  "The Collections with `collection-ids`."
+(mu/defn resource-collections-by-ids :- [:map-of ms/PositiveInt :map]
+  "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
+  (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."
