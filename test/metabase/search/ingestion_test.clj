@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -17,6 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -286,8 +288,14 @@
 (deftest ^:synchronized failing-run-keeps-later-tombstones-test
   (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Failingrunprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingrunprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (is (thrown? Exception
                        (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
@@ -296,8 +304,14 @@
           (is (false? (indexed?)))))))
   (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Failingassertprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingassertprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
             (is (thrown? AssertionError
@@ -307,8 +321,14 @@
           (is (false? (indexed?)))))))
   (testing "any other Error is fatal, and stops the batch before the tombstone"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Fatalerrorprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Fatalerrorprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
             (is (thrown? LinkageError
@@ -320,17 +340,19 @@
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _ {:db_id          db-id
-                                     :name           "Curatedgoldtbl"
-                                     :active         true
-                                     :data_authority :authoritative
-                                     :data_layer     :final}]
-        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
-                          (filter (comp #{"table"} :model))
-                          first)]
-          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
-                  result)))))))
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-model-cleanup [:model/Table]
+          (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                        :db_id          db-id
+                                        :name           "Curatedgoldtbl"
+                                        :active         true
+                                        :data_authority :authoritative
+                                        :data_layer     :final)])
+          (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                            (filter (comp #{"table"} :model))
+                            first)]
+            (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                    result))))))))
 
 (defn- queued-updates!
   "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."

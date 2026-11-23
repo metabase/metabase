@@ -20,12 +20,16 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -38,8 +42,7 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -95,12 +98,6 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(defn exists-with-name?
-  "Does a `PermissionsGroup` with `group-name` exist in the DB? (case-insensitive)"
-  ^Boolean [group-name]
-  {:pre [((some-fn keyword? string?) group-name)]}
-  (permissions.db/group-exists-with-lower-name? (u/lower-case-en (name group-name))))
-
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
@@ -137,56 +134,19 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-name-not-already-taken
-  [group-name]
-  (when (exists-with-name? group-name)
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
-
 (defn- check-not-magic-group
-  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
-
-(t2/define-before-insert :model/PermissionsGroup
-  [{group-name :name, :as group}]
-  (u/prog1 group
-    (check-name-not-already-taken group-name)))
-
-(defn- set-default-permission-values!
-  [group]
-  (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
-      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
-
-(t2/define-after-insert :model/PermissionsGroup
-  [group]
-  (u/prog1 group
-    (set-default-permission-values! group)))
-
-(t2/define-before-delete :model/PermissionsGroup
-  [{id :id, :as group}]
-  (check-not-magic-group group)
-  (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = id) val))))))
+  "Throws a 400 when `group`, a stored PermissionsGroup, is one of the built-in groups, which its row says through its
+  `:magic_group_type`."
+  [{:keys [magic_group_type name]}]
+  (when magic_group_type
+    (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" name)
+                    {:status-code 400}))))
 
 (t2/define-before-update :model/PermissionsGroup
   [group]
   (let [changes (t2/changes group)]
     (when (contains? changes :name)
-      (check-not-magic-group group))
-    (when-let [group-name (:name changes)]
-      (check-name-not-already-taken group-name))
+      (check-not-magic-group (t2/original group)))
     (when (contains? changes :is_tenant_group)
       (throw (ex-info (tru "You cannot change whether a group is a tenant group.") {:status-code 400})))
     (when (contains? changes :magic_group_type)
@@ -258,13 +218,127 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
-;;; ----------------------------------------------------- Specs ------------------------------------------------------
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defmethod events/spec :model/PermissionsGroup
-  [_model]
-  {:create :event/group-create
-   :update :event/group-update
-   :delete :event/group-delete})
+(defn- check-names-not-already-taken
+  "Throws a 400 unless `group-names` satisfy these rules, compared lower-cased:
+
+  - no two of them are the same
+  - none is the name of an existing group"
+  [group-names]
+  (let [lower-names (mapv u/lower-case-en group-names)]
+    (when (or (not (apply distinct? lower-names))
+              (permissions.db/group-exists-with-lower-names? lower-names))
+      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
+
+(defn- remove-from-ldap-group-mappings!
+  "Drop the groups with `group-ids` from every mapping of the `ldap-group-mappings` setting."
+  [group-ids]
+  (let [group-ids (set group-ids)]
+    (setting/set-value-of-type!
+     :json :ldap-group-mappings
+     (when-let [mappings (setting/get :ldap-group-mappings)]
+       (zipmap (keys mappings)
+               (for [val (vals mappings)]
+                 (remove group-ids val)))))))
+
+(defn- check-new-groups
+  "Throws a 400 unless the names of the new PermissionsGroup `rows` satisfy the rules of [[check-names-not-already-taken]]."
+  [rows]
+  (check-names-not-already-taken (map :name rows)))
+
+(defn- set-default-permissions-and-publish!
+  "Give each of the new `groups` the default permissions on every Database, then publish their create event."
+  [groups]
+  (data-perms/with-global-permissions-lock
+    (data-perms/set-default-groups-permissions! groups (permissions.db/non-destination-database-ids)))
+  (events/publish-event! :event/group-create (events/create-event groups)))
+
+(mu/defn create-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
+  "Insert the PermissionsGroup `rows`, each with the default permissions on every Database, in one transaction and
+  return them in order, publishing their create event; the name of an existing group is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions-group.create]]
+  (mdb/create-batched! :model/PermissionsGroup rows
+                       {:before-create check-new-groups
+                        :after-create  set-default-permissions-and-publish!}))
+
+(defn rename-order
+  "The rows of `updates`, whose stored rows `id->stored` holds, in an order in which each change of `:name` comes after
+  the one that frees that name, comparing names lower-cased, or nil when the renames take each other's names in a
+  cycle."
+  [updates id->stored]
+  (let [stored-name #(u/lower-case-en (:name (id->stored (:id %))))
+        new-name    #(some-> (:name %) u/lower-case-en)]
+    (loop [pending (vec updates), ordered []]
+      (if (empty? pending)
+        ordered
+        (let [held   (into #{} (map stored-name) pending)
+              ready? (fn [row] (or (nil? (new-name row)) (= (new-name row) (stored-name row)) (not (held (new-name row)))))
+              ready  (filterv ready? pending)]
+          (when (seq ready)
+            (recur (filterv (complement ready?) pending) (into ordered ready))))))))
+
+(defn- check-group-updates
+  "Throws a 400 unless every row of `updates`, whose stored PermissionsGroups `id->stored` holds, satisfies these rules,
+  with the refusal of the first row that breaks one, in this order for each:
+
+  - a rename does not take the name of an earlier rename of the batch, compared lower-cased
+  - a rename does not take the name of a group as it stands after the renames of the batch, compared lower-cased, so
+    a name another row of the batch renames away is free
+  - the hooks of the group accept the row merged into its stored row (a magic group keeps its name)
+  - the renames of the batch do not take each other's names in a cycle"
+  [updates id->stored]
+  (let [updates (filterv (comp id->stored :id) updates)
+        renames (filterv #(and (contains? % :name) (not= (:name %) (:name (id->stored (:id %))))) updates)
+        taken   (if (seq renames)
+                  (permissions.db/lower-names-taken-outside (mapv (comp u/lower-case-en :name) renames) (mapv :id renames))
+                  #{})
+        renamed (into #{} (map :id) renames)]
+    (reduce (fn [earlier-names {id :id :as row}]
+              (let [lower-name (some-> (:name row) u/lower-case-en)]
+                (when (and (renamed id) (or (taken lower-name) (earlier-names lower-name)))
+                  (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))
+                (t2.before-update/before-update :model/PermissionsGroup (merge (id->stored id) (dissoc row :id)))
+                (cond-> earlier-names (renamed id) (conj lower-name))))
+            #{}
+            updates)
+    (when (nil? (rename-order updates id->stored))
+      (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
+
+(defn- existing-in-rename-order
+  "The rows of `updates` whose PermissionsGroups `id->stored` holds, each rename after the one that frees its name."
+  [updates id->stored]
+  (rename-order (filterv (comp id->stored :id) updates) id->stored))
+
+(mu/defn update-permissions-groups! :- :nil
+  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups in one transaction, publishing their
+  update event; renaming a magic group, or to the name of an existing group or of another row, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions-group.update]]
+  (mdb/update-batched! :model/PermissionsGroup rows
+                       {:before-update (fn [updates id->stored]
+                                         (check-group-updates updates id->stored)
+                                         (existing-in-rename-order updates id->stored))
+                        :after-update  (fn [updates id->stored _]
+                                         (events/publish-event! :event/group-update (events/update-event id->stored updates)))}))
+
+(defn- check-groups-deletable
+  "Throws a 400 unless every one of the `groups` satisfies these rules:
+
+  - it is not a magic group"
+  [groups]
+  (run! check-not-magic-group groups))
+
+(mu/defn delete-permissions-groups! :- :nil
+  "Delete the PermissionsGroups with `ids` in one transaction and drop them from the LDAP group mappings, publishing
+  their delete event; deleting a magic group is a 400."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/PermissionsGroup (distinct ids)
+                       {:before-delete (fn [groups]
+                                         (check-groups-deletable groups)
+                                         (remove-from-ldap-group-mappings! (map :id groups))
+                                         (events/publish-event! :event/group-delete (events/delete-event groups)))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/PermissionsGroup [_model]
   {:skip? false})

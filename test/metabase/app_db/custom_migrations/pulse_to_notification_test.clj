@@ -5,6 +5,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -51,7 +52,9 @@
   (let [pulse-id (t2/insert-returning-pk! :pulse (assoc (add-timestamp pulse) :entity_id (u/generate-nano-id)))]
     (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id :entity_id (u/generate-nano-id)) pulse-cards))
     (doseq [pcr pcs+recipients]
-      (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
+      (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))
+            _     (task.send-pulses-trigger/update-send-pulse-trigger-if-needed!
+                   pulse-id (t2/select-one :model/PulseChannel :id pc-id) :add-pc-ids #{pc-id})]
         (when (seq (:recipients pcr))
           (t2/insert! :pulse_channel_recipient (map #(assoc % :pulse_channel_id pc-id) (:recipients pcr))))))
     pulse-id))

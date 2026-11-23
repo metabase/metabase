@@ -10,9 +10,9 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -30,7 +30,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
@@ -39,24 +38,13 @@
 
 (t2/deftransforms :model/CardTest
   {:now          data-testing.models/now-column
-   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
-   :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
   "Add the newest run, or nil, to each card test."
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/CardTest [card-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
-  ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
-  ;; runs are never listed or shown as `last_run`.
-  (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
-  (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
-  card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -99,36 +87,6 @@
   (and (mi/can-write? instance)
        (can-save-test? (:card_id changes (:card_id instance)))))
 
-;;; ---------------------------------------------------- Writes ----------------------------------------------------
-
-(mu/defn create-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` returning the inserted test."
-  [card-test :- [:merge
-                 ::data-testing.schema/card-test.create
-                 [:map {:closed true}
-                  [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-card-test! card-test))
-
-(mu/defn update-card-test! :- :nil
-  "Apply `changes` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/card-test.update]
-  (data-testing.db/update-card-test! id changes)
-  nil)
-
-(mu/defn delete-card-test! :- :nil
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-card-test! id)
-  nil)
-
-(defenterprise delete-card-tests!
-  "Deletes the tests of the card `card-id` whatever the token says, since the
-  rows outlive the feature."
-  :feature :none
-  [card-id]
-  (data-testing.db/delete-card-tests! card-id))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-card :- [:maybe :map]
@@ -166,6 +124,34 @@
    :subject    #(testable-card (:card_id %))
    :can-run?   can-run?})
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
+  "Insert the CardTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
+  [rows :- [:sequential ::data-testing.schema/card-test.create]]
+  (data-testing.models/create-saved-tests! :model/CardTest rows))
+
+(mu/defn update-card-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms of
+  the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
+   (update-card-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]
+    opts :- :metabase.events.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
+
+(mu/defn delete-card-tests! :- :nil
+  "Delete the CardTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
+
+(defenterprise delete-card-tests-for-cards!
+  "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [card-ids]
+  (delete-card-tests! (data-testing.db/saved-test-ids-of-subjects :model/CardTest :card_id (vec card-ids))))
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -173,33 +159,27 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (update-card-test! id (select-keys snapshot revision-columns)))
+  (update-card-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
-  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
-  refused."
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (let [snapshot (merge {:now nil} snapshot)]
-    (data-testing.errors/refusing
-     "card-test"
-     #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/card-test id) snapshot)))
-    snapshot))
+  (data-testing.errors/refusing
+   "card-test"
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/card-test id) snapshot)))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/CardTest
-  [_model]
-  {:create :event/card-test-create
-   :update :event/card-test-update
-   :delete :event/card-test-delete})
 
 (defmethod app-db-copy/spec :model/CardTest [_model]
   {:skip? false})
 
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
+   :insert!             create-card-tests!
+   :update!             #(update-card-tests! % {:writer :import})
+   :delete!             delete-card-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)
                          :creator_id serialization/user-transform
@@ -215,6 +195,7 @@
 (defmethod revisions/spec :model/CardTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/card-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-card-test!})

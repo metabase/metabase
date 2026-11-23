@@ -35,7 +35,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf]
+   [metabase.warehouses.models.database :as database])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
@@ -1271,7 +1272,7 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (bigquery.db/update-database-details! db-id updated-details)
+      (database/update-databases! [{:id db-id :details updated-details}])
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])

@@ -2,6 +2,10 @@
   "Database-backed implementations of OAuth provider storage protocols."
   (:require
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
+   [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
+   [metabase.oauth-server.models.oauth-client :as oauth-client]
+   [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [toucan2.core :as t2]))
@@ -127,7 +131,7 @@
                           (-> (assoc :client-secret-hash (:client-secret client-config))
                               (dissoc :client-secret))))
           row       (client-config->db-row config)]
-      (oauth-server.db/insert-oauth-client! row)
+      (oauth-client/create-oauth-client! row)
       config))
 
   (update-client [_ client-id updated-config]
@@ -137,7 +141,7 @@
               merged          (-> (merge existing-config updated-config)
                                   (assoc :client-id client-id))
               row             (client-config->db-row merged)]
-          (oauth-server.db/update-oauth-client! (:id existing) row)
+          (oauth-client/update-oauth-clients! [(assoc row :id (:id existing))])
           merged)))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
@@ -145,7 +149,7 @@
 (defrecord DbAuthorizationCodeStore []
   proto/AuthorizationCodeStore
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
-    (oauth-server.db/insert-authorization-code!
+    (oauth-authorization-code/create-oauth-authorization-code!
      (cond-> {:code         code
               :user_id      (parse-user-id-or-throw user-id)
               :client_id    client-id
@@ -163,13 +167,13 @@
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (oauth-server.db/delete-authorization-code! code)
+    (oauth-authorization-code/delete-oauth-authorization-codes! (oauth-server.db/authorization-code-ids-with-code code))
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
       (when-let [row (oauth-server.db/lock-authorization-code code)]
-        (oauth-server.db/delete-authorization-code! code)
+        (oauth-authorization-code/delete-oauth-authorization-codes! [(:id row)])
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
@@ -177,7 +181,7 @@
 (defrecord DbTokenStore []
   proto/TokenStore
   (save-access-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-access-token!
+    (oauth-access-token/create-oauth-access-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
@@ -191,7 +195,7 @@
         db-row->access-token))
 
   (save-refresh-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-refresh-token!
+    (oauth-refresh-token/create-oauth-refresh-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
@@ -205,8 +209,8 @@
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (oauth-server.db/revoke-access-token! token)
-    (oauth-server.db/revoke-refresh-token! token)
+    (oauth-access-token/revoke-oauth-access-token! token)
+    (oauth-refresh-token/revoke-oauth-refresh-token! token)
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

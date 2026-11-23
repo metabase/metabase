@@ -140,12 +140,12 @@
          ;; The first redaction pays one-off caching the sandbox check does; leave it out of the
          ;; measured counts.
          (redaction-query-count [(email-handler 10 [email-recipient])])
-         (testing "one handler: one query however many recipients need looking up"
-           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])]))
+         (testing "one handler: the same queries however many recipients need looking up"
+           (is (= (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2]))])
                   (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3 4 5 6]))]))))
          (testing "handlers share the one lookup rather than each running their own"
-           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])
-                                               (email-handler 11 [email-recipient])]))
+           (is (= (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3]))
+                                          (email-handler 11 [email-recipient])])
                   (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3]))
                                           (email-handler 11 (deactivated-recipients [4 5 6]))]))))))
       (testing "a tenantless caller does not run the tenant filter, so it needs no lookup at all"

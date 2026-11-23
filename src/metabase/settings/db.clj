@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -62,9 +61,3 @@
   "The application DB's own current timestamp, as a string."
   []
   (mdb/current-timestamp-string (mdb/db-type)))
-
-(mu/defn update-user-settings!
-  "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
-  [user-id       :- ::lib.schema.id/user
-   settings-json :- :string]
-  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))

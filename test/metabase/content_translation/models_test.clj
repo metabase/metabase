@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.content-translation.models :as ct.models]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -51,3 +52,12 @@
                 nil-translations (ct.models/get-translations nil)]
             (is (= (count all-translations) (count nil-translations)))
             (is (= (set all-translations) (set nil-translations)))))))))
+
+(deftest create-content-translations-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ContentTranslation]
+    (let [counted (fn [n]
+                    (events.tu/statement-count!
+                     #(ct.models/create-content-translations!
+                       (vec (repeatedly n (fn [] {:locale "de" :msgid (mt/random-name) :msgstr (mt/random-name)}))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

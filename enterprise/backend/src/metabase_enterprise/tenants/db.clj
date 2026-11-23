@@ -2,9 +2,7 @@
   "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -62,29 +60,20 @@
   (t2/exists? :model/Tenant :id tenant-id :is_active true))
 
 (mu/defn tenant-name-or-slug-exists?
-  "Whether a Tenant named `tenant-name` or with `slug` exists."
-  [tenant-name :- :string
-   slug        :- :string]
+  "Whether a Tenant with one of `tenant-names` or one of `slugs` exists."
+  [tenant-names :- [:sequential {:min 1} :string]
+   slugs        :- [:sequential {:min 1} :string]]
   (t2/exists? :model/Tenant {:where [:or
-                                     [:= :slug slug]
-                                     [:= :name tenant-name]]}))
+                                     [:in :slug slugs]
+                                     [:in :name tenant-names]]}))
 
-(mu/defn other-tenant-named?
-  "Whether a Tenant other than `tenant-id` is named `tenant-name`."
-  [tenant-name :- :string
-   tenant-id   :- ms/PositiveInt]
-  (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
-
-(mu/defn insert-tenant!
-  "Insert `tenant` and return the new instance."
-  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
-  (t2/insert-returning-instance! :model/Tenant tenant))
-
-(mu/defn update-tenant!
-  "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
-  [tenant-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
-  (t2/update! :model/Tenant {:id tenant-id} changes))
+(mu/defn tenant-named-outside?
+  "Whether a Tenant other than those with `excluded-ids` has one of `tenant-names`."
+  [tenant-names :- [:sequential {:min 1} :string]
+   excluded-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/Tenant {:where [:and
+                                     [:in :name [:auto/param (vec (distinct tenant-names))]]
+                                     [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]}))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."
@@ -97,42 +86,22 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn deactivate-tenant-users!
-  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
-  number updated."
-  [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
+(mu/defn active-tenants-by-ids :- [:map-of ms/PositiveInt ::tenants.schema/tenant]
+  "The map from id to Tenant of every active Tenant."
+  []
+  (t2/select-pk->fn identity :model/Tenant :is_active true))
 
-(mu/defn reactivate-tenant-users!
-  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
-  [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-              {:is_active true :deactivated_with_tenant nil}))
+(mu/defn deactivate-tenants!
+  "Deactivate the Tenants with `tenant-ids`, returning the number updated."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/Tenant :id [:in tenant-ids] {:is_active false}))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :tenant_id :model/User :id user-id))
 
-(mu/defn set-collection-archived!
-  "Archive the Collection with `collection-id` and what is in it when `archived?`, else restore it and what its
-  archive took down, through its model."
-  [collection-id :- ::lib.schema.id/collection
-   archived?     :- :boolean]
-  (t2/update! :model/Collection :id collection-id {:archived archived?}))
-
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-set :model/Collection :location [:like (str "/" collection-id "/%")]))
-
-(mu/defn insert-collection!
-  "Insert `collection` and return its ID."
-  [collection :- ::collections.schema/collection.update]
-  (t2/insert-returning-pk! :model/Collection collection))
-
-(mu/defn delete-permissions-with-objects!
-  "Delete the Permissions rows for `objects`, returning the number deleted."
-  [objects :- [:sequential :string]]
-  (t2/query-one {:delete-from :permissions
-                 :where       [:in :object objects]}))

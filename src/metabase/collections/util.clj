@@ -28,7 +28,7 @@
                                       (remove coll-id->coll))
                             (vals coll-id->coll))
         coll-id->coll (merge (if (seq to-fetch)
-                               (collections.db/collections-by-id (vec to-fetch))
+                               (collections.db/collections-by-ids (vec to-fetch))
                                {})
                              coll-id->coll)]
     (for [row rows]

@@ -35,6 +35,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
@@ -655,19 +657,18 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (warehouses-rest.db/insert-database!
-                               (merge
-                                {:name         name
-                                 :engine       engine
-                                 :details      details-or-error
-                                 :is_full_sync is_full_sync
-                                 :is_on_demand is_on_demand
-                                 :cache_ttl    cache_ttl
-                                 :creator_id   api/*current-user-id*}
-                                (when schedules
-                                  (sync.schedules/schedule-map->cron-strings schedules))
-                                (when (some? auto_run_queries)
-                                  {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (database/create-databases! [(merge
+                                                                   {:name         name
+                                                                    :engine       engine
+                                                                    :details      details-or-error
+                                                                    :is_full_sync is_full_sync
+                                                                    :is_on_demand is_on_demand
+                                                                    :cache_ttl    cache_ttl
+                                                                    :creator_id   api/*current-user-id*}
+                                                                   (when schedules
+                                                                     (sync.schedules/schedule-map->cron-strings schedules))
+                                                                   (when (some? auto_run_queries)
+                                                                     {:auto_run_queries auto_run_queries}))])))
         (sync/start-initial-sync! <> nil)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
@@ -957,10 +958,8 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (events/with-batched-events
-          (warehouses-rest.db/update-database! id updates)
-          (when (premium-features/enable-cache-granular-controls?)
-            (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
+        (database/update-databases! [(assoc (cond-> updates
+                                              (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) :id (:id existing-database))] {:databases [existing-database]})
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -981,9 +980,9 @@
   (t2/with-transaction [_conn]
     (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
-      (warehouses-rest.db/delete-destination-databases! id)
-      (database-routing/delete-associated-database-router! id)
-      (warehouses-rest.db/delete-database! id)
+      (database/delete-databases! (warehouses-rest.db/destination-database-ids id))
+      (database-routing/delete-database-routers-for-databases! [id])
+      (database/delete-databases! [id])
       nil))
   api/generic-204-no-content)
 
@@ -1029,7 +1028,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (warehouses-rest.db/mark-tables-sync-complete! table-ids)))
+      (table/update-tables! (for [id (vec (distinct table-ids))] {:id id :initial_sync_status "complete"}))))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1068,7 +1067,7 @@
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (warehouses-rest.db/delete-field-values-for-database! (u/the-id database-or-id)))
+  (field-values/delete-field-values! (field-values/ids-of-database (u/the-id database-or-id))))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;

@@ -3,9 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -135,17 +133,6 @@
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
-
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
-  (t2/update! :model/Card :id card-id changes))
-
-(mu/defn delete-card!
-  "Delete the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Card :id card-id))
 
 (mu/defn max-collection-position
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."

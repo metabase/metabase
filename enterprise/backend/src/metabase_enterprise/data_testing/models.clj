@@ -3,11 +3,15 @@
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -34,15 +38,7 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::saved-test))
-
-(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
-  "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
-  way out."
-  [schema :- :keyword]
-  {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
-   :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
 (def now-column
   "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and
@@ -65,17 +61,16 @@
 
 (t2/deftransforms :model/TransformTest
   {:now          now-column
-   :inputs       (json-column ::data-testing.schema/inputs)
-   :expectations (json-column ::data-testing.schema/expectations)})
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-(mu/defn remove-deleted-test-from-suites!
-  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing on an instance where
-  remote sync keeps synced content read-only, since that instance cannot push the changed suites; a run then reports
-  the test as missing."
-  [test-type :- ::data-testing.schema/test-type
-   entity-id :- :string]
-  (when-not (remote-sync/read-only?)
-    (data-testing.db/delete-suite-members-of-test! test-type entity-id)))
+(mu/defn- remove-deleted-tests-from-suites! :- :nil
+  "Remove the deleted `test-type` tests with `entity-ids` from every suite, publishing the delete event of their
+  members, and do nothing on an instance where remote sync keeps synced content read-only."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential :string]]
+  (when-not (or (remote-sync/read-only?) (empty? entity-ids))
+    (test-suite/delete-test-suite-members-for-tests! test-type (vec entity-ids))))
 
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
@@ -92,13 +87,6 @@
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
-  transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -203,33 +191,83 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(mu/defn create-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` returning the inserted test."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-transform-test! transform-test))
+(def ^:private saved-test-topics
+  "The lifecycle event topics of each saved test model."
+  {:model/TransformTest {:create :event/transform-test-create
+                         :update :event/transform-test-update
+                         :delete :event/transform-test-delete}
+   :model/CardTest      {:create :event/card-test-create
+                         :update :event/card-test-update
+                         :delete :event/card-test-delete}
+   :model/SegmentTest   {:create :event/segment-test-create
+                         :update :event/segment-test-update
+                         :delete :event/segment-test-delete}})
 
-(mu/defn update-transform-test! :- :nil
-  "Apply `changes` to the TransformTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/transform-test.update]
-  (data-testing.db/update-transform-test! id changes)
-  nil)
+(mu/defn create-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
+  "Insert the `rows` of the saved tests of `model` in one transaction, publishing their create event, and return the
+  inserted tests."
+  [model :- :keyword
+   rows  :- [:sequential ::data-testing.schema/saved-test.create]]
+  (mdb/create-batched! model rows
+                       {:after-create #(events/publish-event! (get-in saved-test-topics [model :create])
+                                                              (events/create-event %))}))
 
-(mu/defn delete-transform-test! :- :nil
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-transform-test! id)
-  nil)
+(mu/defn update-saved-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a test of `model` and the columns to change, in one transaction,
+  publishing their update event."
+  [model :- :keyword
+   rows  :- [:sequential ::data-testing.schema/saved-test.update]
+   opts  :- :metabase.events.schema/write-opts]
+  (mdb/update-batched! model rows
+                       {:reread?      true
+                        :after-update (fn [updates id->stored id->updated]
+                                        (events/publish-event! (get-in saved-test-topics [model :update])
+                                                               (events/update-event id->stored updates
+                                                                                    (assoc opts :objects id->updated))))}))
 
-(defenterprise delete-transform-tests!
-  "Deletes the tests of the transform `transform-id` whatever the token says,
+(defn- delete-and-publish!
+  "Set the test id of the runs of the deleted `test-type` `tests` of `model` to nil and remove them from the suites, then
+  publish their delete event."
+  [test-type model tests]
+  (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
+  (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests))
+  (events/publish-event! (get-in saved-test-topics [model :delete]) (events/delete-event tests)))
+
+(mu/defn delete-saved-tests! :- :nil
+  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one transaction, publishing their delete
+  event right before the statement, so that a run of a deleted test no longer names it and a suite no longer holds
+  it."
+  [test-type :- ::data-testing.schema/test-type
+   model     :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! model ids {:before-delete #(delete-and-publish! test-type model %)}))
+
+(mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
+  "Insert the TransformTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
+  [rows :- [:sequential ::data-testing.schema/transform-test.create]]
+  (create-saved-tests! :model/TransformTest rows))
+
+(mu/defn update-transform-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a TransformTest and the columns to change, which the column
+  transforms of the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]]
+   (update-transform-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]
+    opts :- :metabase.events.schema/write-opts]
+   (update-saved-tests! :model/TransformTest rows opts)))
+
+(mu/defn delete-transform-tests! :- :nil
+  "Delete the TransformTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (delete-saved-tests! :transform :model/TransformTest ids))
+
+(defenterprise delete-transform-tests-for-transforms!
+  "Deletes the tests of the transforms with `transform-ids` whatever the token says,
   since the rows outlive the feature."
   :feature :none
-  [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
+  [transform-ids]
+  (delete-transform-tests! (data-testing.db/saved-test-ids-of-subjects :model/TransformTest :transform_id (vec transform-ids))))
 
 (defmethod data-testing.test-type/spec :transform [_test-type]
   {:model      :model/TransformTest
@@ -269,36 +307,30 @@
 
 (defn- revert-transform-test!
   [id _user-id snapshot]
-  (update-transform-test! id (select-keys snapshot revision-columns)))
+  (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
 (defn- check-revert
-  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
-  refused."
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
   [id _user-id snapshot]
   (check-revert-available)
-  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (let [snapshot (merge {:now nil} snapshot)]
-    (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
-      (data-testing.errors/refusing
-       "transform-test"
-       #(data-testing.runner/validate-test :transform
-                                           (data-testing.db/transform (:transform_id snapshot))
-                                           (data-testing.runner/test-definition snapshot))))
-    snapshot))
+  (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
+    (data-testing.errors/refusing
+     "transform-test"
+     #(data-testing.runner/validate-test :transform
+                                         (data-testing.db/transform (:transform_id snapshot))
+                                         (data-testing.runner/test-definition snapshot))))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/TransformTest
-  [_model]
-  {:create :event/transform-test-create
-   :update :event/transform-test-update
-   :delete :event/transform-test-delete})
 
 (defmethod app-db-copy/spec :model/TransformTest [_model]
   {:skip? false})
 
 (defmethod serialization/spec :model/TransformTest [_]
   {:schema              ::data-testing.schema/external-transform-test
+   :insert!             create-transform-tests!
+   :update!             #(update-transform-tests! % {:writer :import})
+   :delete!             delete-transform-tests!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:transform_id (serialization/fk-transform :model/Transform)
                          :creator_id   serialization/user-transform
@@ -314,6 +346,7 @@
 (defmethod revisions/spec :model/TransformTest [_model]
   {:track         revision-columns
    :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/transform-test.revision
    :authorize     :snapshot
    :before-revert check-revert
    :revert!       revert-transform-test!})

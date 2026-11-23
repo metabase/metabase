@@ -20,3 +20,9 @@
    [:progress    {:optional true} [:maybe :int]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::cloud-migration.create
+  "What starting a CloudMigration takes: the id and upload URL the Store gave it."
+  [:map {:closed true}
+   [:external_id [:maybe [:or :string :int]]]
+   [:upload_url  [:maybe :string]]])

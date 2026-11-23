@@ -2,9 +2,13 @@
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -29,9 +33,20 @@
    :source_entity_type mi/transform-keyword
    :target_entity_type mi/transform-keyword})
 
-(defn create-run!
+(defn active-run
+  "Return the single active run, or nil."
+  []
+  (replacement.db/active-run))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-run!
   "Insert a new pending run. It becomes active when [[start-run!]] is called."
-  [source-type source-id target-type target-id user-id]
+  [source-type :- ::replacement.schema/source-entity-type
+   source-id   :- ::replacement.schema/source-entity-id
+   target-type :- ::replacement.schema/source-entity-type
+   target-id   :- ::replacement.schema/source-entity-id
+   user-id     :- [:maybe ::lib.schema.id/user]]
   (replacement.db/insert-run! {:source_entity_type source-type
                                :source_entity_id   source-id
                                :target_entity_type target-type
@@ -41,51 +56,49 @@
                                :is_active          nil
                                :progress           0.0}))
 
-(defn start-run!
-  "Mark the active run as started."
-  [run-id]
+(mu/defn start-run!
+  "Mark the run with `run-id` as started and active."
+  [run-id :- ::replacement.schema/run-id]
   (replacement.db/update-run! run-id
                               {:status    :started
                                :is_active true}))
 
-(defn update-progress!
+(mu/defn update-progress!
   "Update progress on the active run."
-  [run-id progress]
+  [run-id   :- ::replacement.schema/run-id
+   progress :- number?]
   (replacement.db/update-active-run! run-id {:progress progress}))
 
-(defn succeed-run!
+(mu/defn succeed-run!
   "Mark the active run as succeeded."
-  [run-id]
+  [run-id :- ::replacement.schema/run-id]
   (replacement.db/update-active-run! run-id
                                      {:status    :succeeded
                                       :progress  1.0
                                       :is_active nil}))
 
-(defn fail-run!
+(mu/defn fail-run!
   "Mark the active run as failed."
-  [run-id message]
+  [run-id  :- ::replacement.schema/run-id
+   message :- [:maybe :string]]
   (replacement.db/update-active-run! run-id
                                      {:status    :failed
                                       :is_active nil
                                       :message   message}))
 
-(defn cancel-run!
+(mu/defn cancel-run!
   "Mark the active run as canceled."
-  [run-id]
+  [run-id :- ::replacement.schema/run-id]
   (replacement.db/update-active-run! run-id
                                      {:status    :canceled
                                       :is_active nil
                                       :message   "Canceled by user"}))
 
-(defn timeout-old-runs!
-  "Time out all active runs older than the specified age."
-  [age unit]
+(mu/defn timeout-old-runs!
+  "Time out all active runs older than `age` `unit`s."
+  [age  :- ms/PositiveInt
+   unit :- :keyword]
   (replacement.db/time-out-active-runs-older-than! age unit))
-
-(defn active-run
-  "Return the single active run, or nil."
-  []
-  (replacement.db/active-run))
 
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."
