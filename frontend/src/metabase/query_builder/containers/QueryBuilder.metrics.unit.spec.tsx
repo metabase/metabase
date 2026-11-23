@@ -216,8 +216,8 @@ const EMPTY_DATASET = createMockDataset({
 });
 
 function createMetricMetadata(metric: Card): CardQueryMetadata {
-  return createMockCardQueryMetadata({
-    databases: [TEST_DB],
+  // The response also carries the metric card, which the type leaves out.
+  return Object.assign(createMockCardQueryMetadata({ databases: [TEST_DB] }), {
     cards: [metric],
   });
 }
