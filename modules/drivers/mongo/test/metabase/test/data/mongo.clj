@@ -25,6 +25,11 @@
     [_driver _feature _database]
     false))
 
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:mongo :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
+
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
   []

@@ -62,7 +62,7 @@
 
 (defn- raw-template-tags
   "The stored template-tags of a native `dataset-query`, keyed by tag name — read from whichever
-   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a pMBQL native
+   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a MBQL 5 native
    stage's tag vector."
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))

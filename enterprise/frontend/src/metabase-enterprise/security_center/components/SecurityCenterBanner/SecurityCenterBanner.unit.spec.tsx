@@ -25,7 +25,7 @@ function setup({ advisories = [], initialRoute = "/" }: SetupOpts = {}) {
     hosting: false,
   });
 
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
     advisories,
   });
@@ -77,7 +77,7 @@ describe("SecurityCenterBanner", () => {
     });
 
     const link = await screen.findByText("Security Center");
-    expect(link).toHaveAttribute("href", "/admin/security-center");
+    expect(link).toHaveAttribute("href", "/admin/security-cente/advisories");
   });
 
   it("does not render once acknowledged", async () => {
@@ -97,7 +97,7 @@ describe("SecurityCenterBanner", () => {
   it("does not render if already in Security Center", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
-      initialRoute: "/admin/security-center",
+      initialRoute: "/admin/security-center/advisories",
     });
 
     await waitForRequestsToSettle();

@@ -14,6 +14,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
@@ -672,7 +673,7 @@
                                       ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?
-                        (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
+                        (collection-items/visible-model-kwds collection (root-namespace-models ns-str type))
                         (into #{} (map type->rest-model) type))
         trash?        (collection/is-trash? collection)
         options   {:show-dashboard-questions? false
@@ -688,7 +689,7 @@
         ;; adjudicates the gate, and the cache keeps that to once per document
         res       (request/with-limit-and-offset limit offset
                     (documents/with-content-gate-cache
-                      (collections.children/collection-children collection options)))
+                      (collection-items/collection-children collection options)))
         total     (or (:total res) 0)
         ;; the snippets-namespace root path ignores the limit/offset binding (no :limit key on
         ;; the result) and returns every row, so the page is sliced here

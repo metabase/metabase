@@ -168,13 +168,15 @@
               [:visualization_settings {:optional true}
                [:maybe [:map {:description "Visualization settings to merge into the dashcard's own."}]]]
               [:parameter_mappings {:optional true}
-               [:maybe [:sequential [:map {:closed      true
-                                           :description "A parameter mapping, replacing the dashcard's list."}
-                                     [:parameter_id [:string {:min 1}]]
-                                     [:card_id {:optional true}
-                                      [:maybe [:int {:min         1
-                                                     :description "Card it filters, of this dashcard or its series."}]]]
-                                     [:target [:sequential :any]]]]]]
+               [:maybe [:sequential {:description (str "The dashcard's whole list of filter mappings, replacing the stored "
+                                                       "one. Send every mapping the dashcard keeps.")}
+                        [:map {:closed      true
+                               :description "A parameter mapping."}
+                         [:parameter_id [:string {:min 1}]]
+                         [:card_id {:optional true}
+                          [:maybe [:int {:min         1
+                                         :description "Card it filters, of this dashcard or its series."}]]]
+                         [:target [:sequential :any]]]]]]
               [:inline_parameters {:optional true} inline-parameters-schema]]]])
    (op-map "add_tab" (str "Add a tab. Existing cards are adopted only when the save ends with "
                           "exactly one tab; adding several at once leaves them orphaned — `move` "
@@ -217,7 +219,7 @@
                  parameter-fields))
    (op-map "remove_parameter"
            (str "Delete a parameter with its card mappings, inline placements, and linked-filter "
-                "references; dependent subscriptions are archived and their owners emailed.")
+                "references. Subscriptions that set a value for it are archived, and the result lists them.")
            [[:parameter_id parameter-id-schema]])
    (op-map "move_parameter" "Reorder a parameter in the header, or move it onto a card. Pass exactly one of `index` or `dashcard_id`."
            [[:parameter_id parameter-id-schema]

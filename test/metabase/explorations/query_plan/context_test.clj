@@ -11,16 +11,14 @@
    [toucan2.core :as t2]))
 
 (defn- count-metric-query []
-  (lib/->legacy-MBQL
-   (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-         (lib/aggregate (lib/count))))))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- orders-count-metric-query []
-  (lib/->legacy-MBQL
-   (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-         (lib/aggregate (lib/count))))))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/aggregate (lib/count)))))
 
 (defn- clause-names
   [q clauses]
@@ -161,12 +159,11 @@
   (testing "a curated non-temporal default dimension yields no temporal summary,
             even when the metric's dataset_query still carries a temporal breakout"
     (let [mp     (mt/metadata-provider)
-          query  (lib/->legacy-MBQL
-                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (lib/with-temporal-bucket
-                                      (lib.metadata/field mp (mt/id :orders :created_at))
-                                      :month))))
+          query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (lib/with-temporal-bucket
+                                     (lib.metadata/field mp (mt/id :orders :created_at))
+                                     :month)))
           dim-id (str (random-uuid))]
       (mt/with-temp [:model/Card metric {:type               :metric
                                          :name               "Orders"

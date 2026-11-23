@@ -40,13 +40,21 @@
     (let [updated-at (:updated_at object)]
       (or (keyword? updated-at) (vector? updated-at))) (assoc :updated_at (:updated_at previous-object))))
 
+(defn- changed-columns
+  "The columns that an update set, without an `:updated_at` that it assigned to itself to keep the timestamp."
+  [changes]
+  (cond-> (set (keys changes))
+    (= :updated_at (:updated_at changes)) (disj :updated_at)))
+
 (t2/define-before-update :hook/events
   [instance]
-  (when (seq (t2/changes instance))
-    (let [model    (model-of &model)
-          previous (t2/instance model (t2.realize/realize (t2/original instance)))]
-      (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
-                                        :previous-object previous})))
+  (let [changes (t2/changes instance)]
+    (when (seq changes)
+      (let [model    (model-of &model)
+            previous (t2/instance model (t2.realize/realize (t2/original instance)))]
+        (collect! model :update instance {:object          (settled (t2.realize/realize instance) previous)
+                                          :previous-object previous
+                                          :changed         (changed-columns changes)}))))
   instance)
 
 (t2/define-before-delete :hook/events

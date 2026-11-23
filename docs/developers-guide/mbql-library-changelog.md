@@ -5,11 +5,12 @@ summary: Changes to the MBQL library API in `metabase.lib.js`, listed by release
 
 # MBQL Library Changelog
 
-Changes made to the library API for manipulating MBQL queries, found in `metabase.lib.js`. The latest API documentation
-can be found [here](https://metabase-dev-docs.github.io/metabase/metabase.lib.js.html).
+Changes made to the library API for manipulating MBQL queries, found in `metabase.lib.js`.
 
 This library is mainly used by Metabase's own frontend, but it is treated as a proper API surface which is versioned
 and documented in this changelog.
+
+See the [latest API documentation](https://metabase-dev-docs.github.io/metabase/metabase.lib.js.html).
 
 ## Metabase 0.50.0
 

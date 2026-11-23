@@ -15,6 +15,7 @@ When using the Metabase AI service, the data we send includes:
 
 - Your prompts and the earlier messages in the conversation.
 - Metadata (like table and field names), so Metabot knows what to query.
+- The names and descriptions of up to five items the person recently viewed, like tables, questions, and dashboards. On self-hosted Metabases, admins can turn this off with the [`MB_METABOT_RECENT_VIEWS_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_recent_views_enabled) environment variable.
 - A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
 - For chart analysis, metrics derived from the chart's data (like slopes and series correlations), and some categorical values. For example, if a question breaks out orders over time by a product category, the AI could see the category values ("Gadgets", "Widgets", etc).
 - Query results, if query execution is turned on for Metabot.

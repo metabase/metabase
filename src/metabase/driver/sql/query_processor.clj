@@ -18,6 +18,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -346,14 +347,39 @@
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
-  include the database type info on the form (ex: via [[h2x/with-type-info]])."
+  include the database type info on the form (ex: via [[h2x/with-type-info]]).
+
+  While [[qp.timezone/with-pinned-now]] pins the clock, returns instead a literal of the pinned moment, typed like the
+  driver's own form: the wall-clock time in the results timezone when that form is untyped or typed `timestamp` or
+  `datetime`, and otherwise an instant."
   {:added "0.34.2" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver]
+    (if (qp.timezone/pinned-now)
+      ::pinned-now
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-honeysql-form :sql
   [_driver]
   :%now)
+
+(defn- zoned-type?
+  "Whether a current-time form of database type `database-type` holds an instant rather than a wall-clock time. Counts
+  an untyped form as a wall-clock time, which is right for Redshift's `GETDATE()`."
+  [database-type]
+  (boolean (and database-type
+                (not (contains? #{"timestamp" "datetime"} (u/lower-case-en database-type))))))
+
+(defmethod current-datetime-honeysql-form ::pinned-now
+  [driver]
+  (let [clock-form    ((get-method current-datetime-honeysql-form (driver/dispatch-on-initialized-driver driver))
+                       driver)
+        database-type (h2x/database-type clock-form)
+        now           (qp.timezone/now)]
+    (cond-> [:raw (inline-value driver (if (zoned-type? database-type)
+                                         (t/offset-date-time now)
+                                         (t/local-date-time now)))]
+      database-type (h2x/with-database-type-info database-type))))
 
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
@@ -2329,12 +2355,9 @@
   "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top."
   [hsql]
   (let [ctes (volatile! [])
-        hsql (perf/postwalk (fn [form]
-                              (if (and (map? form) (:with form))
-                                (do (vswap! ctes into (:with form))
-                                    (dissoc form :with))
-                                form))
-                            hsql)]
+        hsql (match/replace-all hsql
+               {:with with} (do (vswap! ctes into with)
+                                (dissoc &match :with)))]
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 

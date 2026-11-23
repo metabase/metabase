@@ -1,8 +1,19 @@
-import { Select } from "@mantine/core";
+import { type InputClearButtonProps, Select } from "@mantine/core";
+import cx from "classnames";
 import { t } from "ttag";
+
+import CS from "../Combobox/Combobox.module.css";
 
 import S from "./Select.module.css";
 import { DefaultSelectItem } from "./SelectItem";
+
+export const selectClearButtonProps: InputClearButtonProps = {
+  get "aria-label"() {
+    return t`Clear`;
+  },
+  color: "text-primary",
+  className: S.SelectClearButton,
+};
 
 export const selectOverrides = {
   Select: Select.extend({
@@ -14,13 +25,7 @@ export const selectOverrides = {
       renderOption: (item) => (
         <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
-      clearButtonProps: {
-        get "aria-label"() {
-          return t`Clear`;
-        },
-        color: "text-primary",
-        className: S.SelectClearButton,
-      },
+      clearButtonProps: selectClearButtonProps,
       comboboxProps: {
         withinPortal: true,
         // a closed list that stays in the page keeps a stale highlight; a Select
@@ -32,14 +37,13 @@ export const selectOverrides = {
       root: S.SelectRoot,
       input: S.SelectInput,
       wrapper: S.SelectWrapper,
-      error: S.SelectError,
       section: S.SelectInputSection,
-      option: S.SelectItems_Item,
-      options: S.SelectItems_Options,
-      group: S.SelectItems_Group,
-      groupLabel: S.SelectItems_GroupLabel,
-      empty: S.SelectItemsNothingFound,
-      dropdown: S.Dropdown,
+      dropdown: CS.dropdown,
+      options: cx(CS.options, S.SelectOptions),
+      option: cx(CS.option, S.SelectItems_Item),
+      group: CS.group,
+      groupLabel: CS.groupLabel,
+      empty: CS.empty,
     },
   }),
 };

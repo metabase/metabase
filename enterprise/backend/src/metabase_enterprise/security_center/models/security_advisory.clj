@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.analytics.core :as analytics]
-   [metabase.audit-app.core :as audit-app]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -20,10 +20,6 @@
    :download_jar_urls mi/transform-json
    ;; EDN because HoneySQL treats keywords as identifiers and strings as values.
    :matching_query    mi/transform-edn})
-
-(defmethod audit-app/model-details :model/SecurityAdvisory
-  [advisory _event-type]
-  (select-keys advisory [:advisory_id :title :severity :match_status]))
 
 (t2/define-before-insert :model/SecurityAdvisory
   [advisory]
@@ -71,3 +67,8 @@
   [advisory-ids user-id]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SecurityAdvisory [_model]
+  {:skip? true})

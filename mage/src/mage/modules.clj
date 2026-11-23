@@ -130,6 +130,7 @@
      batch-processing
      change-log
      channel
+     collection-items
      collections
      content-verification
      core.initialization-status

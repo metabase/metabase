@@ -2,20 +2,29 @@
   "`:model/SegmentTest`: a saved test of one segment."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/SegmentTest [_model] :segment_test)
 
@@ -25,12 +34,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
-
-(defmethod events/spec :model/SegmentTest
-  [_model]
-  {:create :event/segment-test-create
-   :update :event/segment-test-update
-   :delete :event/segment-test-delete})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
   [_original-model _k]
@@ -45,14 +48,11 @@
   [_model _k segment-tests]
   (data-testing.models/with-last-runs :segment segment-tests))
 
-(defmethod audit-app/model-details :model/SegmentTest
-  [segment-test _event-type]
-  (select-keys segment-test [:segment_id :name :description]))
-
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -78,11 +78,11 @@
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
 
-(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/segment (:segment_id instance))
-                                               (t2/hydrate :can_read)
-                                               mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
+  "Add whether the current user can read the segment of each segment test, loading the segments at once."
+  [_model k segment-tests]
+  (data-testing.models/with-readable-subjects k segment-tests :segment_id
+    (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
 
 (methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
   [_model k instance]
@@ -126,53 +126,94 @@
   [segment-id]
   (data-testing.db/delete-segment-tests! segment-id))
 
+;;; -------------------------------------------------- Validation --------------------------------------------------
+
+(mu/defn testable-segment :- [:maybe :map]
+  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test (see
+  [[data-testing.subject.segment/check-testable]])."
+  [segment-id :- ::lib.schema.id/segment]
+  (doto (data-testing.db/segment segment-id)
+    (data-testing.subject.segment/check-testable)))
+
+(mu/defn validate-test :- :nil
+  "Throws the typed refusal of a test of the Segment `segment-id` with the inputs and expectations of `definition`
+  that could not run."
+  [segment-id :- ::lib.schema.id/segment
+   definition :- ::data-testing.runner/definition]
+  (data-testing.runner/validate-test :segment (testable-segment segment-id) definition))
+
+(mu/defn check-edit :- :nil
+  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a segment test and leaves it as `edited`. An
+  edit that sets the segment or what a run reads is refused as a new test like `edited` would be. Any other edit is
+  refused when the segment is archived."
+  [edited      :- [:map [:segment_id ::lib.schema.id/segment]]
+   edited-keys :- [:sequential :keyword]]
+  (if (data-testing.models/validates-edit? :segment_id edited-keys)
+    (validate-test (:segment_id edited) (data-testing.runner/test-definition edited))
+    (let [segment (data-testing.db/segment (:segment_id edited))]
+      ;; A new test of an archived segment with no query is refused for having no query; so is this edit.
+      (when (:archived segment)
+        (data-testing.subject.segment/check-testable segment))
+      (data-testing.subject/check-not-archived :segment segment))))
+
+(defmethod data-testing.test-type/spec :segment [_test-type]
+  {:model      :model/SegmentTest
+   :run-topics {:start   :event/segment-test-run-start
+                :timeout :event/segment-test-run-timeout}
+   ;; A suite records a typed refusal of the subject as the member's refusal.
+   :subject    #(testable-segment (:segment_id %))
+   :can-run?   can-run?})
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
   [:segment_id :name :description :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/SegmentTest
-  [_model _id segment-test]
-  (select-keys segment-test revision-columns))
+(defn- revert-segment-test!
+  [id _user-id snapshot]
+  (update-segment-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revision/revisions-readable? :model/SegmentTest
-  [_model objects]
-  ;; An older revision can name a segment that has since been deleted; nobody may read a revision about it.
-  (let [readable-ids (into #{}
-                           (map :id)
-                           (mi/readable (data-testing.db/segments-by-ids
-                                         (into [] (comp (keep :segment_id) (distinct)) objects))))]
-    (mapv #(contains? readable-ids (:segment_id %)) objects)))
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (data-testing.errors/refusing
+   "segment-test"
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/segment-test id) snapshot)))
+  snapshot)
 
-(defmethod revision/revert-to-revision! :model/SegmentTest
-  [_model id _user-id serialized-instance]
-  (update-segment-test! id (select-keys serialized-instance revision-columns)))
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod events/spec :model/SegmentTest
+  [_model]
+  {:create :event/segment-test-create
+   :update :event/segment-test-update
+   :delete :event/segment-test-delete})
+
+(defmethod app-db-copy/spec :model/SegmentTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/SegmentTest [_]
-  {:schema    ::data-testing.schema/external-segment-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:segment_id (serialization/fk-transform :model/Segment)
-               :creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/SegmentTest [_ entities _ctx]
-  ;; A segment's path comes from its table, and only the segment's exported definition names that table.
-  (let [segments (vals (serialization/rows-by-refs :model/Segment (into #{} (keep :segment_id) entities) nil))
-        exported (zipmap (map :entity_id segments) (serialization/export-batch :model/Segment segments))
-        paths    (serialization/batch-storage-paths (mapv #(get exported (:segment_id %)) entities))]
-    (mapv (fn [segment-test path]
-            (conj path {:label (:name segment-test) :key (:entity_id segment-test)}))
-          entities paths)))
-
-(defmethod serialization/import-dependencies :model/SegmentTest [_ entities]
-  (mapv (fn [{:keys [segment_id]}]
-          #{[:model/Segment segment_id]})
-        entities))
-
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
+  {:schema              ::data-testing.schema/external-segment-test
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:segment_id (serialization/fk-transform :model/Segment)
+                         :creator_id serialization/user-transform}
+   :storage-paths       data-testing.serialization/segment-test-storage-paths
+   :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/SegmentTest
   [_model]
   {:synced-items         data-testing.db/synced-segment-test-items
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
+
+(defmethod revisions/spec :model/SegmentTest [_model]
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-segment-test!})
+
+(defmethod audit/spec :model/SegmentTest [_model]
+  {:track          [:segment_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

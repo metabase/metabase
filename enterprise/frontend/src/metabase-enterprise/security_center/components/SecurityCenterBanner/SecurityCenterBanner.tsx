@@ -4,6 +4,7 @@ import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
 import { useLocation } from "metabase/router";
 import { Anchor, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAcknowledged, isAffected } from "../../utils";
@@ -35,7 +36,7 @@ export function SecurityCenterBanner() {
       key="link"
       component={Link}
       fw="bold"
-      to="/admin/security-center"
+      to={Urls.securityCenterAdvisories()}
       c="inherit"
       td="underline"
     >

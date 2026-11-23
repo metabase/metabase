@@ -4,6 +4,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -33,3 +34,8 @@
   (let [changes (t2/changes row)]
     (cond-> row
       (contains? changes :input_query) (assoc :input_query_hash (query-hash (:input_query changes))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ImpersonationQueryCache [_model]
+  {:skip? true})
