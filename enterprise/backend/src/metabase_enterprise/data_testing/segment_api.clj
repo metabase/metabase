@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -46,10 +47,11 @@
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/segment-test.response
   "Get a segment test with its newest run.
 
-  A segment test, with its inputs and expectations, is readable by every user who can read its segment."
+  A segment test, with its inputs and expectations, is readable by every user who can read its segment. `id` is a
+  numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (-> (api/read-check :model/SegmentTest id)
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (-> (api/read-check :model/SegmentTest (eid-translation/->id-or-404 :model/SegmentTest id))
       (t2/hydrate :last_run)))
 
 (mr/def ::create-request
@@ -88,25 +90,28 @@
   (first (data-testing.models.segment-test/create-segment-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
-  "Update a segment test. The update is refused when it leaves the test on an archived segment."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  "Update a segment test. The update is refused when it leaves the test on an archived segment. `id` is a numeric id
+  or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    body :- ::update-request]
-  (let [segment-test (api/read-check :model/SegmentTest id)]
+  (let [id           (eid-translation/->id-or-404 :model/SegmentTest id-or-entity-id)
+        segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
     (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
-  (data-testing.db/segment-test id))
+      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)]))
+    (data-testing.db/segment-test id)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a segment test."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/SegmentTest id)
-  (data-testing.models.segment-test/delete-segment-tests! [id])
-  nil)
+  "Delete a segment test. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [id (eid-translation/->id-or-404 :model/SegmentTest id-or-entity-id)]
+    (api/write-check :model/SegmentTest id)
+    (data-testing.models.segment-test/delete-segment-tests! [id])
+    nil))
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a segment test. Needs read access to the test, permission to run its segment's definition, and native query

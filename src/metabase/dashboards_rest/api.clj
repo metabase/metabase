@@ -495,12 +495,14 @@
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
-  This will remove also any questions/models/segments/metrics that use this database."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/Dashboard id)
-  (dashboard/delete-dashboards! [id])
-  api/generic-204-no-content)
+  This will remove also any questions/models/segments/metrics that use this database. `id` is a numeric id or an
+  entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [id (eid-translation/->id-or-404 :dashboard id-or-entity-id)]
+    (api/write-check :model/Dashboard id)
+    (dashboard/delete-dashboards! [id])
+    api/generic-204-no-content))
 
 (def ^:private UpdatedDashboardCard
   "Schema for one dashcard in a dashboard update request: [[dashboards.write/UpdatedDashboardCard]], closed."
@@ -529,12 +531,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`."
+  structure as the response from `GET /api/dashboard/:id`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard! id dash-updates))
+  (update-dashboard! (eid-translation/->id-or-404 :dashboard id) dash-updates))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

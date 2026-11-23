@@ -659,13 +659,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update a `Card`."
+  "Update a `Card`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (update-card! (eid-translation/->id-or-404 :card id) body (boolean delete-old-dashcards?)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -685,10 +685,11 @@
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
+  "Hard delete a Card, by a numeric id or an entity id. To soft delete, use `PUT /api/queries/:id`"
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [id   (eid-translation/->id-or-404 :card id-or-entity-id)
+        card (api/write-check :model/Card id)]
     (api/check-403 (queries/can-delete? card))
     (queries.card/delete-cards! [id]))
   api/generic-204-no-content)

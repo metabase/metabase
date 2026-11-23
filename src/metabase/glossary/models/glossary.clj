@@ -4,6 +4,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
@@ -122,6 +123,9 @@
   [_model]
   {:name         :term
    :synced-items glossary.db/synced-glossary-items})
+
+(defmethod eid-translation/spec :model/Glossary [_model]
+  {:names [:glossary]})
 
 (defmethod audit/spec :model/Glossary [_model]
   {:track          [:term]

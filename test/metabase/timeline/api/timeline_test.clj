@@ -5,7 +5,8 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- collection-timelines-request
   [collection include-events?]
@@ -122,3 +123,20 @@
                  (mt/user-http-request :rasta :get 403 "timeline/collection/root" :include "events")))))
       (testing "If we grant perms, then we can read the timelines"
         (mt/user-http-request :rasta :get 200 "timeline/collection/root" :include "events")))))
+
+(deftest timeline-entity-id-test
+  (testing "GET, PUT and DELETE /api/timeline/:id accept an entity id"
+    (mt/with-temp [:model/Timeline {timeline-id :id entity-id :entity_id} {:name "Entity id timeline"}]
+      (testing "GET"
+        (is (=? {:id timeline-id :name "Entity id timeline"}
+                (mt/user-http-request :crowberto :get 200 (str "timeline/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id timeline-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "timeline/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "timeline/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "timeline/" entity-id))
+        (is (not (t2/exists? :model/Timeline :id timeline-id)))))))

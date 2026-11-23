@@ -601,9 +601,10 @@
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
-  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  "Modify an existing Collection, including archiving or unarchiving it, or moving it. `id` is a numeric id or an
+  entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    collection-updates :- [:map {:closed true}
                           [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
@@ -611,15 +612,16 @@
                           [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collection-detail (collections/update-collection! id collection-updates)))
+  (collection-detail (collections/update-collection! (eid-translation/->id-or-404 :collection id) collection-updates)))
 
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
 (api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero
-  "Deletes a collection permanently"
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+  "Deletes a collection permanently. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (collections-rest.db/collection id)
+  (let [id         (eid-translation/->id-or-404 :collection id-or-entity-id)
+        collection (collections-rest.db/collection id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)

@@ -17,24 +17,17 @@
 
 (def ^:private not-translated-models
   "The models with entity ids whose entity ids the API does not translate."
-  #{:model/CardTest
-    :model/DataApp
+  #{:model/DataApp
     :model/EmbeddingTheme
     :model/ExplorationPage
     :model/ExplorationQuery
     :model/ExplorationThread
-    :model/Glossary
     :model/Metabot
     :model/MetabotPrompt
     :model/OsiAiContext
     :model/PythonLibrary
-    :model/SegmentTest
-    :model/TestSuite
-    :model/TimelineEvent
     :model/TransformJob
     :model/TransformJobTransformTag
-    :model/TransformTag
-    :model/TransformTest
     :model/TransformTransformTag})
 
 (defn- all-models
@@ -62,9 +55,10 @@
     (let [api-names (mapcat (fn [[model method]] (:names (method model)))
                             (dissoc (methods eid-translation.spec/spec) :default))]
       (is (= (count api-names) (count (distinct api-names))))
-      (is (= #{:action :card :collection :dashboard :dashboard-card :dashboard-tab :dataset :dimension :document
-               :exploration :measure :metric :permissions-group :pulse :pulse-card :pulse-channel :segment :snippet
-               :timeline :transform :user}
+      (is (= (cond-> #{:action :card :collection :dashboard :dashboard-card :dashboard-tab :dataset :dimension
+                       :document :exploration :glossary :measure :metric :permissions-group :pulse :pulse-card
+                       :pulse-channel :segment :snippet :timeline :timeline-event :transform :transform-tag :user}
+               config/ee-available? (into #{:card-test :segment-test :test-suite :transform-test}))
              (set api-names))))))
 
 (deftest ->id-test

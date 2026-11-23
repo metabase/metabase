@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.models.glossary :as glossary]
    [metabase.glossary.schema :as glossary.schema]
@@ -40,19 +41,21 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update an existing glossary entry."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  "Update an existing glossary entry. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true} [:id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    body :- [:map {:closed true}
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
-  (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
-  (glossary/update-glossaries! [(assoc body :id id)])
-  (t2/hydrate (glossary.db/glossary-entry id) :creator))
+  (let [id (eid-translation/->id-or-404 :model/Glossary id-or-entity-id)]
+    (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
+    (glossary/update-glossaries! [(assoc body :id id)])
+    (t2/hydrate (glossary.db/glossary-entry id) :creator)))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Delete a glossary entry."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/write-check (glossary.db/glossary-entry id))
-  (glossary/delete-glossaries! [id])
-  api/generic-204-no-content)
+  "Delete a glossary entry. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true} [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [id (eid-translation/->id-or-404 :model/Glossary id-or-entity-id)]
+    (api/write-check (glossary.db/glossary-entry id))
+    (glossary/delete-glossaries! [id])
+    api/generic-204-no-content))

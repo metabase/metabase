@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -45,10 +46,11 @@
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
   "Get a card test with its newest run.
 
-  A card test, with its inputs and expectations, is readable by every user who can read its card."
+  A card test, with its inputs and expectations, is readable by every user who can read its card. `id` is a numeric id
+  or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (-> (api/read-check :model/CardTest id)
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (-> (api/read-check :model/CardTest (eid-translation/->id-or-404 :model/CardTest id))
       (t2/hydrate :last_run)))
 
 (mr/def ::create-request
@@ -89,25 +91,29 @@
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
-  On a database that ignores case in column names, two names that differ only in case are one name."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  On a database that ignores case in column names, two names that differ only in case are one name.
+
+  `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    body :- ::update-request]
-  (let [card-test (api/read-check :model/CardTest id)]
+  (let [id        (eid-translation/->id-or-404 :model/CardTest id-or-entity-id)
+        card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
     (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
-  (data-testing.db/card-test id))
+      (data-testing.models.card-test/update-card-tests! [(assoc body :id id)]))
+    (data-testing.db/card-test id)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a card test."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-tests! [id])
-  nil)
+  "Delete a card test. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [id (eid-translation/->id-or-404 :model/CardTest id-or-entity-id)]
+    (api/write-check :model/CardTest id)
+    (data-testing.models.card-test/delete-card-tests! [id])
+    nil))
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the

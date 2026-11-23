@@ -9,6 +9,7 @@
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -124,24 +125,25 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
-  "Returns an existing Document by ID."
-  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
+  "Returns an existing Document by ID, a numeric id or an entity id."
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id [:or ms/PositiveInt ms/NanoIdString]]]]
   ;; `m.document/get-document` already does the 404 and read check internally.
-  (m.document/get-document document-id))
+  (m.document/get-document (eid-translation/->id-or-404 :model/Document document-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
-  "Updates an existing `Document`."
+  "Updates an existing `Document`. `document-id` is a numeric id or an entity id."
   [{:keys [document-id]} :- [:map {:closed true}
-                             [:document-id ms/PositiveInt]]
+                             [:document-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
-  (let [existing-document (api/check-404 (documents.db/document document-id))]
+  (let [existing-document (api/check-404 (documents.db/document
+                                          (eid-translation/->id-or-404 :model/Document document-id)))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/update-check existing-document (select-keys body [:collection_id :archived]))
@@ -149,9 +151,11 @@
     (m.document/update-document-with-cards! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
-  "Permanently deletes an archived Document."
-  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
-  (let [document (api/check-404 (documents.db/document document-id))]
+  "Permanently deletes an archived Document. `document-id` is a numeric id or an entity id."
+  [{id-or-entity-id :document-id} :- [:map {:closed true}
+                                      [:document-id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [document-id (eid-translation/->id-or-404 :model/Document id-or-entity-id)
+        document    (api/check-404 (documents.db/document document-id))]
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]

@@ -109,3 +109,19 @@
                                            {:name "test"}))))
       (testing "DELETE /api/transform-tag/:tag-id"
         (is (string? (mt/user-http-request :rasta :delete 403 "transform-tag/1")))))))
+
+(deftest tag-entity-id-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+    (testing "PUT and DELETE /api/transform-tag/:tag-id accept an entity id"
+      (with-transforms-api-users! [user]
+        (mt/with-temp [:model/TransformTag {tag-id :id entity-id :entity_id} {}]
+          (let [new-name (str "renamed-" (u/generate-nano-id))]
+            (testing "PUT"
+              (is (=? {:id tag-id :name new-name}
+                      (mt/user-http-request user :put 200 (str "transform-tag/" entity-id) {:name new-name})))))
+          (testing "an unknown entity id is a 404"
+            (is (= "Not found."
+                   (mt/user-http-request user :delete 404 "transform-tag/aaaaaaaaaaaaaaaaaaaaa"))))
+          (testing "DELETE"
+            (mt/user-http-request user :delete 204 (str "transform-tag/" entity-id))
+            (is (not (t2/exists? :model/TransformTag :id tag-id)))))))))
