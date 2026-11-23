@@ -2,6 +2,7 @@
   "Application database queries for the indexes module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
@@ -84,10 +85,10 @@
   (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
 
 (defn- update-by-changes!
-  "Apply `changes` to the TableIndexes of `rows`, through the model, one statement per row, `where` narrowing each."
+  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model, `where` narrowing it."
   [rows changes where]
-  (doseq [{:keys [id]} rows]
-    (t2/update! :model/TableIndex (into {:id [:auto/param id]} where) changes)))
+  (when (seq rows)
+    (t2/update! :model/TableIndex (into {:id [:in (mapv :id rows)]} where) changes)))
 
 (mu/defn mark-table-indexes-running!
   "Apply `changes` to the TableIndexes of `rows`, as stored, whose status is in `from-statuses`."
@@ -120,12 +121,10 @@
   (t2/insert-returning-instances! :model/TableIndex rows))
 
 (mu/defn update-table-indexes!
-  "Apply `rows`, each the id of a TableIndex and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a TableIndex and the columns to change, with one plain update for the rows that get the
+  same changes."
   [rows :- [:sequential ::indexes.schema/table-index]]
-  (doseq [{:keys [id] :as row} rows
-          :let  [changes (dissoc row :id)]
-          :when (seq changes)]
-    (t2/update! :model/TableIndex :id [:auto/param id] changes)))
+  (mdb/update-grouped! :model/TableIndex rows))
 
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."

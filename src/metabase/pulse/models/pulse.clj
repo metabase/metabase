@@ -705,7 +705,7 @@
   "Apply `requested`, a map from the id of a Pulse of `stored` to its changes, and enable or disable the PulseChannels of
   the Pulses whose `:archived` it flips."
   [stored requested]
-  (pulse.db/update-pulses! requested)
+  (pulse.db/update-pulses! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
   (enable-pulse-channels! stored requested))
 
 (defn- change-pulses!

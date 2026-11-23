@@ -123,8 +123,8 @@
                 (archive! :model/Collection (u/the-id collection) false)
                 (call-count))))]
     (calls 1)
-    (testing "each snippet costs, in the archive and in the restore, the SELECT of its hook and its UPDATE"
-      (is (<= (- (calls 20) (calls 2)) (* 2 2 (- 20 2)))))))
+    (testing "archiving and restoring takes the same number of statements for any number of snippets"
+      (is (= (calls 2) (calls 20))))))
 
 (deftest archive-and-restore-follow-model-parents-test
   (testing "a dashboard archives and restores the questions it holds, but not those archived on their own"
@@ -237,8 +237,8 @@
       (doseq [k [:archive :restore :move :delete]]
         (testing (name k)
           (if (#{:archive :restore} k)
-            (testing "each item of a Collection costs the SELECT of its hook and its UPDATE"
-              (is (<= (- (get large k) (get small k)) (* 2 (- 6 2) 6))))
+            (testing "archiving and restoring takes the same number of statements for any number of items"
+              (is (= (get small k) (get large k))))
             (is (= (get small k) (get large k)))))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
@@ -257,11 +257,7 @@
                          (events.tu/statement-count! #(collection/update-collections! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted  (fn [f]
                        (f 1)
-                       (is (= (f 2) (f 6))))
-            counted-cascading (fn [f]
-                                (f 1)
-                                (is (<= (- (f 6) (f 2)) (* 4 (- 6 2)))
-                                    "each more Collection costs its own statements and, for its Card, a SELECT and an UPDATE"))]
+                       (is (= (f 2) (f 6))))]
         (testing "creating collections"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(collection/create-collections! rows))))))
         (testing "creating collections under a parent"
@@ -274,11 +270,11 @@
                             (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
                             {:description "Same"})))
         (testing "archiving collections, some already archived"
-          (counted-cascading (partial update!
+          (counted (partial update!
                                       (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
                                       {:archived true})))
         (testing "restoring collections, some already live"
-          (counted-cascading (partial update!
+          (counted (partial update!
                                       (fn [ids] (collection/update-collections! (mapv (fn [id] {:id id :archived true}) ids) nil))
                                       {:archived false})))
         (testing "moving collections, some already under the parent"

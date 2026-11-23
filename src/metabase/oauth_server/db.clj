@@ -2,6 +2,7 @@
   "Application database queries for the OAuth server module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
@@ -110,9 +111,9 @@
   (t2/insert! :model/OAuthClient row))
 
 (mu/defn update-oauth-clients!
-  "Apply each of `rows`, the `:id` of a OAuthClient and the columns to set, with a statement of its own, returning the number updated."
+  "Apply each of `rows`, the `:id` of a OAuthClient and the columns to set, one statement per distinct change."
   [rows :- [:sequential ::oauth-server.schema/oauth-client.update-row]]
-  (transduce (map (fn [{:keys [id] :as row}] (t2/update! :model/OAuthClient :id [:auto/param id] (dissoc row :id)))) + 0 rows))
+  (app-db/update-grouped! :model/OAuthClient rows))
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."

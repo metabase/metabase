@@ -70,7 +70,7 @@
   "Apply the changes in `rows`, the id of a MetabotPrompt and the columns to set."
   [rows]
   (let [stored (u/index-by :id (metabot.db/prompts-by-ids (mapv :id rows)))]
-    (metabot.db/update-prompts! (prompt-changes rows stored))))
+    (metabot.db/update-prompts! (mapv (fn [[id changes]] (assoc changes :id id)) (prompt-changes rows stored)))))
 
 (mu/defn update-metabot-prompts! :- :nil
   "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in batches in one transaction,

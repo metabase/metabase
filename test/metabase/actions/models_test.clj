@@ -27,11 +27,6 @@
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
-(def ^:private update-statements-per-row-growth
-  "The statements an update of six rows takes more than one of two: each of the four more rows costs the SELECT of its
-  stored row by the hook of the model and its UPDATE, two statements."
-  (* 2 (- 6 2)))
-
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
@@ -807,7 +802,7 @@
       (is (= (creating 2) (creating 6))))
     (testing "updating actions runs one statement count whatever their number"
       (updating 1)
-      (is (<= (- (updating 6) (updating 2)) update-statements-per-row-growth)))))
+      (is (= (updating 2) (updating 6))))))
 
 (deftest action-writes-publish-one-action-event-test
   (mt/with-model-cleanup [:model/Action]
@@ -869,19 +864,15 @@
                           (events.tu/statement-count! #(action/update-actions! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted   (fn [f]
                         (f 1)
-                        (is (= (f 2) (f 6))))
-            counted-updates (fn [f]
-                              (f 1)
-                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                  "each more row costs its SELECT by the hook and its UPDATE"))]
+                        (is (= (f 2) (f 6))))]
         (testing "creating actions"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(action/create-actions! rows))))))
         (testing "updating columns, some already holding the new value"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
                                     {:description "Same"})))
         (testing "archiving actions, some already archived"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (action/update-actions! (mapv (fn [id] {:id id :archived true}) ids) nil))
                                     {:archived true})))
         (testing "deleting actions"
@@ -892,7 +883,7 @@
                            model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
                        (events.tu/statement-count! #(action/delete-actions! (action/action-ids-of-models model-ids)))))))
         (testing "moving the actions of models"
-          (counted-updates (fn [n]
+          (counted (fn [n]
                              (let [ids       (fresh! n)
                                    model-ids (t2/select-fn-vec :model_id :model/Action :id [:in ids] :model_id [:not= nil])]
                                (t2/update! :model/Card :id [:in model-ids] {:collection_id other})
@@ -953,4 +944,4 @@
                              (events.tu/statement-count!
                               #(action/update-actions! (mapv (fn [id] {:id id :archived false}) ids) cascade))))]
             (restore! 2)
-            (is (<= (- (restore! 6) (restore! 2)) update-statements-per-row-growth))))))))
+            (is (= (restore! 2) (restore! 6)))))))))

@@ -130,10 +130,7 @@
 (defn- update-timeline-groups!
   "Writes `rows`, each the `:id` of a Timeline with its changes, with one statement for each distinct set of changes."
   [rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (timeline.db/update-timelines! [id] changes)))
+  (timeline.db/update-timelines! rows))
 
 (defn- derive-archived-directly
   "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the

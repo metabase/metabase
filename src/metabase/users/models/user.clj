@@ -143,7 +143,7 @@
   [active?]
   (cond
     active? {:deactivated_at nil}
-    (false? active?) {:deactivated_at :%now}
+    (false? active?) {:deactivated_at (users.db/deactivated-at-clause false)}
     :else nil))
 
 (defn- normalize-user-fields
@@ -494,12 +494,16 @@
 
 (defn- user-after
   "The row of the stored `user` as the hooks of the model leave it after an update of `changes`, which they run here
-  again in memory, with the `updated_at` that a timestamp hook sets as SQL taken from the stored row."
+  again in memory, with the `updated_at` that a timestamp hook sets as SQL taken from the stored row and the
+  `deactivated_at` expression replaced by the stored stamp or now."
   [user changes]
   (let [row (t2.before-update/before-update :model/User (merge user changes))]
     (t2/instance :model/User (cond-> (into {} row)
                                (not (instance? java.time.temporal.Temporal (:updated_at row)))
-                               (assoc :updated_at (:updated_at user))))))
+                               (assoc :updated_at (:updated_at user))
+
+                               (vector? (:deactivated_at row))
+                               (assoc :deactivated_at (or (:deactivated_at user) (java.time.OffsetDateTime/now)))))))
 
 (mr/def ::write-opts
   [:map {:closed true}
@@ -592,14 +596,13 @@
     (perms-group-membership/throw-if-last-admins! losing-admin-ids)))
 
 (defn- write-user-batch!
-  "Write the `batch` of updates over the Users it names and return their stored rows, the rows of Users that exist and
-  the number updated."
+  "Write the `batch` of updates over the Users it names and return their stored rows and the rows of Users that exist."
   [batch]
   (let [stored  (u/index-by :id (users.db/users-by-ids (mapv :id batch)))
         updates (filterv (comp stored :id) batch)]
+    (users.db/update-users! updates)
     {:stored  stored
-     :updates updates
-     :count   (users.db/update-users! updates)}))
+     :updates updates}))
 
 (defn- publish-user-updates!
   "Publish one update event with `opts` for every row of `written`, the results of the batches."
@@ -620,8 +623,8 @@
     (delete-subscriptions! deactivated opts)))
 
 (mu/defn update-users! :- :int
-  "Apply `updates`, each the id of a User and the columns to set, in one transaction and return the number updated,
-  publishing their update event with `opts`; deactivating or demoting the last admin throws, a change of
+  "Apply `updates`, each the id of a User and the columns to set, in one transaction and return the number of rows of
+  existing Users, publishing their update event with `opts`; deactivating or demoting the last admin throws, a change of
   `is_superuser` adds or removes the Administrators membership, and deactivating a User deletes its subscriptions."
   ([updates :- [:sequential ::users.schema/user.update-row]]
    (update-users! updates nil))
@@ -635,7 +638,7 @@
        (let [written (mapv write-user-batch! (partition-all app-db/update-partition-size updates))]
          (publish-user-updates! written opts)
          (cascade-user-updates! (into [] (mapcat :updates) written) admin-ids opts)
-         (transduce (map :count) + 0 written))))))
+         (transduce (map (comp count :updates)) + 0 written))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only

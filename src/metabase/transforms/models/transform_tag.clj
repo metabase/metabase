@@ -155,13 +155,34 @@
         taken   (into {} (remove (comp renamed val)) (transforms.db/tag-names-to-ids))]
     (transforms.serialization/rename-taken-tag-names rows taken)))
 
+(defn- renames-held-name?
+  "Whether `row`, which renames a tag of `stored`, takes the name of a tag in `pending`, the rows not written yet."
+  [stored pending row]
+  (let [new-name (:name row)]
+    (and (some? new-name)
+         (not= new-name (:name (stored (:id row))))
+         (some #(and (not= (:id %) (:id row)) (= new-name (:name (stored (:id %))))) pending))))
+
+(defn- rename-order
+  "`rows` ordered so that each rename follows the rename of the tag that holds its new name. Throws a 400 for rows that
+  swap names, which the unique index of the name cannot write."
+  [rows stored]
+  (loop [pending (vec rows)
+         ordered []]
+    (if (empty? pending)
+      ordered
+      (if-let [row (first (remove #(renames-held-name? stored pending %) pending))]
+        (recur (filterv #(not= (:id %) (:id row)) pending) (conj ordered row))
+        (throw (ex-info "TransformTags cannot swap names in one update." {:status-code 400}))))))
+
 (defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a TransformTag and its columns to change, for the tags in
-  `stored`, as `opts` says they are written."
+  "A vector of `[id changes]` pairs, one for each of `rows`, the id of a TransformTag and its columns to change, for the
+  tags in `stored`, as `opts` says they are written, in an order that writes each rename after the one that frees its
+  name."
   [rows stored opts]
   (let [rows (filterv (comp stored :id) rows)
         rows (cond-> rows (= :import (:writer opts)) (import-rows stored))]
-    (into {} (map (juxt :id #(dissoc % :id))) rows)))
+    (mapv (juxt :id #(dissoc % :id)) (rename-order rows stored))))
 
 (defn- update-event
   "The update event of the tags of `stored` that `requested`, a map from id to its changes, changes."
@@ -182,10 +203,10 @@
    (t2/with-transaction [_conn]
      (let [stored    (u/index-by :id (when (seq rows) (transforms.db/tags-by-ids (mapv :id rows))))
            requested (requested-changes rows stored opts)]
-       (doseq [ids (partition-all mdb/update-partition-size (keys requested))]
-         (transforms.db/update-tags! (select-keys requested ids)))
+       (doseq [batch (partition-all mdb/update-partition-size requested)]
+         (transforms.db/update-tags! (mapv (fn [[id changes]] (assoc changes :id id)) batch)))
        (when (seq requested)
-         (events/publish-event! :event/transform-tag-update (update-event stored requested opts)))))
+         (events/publish-event! :event/transform-tag-update (update-event stored (into {} requested) opts)))))
    nil))
 
 (mu/defn delete-transform-tags! :- :nil

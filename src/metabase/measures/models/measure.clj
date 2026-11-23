@@ -175,15 +175,18 @@
   (doseq [{:keys [id] :as row} rows]
     (check-changed-definition [id] (dissoc row :id) stored)))
 
+(defn- assoc-measure-tables
+  "`rows`, updates of Measures, each with the table its new definition gives, computed once for each distinct definition."
+  [rows]
+  (let [table-ids (into {} (map (fn [definition] [definition (definition-table-id definition)]))
+                        (distinct (keep :definition rows)))]
+    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) rows)))
+
 (defn- write-measure-updates!
-  "Writes `rows`, updates of the `stored` Measures, each with the table its new definition gives, with one statement for each,
-  and returns what the event needs, the changes of each row and the Measures as they are after the write."
+  "Writes `rows`, updates of the `stored` Measures, each with the table its new definition gives, and returns what the event
+  needs, the changes of each row and the Measures as they are after the write."
   [stored rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (cond-> (dissoc row :id)
-                          (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]
-          :when (seq changes)]
-    (measures.db/update-measures! [id] changes))
+  (measures.db/update-measures! (assoc-measure-tables rows))
   {:stored  stored
    :rows    rows
    :objects (into {} (map (fn [{:keys [id] :as row}] [id (updated-measure (stored id) (dissoc row :id))])) rows)})

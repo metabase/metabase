@@ -2,7 +2,6 @@
   "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
@@ -80,12 +79,11 @@
      :else true]
     [:inline false]))
 
-(mu/defn update-timelines!
-  "Apply `changes` to each of the Timelines with `ids`, with one statement for each, returning nil."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::timeline.schema/timeline.update :id)]
-  (doseq [id ids]
-    (t2/update! :model/Timeline :id id changes))
+(mu/defn update-timelines! :- :nil
+  "Apply each of `updates`, the `:id` of a Timeline and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Timeline updates)
   nil)
 
 (mu/defn unarchived-timelines-in-collections
@@ -176,12 +174,11 @@
                                :where  [:= :timeline.id [:auto/param timeline-id]]}
    default-icon])
 
-(mu/defn update-timeline-events!
-  "Apply `changes` to each of the TimelineEvents with `ids`, with one statement for each, returning nil."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::timeline.schema/timeline-event.update :id)]
-  (doseq [id ids]
-    (t2/update! :model/TimelineEvent :id id changes))
+(mu/defn update-timeline-events! :- :nil
+  "Apply each of `updates`, the `:id` of a TimelineEvent and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/TimelineEvent updates)
   nil)
 
 (mu/defn delete-timeline-events!

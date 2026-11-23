@@ -230,7 +230,7 @@
   (let [stored    (u/index-by :id (data-testing.db/saved-tests-by-ids model (mapv :id rows)))
         requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
     (when (seq requested)
-      (data-testing.db/update-saved-tests! model requested))
+      (data-testing.db/update-saved-tests! model (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
     {:stored stored :requested requested}))
 
 (mu/defn update-saved-tests! :- :nil

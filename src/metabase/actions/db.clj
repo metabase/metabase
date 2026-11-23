@@ -136,7 +136,7 @@
   (app-db/insert-returning-instances! :model/Action rows))
 
 (mu/defn archived-directly-clause
-  "The SQL expression for the `archived_directly` of a Action that `changes` archives or restores: true when it is
+  "The SQL expression for the `archived_directly` of an Action that `changes` archives or restores: true when it is
   archived and its Collection is not, false on a restore, which no stored value equals so that the statement writes it for
   every row."
   [changes :- :map]
@@ -151,14 +151,11 @@
      :else true]
     [:inline false]))
 
-(mu/defn update-actions!
-  "Apply the columns of each of `rows`, an `:id` with its own values, to its Action, with one statement for each,
-  returning nil."
-  [rows :- [:sequential (mut/select-keys ::actions.schema/action.update (conj action-columns :id))]]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (t2/update! :model/Action :id id changes))
+(mu/defn update-actions! :- :nil
+  "Apply each of `updates`, the `:id` of an Action and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Action updates)
   nil)
 
 (mu/defn delete-actions!

@@ -208,11 +208,9 @@
   (mdb/insert-returning-instances! :model/Notification rows))
 
 (mu/defn update-notifications!
-  "Apply to each Notification its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt NotificationRow]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/Notification :id id changes))
-  nil)
+  "Apply to the Notification rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::notification.schema/notification.update]]
+  (mdb/update-grouped! :model/Notification updates))
 
 (mu/defn update-notification-columns!
   "Apply `changes` to the Notification with `notification-id`, returning the number updated."
@@ -228,12 +226,11 @@
   (mdb/insert-returning-instances! model rows))
 
 (mu/defn update-part-rows!
-  "Apply `changes` to the rows of `model`, a model of a part of a Notification, with `ids`."
+  "Apply to the rows of `model`, a model of a part of a Notification, their changes in `updates`, each the `:id` of a
+  row and the columns to change."
   [model   :- PartModel
-   ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- PartRow]
-  (t2/update! model :id [:in [:auto/param ids]] changes)
-  nil)
+   updates :- [:sequential [:merge PartRow [:map [:id ms/PositiveInt]]]]]
+  (mdb/update-grouped! model updates))
 
 (mu/defn delete-part-rows!
   "Delete the rows of `model`, a model of a part of a Notification, with `ids`. The change log is not written."

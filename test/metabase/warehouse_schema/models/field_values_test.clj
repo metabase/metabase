@@ -652,9 +652,11 @@
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (defn- field-values-write-call-counts!
-  "The number of app-DB calls creating and then updating full FieldValues for `n` Fields of a new Table takes."
+  "The number of app-DB calls creating and then updating full FieldValues for `n` Fields of a new Table of a new
+  Database takes, so that nothing of the driver's test dataset is involved."
   [n]
-  (mt/with-temp [:model/Table {table-id :id} {}]
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
     (let [field-ids (vec (for [i (range n)]
                            (t2/insert-returning-pk! :model/Field {:table_id      table-id
                                                                   :name          (str "F" i)

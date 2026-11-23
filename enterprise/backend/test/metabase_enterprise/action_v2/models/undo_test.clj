@@ -58,7 +58,7 @@
           [false false] nil
           [false true] (action-v2.tu/create-rows! table-id user-id 200 [(merge pk value)])
           [true false] (action-v2.tu/delete-rows! table-id user-id 200 [pk])
-          [true true] (action-v2.tu/update-rows! table-id user-id 200 [(merge pk value)]))
+          [true true] (action-v2.tu/update-grouped! table-id user-id 200 [(merge pk value)]))
         (recur value (rest states))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.

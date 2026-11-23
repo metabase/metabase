@@ -80,11 +80,9 @@
   (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
 (mu/defn update-test-suites!
-  "Apply to each TestSuite its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/test-suite.changes]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/TestSuite :id id changes))
-  nil)
+  "Apply to the TestSuite rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::data-testing.schema/test-suite.update]]
+  (app-db/update-grouped! :model/TestSuite updates))
 
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
@@ -203,12 +201,10 @@
   (t2/select model :id [:in [:auto/param ids]]))
 
 (mu/defn update-saved-tests! :- :nil
-  "Apply to each test of `model` its changes in `id->changes`, a map from id, one update for each."
-  [model       :- saved-test-model
-   id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/saved-test.changes]]
-  (doseq [[id changes] id->changes]
-    (t2/update! model :toucan/pk id changes))
-  nil)
+  "Apply to the tests of `model` their changes in `updates`, each the `:id` of a test and the columns to change."
+  [model   :- saved-test-model
+   updates :- [:sequential ::data-testing.schema/saved-test.update]]
+  (app-db/update-grouped! model updates))
 
 (mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
   "The tests of `model` with `ids`."

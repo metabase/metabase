@@ -198,10 +198,7 @@
   "Writes `rows`, updates of the `stored` Explorations, archives or restores their Summary Documents, and returns what the
   event needs, the changes of each row."
   [stored rows opts]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (explorations.db/update-explorations! [id] changes))
+  (explorations.db/update-explorations! rows)
   (set-summaries-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) opts)
   {:stored stored
    :rows   (derive-archived-directly rows (u/index-by :id (explorations.db/rows :model/Exploration (mapv :id rows))))})

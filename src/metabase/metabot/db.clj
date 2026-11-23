@@ -57,11 +57,9 @@
   (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
 
 (mu/defn update-metabots!
-  "Apply to each Metabot its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/Metabot :id id changes))
-  nil)
+  "Apply to the Metabot rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Metabot updates))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -141,11 +139,9 @@
   (t2/select :model/MetabotPrompt :id [:in [:auto/param prompt-ids]]))
 
 (mu/defn update-prompts! :- :nil
-  "Apply to each MetabotPrompt its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/MetabotPrompt :id id changes))
-  nil)
+  "Apply to the MetabotPrompt rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::metabot.schema/metabot-prompt.update]]
+  (mdb/update-grouped! :model/MetabotPrompt updates))
 
 (mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
   "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
@@ -387,11 +383,9 @@
   (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
 
 (mu/defn update-messages! :- :nil
-  "Apply to each MetabotMessage its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-message.update :id)]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/MetabotMessage :id id changes))
-  nil)
+  "Apply to the MetabotMessage rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::metabot.schema/metabot-message.update]]
+  (mdb/update-grouped! :model/MetabotMessage updates))
 
 (mu/defn messages-matching
   "The ID and the deleting User of the MetabotMessages matching `conditions`, at least one of which is needed, as an empty

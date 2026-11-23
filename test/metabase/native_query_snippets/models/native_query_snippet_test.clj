@@ -8,11 +8,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private update-statements-per-row-growth
-  "The statements an update of six rows takes more than one of two: each of the four more rows costs the SELECT of its
-  stored row by the hook of the model and its UPDATE, two statements."
-  (* 2 (- 6 2)))
-
 (set! *warn-on-reflection* true)
 
 (deftest disallow-updating-creator-id-test
@@ -240,7 +235,7 @@
       (is (= (creating 2) (creating 6))))
     (testing "archiving snippets runs one statement count whatever their number"
       (archiving 1)
-      (is (<= (- (archiving 6) (archiving 2)) update-statements-per-row-growth)))))
+      (is (= (archiving 2) (archiving 6))))))
 
 (deftest import-renames-taken-names-test
   (mt/with-temp [:model/NativeQuerySnippet _ {:name "taken name" :entity_id "owner-entity-id-00000"}]
@@ -277,11 +272,7 @@
                         (events.tu/statement-count! #(native-query-snippet/update-snippets! (mapv (fn [id] (assoc changes :id id)) ids) opts))))
             counted (fn [f]
                       (f 1)
-                      (is (= (f 2) (f 6))))
-            counted-updates (fn [f]
-                              (f 1)
-                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                  "each more row costs its SELECT by the hook and its UPDATE"))]
+                      (is (= (f 2) (f 6))))]
         (testing "creating snippets"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(native-query-snippet/create-snippets! rows))))))
         (testing "importing snippets"
@@ -289,22 +280,22 @@
                      (let [rows (rows n)]
                        (events.tu/statement-count! #(native-query-snippet/create-snippets! rows {:writer :import}))))))
         (testing "updating columns, some already holding the new value"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :description "Same"}) ids) nil))
                                     {:description "Same"}
                                     nil)))
         (testing "archiving snippets, some already archived"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
                                     {:archived true}
                                     nil)))
         (testing "restoring snippets, some already live"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids) nil))
                                     {:archived false}
                                     nil)))
         (testing "moving snippets, some already in the Collection"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :collection_id other}) ids) nil))
                                     {:collection_id other}
                                     nil)))
@@ -355,4 +346,4 @@
                              (events.tu/statement-count!
                               #(native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived false}) ids) nil))))]
             (restore! 2)
-            (is (<= (- (restore! 6) (restore! 2)) update-statements-per-row-growth))))))))
+            (is (= (restore! 2) (restore! 6)))))))))

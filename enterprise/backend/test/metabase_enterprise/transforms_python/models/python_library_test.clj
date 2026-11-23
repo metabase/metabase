@@ -10,10 +10,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -121,7 +117,7 @@
           (is (= (creating 2) (creating 6)))))
       (testing "updating libraries"
         (counted update! 1)
-        (is (<= (counted update! 6) (+ (counted update! 2) per-row-update-growth))))
+        (is (= (counted update! 2) (counted update! 6))))
       (testing "deleting libraries"
         (counted python-library/delete-python-libraries! 1)
         (is (= (counted python-library/delete-python-libraries! 2)
@@ -142,4 +138,4 @@
                       (events.tu/statement-count!
                        #(python-library/update-python-libraries! (mapv (fn [row-id] (assoc {:source "a = 9"} :id row-id)) (mapv :id libraries))))))]
       (counted 1)
-      (is (<= (counted 6) (+ (counted 2) per-row-update-growth))))))
+      (is (= (counted 2) (counted 6))))))

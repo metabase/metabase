@@ -89,7 +89,7 @@
   [rows]
   (let [stored    (u/index-by :id (metabot.db/messages-by-ids (mapv :id rows)))
         requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
-    (metabot.db/update-messages! requested)))
+    (metabot.db/update-messages! (mapv (fn [[id changes]] (assoc changes :id id)) requested))))
 
 (mu/defn update-metabot-messages! :- :nil
   "Apply the changes in each of `rows`, the id of a MetabotMessage and the columns to set, in batches in one

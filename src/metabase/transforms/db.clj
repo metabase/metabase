@@ -33,12 +33,6 @@
                    [:= :wr.id :transform_run_cancelation.run_id]
                    :wr.is_active]}]])
 
-(defn- update-each!
-  "Apply to each row of `model` its changes in `id->changes`, a map from id, with one plain update by primary key for each."
-  [model id->changes]
-  (doseq [[id changes] id->changes]
-    (t2/update! model :toucan/pk id changes)))
-
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
 (mu/defn synced-transform-tags-clause :- [:fn vector?]
@@ -108,10 +102,9 @@
   (mdb/insert-returning-instances! :model/Transform rows))
 
 (mu/defn update-transforms! :- :nil
-  "Apply to each Transform its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.changes]]
-  (update-each! :model/Transform id->changes)
-  nil)
+  "Apply to the Transform rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::transforms.schema/transform.update]]
+  (mdb/update-grouped! :model/Transform updates))
 
 (mu/defn delete-transforms! :- :nil
   "Delete the Transforms with `transform-ids`."
@@ -176,10 +169,9 @@
                 [:else column])))
 
 (mu/defn update-tags! :- :nil
-  "Apply to each TransformTag its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-tag.changes]]
-  (update-each! :model/TransformTag id->changes)
-  nil)
+  "Apply to the TransformTag rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::transforms.schema/transform-tag.update]]
+  (mdb/update-grouped! :model/TransformTag updates))
 
 (mu/defn delete-tags! :- :nil
   "Delete the TransformTags with `tag-ids`."
@@ -281,10 +273,9 @@
   (mdb/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil
-  "Apply to each TransformJob its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.changes]]
-  (update-each! :model/TransformJob id->changes)
-  nil)
+  "Apply to the TransformJob rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::transforms.schema/transform-job.update]]
+  (mdb/update-grouped! :model/TransformJob updates))
 
 (mu/defn delete-jobs! :- :nil
   "Delete the TransformJobs with `job-ids`."

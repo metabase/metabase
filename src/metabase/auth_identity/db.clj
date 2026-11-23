@@ -55,9 +55,13 @@
   (mdb/select-or-insert! :model/AuthIdentity {:user_id user-id :provider provider} (constantly {})))
 
 (mu/defn update-auth-identities!
-  "Apply each of `rows`, the `:id` of a AuthIdentity and the columns to set, with a statement of its own, returning the number updated."
+  "Apply each of `rows`, the `:id` of a AuthIdentity and the columns to set, one statement per distinct change, but a
+  statement of its own for each row that sets `:credentials`."
   [rows :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
-  (transduce (map (fn [{:keys [id] :as row}] (t2/update! :model/AuthIdentity :id [:auto/param id] (dissoc row :id)))) + 0 rows))
+  (let [{credential-rows true other-rows false} (group-by #(contains? % :credentials) rows)]
+    (doseq [{:keys [id] :as row} credential-rows]
+      (t2/update! :model/AuthIdentity :id [:auto/param id] (dissoc row :id)))
+    (mdb/update-grouped! :model/AuthIdentity other-rows)))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no

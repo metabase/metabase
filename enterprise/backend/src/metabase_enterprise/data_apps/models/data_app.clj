@@ -298,10 +298,7 @@
   "Writes `rows`, updates of the `stored` DataApps, with one statement for each distinct set of changes, and returns what
   the event needs, the changes of each row and the apps as they are after the write."
   [stored rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (data-apps.db/update-data-apps! [id] changes))
+  (data-apps.db/update-data-apps! rows)
   {:stored stored
    :rows   rows
    :objects (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))})

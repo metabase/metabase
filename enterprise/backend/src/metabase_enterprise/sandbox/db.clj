@@ -91,10 +91,10 @@
   (mdb/insert-returning-instances! :model/Sandbox rows))
 
 (mu/defn update-sandboxes!
-  "Apply each of `rows`, the `:id` of a Sandbox and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a Sandbox and the columns to set, one statement per distinct change, in the order
+  the changes first appear."
   [rows :- [:sequential ::sandbox.schema/sandbox.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/Sandbox :id [:auto/param id] (dissoc row :id))))
+  (mdb/update-grouped! :model/Sandbox rows))
 
 (mu/defn sandboxes-by-ids
   "The Sandboxes with `sandbox-ids`."

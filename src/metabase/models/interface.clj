@@ -617,22 +617,28 @@
          (check-hook-runs-no-statement model phase #(row-fn row)))))
    ::hook-statement-guard))
 
-(defn- differing-change-keys
-  "The keys whose value is not the same in every one of `change-maps`, sorted."
-  [change-maps]
+(defn- hook-differing-change-keys
+  "The keys, sorted, whose value in `change-maps` differs between rows because of a hook: a key outside `requested`, the
+  changes of the update, that is not the same in every map, or a key of `requested` that maps hold with different values;
+  a key of `requested` that a map lacks is a row that already holds the value."
+  [requested change-maps]
   (into (sorted-set)
-        (filter (fn [k] (apply not= (map #(get % k ::absent) change-maps))))
+        (filter (fn [k]
+                  (let [values (map #(get % k ::absent) change-maps)]
+                    (if (contains? requested k)
+                      (< 1 (count (into #{} (remove #{::absent}) values)))
+                      (apply not= values)))))
         (into #{} (mapcat keys) change-maps)))
 
 (defn- check-uniform-update-changes
-  "Returns `changes->pk-maps`, what Toucan's before-update step makes of the rows of one update of `model`, and throws
-  when it holds more than one set of changes, for which Toucan runs one UPDATE per row."
-  [model changes->pk-maps]
+  "Returns `changes->pk-maps`, what Toucan's before-update step makes of the rows of one update of `model` by
+  `requested` changes, and throws when a hook made the changes of its rows differ."
+  [model requested changes->pk-maps]
   (when (> (count changes->pk-maps) 1)
-    (let [ks (differing-change-keys (keys changes->pk-maps))]
+    (when-let [ks (seq (hook-differing-change-keys requested (keys changes->pk-maps)))]
       (throw (ex-info (format (str "The before-update hook of %s returned different changes for the rows of one update "
-                                   "(keys: %s), which makes Toucan run one UPDATE per row; derive it in the write "
-                                   "function and group the rows by the changes they get")
+                                   "(keys: %s), which makes Toucan run one UPDATE per row; make the hook add the same "
+                                   "changes for every row, a HoneySQL expression where the value depends on the row")
                               model (str/join ", " ks))
                       {:model model, :keys ks, :change-sets (count changes->pk-maps)}))))
   changes->pk-maps)
@@ -644,7 +650,9 @@
   (methodical/add-aux-method-with-unique-key!
    #'t2.pipeline/transduce-query :around [::t2.before-update/select-for-before-update :metabase/model :default]
    (fn [next-method rf query-type model parsed-args resolved-query]
-     (check-uniform-update-changes model (next-method rf query-type model parsed-args resolved-query)))
+     (check-uniform-update-changes model
+                                   (:changes parsed-args)
+                                   (next-method rf query-type model parsed-args resolved-query)))
    ::uniform-update-guard))
 
 (when (or config/is-dev? config/is-test?)

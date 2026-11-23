@@ -53,11 +53,9 @@
   (app-db/insert-returning-instances! :model/PythonLibrary rows))
 
 (mu/defn update-python-libraries!
-  "Apply to each PythonLibrary its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt ::transforms-python.schema/python-library.changes]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/PythonLibrary :id id changes))
-  nil)
+  "Apply to the PythonLibrary rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::transforms-python.schema/python-library.update]]
+  (app-db/update-grouped! :model/PythonLibrary updates))
 
 (mu/defn python-libraries-by-ids
   "The PythonLibraries with `library-ids`."

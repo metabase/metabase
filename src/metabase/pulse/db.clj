@@ -281,11 +281,9 @@
     false))
 
 (mu/defn update-pulses!
-  "Apply to each Pulse its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ::lib.schema.id/pulse ::pulse.schema/pulse.changes]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/Pulse :id id changes))
-  nil)
+  "Apply to the Pulse rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::pulse.schema/pulse.update]]
+  (app-db/update-grouped! :model/Pulse updates))
 
 (mu/defn delete-pulses!
   "Delete the Pulses with `pulse-ids`."

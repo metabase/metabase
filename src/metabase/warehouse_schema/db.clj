@@ -22,15 +22,6 @@
    [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
-(defn- update-rows!
-  "Apply each of `rows`, the id of a row of `model` and the columns to change, with a statement of its own through the
-  model, as Toucan runs one per row whose changes differ anyway. Returns nil."
-  [model rows]
-  (doseq [{:keys [id] :as row} rows
-          :let  [changes (dissoc row :id)]
-          :when (seq changes)]
-    (t2/update! model :id [:auto/param id] changes)))
-
 ;;; ------------------------------------------------- Field types -------------------------------------------------
 
 (defn- type-term
@@ -272,9 +263,9 @@
   (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
 (mu/defn update-fields!
-  "Apply `rows`, each the id of a Field and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a Field and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/field.update]]
-  (update-rows! :model/Field rows))
+  (app-db/update-grouped! :model/Field rows))
 
 (mu/defn delete-fields!
   "Delete the Fields with `field-ids`, returning the number deleted."
@@ -487,9 +478,9 @@
   (t2/update! :model/FieldUserSettings :id [:in ids] changes))
 
 (mu/defn update-field-user-settings-rows!
-  "Apply `rows`, each the id of a FieldUserSettings and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a FieldUserSettings and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
-  (update-rows! :model/FieldUserSettings rows))
+  (app-db/update-grouped! :model/FieldUserSettings rows))
 
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
 
@@ -528,9 +519,9 @@
   (app-db/insert-returning-instances! :model/TableUserSettings rows))
 
 (mu/defn update-table-user-settings-rows!
-  "Apply `rows`, each the id of a TableUserSettings and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a TableUserSettings and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
-  (update-rows! :model/TableUserSettings rows))
+  (app-db/update-grouped! :model/TableUserSettings rows))
 
 (mu/defn delete-table-user-settings-by-ids!
   "Delete the TableUserSettings with `ids`, returning the number deleted."
@@ -652,9 +643,9 @@
   (app-db/insert-returning-instances! :model/Dimension rows))
 
 (mu/defn update-dimensions!
-  "Apply `rows`, each the id of a Dimension and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a Dimension and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
-  (update-rows! :model/Dimension rows))
+  (app-db/update-grouped! :model/Dimension rows))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, returning the number deleted."
@@ -685,9 +676,9 @@
   (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
-  "Apply `rows`, each the id of a FieldValues and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a FieldValues and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/field-values.update]]
-  (update-rows! :model/FieldValues rows))
+  (app-db/update-grouped! :model/FieldValues rows))
 
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -821,9 +812,9 @@
   (t2/delete! :model/Table :id [:in table-ids]))
 
 (mu/defn update-tables!
-  "Apply `rows`, each the id of a Table and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a Table and the columns to change, one update per distinct change."
   [rows :- [:sequential ::warehouse-schema.schema/table.update]]
-  (update-rows! :model/Table rows))
+  (app-db/update-grouped! :model/Table rows))
 
 (mu/defn tables
   "The Tables with `table-ids`."

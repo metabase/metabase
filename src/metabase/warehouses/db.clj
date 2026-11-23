@@ -57,12 +57,10 @@
   (mdb/insert-returning-instances! :model/Database rows))
 
 (mu/defn update-databases!
-  "Apply `rows`, each the id of a Database and the columns to change, one statement per row."
+  "Apply `rows`, each the id of a Database and the columns to change, with one plain update for the rows that get the
+  same changes."
   [rows :- [:sequential ::warehouses.schema/database.update]]
-  (doseq [{:keys [id] :as row} rows
-          :let  [changes (dissoc row :id)]
-          :when (seq changes)]
-    (t2/update! :model/Database :id [:auto/param id] changes)))
+  (mdb/update-grouped! :model/Database rows))
 
 (mu/defn delete-databases!
   "Delete the Databases with `database-ids`, returning the number deleted."

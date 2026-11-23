@@ -8,11 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private per-row-update-cost
-  "The statements a state change runs for each PersistedInfo, which Toucan writes one by one: the SELECT of the
-  before-update hook and the UPDATE."
-  2)
-
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Card     {c1 :id} {:database_id db-id :type :model}
@@ -39,9 +34,7 @@
                               "readying a Database"            (fn [_ _] (persisted-info/ready-database! db-id))}]
         (testing label
           (counted 1 write!)
-          (if (= "deleting" label)
-            (is (= (counted 2 write!) (counted 6 write!)))
-            (is (<= (- (counted 6 write!) (counted 2 write!)) (* 4 per-row-update-cost))))))
+          (is (= (counted 2 write!) (counted 6 write!)))))
       (testing "turning on models"
         (let [turn-on! (fn [n]
                          (mt/with-model-cleanup [:model/PersistedInfo]

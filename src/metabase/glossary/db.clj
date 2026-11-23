@@ -36,11 +36,12 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Glossary :id [:in ids]))
 
-(mu/defn update-glossaries!
-  "Apply `changes` to the Glossary entries with `ids`, returning the number updated."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::glossary.schema/glossary.update]
-  (t2/update! :model/Glossary :id [:in ids] changes))
+(mu/defn update-glossaries! :- :nil
+  "Apply each of `updates`, the `:id` of a Glossary and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Glossary updates)
+  nil)
 
 (mu/defn delete-glossaries!
   "Delete the Glossary entries with `ids`, returning the number deleted."

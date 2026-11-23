@@ -42,11 +42,6 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
-(def ^:private update-statements-per-row-growth
-  "The statements an update of six rows takes more than one of two: each of the four more rows costs the SELECT of its
-  stored row by the hook of the model and its UPDATE, two statements."
-  (* 2 (- 6 2)))
-
 (set! *warn-on-reflection* true)
 
 (deftest dashboard-count-test
@@ -2409,14 +2404,14 @@
                        (let [ids (prepare n)]
                          (statement-count #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))]
             (move 2)
-            (is (<= (- (move 6) (move 2)) update-statements-per-row-growth))))
+            (is (= (move 2) (move 6)))))
         (testing "archiving"
           (let [archive (fn [n]
                           (let [ids (prepare n)]
                             (statement-count #(card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))))]
             (archive 2)
             (archive 2)
-            (is (<= (- (archive 6) (archive 2)) update-statements-per-row-growth))))))))
+            (is (= (archive 2) (archive 6)))))))))
 
 (deftest update-cards-same-query-for-several-cards-test
   (testing "rows that give the same query to several Cards each apply to their own Card"
@@ -2475,7 +2470,7 @@
       (is (= ["A2" "B2"] (t2/select-fn-vec :name :model/Card :id [:in [a b]] {:order-by [:id]}))))))
 
 (deftest published-update-statement-count-test
-  (testing "updating Cards as a user takes, for each more Card, the SELECT of its hook and its UPDATE, for each kind of change"
+  (testing "updating Cards as a user takes as many statements for many Cards as for few, for each kind of change"
     (mt/with-temp [:model/Collection {collection-id :id} {}]
       (let [update (fn [changes n]
                      (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
@@ -2484,7 +2479,7 @@
         (doseq [changes [{:name "Renamed"} {:display :bar} {:description "described"}]]
           (testing (pr-str (keys changes))
             (update changes 2)
-            (is (<= (- (update changes 6) (update changes 2)) (* 2 (- 6 2))))))))))
+            (is (= (update changes 2) (update changes 6)))))))))
 
 (deftest published-delete-statement-count-test
   (testing "deleting Cards as a user takes as many statements for many Cards as for few"
@@ -2514,7 +2509,7 @@
                       (card/create-cards! (cards-with-metadata n collection-id))
                       (statement-count #(collection/update-collections! [{:id collection-id :archived true}] nil))))]
       (archive 2)
-      (is (<= (- (archive 6) (archive 2)) update-statements-per-row-growth)))))
+      (is (= (archive 2) (archive 6))))))
 
 (deftest card-hooks-run-no-statement-test
   (testing "plain writes of Cards take as many statements for many Cards as for few, since the hooks run none"
@@ -2533,7 +2528,7 @@
           (is (= (insert 2) (insert 6))))
         (testing "updating"
           (update 2)
-          (is (<= (- (update 6) (update 2)) update-statements-per-row-growth)))
+          (is (= (update 2) (update 6))))
         (testing "deleting"
           (delete 2)
           (is (= (delete 2) (delete 6))))))))
@@ -2574,11 +2569,7 @@
                            (events.tu/statement-count! #(card/update-cards! (mapv (fn [id] (assoc changes :id id)) ids)))))
               counted  (fn [f]
                          (f 1)
-                         (is (= (f 2) (f 6))))
-              counted-updates (fn [f]
-                                (f 1)
-                                (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                    "each more row costs its SELECT by the hook and its UPDATE"))]
+                         (is (= (f 2) (f 6))))]
           (testing "creating cards, some of them models and some dashboard questions"
             (counted (fn [n]
                        (let [rows (mapv (fn [i row]
@@ -2589,30 +2580,30 @@
                                         (rows n))]
                          (events.tu/statement-count! #(card/create-cards! rows))))))
           (testing "updating columns, some already holding the new value"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :name "Same"}) ids)))
                                       {:name "Same"})))
           (testing "archiving cards, some already archived"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
                                       {:archived true})))
           (testing "restoring cards, some already live"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))
                                       {:archived false})))
           (testing "moving cards, some already in the Collection"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))
                                       {:collection_id to-id})))
           (testing "moving cards from a Collection of their own each to one Collection"
-            (counted-updates (fn [n]
+            (counted (fn [n]
                                (let [sources (mapv (fn [_] (t2/insert-returning-pk! :model/Collection (mt/with-temp-defaults :model/Collection))) (range n))
                                      ids     (mapv (fn [source] (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id source)))
                                                    sources)]
                                  (events.tu/statement-count!
                                   #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))))
           (testing "changing the type of cards, some already of the type"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (card/update-cards! (mapv (fn [id] {:id id :type :model}) ids)))
                                       {:type :model})))
           (testing "deleting cards"

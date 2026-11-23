@@ -30,10 +30,6 @@
    [toucan2.core :as t2]
    [toucan2.jdbc.query :as t2.jdbc.query]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -601,7 +597,7 @@
                          (fn [] (transform/update-transforms! (mapv (fn [row-id] (assoc {:description "described"} :id row-id)) ids)))))
               ids     @created]
           (update! (take 1 ids))
-          (is (<= (update! (take 6 (drop 3 ids))) (+ (update! (take 2 (drop 1 ids))) per-row-update-growth)))))
+          (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
       (testing "deleting transforms"
         (let [delete! (fn [ids]
                         (events.tu/statement-count! (fn [] (transform/delete-transforms! ids))))
@@ -664,7 +660,7 @@
                         (events.tu/statement-count!
                          #(transform/update-transforms! (mapv (fn [row-id] (assoc {:collection_id target :description "moved"} :id row-id)) ids))))]
             (move! (make! 1))
-            (is (<= (move! (make! 6)) (+ (move! (make! 2)) per-row-update-growth)))))))))
+            (is (= (move! (make! 2)) (move! (make! 6))))))))))
 
 (deftest definition-update-statement-count-does-not-grow-with-rows-test
   (mt/with-model-cleanup [:model/Transform]
@@ -673,7 +669,7 @@
                       (events.tu/statement-count!
                        #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :python :source-tables [] :body body :source-database (mt/id)}} :id row-id)) ids)))))]
       (counted 1 "print(2)")
-      (is (<= (counted 6 "print(4)") (+ (counted 2 "print(3)") per-row-update-growth))))))
+      (is (= (counted 2 "print(3)") (counted 6 "print(4)"))))))
 
 (deftest tag-link-writes-statement-count-does-not-grow-with-tags-test
   (mt/with-model-cleanup [:model/Transform :model/TransformTag]
@@ -726,4 +722,4 @@
                                          (mapv (fn [_] (cycle-transform (query 1) (mt/random-name))) (range n))))]
                       (statements-outside-query-analysis! #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :query :query (query limit)}} :id row-id)) ids)))))]
       (counted 1 2)
-      (is (<= (counted 6 4) (+ (counted 2 3) per-row-update-growth))))))
+      (is (= (counted 2 3) (counted 6 4))))))

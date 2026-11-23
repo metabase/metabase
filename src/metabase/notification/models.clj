@@ -1048,10 +1048,9 @@
     (change-log/log-changes! model :delete (vals (apply dissoc old (keys new))))))
 
 (defn- update-existing-rows!
-  "Write each of `rows`, an `:id` and the columns to set, of `model`, with one update for each."
+  "Write each of `rows`, an `:id` and the columns to set, of `model`."
   [model rows]
-  (doseq [{:keys [id] :as row} rows]
-    (notification.db/update-part-rows! model [id] (dissoc row :id))))
+  (notification.db/update-part-rows! model rows))
 
 (defn- replace-part-rows!
   "Make the rows of `model` that `existing` holds the `new-rows`, matched by id and compared on `columns`: one insert of
@@ -1076,7 +1075,7 @@
       (not= (:id new) (:id existing))  (do (notification.db/delete-part-rows! :model/NotificationCard [(:id existing)])
                                            (notification.db/insert-part-rows! :model/NotificationCard [columns]))
       (not= (select-keys new [:send_condition :send_once]) (select-keys existing [:send_condition :send_once]))
-      (notification.db/update-part-rows! :model/NotificationCard [(:id existing)] columns))))
+      (notification.db/update-part-rows! :model/NotificationCard [(assoc columns :id (:id existing))]))))
 
 (defn- template-write
   "What the template `new` of a handler asks of its `existing` template: `:delete` the id of one to delete, `:create` the
@@ -1241,7 +1240,7 @@
   [rows]
   (let [stored    (u/index-by :id (notification.db/notifications-by-id (mapv :id rows)))
         requested (requested-changes rows stored)]
-    (notification.db/update-notifications! requested)
+    (notification.db/update-notifications! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
     (update-triggers-of-flipped! stored requested)
     {:stored stored :requested requested}))
 

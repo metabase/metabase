@@ -27,11 +27,11 @@
                           :scope  {:table-id table-id}
                           :inputs rows})))
 
-(defn update-rows!
+(defn update-grouped!
   ([table-id rows]
-   (update-rows! table-id :crowberto 200 rows))
+   (update-grouped! table-id :crowberto 200 rows))
   ([table-id rows params]
-   (update-rows! table-id :crowberto 200 rows params))
+   (update-grouped! table-id :crowberto 200 rows params))
   ([table-id user response-code rows & [params]]
    (mt/user-http-request user :post response-code execute-bulk-url
                          (cond->

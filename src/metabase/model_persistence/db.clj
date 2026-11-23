@@ -176,11 +176,9 @@
    [:state_change_at {:optional true} [:= :%now]]])
 
 (defn- update-persisted-info-rows!
-  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, through the model, one statement per row."
+  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, with one plain update through the model."
   [rows changes]
-  (doseq [{:keys [id]} rows]
-    (t2/update! :model/PersistedInfo :id [:auto/param id] changes))
-  nil)
+  (mdb/update-grouped! :model/PersistedInfo (mapv #(assoc changes :id (:id %)) rows)))
 
 (mu/defn update-persisted-infos!
   "Apply `changes` to the PersistedInfos with `ids`."

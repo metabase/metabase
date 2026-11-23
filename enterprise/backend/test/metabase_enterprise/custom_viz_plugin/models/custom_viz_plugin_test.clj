@@ -236,9 +236,9 @@
                                #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] {:id id :enabled false}) (vec ids)))))
             delete!         (fn [ids]
                               (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! ids)))]
-        (testing "updating plugins costs, for each more plugin, the SELECT of its hook and its UPDATE"
+        (testing "updating plugins takes the same number of statements for any number of them"
           (update! [warm-up])
-          (is (<= (- (update! (take 6 (drop 2 ids))) (update! (take 2 ids))) (* 2 (- 6 2)))))
+          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids))))))
         (testing "deleting plugins"
           (delete! [warm-up])
           (is (= (delete! (take 2 ids)) (delete! (take 6 (drop 2 ids)))))))

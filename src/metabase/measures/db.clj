@@ -45,12 +45,12 @@
   [ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select-pk->fn identity :model/Measure :id [:in ids]))
 
-(mu/defn update-measures!
-  "Apply `changes` to each of the Measures with `ids`, with one statement for each."
-  [ids     :- [:sequential ::lib.schema.id/measure]
-   changes :- ::measures.schema/measure.update]
-  (doseq [id ids]
-    (t2/update! :model/Measure :id id changes)))
+(mu/defn update-measures! :- :nil
+  "Apply each of `updates`, the `:id` of a Measure and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Measure updates)
+  nil)
 
 (mu/defn delete-measures!
   "Delete the Measures with `ids`, returning the number deleted."

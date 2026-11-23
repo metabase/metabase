@@ -12,10 +12,6 @@
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (comment transform-tag/keep-me)
 
@@ -146,7 +142,23 @@
                       (events.tu/statement-count!
                        #(transform-tag/update-transform-tags! (mapv (fn [row-id] (assoc {:built_in_type nil} :id row-id)) ids)))))]
       (counted 1 0)
-      (is (<= (counted 3 3) (+ (counted 1 1) per-row-update-growth))))))
+      (is (= (counted 1 1) (counted 3 3))))))
+
+(deftest rename-chain-of-three-tags-in-one-call-test
+  (mt/with-model-cleanup [:model/TransformTag]
+    (let [[a b c d] (repeatedly 4 #(str "Chain " (mt/random-name)))
+          [tag-a tag-b tag-c] (transform-tag/create-transform-tags! (mapv #(hash-map :name %) [a b c]))]
+      (testing "each rename is written after the one that frees its name, whatever the order of the rows"
+        (transform-tag/update-transform-tags! [{:id (:id tag-a) :name b}
+                                               {:id (:id tag-b) :name c}
+                                               {:id (:id tag-c) :name d}])
+        (is (= [b c d] (mapv #(t2/select-one-fn :name :model/TransformTag :id (:id %)) [tag-a tag-b tag-c]))))
+      (testing "two tags swapping names are refused"
+        (is (= 400 (:status-code (try (transform-tag/update-transform-tags! [{:id (:id tag-a) :name c}
+                                                                              {:id (:id tag-b) :name d}
+                                                                              {:id (:id tag-c) :name b}])
+                                      nil
+                                      (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))
 
 (deftest update-transform-tags-with-different-rows-test
   (mt/with-model-cleanup [:model/TransformTag]
@@ -200,7 +212,7 @@
                                       #(transform-tag/update-transform-tags! (mapv (fn [row-id] (assoc {:created_at (mi/current-timestamp)} :id row-id)) ids)))
                               (t2/delete! :model/TransformTag :id [:in ids]))))]
             (counted 1 0)
-            (is (<= (counted 3 3) (+ (counted 1 1) per-row-update-growth)))))))))
+            (is (= (counted 1 1) (counted 3 3)))))))))
 
 (deftest built-in-tag-update-event-carries-real-values-test
   (with-built-in-names-freed

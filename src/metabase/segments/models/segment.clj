@@ -181,15 +181,18 @@
   (doseq [{:keys [id] :as row} rows]
     (check-changed-definition [id] (dissoc row :id) stored)))
 
+(defn- assoc-segment-tables
+  "`rows`, updates of Segments, each with the table its new definition gives, computed once for each distinct definition."
+  [rows]
+  (let [table-ids (into {} (map (fn [definition] [definition (definition-table-id definition)]))
+                        (distinct (keep :definition rows)))]
+    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) rows)))
+
 (defn- write-segment-updates!
-  "Writes `rows`, updates of the `stored` Segments, each with the table its new definition gives, with one statement for each,
-  and returns what the event needs, the changes of each row and the Segments as they are after the write."
+  "Writes `rows`, updates of the `stored` Segments, each with the table its new definition gives, and returns what the event
+  needs, the changes of each row and the Segments as they are after the write."
   [stored rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (cond-> (dissoc row :id)
-                          (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]
-          :when (seq changes)]
-    (segments.db/update-segments! [id] changes))
+  (segments.db/update-segments! (assoc-segment-tables rows))
   {:stored  stored
    :rows    rows
    :objects (into {} (map (fn [{:keys [id] :as row}] [id (updated-segment (stored id) (dissoc row :id))])) rows)})

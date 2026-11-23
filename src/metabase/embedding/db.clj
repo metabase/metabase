@@ -2,7 +2,6 @@
   "Application database queries for the embedding module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.util.malli :as mu]
@@ -61,11 +60,12 @@
          (sort-by first)
          (mapv second))))
 
-(mu/defn update-embedding-themes!
-  "Apply `changes` to the EmbeddingThemes with `ids`."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/update! :model/EmbeddingTheme :id [:in ids] changes))
+(mu/defn update-embedding-themes! :- :nil
+  "Apply each of `updates`, the `:id` of a EmbeddingTheme and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/EmbeddingTheme updates)
+  nil)
 
 (mu/defn delete-embedding-themes!
   "Delete the EmbeddingThemes with `ids`."

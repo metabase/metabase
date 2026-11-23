@@ -6,7 +6,6 @@
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -30,15 +29,13 @@
   [row :- ::oauth-server.schema/oauth-client.create]
   (oauth-server.db/insert-oauth-client! row))
 
-(mu/defn update-oauth-clients! :- ms/IntGreaterThanOrEqualToZero
-  "Apply `updates`, each the primary key of an OAuthClient and the columns to set, in one transaction, returning the
-  number updated."
+(mu/defn update-oauth-clients! :- :nil
+  "Apply `updates`, each the primary key of an OAuthClient and the columns to set, in one transaction."
   [updates :- [:sequential ::oauth-server.schema/oauth-client.update-row]]
-  (if (empty? updates)
-    0
+  (when (seq updates)
     (t2/with-transaction [_conn]
-      (transduce (map (comp oauth-server.db/update-oauth-clients! vec)) + 0
-                 (partition-all app-db/update-partition-size updates)))))
+      (run! (comp oauth-server.db/update-oauth-clients! vec) (partition-all app-db/update-partition-size updates))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -124,12 +124,11 @@
   [rows :- [:sequential ::explorations.schema/exploration.create]]
   (mdb/insert-returning-instances! :model/Exploration rows))
 
-(mu/defn update-explorations!
-  "Apply `changes` to each of the Explorations with `ids`, with one statement for each, returning nil."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::explorations.schema/exploration.update]
-  (doseq [id ids]
-    (t2/update! :model/Exploration :id id changes))
+(mu/defn update-explorations! :- :nil
+  "Apply each of `updates`, the `:id` of an Exploration and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Exploration updates)
   nil)
 
 (mu/defn delete-explorations!
@@ -225,11 +224,12 @@
   [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
   (mdb/insert-returning-instances! :model/ExplorationThread rows))
 
-(mu/defn update-threads!
-  "Apply `changes` to the ExplorationThreads with `thread-ids`."
-  [thread-ids :- [:sequential ms/PositiveInt]
-   changes    :- (mut/select-keys ::explorations.schema/exploration-thread [:started_at :analysis_started_at :completed_at :query_plan_transcript])]
-  (t2/update! :model/ExplorationThread :id [:in thread-ids] changes))
+(mu/defn update-threads! :- :nil
+  "Apply each of `updates`, the `:id` of an ExplorationThread and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/ExplorationThread updates)
+  nil)
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of
@@ -400,11 +400,12 @@
   [rows :- [:sequential ::explorations.schema/exploration-page.create]]
   (mdb/insert-returning-instances! :model/ExplorationPage rows))
 
-(mu/defn update-pages!
-  "Apply `changes` to the ExplorationPages with `page-ids`."
-  [page-ids :- [:sequential ms/PositiveInt]
-   changes  :- (mut/select-keys ::explorations.schema/exploration-page [:starred :hidden])]
-  (t2/update! :model/ExplorationPage :id [:in page-ids] changes))
+(mu/defn update-pages! :- :nil
+  "Apply each of `updates`, the `:id` of an ExplorationPage and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/ExplorationPage updates)
+  nil)
 
 (mu/defn delete-pages!
   "Delete the ExplorationPages with `page-ids`."

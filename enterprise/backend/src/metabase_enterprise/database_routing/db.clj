@@ -77,10 +77,10 @@
   (app-db/insert-returning-instances! :model/DatabaseRouter rows))
 
 (mu/defn update-routers!
-  "Apply each of `rows`, the `:id` of a DatabaseRouter and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a DatabaseRouter and the columns to set, one statement per distinct change, in the
+  order the changes first appear."
   [rows :- [:sequential ::database-routing.schema/database-router.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/DatabaseRouter :id [:auto/param id] (dissoc row :id))))
+  (app-db/update-grouped! :model/DatabaseRouter rows))
 
 (mu/defn delete-routers!
   "Delete the DatabaseRouters with `ids`."

@@ -45,12 +45,12 @@
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn identity :model/Segment :id [:in ids]))
 
-(mu/defn update-segments!
-  "Apply `changes` to each of the Segments with `ids`, with one statement for each."
-  [ids     :- [:sequential ::lib.schema.id/segment]
-   changes :- ::segments.schema/segment.update]
-  (doseq [id ids]
-    (t2/update! :model/Segment :id id changes)))
+(mu/defn update-segments! :- :nil
+  "Apply each of `updates`, the `:id` of a Segment and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Segment updates)
+  nil)
 
 (mu/defn delete-segments!
   "Delete the Segments with `ids`, returning the number deleted."

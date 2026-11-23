@@ -169,16 +169,12 @@
   [rows :- [:sequential ::queries.schema/card.create]]
   (mdb/insert-returning-instances! :model/Card rows))
 
-(mu/defn update-cards!
-  "Apply the columns of each of `rows`, each with the `:id` of its Card, with one statement for each, returning the
-  number updated."
-  [rows :- [:sequential [:merge ::queries.schema/card.update [:map [:id ::lib.schema.id/card]]]]]
-  (transduce (keep (fn [{:keys [id] :as row}]
-                     (when-let [changes (not-empty (dissoc row :id))]
-                       (t2/update! :model/Card :id id changes))))
-             +
-             0
-             rows))
+(mu/defn update-cards! :- :nil
+  "Apply each of `updates`, the `:id` of a Card and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Card updates)
+  nil)
 
 (mu/defn delete-cards!
   "Delete the Cards with `card-ids`, returning the number deleted."

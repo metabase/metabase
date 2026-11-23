@@ -214,7 +214,7 @@
 
 (defn- update-settings!
   "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
-  among `tables` and its flags set, one statement per row, returning `writes` with the updates."
+  among `tables` and its flags set, one update per distinct change, returning `writes` with the updates."
   [writes stored+rows tables]
   (let [by-id (into {}
                     (map (fn [[stored row]]

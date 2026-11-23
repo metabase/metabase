@@ -119,10 +119,10 @@
    [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
 
 (mu/defn update-api-keys!
-  "Apply each of `rows`, the `:id` of a ApiKey and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a ApiKey and the columns to set, one statement per distinct change, in the order
+  the changes first appear."
   [rows :- [:sequential ::api-key-columns.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/ApiKey :id [:auto/param id] (dissoc row :id))))
+  (mdb/update-grouped! :model/ApiKey rows))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

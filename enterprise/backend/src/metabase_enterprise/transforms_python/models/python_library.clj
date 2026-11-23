@@ -110,7 +110,7 @@
   (let [stored    (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (mapv :id rows)))
         requested (requested-changes rows stored)]
     (when (seq requested)
-      (transforms-python.db/update-python-libraries! requested))
+      (transforms-python.db/update-python-libraries! (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
     {:stored stored :requested requested}))
 
 (mu/defn update-python-libraries! :- :nil

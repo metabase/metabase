@@ -171,10 +171,7 @@
 (defn- write-timeline-event-updates!
   "Writes `rows`, updates of TimelineEvents, with one statement for each distinct set of changes."
   [rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (timeline.db/update-timeline-events! [id] changes)))
+  (timeline.db/update-timeline-events! rows))
 
 (defn- update-timeline-event-batch!
   "Writes the TimelineEvents of `batch`, up to one partition of the call, and returns what the event needs."

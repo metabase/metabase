@@ -216,12 +216,12 @@
   (t2/select :model/CacheConfig :id [:in [:auto/param (vec (distinct cache-config-ids))]]))
 
 (mu/defn update-cache-configs!
-  "Apply each of `rows`, the `:id` of a CacheConfig and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a CacheConfig and the columns to set, one statement per distinct change, in the
+  order the changes first appear."
   [rows :- [:sequential [:merge
                          (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])
                          [:map [:id ms/PositiveInt]]]]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/CacheConfig :id [:auto/param id] (dissoc row :id))))
+  (app-db/update-grouped! :model/CacheConfig rows))
 
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."

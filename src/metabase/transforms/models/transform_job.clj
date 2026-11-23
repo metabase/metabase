@@ -219,7 +219,7 @@
   match its row."
   [stored requested]
   (when (seq requested)
-    (transforms.db/update-jobs! requested))
+    (transforms.db/update-jobs! (mapv (fn [[id changes]] (assoc changes :id id)) requested)))
   (sync-triggers! (transforms.db/jobs-by-ids (vec (keys stored)))))
 
 (defn- column-update-event

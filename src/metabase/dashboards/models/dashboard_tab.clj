@@ -107,10 +107,7 @@
   [rows :- [:sequential ::dashboards.schema/dashboard-tab.update]]
   (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashboard-tabs-by-ids (mapv :id rows)) []))
         rows   (filterv #(contains? stored (:id %)) rows)]
-    (doseq [{:keys [id] :as row} rows
-            :let [changes (dissoc row :id)]
-            :when (seq changes)]
-      (dashboards.db/update-dashboard-tabs! [id] changes))
+    (dashboards.db/update-dashboard-tabs! rows)
     rows))
 
 (mu/defn delete-dashboard-tabs! :- :nil

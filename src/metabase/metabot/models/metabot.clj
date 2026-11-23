@@ -62,7 +62,7 @@
   [rows]
   (let [stored    (u/index-by :id (metabot.db/metabots-by-ids (mapv :id rows)))
         requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
-    (metabot.db/update-metabots! requested)))
+    (metabot.db/update-metabots! (mapv (fn [[id changes]] (assoc changes :id id)) requested))))
 
 (mu/defn update-metabots! :- :nil
   "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in batches in one transaction."

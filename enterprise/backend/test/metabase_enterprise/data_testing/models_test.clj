@@ -16,10 +16,6 @@
   (:import
    (java.time OffsetDateTime ZoneOffset)))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -352,7 +348,7 @@
                                   (events.tu/statement-count!
                                    (fn [] (data-testing.models/update-transform-tests! (mapv (fn [row-id] (assoc {:description "same"} :id row-id)) ids)))))]
             (update! [warm-up])
-            (is (<= (update! (take 6 (drop 2 ids))) (+ (update! (take 2 ids)) per-row-update-growth)))))
+            (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
         (testing "deleting a transform deletes its tests in a fixed number of statements"
           (let [delete! (fn [n]
                           (data-testing.models/create-transform-tests! (vec (repeat n (valid-row transform-id []))))
@@ -390,7 +386,7 @@
           (let [[create-2 update-2 delete-2] (counted 2)
                 [create-6 update-6 delete-6] (counted 6)]
             (is (= [create-2 delete-2] [create-6 delete-6]))
-            (is (<= update-6 (+ update-2 per-row-update-growth)))))))))
+            (is (= update-2 update-6))))))))
 
 (deftest card-and-segment-test-write-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Card    {c1 :id} {}
@@ -434,4 +430,4 @@
           (let [[create-2 update-2 delete-2 by-subject-2] (measured 2)
                 [create-6 update-6 delete-6 by-subject-6] (measured 6)]
             (is (= [create-2 delete-2 by-subject-2] [create-6 delete-6 by-subject-6]))
-            (is (<= update-6 (+ update-2 per-row-update-growth)))))))))
+            (is (= update-2 update-6))))))))

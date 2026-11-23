@@ -62,11 +62,12 @@
   [plugins :- [:sequential {:min 1} ::custom-viz-plugin.schema/custom-viz-plugin.create]]
   (app-db/insert-returning-instances! :model/CustomVizPlugin plugins))
 
-(mu/defn update-plugins!
-  "Apply `changes` to the CustomVizPlugins with `plugin-ids`, returning the number updated."
-  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin :id [:in [:auto/param plugin-ids]] changes))
+(mu/defn update-plugins! :- :nil
+  "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/CustomVizPlugin updates)
+  nil)
 
 (mu/defn non-blob-plugins-by-ids
   "The CustomVizPlugins with `plugin-ids`, without their bundles."

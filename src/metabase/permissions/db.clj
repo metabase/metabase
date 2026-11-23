@@ -591,10 +591,10 @@
   (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
 
 (mu/defn update-permissions-groups!
-  "Apply each of `rows`, the `:id` of a PermissionsGroup and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a PermissionsGroup and the columns to set, one statement per distinct change, in
+  the order the changes first appear."
   [rows :- [:sequential ::permissions.schema/permissions-group.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/PermissionsGroup :id [:auto/param id] (dissoc row :id))))
+  (mdb/update-grouped! :model/PermissionsGroup rows))
 
 (mu/defn delete-permissions-groups!
   "Delete the PermissionsGroups with `ids`, returning the number deleted."
@@ -705,10 +705,10 @@
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
 (mu/defn update-group-memberships!
-  "Apply each of `rows`, the `:id` of a PermissionsGroupMembership and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a PermissionsGroupMembership and the columns to set, one statement per distinct
+  change, in the order the changes first appear."
   [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] (dissoc row :id))))
+  (mdb/update-grouped! :model/PermissionsGroupMembership rows))
 
 (mu/defn insert-group-memberships!
   "Insert the PermissionsGroupMemberships `memberships` through the model, returning the inserted instances."
@@ -810,10 +810,10 @@
   (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn update-collection-permission-graph-revisions!
-  "Apply each of `rows`, the `:id` of a CollectionPermissionGraphRevision and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a CollectionPermissionGraphRevision and the columns to set, one statement per
+  distinct change, in the order the changes first appear."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/CollectionPermissionGraphRevision :id [:auto/param id] (dissoc row :id))))
+  (mdb/update-grouped! :model/CollectionPermissionGraphRevision rows))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

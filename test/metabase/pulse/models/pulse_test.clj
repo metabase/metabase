@@ -21,10 +21,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -832,15 +828,15 @@
                            (models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:archived archived?} :id row-id)) (vec (take-nth 2 ids))))
                            (events.tu/statement-count! #(models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:archived archived?} :id row-id)) ids)))))]
            (counted 2 true)
-           (is (<= (counted 6 true) (+ (counted 2 true) per-row-update-growth)))
-           (is (<= (counted 6 false) (+ (counted 2 false) per-row-update-growth)))))
+           (is (= (counted 2 true) (counted 6 true)))
+           (is (= (counted 2 false) (counted 6 false)))))
        (testing "moving Pulses to a Collection"
          (let [counted (fn [n]
                          (let [ids (create! n)]
                            (events.tu/statement-count!
                             #(models.pulse/update-pulses! (mapv (fn [row-id] (assoc {:collection_id collection-1} :id row-id)) ids)))))]
            (counted 2)
-           (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
+           (is (= (counted 2) (counted 6)))))
        (testing "deleting Pulses"
          (let [counted (fn [n]
                          (let [ids (create! n)]
@@ -853,7 +849,7 @@
                                channel-ids (t2/select-pks-vec :model/PulseChannel :pulse_id [:in ids] :channel_type :email)]
                            (events.tu/statement-count! #(models.pulse/remove-pulse-channels! channel-ids))))]
            (counted 2)
-           (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
+           (is (= (counted 2) (counted 6)))))
        (testing "deleting PulseChannelRecipients"
          (let [counted (fn [n]
                          (let [ids           (create! n)

@@ -280,10 +280,7 @@
   "Writes `rows`, updates of the `stored` snippets, and returns what the event needs, the changes of each row and the
   snippets after the write."
   [stored rows]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (native-query-snippets.db/update-snippets! [id] changes))
+  (native-query-snippets.db/update-snippets! rows)
   (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
     {:stored stored :rows (derive-archived-directly rows updated) :updated updated}))
 

@@ -15,10 +15,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -533,7 +529,7 @@
                                                            channels))]
                             (events.tu/statement-count! #(pulse-channel/update-pulse-channels! updates))))]
             (counted 2)
-            (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
+            (is (= (counted 2) (counted 6)))))
         (testing "enabling and disabling the PulseChannels of Pulses, some of them already in that state"
           (let [counted (fn [n enabled?]
                           (let [channels (create! n)

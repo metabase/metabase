@@ -94,10 +94,10 @@
   (t2/select :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
 
 (mu/defn update-tenants!
-  "Apply each of `rows`, the `:id` of a Tenant and the columns to set, with a statement of its own."
+  "Apply each of `rows`, the `:id` of a Tenant and the columns to set, one statement per distinct change, in the order
+  the changes first appear."
   [rows :- [:sequential ::tenants.schema/tenant.update]]
-  (doseq [{:keys [id] :as row} rows]
-    (t2/update! :model/Tenant :id [:auto/param id] (dissoc row :id))))
+  (app-db/update-grouped! :model/Tenant rows))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."

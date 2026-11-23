@@ -58,11 +58,6 @@
    (java.io ByteArrayInputStream)
    (org.apache.poi.ss.usermodel DataFormatter)))
 
-(def ^:private update-statements-per-row-growth
-  "The statements an update of six rows takes more than one of two: each of the four more rows costs the SELECT of its
-  stored row by the hook of the model and its UPDATE, two statements."
-  (* 2 (- 6 2)))
-
 (set! *warn-on-reflection* true)
 
 (comment api.card/keep-me)
@@ -6156,4 +6151,4 @@
                           (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
                           (call-count))))]
           (move! 1)
-          (is (<= (- (move! 6) (move! 2)) update-statements-per-row-growth)))))))
+          (is (= (move! 2) (move! 6))))))))

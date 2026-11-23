@@ -18,10 +18,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (deftest channel-details-is-encrypted
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
@@ -322,8 +318,7 @@
               statements (fn [ids]
                            (events.tu/statement-count! (fn [] (models.channel/update-channels! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (vec ids))))))]
           (statements [(first active)])
-          (is (<= (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))
-                  (+ (statements [(nth active 1) (first inactive)]) per-row-update-growth)))))
+          (is (= (statements [(nth active 1) (first inactive)]) (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))))))
       (testing "deleting channels"
         (let [delete! (fn [n]
                         (let [ids (mapv :id (models.channel/create-channels!

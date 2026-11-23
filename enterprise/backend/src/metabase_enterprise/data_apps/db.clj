@@ -88,10 +88,10 @@
   (app-db/insert-returning-instances! :model/DataApp rows))
 
 (mu/defn update-data-apps! :- :nil
-  "Apply `changes` to the DataApps with `data-app-ids`."
-  [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes      :- ::data-apps.schema/data-app.update]
-  (t2/update! :model/DataApp :id [:in [:auto/param data-app-ids]] changes)
+  "Apply each of `updates`, the `:id` of a DataApp and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/DataApp updates)
   nil)
 
 (mu/defn delete-data-apps! :- :nil

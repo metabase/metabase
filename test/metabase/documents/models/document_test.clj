@@ -830,7 +830,7 @@
           (is (= card-id (get-in imported [:content 0 :attrs :id]))))))))
 
 (deftest document-writes-statement-count-test
-  (testing "Creating and deleting Documents take the same number of statements for any number of them, moving and archiving them a SELECT and an UPDATE more for each Document and its cards"
+  (testing "Creating, moving, archiving and deleting Documents takes the same number of statements for any number of them"
     (mt/with-temp [:model/Collection {from-id :id} {}
                    :model/Collection {to-id :id}   {}]
       (mt/with-model-cleanup [:model/Document]
@@ -847,12 +847,10 @@
                    (t2/with-call-count [call-count] (create 6) (call-count)))))
           (testing "moving"
             (statements 1 (updater {:collection_id to-id}))
-            (is (<= (- (statements 6 (updater {:collection_id to-id})) (statements 2 (updater {:collection_id to-id}))) (* 4 (- 6 2)))
-                "each more Document costs its SELECT and UPDATE and those of its cards"))
+            (is (= (statements 2 (updater {:collection_id to-id})) (statements 6 (updater {:collection_id to-id})))))
           (testing "archiving"
             (statements 1 (updater {:archived true}))
-            (is (<= (- (statements 6 (updater {:archived true})) (statements 2 (updater {:archived true}))) (* 4 (- 6 2)))
-                "each more Document costs its SELECT and UPDATE and those of its cards"))
+            (is (= (statements 2 (updater {:archived true})) (statements 6 (updater {:archived true})))))
           (testing "deleting"
             (statements 1 #(document/delete-documents! (mapv :id %)))
             (is (= (statements 2 #(document/delete-documents! (mapv :id %)))
@@ -886,31 +884,23 @@
                           (events.tu/statement-count! #(document/update-documents! (mapv (fn [id] (assoc changes :id id)) ids)))))
               counted (fn [f]
                         (f 1)
-                        (is (= (f 2) (f 6))))
-              counted-updates (fn [f]
-                                (f 1)
-                                (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                    "each more row costs its SELECT by the hook and its UPDATE"))
-              counted-cascading (fn [f]
-                                  (f 1)
-                                  (is (<= (- (f 6) (f 2)) (* 4 (- 6 2)))
-                                      "each more row costs its SELECT and UPDATE and those of what it carries"))]
+                        (is (= (f 2) (f 6))))]
           (testing "creating documents"
             (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(document/create-documents! rows))))))
           (testing "updating columns, some already holding the new value"
-            (counted-updates (partial update!
+            (counted (partial update!
                                       (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :name "Same"}) ids)))
                                       {:name "Same"})))
           (testing "archiving documents and their cards, some already archived"
-            (counted-cascading (partial update!
+            (counted (partial update!
                                         (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
                                         {:archived true})))
           (testing "restoring documents and their cards, some already live"
-            (counted-cascading (partial update!
+            (counted (partial update!
                                         (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :archived true}) ids)))
                                         {:archived false})))
           (testing "moving documents and their cards, some already in the Collection"
-            (counted-cascading (partial update!
+            (counted (partial update!
                                         (fn [ids] (document/update-documents! (mapv (fn [id] {:id id :collection_id other}) ids)))
                                         {:collection_id other})))
           (testing "deleting documents"

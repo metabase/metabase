@@ -335,9 +335,7 @@
                             (update! (take-nth 2 user-ids))
                             (events.tu/statement-count! #(update! user-ids))))]
             (counted 1)
-            (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
-              (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
-                (is (= (- c6 c4) (- c4 c2)))))))))))
+            (is (= (counted 2) (counted 6)))))))))
 
 (deftest update-permissions-group-memberships-refuses-in-input-order-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}

@@ -205,7 +205,7 @@
 
 (defn- write-settings-updates!
   "Write each of `rows`, the id of one of the `stored` FieldUserSettings, `{id row}`, and the columns to change, one
-  statement per row, and delete the settings it leaves without a user value, returning `writes` with these writes."
+  update per distinct change, and delete the settings it leaves without a user value, returning `writes` with these writes."
   [writes stored rows]
   (warehouse-schema.db/update-field-user-settings-rows! rows)
   (let [by-id (u/index-by :id rows)]

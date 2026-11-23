@@ -611,7 +611,7 @@
   [resolved definitions]
   (when (seq definitions)
     (table-index/mark-for-revalidation! (vec (keys definitions))))
-  (transforms.db/update-transforms! resolved))
+  (transforms.db/update-transforms! (mapv (fn [[id changes]] (assoc changes :id id)) resolved)))
 
 (defn- apply-updates!
   "Check, then write `requested`, a map from the id of a Transform of `stored` to its changes, and return the changes of

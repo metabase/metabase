@@ -628,7 +628,7 @@
   (check-allowed-contents (moved-collection-ids stored rows)))
 
 (defn- write-table-updates!
-  "Write each of `rows`, the id of a Table and the columns to change, one statement per row."
+  "Write each of `rows`, the id of a Table and the columns to change, one update per distinct change."
   [rows]
   (warehouse-schema.db/update-tables! rows))
 

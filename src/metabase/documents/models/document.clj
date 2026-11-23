@@ -485,10 +485,7 @@
   cards, and returns what the event needs, the changes of each row and the Documents after the write."
   [stored rows opts]
   (move-cards-of-moved! (moved-documents stored rows))
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (documents.db/update-documents! [id] changes))
+  (documents.db/update-documents! rows)
   (set-cards-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
   (let [updated (m/index-by :id (documents.db/documents (mapv :id rows)))]
     {:stored stored :rows (derive-archived-directly rows updated)}))

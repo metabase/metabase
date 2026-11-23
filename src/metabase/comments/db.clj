@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.comments.schema :as comments.schema]
@@ -109,11 +108,12 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Comment :id [:in ids]))
 
-(mu/defn update-comments!
-  "Apply `changes` to the Comments with `ids`, returning the number updated."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- (mut/select-keys ::comments.schema/comment [:content :is_resolved])]
-  (t2/update! :model/Comment :id [:in ids] changes))
+(mu/defn update-comments! :- :nil
+  "Apply each of `updates`, the `:id` of a Comment and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Comment updates)
+  nil)
 
 (mu/defn soft-delete-comments!
   "Mark the Comments with `ids` deleted now, returning the number updated."

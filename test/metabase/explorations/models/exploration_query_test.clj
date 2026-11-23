@@ -57,15 +57,11 @@
           fresh!  (fn [n] (mapv :id (exploration-query/create-queries! (rows n))))
           counted (fn [f]
                     (f 1)
-                    (is (= (f 2) (f 6))))
-          counted-updates (fn [f]
-                            (f 1)
-                            (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                "each more row costs its SELECT by the hook and its UPDATE"))]
+                    (is (= (f 2) (f 6))))]
       (testing "creating queries"
         (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration-query/create-queries! rows))))))
       (testing "updating queries, some already holding the new value"
-        (counted-updates (fn [n]
+        (counted (fn [n]
                            (let [ids (fresh! n)]
                              (exploration-query/update-queries! (mapv (fn [id] {:id id :status "canceled"}) (take-nth 2 ids)))
                              (events.tu/statement-count!

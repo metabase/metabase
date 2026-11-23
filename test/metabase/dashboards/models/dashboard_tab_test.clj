@@ -128,15 +128,11 @@
             fresh!  (fn [n] (mapv :id (dashboard-tab/create-dashboard-tabs! (rows n))))
             counted (fn [f]
                       (f 1)
-                      (is (= (f 2) (f 6))))
-            counted-updates (fn [f]
-                              (f 1)
-                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                  "each more row costs its SELECT by the hook and its UPDATE"))]
+                      (is (= (f 2) (f 6))))]
         (testing "creating tabs"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-tab/create-dashboard-tabs! rows))))))
         (testing "updating tabs, some already holding the new value"
-          (counted-updates (fn [n]
+          (counted (fn [n]
                              (let [ids (fresh! n)]
                                (dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) (take-nth 2 ids)))
                                (events.tu/statement-count!
@@ -144,7 +140,7 @@
         (testing "deleting tabs"
           (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-tab/delete-dashboard-tabs! ids))))))
         (testing "replacing the tabs of a dashboard"
-          (counted-updates (fn [n]
+          (counted (fn [n]
                              (let [ids     (fresh! n)
                                    current (mapv (fn [id] (t2/select-one [:model/DashboardTab :id :name :position] :id id)) ids)
                                    new-tabs (concat (map-indexed (fn [i tab] (cond-> tab (even? i) (assoc :name "Renamed"))) (rest current))

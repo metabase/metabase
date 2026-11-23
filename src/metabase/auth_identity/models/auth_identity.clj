@@ -132,15 +132,13 @@
    provider :- :string]
   (auth-identity.db/select-or-insert-auth-identity! user-id provider))
 
-(mu/defn update-auth-identities! :- ms/IntGreaterThanOrEqualToZero
-  "Apply `updates`, each the id of an AuthIdentity and the columns to set, in one transaction, returning the number
-  updated."
+(mu/defn update-auth-identities! :- :nil
+  "Apply `updates`, each the id of an AuthIdentity and the columns to set, in one transaction."
   [updates :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
-  (if (empty? updates)
-    0
+  (when (seq updates)
     (t2/with-transaction [_conn]
-      (transduce (map (comp auth-identity.db/update-auth-identities! vec)) + 0
-                 (partition-all app-db/update-partition-size updates)))))
+      (run! (comp auth-identity.db/update-auth-identities! vec) (partition-all app-db/update-partition-size updates))))
+  nil)
 
 (mu/defn touch-auth-identity!
   "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no

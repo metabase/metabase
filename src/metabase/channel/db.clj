@@ -49,11 +49,9 @@
   (t2/select-one :model/Channel :id [:auto/param id]))
 
 (mu/defn update-channels!
-  "Apply to each Channel its changes in `id->changes`, a map from id, one update for each."
-  [id->changes :- [:map-of ms/PositiveInt ChannelRow]]
-  (doseq [[id changes] id->changes]
-    (t2/update! :model/Channel :id id changes))
-  nil)
+  "Apply to the Channel rows their changes in `updates`, each the `:id` of a row and the columns to change."
+  [updates :- [:sequential ::channel.schema/channel.update]]
+  (app-db/update-grouped! :model/Channel updates))
 
 (defn- text-type
   "The SQL type to cast a text parameter to, for the app DB."

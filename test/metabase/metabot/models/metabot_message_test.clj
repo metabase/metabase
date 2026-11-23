@@ -7,10 +7,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (deftest after-select-migrates-v1-data-test
   (mt/with-temp [:model/MetabotConversation conv {}
@@ -149,7 +145,7 @@
                           (events.tu/statement-count!
                            #(metabot-message/update-metabot-messages! (mapv (fn [row-id] (assoc {:finished true :total_tokens 7} :id row-id)) ids))))]
             (counted (mixed 1))
-            (is (<= (counted (mixed 3)) (+ (counted (mixed 1)) per-row-update-growth)))))
+            (is (= (counted (mixed 1)) (counted (mixed 3))))))
         (testing "soft-deleting messages, some of them already soft-deleted by the same user"
           (let [counted (fn [n]
                           (let [ids (mixed n)]

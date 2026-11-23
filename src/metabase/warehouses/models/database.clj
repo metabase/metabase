@@ -882,7 +882,7 @@
 
 (defn- write-database-updates!
   "Write each of `rows`, the id of a Database and the columns to change, over the `stored` Databases, `{id row}`, one
-  statement per row, returning the rows written, sanitized and with their client secrets stored."
+  update per distinct change, returning the rows written, sanitized and with their client secrets stored."
   [stored rows writer]
   (u/prog1 (prepared-rows! stored rows writer)
     (warehouses.db/update-databases! <>)))

@@ -96,12 +96,11 @@
   [rows :- [:sequential ::documents.schema/document.create]]
   (mdb/insert-returning-instances! :model/Document rows))
 
-(mu/defn update-documents!
-  "Apply `changes` to each of the Documents with `ids`, with one statement for each, returning nil."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::documents.schema/document.update]
-  (doseq [id ids]
-    (t2/update! :model/Document :id id changes))
+(mu/defn update-documents! :- :nil
+  "Apply each of `updates`, the `:id` of a Document and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Document updates)
   nil)
 
 (mu/defn delete-documents!

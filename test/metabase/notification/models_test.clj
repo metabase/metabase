@@ -17,14 +17,10 @@
    [toucan2.core :as t2]))
 
 (def ^:private per-part-update-growth
-  "The statements the update of a Notification adds for each of the 4 parts between 2 and 6: at most the before-update
-  SELECT and UPDATE of a template and of its handler, 4 for each part."
+  "The statements the update of a Notification adds for the 4 handlers between 2 and 6 when each handler gets its own
+  template id: the before-update SELECT and UPDATE of a template and of its handler, 4 for each."
   16)
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (set! *warn-on-reflection* true)
 
@@ -507,7 +503,7 @@
                          (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (vec (take-nth 2 ids))))
                          (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) ids)))))]
          (counted 2)
-         (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
+         (is (= (counted 2) (counted 6)))))
      (testing "reactivating Notifications, some of them already active"
        (let [counted (fn [n]
                        (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
@@ -515,7 +511,7 @@
                          (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) (vec (take-nth 2 ids))))
                          (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) ids)))))]
          (counted 2)
-         (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))
+         (is (= (counted 2) (counted 6)))))
      (testing "deleting Notifications"
        (let [counted (fn [n]
                        (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
@@ -600,8 +596,9 @@
                  (fn [existing _n] (assoc existing :handlers []))]]]
          (testing part-kind
            (counted handler change 1)
-           (is (<= (counted handler change 3) (+ (counted handler change 1) (quot per-part-update-growth 2))))
-           (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))))))))
+           (if (= part-kind "changing the template of each handler")
+             (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))
+             (is (= (counted handler change 1) (counted handler change 3))))))))))
 
 (deftest create-notifications-reports-the-first-invalid-row-test
   (do-with-notification-rows!

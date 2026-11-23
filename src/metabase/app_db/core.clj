@@ -92,6 +92,7 @@
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
+  update-grouped!
   update-partition-size
   with-conflict-retry]
  [metabase.app-db.query-cancelation

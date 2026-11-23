@@ -15,10 +15,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ^:private per-row-update-growth
-  "The statements an update of one more row adds: the model's before-update SELECT and its UPDATE, 2 for each of the 4
-  rows between 2 and 6."
-  8)
 
 (comment transform-job/keep-me)
 
@@ -165,7 +161,7 @@
                            (fn [] (transform-job/update-transform-jobs! (mapv (fn [row-id] (assoc {:schedule "0 0 1 * * ? *"} :id row-id)) ids)))))
                 ids     @created]
             (update! (take 1 ids))
-            (is (<= (update! (take 6 (drop 3 ids))) (+ (update! (take 2 (drop 1 ids))) per-row-update-growth)))))
+            (is (= (update! (take 2 (drop 1 ids))) (update! (take 6 (drop 3 ids)))))))
         (testing "deleting jobs"
           (let [delete! (fn [ids]
                           (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! ids))))
@@ -190,7 +186,7 @@
             two     (into (built (jobs 1) "hourly") (jobs 1))
             six     (into (built (jobs 3) "hourly") (jobs 3))]
         (counted warm-up)
-        (is (<= (counted six) (+ (counted two) per-row-update-growth)))
+        (is (= (counted two) (counted six)))
         (testing "each built-in job becomes a custom one with its translated name and description"
           (is (= {:name        (str (get-in values ["hourly" :name]))
                   :description (str (get-in values ["hourly" :description]))
@@ -274,4 +270,4 @@
                         (events.tu/statement-count!
                          #(transform-job/update-transform-jobs! (mapv (fn [row-id] (assoc {:schedule "0 0 1 * * ? *" :description "d"} :id row-id)) ids)))))]
         (counted 1)
-        (is (<= (counted 6) (+ (counted 2) per-row-update-growth)))))))
+        (is (= (counted 2) (counted 6)))))))

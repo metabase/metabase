@@ -288,13 +288,14 @@
     (t2/insert! :model/McpGroupPermission rows)))
 
 (mu/defn update-group-permissions!
-  "Set the McpGroupPermission of the group of each of `rows` to the values of its row, with a statement of its own."
+  "Set the McpGroupPermission of the group of each of `rows` to the values of its row, one statement per distinct
+  change."
   [rows :- [:sequential [:map {:closed true}
                          [:group_id    ms/PositiveInt]
                          [:mcp_enabled {:optional true} :boolean]
                          [:tool_access {:optional true} ::mcp.perms/tool-access]]]]
-  (doseq [{:keys [group_id] :as row} rows]
-    (t2/update! :model/McpGroupPermission :group_id [:auto/param group_id] (dissoc row :group_id))))
+  (doseq [[changes rows] (group-by #(dissoc % :group_id) rows)]
+    (t2/update! :model/McpGroupPermission :group_id [:in [:auto/param (mapv :group_id rows)]] changes)))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."

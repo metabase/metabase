@@ -133,13 +133,12 @@
      [:inline false]
      :else [:inline true]]))
 
-(mu/defn update-dashboards-by-changes!
-  "Write each of `rows`, an `:id` of a stored Dashboard and the columns to set, with one statement for each."
-  [rows :- [:sequential ::dashboards.schema/dashboard.update]]
-  (doseq [{:keys [id] :as row} rows
-          :let [changes (dissoc row :id)]
-          :when (seq changes)]
-    (update-dashboards! [id] changes)))
+(mu/defn update-dashboards-by-changes! :- :nil
+  "Apply each of `updates`, the `:id` of a Dashboard and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/Dashboard updates)
+  nil)
 
 (mu/defn delete-dashboards!
   "Delete the Dashboards with `dashboard-ids`, returning the number deleted."
@@ -325,11 +324,12 @@
             ::dashboards.schema/dashboard-card.update]]
   (mdb/insert-returning-instances! :model/DashboardCard rows))
 
-(mu/defn update-dashcards!
-  "Apply `changes` to the DashboardCards with `dashcard-ids`, returning the number updated."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]
-   changes      :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id [:in dashcard-ids] changes))
+(mu/defn update-dashcards! :- :nil
+  "Apply each of `updates`, the `:id` of a DashboardCard and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/DashboardCard updates)
+  nil)
 
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -356,11 +356,12 @@
   [series-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/DashboardCardSeries :id [:in series-ids]))
 
-(mu/defn update-dashcard-series!
-  "Apply `changes` to the DashboardCardSeries with `series-ids`, returning the number updated."
-  [series-ids :- [:sequential ms/PositiveInt]
-   changes    :- (mut/dissoc ::dashboards.schema/dashboard-card-series.update :id)]
-  (t2/update! :model/DashboardCardSeries :id [:in series-ids] changes))
+(mu/defn update-dashcard-series! :- :nil
+  "Apply each of `updates`, the `:id` of a DashboardCardSeries and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/DashboardCardSeries updates)
+  nil)
 
 (mu/defn insert-dashcard-series!
   "Insert the DashboardCardSeries `rows`, returning the inserted instances."
@@ -565,11 +566,12 @@
             ::dashboards.schema/dashboard-tab.create]]
   (mdb/insert-returning-instances! :model/DashboardTab rows))
 
-(mu/defn update-dashboard-tabs!
-  "Apply `changes` to the DashboardTabs with `tab-ids`, returning the number updated."
-  [tab-ids :- [:sequential ms/PositiveInt]
-   changes :- (mut/dissoc ::dashboards.schema/dashboard-tab.update :id)]
-  (t2/update! :model/DashboardTab :id [:in tab-ids] changes))
+(mu/defn update-dashboard-tabs! :- :nil
+  "Apply each of `updates`, the `:id` of a DashboardTab and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (mdb/update-grouped! :model/DashboardTab updates)
+  nil)
 
 (mu/defn pulse-cards-in-tabs
   "The PulseCards of the DashboardCards on the DashboardTabs with `tab-ids`, which the delete of the tabs deletes with

@@ -2,7 +2,6 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
@@ -65,12 +64,11 @@
      :else true]
     [:inline false]))
 
-(mu/defn update-snippets!
-  "Apply `changes` to each of the NativeQuerySnippets with `ids`, with one statement for each, returning nil."
-  [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
-   changes :- (mut/dissoc ::native-query-snippets.schema/native-query-snippet.update :id)]
-  (doseq [id ids]
-    (t2/update! :model/NativeQuerySnippet :id id changes))
+(mu/defn update-snippets! :- :nil
+  "Apply each of `updates`, the `:id` of a NativeQuerySnippet and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/NativeQuerySnippet updates)
   nil)
 
 (mu/defn delete-snippets!

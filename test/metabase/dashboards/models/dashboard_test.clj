@@ -688,7 +688,7 @@
           (is (= 9 (t2/count :model/ParameterCard :card_id card-id))))))))
 
 (deftest update-dashboards-statement-count-test
-  (testing "Archiving Dashboards takes, for each Dashboard, only the SELECT of its hook and its UPDATE"
+  (testing "Archiving Dashboards takes the same number of statements for any number of them"
     (mt/with-temp [:model/Collection {from-id :id} {}]
       (mt/with-model-cleanup [:model/Dashboard]
         (let [statements (fn [n changes]
@@ -699,7 +699,7 @@
                                (call-count))))]
           (statements 1 {:archived true})
           (testing "archiving"
-            (is (<= (- (statements 6 {:archived true}) (statements 2 {:archived true})) (* 2 (- 6 2))))))))))
+            (is (= (statements 2 {:archived true}) (statements 6 {:archived true})))))))))
 
 (deftest update-dashboards-keeps-parameter-cards-test
   (testing "Updating the parameters of Dashboards updates their ParameterCards"
@@ -828,31 +828,23 @@
                         (events.tu/statement-count! #(dashboard/update-dashboards! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted (fn [f]
                       (f 1)
-                      (is (= (f 2) (f 6))))
-            counted-updates (fn [f]
-                              (f 1)
-                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
-                                  "each more row costs its SELECT by the hook and its UPDATE"))
-            counted-cascading (fn [f]
-                                (f 1)
-                                (is (<= (- (f 6) (f 2)) (* 4 (- 6 2)))
-                                    "each more row costs its SELECT and UPDATE and those of its question"))]
+                      (is (= (f 2) (f 6))))]
         (testing "creating dashboards with their tabs, dashcards and series"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard/create-dashboards! rows))))))
         (testing "updating columns, some already holding the new value"
-          (counted-updates (partial update!
+          (counted (partial update!
                                     (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Same"}) ids)))
                                     {:description "Same"})))
         (testing "archiving dashboards and their questions, some already archived"
-          (counted-cascading (partial update!
+          (counted (partial update!
                                       (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
                                       {:archived true})))
         (testing "restoring dashboards and their questions, some already live"
-          (counted-cascading (partial update!
+          (counted (partial update!
                                       (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
                                       {:archived false})))
         (testing "moving dashboards and their questions, some already in the Collection"
-          (counted-cascading (partial update!
+          (counted (partial update!
                                       (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :collection_id other}) ids)))
                                       {:collection_id other})))
         (testing "adding, updating and removing dashcards"
@@ -860,7 +852,7 @@
                      (let [ids (fresh! n)
                            rows (mapv (fn [id] {:dashboard_id id :card_id card-id :row 5 :col 0 :size_x 4 :size_y 4 :series [series-id]}) ids)]
                        (events.tu/statement-count! #(dashboard/add-dashcards! rows)))))
-          (counted-updates (fn [n]
+          (counted (fn [n]
                              (let [ids       (fresh! n)
                                    dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
                                (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))
@@ -900,11 +892,11 @@
         (t2/update! :model/Dashboard :id c {:archived false})
         (t2/update! :model/Dashboard :id c {:archived true :collection_id live})
         (is (true? (directly c))))
-      (testing "archiving several Dashboards in mixed state costs a SELECT and an UPDATE more for each"
+      (testing "archiving several Dashboards in mixed state costs the same statements at two and six ids"
         (let [fresh (fn [n] (mapv :id (dashboard/create-dashboards! (for [i (range n)] {:name (str "D" i) :creator_id (mt/user->id :rasta) :collection_id live}))))
               stmts (fn [n]
                       (let [ids (fresh n)]
                         (t2/update! :model/Dashboard :id [:in (take-nth 2 ids)] {:archived true})
                         (events.tu/statement-count! #(dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))))]
           (stmts 1)
-          (is (<= (- (stmts 6) (stmts 2)) (* 2 (- 6 2)))))))))
+          (is (= (stmts 2) (stmts 6))))))))

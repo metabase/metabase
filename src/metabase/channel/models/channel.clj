@@ -263,7 +263,7 @@
         requested   (requested-changes rows stored)
         deactivated (deactivated-ids stored requested)]
     (delete-pulse-channels-of! deactivated)
-    (channel.db/update-channels! requested)
+    (channel.db/update-channels! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
     {:stored stored :requested requested :deactivated deactivated}))
 
 (mu/defn update-channels! :- :nil
