@@ -718,17 +718,17 @@
 
 ;;; -------------------------------------------------- join-steps --------------------------------------------------
 
-(deftest ^:parallel join-steps-resolves-sources-test
+(deftest ^:parallel join-steps-names-sources-test
   (test-parser-backends
    (mt/test-driver :h2
-     (testing "an unqualified table resolves in the default schema, and a table that matches none has no id"
+     (testing "a table source is named for the driver, and any other source has no table"
        (let [query (lib/native-query (mt/metadata-provider)
-                                     (str "select o.id from orders o "
+                                     (str "with c as (select 1 as id) select o.id from orders o "
                                           "left join people p on p.id = o.user_id "
-                                          "join no_such_table n on n.id = o.id"))]
-         (is (=? {:from  {:source :table, :table-id (mt/id :orders), :alias "O"}
-                  :steps [{:source :table, :table-id (mt/id :people), :alias "P", :strategy :left-join}
-                          {:source :table, :table-id nil, :alias "N", :strategy :inner-join}]}
+                                          "join c on c.id = o.id"))]
+         (is (=? {:from  {:source :table, :table "ORDERS", :alias "O"}
+                  :steps [{:source :table, :table "PEOPLE", :alias "P", :strategy :left-join}
+                          {:source :cte, :table nil, :alias "C", :strategy :inner-join}]}
                  (sql-tools/join-steps driver/*driver* query))))))))
 
 (deftest join-steps-without-a-sqlglot-dialect-test

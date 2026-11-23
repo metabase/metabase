@@ -291,10 +291,10 @@
 
 (mr/def ::join-step-source
   [:map {:closed true}
-   [:source   [:enum :table :cte :derived]]
-   [:table-id [:maybe pos-int?]]
-   [:alias    [:maybe :string]]
-   [:sql      :string]])
+   [:source [:enum :table :cte :derived]]
+   [:table  [:maybe :string]]
+   [:alias  [:maybe :string]]
+   [:sql    :string]])
 
 (mr/def ::join-steps
   [:or
@@ -316,7 +316,7 @@
   For an outer join the `:sql` returns a second count in the same row: the rows where that join found a match.
 
   A source's `:source` is `:table`, `:cte` or `:derived`.
-  Its `:table-id` is the id of the Table a `:table` source names in the query's database, nil when none matches.
+  Its `:table` is the name of the table a `:table` source reads, normalized for `driver`, and nil for any other.
   Its `:alias` is the alias, or the table's name, normalized for `driver`.
 
   A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.

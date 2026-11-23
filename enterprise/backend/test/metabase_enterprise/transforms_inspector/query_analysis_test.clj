@@ -65,6 +65,14 @@
   {:source {:type :query :query query}
    :name   "query-analysis-test"})
 
+(defn- test-sources
+  "The test tables as the transform sources a native query's joins resolve against."
+  []
+  (mapv (fn [k]
+          {:table_name (t2/select-one-fn :name :model/Table :id (mt/id k))
+           :table_id   (mt/id k)})
+        [:orders :people :products :reviews]))
+
 ;;; -------------------------------------------------- Native CTE / subquery tests --------------------------------------------------
 
 (deftest analyze-native-query-cte-join-source-table-is-nil-test
@@ -78,7 +86,7 @@
                             "LEFT JOIN cte ON p." (qf :people :id) " = cte." (qf :orders :user_id)))
             transform (make-native-transform query)]
         (is (=? {:join-structure [{:strategy :left-join, :source-table nil}]}
-                (query-analysis/analyze-native-query transform)))))))
+                (query-analysis/analyze-native-query transform (test-sources))))))))
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
   (mt/test-drivers (join-steps-drivers)
@@ -93,7 +101,17 @@
             transform (make-native-transform query)]
         (is (=? {:join-structure [{:strategy :inner-join, :source-table (mt/id :products)}
                                   {:strategy :left-join, :source-table nil}]}
-                (query-analysis/analyze-native-query transform)))))))
+                (query-analysis/analyze-native-query transform (test-sources))))))))
+
+(deftest ^:parallel analyze-native-query-resolves-tables-by-name-among-sources-test
+  (mt/test-driver :h2
+    (testing "an unqualified table resolves to the transform's source of that name, whatever its schema"
+      (let [query (lib/native-query (mt/metadata-provider) "SELECT 1 FROM orders o JOIN people p ON p.id = o.user_id")]
+        (is (=? {:from-table-id  101
+                 :join-structure [{:source-table 102}]}
+                (query-analysis/analyze-native-query (make-native-transform query)
+                                                     [{:table_name "ORDERS", :table_id 101, :schema "elsewhere"}
+                                                      {:table_name "PEOPLE", :table_id 102, :schema "elsewhere"}])))))))
 
 ;;; ------------------------------------------- Native step queries -------------------------------------------
 
@@ -124,7 +142,7 @@
                             "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
                             "AND pr." (qf :products :category) " = 'Widget' "
                             "WHERE o." (qf :orders :total) " > 100"))
-            result    (query-analysis/analyze-native-query (make-native-transform query))
+            result    (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
             orders    (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
             widgets   (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
                                      "JOIN " (qt :products) " pr "
@@ -145,7 +163,7 @@
                     (str "SELECT o." (qf :orders :id) " "
                          "FROM " (qt :orders) " o "
                          "LEFT JOIN " (qt :products) " pr ON pr." (qf :products :id) " IS NULL"))
-            result (query-analysis/analyze-native-query (make-native-transform query))
+            result (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
             orders (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))]
         (is (= [[orders 0]] (step-counts result)))))))
 
@@ -157,6 +175,6 @@
                     (str "SELECT o." (qf :orders :id) " "
                          "FROM " (qt :orders) " o, " (qt :products) " pr "
                          "WHERE pr." (qf :products :id) " = o." (qf :orders :product_id)))
-            result (query-analysis/analyze-native-query (make-native-transform query))]
+            result (query-analysis/analyze-native-query (make-native-transform query) (test-sources))]
         (is (nil? (:join-structure result)))
         (is (contains? (get-in result [:visited-fields :all]) (mt/id :orders :product_id)))))))

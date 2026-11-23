@@ -291,7 +291,7 @@
                                          :table-name (:name target-table)
                                          :schema     (:schema target-table)
                                          :db-id      (:db_id target-table)}))
-        query-info (query-analysis/analyze-query transform source-type)
+        query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
                          (seq (match-columns sources-info target-info query-info)))

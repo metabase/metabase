@@ -87,22 +87,6 @@
    "full"  :full-join
    "cross" :cross-join})
 
-(defn- source-table-ids
-  "A function from a source's `[catalog schema table]` to the id of the Table it names in `query`'s database.
-  It returns nil for a name that matches no Table, a transform's target not yet created included."
-  [driver query sources]
-  (let [database  (lib.metadata/database query)
-        ;; An unqualified name resolves in the database's default schema, which `find-table-or-transform` supplies.
-        spec      (fn [[_catalog table-schema table]]
-                    (sql-tools.common/normalize-table-spec driver {:table table, :schema table-schema}))
-        specs     (into {} (keep (fn [{:keys [table]}] (when table [table (spec table)]))) sources)
-        table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table (vals specs)))
-        tables    (lib.metadata/bulk-metadata query :metadata/table table-ids)]
-    (fn [parts]
-      (some->> (get specs parts)
-               (sql-tools.common/find-table-or-transform driver database tables [])
-               :table))))
-
 (defn join-steps
   "The row-count queries of each join in `query`, a native query, for `driver`, from `parser`.
   See [[metabase.sql-tools.core/join-steps]]."
@@ -118,11 +102,11 @@
                       (throw e))))]
     (if-not (= "ok" (:status result))
       {:unsupported (keyword (:reason result))}
-      (let [table-id (source-table-ids driver query (cons (:from result) (:steps result)))
-            source   (fn [{:keys [table alias] :as s}]
-                       {:source   (keyword (:source s))
-                        :table-id (some-> table table-id)
-                        :alias    (sql-tools.common/normalize-name driver alias)})]
+      (let [normalize #(sql-tools.common/normalize-name driver %)
+            source    (fn [{:keys [table alias] :as s}]
+                        {:source (keyword (:source s))
+                         :table  (some-> (last table) normalize)
+                         :alias  (normalize alias)})]
         {:from  (assoc (source (:from result)) :sql (:base_sql result))
          :steps (mapv (fn [step]
                         (assoc (source step)

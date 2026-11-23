@@ -9,6 +9,7 @@
    generates, so no parser structure leaves sql-tools."
   (:require
    [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
@@ -66,20 +67,30 @@
         all-ids (into #{} (keep :id) referenced)]
     {:all all-ids}))
 
+(defn- sources->table-id-lookup
+  "A map from the normalized name of each table in `sources` to its id."
+  [driver sources]
+  (into {}
+        (map (fn [{:keys [table_name table_id]}]
+               [(sql.normalize/normalize-name driver table_name) table_id]))
+        sources))
+
 (defn- native-join-structure
   "The join structure of `native-query`, each join with its step query as `:step-sql`, from [[sql-tools/join-steps]].
+  Tables resolve by name among `sources`.
   Returns nil when the query's joins cannot be rebuilt.
   A join against a CTE or a derived table has a nil `:source-table`."
-  [driver native-query]
-  (let [{:keys [unsupported from steps]} (sql-tools/join-steps driver native-query)]
+  [driver native-query sources]
+  (let [{:keys [unsupported from steps]} (sql-tools/join-steps driver native-query)
+        table->id                        (sources->table-id-lookup driver sources)]
     (if unsupported
       (log/debugf "No join analysis for native query: %s" (name unsupported))
-      {:from-table-id  (:table-id from)
+      {:from-table-id  (some-> (:table from) table->id)
        :from-count-sql (:sql from)
-       :join-structure (mapv (fn [{:keys [strategy alias table-id sql]}]
+       :join-structure (mapv (fn [{:keys [strategy alias table sql]}]
                                {:strategy     strategy
                                 :alias        alias
-                                :source-table table-id
+                                :source-table (some-> table table->id)
                                 :step-sql     sql})
                              steps)})))
 
@@ -93,8 +104,9 @@
   "Analyze a native SQL query for join structure and visited fields.
    The join structure carries ready-to-run step queries from [[sql-tools/join-steps]].
    The visited fields come from [[sql-tools/referenced-fields]].
-   Either may be missing when its analysis fails, and the other is still returned."
-  [transform]
+   Either may be missing when its analysis fails, and the other is still returned.
+   `sources` are the transform's source tables, which the joins' tables resolve against."
+  [transform sources]
   (try
     (let [native-query (-> (get-in transform [:source :query])
                            transforms-base.u/massage-sql-query
@@ -102,7 +114,7 @@
           db-id        (transforms-base.u/transform-source-database transform)
           driver       (keyword (transforms-inspector.db/database-engine db-id))
           joins        (try
-                         (native-join-structure driver native-query)
+                         (native-join-structure driver native-query sources)
                          (catch Exception e
                            (log-failure "analyze joins" e)
                            nil))
@@ -125,6 +137,7 @@
    Arguments:
    - transform: the transform map
    - source-type: :mbql, :native, or :python
+   - sources: source table info, which a native query's joins resolve against
 
    Returns:
    {:preprocessed-query <MBQL 5> (MBQL only)
@@ -134,8 +147,8 @@
     :join-structure [{:strategy :alias :source-table
                       :conditions (MBQL) or :step-sql (native)} ...]
     :visited-fields {:all <set of field IDs>}}"
-  [transform source-type]
+  [transform source-type sources]
   (case source-type
     :mbql   (analyze-mbql-query transform)
-    :native (analyze-native-query transform)
+    :native (analyze-native-query transform sources)
     nil))
