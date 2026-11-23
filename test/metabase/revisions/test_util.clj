@@ -17,12 +17,13 @@
   (json/decode+kw (json/encode object)))
 
 (defn push-revision!
-  "Record a Revision of the entity of `info` unless its snapshot is no change in what the newest one records. Returns the
-  object when it recorded one."
+  "Record a Revision of the entity of `info` unless its snapshot is no change in what the newest one records, and
+  publish its creation as production does. Returns the object when it recorded one."
   [{:keys [id entity object] :as info}]
   (let [row       (revision/revision-row info)
         last-body (revisions.db/latest-revision-object (name entity) id)]
     (when (or (nil? last-body)
               (revision/changed? entity (round-trip last-body) (round-trip (:object row))))
       (revisions.db/insert-revisions! [row])
+      (revision/publish-created! row)
       object)))

@@ -380,3 +380,20 @@
               (doseq [[model id] result]
                 (is (= "card" model))
                 (is (= 0 (mod id 2)))))))))))
+
+(deftest indexed-entity-without-hydrated-checks-is-denied-test
+  (testing "An indexed entity that `hydrate-checks` did not tag is denied, and the denial is logged"
+    (mt/with-log-messages-for-level [messages [metabase.search.impl :warn]]
+      (is (false? (#'search.impl/check-permissions-for-model
+                   {:current-user-id (mt/user->id :crowberto), :is-superuser? true}
+                   {:model "indexed-entity", :id 1, :database_id (mt/id)})))
+      (is (=? [{:message #"Denying an indexed entity search result that was not tagged by hydrate-checks"}]
+              (messages))))))
+
+(deftest indexed-entity-without-database-is-denied-quietly-test
+  (testing "An indexed entity with no database is tagged by `hydrate-checks`, so its denial is not logged"
+    (mt/with-log-messages-for-level [messages [metabase.search.impl :warn]]
+      (let [search-ctx {:current-user-id (mt/user->id :crowberto), :is-superuser? true}
+            [row]      (#'search.impl/hydrate-checks search-ctx :read [{:model "indexed-entity", :id 1, :database_id nil}])]
+        (is (false? (#'search.impl/check-permissions-for-model search-ctx row)))
+        (is (= [] (messages)))))))

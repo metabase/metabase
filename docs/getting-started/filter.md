@@ -140,7 +140,7 @@ You can limit the data Metabase shows in a table or on a chart. For example, if 
 
 This is different from filtering — filters look for records satisfying a condition, but limiting the results just shows a certain number of records regardless of their values.
 
-Metabase automatically limits the results to 2000 data points when displaying a table or chart, but you can set a lower limit:
+When displaying a table or chart, Metabase automatically limits the results to 2,000 rows (or 10,000 rows for summarized results), but you can set a lower limit:
 
 - In the query builder, add a row limit block by clicking on the gray "Row limit" button.
 
@@ -150,4 +150,4 @@ Metabase automatically limits the results to 2000 data points when displaying a 
 
   ![Limit table view](./images/limit-display.png)
 
-By default, Metabase will not let you display more than 2000 rows to avoid overloading your browser.
+By default, Metabase won't display more than 2,000 rows (or 10,000 rows for summarized results) to avoid overloading your browser.

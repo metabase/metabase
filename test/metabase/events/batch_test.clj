@@ -55,7 +55,7 @@
     (let [[_ update delete] (map :event @received)]
       (is (= "t" (:name (:previous-object update))))
       (is (= "u" (:name (:object update))))
-      (is (not (contains? update :changes)))
+      (is (not (contains? update :changed)))
       (is (= (mt/user->id :rasta) (:user-id update)))
       (is (= "u" (:name (:previous-object delete))))
       (is (not (contains? delete :object))))))
@@ -90,21 +90,6 @@
       (is (= {:id 1 :name "a"} (:previous-object event)))
       (is (not (contains? event :object))))))
 
-(deftest create-collected-after-update-test
-  (testing "a creation whose own hooks write the row again is still a creation"
-    (let [creator (mt/user->id :rasta)]
-      (events/with-batched-events
-        (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id creator})]
-          (t2/update! ::events-test-timeline/Timeline :id id {:name "b"})))
-      (is (= [:event/events-test-timeline-create] (topics))))))
-
-(deftest batch-rollback-test
-  (is (thrown? Exception
-               (events/with-batched-events
-                 (t2/insert! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)})
-                 (throw (Exception. "boom")))))
-  (is (empty? @received)))
-
 (defn- row [nm]
   {:name nm :icon "cake" :creator_id (mt/user->id :rasta)})
 
@@ -115,6 +100,46 @@
      ~@body
      (finally
        (t2/delete! ::events-test-timeline/Timeline :name [:like "batch-test-%"]))))
+
+(deftest create-collected-after-update-test
+  (testing "a creation followed by an update of its row in one batch is still a creation, with no changed columns"
+    (let [merged (atom [])]
+      (events/register-owned-consumer! ::merged
+                                       (constantly :merged)
+                                       (fn [_owner events _all] (swap! merged into events)))
+      (try
+        (with-timeline-cleanup
+          (events/with-batched-events
+            (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-a"))]
+              (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-b"})))
+          (is (= [:event/events-test-timeline-create] (topics)))
+          (is (=? [{:operation :create}] @merged))
+          (is (not-any? #(contains? % :changed) @merged)))
+        (finally
+          (events.tu/unregister! ::merged))))))
+
+(deftest self-assigned-updated-at-is-not-changed-test
+  (testing "an update that assigns `updated_at` to itself, to keep it, does not list it among the changed columns"
+    (let [merged (atom [])]
+      (events/register-owned-consumer! ::merged
+                                       (constantly :merged)
+                                       (fn [_owner events _all] (swap! merged into events)))
+      (try
+        (with-timeline-cleanup
+          (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-keep"))]
+            (reset! merged [])
+            (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-kept" :updated_at :updated_at})
+            (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-moved"}))
+          (is (= [#{:name} #{:name :updated_at}] (mapv :changed @merged))))
+        (finally
+          (events.tu/unregister! ::merged))))))
+
+(deftest batch-rollback-test
+  (is (thrown? Exception
+               (events/with-batched-events
+                 (t2/insert! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)})
+                 (throw (Exception. "boom")))))
+  (is (empty? @received)))
 
 (deftest joined-batch-rollback-test
   (testing "a joined batch rolled back with a savepoint of its caller leaves no event behind"
@@ -230,6 +255,26 @@
       (finally
         (events.tu/unregister! ::owned)))))
 
+(deftest update-carries-changed-columns-test
+  (let [changed (atom [])]
+    (events/register-owned-consumer! ::changed
+                                     (fn [{:keys [operation]}] (when (= :update operation) :update))
+                                     (fn [_owner events _all] (swap! changed into (map :changed) events)))
+    (try
+      (with-timeline-cleanup
+        (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-changed"))]
+          (testing "an update carries the columns it set, which include the updated_at its timestamp hook set"
+            (t2/update! ::events-test-timeline/Timeline :id id {:icon "star"})
+            (is (= [#{:icon :updated_at}] @changed)))
+          (testing "the updates of a row in one batch carry the union of their columns"
+            (reset! changed [])
+            (events/with-batched-events
+              (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-changed-1"})
+              (t2/update! ::events-test-timeline/Timeline :id id {:description "d"}))
+            (is (= [#{:name :description :updated_at}] @changed)))))
+      (finally
+        (events.tu/unregister! ::changed)))))
+
 (deftest throwing-consumer-fails-write-test
   (let [recorded (atom [])
         owner    (fn [{:keys [model]}] (when (= ::events-test-timeline/Timeline model) :timeline))]
@@ -273,6 +318,11 @@
     (t2/resolve-model model))
   (filterv #(and (keyword? %) (= "model" (namespace %))) (descendants :hook/events)))
 
+;; A Revision publishes its create by [[events/collect!]], because the trait would hook every prune of Revisions, which
+;; selects and deserializes the rows it deletes.
+(def ^:private publishes-without-trait
+  #{:model/Revision})
+
 (deftest every-trait-model-has-spec-test
   (let [models (trait-models)
         specs  (dissoc (methods events/spec) :default)]
@@ -281,8 +331,11 @@
         (is (seq (when-let [f (get specs model)] (f model)))
             (str model " derives :hook/events but has no events/spec method"))))
     (testing "every model with an events/spec method derives :hook/events"
-      (doseq [model (keys specs)]
+      (doseq [model (remove publishes-without-trait (keys specs))]
         (is (isa? model :hook/events) (str model " has an events/spec method but does not derive :hook/events"))))
+    (testing "a model that publishes without the trait does not derive it"
+      (doseq [model publishes-without-trait]
+        (is (not (isa? model :hook/events)) (str model " derives :hook/events, so it needs no exemption"))))
     (testing "no two models share a topic"
       (let [topics (mapcat (fn [[model f]] (vals (f model))) specs)]
         (is (= [] (keep (fn [[topic n]] (when (< 1 n) topic)) (frequencies topics))))))))

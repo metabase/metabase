@@ -2,8 +2,11 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -65,6 +68,15 @@
    :inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
+(mu/defn remove-deleted-test-from-suites!
+  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing on an instance where
+  remote sync keeps synced content read-only, since that instance cannot push the changed suites; a run then reports
+  the test as missing."
+  [test-type :- ::data-testing.schema/test-type
+   entity-id :- :string]
+  (when-not (remote-sync/read-only?)
+    (data-testing.db/delete-suite-members-of-test! test-type entity-id)))
+
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
   [test-type tests]
@@ -85,6 +97,7 @@
 
 (t2/define-before-delete :model/TransformTest [transform-test]
   (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+  (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
   transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -218,6 +231,13 @@
   [transform-id]
   (data-testing.db/delete-transform-tests! transform-id))
 
+(defmethod data-testing.test-type/spec :transform [_test-type]
+  {:model      :model/TransformTest
+   :run-topics {:start   :event/transform-test-run-start
+                :timeout :event/transform-test-run-timeout}
+   :subject    #(data-testing.db/transform (:transform_id %))
+   :can-run?   #(can-run-test? (:transform_id %))})
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -228,11 +248,43 @@
   []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
+(defn validates-edit?
+  "Whether an edit that sets the keys `edited-keys` of a saved test, whose subject `subject-key` names, is checked as
+  a new test would be: it sets the subject, or one of the [[data-testing.runner/definition-keys]]."
+  [subject-key edited-keys]
+  (boolean (some (set (cons subject-key data-testing.runner/definition-keys)) edited-keys)))
+
+(defn- comparable
+  "`v` as compared for a revert: a moment as its instant, since the app DB can read back another offset."
+  [v]
+  (cond-> v
+    (instance? java.time.OffsetDateTime v) t/instant))
+
+(defn reverted-keys
+  "The keys of `snapshot` whose values a revert of the saved test `current` to `snapshot` changes."
+  [current snapshot]
+  (into []
+        (remove #(= (comparable (get current %)) (comparable (get snapshot %))))
+        (keys snapshot)))
+
 (defn- revert-transform-test!
+  [id _user-id snapshot]
+  (update-transform-test! id (select-keys snapshot revision-columns)))
+
+(defn- check-revert
+  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
+  refused."
   [id _user-id snapshot]
   (check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+  (let [snapshot (merge {:now nil} snapshot)]
+    (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
+      (data-testing.errors/refusing
+       "transform-test"
+       #(data-testing.runner/validate-test :transform
+                                           (data-testing.db/transform (:transform_id snapshot))
+                                           (data-testing.runner/test-definition snapshot))))
+    snapshot))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -260,10 +312,11 @@
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
 
 (defmethod revisions/spec :model/TransformTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-transform-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
   {:track          [:transform_id :name :description :now]
