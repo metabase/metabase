@@ -14,7 +14,9 @@ import { isGoalForeignColumnRef } from "metabase-types/guards";
 import { useGoalSourceResults } from "./use-goal-source-results";
 
 export type ResolvedGoalValues =
-  | { status: "resolving" }
+  | {
+      status: "resolving";
+    }
   | {
       status: "resolved";
       sourceResults: GoalSourceResults;
