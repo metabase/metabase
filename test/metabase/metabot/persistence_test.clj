@@ -1439,7 +1439,7 @@
         (seed-turn! conversation-id "second" [{:type :text :text "reply two"}])
         (is (= [{:type "data-context" :data {:block block :full true}}
                 {:type "text" :text "reply one" :state "done"}]
-               (:data (t2/select-one :model/MetabotMessage assistant-id)))
+               (:data (t2/select-one :model/MetabotMessage :id assistant-id)))
             "the block is stored first in the assistant row")
         (is (= [{:role :user :content (str block "first")}
                 {:role :assistant :content "reply one"}

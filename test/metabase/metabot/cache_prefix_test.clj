@@ -14,6 +14,8 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.self.claude :as claude]
@@ -248,7 +250,10 @@
       (check-turn-edge turn-1 turn-2 {"deepseek" [:thinking]}))))
 
 (deftest later-turn-sends-its-time-and-the-viewing-context-test
-  (mt/with-temp [:model/Card      {card-id :id}   {:name "Question A" :dataset_query (mt/mbql-query venues)}
+  (mt/with-temp [:model/Card      {card-id :id}   {:name          "Question A"
+                                                   :dataset_query (lib/query (mt/metadata-provider)
+                                                                             (lib.metadata/table (mt/metadata-provider)
+                                                                                                 (mt/id :venues)))}
                  :model/Dashboard {dash-id :id}   {:name "Dashboard B"}
                  :model/Card      {viewed-id :id} {:name "Question C"}]
     (mt/with-model-cleanup [:model/RecentViews]
