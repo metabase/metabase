@@ -121,6 +121,7 @@ describe("DataAppEmbed - router navigation", () => {
       useDataAppPathNavigation({
         slug: "sales",
         path: "sales/orders?active=true",
+        onPathChange: () => {},
       }),
     );
 
@@ -138,6 +139,7 @@ describe("DataAppEmbed - router navigation", () => {
           slug: "sales",
           path: "sales/orders/details?tab=summary",
           navigationRequest,
+          onPathChange: () => {},
         }),
       { initialProps },
     );
@@ -184,6 +186,7 @@ describe("DataAppEmbed - router navigation", () => {
             slug: "sales",
             path: "sales/orders",
             navigationRequest,
+            onPathChange: () => {},
           }),
         { initialProps },
       );
