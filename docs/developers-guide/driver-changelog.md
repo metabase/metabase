@@ -7,6 +7,20 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added six new feature flags for general window function handling:
+  - `:window-functions` — the base feature. Defaults to `true` for every `:sql` driver.
+  - `:window-functions/frames` — explicit `ROWS`/`RANGE`/`GROUPS` frames. Defaults to the value of
+    `:window-functions`.
+  - `:window-functions/ntile` — `NTILE(n)`. Defaults to the value of `:window-functions`.
+  - `:window-functions/nth-value` — `NTH_VALUE(col, n)`. Defaults to the value of `:window-functions`.
+  - `:window-functions/exclude` — `EXCLUDE { CURRENT ROW | GROUP | TIES | NO OTHERS }` on a frame. Defaults to `false`.
+  - `:window-functions/interval-frame-offsets` — an `:interval` MBQL clause as a `:range` frame-bound offset
+    (e.g. `RANGE BETWEEN INTERVAL '7' day PRECEDING AND CURRENT ROW`). Defaults to `false`.
+
+- `metabase.driver.sql.query-processor/window-frame-interval-honeysql` `[driver amount unit]` -- new multimethod that
+  returns a HoneySQL form for a standalone interval literal used as a `:range` window-frame offset. Default is the
+  SQL-standard `INTERVAL '<n>' <unit>`.
+
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.

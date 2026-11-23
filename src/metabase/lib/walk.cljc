@@ -370,6 +370,22 @@
       (let [default' (walk-clause* default f)]
         [tag opts if-then-pairs' default']))))
 
+;; `:window` carries a window-spec map as its last arg. Walk the inner call and the clause-valued parts
+;; of the spec (`:partition-by` refs, `:order-by` [expr dir] pairs); leave `:frame` and `:exclude` alone.
+(mu/defmethod walk-subclauses-method :window
+  [[_tag opts inner spec] f]
+  (let [inner-walked (walk-clause* inner f)
+        pb           (:partition-by spec)
+        pb-walked    (some->> pb (mapv #(walk-clause* % f)))
+        ob           (:order-by spec)
+        ob-walked    (some->> ob (mapv (fn [[expr dir]] [(walk-clause* expr f) dir])))]
+    (when (or (not= inner-walked inner) (not= pb-walked pb) (not= ob-walked ob))
+      [:window opts
+       (if (= inner-walked inner) inner inner-walked)
+       (cond-> spec
+         (not= pb-walked pb) (assoc :partition-by pb-walked)
+         (not= ob-walked ob) (assoc :order-by ob-walked))])))
+
 (defn- walk-subclauses [clause f]
   (let [clause' (walk-subclauses-method clause f)]
     (cond
