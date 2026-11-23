@@ -19,7 +19,7 @@
       (is (nil? (mr/explain replacement.spec/Spec (replacement.spec/spec model)))))))
 
 (deftest ^:parallel spec-models-test
-  (is (= #{:model/Card :model/Dashboard :model/Measure :model/Segment :model/Table :model/Transform}
+  (is (= #{:model/Card :model/Dashboard :model/DashboardCard :model/Measure :model/Segment :model/Table :model/Transform}
          (spec-models))))
 
 (deftest ^:parallel sources-test

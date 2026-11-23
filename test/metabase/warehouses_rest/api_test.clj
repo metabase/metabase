@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
@@ -46,9 +47,10 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api :as api.database]
-   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -1076,13 +1078,13 @@
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
             (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))
         (testing "a user-set sensitive visibility_type hides the Field"
           (try
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
             (is (nil? (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1132,41 +1134,41 @@
 
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
-    (mt/with-temp
-      [:model/Collection collection {:name "Maz Analytics"}
-       :model/Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
-       :model/Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
-       :model/Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
-      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
-                          card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
-                          card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
-        (testing "exclude cards without perms"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (is (= [(card->result card-1)]
-                   (mt/user-http-request :rasta :get 200
-                                         (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                         :query "maz"))))
-          (testing "cards should match the query"
-            (doseq [[query expected-cards] [; in all these queries, card-2 should be first because it's a model,
-                                            ; followed by card-3 because it's created more recently than card-1
-                                            ["QUOTE-views" [card-2 card-3 card-1]]
-                                            ["per-day" [card-2 card-3]]
-                                            [(str (:id card-1)) [card-1]]
-                                            [(str (:id card-2) "-maz") [card-2]]
-                                            [(str (:id card-2) "-kyle") []]]]
-              (testing (format "query = %s" query)
-                (is (= (map card->result expected-cards)
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name "Maz Analytics"}])]
+        (mt/with-temp [:model/Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
+                       :model/Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
+                       :model/Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
+          (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
+                              card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
+                              card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
+            (testing "exclude cards without perms"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (is (= [(card->result card-1)]
                        (mt/user-http-request :rasta :get 200
                                              (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                             :query query))))))))
-      (testing "should reject requests for databases for which the user has no perms"
-        (mt/with-temp [:model/Database {database-id :id} {}
-                       :model/Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
-          (mt/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403
-                                         (format "database/%d/card_autocomplete_suggestions" database-id)
-                                         :query "maz")))))))))
+                                             :query "maz"))))
+              (testing "cards should match the query"
+                (doseq [[query expected-cards] [; in all these queries, card-2 should be first because it's a model,
+                                                ; followed by card-3 because it's created more recently than card-1
+                                                ["QUOTE-views" [card-2 card-3 card-1]]
+                                                ["per-day" [card-2 card-3]]
+                                                [(str (:id card-1)) [card-1]]
+                                                [(str (:id card-2) "-maz") [card-2]]
+                                                [(str (:id card-2) "-kyle") []]]]
+                  (testing (format "query = %s" query)
+                    (is (= (map card->result expected-cards)
+                           (mt/user-http-request :rasta :get 200
+                                                 (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                                 :query query))))))))
+          (testing "should reject requests for databases for which the user has no perms"
+            (mt/with-temp [:model/Database {database-id :id} {}
+                           :model/Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
+              (mt/with-no-data-perms-for-all-users!
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403
+                                             (format "database/%d/card_autocomplete_suggestions" database-id)
+                                             :query "maz")))))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -1212,24 +1214,22 @@
 (deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (let [baseline (database-list-call-count)]
-        (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}]
-          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
-          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
-          (is (<= (database-list-call-count) (+ baseline 2))))))))
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (let [small (database-list-call-count)]
+          (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}]
+            (is (= small (database-list-call-count)))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"
@@ -1454,8 +1454,7 @@
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
-      (mt/with-temp
-        [:model/Database db {}]
+      (let [db (first (database/create-databases! [(mt/with-temp-defaults :model/Database)]))]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
@@ -1809,8 +1808,8 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:previous-object event)))))]
-          (warehouses-rest.db/delete-field-values-for-database! db-id))
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-database db-id)))
         (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
@@ -2407,16 +2406,17 @@
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
-      (mt/with-temp [:model/Database database {:engine  :secret-test-driver
-                                               :name    "Test secret DB with password path"
-                                               :details {:host           "localhost"
-                                                         :password-path "/path/to/password.txt"}}]
-        (is (=? {:password-options "local"
-                 :password-path  "/path/to/password.txt"}
-                (as-> (u/the-id database) d
-                  (format "database/%d" d)
-                  (mt/user-http-request :crowberto :get 200 d)
-                  (:details d))))))))
+      (mt/with-model-cleanup [:model/Database :model/Secret]
+        (let [[database] (database/create-databases! [{:engine  :secret-test-driver
+                                                       :name    "Test secret DB with password path"
+                                                       :details {:host           "localhost"
+                                                                 :password-path "/path/to/password.txt"}}])]
+          (is (=? {:password-options "local"
+                   :password-path  "/path/to/password.txt"}
+                  (as-> (u/the-id database) d
+                    (format "database/%d" d)
+                    (mt/user-http-request :crowberto :get 200 d)
+                    (:details d)))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.

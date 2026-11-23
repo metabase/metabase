@@ -16,6 +16,7 @@
    [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
+   [metabase.util.malli.json-schema :as mu.json-schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -146,12 +147,14 @@
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
-   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
-   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
-   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
+  Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
+  `:map`, applies tool-description preferences, and transforms to JSON Schema.
+  Publishes no `oneOf`: `[:maybe ...]` becomes a nullable type and other branches an `anyOf`
+  (see [[mu.json-schema/without-one-of]]).
+  Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
-    (mjs/transform prepared)))
+    (mu.json-schema/without-one-of (mjs/transform prepared))))
 
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
@@ -226,10 +229,10 @@
             (let [schema (cond-> schema
                            (:properties schema) (update :properties update-vals strict-schema)
                            (:items schema)      (update :items strict-schema)
-                           (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
                            (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
                            (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
-              (if (and (= "object" (:type schema)) (seq (:properties schema)))
+              ;; a nullable object is typed `["object" "null"]`
+              (if (and (some #{"object"} (u/one-or-many (:type schema))) (seq (:properties schema)))
                 (assoc schema
                        :required (vec (keys (:properties schema)))
                        :additionalProperties false)

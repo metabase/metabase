@@ -13,6 +13,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.segments.models.segment :as segment]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -72,7 +74,7 @@
                  :model/DataTestRun {other-run :id}  {:test_type :card, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :segment test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/SegmentTest :id test-id)
+      (data-testing.models.segment-test/delete-segment-tests! [test-id])
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a card test with the same id keeps its test id"
@@ -90,11 +92,11 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/segment-test-delete topic)
-                                                (swap! published conj (:id (:previous-object event)))))]
-          (t2/delete! :model/Segment :id segment-id))
+                                                (swap! published into (map (comp :id :previous-object) (:changes event)))))]
+          (segment/delete-segments! [segment-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/SegmentTest :segment_id segment-id))))
-        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+        (testing "runs of deleted tests stay with no test id"
           (is (=? [{:test_id nil :status :passed} {:test_id nil :status :passed}]
                   (mapv #(t2/select-one :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
@@ -191,3 +193,41 @@
                       (is (false? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:segment_id other-id})))))
                     (testing "a test cannot move away from a segment whose tests the analyst may not save"
                       (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))))))))))))
+
+(deftest storage-path-of-a-test-of-a-segment-whose-definition-cannot-be-exported-test
+  (testing "a test is stored under its segment's table even when the segment's definition cannot be exported"
+    (mt/with-temp [:model/Segment     {segment-eid :entity_id segment-id :id}
+                   (assoc (data-testing.test-util/from-google-segment) :name "Empty")
+
+                   :model/SegmentTest {test-eid :entity_id}
+                   {:segment_id segment-id :name "A test"}]
+      (data-testing.test-util/empty-segment-definition! segment-id)
+      (is (=? [[{:label "databases"} {:label string?} {:label "schemas"} {:label string?}
+                {:label "tables"} {:label #"(?i)people"} {:label "segments"} {:label "Empty" :key segment-eid}
+                {:label "A test" :key test-eid}]]
+              (serialization/storage-paths :model/SegmentTest
+                                           [{:segment_id segment-eid :name "A test" :entity_id test-eid}]
+                                           nil))))))
+
+(deftest a-test-is-stored-in-the-directory-of-its-segment-test
+  (mt/with-temp [:model/Segment     {segment-eid :entity_id segment-id :id} (data-testing.test-util/from-google-segment)
+                 :model/SegmentTest {test-eid :entity_id}                   {:segment_id segment-id :name "A test"}]
+    (let [test-path    #(first (serialization/storage-paths
+                                :model/SegmentTest
+                                [{:segment_id segment-eid :name "A test" :entity_id test-eid}]
+                                nil))
+          segment-path #(first (serialization/storage-paths
+                                :model/Segment
+                                (serialization/export-batch :model/Segment
+                                                            [(t2/select-one :model/Segment :id segment-id)])
+                                nil))]
+      (testing "the test's path is its segment's path, as a directory, then the test"
+        (is (= (conj (segment-path) {:label "A test" :key test-eid}) (test-path))))
+      (testing "the definition's table places the test, as it places the segment, when `table_id` names another table"
+        ;; A raw write: the Segment model sets `table_id` from the definition.
+        (t2/query-one {:update :segment :set {:table_id (mt/id :orders)} :where [:= :id segment-id]})
+        (is (=? [{:label "databases"} {:label string?} {:label "schemas"} {:label string?}
+                 {:label "tables"} {:label #"(?i)people"} {:label "segments"} {:key segment-eid}
+                 {:label "A test" :key test-eid}]
+                (test-path)))
+        (is (= (conj (segment-path) {:label "A test" :key test-eid}) (test-path)))))))

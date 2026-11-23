@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.db :as sql-tools.db]
+   [metabase.sql-tools.models.sql-parsing-shadow-difference :as sql-parsing-shadow-difference]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -94,7 +94,7 @@
         changes    {:outcome        (name outcome)
                     :primary_result (->json primary)
                     :shadow_result  (->json shadow)}]
-    (when (zero? (sql-tools.db/shadow-difference-seen-again! hash-value changes))
+    (when (zero? (sql-parsing-shadow-difference/shadow-difference-seen-again! hash-value changes))
       (let [row {:input_hash      hash-value
                  :method          (name method)
                  :dialect         (some-> dialect name)
@@ -104,11 +104,11 @@
                  :arguments       (when (seq args)
                                     (->json args))}]
         (try
-          (sql-tools.db/insert-shadow-difference! (merge changes row))
+          (sql-parsing-shadow-difference/create-shadow-difference! (merge changes row))
           (catch Exception e
             ;; another thread or instance inserted the same input first
             (when-not (unique-violation? e)
               (throw e))
-            (sql-tools.db/shadow-difference-seen-again! hash-value changes)))))))
+            (sql-parsing-shadow-difference/shadow-difference-seen-again! hash-value changes)))))))
 
 (sql-parsing/set-shadow-difference-recorder! #'record!)

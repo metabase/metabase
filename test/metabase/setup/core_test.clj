@@ -38,23 +38,23 @@
     ;; make sure some test users are created.
     (mt/initialize-if-needed! :test-users)
     (setting.cache/restore-cache!)
-    (t2/with-call-count [call-count]
-      ;; call has-user-setup several times.
-      (dotimes [_ 5]
-        (is (true?
-             (setup/has-user-setup))))
-      ;; `has-user-setup` should have done at most one application database call, as opposed to one call per call to
-      ;; the getter
-      (is (contains? #{0 1} (call-count)))))
+    (let [counted (fn [n]
+                    (t2/with-call-count [call-count]
+                      (dotimes [_ n]
+                        (is (true? (setup/has-user-setup))))
+                      (call-count)))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
   (testing "Return falsey for an empty instance. Values should be cached for current app DB to support swapping in tests/REPL"
     (mt/with-sample-h2-app-db!
-      (t2/with-call-count [call-count]
-        (dotimes [_ 5]
-          (is (= false
-                 (setup/has-user-setup))))
+      (let [counted (fn [n]
+                      (t2/with-call-count [call-count]
+                        (dotimes [_ n]
+                          (is (false? (setup/has-user-setup))))
+                        (call-count)))]
+        (counted 1)
         (testing "Should continue doing new DB calls as long as there is no User"
-          (is (<= (call-count)
-                  10)))))) ;; in dev/test we check settings for an override
+          (is (< (counted 2) (counted 6)))))))
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
     (setting.cache/restore-cache!)
     (t2/with-call-count [call-count]

@@ -21,12 +21,12 @@
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      28
-                                :deprecated-var                                            65
+                                :deprecated-var                                            61
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/change-log-raw-write                             12
-                                :metabase/discourage-dynamic-vars                          287
+                                :metabase/change-log-raw-write                             8
+                                :metabase/discourage-dynamic-vars                          283
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          15
                                 :metabase/namespace-name                                   3
@@ -52,7 +52,7 @@
  :discouraged-namespace-counts {:cheshire.core         3
                                 :clojure.tools.logging 3
                                 :grouper.core          1
-                                :legacy-mbql.normalize 14
+                                :legacy-mbql.normalize 13
                                 :legacy-mbql.schema    13
                                 :legacy-mbql.util      2
                                 :query-processor.store 9
@@ -75,7 +75,7 @@
                                 :ee.data-testing.expectations.empty/->Empty       1
                                 :ee.data-testing.expectations.equals/->EqualsRows 1
                                 :ee.data-testing.expectations.equals/->EqualsSql  1
-                                :lib.convert/->legacy-MBQL                        5
+                                :lib.convert/->legacy-MBQL                        3
                                 :lib.equality/find-column-indexes-for-refs        1
                                 :malli.core/explain                               1
                                 :malli.core/explainer                             1
@@ -94,6 +94,7 @@
                                 :metabase/defsetting-must-specify-export 1
                                 :metabase/defsetting-namespace           1
                                 :metabase/discourage-dynamic-vars        1
+                                :metabase/foreign-model-write            2
                                 :metabase/modules                        1
                                 :metabase/prefer-with-dynamic-fn-redefs  4
                                 :metabase/t2-query-namespace             2

@@ -17,6 +17,7 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.honey-sql-2 :as h2x]
@@ -49,10 +50,10 @@
                      :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User :id user-id {:is_active false})
+        (user/update-users! [{:id user-id :is_active false}])
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User :id user-id {:is_active true})
+        (user/update-users! [{:id user-id :is_active true}])
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 

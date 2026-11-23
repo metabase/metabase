@@ -1,18 +1,19 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.models :as database-routing.models]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.core :as workspaces]))
 
@@ -58,34 +59,38 @@
                                        seq)]
       {:status 400
        :body (into {} invalid-destinations)}
-      (events/with-event-context {:details {:primary_db_name (:name router-db)
-                                            :primary_db_id   (:id router-db)}}
-        (u/prog1 (database-routing.db/insert-databases!
-                  (map (fn [{:keys [name details]}]
-                         {:name               name
-                          :engine             engine
-                          :details            details
-                          :auto_run_queries   auto_run_queries
-                          :is_full_sync       false
-                          :is_on_demand       is_on_demand
-                          :cache_ttl          nil
-                          :router_database_id router_database_id
-                          :creator_id         api/*current-user-id*})
-                       destinations))
-          (run! #(sync/start-initial-sync! % nil) <>))))))
+      (u/prog1 (database/create-databases!
+                (mapv (fn [{:keys [name details]}]
+                        {:name               name
+                         :engine             engine
+                         :details            details
+                         :auto_run_queries   auto_run_queries
+                         :is_full_sync       false
+                         :is_on_demand       is_on_demand
+                         :cache_ttl          nil
+                         :router_database_id router_database_id
+                         :creator_id         api/*current-user-id*})
+                      destinations)
+                {:context {:details {:primary_db_name (:name router-db)
+                                     :primary_db_id   (:id router-db)}}})
+        (run! #(sync/start-initial-sync! % nil) <>)))))
 
 (defn- delete-router!
   [db-id]
-  (database-routing.db/delete-router! db-id))
+  (if-let [router (database-routing.db/router-for-database db-id)]
+    (do (database-routing.models/delete-database-routers! [(:id router)])
+        1)
+    0))
 
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-    (if (database-routing.db/router-for-database db-id)
-      (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.db/insert-router! db-id user-attribute))))
+    (if-let [router (database-routing.db/router-for-database db-id)]
+      (do (database-routing.models/update-database-routers! [{:id (:id router) :user_attribute user-attribute}])
+          1)
+      (count (database-routing.models/create-database-routers! [{:database_id db-id :user_attribute user-attribute}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -162,11 +162,8 @@
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order."
   [dashboard-id original-dashboard-params]
   (let [broken       (broken-subscription-data dashboard-id original-dashboard-params)
-        readable-ids (readable-pulse-ids (map :pulse-id broken))]
-    (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
-            ;; Described before archiving, which disables the pulse's channels.
-            (let [archived (archived-subscription original-dashboard-params readable-ids broken-subscription)]
-              (pulse/update-pulse! {:id pulse-id :archived true})
-              (messages/send-broken-subscription-notification! broken-subscription)
-              archived))
-          broken)))
+        readable-ids (readable-pulse-ids (map :pulse-id broken))
+        archived     (mapv #(archived-subscription original-dashboard-params readable-ids %) broken)]
+    (pulse/update-pulses! (mapv #(hash-map :id (:pulse-id %) :archived true) broken))
+    (run! messages/send-broken-subscription-notification! broken)
+    archived))

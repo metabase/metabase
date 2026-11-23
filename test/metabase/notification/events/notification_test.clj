@@ -16,24 +16,18 @@
     (notification.tu/with-send-notification-sync
       (notification.tu/with-temporary-event-topics! #{:event/test-notification}
         (let [topic      :event/test-notification
-              n-1        (models.notification/create-notification!
-                          {:payload_type :notification/system-event
-                           :active       true}
-                          [{:type       :notification-subscription/system-event
-                            :event_name topic}]
-                          nil)
-              n-2         (models.notification/create-notification!
-                           {:payload_type :notification/system-event
-                            :active       true}
-                           [{:type       :notification-subscription/system-event
-                             :event_name topic}]
-                           nil)
-              _inactive  (models.notification/create-notification!
-                          {:payload_type :notification/system-event
-                           :active       false}
-                          [{:type       :notification-subscription/system-event
-                            :event_name topic}]
-                          nil)
+              [n-1]        (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                                        :active       true
+                                                                        :subscriptions [{:type       :notification-subscription/system-event
+                                                                                         :event_name topic}]}])
+              n-2         (first (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                                              :active       true
+                                                                              :subscriptions [{:type       :notification-subscription/system-event
+                                                                                               :event_name topic}]}]))
+              _inactive  (first (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                                             :active       false
+                                                                             :subscriptions [{:type       :notification-subscription/system-event
+                                                                                              :event_name topic}]}]))
               sent-notis (atom [])]
           (testing "publishing event will send all the actively subscribed notifciations"
             (with-redefs [notification.send/send-notification! (fn [notification] (swap! sent-notis conj notification))
@@ -50,12 +44,10 @@
     (notification.tu/with-temporary-event-topics! #{:event/unsupported-topic}
       (let [topic      :event/unsupported-topic
             sent-notis (atom #{})]
-        (models.notification/create-notification!
-         {:payload_type :notification/system-event
-          :active       true}
-         [{:type       :notification-subscription/system-event
-           :event_name topic}]
-         nil)
+        (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                     :active       true
+                                                     :subscriptions [{:type       :notification-subscription/system-event
+                                                                      :event_name topic}]}])
         (testing "publish an event that is not supported for notifications will not send any notifications"
           (with-redefs
            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
@@ -116,19 +108,19 @@
                    :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
       (notification.tu/with-temporary-event-topics! #{:event/testing}
         (doseq [_ (range 2)]
-          (models.notification/create-notification! {:payload_type :notification/testing}
-                                                    [{:type :notification-subscription/system-event
-                                                      :event_name :event/testing}]
-                                                    [{:channel_type notification.tu/test-channel-type
-                                                      :channel_id   (:id chn-1)
-                                                      :template_id  nil
-                                                      :recipients   [{:type :notification-recipient/user
-                                                                      :user_id (mt/user->id :crowberto)}]}
-                                                     {:channel_type notification.tu/test-channel-type
-                                                      :channel_id   (:id chn-2)
-                                                      :template_id  nil
-                                                      :recipients   [{:type :notification-recipient/user
-                                                                      :user_id (mt/user->id :rasta)}]}]))
+          (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                       :subscriptions [{:type :notification-subscription/system-event
+                                                                        :event_name :event/testing}]
+                                                       :handlers [{:channel_type notification.tu/test-channel-type
+                                                                   :channel_id   (:id chn-1)
+                                                                   :template_id  nil
+                                                                   :recipients   [{:type :notification-recipient/user
+                                                                                   :user_id (mt/user->id :crowberto)}]}
+                                                                  {:channel_type notification.tu/test-channel-type
+                                                                   :channel_id   (:id chn-2)
+                                                                   :template_id  nil
+                                                                   :recipients   [{:type :notification-recipient/user
+                                                                                   :user_id (mt/user->id :rasta)}]}]}]))
         (t2/select :model/NotificationSubscription)
         (t2/delete! :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]])
         (events/publish-event! :event/testing {})

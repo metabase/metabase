@@ -6,6 +6,7 @@
    [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,10 +38,12 @@
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (if (nil? db_id)
-                  (upload.db/disable-uploads-for-all-databases!)
+                  (database/disable-uploads!)
                   (do
                     (check-required-perms! db_id)
-                    (upload.db/enable-uploads-for-database! db_id schema_name table_prefix)))))
+                    (database/update-databases! [{:id db_id :uploads_enabled      true
+                                                  :uploads_schema_name  schema_name
+                                                  :uploads_table_prefix table_prefix}])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

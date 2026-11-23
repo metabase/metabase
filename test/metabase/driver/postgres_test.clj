@@ -3025,3 +3025,17 @@
          (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
          (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
                                (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))
+
+(deftest parameter-in-a-comment-on-a-streaming-connection-gets-the-friendly-error-test
+  (mt/test-driver :postgres
+    (testing "outside a data-test run, a connection with autocommit off still checks the parameter count"
+      ;; Downloads and other streamed queries turn autocommit off on Postgres.
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres
+       (mt/id)
+       {:stream? true}
+       (fn [^java.sql.Connection conn]
+         (is (false? (.getAutoCommit conn)))
+         (is (thrown-with-msg? Exception #"more parameters than we can handle"
+                               (with-open [_stmt (sql-jdbc.execute/prepared-statement
+                                                  :postgres conn "SELECT 1 -- ?" [1])]))))))))

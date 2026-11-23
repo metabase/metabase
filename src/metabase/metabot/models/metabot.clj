@@ -1,10 +1,13 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -37,6 +40,13 @@
               (metabot.db/prompts-for-metabots (map :id metabots)))
    :id
    {:default []}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn update-metabots! :- :nil
+  "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."
+  [rows :- [:sequential (mut/select-keys ::metabot.schema/metabot.update [:id :use_verified_content :collection_id])]]
+  (mdb/update-batched! :model/Metabot rows {}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

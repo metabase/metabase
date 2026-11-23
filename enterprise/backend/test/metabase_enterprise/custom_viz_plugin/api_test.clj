@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
@@ -247,14 +248,14 @@
                  (:status-code
                   (ex-data
                    (try
-                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
+                     (custom-viz-plugin/set-or-clear-dev-bundle! id "file:///etc/passwd")
                      (catch Exception e e)))))))
         (testing "SECURITY: rejects ftp:// dev URL via API"
           (is (= 400
                  (:status-code
                   (ex-data
                    (try
-                     (cache/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
+                     (custom-viz-plugin/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
                      (catch Exception e e)))))))
         (testing "admin can set valid http dev URL"
           (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
@@ -398,7 +399,7 @@
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart"
                                                                             :icon "icon.svg"
                                                                             :sdk  {:version "2.0.0"}})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "dev-chart" (:identifier resp)))
@@ -412,7 +413,7 @@
                   "the dev manifest, including any sdk.version stamp, is persisted"))))
         (testing "dev plugin registration with explicit identifier overrides manifest"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"
                                               :identifier     "my-override"})]
@@ -630,7 +631,7 @@
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                               {:dev_bundle_url "http://localhost:5174"})
                   entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
@@ -742,7 +743,7 @@
       (with-dev-mode-enabled
         (mt/with-model-cleanup [:model/CustomVizPlugin]
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "gated-dev" (:identifier resp))))))))))

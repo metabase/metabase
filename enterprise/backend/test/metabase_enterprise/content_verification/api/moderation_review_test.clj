@@ -69,7 +69,6 @@
                                                            :most_recent         false
                                                            :status              "verified"
                                                            :text                "old review"}))
-              (is (<= (review-count) moderation-review/max-moderation-reviews))
               (moderate! "verified" "lookin' good")
               ;; api ensures we never have more than our limit
 

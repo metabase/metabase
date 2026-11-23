@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.schema
   "Malli schemas for the impersonation module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -11,14 +12,13 @@
 
 (mr/def ::connection-impersonation
   "A ConnectionImpersonation as selected from the app DB: every column of `:connection_impersonations`."
-  [:merge
-   ::connection-impersonation.update
-   [:map {:closed true}
-    [:id        ms/PositiveInt]]])
+  ::connection-impersonation.update)
 
 (mr/def ::connection-impersonation.update
-  "What an update (or insert) of a ConnectionImpersonation accepts: every column of `:connection_impersonations` except `id`, all optional."
+  "What an update of a ConnectionImpersonation takes: its `:id` and every other column of `:connection_impersonations`,
+  all optional."
   [:map {:closed true}
+   [:id        ms/PositiveInt]
    [:db_id     {:optional true} [:maybe ::lib.schema.id/database]]
    [:group_id  {:optional true} [:maybe ms/PositiveInt]]
    [:attribute {:optional true} ::connection-impersonation.attribute]])
@@ -32,12 +32,13 @@
   [:merge
    ::impersonation-query-cache.update
    [:map {:closed true}
-    [:id               ms/PositiveInt]
     [:input_query_hash :string]]])
 
 (mr/def ::impersonation-query-cache.update
-  "What an update (or insert) of an ImpersonationQueryCache accepts: every column of `:impersonation_query_cache` except `id`, all optional."
+  "What an update of an ImpersonationQueryCache takes: its `:id` and every other column of `:impersonation_query_cache`
+  but the hash of its query, all optional."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:input_version     {:optional true} :string]
    [:input_engine      {:optional true} :keyword]
    [:input_allow_write {:optional true} :boolean]
@@ -47,3 +48,17 @@
    [:result_query      {:optional true} [:maybe :string]]
    [:result_reason     {:optional true} [:maybe :string]]
    [:created_at        {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])
+
+(mr/def ::impersonation-query-cache.create
+  "What storing an ImpersonationQueryCache takes: the columns of an update without the `:id`."
+  (mut/dissoc ::impersonation-query-cache.update :id))
+
+(mr/def ::impersonation-query-cache.lookup
+  "The columns that look an ImpersonationQueryCache up: the hash of its native query and the inputs it was validated
+  with."
+  [:map {:closed true}
+   [:input_query_hash  :string]
+   [:input_engine      :keyword]
+   [:input_allow_write :boolean]
+   [:input_admin       :boolean]
+   [:input_version     :string]])
