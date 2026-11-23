@@ -1,6 +1,7 @@
 (ns metabase.model-persistence.events.persisted-info-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.app-db.core :as mdb]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -41,3 +42,20 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (card/update-cards! [{:id (u/the-id card) :name "Renamed model" :description "Edited"}]))
         (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card))))))))
+
+(deftest ^:synchronized model-cards-across-partitions-are-persisted-test
+  (testing "an event with more model Cards than one batch persists every one of them"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [persisted-models-enabled true]
+        (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
+                       :model/Card     c1 {:database_id (u/the-id db)}
+                       :model/Card     c2 {:database_id (u/the-id db)}
+                       :model/Card     c3 {:database_id (u/the-id db)}
+                       :model/Card     c4 {:database_id (u/the-id db)}
+                       :model/Card     c5 {:database_id (u/the-id db)}]
+          (mt/with-model-cleanup [:model/PersistedInfo]
+            (let [card-ids (mapv u/the-id [c1 c2 c3 c4 c5])]
+              (with-redefs [mdb/create-partition-size 2]
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (card/update-cards! (vec (for [id card-ids] {:id id :type :model})))))
+              (is (= 5 (t2/count :model/PersistedInfo :card_id [:in card-ids]))))))))))

@@ -26,7 +26,8 @@
       (log/info "Skipping Agent API usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))]
         (log/infof "Trimming Agent API usage log rows older than %d days." (long retention-days))
-        (let [calls (agent-api-call-log/delete-agent-api-call-logs-for-cleanup! cutoff)]
+        (let [calls (agent-api-call-log/delete-agent-api-call-logs!
+                     (agent-api-call-log/call-log-ids-created-before cutoff))]
           (log/infof "Agent API usage log cleanup complete. Deleted %d call rows." (or calls 0)))))))
 
 (task/defjob AgentApiUsageTrimmer

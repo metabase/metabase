@@ -1022,11 +1022,11 @@
               (refused {:status 403 :message query-403} (three (orders-card) (assoc (good) :source_card_id secret-id))))))))))
 
 (deftest update-documents-for-import-test
-  (testing "an import writes different columns to each Document and returns its rows"
+  (testing "an import writes different columns to each Document"
     (mt/with-temp [:model/Document {a :id} {}
                    :model/Document {b :id} {}]
       (let [rows [{:id a :name "Imported A"} {:id b :name "Imported B" :collection_position 3}]]
-        (is (= rows (document/update-documents! rows {:writer :import})))
+        (document/update-documents! rows {:writer :import})
         (is (= ["Imported A" "Imported B"] (mapv #(t2/select-one-fn :name :model/Document :id %) [a b])))
         (is (= 3 (t2/select-one-fn :collection_position :model/Document :id b)))))))
 

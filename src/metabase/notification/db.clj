@@ -9,7 +9,6 @@
    [metabase.change-log.core :as change-log]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -209,12 +208,10 @@
   (mdb/insert-returning-instances! :model/Notification rows))
 
 (mu/defn update-notifications!
-  "Apply to each Notification of `stored`, a map from id to the Notification as read, its changes in `id->changes`, with
-  one statement for the rows that get the same effective changes."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt NotificationRow]]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/Notification :id [:in [:auto/param ids]] changes))
+  "Apply to each Notification its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt NotificationRow]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/Notification :id id changes))
   nil)
 
 (mu/defn update-notification-columns!

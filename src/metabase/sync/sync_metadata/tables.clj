@@ -392,8 +392,10 @@
    schemas-to-update :- [:maybe [:map-of :string :string]]]
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
-  (doseq [[schema new-schema] schemas-to-update]
-    (table/update-tables! (for [id (vec (sync.db/table-ids-with-schema (:id database) schema))] {:id id :schema new-schema}))))
+  (when (seq schemas-to-update)
+    (table/update-tables! (for [[schema new-schema] schemas-to-update
+                                id                  (sync.db/table-ids-with-schema (:id database) schema)]
+                            {:id id :schema new-schema}))))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}

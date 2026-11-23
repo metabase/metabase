@@ -4,6 +4,7 @@
   drops out of the served set immediately instead of lingering until the next scan."
   (:require
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -33,10 +34,10 @@
   [event]
   (boolean (and (invalidation event) (premium-features/has-feature? :content-diagnostics))))
 
-(defn- invalidate!
-  "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
-  collections with the subtrees of those archived directly, logging the error of that statement, which fails the write
-  on Postgres, where an error aborts the transaction."
+(defn- invalidate-batch!
+  "Invalidate in one statement the active findings of the entities that `events`, one batch of an event, archive or
+  delete, and of the archived collections with the subtrees of those archived directly, logging the error of that
+  statement, which fails the write on Postgres, where an error aborts the transaction."
   [events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
@@ -51,6 +52,12 @@
       (catch Throwable e
         (log/errorf "Failed to invalidate content-diagnostics findings of %d entities: %s"
                     (count invalidations) (ex-message e))))))
+
+(defn- invalidate!
+  "Invalidate the findings that `events` call for, in batches of `delete-partition-size` events, the size of a statement
+  keyed by ids."
+  [events]
+  (run! invalidate-batch! (partition-all app-db/delete-partition-size events)))
 
 (events/derive! :metabase/lifecycle-event ::invalidate)
 

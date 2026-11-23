@@ -2597,7 +2597,7 @@
    :import-dependencies queries.serialization/import-dependencies
    :export-dependencies queries.serialization/export-dependencies
    :insert!             #(create-cards! % {:writer :import})
-   :update!             #(update-cards! % {:writer :import})
+   :update!             #(do (update-cards! % {:writer :import}) %)
    :delete!             #(delete-cards! % {:writer :import})})
 
 (defmethod remote-sync/spec :model/Card

@@ -2,7 +2,6 @@
   "Application database queries for the warehouses module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -58,10 +57,12 @@
   (mdb/insert-returning-instances! :model/Database rows))
 
 (mu/defn update-databases!
-  "Apply the same `changes` to the Databases with `database-ids`, returning the number updated."
-  [database-ids :- [:set ::lib.schema.id/database]
-   changes      :- (mut/dissoc ::warehouses.schema/database.update :id)]
-  (t2/update! :model/Database :id [:in database-ids] changes))
+  "Apply `rows`, each the id of a Database and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouses.schema/database.update]]
+  (doseq [{:keys [id] :as row} rows
+          :let  [changes (dissoc row :id)]
+          :when (seq changes)]
+    (t2/update! :model/Database :id [:auto/param id] changes)))
 
 (mu/defn delete-databases!
   "Delete the Databases with `database-ids`, returning the number deleted."

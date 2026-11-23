@@ -3,6 +3,7 @@
   one ingestion each for the rows created, the rows updated and the rows deleted. The documents that a delete leaves
   unpurgeable are enumerated at the delete, before it runs, and checked once it commits."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -51,8 +52,9 @@
                                              #(into [] (comp (map (comp :model_id :object)) (distinct)) %))]
       ;; The other documents that join the entity, such as a model's indexed values and actions, read none of the
       ;; Revision, so a model's every save would re-derive them all for nothing.
-      (search/reindex-documents! (map #(t2/instance (keyword "model" revised-model) {:id %}) ids)
-                                 (readers revised-model)))))
+      (doseq [batch (partition-all app-db/delete-partition-size ids)]
+        (search/reindex-documents! (map #(t2/instance (keyword "model" revised-model) {:id %}) batch)
+                                   (readers revised-model))))))
 
 (defn- capture-dependents
   "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
@@ -64,7 +66,10 @@
                (not search.ingestion/*disable-updates*)
                (search/supports-index?))
       (try
-        (search/cascading-documents (mapv #(t2/instance model (:previous-object %)) events))
+        (transduce (map #(search/cascading-documents (mapv (fn [event] (t2/instance model (:previous-object event))) %)))
+                   (completing #(merge-with into %1 %2))
+                   {}
+                   (partition-all app-db/delete-partition-size events))
         (catch InterruptedException e
           (.interrupt (Thread/currentThread))
           (log/errorf e "Interrupted; skipping search cascade enumeration for %s" model)
@@ -89,7 +94,7 @@
         dependents (apply merge-with into (keep capture-dependents (vals (group-by :model deleted))))
         steps      (cond-> []
                      (search/feeds-documents? instances)
-                     (conj (fn [] (search/bulk-update! instances)))
+                     (conj (fn [] (run! search/bulk-update! (partition-all app-db/delete-partition-size instances))))
 
                      (seq dependents)
                      (conj (fn [] (search/reconcile-cascading-documents! dependents))))]
@@ -114,10 +119,8 @@
       ;; the batch inserted after it.
       (when (seq revised)
         (reindex-revised! revised))
-      (when (seq created)
-        (search/bulk-update! created))
-      (when (seq updated)
-        (search/update-changed! updated))
+      (run! search/bulk-update! (partition-all app-db/create-partition-size created))
+      (run! search/update-changed! (partition-all app-db/update-partition-size updated))
       (when (seq deleted)
         (handle-deleted! deleted)))))
 

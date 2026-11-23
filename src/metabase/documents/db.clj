@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
@@ -12,7 +11,6 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -99,14 +97,11 @@
   (mdb/insert-returning-instances! :model/Document rows))
 
 (mu/defn update-documents!
-  "Apply `changes` to the Documents with `ids`, with one statement for each distinct set of columns that change in them,
-  returning nil."
+  "Apply `changes` to each of the Documents with `ids`, with one statement for each, returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::documents.schema/document.update]
-  (let [stored (m/index-by :id (t2/select :model/Document :id [:in ids]))
-        rows   (mapv #(assoc changes :id %) ids)]
-    (doseq [[effective group] (mi/group-ids-by-changes stored rows)]
-      (t2/update! :model/Document :id [:in group] effective)))
+  (doseq [id ids]
+    (t2/update! :model/Document :id id changes))
   nil)
 
 (mu/defn delete-documents!

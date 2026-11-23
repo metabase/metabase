@@ -150,24 +150,38 @@
     (when (not= (count new-names) (count (distinct new-names)))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
 
+(defn- rename-order
+  "The rows of `updates`, whose stored Tenants `stored` holds, in an order in which each rename comes after the rename
+  that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a cycle."
+  [stored updates]
+  (let [stored-name #(u/lower-case-en (:name (stored (:id %))))
+        new-name    #(some-> (:name %) u/lower-case-en)]
+    (loop [pending (vec updates), ordered []]
+      (if (empty? pending)
+        ordered
+        (let [held   (into #{} (map stored-name) pending)
+              ready? (fn [row] (or (nil? (new-name row)) (= (new-name row) (stored-name row)) (not (held (new-name row)))))
+              ready  (filterv ready? pending)]
+          (when (seq ready)
+            (recur (filterv (complement ready?) pending) (into ordered ready))))))))
+
 (defn- check-renames-free
   "Throws a 400 unless every row of `updates`, whose stored Tenants `stored` holds by id, satisfies these rules:
 
-  - a rename does not take the name of another Tenant"
+  - a rename does not take the name of another Tenant as it stands after the renames of the batch, so a name another
+    row of the batch renames away is free
+  - the renames of the batch do not take each other's names in a cycle"
   [stored updates]
-  (when-let [renames (not-empty (into []
-                                      (comp (filter #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))))
-                                            (map #(select-keys % [:id :name])))
-                                      updates))]
-    (when (tenants.db/other-tenants-named? renames)
+  (when-let [renames (not-empty (filterv #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))) updates))]
+    (when (or (tenants.db/tenant-named-outside? (mapv :name renames) (mapv :id renames))
+              (nil? (rename-order stored updates)))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
 
 (defn- write-tenant-updates!
-  "Write `updates` over the `stored` Tenants, one statement per distinct change, and return each row with its stored
+  "Write `updates` over the `stored` Tenants, a statement per row, and return each row with its stored
   Tenant."
   [stored updates]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
-    (tenants.db/update-tenants! ids changes))
+  (tenants.db/update-tenants! (rename-order stored updates))
   (mapv (fn [row] [(stored (:id row)) row]) updates))
 
 (defn- update-tenant-batch!

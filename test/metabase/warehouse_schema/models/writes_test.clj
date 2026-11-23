@@ -106,6 +106,9 @@
               (is (= [[:event/field-update 5]] (topics-and-row-counts)))
               (is (= ["D0" "D1" "D2" "D3" "D4"]
                      (t2/select-fn-vec :description :model/Field :id [:in ids] {:order-by [:id]}))))
+            (testing "reading the FieldValues of more Fields than one batch"
+              (field-values/create-field-values! (mapv (fn [id] {:field_id id :values [1]}) ids))
+              (is (= 5 (count (field-values/ids-of-fields ids)))))
             (testing "deleting Fields"
               (reset! published [])
               (field/delete-fields! ids)

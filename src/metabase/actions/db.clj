@@ -9,7 +9,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -153,12 +152,13 @@
     [:inline false]))
 
 (mu/defn update-actions!
-  "Apply the columns of each of `rows`, an `:id` with its own values, to its Action, with one statement for each distinct
-  set of columns that change in them, returning nil."
+  "Apply the columns of each of `rows`, an `:id` with its own values, to its Action, with one statement for each,
+  returning nil."
   [rows :- [:sequential (mut/select-keys ::actions.schema/action.update (conj action-columns :id))]]
-  (let [stored (t2/select-pk->fn identity :model/Action :id [:in (mapv :id rows)])]
-    (doseq [[effective ids] (mi/group-ids-by-changes stored rows)]
-      (t2/update! :model/Action :id [:in ids] effective)))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (t2/update! :model/Action :id id changes))
   nil)
 
 (mu/defn delete-actions!

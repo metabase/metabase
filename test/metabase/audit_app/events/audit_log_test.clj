@@ -711,7 +711,7 @@
         (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
                                                                       (fn [rows] (swap! inserts inc) (f rows)))]
           (mt/with-current-user (mt/user->id :rasta)
-            (doseq [[id name] [[b "B2"] [c "C2"] [a "A2"]]] (card/update-cards! [{:id id :name name}]))))
+            (card/update-cards! [{:id b :name "B2"} {:id c :name "C2"} {:id a :name "A2"}])))
         (is (= 1 @inserts))
         (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
                (mapv (juxt :topic :model_id)

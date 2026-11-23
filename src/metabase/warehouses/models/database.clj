@@ -880,26 +880,12 @@
                     (assoc (add-client-secrets database (dissoc row :id)) :id id)))))
         rows))
 
-(defn- update-by-change!
-  "Apply each of `rows`, the id of a Database and the columns to change, with one statement per distinct set of
-  changes, returning the number updated. Rows read by the function itself, `fresh?`, keep only the columns that differ
-  from `stored`, `{id row}`, so that rows in different states do not make Toucan split the update; rows the caller read
-  may be stale and keep every column."
-  [stored rows fresh?]
-  (reduce + 0 (for [[changes ids] (if fresh?
-                                    (mi/group-ids-by-changes stored rows)
-                                    (map (fn [[changes rows]] [changes (mapv :id rows)])
-                                         (group-by #(dissoc % :id) rows)))
-                    :when (seq changes)]
-                (warehouses.db/update-databases! (set ids) changes))))
-
 (defn- write-database-updates!
-  "Write each of `rows`, the id of a Database and the columns to change, over the `stored` Databases, `{id row}`,
-  returning the rows written, sanitized and with their client secrets stored; `fresh?` when the function read `stored`
-  itself."
-  [stored rows writer fresh?]
+  "Write each of `rows`, the id of a Database and the columns to change, over the `stored` Databases, `{id row}`, one
+  statement per row, returning the rows written, sanitized and with their client secrets stored."
+  [stored rows writer]
   (u/prog1 (prepared-rows! stored rows writer)
-    (update-by-change! stored <> fresh?)))
+    (warehouses.db/update-databases! <>)))
 
 (defn- reschedule-databases!
   "Reschedule the sync triggers of the Databases that `rows` change a trigger column of, returning those Databases as
@@ -940,7 +926,7 @@
              disabled (when (enables-uploads? stored rows)
                         (disable-uploads-changes!))
              written  (into []
-                            (mapcat #(write-database-updates! stored % writer (empty? databases)))
+                            (mapcat #(write-database-updates! stored % writer))
                             (partition-all mdb/update-partition-size rows))]
          (publish-database-updates! (database-changes disabled stored (reschedule-databases! written) written)
                                     (dissoc opts :databases)))))

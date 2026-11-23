@@ -344,17 +344,23 @@
     :update (mark-update! batched lookups event)
     :delete (do (mark-delete! batched lookups model previous-object) true)))
 
+(defn- mark-batch!
+  "Mark what the row `events`, one batch of a lifecycle event, make stale, once per entity, with a number of statements
+  that does not grow with the events, and return whether any marked something the jobs read."
+  [events]
+  (let [lookups (lookups events)
+        batched (atom {})
+        marked? (some true? (doall (map #(mark-event! batched lookups %) events)))]
+    (flush-marks! @batched)
+    (boolean marked?)))
+
 (defn- mark-events!
-  "Mark what the row `events` of one lifecycle event make stale, once per entity, with a number of statements that does
-  not grow with the events, and trigger the jobs once the transaction commits."
+  "Mark what the row `events` of one lifecycle event make stale, in batches of `delete-partition-size` events, the size
+  of a read keyed by ids, and trigger the jobs once the transaction commits."
   [events]
   (when (premium-features/has-feature? :dependencies)
-    (let [lookups (lookups events)
-          batched (atom {})
-          marked? (some true? (doall (map #(mark-event! batched lookups %) events)))]
-      (flush-marks! @batched)
-      (when marked?
-        (trigger-jobs!)))))
+    (when (some true? (doall (map mark-batch! (partition-all mdb/delete-partition-size events))))
+      (trigger-jobs!))))
 
 (events/derive! :metabase/lifecycle-event ::dependencies)
 

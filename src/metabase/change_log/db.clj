@@ -1,7 +1,6 @@
 (ns metabase.change-log.db
   "Application database queries for the change-log module."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -11,9 +10,9 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn insert-entries!
-  "Adds `entries` to the change log, one statement per `app-db/create-partition-size` entries."
+  "Adds `entries` to the change log."
   [entries :- [:sequential [:map {:closed true} [:table_name :string] [:row_id :int] [:action :string]]]]
-  (transduce (map #(t2/insert! :change_log (vec %))) + 0 (partition-all app-db/create-partition-size entries)))
+  (t2/insert! :change_log entries))
 
 (mu/defn unnumbered-ids
   "The ids of up to `limit` committed entries that have no `position`, lowest first."

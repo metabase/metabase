@@ -1,6 +1,7 @@
 (ns metabase.mcp.models.mcp-query-handle
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.schema :as mcp.schema]
@@ -23,10 +24,13 @@
    row       :- ::mcp.schema/mcp-query-handle.create]
   (mcp.db/insert-query-handle! handle-id row))
 
-(mu/defn delete-mcp-query-handles-for-cleanup!
-  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (mcp.db/delete-query-handles-created-before! cutoff))
+(mu/defn delete-mcp-query-handles! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the McpQueryHandles with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential :string]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp mcp.db/delete-query-handles! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 (mu/defn delete-mcp-query-handles-for-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id` through the core

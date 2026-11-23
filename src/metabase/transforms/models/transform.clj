@@ -509,6 +509,20 @@
           :position     (get new-positions tag-id)})))
     (not= current-tag-ids new-tag-ids)))
 
+(defn- link-new-tags!
+  "Link each of the new `transforms` to the `:tag_ids` of its row of `rows`, in that order, leaving out duplicate and
+  unknown tag ids, with one insert for all."
+  [transforms rows]
+  (let [tag-ids (into [] (comp (mapcat :tag_ids) (distinct)) rows)
+        known   (if (seq tag-ids) (into #{} (transforms.db/existing-tag-ids tag-ids)) #{})
+        links   (vec (mapcat (fn [transform {:keys [tag_ids]}]
+                               (map-indexed (fn [position tag-id]
+                                              {:transform_id (:id transform) :tag_id tag-id :position position})
+                                            (filter known (distinct tag_ids))))
+                             transforms rows))]
+    (when (seq links)
+      (transform-transform-tag/create-transform-transform-tags! links))))
+
 (defn- check-creates
   "Throw unless every Transform of `rows` satisfies the rules of [[check-collections]] for its Collection and of
   [[check-target-databases]] for its target Database."
@@ -520,9 +534,7 @@
   "Insert the Transform `rows`, link the `:tag_ids` of each, and return the inserted transforms."
   [rows]
   (let [transforms (transforms.db/insert-transforms! (mapv #(dissoc % :tag_ids) rows))]
-    (doseq [[transform {:keys [tag_ids]}] (map vector transforms rows)
-            :when                         (seq tag_ids)]
-      (replace-tags! (:id transform) tag_ids))
+    (link-new-tags! transforms rows)
     transforms))
 
 (mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
@@ -595,11 +607,11 @@
 
 (defn- write-updates!
   "Mark the index requests of the changed `definitions` for revalidation and write `resolved`, the changes of the
-  Transforms of `stored`."
-  [stored resolved definitions]
+  Transforms."
+  [resolved definitions]
   (when (seq definitions)
     (table-index/mark-for-revalidation! (vec (keys definitions))))
-  (transforms.db/update-transforms! stored resolved))
+  (transforms.db/update-transforms! resolved))
 
 (defn- apply-updates!
   "Check, then write `requested`, a map from the id of a Transform of `stored` to its changes, and return the changes of
@@ -608,7 +620,7 @@
   (let [resolved    (resolve-merge-keys requested stored)
         definitions (changed-definitions stored requested resolved)]
     (check-updates stored requested definitions)
-    (write-updates! stored resolved definitions)
+    (write-updates! resolved definitions)
     resolved))
 
 (defn- column-update-event
@@ -636,7 +648,7 @@
            definitions (changed-definitions stored requested resolved)]
        (check-updates stored requested definitions)
        (doseq [ids (partition-all mdb/update-partition-size (keys resolved))]
-         (write-updates! (select-keys stored ids) (select-keys resolved ids) (select-keys definitions ids)))
+         (write-updates! (select-keys resolved ids) (select-keys definitions ids)))
        (when (seq resolved)
          (events/publish-event! :event/transform-update (column-update-event stored resolved opts)))))
    nil))

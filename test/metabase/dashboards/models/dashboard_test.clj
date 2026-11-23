@@ -828,23 +828,27 @@
                         (events.tu/statement-count! #(dashboard/update-dashboards! (mapv (fn [id] (assoc changes :id id)) ids)))))
             counted (fn [f]
                       (f 1)
-                      (is (= (f 2) (f 6))))]
+                      (is (= (f 2) (f 6))))
+            counted-updates (fn [f]
+                              (f 1)
+                              (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
+                                  "each more row costs its SELECT by the hook and its UPDATE"))]
         (testing "creating dashboards with their tabs, dashcards and series"
           (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard/create-dashboards! rows))))))
         (testing "updating columns, some already holding the new value"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :description "Same"}) ids)))
                             {:description "Same"})))
         (testing "archiving dashboards and their questions, some already archived"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived true})))
         (testing "restoring dashboards and their questions, some already live"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :archived true}) ids)))
                             {:archived false})))
         (testing "moving dashboards and their questions, some already in the Collection"
-          (counted (partial update!
+          (counted-updates (partial update!
                             (fn [ids] (dashboard/update-dashboards! (mapv (fn [id] {:id id :collection_id other}) ids)))
                             {:collection_id other})))
         (testing "adding, updating and removing dashcards"
@@ -852,7 +856,7 @@
                      (let [ids (fresh! n)
                            rows (mapv (fn [id] {:dashboard_id id :card_id card-id :row 5 :col 0 :size_x 4 :size_y 4 :series [series-id]}) ids)]
                        (events.tu/statement-count! #(dashboard/add-dashcards! rows)))))
-          (counted (fn [n]
+          (counted-updates (fn [n]
                      (let [ids       (fresh! n)
                            dashcards (t2/select-pks-vec :model/DashboardCard :dashboard_id [:in ids])]
                        (dashboard/update-dashcards! (mapv (fn [id] {:id id :row 3}) (take-nth 2 dashcards)))

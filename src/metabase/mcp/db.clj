@@ -158,20 +158,30 @@
   [session-id :- :string]
   (t2/update! :model/McpSessionLog :id [:auto/param session-id] {:ended_at :%now}))
 
-(mu/defn delete-session-logs-created-before!
-  "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
+(mu/defn session-log-ids-created-before :- [:sequential :string]
+  "The ids of the McpSessionLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-session-logs!
+  "Delete the McpSessionLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} :string]]
+  (t2/delete! :model/McpSessionLog :id [:in [:auto/param (vec ids)]]))
 
 (mu/defn insert-tool-call-log!
   "Insert the McpToolCallLog `row`."
   [row :- ::mcp.schema/mcp-tool-call-log.update]
   (t2/insert! :model/McpToolCallLog row))
 
-(mu/defn delete-tool-call-logs-created-before!
-  "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
+(mu/defn tool-call-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the McpToolCallLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-tool-call-logs!
+  "Delete the McpToolCallLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/McpToolCallLog :id [:in [:auto/param (vec ids)]]))
 
 (defn session-user-ids
   "The ids of every User owning a `core_session` with `key-hashed`.
@@ -200,10 +210,15 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
-(defn delete-query-handles-created-before!
-  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
-  [cutoff]
-  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
+(mu/defn query-handle-ids-created-before :- [:sequential :string]
+  "The ids of every McpQueryHandle created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/McpQueryHandle {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-query-handles!
+  "Delete the McpQueryHandles with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} :string]]
+  (t2/delete! :model/McpQueryHandle :id [:in [:auto/param (vec ids)]]))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any
@@ -273,12 +288,13 @@
     (t2/insert! :model/McpGroupPermission rows)))
 
 (mu/defn update-group-permissions!
-  "Set the McpGroupPermission of the groups with `group-ids` to `values`."
-  [group-ids :- [:sequential ms/PositiveInt]
-   values    :- [:map {:closed true}
-                 [:mcp_enabled {:optional true} :boolean]
-                 [:tool_access {:optional true} ::mcp.perms/tool-access]]]
-  (t2/update! :model/McpGroupPermission {:group_id [:in group-ids]} values))
+  "Set the McpGroupPermission of the group of each of `rows` to the values of its row, with a statement of its own."
+  [rows :- [:sequential [:map {:closed true}
+                         [:group_id    ms/PositiveInt]
+                         [:mcp_enabled {:optional true} :boolean]
+                         [:tool_access {:optional true} ::mcp.perms/tool-access]]]]
+  (doseq [{:keys [group_id] :as row} rows]
+    (t2/update! :model/McpGroupPermission :group_id [:auto/param group_id] (dissoc row :group_id))))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."

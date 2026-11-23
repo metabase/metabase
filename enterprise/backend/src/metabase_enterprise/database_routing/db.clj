@@ -2,7 +2,6 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -78,10 +77,10 @@
   (app-db/insert-returning-instances! :model/DatabaseRouter rows))
 
 (mu/defn update-routers!
-  "Apply `changes` to the DatabaseRouters with `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- (mut/dissoc ::database-routing.schema/database-router.update :id)]
-  (t2/update! :model/DatabaseRouter :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a DatabaseRouter and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::database-routing.schema/database-router.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/DatabaseRouter :id [:auto/param id] (dissoc row :id))))
 
 (mu/defn delete-routers!
   "Delete the DatabaseRouters with `ids`."

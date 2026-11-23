@@ -2,7 +2,6 @@
   "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -70,13 +69,13 @@
                                      [:in :slug slugs]
                                      [:in :name tenant-names]]}))
 
-(mu/defn other-tenants-named?
-  "Whether, for one of `renames`, each an `:id` and a `:name`, a Tenant other than that id has that name."
-  [renames :- [:sequential {:min 1} [:map {:closed true} [:id ms/PositiveInt] [:name :string]]]]
-  (t2/exists? :model/Tenant {:where (into [:or]
-                                          (map (fn [{id :id tenant-name :name}]
-                                                 [:and [:= :name [:auto/param tenant-name]] [:not= :id [:auto/param id]]]))
-                                          renames)}))
+(mu/defn tenant-named-outside?
+  "Whether a Tenant other than those with `excluded-ids` has one of `tenant-names`."
+  [tenant-names :- [:sequential {:min 1} :string]
+   excluded-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/Tenant {:where [:and
+                                     [:in :name [:auto/param (vec (distinct tenant-names))]]
+                                     [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]}))
 
 (mr/def ::tenant.insert
   [:merge
@@ -95,10 +94,10 @@
   (t2/select :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
 
 (mu/defn update-tenants!
-  "Apply `changes` to the Tenants with `tenant-ids` in one statement."
-  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes    :- (mut/dissoc ::tenants.schema/tenant.update :id)]
-  (t2/update! :model/Tenant :id [:in [:auto/param (vec tenant-ids)]] changes))
+  "Apply each of `rows`, the `:id` of a Tenant and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::tenants.schema/tenant.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/Tenant :id [:auto/param id] (dissoc row :id))))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."

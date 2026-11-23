@@ -628,10 +628,9 @@
   (check-allowed-contents (moved-collection-ids stored rows)))
 
 (defn- write-table-updates!
-  "Write each of `rows`, the id of a Table and the columns to change, over the `stored` Tables, `{id row}`; `fresh?` when
-  the function read `stored` itself."
-  [stored fresh? rows]
-  (warehouse-schema.db/update-tables! (select-keys stored (map :id rows)) rows fresh?))
+  "Write each of `rows`, the id of a Table and the columns to change, one statement per row."
+  [rows]
+  (warehouse-schema.db/update-tables! rows))
 
 (mr/def ::write-opts
   "The options of an update of Tables: `:tables`, the Tables the caller already read, as the rows before it, so that it
@@ -654,7 +653,7 @@
        (let [stored (stored-tables rows (u/index-by :id tables))]
          (doseq [batch (partition-all mdb/update-partition-size rows)]
            (check-table-updates stored batch)
-           (write-table-updates! stored (empty? tables) (vec batch)))
+           (write-table-updates! (vec batch)))
          (update-field-positions! (reordered-tables stored rows))
          (events/publish-event! :event/table-update (table-update-event stored rows (dissoc opts :tables))))))
    (vec rows)))

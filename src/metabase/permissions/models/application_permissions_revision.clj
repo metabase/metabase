@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.application-permissions-revision
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
@@ -35,11 +36,12 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-application-permissions-revisions!
-  "Insert the ApplicationPermissionsRevision `rows` and return them in order."
+  "Insert the ApplicationPermissionsRevision `rows` in one transaction and return them in order."
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
   (if (empty? rows)
     []
-    (permissions.db/insert-application-permissions-revisions! rows)))
+    (t2/with-transaction [_conn]
+      (into [] (mapcat (comp permissions.db/insert-application-permissions-revisions! vec)) (partition-all app-db/create-partition-size rows)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

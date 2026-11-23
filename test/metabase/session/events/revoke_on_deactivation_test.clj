@@ -1,6 +1,7 @@
 (ns metabase.session.events.revoke-on-deactivation-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.app-db.core :as app-db]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
@@ -47,3 +48,18 @@
         (user/update-users! [{:id user-id :is_active true}])
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))
+
+(deftest deactivating-more-users-than-one-batch-ends-every-session-test
+  (testing "one call deactivating five users, with batches of two, ends both live sessions of each of them"
+    (mt/with-temp [:model/User {a :id} {:is_active true}
+                   :model/User {b :id} {:is_active true}
+                   :model/User {c :id} {:is_active true}
+                   :model/User {d :id} {:is_active true}
+                   :model/User {e :id} {:is_active true}]
+      (let [user-ids    [a b c d e]
+            session-ids (vec (for [user-id user-ids, _ (range 2)] (insert-session! user-id)))]
+        (with-redefs [app-db/update-partition-size 2]
+          (user/update-users! (for [user-id user-ids] {:id user-id :is_active false})))
+        (is (= #{{:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil}}
+               (set (map ending session-ids))))
+        (is (zero? (t2/count :model/Session :id [:in session-ids] :ended_at nil)))))))

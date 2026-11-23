@@ -332,13 +332,14 @@
   (let [cards (cond->> (dashboard-question-candidates id)
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
-      (mapv (fn [{:as card :keys [in_dashboards]}]
-              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
-              (let [updates {:dashboard_id (-> in_dashboards first :id)}]
-                (queries.card/place-updated-dashboard-question! card updates false)
-                (queries.card/update-cards! [(assoc (queries.card/card-changes updates) :id (:id card))]))
-              (:id card))
-            cards))))
+      (let [updates (mapv (fn [{:as card :keys [in_dashboards]}]
+                            (let [changes {:dashboard_id (-> in_dashboards first :id)}]
+                              (api/update-check card changes)
+                              (queries.card/place-updated-dashboard-question! card changes false)
+                              (assoc (queries.card/card-changes changes) :id (:id card))))
+                          cards)]
+        (queries.card/update-cards! updates)
+        (mapv :id cards)))))
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."

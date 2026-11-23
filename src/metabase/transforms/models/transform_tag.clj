@@ -183,7 +183,7 @@
      (let [stored    (u/index-by :id (when (seq rows) (transforms.db/tags-by-ids (mapv :id rows))))
            requested (requested-changes rows stored opts)]
        (doseq [ids (partition-all mdb/update-partition-size (keys requested))]
-         (transforms.db/update-tags! (select-keys stored ids) (select-keys requested ids)))
+         (transforms.db/update-tags! (select-keys requested ids)))
        (when (seq requested)
          (events/publish-event! :event/transform-tag-update (update-event stored requested opts)))))
    nil))

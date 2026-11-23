@@ -88,7 +88,9 @@
                          #(collection-permission-graph-revision/update-collection-permission-graph-revisions!
                            (mapv (fn [id] {:id id :before {:groups {}} :after {1 {2 :read}}}) ids)))))]
         (counted 1)
-        (is (= (counted 2) (counted 6)))))))
+        (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+          (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+            (is (= (- c6 c4) (- c4 c2)))))))))
 
 (deftest update-collection-permission-graph-revisions-refuses-filled-details-test
   (mt/with-model-cleanup [:model/CollectionPermissionGraphRevision]

@@ -8,7 +8,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -282,12 +281,10 @@
     false))
 
 (mu/defn update-pulses!
-  "Apply to each Pulse of `stored`, a map from id to the Pulse as read, its changes in `id->changes`, with one statement
-  for each distinct set of columns the Pulses change."
-  [stored      :- [:map-of ::lib.schema.id/pulse :map]
-   id->changes :- [:map-of ::lib.schema.id/pulse ::pulse.schema/pulse.changes]]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/Pulse :id [:in ids] changes))
+  "Apply to each Pulse its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ::lib.schema.id/pulse ::pulse.schema/pulse.changes]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/Pulse :id id changes))
   nil)
 
 (mu/defn delete-pulses!

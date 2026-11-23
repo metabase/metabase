@@ -133,8 +133,10 @@
   (let [id->db      (m/index-by :id (model-persistence.db/all-databases))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
-    (doseq [db enabled-dbs]
-      (database/update-databases! [{:id (:id db) :settings (not-empty (dissoc (:settings db) :persist-models-enabled))}] {:databases [db]}))
+    (when (seq enabled-dbs)
+      (database/update-databases! (mapv (fn [db] {:id (:id db) :settings (not-empty (dissoc (:settings db) :persist-models-enabled))})
+                                        enabled-dbs)
+                                  {:databases (vec enabled-dbs)}))
     (task.persist-refresh/disable-persisting!)))
 
 (api.macros/defendpoint :post "/disable" :- ::api/generic-204-no-content

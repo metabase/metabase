@@ -310,7 +310,8 @@
                       (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :description "x"}))))
             six     (fields 6)]
         (counted (fields 1))
-        (is (= (counted (fields 2)) (counted six)))
+        (testing "each row costs at most the SELECT of the before-update hook and its UPDATE"
+          (is (<= (- (counted six) (counted (fields 2))) (* 4 2))))
         (testing "every Field without a coercion has its base type as effective type"
           (is (= #{:type/Text} (t2/select-fn-set :effective_type :model/Field :id [:in six]))))))))
 

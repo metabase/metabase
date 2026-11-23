@@ -420,7 +420,7 @@
     (when (seq reparameterised)
       (parameter-card/sync-parameter-cards!
        "dashboard" (mapv (juxt :id :parameters) reparameterised)))
-    (dashboards.db/update-dashboards-by-changes! stored rows)
+    (dashboards.db/update-dashboards-by-changes! rows)
     (set-questions-archived! archived)
     (if-let [ids (not-empty (into [] (comp (remove #(contains? % :archived_directly)) (map :id)) archived))]
       (let [fresh (m/index-by :id (dashboards.db/dashboards ids))]
@@ -826,7 +826,7 @@
    :export-dependencies dashboards.serialization/export-dependencies
    :before-load         dashboards.serialization/before-load
    :insert!             #(create-dashboards! % {:writer :import})
-   :update!             #(update-dashboards! % {:writer :import})
+   :update!             #(do (update-dashboards! % {:writer :import}) %)
    :delete!             #(delete-dashboards! % {:writer :import})})
 
 (defmethod remote-sync/spec :model/Dashboard

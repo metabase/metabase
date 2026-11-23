@@ -716,18 +716,15 @@
   nil)
 
 (mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
-  "The ids of every FieldValues of the Fields with `field-ids`."
+  "The ids of every FieldValues of the Fields with `field-ids`, read in batches of [[mdb/delete-partition-size]]."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (warehouse-schema.db/field-values-ids-of-fields (vec field-ids))
-    []))
+  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-fields (vec %))) (partition-all mdb/delete-partition-size field-ids)))
 
 (mu/defn ids-of-tables :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
+  "The ids of the FieldValues of the Fields of the Tables with `table-ids`, read in batches of
+  [[mdb/delete-partition-size]]."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (warehouse-schema.db/field-values-ids-of-tables (vec table-ids))
-    []))
+  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-tables (vec %))) (partition-all mdb/delete-partition-size table-ids)))
 
 (mu/defn ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of every Field of the Database with `database-id`."
@@ -737,9 +734,9 @@
 (mu/defn advanced-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (warehouse-schema.db/field-values-ids-of-types (vec field-ids) advanced-field-values-types)
-    []))
+  (into []
+        (mapcat #(warehouse-schema.db/field-values-ids-of-types (vec %) advanced-field-values-types))
+        (partition-all mdb/delete-partition-size field-ids)))
 
 (mu/defn ids-older-than :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` of the Field with `field-id` created more than `max-age-days` days ago."
@@ -798,7 +795,7 @@
   "Write each of `rows` over the `stored` FieldValues, `{id row}`, returning them without the `type` and `hash_key`
   their stored rows already hold, for the event."
   [stored rows]
-  (warehouse-schema.db/update-field-values! (select-keys stored (map :id rows)) rows)
+  (warehouse-schema.db/update-field-values! rows)
   (mapv #(without-unchanged-identity % (stored (:id %))) rows))
 
 (defn- publish-field-values-updates!
@@ -863,7 +860,7 @@
   (when (or (nil? stored) (not= (:values stored) (:values changes)))
     (clear-advanced-field-values-for-fields! [field-id]))
   (if stored
-    (do (warehouse-schema.db/update-field-values! {(:id stored) stored} [(assoc changes :id (:id stored))])
+    (do (warehouse-schema.db/update-field-values! [(assoc changes :id (:id stored))])
         {:stored stored})
     (let [row (assoc changes :field_id field-id :type :full)]
       (if retried?

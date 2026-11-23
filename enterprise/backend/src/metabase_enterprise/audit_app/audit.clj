@@ -384,18 +384,24 @@
           result-metadata)))
 
 (defn- repoint-cards-to-survivor!
-  "Move every card that references `orphan-table-id` onto `survivor-table-id` by rewriting its query and result
-   metadata. A card's `table_id` is derived from its `dataset_query` by `populate-query-fields`, so updating the
-   column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind is destroyed
-   when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
-  [orphan-table-id survivor-table-id]
-  (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
-    (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
-      (queries.card/update-cards! [(assoc (cond-> {:dataset_query (-> (:dataset_query card)
-                                   (lib/replace-table-ids {orphan-table-id survivor-table-id})
-                                   (lib/replace-field-ids field-id-remap))}
-         (:result_metadata card)
-         (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card)))) :id (:id card))]))))
+  "Move every card that references one of the `orphan-table-ids` onto `survivor-table-id` by rewriting its query and
+   result metadata, in one write. A card's `table_id` is derived from its `dataset_query` by `populate-query-fields`,
+   so updating the column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind
+   is destroyed when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
+  [orphan-table-ids survivor-table-id]
+  (let [table-id-remap (zipmap orphan-table-ids (repeat survivor-table-id))
+        field-id-remap (into {} (map #(orphan->survivor-field-ids % survivor-table-id)) orphan-table-ids)
+        cards          (vals (u/index-by :id (mapcat audit-app.db/cards-of-table orphan-table-ids)))]
+    (when (seq cards)
+      (queries.card/update-cards!
+       (mapv (fn [card]
+               (cond-> {:id            (:id card)
+                        :dataset_query (-> (:dataset_query card)
+                                           (lib/replace-table-ids table-id-remap)
+                                           (lib/replace-field-ids field-id-remap))}
+                 (:result_metadata card)
+                 (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card)))))
+             cards)))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
@@ -426,9 +432,9 @@
               orphans           (remove #(= (:id %) (:id survivor)) rows)]
           ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
           ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
-          (doseq [{orphan-id :id} orphans]
-            (repoint-cards-to-survivor! orphan-id (:id survivor))
-            (table/delete-tables! [orphan-id]))
+          (when (seq orphans)
+            (repoint-cards-to-survivor! (mapv :id orphans) (:id survivor))
+            (table/delete-tables! (mapv :id orphans)))
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
           (table/update-tables! [{:id (:id survivor) :active true :name c-name :schema c-schema :is_defective_duplicate false}])

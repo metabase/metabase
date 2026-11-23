@@ -55,10 +55,9 @@
   (mdb/select-or-insert! :model/AuthIdentity {:user_id user-id :provider provider} (constantly {})))
 
 (mu/defn update-auth-identities!
-  "Apply `changes` to the AuthIdentities with `ids`, which must not be empty, returning the number updated."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::auth-identity.schema/auth-identity.update]
-  (t2/update! :model/AuthIdentity :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a AuthIdentity and the columns to set, with a statement of its own, returning the number updated."
+  [rows :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
+  (transduce (map (fn [{:keys [id] :as row}] (t2/update! :model/AuthIdentity :id [:auto/param id] (dissoc row :id)))) + 0 rows))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no

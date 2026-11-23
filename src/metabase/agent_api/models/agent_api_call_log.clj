@@ -3,6 +3,7 @@
    [metabase.agent-api.db :as agent-api.db]
    [metabase.agent-api.schema :as agent-api.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -16,14 +17,24 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-agent-api-call-logs! :- [:sequential :map]
-  "Record the Agent API calls `rows` and return the new instances, in order."
+  "Record the Agent API calls `rows` in one transaction and return the new instances, in order."
   [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
-  (agent-api.db/insert-call-logs! rows))
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (into [] (mapcat (comp agent-api.db/insert-call-logs! vec)) (partition-all app-db/create-partition-size rows)))))
 
-(mu/defn delete-agent-api-call-logs-for-cleanup!
-  "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (agent-api.db/delete-call-logs-created-before! cutoff))
+(def call-log-ids-created-before
+  "The ids of the AgentApiCallLogs created before a cutoff, see [[agent-api.db/call-log-ids-created-before]]."
+  agent-api.db/call-log-ids-created-before)
+
+(mu/defn delete-agent-api-call-logs! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the AgentApiCallLogs with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp agent-api.db/delete-call-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

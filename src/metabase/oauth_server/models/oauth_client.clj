@@ -30,13 +30,6 @@
   [row :- ::oauth-server.schema/oauth-client.create]
   (oauth-server.db/insert-oauth-client! row))
 
-(defn- write-oauth-client-batch!
-  "Write the `batch` of updates, one statement per distinct change, returning the number of rows updated."
-  [batch]
-  (transduce (map (fn [[changes rows]] (oauth-server.db/update-oauth-clients! (mapv :id rows) changes)))
-             + 0
-             (group-by #(dissoc % :id) batch)))
-
 (mu/defn update-oauth-clients! :- ms/IntGreaterThanOrEqualToZero
   "Apply `updates`, each the primary key of an OAuthClient and the columns to set, in one transaction, returning the
   number updated."
@@ -44,7 +37,8 @@
   (if (empty? updates)
     0
     (t2/with-transaction [_conn]
-      (transduce (map write-oauth-client-batch!) + 0 (partition-all app-db/update-partition-size updates)))))
+      (transduce (map (comp oauth-server.db/update-oauth-clients! vec)) + 0
+                 (partition-all app-db/update-partition-size updates)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

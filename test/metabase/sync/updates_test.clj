@@ -26,10 +26,6 @@
                       (events.tu/statement-count!
                        #(sync.updates/update-fields-by-id-unless-user-set!
                          (into {} (map-indexed (fn [i id] [id (change i)])) ids))))))]
-    (testing "Fields that get the same change"
-      (counted 1 (constantly {:description "same" :database_type "SAME"}))
-      (is (= (counted 2 (constantly {:description "same" :database_type "SAME"}))
-             (counted 6 (constantly {:description "same" :database_type "SAME"})))))
     (testing "Fields that each get a change of their own cost at most 2 statements each: an UPDATE and the SELECT of its hook"
       (let [change (fn [i] {:description (str "described " i) :database_type (str "TYPE" i)})]
         (counted 1 change)
@@ -43,9 +39,6 @@
                       (events.tu/statement-count!
                        #(sync.updates/update-tables-unless-user-set!
                          (vec (map-indexed (fn [i table] [table (change i)]) tables)))))))]
-    (testing "Tables that get the same change"
-      (counted 1 (constantly {:description "same"}))
-      (is (= (counted 2 (constantly {:description "same"})) (counted 6 (constantly {:description "same"})))))
     (testing "Tables that each get a change of their own cost at most 2 statements each"
       (let [change (fn [i] {:description (str "described " i)})]
         (counted 1 change)

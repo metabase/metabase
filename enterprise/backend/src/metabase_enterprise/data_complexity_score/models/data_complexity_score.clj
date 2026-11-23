@@ -6,6 +6,7 @@
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -68,10 +69,14 @@
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
 
-(mu/defn delete-data-complexity-scores-for-cleanup! :- :int
-  "Delete the Data Complexity Score snapshots created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (data-complexity-score.db/delete-scores-created-before! cutoff))
+(mu/defn delete-data-complexity-scores! :- :int
+  "Delete the Data Complexity Score snapshots with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp data-complexity-score.db/delete-scores! vec)) + 0
+                 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

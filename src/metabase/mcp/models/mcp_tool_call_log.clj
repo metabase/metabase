@@ -1,6 +1,7 @@
 (ns metabase.mcp.models.mcp-tool-call-log
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.util.malli :as mu]
@@ -20,10 +21,13 @@
   [row :- ::mcp.schema/mcp-tool-call-log.create]
   (mcp.db/insert-tool-call-log! row))
 
-(mu/defn delete-mcp-tool-call-logs-for-cleanup!
-  "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (mcp.db/delete-tool-call-logs-created-before! cutoff))
+(mu/defn delete-mcp-tool-call-logs! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the McpToolCallLogs with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp mcp.db/delete-tool-call-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -141,7 +141,7 @@
   (let [stored    (u/index-by :id (data-testing.db/test-suites-for-update (mapv :id rows)))
         requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)]
     (when (seq requested)
-      (data-testing.db/update-test-suites! stored requested))
+      (data-testing.db/update-test-suites! requested))
     {:stored stored
      :fresh  (when (seq stored) (u/index-by :id (data-testing.db/test-suites-by-ids (vec (keys stored)))))}))
 
@@ -180,7 +180,7 @@
            members? (contains? changes :members)]
        (when (seq stored)
          (when (seq columns)
-           (data-testing.db/update-test-suites! stored {id columns}))
+           (data-testing.db/update-test-suites! {id columns}))
          (when members?
            (data-testing.db/touch-test-suites! [id])
            (replace-suite-members! [{:id id :members (:members changes)}]))

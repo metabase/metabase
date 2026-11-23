@@ -5,7 +5,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -50,12 +49,10 @@
   (t2/select-one :model/Channel :id [:auto/param id]))
 
 (mu/defn update-channels!
-  "Apply to each Channel of `stored`, a map from id to the Channel as read, its changes in `id->changes`, one statement for
-  each distinct set of columns they change."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt ChannelRow]]
-  (doseq [[effective group] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/Channel :id [:in [:auto/param group]] effective))
+  "Apply to each Channel its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt ChannelRow]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/Channel :id id changes))
   nil)
 
 (defn- text-type

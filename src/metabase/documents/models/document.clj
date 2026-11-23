@@ -405,8 +405,9 @@
   (collection/check-collections-for-model! :model/Document rows))
 
 (mr/def ::write-opts
-  "The options of a write function of Documents: the context of its events."
+  "The options of a write function of Documents: `:writer`, who writes when it matters, and the context of its events."
   [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mu/defn create-documents! :- [:sequential (ms/InstanceOf :model/Document)]
@@ -484,8 +485,10 @@
   cards, and returns what the event needs, the changes of each row and the Documents after the write."
   [stored rows opts]
   (move-cards-of-moved! (moved-documents stored rows))
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (documents.db/update-documents! (mapv :id group) changes))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (documents.db/update-documents! [id] changes))
   (set-cards-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
   (let [updated (m/index-by :id (documents.db/documents (mapv :id rows)))]
     {:stored stored :rows (derive-archived-directly rows updated)}))
@@ -807,7 +810,7 @@
    :import-dependencies documents.serialization/import-dependencies
    :export-dependencies documents.serialization/export-dependencies
    :insert!             create-documents!
-   :update!             #(update-documents! % {:writer :import})
+   :update!             #(do (update-documents! % {:writer :import}) %)
    :delete!             delete-documents!})
 
 (defmethod remote-sync/spec :model/Document

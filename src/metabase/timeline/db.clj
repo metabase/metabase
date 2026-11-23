@@ -8,7 +8,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -82,13 +81,11 @@
     [:inline false]))
 
 (mu/defn update-timelines!
-  "Apply `changes` to the Timelines with `ids`, with one statement for each distinct set of columns that change in them,
-  returning nil."
+  "Apply `changes` to each of the Timelines with `ids`, with one statement for each, returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- (mut/dissoc ::timeline.schema/timeline.update :id)]
-  (let [stored (t2/select-pk->fn identity :model/Timeline :id [:in ids])]
-    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
-      (t2/update! :model/Timeline :id [:in group] effective)))
+  (doseq [id ids]
+    (t2/update! :model/Timeline :id id changes))
   nil)
 
 (mu/defn unarchived-timelines-in-collections
@@ -180,13 +177,11 @@
    default-icon])
 
 (mu/defn update-timeline-events!
-  "Apply `changes` to the TimelineEvents with `ids`, with one statement for each distinct set of columns that change in
-  them, returning nil."
+  "Apply `changes` to each of the TimelineEvents with `ids`, with one statement for each, returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- (mut/dissoc ::timeline.schema/timeline-event.update :id)]
-  (let [stored (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids])]
-    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
-      (t2/update! :model/TimelineEvent :id [:in group] effective)))
+  (doseq [id ids]
+    (t2/update! :model/TimelineEvent :id id changes))
   nil)
 
 (mu/defn delete-timeline-events!

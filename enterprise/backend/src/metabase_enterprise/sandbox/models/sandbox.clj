@@ -339,11 +339,10 @@
     (t2.before-update/before-update :model/Sandbox (merge before changes))))
 
 (defn- write-sandbox-updates!
-  "Write `updates` over the `stored` Sandboxes, one statement per distinct change, and return each row with its stored
+  "Write `updates` over the `stored` Sandboxes, a statement per row, and return each row with its stored
   Sandbox and the Sandbox after the update."
   [stored updates]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
-    (sandbox.db/update-sandboxes! ids changes))
+  (sandbox.db/update-sandboxes! updates)
   (let [after (u/index-by :id (sandbox.db/sandboxes-by-ids (into #{} (map :id) updates)))]
     (mapv (fn [{id :id :as row}] {:stored (stored id) :row row :after (after id)}) updates)))
 

@@ -63,10 +63,9 @@
     (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge (stored id) (dissoc row :id)))))
 
 (defn- write-revision-updates!
-  "Write `updates` over the `stored` revisions, one statement per distinct change."
-  [stored updates]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
-    (permissions.db/update-collection-permission-graph-revisions! ids changes)))
+  "Write `updates` over their stored revisions, a statement per row."
+  [updates]
+  (permissions.db/update-collection-permission-graph-revisions! updates))
 
 (defn- update-revision-batch!
   "Check and apply the `batch` of updates whose revisions exist."
@@ -74,7 +73,7 @@
   (let [stored  (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id batch)))
         updates (filterv (comp stored :id) batch)]
     (check-revision-updates stored updates)
-    (write-revision-updates! stored updates)))
+    (write-revision-updates! updates)))
 
 (mu/defn update-collection-permission-graph-revisions! :- :nil
   "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions in one transaction."

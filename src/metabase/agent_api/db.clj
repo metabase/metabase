@@ -70,7 +70,12 @@
   [rows :- [:sequential ::agent-api.schema/agent-api-call-log.create]]
   (app-db/insert-returning-instances! :model/AgentApiCallLog rows))
 
-(mu/defn delete-call-logs-created-before!
-  "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
+(mu/defn call-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the AgentApiCallLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-call-logs!
+  "Delete the AgentApiCallLogs with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/AgentApiCallLog :id [:in [:auto/param (vec ids)]]))

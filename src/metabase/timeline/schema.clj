@@ -117,6 +117,8 @@
      [:timestamp {:optional true} [:maybe ::models.schema/external-date]]]]])
 
 (mr/def ::write-opts
-  "The options of a write function of Timelines or their events: the context of its events."
+  "The options of a write function of Timelines or their events: `:writer`, who writes when it matters, and the context
+  of its events."
   [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

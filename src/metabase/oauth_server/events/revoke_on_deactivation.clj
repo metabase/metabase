@@ -21,9 +21,10 @@
                                                            (u.events/changed? % :is_active)))
                                              (map (comp :id :object)))
                                        changes))]
-    (doseq [batch (partition-all app-db/delete-partition-size user-ids)
-            :let  [user-ids (vec batch)]]
-      (oauth-access-token/revoke-oauth-access-tokens-for-users! user-ids)
-      (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! user-ids)
-      (oauth-authorization-code/delete-oauth-authorization-codes!
-       (oauth-server.db/authorization-code-ids-of-users user-ids)))))
+    (doseq [batch (partition-all app-db/update-partition-size user-ids)
+            :let  [batch (vec batch)]]
+      (oauth-access-token/revoke-oauth-access-tokens-for-users! batch)
+      (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! batch))
+    (oauth-authorization-code/delete-oauth-authorization-codes!
+     (into [] (mapcat (comp oauth-server.db/authorization-code-ids-of-users vec))
+           (partition-all app-db/delete-partition-size user-ids)))))

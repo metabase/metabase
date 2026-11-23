@@ -134,12 +134,12 @@
      :else [:inline true]]))
 
 (mu/defn update-dashboards-by-changes!
-  "Write each of `rows`, an `:id` of a stored Dashboard and the columns to set, with one statement for each distinct set of
-  columns that differ from the stored row, `stored` being a map from id to the instance read before."
-  [stored :- [:map-of ::lib.schema.id/dashboard :map]
-   rows   :- [:sequential ::dashboards.schema/dashboard.update]]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-    (update-dashboards! ids changes)))
+  "Write each of `rows`, an `:id` of a stored Dashboard and the columns to set, with one statement for each."
+  [rows :- [:sequential ::dashboards.schema/dashboard.update]]
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (update-dashboards! [id] changes)))
 
 (mu/defn delete-dashboards!
   "Delete the Dashboards with `dashboard-ids`, returning the number deleted."

@@ -2,6 +2,7 @@
   "Handlers of the lifecycle events that have a model Card persisted when its database persists models, for the user
   who turned it into one."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
@@ -17,8 +18,9 @@
 (events/derive! :event/card-update ::event)
 
 (defn- turn-on-models!
-  "Turn the persistence of the model Cards `card-ids` on for `user-id` for those whose database persists models and
-  that have no PersistedInfo, even an `off` or `deletable` one, so only the model conversion of a Card does."
+  "Turn the persistence of the model Cards `card-ids`, at most [[mdb/create-partition-size]], on for `user-id` for those
+  whose database persists models and that have no PersistedInfo, even an `off` or `deletable` one, so only the model
+  conversion of a Card does."
   [card-ids user-id]
   (try
     (when (model-persistence.settings/persisted-models-enabled)
@@ -45,4 +47,4 @@
   [_topic {:keys [changes user-id]}]
   (when user-id
     (when-let [card-ids (not-empty (into [] (comp (filter became-model?) (map (comp :id :object))) changes))]
-      (turn-on-models! card-ids user-id))))
+      (run! #(turn-on-models! (vec %) user-id) (partition-all mdb/create-partition-size card-ids)))))

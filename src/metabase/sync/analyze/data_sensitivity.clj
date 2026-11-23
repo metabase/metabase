@@ -46,14 +46,32 @@
    force? :- [:maybe :boolean]]
   (sync.db/fields-to-scan-for-data-sensitivity (u/the-id table) force?))
 
-(mu/defn- classify-and-save!
-  "Returns the inferred category, nil when no rule matched (in which case `:PUBLIC` was written), or the Exception."
+(mu/defn- classify
+  "The inferred category of `field`, nil when no rule matched, or the Exception classifying it threw, which is logged."
   [field :- i/FieldInstance
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
-    (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (field/update-fields! [{:id (:id field) :data_sensitivity (or category :PUBLIC)}] {:fields [field]})
-      category)))
+    (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})))
+
+(defn- save-categories!
+  "Write the category of each of `results`, `[field category]` pairs, `:PUBLIC` for nil, in one update, leaving out the
+  Fields whose classification threw."
+  [results]
+  (when-let [rows (not-empty (into []
+                                   (keep (fn [[field category]]
+                                           (when-not (instance? Exception category)
+                                             {:id (:id field) :data_sensitivity (or category :PUBLIC)})))
+                                   results))]
+    (field/update-fields! rows {:fields (mapv first results)})))
+
+(defn- add-result
+  "`stats` with the classification `result` of `field` counted and logged."
+  [stats [field result]]
+  (log/debugf "Data sensitivity for %s: %s" (sync-util/name-for-logging field)
+              (if (instance? Exception result) "failed" (or result :PUBLIC)))
+  (cond-> (update stats :fields-scanned inc)
+    (instance? Exception result) (update :fields-failed inc)
+    (keyword? result)            (update :fields-labeled inc)))
 
 (mu/defn scan-table! :- Stats
   "Label every unscanned Field in `table`. `fields-scanned` counts every selected field, `fields-labeled` those that
@@ -62,15 +80,9 @@
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats
-    (let [stats (reduce (fn [stats field]
-                          (let [result (classify-and-save! field table)]
-                            (log/debugf "Data sensitivity for %s: %s" (sync-util/name-for-logging field)
-                                        (if (instance? Exception result) "failed" (or result :PUBLIC)))
-                            (cond-> (update stats :fields-scanned inc)
-                              (instance? Exception result) (update :fields-failed inc)
-                              (keyword? result)            (update :fields-labeled inc))))
-                        zero-stats
-                        (fields-to-scan table force?))]
+    (let [results (mapv (fn [field] [field (classify field table)]) (fields-to-scan table force?))
+          _       (save-categories! results)
+          stats   (reduce add-result zero-stats results)]
       (when (pos? (:fields-scanned stats))
         (log/infof "Data sensitivity scanned %d fields in %s: %d labeled, %d failed"
                    (:fields-scanned stats) (sync-util/name-for-logging table)

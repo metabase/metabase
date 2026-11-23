@@ -250,8 +250,9 @@
                        (pulse.db/pulse-channel-recipients-for-channels recipient-channel-ids))
           changes-of (into {} (map (fn [{:keys [id new-values]}] [id (mi/effective-changes (stored id) new-values)])) existing)
           writes     (recipient-writes (filterv :recipients? updates) recipients)]
-      (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [{:keys [id new-values]}] (assoc new-values :id id)) existing))]
-        (pulse.db/update-pulse-channels! ids changes))
+      (doseq [[id changes] changes-of
+              :when        (seq changes)]
+        (pulse.db/update-pulse-channels! [id] changes))
       (doseq [[id changes] changes-of
               :when (seq changes)
               :let  [original (stored id)]]

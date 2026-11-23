@@ -111,6 +111,7 @@
 
 (mr/def ::api-key-columns.update
   [:map {:closed true}
+   [:id            ms/PositiveInt]
    [:name          {:optional true} ::api-keys.schema/name]
    [:key           {:optional true} [:ref ::api-keys.schema/key.hashed]]
    [:key_prefix    {:optional true} [:ref ::api-keys.schema/prefix]]
@@ -118,10 +119,10 @@
    [:updated_at    {:optional true} [:ref ::api-keys.schema/timestamp]]])
 
 (mu/defn update-api-keys!
-  "Apply `changes` to the ApiKeys with `ids` in one statement."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- ::api-key-columns.update]
-  (t2/update! :model/ApiKey :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a ApiKey and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::api-key-columns.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/ApiKey :id [:auto/param id] (dissoc row :id))))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

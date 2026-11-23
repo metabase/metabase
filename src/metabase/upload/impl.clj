@@ -480,8 +480,9 @@
 (defn- set-display-names!
   [table-id field->display-name]
   (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))]
-    (doseq [{:keys [id display_name]} (upload.db/field-display-name-changes table-id field->display-name)]
-      (field/update-fields! [{:id id :display_name display_name}]))))
+    (when-let [rows (not-empty (mapv #(select-keys % [:id :display_name])
+                                     (upload.db/field-display-name-changes table-id field->display-name)))]
+      (field/update-fields! rows))))
 
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."

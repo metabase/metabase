@@ -6,9 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
-   [metabase.models.interface :as mi]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -178,12 +176,11 @@
    [:state_change_at {:optional true} [:= :%now]]])
 
 (defn- update-persisted-info-rows!
-  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, `:state` and `:active` as stored, with one
-  statement for each distinct set of columns that differ from the stored ones, so that Toucan runs no statement for
-  each row."
+  "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, through the model, one statement per batch of
+  [[mdb/update-partition-size]] ids."
   [rows changes]
-  (doseq [[effective ids] (mi/group-ids-by-changes (u/index-by :id rows) (mapv #(assoc changes :id (:id %)) rows))]
-    (t2/update! :model/PersistedInfo :id [:in ids] effective))
+  (doseq [batch (partition-all mdb/update-partition-size (map :id rows))]
+    (t2/update! :model/PersistedInfo :id [:in (vec batch)] changes))
   nil)
 
 (mu/defn update-persisted-infos!

@@ -131,19 +131,13 @@
       (into [] (mapcat #(indexes.db/insert-table-indexes! (vec %))) (partition-all mdb/create-partition-size models)))
     []))
 
-(defn- write-table-index-updates!
-  "Write each of `rows`, the id of a TableIndex and the columns to change, over the TableIndexes as stored, read once."
-  [rows]
-  (when-let [stored (not-empty (indexes.db/table-index-statuses (mapv :id rows)))]
-    (indexes.db/update-table-indexes! stored rows)))
-
 (mu/defn update-table-indexes! :- :nil
   "Apply each of `rows`, the id of a TableIndex and the columns to change, in one transaction and batches of
   [[mdb/update-partition-size]]."
   [rows :- [:sequential ::schema/table-index]]
   (when (seq rows)
     (t2/with-transaction [_conn]
-      (run! #(write-table-index-updates! (vec %)) (partition-all mdb/update-partition-size rows))))
+      (run! #(indexes.db/update-table-indexes! (vec %)) (partition-all mdb/update-partition-size rows))))
   nil)
 
 (mu/defn delete-table-indexes! :- :nil

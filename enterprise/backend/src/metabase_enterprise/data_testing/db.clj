@@ -8,7 +8,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
@@ -81,13 +80,10 @@
   (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
 
 (mu/defn update-test-suites!
-  "Apply to each TestSuite of `stored`, a map from id to the suite as read, its changes in `id->changes`, with one
-  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
-  from making Toucan run one statement per row."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/test-suite.changes]]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/TestSuite :id [:in [:auto/param ids]] changes))
+  "Apply to each TestSuite its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/test-suite.changes]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/TestSuite :id id changes))
   nil)
 
 (mu/defn touch-test-suites!
@@ -207,14 +203,11 @@
   (t2/select model :id [:in [:auto/param ids]]))
 
 (mu/defn update-saved-tests! :- :nil
-  "Apply to each test of `model` of `stored`, a map from id to the test as read, its changes in `id->changes`, with one
-  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
-  from making Toucan run one statement per row."
+  "Apply to each test of `model` its changes in `id->changes`, a map from id, one update for each."
   [model       :- saved-test-model
-   stored      :- [:map-of ms/PositiveInt :map]
    id->changes :- [:map-of ms/PositiveInt ::data-testing.schema/saved-test.changes]]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! model :id [:in [:auto/param ids]] changes))
+  (doseq [[id changes] id->changes]
+    (t2/update! model :toucan/pk id changes))
   nil)
 
 (mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]

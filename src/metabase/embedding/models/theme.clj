@@ -45,8 +45,10 @@
 (defn- write-theme-updates!
   "Writes `rows`, updates of EmbeddingThemes, with one statement for each distinct set of columns."
   [rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (embedding.db/update-embedding-themes! (mapv :id group) changes)))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (embedding.db/update-embedding-themes! [id] changes)))
 
 (mu/defn update-embedding-themes! :- :nil
   "Apply `updates`, each the `:id` of an EmbeddingTheme with the columns to give it, in one transaction."

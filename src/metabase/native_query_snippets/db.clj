@@ -7,7 +7,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -67,13 +66,11 @@
     [:inline false]))
 
 (mu/defn update-snippets!
-  "Apply `changes` to the NativeQuerySnippets with `ids`, with one statement for each distinct set of columns that change
-  in them, returning nil."
+  "Apply `changes` to each of the NativeQuerySnippets with `ids`, with one statement for each, returning nil."
   [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
    changes :- (mut/dissoc ::native-query-snippets.schema/native-query-snippet.update :id)]
-  (let [stored (t2/select-pk->fn identity :model/NativeQuerySnippet :id [:in ids])]
-    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
-      (t2/update! :model/NativeQuerySnippet :id [:in group] effective)))
+  (doseq [id ids]
+    (t2/update! :model/NativeQuerySnippet :id id changes))
   nil)
 
 (mu/defn delete-snippets!

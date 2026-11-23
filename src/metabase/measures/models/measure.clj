@@ -164,7 +164,7 @@
   "The options of the update of Measures: `:writer`, who writes when it matters, and the context of the events."
   [:maybe
    [:map {:closed true}
-    [:writer  {:optional true} [:enum :revert]]
+    [:writer  {:optional true} [:enum :import :replacement :revert]]
     [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (defn- check-measure-updates
@@ -176,13 +176,14 @@
     (check-changed-definition [id] (dissoc row :id) stored)))
 
 (defn- write-measure-updates!
-  "Writes `rows`, updates of the `stored` Measures, each with the table its new definition gives, and returns what the
-  event needs, the changes of each row and the Measures as they are after the write."
+  "Writes `rows`, updates of the `stored` Measures, each with the table its new definition gives, with one statement for each,
+  and returns what the event needs, the changes of each row and the Measures as they are after the write."
   [stored rows]
   (doseq [{:keys [id] :as row} rows
           :let [changes (cond-> (dissoc row :id)
-                          (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]]
-    (measures.db/update-measures! [id] changes stored))
+                          (contains? row :definition) (assoc :table_id (definition-table-id (:definition row))))]
+          :when (seq changes)]
+    (measures.db/update-measures! [id] changes))
   {:stored  stored
    :rows    rows
    :objects (into {} (map (fn [{:keys [id] :as row}] [id (updated-measure (stored id) (dissoc row :id))])) rows)})

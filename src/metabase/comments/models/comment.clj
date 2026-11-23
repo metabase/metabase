@@ -251,8 +251,10 @@
 (defn- write-comment-updates!
   "Writes `rows`, updates of Comments, with one statement for each distinct set of changes."
   [rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (comments.db/update-comments! (mapv :id group) changes)))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (comments.db/update-comments! [id] changes)))
 
 (defn- update-comment-batch!
   "Writes the Comments of `batch`, up to one partition of the call, and returns what the event needs."

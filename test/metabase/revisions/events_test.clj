@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as app-db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.test-util :as events.tu]
@@ -28,6 +29,18 @@
         (testing "an update of what revisions leave out records none"
           (card/update-cards! [{:id card-id :collection_position 3}])
           (is (= 2 (count (revisions-of "Card" card-id)))))))))
+
+(deftest revisions-of-an-event-larger-than-one-batch-test
+  (testing "the revisions of every row of an event are recorded when the event holds more rows than one batch"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/Card]
+        (with-redefs [app-db/create-partition-size 2]
+          (let [rows (mapv (fn [_] {:creator_id (mt/user->id :rasta) :database_id (mt/id)
+                                    :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                    :display :table :name (mt/random-name) :visualization_settings {}})
+                           (range 5))
+                ids  (mapv :id (card/create-cards! rows))]
+            (is (= (repeat 5 1) (mapv #(count (revisions-of "Card" %)) ids)))))))))
 
 (deftest no-user-records-nothing-test
   (mt/with-temp [:model/Card {card-id :id} {}]

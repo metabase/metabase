@@ -5,6 +5,7 @@
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
+   [metabase.app-db.core :as app-db]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -47,7 +48,9 @@
                                                                  :updated_by_id         admin-id)))]
                           (events.tu/statement-count! #(api-key/create-api-keys! rows))))]
           (counted 1)
-          (is (= (counted 2) (counted 6)))))
+          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2)))))))
       (testing "deleting keys, half of them with a user of their own"
         (let [counted (fn [n]
                         (let [ids (mt/with-current-user admin-id
@@ -122,3 +125,22 @@
             (testing (str "delete of " n " keys publishes one delete event")
               (is (= [:event/api-key-delete]
                      (events.tu/published-topics! #(api-key/delete-api-keys! ids)))))))))))
+
+(deftest audit-of-event-with-more-rows-than-one-batch-is-complete-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:audit-app}
+     (mt/with-temp [:model/User {admin-id :id} {:is_superuser true}]
+       (mt/with-model-cleanup [:model/ApiKey :model/AuditLog]
+         (let [ids (mapv :id (api-key/create-api-keys!
+                              (vec (repeatedly 3 #(hash-map ::api-keys/unhashed-key (api-key/key-with-unique-prefix)
+                                                            :name                  (mt/random-name)
+                                                            :user_id               admin-id
+                                                            :creator_id            admin-id
+                                                            :updated_by_id         admin-id)))))]
+           (testing "with the constants lowered, an update of three keys records an audit row for each"
+             (with-redefs [app-db/create-partition-size 1
+                           app-db/delete-partition-size 1]
+               (mt/with-current-user admin-id
+                 (api-key/update-api-keys! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))
+             (is (= (set ids)
+                    (t2/select-fn-set :model_id :model/AuditLog :model "ApiKey" :model_id [:in ids] :topic "api-key-update"))))))))))

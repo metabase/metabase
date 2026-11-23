@@ -28,7 +28,8 @@
   "The Cards with `card-ids`, each with its `:name` and `:description`."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (if-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) card-ids))]
-    (t2/select [:model/Card :id :name :description] :id [:in ids])
+    (into [] (mapcat #(t2/select [:model/Card :id :name :description] :id [:in (vec %)]))
+          (partition-all app-db/delete-partition-size ids))
     []))
 
 (mu/defn table-database-id
@@ -37,15 +38,14 @@
   (t2/select-one-fn :db_id :model/Table, :id table-id))
 
 (mu/defn insert-audit-logs!
-  "Insert the AuditLog `rows` in their order, one statement per `app-db/create-partition-size` rows, returning the
-  number inserted."
+  "Insert the AuditLog `rows` in one statement, in their order, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}
                          [:topic    :keyword]
                          [:details  [:maybe ::audit-app.schema/audit-log.details]]
                          [:model    [:maybe :string]]
                          [:model_id [:maybe ms/PositiveInt]]
                          [:user_id  [:maybe ::lib.schema.id/user]]]]]
-  (transduce (map #(t2/insert! :model/AuditLog (vec %))) + 0 (partition-all app-db/create-partition-size rows)))
+  (t2/insert! :model/AuditLog rows))
 
 (mu/defn audit-log-ids-before :- [:sequential ms/PositiveInt]
   "The ids of up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, lowest first."

@@ -548,7 +548,7 @@
   (testing "Make sure we can't INSERT a Collection with an invalid location"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Invalid Collection location: path is invalid"
+         #"Invalid input"
          (with-collection-in-location [_ "/a/"] nil))))
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp [:model/Collection parent]
@@ -559,7 +559,7 @@
     (mt/with-temp [:model/Collection collection]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid Collection location: path is invalid"
+           #"Invalid input"
            (collection/update-collections! [{:id (u/the-id collection) :location "/a/"}] nil)))))
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp [:model/Collection collection-1 {}
@@ -2235,3 +2235,13 @@
                                                        {:name "Archived-not" :description "d"}])]
       (is (= ["Plain" "Archived-not"] (map :name collections)))
       (is (= [false false] (map #(t2/select-one-fn :archived :model/Collection :id (:id %)) collections))))))
+
+(deftest create-personal-collections-across-partitions-test
+  (testing "every User gets a Personal Collection when there are more Users than one batch"
+    (mt/with-temp [:model/User {a :id} {} :model/User {b :id} {} :model/User {c :id} {}
+                   :model/User {d :id} {} :model/User {e :id} {}]
+      (let [ids [a b c d e]]
+        (t2/delete! :model/Collection :personal_owner_id [:in ids])
+        (with-redefs [mdb/delete-partition-size 2]
+          (collection/create-personal-collections! ids))
+        (is (= (set ids) (t2/select-fn-set :personal_owner_id :model/Collection :personal_owner_id [:in ids])))))))

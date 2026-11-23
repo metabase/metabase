@@ -1,6 +1,7 @@
 (ns metabase.mcp.models.mcp-session-log
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.util.malli :as mu]
@@ -25,10 +26,13 @@
   [session-id :- :string]
   (mcp.db/end-session-log! session-id))
 
-(mu/defn delete-mcp-session-logs-for-cleanup!
-  "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (mcp.db/delete-session-logs-created-before! cutoff))
+(mu/defn delete-mcp-session-logs! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the McpSessionLogs with `ids` in one transaction, returning the number deleted."
+  [ids :- [:sequential :string]]
+  (if (empty? ids)
+    0
+    (t2/with-transaction [_conn]
+      (transduce (map (comp mcp.db/delete-session-logs! vec)) + 0 (partition-all app-db/delete-partition-size ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -130,8 +130,10 @@
 (defn- update-timeline-groups!
   "Writes `rows`, each the `:id` of a Timeline with its changes, with one statement for each distinct set of changes."
   [rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (timeline.db/update-timelines! (mapv :id group) changes)))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (timeline.db/update-timelines! [id] changes)))
 
 (defn- derive-archived-directly
   "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
@@ -251,7 +253,7 @@
    :children            {:events :model/TimelineEvent}
    :defaults            {:archived false :archived_directly false :default false}
    :insert!             create-timelines!
-   :update!             #(update-timelines! % {:writer :import})
+   :update!             #(do (update-timelines! % {:writer :import}) %)
    :delete!             delete-timelines!
    :import-dependencies import-dependencies
    :export-dependencies export-dependencies})

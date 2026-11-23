@@ -234,7 +234,8 @@
         (when-let [admin-user-ids (not-empty (into #{} (comp (filter admin-rows?) (map :user_id)) memberships))]
           (check-admins-remain admin-user-ids))
         (events/publish-event! :event/group-membership-delete (events/delete-event (vec memberships) opts))
-        (permissions.db/delete-group-memberships! (mapv :id memberships))
+        (run! (comp permissions.db/delete-group-memberships! vec)
+              (partition-all app-db/delete-partition-size (map :id memberships)))
         (set-member-flags! (cond->> memberships
                              (not *update-user-when-added-to-admin-group?*) (remove admin-rows?))
                            false
@@ -330,10 +331,9 @@
       (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))))
 
 (defn- write-membership-updates!
-  "Write `updates` over the `stored` memberships, one statement per distinct change."
-  [stored updates]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
-    (permissions.db/update-group-memberships! ids changes)))
+  "Write `updates` over their stored memberships, a statement per row."
+  [updates]
+  (permissions.db/update-group-memberships! updates))
 
 (defn- update-membership-batch!
   "Check and apply the `batch` of updates whose memberships exist, returning them with their stored memberships."
@@ -341,7 +341,7 @@
   (let [stored  (u/index-by :id (permissions.db/group-memberships-by-ids (mapv :id batch)))
         updates (filterv (comp stored :id) batch)]
     (check-membership-updates stored updates)
-    (write-membership-updates! stored updates)
+    (write-membership-updates! updates)
     {:stored stored :updates updates}))
 
 (mu/defn update-permissions-group-memberships! :- [:sequential ::permissions.schema/permissions-group-membership.update]

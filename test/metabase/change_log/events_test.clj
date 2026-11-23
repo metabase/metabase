@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]
+   [metabase.app-db.core :as app-db]
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.core :as change-log]
    [metabase.change-log.log :as change-log.log]
@@ -114,6 +115,22 @@
                     (is (= [] (logged-by insert!)))
                     (is (t2/exists? :model/Pulse :name "keyless"))
                     (is (= 1 (count (messages))))))))))))))
+
+(deftest event-with-more-rows-than-one-batch-is-logged-completely-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    t  {:db_id (:id db)}]
+        (testing "with the create constant lowered, an insert of three Fields logs all three"
+          (let [created (atom nil)
+                rows    (with-redefs [app-db/create-partition-size 1]
+                          (logged-by #(reset! created (field/create-fields! (vec (for [field-name ["b1" "b2" "b3"]]
+                                                                                   {:table_id      (:id t)
+                                                                                    :name          field-name
+                                                                                    :base_type     :type/Text
+                                                                                    :database_type "TEXT"}))))))]
+            (is (= (set (map :id @created)) (set (map second rows))))
+            (is (= 3 (count rows)))))))))
 
 (deftest wake-numbering-test
   (testing "a log wakes the numbering, but not in tests"

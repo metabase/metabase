@@ -281,11 +281,9 @@
         updates))
 
 (defn- write-key-columns!
-  "Write the column `rows` over the `stored` ApiKeys, one statement per distinct change, and return each row with its
-  stored ApiKey."
+  "Write the column `rows` over the `stored` ApiKeys, a statement per row, and return each row with its stored ApiKey."
   [stored rows]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-    (api-keys.db/update-api-keys! ids changes))
+  (api-keys.db/update-api-keys! rows)
   (mapv (fn [row] [(stored (:id row)) row]) rows))
 
 (defn- update-api-key-batch!

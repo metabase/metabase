@@ -108,7 +108,7 @@
                 (when (seq rows)
                   (warehouse-schema.db/delete-empty-field-user-settings! field-ids)))))
           writes
-          (partition-all mdb/delete-partition-size (distinct field-ids))))
+          (partition-all mdb/delete-partition-size (into [] (distinct) field-ids))))
 
 (defn- deleted-rows
   "The rows, as they were before the call, of the settings that `writes` deletes and that existed before the call."
@@ -204,13 +204,10 @@
         (partition-all mdb/delete-partition-size ids)))
 
 (defn- write-settings-updates!
-  "Write each of `rows`, the id of one of the `stored` FieldUserSettings, `{id row}`, and the columns to change, with
-  one statement per distinct set of changes, and delete the settings it leaves without a user value, returning `writes`
-  with these writes."
+  "Write each of `rows`, the id of one of the `stored` FieldUserSettings, `{id row}`, and the columns to change, one
+  statement per row, and delete the settings it leaves without a user value, returning `writes` with these writes."
   [writes stored rows]
-  (doseq [[changes rows] (group-by #(dissoc % :id) rows)
-          :when (seq changes)]
-    (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id rows) changes))
+  (warehouse-schema.db/update-field-user-settings-rows! rows)
   (let [by-id (u/index-by :id rows)]
     (-> writes
         (add-updated (map (comp stored :id) rows) #(dissoc (by-id (:id %)) :id))
@@ -316,7 +313,8 @@
                                        (cond-> [[k nil]]
                                          (user-settings/field-set-flags k) (conj [(user-settings/field-set-flags k) false]))))
                           ks)]
-        (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id stored) changes)
+        (run! #(warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id %) changes)
+              (partition-all mdb/update-partition-size stored))
         (publish-writes! (-> {}
                              (add-updated stored (constantly changes))
                              (delete-empty! (mapv :field_id stored))))))))
@@ -341,9 +339,8 @@
 (mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of the FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (mapv :id (warehouse-schema.db/field-user-settings-for-fields (vec field-ids)))
-    []))
+  (into [] (comp (mapcat #(warehouse-schema.db/field-user-settings-for-fields (vec %))) (map :id))
+        (partition-all mdb/delete-partition-size field-ids)))
 
 (mu/defn delete-field-user-settings! :- :nil
   "Delete the FieldUserSettings with `ids` in one transaction, leaving their Fields as they are for sync to take over:

@@ -389,8 +389,10 @@
   "Writes `changed`, the changes of DashboardCards, with one statement for each distinct set of columns, replaces the series
   of `rows` that hold one, and returns the ids of the DashboardCards that changed."
   [rows changed]
-  (doseq [[updates group] (group-by #(dissoc % :id) changed)]
-    (dashboards.db/update-dashcards! (mapv :id group) updates))
+  (doseq [{:keys [id] :as row} changed
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (dashboards.db/update-dashcards! [id] changes))
   (let [series-by-dashcard (into {} (keep (fn [row] (when (contains? row :series) [(:id row) (or (:series row) [])]))) rows)
         series-changed     (when (seq series-by-dashcard)
                              (replace-series! series-by-dashcard))]

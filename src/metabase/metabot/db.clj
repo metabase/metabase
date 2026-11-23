@@ -57,12 +57,10 @@
   (t2/select :model/Metabot :id [:in [:auto/param metabot-ids]]))
 
 (mu/defn update-metabots!
-  "Apply to each Metabot of `stored`, a map from id to the Metabot as read, its changes in `id->changes`, in one statement
-  for each distinct set of columns that differ from the stored ones, so that Toucan runs no statement for each row."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]]
-  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/Metabot :id [:in [:auto/param ids]] effective))
+  "Apply to each Metabot its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/Metabot :id id changes))
   nil)
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
@@ -143,12 +141,10 @@
   (t2/select :model/MetabotPrompt :id [:in [:auto/param prompt-ids]]))
 
 (mu/defn update-prompts! :- :nil
-  "Apply to each MetabotPrompt of `stored`, a map from id to the prompt as read, its changes in `id->changes`, in one
-  statement for each distinct set of columns that differ from the stored ones."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]]
-  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/MetabotPrompt :id [:in [:auto/param ids]] effective))
+  "Apply to each MetabotPrompt its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-prompt.update :id)]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/MetabotPrompt :id id changes))
   nil)
 
 (mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
@@ -391,12 +387,10 @@
   (t2/select :model/MetabotMessage :id [:in [:auto/param message-ids]]))
 
 (mu/defn update-messages! :- :nil
-  "Apply to each MetabotMessage of `stored`, a map from id to the message as read, its changes in `id->changes`, in one
-  statement for each distinct set of columns that differ from the stored ones."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-message.update :id)]]
-  (doseq [[effective ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! :model/MetabotMessage :id [:in [:auto/param ids]] effective))
+  "Apply to each MetabotMessage its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt (mut/dissoc ::metabot.schema/metabot-message.update :id)]]
+  (doseq [[id changes] id->changes]
+    (t2/update! :model/MetabotMessage :id id changes))
   nil)
 
 (mu/defn messages-matching

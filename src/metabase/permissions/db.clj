@@ -591,14 +591,10 @@
   (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
 
 (mu/defn update-permissions-groups!
-  "Apply `changes` to the PermissionsGroups with `ids`, returning the number updated."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:name             {:optional true} [:maybe :string]]
-               [:entity_id        {:optional true} [:maybe :string]]
-               [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
-               [:is_tenant_group  {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroup :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a PermissionsGroup and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::permissions.schema/permissions-group.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/PermissionsGroup :id [:auto/param id] (dissoc row :id))))
 
 (mu/defn delete-permissions-groups!
   "Delete the PermissionsGroups with `ids`, returning the number deleted."
@@ -620,6 +616,14 @@
   "Whether a PermissionsGroup whose lower-cased name is `lower-name` exists."
   [lower-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
+
+(mu/defn group-exists-with-lower-names-outside? :- :boolean
+  "Whether a PermissionsGroup other than those with `excluded-ids` has a lower-cased name among `lower-names`."
+  [lower-names  :- [:sequential {:min 1} :string]
+   excluded-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/exists? :model/PermissionsGroup {:where [:and
+                                               [:in :%lower.name [:auto/param (vec (distinct lower-names))]]
+                                               [:not-in :id [:auto/param (vec (distinct excluded-ids))]]]}))
 
 (mu/defn group-exists-with-lower-names? :- :boolean
   "Whether a PermissionsGroup exists whose lower-cased name is one of `lower-names`."
@@ -700,13 +704,10 @@
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
 (mu/defn update-group-memberships!
-  "Apply `changes` to the PermissionsGroupMemberships with `ids`, returning the number updated."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
-               [:group_id         {:optional true} [:maybe ms/PositiveInt]]
-               [:is_group_manager {:optional true} [:maybe :boolean]]]]
-  (t2/update! :model/PermissionsGroupMembership :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a PermissionsGroupMembership and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] (dissoc row :id))))
 
 (mu/defn insert-group-memberships!
   "Insert the PermissionsGroupMemberships `memberships` through the model, returning the inserted instances."
@@ -717,16 +718,21 @@
   (mdb/insert-returning-instances! :model/PermissionsGroupMembership memberships))
 
 (mu/defn other-active-member-count
-  "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."
+  "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`: all of
+  them less those among `user-ids`, read `mdb/delete-partition-size` ids at a time."
   [group-id :- ms/PositiveInt
    user-ids :- [:set {:min 1} ::lib.schema.id/user]]
-  (t2/count :model/PermissionsGroupMembership
-            {:join  [[:core_user :user] [:= :user.id :user_id]]
-             :where [:and
-                     [:= :group_id group-id]
-                     [:= :user.is_active true]
-                     [:= :user.is_superuser true]
-                     [:not-in :user.id user-ids]]}))
+  (let [active-superusers (fn [& conditions]
+                            (t2/count :model/PermissionsGroupMembership
+                                      {:join  [[:core_user :user] [:= :user.id :user_id]]
+                                       :where (into [:and
+                                                     [:= :group_id group-id]
+                                                     [:= :user.is_active true]
+                                                     [:= :user.is_superuser true]]
+                                                    conditions)}))]
+    (- (active-superusers)
+       (transduce (map #(active-superusers [:in :user.id (vec %)])) + 0
+                  (partition-all mdb/delete-partition-size user-ids)))))
 
 (mu/defn managed-group-ids :- [:maybe [:set ms/PositiveInt]]
   "The IDs of the PermissionsGroups the User with `user-id` manages, or nil when they manage none."
@@ -742,7 +748,9 @@
   "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroups with `group-ids`."
   [user-ids  :- [:sequential {:min 1} ::lib.schema.id/user]
    group-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/PermissionsGroupMembership :user_id [:in user-ids] :group_id [:in group-ids]))
+  (into []
+        (mapcat #(t2/select :model/PermissionsGroupMembership :user_id [:in (vec %)] :group_id [:in group-ids]))
+        (partition-all mdb/delete-partition-size (distinct user-ids))))
 
 (mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
   "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
@@ -751,11 +759,12 @@
     #{}
     (let [wanted (set pairs)]
       (into #{}
-            (comp (map (juxt :user_id :group_id))
+            (comp (mapcat #(t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+                                      :user_id  [:in (vec %)]
+                                      :group_id [:in (vec (distinct (map second pairs)))]))
+                  (map (juxt :user_id :group_id))
                   (filter wanted))
-            (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
-                       :user_id  [:in (map first pairs)]
-                       :group_id [:in (map second pairs)])))))
+            (partition-all mdb/create-partition-size (distinct (map first pairs)))))))
 
 (mu/defn delete-group-memberships!
   "Delete the PermissionsGroupMemberships with `ids` through the model, returning the number deleted."
@@ -800,12 +809,10 @@
   (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn update-collection-permission-graph-revisions!
-  "Apply `changes` to the CollectionPermissionGraphRevisions with `ids`."
-  [ids     :- [:sequential {:min 1} ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:before {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.before]]
-               [:after  {:optional true} [:maybe ::permissions.schema/collection-permission-graph-revision.after]]]]
-  (t2/update! :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec ids)]] changes))
+  "Apply each of `rows`, the `:id` of a CollectionPermissionGraphRevision and the columns to set, with a statement of its own."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
+  (doseq [{:keys [id] :as row} rows]
+    (t2/update! :model/CollectionPermissionGraphRevision :id [:auto/param id] (dissoc row :id))))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -1199,7 +1206,9 @@
                                        [:is_superuser :boolean]]]
   "The id, tenant id and superuser flag of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/User :id :tenant_id :is_superuser] :id [:in user-ids]))
+  (into []
+        (mapcat #(t2/select [:model/User :id :tenant_id :is_superuser] :id [:in (vec %)]))
+        (partition-all mdb/delete-partition-size user-ids)))
 
 (mu/defn earliest-user-join-date
   "The earliest `date_joined` of any User, or nil."

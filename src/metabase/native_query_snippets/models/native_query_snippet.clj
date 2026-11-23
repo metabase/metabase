@@ -205,7 +205,7 @@
 (defn- name->id
   "A map of the name of each snippet that the content of one of `snippets` refers to, to its id, read in one query."
   [snippets]
-  (let [names (into #{} (mapcat referenced-snippet-names) snippets)]
+  (let [names (into #{} (comp (filter :content) (mapcat referenced-snippet-names)) snippets)]
     (if (seq names)
       (native-query-snippets.db/snippet-ids-by-names (vec names))
       {})))
@@ -280,8 +280,10 @@
   "Writes `rows`, updates of the `stored` snippets, and returns what the event needs, the changes of each row and the
   snippets after the write."
   [stored rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (native-query-snippets.db/update-snippets! (mapv :id group) changes))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (native-query-snippets.db/update-snippets! [id] changes))
   (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
     {:stored stored :rows (derive-archived-directly rows updated) :updated updated}))
 
@@ -367,7 +369,7 @@
    :import-dependencies native-query-snippets.serialization/import-dependencies
    :export-dependencies native-query-snippets.serialization/export-dependencies
    :insert!             #(create-snippets! % {:writer :import})
-   :update!             #(update-snippets! % {:writer :import})
+   :update!             #(do (update-snippets! % {:writer :import}) %)
    :delete!             delete-snippets!})
 
 (defmethod remote-sync/spec :model/NativeQuerySnippet

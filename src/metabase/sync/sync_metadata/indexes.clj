@@ -62,11 +62,6 @@
    #{}
    indexes))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *update-partition-size*
-  "Size of the partition of indexes to update using one `t2/update!` call. Dynamic for testing purposes."
-  5000)
-
 (defn- sync-all-indexes!
   "Mark Fields in `database` as `database_indexed` based on the indexes reported by the driver. `describe-indexes` is a
   *reducible* over every index in the database; it is reduced straight through [[all-indexes->field-ids]] (never
@@ -87,16 +82,12 @@
       (log/infof "Unmarking %d fields from indexed" removing-count)
       (doseq [field-ids (partition-all 100 removing)]
         (log/tracef "Unmarking Fields as indexed: %s" (pr-str field-ids)))
-      (doseq [field-ids (partition-all *update-partition-size* removing)]
-        (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (field/update-fields! (for [id (vec field-ids)] {:id id :database_indexed false})))
       ;; Set database_indexed of fields having index.
       (log/infof "Marking %d fields as indexed" adding-count)
       (doseq [field-ids (partition-all 100 adding)]
         (log/tracef "Marking Fields as indexed: %s" (pr-str field-ids)))
-      (doseq [field-ids (partition-all *update-partition-size* adding)]
-        (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (field/update-fields! (for [id (vec field-ids)] {:id id :database_indexed true})))
+      (field/update-fields! (concat (for [id removing] {:id id :database_indexed false})
+                                    (for [id adding] {:id id :database_indexed true})))
       (if (or (seq adding) (seq removing))
         {:total-indexes   (count indexed-field-ids)
          :added-indexes   adding-count

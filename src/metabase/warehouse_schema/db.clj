@@ -9,7 +9,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.remote-sync.core :as remote-sync]
@@ -23,18 +22,14 @@
    [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
-(defn- update-stored!
-  "Apply `rows`, each the id of a row of `model` and the columns to change. With `fresh?`, `stored`, a map from id to the
-  row as the function read it, tells which columns differ from the stored values: one statement for each distinct set
-  of them, since Toucan runs one UPDATE per row when they differ. Rows the caller read may be stale, so without
-  `fresh?` every column of a row is kept and the rows are grouped by them. Returns nil."
-  [model stored rows fresh?]
-  (doseq [[changes ids] (if fresh?
-                          (mi/group-ids-by-changes stored rows)
-                          (for [[changes rows] (group-by #(dissoc % :id) rows)
-                                :when (seq changes)]
-                            [changes (mapv :id rows)]))]
-    (t2/update! model :id (if (= 1 (count ids)) (first ids) [:in ids]) changes)))
+(defn- update-rows!
+  "Apply each of `rows`, the id of a row of `model` and the columns to change, with a statement of its own through the
+  model, as Toucan runs one per row whose changes differ anyway. Returns nil."
+  [model rows]
+  (doseq [{:keys [id] :as row} rows
+          :let  [changes (dissoc row :id)]
+          :when (seq changes)]
+    (t2/update! model :id [:auto/param id] changes)))
 
 ;;; ------------------------------------------------- Field types -------------------------------------------------
 
@@ -277,12 +272,9 @@
   (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
 (mu/defn update-fields!
-  "Apply `rows`, each the id of a Field in `stored`, a map from id to the Field as read, and the columns to change;
-  `fresh?` says that the function read `stored` itself rather than got it from its caller."
-  [stored :- [:map-of ::lib.schema.id/field :map]
-   rows   :- [:sequential ::warehouse-schema.schema/field.update]
-   fresh? :- :boolean]
-  (update-stored! :model/Field stored rows fresh?))
+  "Apply `rows`, each the id of a Field and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  (update-rows! :model/Field rows))
 
 (mu/defn delete-fields!
   "Delete the Fields with `field-ids`, returning the number deleted."
@@ -494,6 +486,11 @@
    changes :- (mut/dissoc ::warehouse-schema.schema/field-user-settings.update :id)]
   (t2/update! :model/FieldUserSettings :id [:in ids] changes))
 
+(mu/defn update-field-user-settings-rows!
+  "Apply `rows`, each the id of a FieldUserSettings and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  (update-rows! :model/FieldUserSettings rows))
+
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
 
 (def ^:private table-user-settings-update-keys
@@ -530,11 +527,10 @@
   [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.create]]
   (app-db/insert-returning-instances! :model/TableUserSettings rows))
 
-(mu/defn update-table-user-settings-by-ids!
-  "Apply `changes` to the TableUserSettings with `ids`, returning the number updated."
-  [ids     :- [:sequential pos-int?]
-   changes :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)]
-  (t2/update! :model/TableUserSettings :id [:in ids] changes))
+(mu/defn update-table-user-settings-rows!
+  "Apply `rows`, each the id of a TableUserSettings and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  (update-rows! :model/TableUserSettings rows))
 
 (mu/defn delete-table-user-settings-by-ids!
   "Delete the TableUserSettings with `ids`, returning the number deleted."
@@ -656,11 +652,9 @@
   (app-db/insert-returning-instances! :model/Dimension rows))
 
 (mu/defn update-dimensions!
-  "Apply `rows`, each the id of a Dimension in `stored`, a map from id to the Dimension as read, and the columns to
-  change."
-  [stored :- [:map-of ::lib.schema.id/dimension :map]
-   rows   :- [:sequential ::warehouse-schema.schema/dimension.update]]
-  (update-stored! :model/Dimension stored rows true))
+  "Apply `rows`, each the id of a Dimension and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
+  (update-rows! :model/Dimension rows))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`, returning the number deleted."
@@ -691,11 +685,9 @@
   (app-db/insert-returning-instances! :model/FieldValues rows))
 
 (mu/defn update-field-values!
-  "Apply `rows`, each the id of a FieldValues in `stored`, a map from id to the FieldValues as read, and the columns to
-  change."
-  [stored :- [:map-of ms/PositiveInt :map]
-   rows   :- [:sequential ::warehouse-schema.schema/field-values.update]]
-  (update-stored! :model/FieldValues stored rows true))
+  "Apply `rows`, each the id of a FieldValues and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/field-values.update]]
+  (update-rows! :model/FieldValues rows))
 
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -829,12 +821,9 @@
   (t2/delete! :model/Table :id [:in table-ids]))
 
 (mu/defn update-tables!
-  "Apply `rows`, each the id of a Table in `stored`, a map from id to the Table as read, and the columns to change;
-  `fresh?` says that the function read `stored` itself rather than got it from its caller."
-  [stored :- [:map-of ::lib.schema.id/table :map]
-   rows   :- [:sequential ::warehouse-schema.schema/table.update]
-   fresh? :- :boolean]
-  (update-stored! :model/Table stored rows fresh?))
+  "Apply `rows`, each the id of a Table and the columns to change, one statement per row."
+  [rows :- [:sequential ::warehouse-schema.schema/table.update]]
+  (update-rows! :model/Table rows))
 
 (mu/defn tables
   "The Tables with `table-ids`."

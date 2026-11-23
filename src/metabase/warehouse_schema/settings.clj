@@ -28,8 +28,8 @@
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       (log/infof "Changing Table & Field names humanization strategy from '%s' to '%s'"
                  (name old-strategy) (name new-strategy))
-      (run! #(table/update-tables! (vec %)) (humanization/re-humanized-tables old-strategy))
-      (run! #(field/update-fields! (vec %)) (humanization/re-humanized-fields old-strategy)))))
+      (table/update-tables! (into [] cat (humanization/re-humanized-tables old-strategy)))
+      (field/update-fields! (into [] cat (humanization/re-humanized-fields old-strategy))))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (deferred-tru

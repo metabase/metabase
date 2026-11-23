@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
@@ -178,24 +177,16 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (by-id-partitions #(t2/select [:model/User :*] :id [:in (vec %)]) user-ids))
 
-(defn- update-ids!
-  "Apply `changes` to the Users with `ids`, one statement per partition of them, returning the number updated."
-  [ids changes]
-  (transduce (map #(t2/update! :model/User :id [:in [:auto/param (vec %)]] changes))
-             +
-             0
-             (partition-all app-db/update-partition-size ids)))
-
 (mu/defn update-users! :- :int
-  "Apply `updates`, each the id of a User and its columns to set, over `stored`, a map from id to the User read with
-  every column as Toucan compares them, one statement for each distinct change that differs from the stored rows,
-  returning the number updated."
-  [stored  :- [:map-of ::lib.schema.id/user :map]
-   updates :- [:sequential ::users.schema/user.update-row]]
-  (transduce (map (fn [[changes ids]] (update-ids! ids changes)))
+  "Apply `updates`, each the id of a User and its columns to set, one Toucan update by primary key per row, returning
+  the number updated."
+  [updates :- [:sequential ::users.schema/user.update-row]]
+  (transduce (keep (fn [{:keys [id] :as row}]
+                     (when-let [changes (not-empty (dissoc row :id))]
+                       (t2/update! :model/User :id [:auto/param id] changes))))
              +
              0
-             (mi/group-ids-by-changes stored updates)))
+             updates))
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

@@ -111,11 +111,12 @@
   (into {} (remove (fn [[k v]] (= v (get stored k)))) row))
 
 (defn- tables-for
-  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair, read in one query."
+  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair, read in batches of
+  [[mdb/delete-partition-size]] ids."
   [rows]
-  (if-let [ids (not-empty (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))]
-    (u/index-by :id (warehouse-schema.db/tables ids))
-    {}))
+  (into {}
+        (comp (mapcat #(warehouse-schema.db/tables (set %))) (map (juxt :id identity)))
+        (partition-all mdb/delete-partition-size (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))))
 
 (defn- updated-settings
   "The settings `previous`, an instance, as an update of `changes` leaves them, with the flags their before-update sets
@@ -163,7 +164,7 @@
                 (when (seq rows)
                   (warehouse-schema.db/delete-empty-table-user-settings! table-ids)))))
           writes
-          (partition-all mdb/delete-partition-size (distinct table-ids))))
+          (partition-all mdb/delete-partition-size (into [] (distinct) table-ids))))
 
 (defn- deleted-rows
   "The rows, as they were before the call, of the settings that `writes` deletes and that existed before the call."
@@ -213,16 +214,14 @@
 
 (defn- update-settings!
   "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
-  among `tables` and its flags set, with one statement per distinct set of changes, returning `writes` with the
-  updates."
+  among `tables` and its flags set, one statement per row, returning `writes` with the updates."
   [writes stored+rows tables]
-  (let [changes-of (fn [[stored row]]
-                     (merge row (completed-changes (changed-columns row stored) (tables (:table_id stored)))))]
-    (doseq [[changes pairs] (group-by changes-of stored+rows)
-            :when (seq changes)]
-      (warehouse-schema.db/update-table-user-settings-by-ids! (mapv (comp :id first) pairs) changes))
-    (let [by-id (into {} (map (fn [pair] [(:id (first pair)) (changes-of pair)])) stored+rows)]
-      (add-updated writes (map first stored+rows) (comp by-id :id)))))
+  (let [by-id (into {}
+                    (map (fn [[stored row]]
+                           [(:id stored) (merge row (completed-changes (changed-columns row stored) (tables (:table_id stored))))]))
+                    stored+rows)]
+    (warehouse-schema.db/update-table-user-settings-rows! (mapv (fn [[id changes]] (assoc changes :id id)) by-id))
+    (add-updated writes (map first stored+rows) (comp by-id :id))))
 
 (mu/defn create-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings]
   "Insert the TableUserSettings `rows`, their two-column pairs completed from their Tables, write the columns they say a
@@ -384,9 +383,8 @@
 (mu/defn ids-of-tables :- [:sequential ms/PositiveInt]
   "The ids of the TableUserSettings of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (mapv :id (warehouse-schema.db/table-user-settings-for-tables (set table-ids)))
-    []))
+  (into [] (comp (mapcat #(warehouse-schema.db/table-user-settings-for-tables (set %))) (map :id))
+        (partition-all mdb/delete-partition-size table-ids)))
 
 (mu/defn delete-table-user-settings! :- :nil
   "Delete the TableUserSettings with `ids` in one transaction, leaving their Tables as they are for sync to take over:

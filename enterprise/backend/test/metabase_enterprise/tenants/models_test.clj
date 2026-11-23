@@ -340,7 +340,7 @@
           (counted 1)
           (is (= (counted 2) (counted 6))))))))
 
-(deftest update-tenants-statement-count-does-not-grow-with-rows-test
+(deftest update-tenants-statement-count-grows-by-row-statements-only-test
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
@@ -355,7 +355,9 @@
                           (events.tu/statement-count!
                            #(tenants.model/update-tenants! (mapv (fn [id] {:id id :attributes {"env" "prod"} :is_active false}) ids)))))]
           (counted 1)
-          (is (= (counted 2) (counted 6))))))))
+          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2))))))))))
 
 (deftest update-tenants-refuses-two-renames-to-one-name-test
   (mt/with-temp [:model/Tenant {first-id :id}  {:name "First Tenant" :slug "first-tenant"}
@@ -388,3 +390,10 @@
               (is (= [:event/tenant-update]
                      (events.tu/published-topics!
                       #(tenants.model/update-tenants! (mapv (fn [id] {:id id :name (mt/random-name)}) ids))))))))))))
+
+(deftest update-tenants-frees-name-renamed-away-in-same-call-test
+  (mt/with-temp [:model/Tenant {first-id :id}  {:name "Chain First" :slug "chain-first"}
+                 :model/Tenant {second-id :id} {:name "Chain Second" :slug "chain-second"}]
+    (tenants.model/update-tenants! [{:id first-id :name "Chain Second"} {:id second-id :name "Chain Third"}])
+    (is (= ["Chain Second" "Chain Third"]
+           (mapv #(t2/select-one-fn :name :model/Tenant :id %) [first-id second-id])))))

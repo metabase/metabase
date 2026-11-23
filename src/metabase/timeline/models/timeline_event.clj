@@ -171,8 +171,10 @@
 (defn- write-timeline-event-updates!
   "Writes `rows`, updates of TimelineEvents, with one statement for each distinct set of changes."
   [rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-    (timeline.db/update-timeline-events! (mapv :id group) changes)))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (timeline.db/update-timeline-events! [id] changes)))
 
 (defn- update-timeline-event-batch!
   "Writes the TimelineEvents of `batch`, up to one partition of the call, and returns what the event needs."
@@ -230,7 +232,7 @@
                :timestamp  serialization/date-transform}
    :defaults  {:archived false}
    :insert!   create-timeline-events!
-   :update!   #(update-timeline-events! % {:writer :import})
+   :update!   #(do (update-timeline-events! % {:writer :import}) %)
    :delete!   delete-timeline-events!})
 
 (defmethod remote-sync/spec :model/TimelineEvent

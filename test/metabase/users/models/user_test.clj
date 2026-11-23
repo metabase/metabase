@@ -526,19 +526,28 @@
   [user-ids changes]
   (mapv (fn [row-id] (assoc changes :id row-id)) user-ids))
 
-(deftest update-users-over-mixed-stored-state-runs-fixed-statements-test
+(def ^:private per-row-update-statements
+  "The statements Toucan runs for each row of an update by primary key: the SELECT for the before-update hook and the
+  UPDATE, so 2."
+  2)
+
+(defn- grows-at-most-per-row?
+  "Whether the update count `six` at 6 rows exceeds the count `two` at 2 rows by no more than the per-row cost."
+  [two six]
+  (<= (- six two) (* 4 per-row-update-statements)))
+
+(deftest update-users-over-mixed-stored-state-test
   (mt/with-model-cleanup [:model/User]
-    (let [counted (fn [n]
-                    (let [users    (user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
-                                                                      :is_superuser (odd? i)})
-                                                             (range n)))
-                          user-ids (mapv :id users)]
-                      (user/update-users! (same-change (take-nth 2 user-ids) {:is_active false}))
-                      (events.tu/statement-count!
-                       #(user/update-users! (same-change user-ids {:is_active false :first_name "Renamed"})))))]
+    (let [users    (user/create-users! (mapv (fn [i] {:email        (str (random-uuid) "@example.com")
+                                                      :is_superuser (odd? i)})
+                                             (range 6)))
+          user-ids (mapv :id users)]
+      (user/update-users! (same-change (take-nth 2 user-ids) {:is_active false}))
       (testing "deactivating and renaming Users, half of them inactive already and half of them admins"
-        (counted 1)
-        (is (= (counted 2) (counted 6)))))))
+        (user/update-users! (same-change user-ids {:is_active false :first_name "Renamed"}))
+        (is (= #{[false "Renamed"]}
+               (t2/select-fn-set (juxt :is_active :first_name) :model/User :id [:in user-ids])))
+        (is (every? some? (t2/select-fn-vec :deactivated_at :model/User :id [:in user-ids])))))))
 
 (deftest update-users-of-unguarded-columns-runs-fixed-statements-test
   (mt/with-model-cleanup [:model/User]
@@ -549,7 +558,7 @@
                         (is (= #{"Renamed"} (t2/select-fn-set :first_name :model/User :id [:in user-ids])))
                         (call-count))))]
       (counted 1)
-      (is (= (counted 2) (counted 6))))))
+      (is (grows-at-most-per-row? (counted 2) (counted 6))))))
 
 (deftest update-user-refuses-last-admin-test
   (mt/with-model-cleanup [:model/User]
@@ -902,7 +911,14 @@
 (deftest bulk-user-writes-run-fixed-statement-counts-test
   (testing "after a first run that fills the caches"
     (bulk-write-counts! 1)
-    (is (= (bulk-write-counts! 2) (bulk-write-counts! 6)))))
+    (let [two (bulk-write-counts! 2)
+          six (bulk-write-counts! 6)]
+      (testing "creates and joins run fixed counts"
+        (is (= (select-keys two [:create :join]) (select-keys six [:create :join]))))
+      (testing "updates grow by per-row cost at most"
+        (doseq [k [:rename :promote :demote]]
+          (testing k
+            (is (grows-at-most-per-row? (k two) (k six)))))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-model-cleanup [:model/User]
@@ -927,7 +943,7 @@
         (testing description
           (let [prepare! #(user/update-users! (same-change % changes))]
             (counted prepare! changes 1)
-            (is (= (counted prepare! changes 2) (counted prepare! changes 6)))))))))
+            (is (grows-at-most-per-row? (counted prepare! changes 2) (counted prepare! changes 6)))))))))
 
 (deftest update-users-publishes-same-events-at-two-and-six-rows-test
   (mt/with-model-cleanup [:model/User]

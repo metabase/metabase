@@ -95,9 +95,10 @@
   "Writes `rows`, updates of the `stored` CustomVizPlugins, with one statement for each distinct set of changes, and
   returns what the event needs, the changes of each row and the plugins as they are after the write."
   [stored rows]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
           :when (seq changes)]
-    (custom-viz-plugin.db/update-plugins! (mapv :id group) changes))
+    (custom-viz-plugin.db/update-plugins! [id] changes))
   {:stored  stored
    :rows    rows
    :objects (into {}

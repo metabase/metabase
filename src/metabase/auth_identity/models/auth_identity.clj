@@ -132,24 +132,6 @@
    provider :- :string]
   (auth-identity.db/select-or-insert-auth-identity! user-id provider))
 
-(defn- statement-groups
-  "The `[changes ids]` pairs to write the `batch` of updates with: rows with the same changes share one statement, but
-  each row that sets `:credentials` is written alone, so its credentials go through the hooks for it alone."
-  [batch]
-  (into []
-        (mapcat (fn [[changes rows]]
-                  (if (contains? changes :credentials)
-                    (map (fn [row] [changes [(:id row)]]) rows)
-                    [[changes (mapv :id rows)]])))
-        (group-by #(dissoc % :id) batch)))
-
-(defn- write-auth-identity-batch!
-  "Write the `batch` of updates, returning the number of rows updated."
-  [batch]
-  (transduce (map (fn [[changes ids]] (auth-identity.db/update-auth-identities! ids changes)))
-             + 0
-             (statement-groups batch)))
-
 (mu/defn update-auth-identities! :- ms/IntGreaterThanOrEqualToZero
   "Apply `updates`, each the id of an AuthIdentity and the columns to set, in one transaction, returning the number
   updated."
@@ -157,7 +139,8 @@
   (if (empty? updates)
     0
     (t2/with-transaction [_conn]
-      (transduce (map write-auth-identity-batch!) + 0 (partition-all app-db/update-partition-size updates)))))
+      (transduce (map (comp auth-identity.db/update-auth-identities! vec)) + 0
+                 (partition-all app-db/update-partition-size updates)))))
 
 (mu/defn touch-auth-identity!
   "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no

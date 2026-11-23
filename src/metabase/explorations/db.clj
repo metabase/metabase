@@ -10,7 +10,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.revisions.sql :as revisions.sql]
@@ -126,13 +125,11 @@
   (mdb/insert-returning-instances! :model/Exploration rows))
 
 (mu/defn update-explorations!
-  "Apply `changes` to the Explorations with `ids`, with one statement for each distinct set of columns that change in
-  them, returning nil."
+  "Apply `changes` to each of the Explorations with `ids`, with one statement for each, returning nil."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::explorations.schema/exploration.update]
-  (let [stored (u/index-by :id (t2/select :model/Exploration :id [:in ids]))]
-    (doseq [[effective group] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
-      (t2/update! :model/Exploration :id [:in group] effective)))
+  (doseq [id ids]
+    (t2/update! :model/Exploration :id id changes))
   nil)
 
 (mu/defn delete-explorations!

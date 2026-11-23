@@ -208,7 +208,9 @@
                            (update! (take-nth 2 ids))
                            (events.tu/statement-count! #(update! ids))))]
           (counted 1)
-          (is (= (counted 2) (counted 6)))))
+          (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2)))))))
       (testing "deleting the configs of questions, half of them without one"
         (let [counted (fn [n]
                         (let [model-ids (mapv :model_id (configs (create! n)))]

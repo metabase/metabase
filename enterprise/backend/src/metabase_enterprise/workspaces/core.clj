@@ -151,6 +151,14 @@
     (when (string? schema)
       (not-empty (str/trim schema)))))
 
+(defn- workspace-schema-row
+  "The update row of `database` that sets its `database-workspace-schema` to `schema`, or drops it for nil."
+  [{:keys [id settings]} schema]
+  {:id       id
+   :settings (if schema
+               (assoc settings :database-workspace-schema schema)
+               (dissoc settings :database-workspace-schema))})
+
 (defn instance-workspace
   "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
    the `workspaces-enabled` setting is off."
@@ -207,14 +215,11 @@
         (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
           (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
                           {:status-code 400 :database_ids (vec unknown)})))
-        (doseq [{:keys [id settings] :as database} databases
-                :let [schema (get schemas id)]
-                :when (not= schema (database-workspace-schema database))]
-          (database/update-databases! [{:id (:id database) :settings (if schema
-                                                             (assoc settings :database-workspace-schema schema)
-                                                             (dissoc settings :database-workspace-schema))}] {:databases [database]})
+        (let [changed (filterv #(not= (get schemas (:id %)) (database-workspace-schema %)) databases)]
+          (database/update-databases! (mapv #(workspace-schema-row % (get schemas (:id %))) changed) {:databases changed})
           ;; Rows pointing at the old schema would keep redirecting reads there.
-          (table-remapping/delete-table-remappings-of-database! id))
+          (when (seq changed)
+            (table-remapping/delete-table-remappings-of-databases! (mapv :id changed))))
         (ws.settings/workspaces-enabled! true)))
     (catch Throwable e
       ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
@@ -267,11 +272,13 @@
       (log/warn (str "Translating the removed instance-workspace setting into workspaces-enabled and"
                      " database-workspace-schema"))
       (t2/with-transaction [_conn]
-        (doseq [[database-id {:keys [output]}] databases
-                :let  [database (ws.db/database (parse-long (name database-id)))
-                       schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
-                :when (and database schema)]
-          (database/update-databases! [{:id (:id database) :settings (assoc (:settings database) :database-workspace-schema schema)}] {:databases [database]}))
+        (let [pairs (vec (for [[database-id {:keys [output]}] databases
+                               :let  [database (ws.db/database (parse-long (name database-id)))
+                                      schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
+                               :when (and database schema)]
+                           [database schema]))]
+          (database/update-databases! (mapv (fn [[database schema]] (workspace-schema-row database schema)) pairs)
+                                      {:databases (mapv first pairs)}))
         (ws.settings/workspaces-enabled! true)))
     (when (setting/db-stored-value :instance-workspace)
       (ws.settings/instance-workspace! nil)))

@@ -1012,10 +1012,9 @@
             (or (user->existing-personal-collection user-or-id)
                 (throw e)))))))
 
-(mu/defn create-personal-collections!
-  "Create the Personal Collection of each of the Users with `user-ids` that has none, but those of API keys, with a
-  number of statements that does not grow with the users."
-  [user-ids :- [:sequential ms/PositiveInt]]
+(defn- create-personal-collections-batch!
+  "Creates the Personal Collection of each of the `user-ids`, one batch of the Users of a call, that has none."
+  [user-ids]
   (when-let [user-ids (not-empty (collections.db/non-api-key-user-ids (set user-ids)))]
     (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
           missing (vec (remove #(contains? owned %) (sort user-ids)))]
@@ -1024,6 +1023,12 @@
           (create-collections! (for [user-id missing]
                                  {:name              (get names user-id)
                                   :personal_owner_id user-id})))))))
+
+(mu/defn create-personal-collections!
+  "Create the Personal Collection of each of the Users with `user-ids` that has none, but those of API keys, in batches
+  of `delete-partition-size` Users, the size of a read keyed by ids."
+  [user-ids :- [:sequential ms/PositiveInt]]
+  (run! create-personal-collections-batch! (partition-all mdb/delete-partition-size (distinct user-ids))))
 
 (def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal

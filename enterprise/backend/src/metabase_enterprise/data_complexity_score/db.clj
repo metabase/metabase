@@ -98,7 +98,12 @@
   [score-entry :- (mut/select-keys ::data-complexity-score.schema/data-complexity-score.update [:fingerprint :source :score_data])]
   (t2/insert-returning-pk! :model/DataComplexityScore score-entry))
 
-(mu/defn delete-scores-created-before!
-  "Delete the DataComplexityScores created before `cutoff`, returning the number deleted."
+(mu/defn score-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the DataComplexityScores created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]}))
+  (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn delete-scores!
+  "Delete the DataComplexityScores with `ids`, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/DataComplexityScore :id [:in [:auto/param (vec ids)]]))

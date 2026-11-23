@@ -7,7 +7,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
-   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -47,13 +46,11 @@
   (t2/select-pk->fn identity :model/Measure :id [:in ids]))
 
 (mu/defn update-measures!
-  "Apply `changes` to the Measures with `ids`, `stored` as they are by id, with one statement per distinct set of changes
-  that their stored values leave."
+  "Apply `changes` to each of the Measures with `ids`, with one statement for each."
   [ids     :- [:sequential ::lib.schema.id/measure]
-   changes :- ::measures.schema/measure.update
-   stored  :- [:map-of ::lib.schema.id/measure ::measures.schema/measure]]
-  (doseq [[effective grouped] (mi/group-ids-by-changes stored (mapv #(assoc changes :id %) ids))]
-    (t2/update! :model/Measure :id [:in grouped] effective)))
+   changes :- ::measures.schema/measure.update]
+  (doseq [id ids]
+    (t2/update! :model/Measure :id id changes)))
 
 (mu/defn delete-measures!
   "Delete the Measures with `ids`, returning the number deleted."

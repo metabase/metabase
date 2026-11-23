@@ -93,8 +93,10 @@
         rows   (filterv #(contains? stored (:id %)) updates)]
     (when (seq rows)
       (t2/with-transaction [_conn]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-          (glossary.db/update-glossaries! (mapv :id group) changes))
+        (doseq [{:keys [id] :as row} rows
+                :let [changes (dissoc row :id)]
+                :when (seq changes)]
+          (glossary.db/update-glossaries! [id] changes))
         (events/publish-event! :event/glossary-update
                                (events/update-event stored rows
                                                     {:objects (glossary.db/glossaries-by-id (mapv :id rows))})))))

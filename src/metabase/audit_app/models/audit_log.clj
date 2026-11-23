@@ -112,11 +112,12 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn create-audit-logs!
-  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
+  "Insert the Audit Log `rows`, which [[audit-row]] gives, in their order, one statement per
+  `mdb/create-partition-size` rows."
   [rows]
   (when (seq rows)
     (span/with-span! {:name "create-audit-logs!" :attributes {:audit/rows (count rows)}}
-      (audit-app.db/insert-audit-logs! rows))))
+      (transduce (map (comp audit-app.db/insert-audit-logs! vec)) + 0 (partition-all mdb/create-partition-size rows)))))
 
 (mu/defn delete-audit-logs! :- ms/IntGreaterThanOrEqualToZero
   "Delete the AuditLogs with `ids` in one transaction, returning the number deleted."

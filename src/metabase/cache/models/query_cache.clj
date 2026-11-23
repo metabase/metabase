@@ -2,6 +2,7 @@
   "A model used to cache query results in the database."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.cache.db :as cache.db]
    [metabase.cache.schema :as cache.schema]
    [metabase.util.malli :as mu]
@@ -18,9 +19,11 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn delete-query-caches!
-  "Delete the QueryCache entries with `query-hashes`."
+  "Delete the QueryCache entries with `query-hashes` in one transaction, `mdb/delete-partition-size` per statement."
   [query-hashes :- [:sequential bytes?]]
-  (cache.db/delete-query-caches! query-hashes))
+  (when (seq query-hashes)
+    (t2/with-transaction [_conn]
+      (run! (comp cache.db/delete-query-caches! vec) (partition-all mdb/delete-partition-size query-hashes)))))
 
 (mu/defn claim-refresh-lease! :- :int
   "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to

@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as app-db]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -334,7 +335,9 @@
                             (update! (take-nth 2 user-ids))
                             (events.tu/statement-count! #(update! user-ids))))]
             (counted 1)
-            (is (= (counted 2) (counted 6)))))))))
+            (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+              (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+                (is (= (- c6 c4) (- c4 c2)))))))))))
 
 (deftest update-permissions-group-memberships-refuses-in-input-order-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -361,3 +364,23 @@
              (perms-group-membership/update-permissions-group-memberships!
               [{:id member :is_group_manager true} {:id Integer/MAX_VALUE :is_group_manager true}])))
       (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id member))))))
+
+(deftest memberships-of-more-users-than-one-batch-are-written-completely-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/User             {user-1 :id}   {}
+                 :model/User             {user-2 :id}   {}
+                 :model/User             {user-3 :id}   {}]
+    (let [user-ids [user-1 user-2 user-3]
+          members  #(t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id)]
+      (with-redefs [app-db/create-partition-size 1
+                    app-db/delete-partition-size 1]
+        (testing "an addition of three users with constants lowered adds all three and publishes one event"
+          (is (= [:event/group-membership-create]
+                 (events.tu/published-topics!
+                  #(perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))))))
+        (is (= (set user-ids) (members)))
+        (testing "a removal of three users with constants lowered removes all three and publishes one event"
+          (is (= [:event/group-membership-delete]
+                 (events.tu/published-topics!
+                  #(perms-group-membership/remove-users-from-groups! user-ids [group-id]))))
+          (is (empty? (members))))))))

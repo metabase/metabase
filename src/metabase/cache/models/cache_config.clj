@@ -289,13 +289,6 @@
   [_model databases]
   (delete-cache-configs! (cache-config-ids-for-targets "database" (mapv :id databases))))
 
-(defn- write-cache-config-batch!
-  "Write the `batch` of rows over their stored CacheConfigs, one statement per distinct change."
-  [batch]
-  (let [stored (u/index-by :id (cache.db/cache-configs-by-ids (mapv :id batch)))]
-    (doseq [[changes ids] (mi/group-ids-by-changes stored batch)]
-      (cache.db/update-cache-configs! ids changes))))
-
 (mu/defn update-cache-configs!
   "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig, in one
   transaction."
@@ -305,7 +298,7 @@
                          [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
   (when (seq rows)
     (t2/with-transaction [_conn]
-      (run! write-cache-config-batch! (partition-all mdb/update-partition-size rows)))))
+      (run! (comp cache.db/update-cache-configs! vec) (partition-all mdb/update-partition-size rows)))))
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

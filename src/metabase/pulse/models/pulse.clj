@@ -705,7 +705,7 @@
   "Apply `requested`, a map from the id of a Pulse of `stored` to its changes, and enable or disable the PulseChannels of
   the Pulses whose `:archived` it flips."
   [stored requested]
-  (pulse.db/update-pulses! stored requested)
+  (pulse.db/update-pulses! requested)
   (enable-pulse-channels! stored requested))
 
 (defn- change-pulses!
@@ -820,7 +820,9 @@
         (check-moved-collections pulses changes-of)
         (when (seq changed)
           (binding [*allow-moving-dashboard-subscriptions* true]
-            (pulse.db/update-pulses-for-dashboards! (select-keys changes-by-dashboard (into #{} (map :dashboard_id) changed))))
+            (run! pulse.db/update-pulses-for-dashboards!
+                  (map #(select-keys changes-by-dashboard %)
+                       (partition-all mdb/update-partition-size (distinct (map :dashboard_id changed))))))
           (events/publish-event! :event/pulse-update
                                  (events/update-event (u/index-by :id changed)
                                                       (mapv #(assoc (changes-of %) :id (:id %)) changed)
@@ -840,7 +842,7 @@
   [new-pulse-cards :- [:sequential pulse-card/NewPulseCard]]
   (when (seq new-pulse-cards)
     (t2/with-transaction [_conn]
-      (pulse-card/append-pulse-cards! new-pulse-cards)
+      (run! pulse-card/append-pulse-cards! (map vec (partition-all mdb/create-partition-size new-pulse-cards)))
       (publish-touch! (map :pulse_id new-pulse-cards))))
   nil)
 

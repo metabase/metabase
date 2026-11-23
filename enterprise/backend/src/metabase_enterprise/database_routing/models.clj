@@ -95,11 +95,10 @@
     (t2.before-update/before-update :model/DatabaseRouter (merge (stored id) (dissoc row :id)))))
 
 (defn- write-router-updates!
-  "Write `updates` over the `stored` DatabaseRouters, one statement per distinct change, and return each row with its
+  "Write `updates` over the `stored` DatabaseRouters, a statement per row, and return each row with its
   stored DatabaseRouter."
   [stored updates]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored updates)]
-    (database-routing.db/update-routers! ids changes))
+  (database-routing.db/update-routers! updates)
   (mapv (fn [row] [(stored (:id row)) row]) updates))
 
 (defn- update-router-batch!

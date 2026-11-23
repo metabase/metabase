@@ -170,14 +170,15 @@
   (mdb/insert-returning-instances! :model/Card rows))
 
 (mu/defn update-cards!
-  "Apply the columns of each of `rows`, each with the `:id` of its Card, with one statement for each distinct set of
-  columns, in the order the sets first appear, returning the number updated."
+  "Apply the columns of each of `rows`, each with the `:id` of its Card, with one statement for each, returning the
+  number updated."
   [rows :- [:sequential [:merge ::queries.schema/card.update [:map [:id ::lib.schema.id/card]]]]]
-  (let [by-columns (group-by #(dissoc % :id) rows)]
-    (transduce (comp (distinct) (filter seq) (map #(t2/update! :model/Card :id [:in (mapv :id (get by-columns %))] %)))
-               +
-               0
-               (map #(dissoc % :id) rows))))
+  (transduce (keep (fn [{:keys [id] :as row}]
+                     (when-let [changes (not-empty (dissoc row :id))]
+                       (t2/update! :model/Card :id id changes))))
+             +
+             0
+             rows))
 
 (mu/defn delete-cards!
   "Delete the Cards with `card-ids`, returning the number deleted."

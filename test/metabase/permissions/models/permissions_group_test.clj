@@ -278,7 +278,9 @@
         (let [update! (fn [groups]
                         (perms-group/update-permissions-groups! (mapv #(select-keys % [:id :name]) groups)))]
           (counted update! 1)
-          (is (= (counted update! 2) (counted update! 6)))))
+          (let [c2 (counted update! 2) c4 (counted update! 4) c6 (counted update! 6)]
+            (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+              (is (= (- c6 c4) (- c4 c2)))))))
       (testing "deleting groups, some of them in the LDAP group mappings"
         (let [delete! (fn [groups]
                         (mt/with-temporary-setting-values [ldap-group-mappings {"cn=Test,dc=example,dc=com"
@@ -339,3 +341,10 @@
                                                                          {:id (:id taken) :name new-name}])))
           (is (= [(:name group) (:name taken)]
                  (mapv #(t2/select-one-fn :name :model/PermissionsGroup :id (:id %)) [group taken]))))))))
+
+(deftest update-permissions-groups-frees-name-renamed-away-in-same-call-test
+  (mt/with-temp [:model/PermissionsGroup {first-id :id}  {:name "Chain First Group"}
+                 :model/PermissionsGroup {second-id :id} {:name "Chain Second Group"}]
+    (perms-group/update-permissions-groups! [{:id first-id :name "Chain Second Group"} {:id second-id :name "Chain Third Group"}])
+    (is (= ["Chain Second Group" "Chain Third Group"]
+           (mapv #(t2/select-one-fn :name :model/PermissionsGroup :id %) [first-id second-id])))))

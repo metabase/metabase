@@ -1048,11 +1048,10 @@
     (change-log/log-changes! model :delete (vals (apply dissoc old (keys new))))))
 
 (defn- update-existing-rows!
-  "Write each of `rows`, an `:id` and the columns to set, of `model`, whose stored rows `stored` holds by id, with one
-  statement per distinct set of effective changes."
-  [model stored rows]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored rows)]
-    (notification.db/update-part-rows! model ids changes)))
+  "Write each of `rows`, an `:id` and the columns to set, of `model`, with one update for each."
+  [model rows]
+  (doseq [{:keys [id] :as row} rows]
+    (notification.db/update-part-rows! model [id] (dissoc row :id))))
 
 (defn- replace-part-rows!
   "Make the rows of `model` that `existing` holds the `new-rows`, matched by id and compared on `columns`: one insert of
@@ -1063,7 +1062,7 @@
       (notification.db/insert-part-rows! model (mapv #(select-keys % columns) to-create)))
     (when (seq to-delete)
       (notification.db/delete-part-rows! model (mapv :id to-delete)))
-    (update-existing-rows! model (u/index-by :id existing) (map #(assoc (select-keys % columns) :id (:id %)) to-update))))
+    (update-existing-rows! model (map #(assoc (select-keys % columns) :id (:id %)) to-update))))
 
 (defn- update-payload!
   "Make the NotificationCard `existing` the payload `new`: delete it when there is none, insert it when there was none or
@@ -1093,16 +1092,16 @@
       :else                            {:id (:id existing)})))
 
 (defn- write-templates!
-  "Apply `writes`, [[template-write]]s, with one delete, one insert and one update for each distinct set of changes, given
-  the `stored` templates by id, and return the id of the template each of them leaves its handler."
-  [writes stored]
+  "Apply `writes`, [[template-write]]s, with one delete, one insert and one update for each changed template, and return
+  the id of the template each of them leaves its handler."
+  [writes]
   (let [deletes (into [] (keep :delete) writes)
         creates (into [] (keep :create) writes)]
     (when (seq deletes)
       (notification.db/delete-part-rows! :model/ChannelTemplate deletes))
     (let [created-ids (volatile! (map :id (when (seq creates)
                                             (notification.db/insert-part-rows! :model/ChannelTemplate creates))))]
-      (update-existing-rows! :model/ChannelTemplate stored (keep :update writes))
+      (update-existing-rows! :model/ChannelTemplate (keep :update writes))
       (mapv (fn [{:keys [create id]}]
               (if create
                 (u/prog1 (first @created-ids)
@@ -1118,8 +1117,7 @@
                                                                     :to-compare #(select-keys % handler-columns))
         stored      (u/index-by :id existing)
         rows        (vec (concat to-create to-update to-skip))
-        template-ids (write-templates! (mapv #(template-write (:template (stored (:id %))) (:template %)) rows)
-                                       (u/index-by :id (keep :template existing)))
+        template-ids (write-templates! (mapv #(template-write (:template (stored (:id %))) (:template %)) rows))
         with-refs   (mapv #(assoc %1 :template_id %2) rows template-ids)
         created     (when (seq to-create)
                       (notification.db/insert-part-rows! :model/NotificationHandler
@@ -1128,7 +1126,7 @@
     (when (seq to-delete)
       (notification.db/delete-part-rows! :model/NotificationHandler (mapv :id to-delete)))
     (update-existing-rows!
-     :model/NotificationHandler stored
+     :model/NotificationHandler
      (into []
            (keep-indexed (fn [i [row row-with-refs]]
                            (when (or (< i (count to-update))
@@ -1136,19 +1134,18 @@
                                            (select-keys row handler-columns)))
                              (assoc (select-keys row-with-refs handler-columns) :id (:id row)))))
            (drop (count to-create) (map vector rows with-refs))))
-    (let [stored-recipients (u/index-by :id (mapcat :recipients existing))
-          diffs             (for [[row handler-id] (map vector rows handler-ids)
-                                  :when            (contains? row :recipients)]
-                              (u/row-diff (:recipients (stored (:id row)))
-                                          (map #(assoc % :notification_handler_id handler-id) (:recipients row))
-                                          :to-compare #(select-keys % recipient-columns)))
+    (let [diffs (for [[row handler-id] (map vector rows handler-ids)
+                      :when            (contains? row :recipients)]
+                  (u/row-diff (:recipients (stored (:id row)))
+                              (map #(assoc % :notification_handler_id handler-id) (:recipients row))
+                              :to-compare #(select-keys % recipient-columns)))
           to-create-recipients (mapcat :to-create diffs)
           to-delete-recipients (mapcat :to-delete diffs)]
       (when (seq to-create-recipients)
         (notification.db/insert-part-rows! :model/NotificationRecipient (mapv #(select-keys % recipient-columns) to-create-recipients)))
       (when (seq to-delete-recipients)
         (notification.db/delete-part-rows! :model/NotificationRecipient (mapv :id to-delete-recipients)))
-      (update-existing-rows! :model/NotificationRecipient stored-recipients
+      (update-existing-rows! :model/NotificationRecipient
                              (map #(assoc (select-keys % recipient-columns) :id (:id %)) (mapcat :to-update diffs))))))
 
 (defn- update-parts!
@@ -1244,7 +1241,7 @@
   [rows]
   (let [stored    (u/index-by :id (notification.db/notifications-by-id (mapv :id rows)))
         requested (requested-changes rows stored)]
-    (notification.db/update-notifications! stored requested)
+    (notification.db/update-notifications! requested)
     (update-triggers-of-flipped! stored requested)
     {:stored stored :requested requested}))
 

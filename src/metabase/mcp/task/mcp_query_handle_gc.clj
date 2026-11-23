@@ -10,6 +10,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.task.core :as task]
@@ -24,7 +25,7 @@
   []
   (let [ttl-hours (mcp.settings/mcp-query-handle-ttl-hours)
         cutoff    (t/minus (t/offset-date-time) (t/hours (long ttl-hours)))
-        deleted   (mcp-query-handle/delete-mcp-query-handles-for-cleanup! cutoff)]
+        deleted   (mcp-query-handle/delete-mcp-query-handles! (mcp.db/query-handle-ids-created-before cutoff))]
     (log/infof "MCP query handle GC complete. Deleted %d handle(s) older than %d hours."
                (or deleted 0) (long ttl-hours))))
 

@@ -77,13 +77,12 @@
   (explorations.db/insert-queries! rows))
 
 (defn- write-query-updates!
-  "Writes `rows`, updates of ExplorationQueries, with one statement for each distinct set of columns, and returns the
-  number updated."
+  "Writes `rows`, updates of ExplorationQueries, with one statement for each, and returns the number updated."
   [rows]
-  (transduce (map (fn [[changes group]] (explorations.db/update-queries! (mapv :id group) changes)))
+  (transduce (map (fn [row] (explorations.db/update-queries! [(:id row)] (dissoc row :id))))
              +
              0
-             (group-by #(dissoc % :id) rows)))
+             rows))
 
 (mu/defn update-queries! :- :int
   "Apply `updates`, each the `:id` of an ExplorationQuery with the columns to give it, in one transaction, and return the

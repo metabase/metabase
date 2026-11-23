@@ -138,8 +138,9 @@
        archived (when collection_id {:archived (contains? archived-ids collection_id)})))))
 
 (mr/def ::write-opts
-  "The options of a write function of Explorations: the context of its events."
+  "The options of a write function of Explorations: `:writer`, who writes when it matters, and the context of its events."
   [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mu/defn create-explorations! :- [:sequential (ms/InstanceOf :model/Exploration)]
@@ -197,9 +198,10 @@
   "Writes `rows`, updates of the `stored` Explorations, archives or restores their Summary Documents, and returns what the
   event needs, the changes of each row."
   [stored rows opts]
-  (doseq [[changes group] (group-by #(dissoc % :id) rows)
-          :when           (seq changes)]
-    (explorations.db/update-explorations! (mapv :id group) changes))
+  (doseq [{:keys [id] :as row} rows
+          :let [changes (dissoc row :id)]
+          :when (seq changes)]
+    (explorations.db/update-explorations! [id] changes))
   (set-summaries-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) opts)
   {:stored stored
    :rows   (derive-archived-directly rows (u/index-by :id (explorations.db/rows :model/Exploration (mapv :id rows))))})

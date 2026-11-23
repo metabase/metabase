@@ -844,10 +844,11 @@
         (counted group-1 1)
         (is (= (counted group-2 2) (counted group-3 6)))))))
 
-(deftest update-sandboxes-statement-count-does-not-grow-with-rows-test
+(deftest update-sandboxes-statement-count-grows-by-row-statements-only-test
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
                  :model/PermissionsGroup {group-2 :id} {}
-                 :model/PermissionsGroup {group-3 :id} {}]
+                 :model/PermissionsGroup {group-3 :id} {}
+                 :model/PermissionsGroup {group-4 :id} {}]
     (mt/with-model-cleanup [:model/Sandbox]
       (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
             changes   {:card_id nil :attribute_remappings {"cat" "CATEGORY_ID"}}
@@ -858,7 +859,9 @@
                           (sandboxes/update-sandboxes! (mapv (fn [row-id] (assoc (select-keys changes [:attribute_remappings]) :id row-id)) (take-nth 2 ids)))
                           (events.tu/statement-count! #(sandboxes/update-sandboxes! (mapv (fn [id] (assoc changes :id id)) ids)))))]
         (counted group-1 1)
-        (is (= (counted group-2 2) (counted group-3 6)))))))
+        (let [c2 (counted group-2 2) c4 (counted group-3 4) c6 (counted group-4 6)]
+          (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+            (is (= (- c6 c4) (- c4 c2)))))))))
 
 (deftest update-sandboxes-refuses-in-input-order-test
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}

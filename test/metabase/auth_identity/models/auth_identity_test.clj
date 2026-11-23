@@ -172,7 +172,7 @@
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
 
-(deftest update-auth-identities-statement-count-does-not-grow-with-rows-test
+(deftest update-auth-identities-statement-count-grows-by-row-statements-only-test
   (mt/with-temp [:model/User {user-1 :id} {}
                  :model/User {user-2 :id} {}
                  :model/User {user-3 :id} {}
@@ -185,4 +185,6 @@
       (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
             counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (let [now (t/instant)] (mapv (fn [id] {:id id :expires_at now}) (take n ids))))))]
         (counted 1)
-        (is (= (counted 2) (counted 6)))))))
+        (let [c2 (counted 2) c4 (counted 4) c6 (counted 6)]
+          (testing "an update grows by each row's own statements only, its hook's SELECT and its UPDATE"
+            (is (= (- c6 c4) (- c4 c2)))))))))

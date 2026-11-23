@@ -116,7 +116,7 @@
   [stored rows]
   (let [rows (filterv #(contains? stored (:id %)) rows)]
     (when (seq rows)
-      (warehouse-schema.db/update-dimensions! (select-keys stored (map :id rows)) rows))
+      (warehouse-schema.db/update-dimensions! rows))
     rows))
 
 (defn- publish-dimension-updates!

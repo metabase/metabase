@@ -599,7 +599,7 @@
         updates (filterv (comp stored :id) batch)]
     {:stored  stored
      :updates updates
-     :count   (users.db/update-users! stored updates)}))
+     :count   (users.db/update-users! updates)}))
 
 (defn- publish-user-updates!
   "Publish one update event with `opts` for every row of `written`, the results of the batches."
@@ -675,7 +675,7 @@
   [stored [user-ids changes] opts]
   (let [updates (into [] (comp (filter stored) (map #(assoc changes :id %))) user-ids)
         event   (events/update-event stored updates (assoc opts :objects (users-after stored updates)))]
-    (users.db/update-users! stored updates)
+    (users.db/update-users! updates)
     (events/publish-event! :event/user-update event)
     (into stored (map (juxt (comp :id :object) :object)) (:changes event))))
 

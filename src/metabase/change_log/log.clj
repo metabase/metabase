@@ -1,6 +1,7 @@
 (ns metabase.change-log.log
   "The writes to the change log (see `metabase.change-log.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.change-log.db :as change-log.db]
    [metabase.change-log.numbering :as change-log.numbering]
    [metabase.change-log.spec :as change-log.spec]
@@ -34,8 +35,8 @@
           :when (pos? n)]
     (throw-or-log (format "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
                           n action table-name "metabase.change-log.core")))
-  (run! change-log.db/insert-entries!
-        (partition-all 1000 (for [[table-name row-ids action] changes
+  (run! (comp change-log.db/insert-entries! vec)
+        (partition-all app-db/create-partition-size (for [[table-name row-ids action] changes
                                   id                          row-ids
                                   :when                       (integer? id)]
                               {:table_name table-name, :row_id id, :action action})))

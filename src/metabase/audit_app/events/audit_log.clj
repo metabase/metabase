@@ -1,6 +1,7 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.spec :as audit.spec]
@@ -68,7 +69,7 @@
 
 (defn- hydrated
   "The row `events` with their rows before and after the writes as the `:hydrate` of the spec of their model leaves
-  them, which loads what its `:details` and `:state` read, one call per model."
+  them, which loads what its `:details` and `:state` read, one call per model and `app-db/delete-partition-size` rows."
   [events]
   (let [slots (for [[i {:keys [model] :as event}] (map-indexed vector events)
                     :when (:hydrate (audit.spec/spec model))
@@ -76,7 +77,10 @@
                     :when (some? (get event k))]
                 [model i k])]
     (reduce (fn [events [model model-slots]]
-              (let [rows ((:hydrate (audit.spec/spec model)) (mapv (fn [[_ i k]] (get-in events [i k])) model-slots))]
+              (let [hydrate (:hydrate (audit.spec/spec model))
+                    rows    (into []
+                                  (mapcat (fn [slots] (hydrate (mapv (fn [[_ i k]] (get-in events [i k])) slots))))
+                                  (partition-all app-db/delete-partition-size model-slots))]
                 (reduce (fn [events [[_ i k] row]] (assoc-in events [i k] row))
                         events
                         (map vector model-slots rows))))

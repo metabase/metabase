@@ -88,11 +88,15 @@
           fresh!  (fn [n] (mapv :id (exploration-thread/create-threads! (rows n))))
           counted (fn [f]
                     (f 1)
-                    (is (= (f 2) (f 6))))]
+                    (is (= (f 2) (f 6))))
+          counted-updates (fn [f]
+                            (f 1)
+                            (is (<= (- (f 6) (f 2)) (* 2 (- 6 2)))
+                                "each more row costs its SELECT by the hook and its UPDATE"))]
       (testing "creating threads"
         (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration-thread/create-threads! rows))))))
       (testing "updating threads, some already holding the new value"
-        (counted (fn [n]
+        (counted-updates (fn [n]
                    (let [ids (fresh! n)]
                      (exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) (take-nth 2 ids)))
                      (events.tu/statement-count!

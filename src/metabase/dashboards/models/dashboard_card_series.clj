@@ -40,8 +40,10 @@
   [rows :- [:sequential ::dashboards.schema/dashboard-card-series.update]]
   (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashcard-series-by-ids (mapv :id rows)) []))
         rows   (filterv #(contains? stored (:id %)) rows)]
-    (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-      (dashboards.db/update-dashcard-series! (mapv :id group) changes))
+    (doseq [{:keys [id] :as row} rows
+            :let [changes (dissoc row :id)]
+            :when (seq changes)]
+      (dashboards.db/update-dashcard-series! [id] changes))
     rows))
 
 (mu/defn delete-dashboard-card-series! :- :nil

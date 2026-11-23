@@ -11,7 +11,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -34,13 +33,11 @@
                    [:= :wr.id :transform_run_cancelation.run_id]
                    :wr.is_active]}]])
 
-(defn- update-grouped!
-  "Apply to each row of `stored`, a map from id to the `model` row as read, the changes in `id->changes`, with one
-  statement for the rows that get the same effective changes, which keeps the rows that already hold some of the values
-  from making Toucan run one statement per row."
-  [model stored id->changes]
-  (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))]
-    (t2/update! model :id [:in [:auto/param ids]] changes)))
+(defn- update-each!
+  "Apply to each row of `model` its changes in `id->changes`, a map from id, with one plain update by primary key for each."
+  [model id->changes]
+  (doseq [[id changes] id->changes]
+    (t2/update! model :toucan/pk id changes)))
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
@@ -111,10 +108,9 @@
   (mdb/insert-returning-instances! :model/Transform rows))
 
 (mu/defn update-transforms! :- :nil
-  "Apply to each Transform of `stored`, a map from id to the Transform as read, its changes in `id->changes`."
-  [stored      :- [:map-of ::lib.schema.id/transform :map]
-   id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.changes]]
-  (update-grouped! :model/Transform stored id->changes)
+  "Apply to each Transform its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.changes]]
+  (update-each! :model/Transform id->changes)
   nil)
 
 (mu/defn delete-transforms! :- :nil
@@ -180,10 +176,9 @@
                 [:else column])))
 
 (mu/defn update-tags! :- :nil
-  "Apply to each TransformTag of `stored`, a map from id to the tag as read, its changes in `id->changes`."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-tag.changes]]
-  (update-grouped! :model/TransformTag stored id->changes)
+  "Apply to each TransformTag its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-tag.changes]]
+  (update-each! :model/TransformTag id->changes)
   nil)
 
 (mu/defn delete-tags! :- :nil
@@ -286,10 +281,9 @@
   (mdb/insert-returning-instances! :model/TransformJob rows))
 
 (mu/defn update-jobs! :- :nil
-  "Apply to each TransformJob of `stored`, a map from id to the job as read, its changes in `id->changes`."
-  [stored      :- [:map-of ms/PositiveInt :map]
-   id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.changes]]
-  (update-grouped! :model/TransformJob stored id->changes)
+  "Apply to each TransformJob its changes in `id->changes`, a map from id, one update for each."
+  [id->changes :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.changes]]
+  (update-each! :model/TransformJob id->changes)
   nil)
 
 (mu/defn delete-jobs! :- :nil

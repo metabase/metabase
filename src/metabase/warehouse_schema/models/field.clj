@@ -599,7 +599,7 @@
     row
     (let [field   (merge stored row)
           derived (enforce-effective-type-invariant
-                   (merge field (coercion-changes field (mi/effective-changes stored (dissoc row :id)))))]
+                   (merge field (coercion-changes field (dissoc row :id))))]
       (into row
             (filter (fn [[k v]] (not= v (get field k))))
             (select-keys derived [:coercion_strategy :effective_type])))))
@@ -675,14 +675,13 @@
 
 (defn- write-field-updates!
   "Write each of `rows`, the id of a Field and the columns to change, over the `stored` Fields, `{id row}`, with the
-  changes that follow them, returning `changes`, `{id {:previous-object :object}}`, with theirs added; `fresh?` when the
-  function read `stored` itself."
-  [changes stored rows fresh?]
+  changes that follow them, returning `changes`, `{id {:previous-object :object}}`, with theirs added."
+  [changes stored rows]
   (let [deactivated (deactivated! changes (deactivated-ids rows))
         _           (dimension/rename-dimensions-for-fields! (renamed-display-names stored rows))
         changes     (json-unfolding-changed! deactivated (json-unfolding-rows stored rows))]
     (log-type-repairs stored rows)
-    (warehouse-schema.db/update-fields! stored rows fresh?)
+    (warehouse-schema.db/update-fields! rows)
     (add-row-changes changes stored rows)))
 
 (mr/def ::write-opts
@@ -706,7 +705,7 @@
           (reduce (fn [changes batch]
                     (let [stored (stored-fields batch held)]
                       (check-field-updates stored batch)
-                      (write-field-updates! changes stored (vec batch) (empty? fields))))
+                      (write-field-updates! changes stored (vec batch))))
                   {}
                   (partition-all mdb/update-partition-size rows))))))
    (vec rows)))
