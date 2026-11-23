@@ -300,6 +300,17 @@
                            (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
                            nil)))))
 
+(deftest ensure-single-select-refuses-numbers-the-rewrite-changes-test
+  (testing "control: a Postgres SELECT of decimal numbers runs as its rewrite"
+    (is (= "SELECT 31 AS a, 1000000 AS b" (single-select :postgres "SELECT 31 AS a, 1000000 AS b" nil))))
+  (testing "a Postgres number whose rewrite has another value is refused, naming the number and the source"
+    (is (=? {:error-type ::errors/unsupported-sql
+             :message    (str "The SQL of input public.orders holds the number 0x1F. Data tests do not support numbers "
+                              "written in hexadecimal, binary or octal, or with underscores, yet.")}
+            (single-select :postgres "SELECT 0x1F AS a" [:input {:schema "public" :name "orders"}])))
+    (is (=? {:error-type ::errors/unsupported-sql :message #".*holds the number 1_000_000\..*"}
+            (single-select :postgres "SELECT 1_000_000" nil)))))
+
 (deftest ensure-single-select-without-a-dialect-test
   (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"
     (is (=? {:error-type ::errors/uncheckable-sql

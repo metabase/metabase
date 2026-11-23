@@ -402,6 +402,29 @@
     (recur (ast/this stmt))
     stmt))
 
+(defn- value-changing-form
+  "`[reason detail]` for the first form in `sql` that sqlglot regenerates as SQL with another value, else nil. On
+  Postgres, `\"number-literal\"` with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number, regenerated
+  as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, regenerated as a number and an
+  alias. Read from the dialect's tokens, so a string or a comment holding such text is not one.
+  Port of `_value_changing_form`."
+  [^String sql dialect]
+  ;; Data tests do not support these forms yet: VER-183.
+  (when (= dialect "postgres")
+    (let [tokens (ast/tokenize sql dialect)]
+      (some (fn [[[token-type ^String text start] [following-type ^String following-text following-start]]]
+              (cond
+                (#{"HEX_STRING" "BIT_STRING"} token-type)
+                ;; `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
+                (when (#{"0x" "0b"} (u/lower-case-en (subs sql start (min (count sql) (+ (long start) 2)))))
+                  ["number-literal" (subs sql start (+ (long start) 2 (count text)))])
+
+                (and (= token-type "NUMBER")
+                     (= following-type "VAR")
+                     (= following-start (+ (long start) (count text))))
+                ["number-literal" (subs sql start (+ (long following-start) (count following-text)))]))
+            (map vector tokens (concat (rest tokens) [nil]))))))
+
 (def ^:private read-classes [Expressions$Select Expressions$SetOperation])
 (def ^:private write-classes [Expressions$Update Expressions$Insert Expressions$Delete])
 
@@ -439,12 +462,13 @@
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
-  `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-both-settings\"`. With either string, the regenerated SQL of a
+  `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-strict\"`. With either string, the regenerated SQL of a
   statement of the allowed type must also pass the same checks and regenerate to itself (`:reason`
   `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres
   must read it as one statement with `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`,
-  `:reason_detail` `\"multiple-statements\"`). With `\"rebuild-both-settings\"`, it must also read as one statement
-  with the setting off (`:reason` `\"backslash-quote\"`). Port of `is_single_stmt_of_type`."
+  `:reason_detail` `\"multiple-statements\"`). With `\"rebuild-strict\"`, it must also read as one statement
+  with the setting off (`:reason` `\"backslash-quote\"`), and `sql` must hold no form that the regenerated SQL gives
+  another value (see [[value-changing-form]]). Port of `is_single_stmt_of_type`."
   [dialect sql stmt-type check-rebuild]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
@@ -467,16 +491,21 @@
                       ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
                       ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
                       ;; with one backslash, so its quote moves, and a dollar-quoted alias comes back bare.
-                      ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
-                      (let [again (when (not= rebuilt sql) (single-stmt-of-type dialect rebuilt stmt-type nil))]
+                      (let [changed (when (= check-rebuild "rebuild-strict") (value-changing-form sql dialect))
+                            ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+                            again   (when (and (nil? changed) (not= rebuilt sql))
+                                      (single-stmt-of-type dialect rebuilt stmt-type nil))]
                         (cond
+                          changed
+                          changed
+
                           (and again (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again))))
                           ["rebuild-differs" (:reason again)]
 
                           (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
                           ["rebuild-differs" "multiple-statements"]
 
-                          (and (= check-rebuild "rebuild-both-settings")
+                          (and (= check-rebuild "rebuild-strict")
                                (= dialect "postgres")
                                (> (postgres-statement-count rebuilt false) 1))
                           ["backslash-quote" nil])))]

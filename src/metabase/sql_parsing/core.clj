@@ -538,9 +538,9 @@
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     true
    ;; The caller runs the rebuild, so every type has it checked. The Postgres count with
-   ;; `standard_conforming_strings` off also refuses ordinary SQL such as `replace(path, '\\', '/')`; it is kept
-   ;; to "read-only", which only data tests send.
-   :check-rebuild        {"read-only" "rebuild-both-settings"
+   ;; `standard_conforming_strings` off also refuses ordinary SQL such as `replace(path, '\\', '/')`, and so does
+   ;; the refusal of forms the rebuild gives another value; both are kept to "read-only", which only data tests send.
+   :check-rebuild        {"read-only" "rebuild-strict"
                           "read"      "rebuild"
                           "write"     "rebuild"}})
 
@@ -607,7 +607,10 @@
   The `:sql` must itself pass the same checks and reconstruct to itself; otherwise the verdict is `:disallowed` with
   `:reason \"rebuild-differs\"` and the reconstruction's own reason as `:detail`. On Postgres, it must also read as
   one statement with `standard_conforming_strings` on (else `:reason \"rebuild-differs\"` with `:detail
-  \"multiple-statements\"`), and for `\"read-only\"` also with it off (else `:reason \"backslash-quote\"`)."
+  \"multiple-statements\"`), and for `\"read-only\"` also with it off (else `:reason \"backslash-quote\"`). A
+  `\"read-only\"` statement must also hold no form that the reconstruction gives another value: on Postgres a
+  hexadecimal, binary or octal number or one with underscores (`:reason \"number-literal\"`, the literal as
+  `:detail`)."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

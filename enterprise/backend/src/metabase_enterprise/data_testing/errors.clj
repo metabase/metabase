@@ -30,6 +30,7 @@
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-select        400  ; SQL the run executes is not one SELECT, or holds something the statement check refuses.
+   ::unsupported-sql            400  ; SQL the run executes uses a form data tests do not support yet.
    ::uncheckable-sql            400  ; SQL the run executes holds a list too long to parse, or its database has no dialect the check reads.
 
    ;; 403 — the current user

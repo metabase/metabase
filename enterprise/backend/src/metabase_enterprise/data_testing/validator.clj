@@ -195,6 +195,7 @@
   one statement whatever `standard_conforming_strings` is.
 
   Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
+  `::data-testing.errors/unsupported-sql` when it uses a form whose rebuild has another value,
   `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-sql` when
   it holds a list of values too long to parse whole, or `driver` has no SQLGlot dialect. Each refusal names `source`."
   [driver :- :keyword
@@ -206,13 +207,20 @@
       rebuilt
 
       :disallowed
-      (throw (data-testing.errors/ex
-              ::data-testing.errors/not-a-single-select
-              (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
-                   (sql-source-label source) (refusal-reason reason detail))
-              (cond-> {}
-                reason (assoc :reason reason)
-                detail (assoc :detail detail))))
+      (throw (if (= "number-literal" reason)
+               ;; Data tests do not support these forms yet: VER-183.
+               (data-testing.errors/ex
+                ::data-testing.errors/unsupported-sql
+                (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores, yet."
+                     (sql-source-label source) detail)
+                {:reason reason :detail detail})
+               (data-testing.errors/ex
+                ::data-testing.errors/not-a-single-select
+                (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
+                     (sql-source-label source) (refusal-reason reason detail))
+                (cond-> {}
+                  reason (assoc :reason reason)
+                  detail (assoc :detail detail)))))
 
       :unknown
       (if error

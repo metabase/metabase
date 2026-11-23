@@ -2090,6 +2090,32 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
     return count + content
 
 
+def _value_changing_form(sql: str, dialect: str):
+    """`(reason, detail)` for the first form in `sql` that SQLGlot reconstructs as SQL with another value, else None.
+
+    On Postgres, reason "number-literal" with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number,
+    reconstructed as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, reconstructed
+    as a number and an alias. Read from the dialect's tokens, so a string or a comment holding such text is not one.
+    """
+    # Data tests do not support these forms yet: VER-183.
+    if dialect != "postgres":
+        return None
+    tokens = sqlglot.tokenize(sql, read=dialect)
+    for tok, following in zip(tokens, tokens[1:] + [None]):
+        if tok.token_type in (sqlglot.TokenType.HEX_STRING, sqlglot.TokenType.BIT_STRING):
+            # `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
+            if sql[tok.start : tok.start + 2].lower() in ("0x", "0b"):
+                return ("number-literal", sql[tok.start : tok.start + 2 + len(tok.text)])
+        elif (
+            tok.token_type == sqlglot.TokenType.NUMBER
+            and following is not None
+            and following.token_type == sqlglot.TokenType.VAR
+            and following.start == tok.start + len(tok.text)
+        ):
+            return ("number-literal", sql[tok.start : following.start + len(following.text)])
+    return None
+
+
 def _unbracketed(stmt: exp.Expression) -> exp.Expression:
     """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
     while isinstance(stmt, exp.Subquery) and not stmt.alias:
@@ -2134,11 +2160,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    `check_rebuild` is None, "rebuild" or "rebuild-both-settings". With either value, the reconstruction of a statement
+    `check_rebuild` is None, "rebuild" or "rebuild-strict". With either value, the reconstruction of a statement
     of the allowed type must also pass the same checks and reconstruct to itself (reason "rebuild-differs", with the
     reconstruction's own reason as `reason_detail`), and for "postgres", Postgres must read it as one statement with
     `standard_conforming_strings` on (reason "rebuild-differs", detail "multiple-statements"). With
-    "rebuild-both-settings", it must also read as one statement with the setting off (reason "backslash-quote").
+    "rebuild-strict", it must also read as one statement with the setting off (reason "backslash-quote"), and `sql`
+    must hold no form that the reconstruction gives another value (see `_value_changing_form`).
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2161,14 +2188,21 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
             # its quote moves, and a dollar-quoted alias comes back bare.
             if problem is None and check_rebuild and isinstance(_unbracketed(stmts[0]), allowed_types):
+                changed = _value_changing_form(sql, dialect) if check_rebuild == "rebuild-strict" else None
                 # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
-                again = None if rebuilt == sql else json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
-                if again is not None and (not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt):
+                again = (
+                    None
+                    if changed is not None or rebuilt == sql
+                    else json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
+                )
+                if changed is not None:
+                    problem = changed
+                elif again is not None and (not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt):
                     problem = ("rebuild-differs", again.get("reason"))
                 elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
                     problem = ("rebuild-differs", "multiple-statements")
                 elif (
-                    check_rebuild == "rebuild-both-settings"
+                    check_rebuild == "rebuild-strict"
                     and dialect == "postgres"
                     and _postgres_statement_count(rebuilt, False) > 1
                 ):
