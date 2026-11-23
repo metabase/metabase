@@ -127,7 +127,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
                               (table/update-tables! [{:id (:id table) :collection_id (:id regular)}]))))
       (testing "Can move a table out to no collection"
-        (is (some? (table/update-tables! [{:id (:id table) :collection_id nil}])))))))
+        (is (nil? (table/update-tables! [{:id (:id table) :collection_id nil}])))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}

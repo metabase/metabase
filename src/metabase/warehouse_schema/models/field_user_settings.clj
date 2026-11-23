@@ -262,8 +262,9 @@
                         (add-updated writes [stored] (constantly changes))
                         (add-created writes [inserted]))
               writes   (delete-empty! writes [id])]
-          (u/prog1 (count (field/update-fields! [(assoc settings :id id)]))
-            (publish-writes! writes)))))))
+          (field/update-fields! [(assoc settings :id id)])
+          (publish-writes! writes)
+          1)))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
@@ -380,7 +381,7 @@
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
    :insert!       create-field-user-settings!
-   :update!       update-field-user-settings!
+   :update!       #(do (update-field-user-settings! %) %)
    :delete!       delete-field-user-settings!
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 

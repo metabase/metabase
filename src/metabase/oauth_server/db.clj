@@ -107,12 +107,12 @@
 
 (mu/defn insert-oauth-client!
   "Insert the OAuthClient `row`, returning the number inserted."
-  [row :- ::oauth-server.schema/oauth-client.update]
+  [row :- ::oauth-server.schema/oauth-client.create]
   (t2/insert! :model/OAuthClient row))
 
 (mu/defn update-oauth-clients!
   "Apply each of `rows`, the `:id` of a OAuthClient and the columns to set, one statement per distinct change."
-  [rows :- [:sequential ::oauth-server.schema/oauth-client.update-row]]
+  [rows :- [:sequential ::oauth-server.schema/oauth-client.update]]
   (app-db/update-grouped! :model/OAuthClient rows))
 
 (mu/defn insert-authorization-code!

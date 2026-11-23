@@ -134,7 +134,7 @@
 
 (mu/defn update-auth-identities! :- :nil
   "Apply `updates`, each the id of an AuthIdentity and the columns to set, in one transaction."
-  [updates :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
+  [updates :- [:sequential ::auth-identity.schema/auth-identity.update]]
   (when (seq updates)
     (t2/with-transaction [_conn]
       (run! (comp auth-identity.db/update-auth-identities! vec) (partition-all app-db/update-partition-size updates))))

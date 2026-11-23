@@ -217,11 +217,11 @@
 (deftest document-schema-test
   (testing "the Document schema takes a non-blank name of at most 254 characters"
     (doseq [bad-name ["" "   " (apply str (repeat 255 "a"))]]
-      (is (not (mr/validate ::documents.schema/document.update {:name bad-name}))))
-    (is (mr/validate ::documents.schema/document.update {:name (apply str (repeat 254 "a"))})))
+      (is (not (mr/validate ::documents.schema/document.update {:id 1 :name bad-name}))))
+    (is (mr/validate ::documents.schema/document.update {:id 1 :name (apply str (repeat 254 "a"))})))
   (testing "the Document schema takes a body only when it is a ProseMirror node"
-    (is (not (mr/validate ::documents.schema/document.update {:document {:content []}})))
-    (is (mr/validate ::documents.schema/document.update {:document {:type "doc" :content []}}))))
+    (is (not (mr/validate ::documents.schema/document.update {:id 1 :document {:content []}})))
+    (is (mr/validate ::documents.schema/document.update {:id 1 :document {:type "doc" :content []}}))))
 
 (deftest collection-namespace-test
   (testing "a Document goes only in Collections of an allowed namespace"

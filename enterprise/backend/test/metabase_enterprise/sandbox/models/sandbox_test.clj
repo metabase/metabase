@@ -873,9 +873,10 @@
                                                                             :attribute_remappings {"cat" "CATEGORY_ID"})
                                                                  [venues users]))))
         (is (= before (t2/select-one-fn :attribute_remappings :model/Sandbox :id venues)))))
-    (testing "the stored rows are returned in the order of the updates"
-      (is (= [users venues]
-             (mapv :id (sandboxes/update-sandboxes! (mapv #(hash-map :id % :card_id nil) [users venues Integer/MAX_VALUE]))))))))
+    (testing "a row whose Sandbox does not exist is skipped and the others are written"
+      (is (nil? (sandboxes/update-sandboxes! (mapv #(hash-map :id % :attribute_remappings {"cat" "CATEGORY_ID"})
+                                                   [users venues Integer/MAX_VALUE]))))
+      (is (= {"cat" "CATEGORY_ID"} (t2/select-one-fn :attribute_remappings :model/Sandbox :id users))))))
 
 (deftest update-and-delete-sandboxes-publish-one-event-test
   (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}

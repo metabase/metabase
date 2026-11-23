@@ -73,7 +73,7 @@
 
 (mu/defn update-threads! :- :nil
   "Apply `updates`, each the `:id` of an ExplorationThread with the columns to give it, in one transaction."
-  [updates :- [:sequential ::explorations.schema/exploration-thread.update-row]]
+  [updates :- [:sequential ::explorations.schema/exploration-thread.update]]
   (t2/with-transaction [_conn]
     (run! write-thread-updates! (partition-all app-db/update-partition-size updates)))
   nil)

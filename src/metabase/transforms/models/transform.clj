@@ -523,62 +523,62 @@
     (when (seq links)
       (transform-transform-tag/create-transform-transform-tags! links))))
 
-(defn- check-creates
+(defn- check-new-transforms
   "Throw unless every Transform of `rows` satisfies the rules of [[check-collections]] for its Collection and of
   [[check-target-databases]] for its target Database."
   [rows]
   (check-collections (map :collection_id rows))
   (check-target-databases (map (comp :target_db_id derived-columns) rows)))
 
-(defn- create-batch!
-  "Insert the Transform `rows`, link the `:tag_ids` of each, and return the inserted transforms."
+(defn- create-transform-batch!
+  "Check and insert `rows`, one batch of a call, link their tags, and return the inserted Transforms."
   [rows]
+  (check-new-transforms rows)
   (let [transforms (transforms.db/insert-transforms! (mapv #(dissoc % :tag_ids) rows))]
     (link-new-tags! transforms rows)
     transforms))
 
 (mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
-  "Insert the Transform `rows` in batches in one transaction, linking the `:tag_ids` of each, publishing one create
-  event for all, and return the inserted transforms.
-  Throws unless the Collection of each can hold Transforms and its target Database can hold the tables of a transform."
+  "Insert the Transform `rows` in one transaction, linking the `:tag_ids` of each, publishing their create event, and
+  return the inserted Transforms. Throws unless the Collection of each can hold Transforms and its target Database can
+  hold the tables of a transform."
   [rows :- [:sequential ::transforms.schema/transform.create]]
   (t2/with-transaction [_conn]
-    (check-creates rows)
-    (let [transforms (into [] (mapcat (comp create-batch! vec)) (partition-all mdb/create-partition-size rows))]
-      (when (seq transforms)
-        (events/publish-event! :event/transform-create (events/create-event transforms)))
-      transforms)))
+    (let [created (into [] (mapcat (comp create-transform-batch! vec)) (partition-all mdb/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/transform-create (events/create-event created)))
+      created)))
 
 (defn- moved-collection-ids
-  "The ids of the Collections that `requested`, a map from the id of a Transform to its changes, moves Transforms of
-  `stored` into."
-  [stored requested]
-  (for [[id changes] requested
+  "The ids of the Collections that `id->changes` moves Transforms of `id->stored` into."
+  [id->stored id->changes]
+  (for [[id changes] id->changes
         :when        (and (contains? changes :collection_id)
-                          (not= (:collection_id (stored id)) (:collection_id changes)))]
+                          (not= (:collection_id (id->stored id)) (:collection_id changes)))]
     (:collection_id changes)))
 
 (defn- changed-definitions
-  "The Transforms that `requested` gives another source or target, as `stored` and `resolved`, the changes with the
-  Field ids of the merge unique keys, leave them, a map from id to the row with its derived columns."
-  [stored requested resolved]
+  "The Transforms that `id->changes` gives another source or target, as `id->stored` and `id->resolved`, the changes with
+  the Field ids of the merge unique keys, leave them, a map from id to the row with its derived columns."
+  [id->stored id->changes id->resolved]
   (into {}
         (keep (fn [[id changes]]
-                (when (definition-columns-changed? (stored id) changes)
-                  (let [merged (merge (stored id) (resolved id))]
+                (when (definition-columns-changed? (id->stored id) changes)
+                  (let [merged (merge (id->stored id) (id->resolved id))]
                     [id (merge merged (derived-columns merged))]))))
-        requested))
+        id->changes))
 
-(defn- check-updates
-  "Throw before an update is written unless these rules hold for the Transforms of `stored` that `requested` changes:
+(defn- check-transform-updates
+  "Throw unless these rules hold for the Transforms of `id->stored` that `id->changes` changes, whose changed definitions
+  are `id->definition`:
 
   - the Collection that a Transform moves to can hold Transforms
   - the target Database of a changed definition can hold the tables of a transform
   - the new definition of a query transform causes no cycle"
-  [stored requested definitions]
-  (check-collections (moved-collection-ids stored requested))
-  (check-target-databases (map :target_db_id (vals definitions)))
-  (check-cycles (vals definitions)))
+  [id->stored id->changes id->definition]
+  (check-collections (moved-collection-ids id->stored id->changes))
+  (check-target-databases (map :target_db_id (vals id->definition)))
+  (check-cycles (vals id->definition)))
 
 (defn- updated-transform
   "The Transform `stored` as the update `changes` leaves it, with the columns that the hooks derive from them."
@@ -599,58 +599,55 @@
         (and (definition-columns-changed? stored changes) old-field-id (not= old-field-id new-field-id)))
       (assoc :last_checkpoint_value nil))))
 
-(defn- requested-changes
-  "A map from id to the changes of each of `rows`, the id of a Transform and its columns to change, for the Transforms
-  in `stored`."
-  [rows stored]
-  (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows))
+(defn- id->changes-of
+  "A map from id to the changes of each of `updates`, the id of a Transform and its columns to change, for the Transforms
+  in `id->stored`."
+  [updates id->stored]
+  (into {} (comp (filter (comp id->stored :id)) (map (juxt :id #(dissoc % :id)))) updates))
 
-(defn- write-updates!
-  "Mark the index requests of the changed `definitions` for revalidation and write `resolved`, the changes of the
-  Transforms."
-  [resolved definitions]
-  (when (seq definitions)
-    (table-index/mark-for-revalidation! (vec (keys definitions))))
-  (transforms.db/update-transforms! (mapv (fn [[id changes]] (assoc changes :id id)) resolved)))
+(defn- write-transform-updates!
+  "Mark the index requests of the Transforms of `id->definition` for revalidation and write `id->resolved`, the changes of
+  the Transforms."
+  [id->resolved id->definition]
+  (when (seq id->definition)
+    (table-index/mark-for-revalidation! (vec (keys id->definition))))
+  (transforms.db/update-transforms! (mapv (fn [[id changes]] (assoc changes :id id)) id->resolved)))
 
-(defn- apply-updates!
-  "Check, then write `requested`, a map from the id of a Transform of `stored` to its changes, and return the changes of
-  each id with the Field ids of its merge unique key filled."
-  [stored requested]
-  (let [resolved    (resolve-merge-keys requested stored)
-        definitions (changed-definitions stored requested resolved)]
-    (check-updates stored requested definitions)
-    (write-updates! resolved definitions)
-    resolved))
+(defn- update-transform-batch!
+  "Check and write `updates`, one batch of a call, and return the Transforms by id as stored before and the changes of
+  each by id as written, with the Field ids of its merge unique key filled."
+  [updates]
+  (let [id->stored     (transforms.db/transforms-by-ids (mapv :id updates))
+        id->changes    (id->changes-of updates id->stored)
+        id->resolved   (resolve-merge-keys id->changes id->stored)
+        id->definition (changed-definitions id->stored id->changes id->resolved)]
+    (check-transform-updates id->stored id->changes id->definition)
+    (write-transform-updates! id->resolved id->definition)
+    {:id->stored   (select-keys id->stored (keys id->changes))
+     :id->resolved id->resolved}))
 
 (defn- column-update-event
-  "The update event of the Transforms of `stored` that `resolved`, a map from id to its changes, changes."
-  [stored resolved opts]
-  (events/update-event stored
-                       (mapv (fn [[id changes]] (assoc changes :id id)) resolved)
-                       (assoc opts :objects (into {} (map (fn [[id changes]] [id (updated-transform (stored id) changes)])) resolved))))
+  "The update event of the Transforms of `id->stored` that `id->resolved`, a map from id to its changes, changes."
+  [id->stored id->resolved opts]
+  (events/update-event id->stored
+                       (mapv (fn [[id changes]] (assoc changes :id id)) id->resolved)
+                       (assoc opts :objects (into {} (map (fn [[id changes]] [id (updated-transform (id->stored id) changes)])) id->resolved))))
 
 (mu/defn update-transforms! :- :nil
-  "Apply the changes in each of `rows`, the id of a Transform and the columns to change, in one transaction, in batches
-  with one statement per distinct change set, publishing one update event for all. Before the statements of a
-  batch, throws unless the new Collections and target Databases can hold Transforms and the new definitions of query
-  transforms cause no cycle, all checked once for all rows before anything is written, marks the index requests of a
-  changed definition for revalidation, and fills the Field ids of a merge unique key once its target table exists."
-  ([rows :- [:sequential ::transforms.schema/transform.update]]
-   (update-transforms! rows nil))
-  ([rows :- [:sequential ::transforms.schema/transform.update]
-    opts :- ::transforms.schema/write-opts]
+  "Apply `updates`, each the id of a Transform and the columns to change, in one transaction, publishing their update
+  event. Throws unless the new Collections and target Databases can hold Transforms and the new definitions of query
+  transforms cause no cycle, marks the index requests of a changed definition for revalidation, and fills the Field ids
+  of a merge unique key once its target table exists."
+  ([updates :- [:sequential ::transforms.schema/transform.update]]
+   (update-transforms! updates nil))
+  ([updates :- [:sequential ::transforms.schema/transform.update]
+    opts    :- ::transforms.schema/write-opts]
    (t2/with-transaction [_conn]
-     (let [stored      (u/index-by :id (transforms.db/transforms (mapv :id rows)))
-           requested   (requested-changes rows stored)
-           stored      (select-keys stored (keys requested))
-           resolved    (resolve-merge-keys requested stored)
-           definitions (changed-definitions stored requested resolved)]
-       (check-updates stored requested definitions)
-       (doseq [ids (partition-all mdb/update-partition-size (keys resolved))]
-         (write-updates! (select-keys resolved ids) (select-keys definitions ids)))
-       (when (seq resolved)
-         (events/publish-event! :event/transform-update (column-update-event stored resolved opts)))))
+     (let [batches (mapv #(update-transform-batch! (vec %)) (partition-all mdb/update-partition-size updates))
+           id->resolved (into {} (map :id->resolved) batches)]
+       (when (seq id->resolved)
+         (events/publish-event! :event/transform-update
+                                (column-update-event (into {} (map :id->stored) batches) id->resolved opts)))))
    nil))
 
 (mu/defn update-transform! :- :nil
@@ -664,31 +661,31 @@
     changes :- ::transforms.schema/transform.update-with-tags
     opts    :- ::transforms.schema/write-opts]
    (t2/with-transaction [_conn]
-     (when-let [stored (first (transforms.db/transforms [id]))]
+     (when-let [stored (get (transforms.db/transforms-by-ids [id]) id)]
        (let [columns       (dissoc changes :tag_ids)
-             resolved      (when (seq columns) (apply-updates! {id stored} {id columns}))
+             batch         (when (seq columns) (update-transform-batch! [(assoc columns :id id)]))
              tags-changed? (and (contains? changes :tag_ids) (replace-tags! id (vec (:tag_ids changes))))]
          (cond
-           (seq columns) (events/publish-event! :event/transform-update (column-update-event {id stored} resolved opts))
+           batch         (events/publish-event! :event/transform-update (column-update-event (:id->stored batch) (:id->resolved batch) opts))
            tags-changed? (events/publish-event! :event/transform-update (events/touch-event [stored] opts))))))
    nil))
 
-(defn- delete-batch!
-  "Delete the Transforms with `ids`, and their tests."
+(defn- delete-transform-batch!
+  "Delete the Transforms with `ids`, one batch of a call, and their tests."
   [ids]
   (delete-transform-tests-for-transforms! ids)
   (transforms.db/delete-transforms! ids))
 
 (mu/defn delete-transforms! :- :nil
-  "Delete the Transforms with `transform-ids`, and their tests, in batches in one transaction, publishing one delete
-  event for all right before the first statement."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  "Delete the Transforms with `ids`, and their tests, in one transaction, publishing their delete event right before
+  the first statement."
+  [ids :- [:sequential ::lib.schema.id/transform]]
   (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all mdb/delete-partition-size transform-ids))]
-      (when (seq batches)
-        (events/publish-event! :event/transform-delete
-                               (events/delete-event (into [] (mapcat transforms.db/transforms) batches))))
-      (run! delete-batch! batches)))
+    (let [batches    (mapv vec (partition-all mdb/delete-partition-size ids))
+          transforms (into [] (mapcat (comp vals transforms.db/transforms-by-ids)) batches)]
+      (when (seq transforms)
+        (events/publish-event! :event/transform-delete (events/delete-event transforms)))
+      (run! delete-transform-batch! batches)))
   nil)
 
 (defmethod transforms-base.u/record-run-changes! :model/Transform

@@ -39,8 +39,9 @@
   ms/NonBlankString)
 
 (mr/def ::measure.update
-  "What an update of a Measure takes: the columns to change, every column of `:measure` but its id."
+  "What an update of a measure takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id ::lib.schema.id/measure]
    [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:name               {:optional true} [:maybe ::measure.name]]
@@ -53,18 +54,11 @@
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
 
-(mr/def ::measure.update-row
-  "What an update of a Measure takes per row: the `:id` of the Measure and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ::lib.schema.id/measure]]
-   ::measure.update])
-
 (mr/def ::measure
   "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
   hydrate onto it."
   [:merge
-   ::measure.update-row
+   ::measure.update
    [:map {:closed true}
     [:id                 ms/PositiveInt]
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]

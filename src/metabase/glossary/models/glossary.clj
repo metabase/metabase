@@ -88,15 +88,15 @@
 (mu/defn update-glossaries! :- :nil
   "Apply `updates`, each the `:id` of a Glossary entry with the columns to give it, publishing one update event for all
   of them."
-  [updates :- [:sequential ::glossary.schema/glossary.update-row]]
-  (let [stored (glossary.db/glossaries-by-id (mapv :id updates))
+  [updates :- [:sequential ::glossary.schema/glossary.update]]
+  (let [stored (glossary.db/glossaries-by-ids (mapv :id updates))
         rows   (filterv #(contains? stored (:id %)) updates)]
     (when (seq rows)
       (t2/with-transaction [_conn]
         (glossary.db/update-glossaries! rows)
         (events/publish-event! :event/glossary-update
                                (events/update-event stored rows
-                                                    {:objects (glossary.db/glossaries-by-id (mapv :id rows))})))))
+                                                    {:objects (glossary.db/glossaries-by-ids (mapv :id rows))})))))
   nil)
 
 (mu/defn delete-glossaries! :- :nil
@@ -107,7 +107,7 @@
     (let [batches (partition-all app-db/delete-partition-size ids)]
       (when (seq batches)
         (events/publish-event! :event/glossary-delete
-                               (events/delete-event (into [] (mapcat #(vals (glossary.db/glossaries-by-id (vec %)))) batches))))
+                               (events/delete-event (into [] (mapcat #(vals (glossary.db/glossaries-by-ids (vec %)))) batches))))
       (run! #(glossary.db/delete-glossaries! (vec %)) batches)))
   nil)
 

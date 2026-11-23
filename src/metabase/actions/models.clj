@@ -1,5 +1,6 @@
 (ns metabase.actions.models
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.collection-items :as actions.collection-items]
@@ -950,7 +951,7 @@
     (when-let [archived-ids (and (nil? (:writer opts)) (not-empty (newly-archived-ids stored action-rows)))]
       (t2/resolve-model :model/DashboardCard)
       (delete-for-archived-actions! :model/DashboardCard archived-ids))
-    (let [updated (actions.db/actions-by-id ids)]
+    (let [updated (actions.db/actions-by-ids ids)]
       {:stored  stored
        :updated updated
        :rows    (mapv (fn [row {:keys [changes]}]
@@ -962,7 +963,7 @@
 (defn- update-action-batch!
   "Checks and writes the Actions of `batch`, up to one partition of the call, and returns what the event needs."
   [batch opts]
-  (let [stored   (actions.db/actions-by-id (mapv :id batch))
+  (let [stored   (actions.db/actions-by-ids (mapv :id batch))
         details  (when (some #(seq (select-keys % detail-columns)) batch)
                    (into {} (map (juxt :action_id identity))
                          (concat (actions.db/query-actions (mapv :id batch))
@@ -993,7 +994,7 @@
   update event. A change of the details columns alone sets the update time of the Action, and a change of its `:type`
   replaces its QueryAction or ImplicitAction."
   [id      :- ::actions.schema/id
-   changes :- ::actions.schema/action.changes-with-details
+   changes :- (mut/dissoc ::actions.schema/action.update :id)
    opts    :- ::write-opts]
   (update-actions! [(assoc changes :id id)] opts)
   nil)
@@ -1006,7 +1007,7 @@
     (let [batches (partition-all mdb/delete-partition-size (distinct ids))]
       (when (seq batches)
         (events/publish-event! :event/action-delete
-                               (events/delete-event (into [] (mapcat #(vals (actions.db/actions-by-id (vec %)))) batches))))
+                               (events/delete-event (into [] (mapcat #(vals (actions.db/actions-by-ids (vec %)))) batches))))
       (run! #(actions.db/delete-actions! (vec %)) batches)))
   nil)
 

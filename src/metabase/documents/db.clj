@@ -91,6 +91,13 @@
     (t2/select :model/Document :id [:in ids])
     []))
 
+(mu/defn documents-by-ids
+  "The Documents with `ids`, by id."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select-pk->fn identity :model/Document :id [:in ids])
+    {}))
+
 (mu/defn insert-documents!
   "Insert the Document `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::documents.schema/document.create]]

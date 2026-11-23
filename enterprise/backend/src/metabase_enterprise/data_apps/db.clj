@@ -3,7 +3,6 @@
   model definitions and hydration methods."
   (:require
    [clojure.set :as set]
-   [metabase.app-db.core :as app-db]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -67,11 +66,6 @@
   [slug :- :string]
   (format "Data App: %s" slug))
 
-(mu/defn data-apps-by-ids :- [:map-of ms/PositiveInt ::data-apps.schema/data-app]
-  "The DataApps with `data-app-ids`, without their bundles, by id."
-  [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn identity non-blob-model :id [:in [:auto/param data-app-ids]]))
-
 (mu/defn data-app-ids-by-collection-ids :- [:map-of ms/PositiveInt [:set ms/PositiveInt]]
   "The ids of the DataApps whose resource collection is one of `collection-ids`, by that collection's id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
@@ -85,24 +79,6 @@
   "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
-
-(mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
-  "Insert the DataApp `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::data-apps.schema/data-app.create]]
-  (app-db/insert-returning-instances! :model/DataApp rows))
-
-(mu/defn update-data-apps! :- :nil
-  "Apply each of `updates`, the `:id` of a DataApp and the columns to change, with one statement for each set of columns
-  that rows have in common."
-  [updates :- [:sequential :map]]
-  (app-db/update-grouped! :model/DataApp updates)
-  nil)
-
-(mu/defn delete-data-apps! :- :nil
-  "Delete the DataApps with `data-app-ids`."
-  [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/DataApp :id [:in [:auto/param data-app-ids]])
-  nil)
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."

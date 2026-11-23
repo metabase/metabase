@@ -111,9 +111,11 @@
   (t2/select-one :model/Pulse :id pulse-id))
 
 (mu/defn pulses-by-ids
-  "The Pulses with `pulse-ids`."
-  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
-  (t2/select :model/Pulse :id [:in pulse-ids]))
+  "A map from id to the Pulse for each of `pulse-ids` that exists, archived or not."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (if (seq pulse-ids)
+    (t2/select-pk->fn identity :model/Pulse :id [:in pulse-ids])
+    {}))
 
 (mu/defn pulses-for-dashboards
   "The Pulses (subscriptions) of the Dashboards with `dashboard-ids`."

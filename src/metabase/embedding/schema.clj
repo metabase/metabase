@@ -19,21 +19,15 @@
     [:id         ms/PositiveInt]]])
 
 (mr/def ::embedding-theme.update
-  "What an update (or insert) of a EmbeddingTheme accepts: every column of `:embedding_theme` except `id`, all optional."
+  "What an update of a embedding theme takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id ms/PositiveInt]
    [:entity_id  {:optional true} [:maybe :string]]
    [:name       {:optional true} [:maybe :string]]
    [:settings   {:optional true} [:maybe ::embedding-theme.settings]]
    [:is_default {:optional true} [:maybe :boolean]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
-
-(mr/def ::embedding-theme.update-row
-  "What an update of the row names: its `:id` and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::embedding-theme.update])
 
 (mr/def ::embedding-theme.create
   "What a caller gives to create a EmbeddingTheme: its name and settings, and whether it is a seeded default."

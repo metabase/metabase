@@ -49,16 +49,6 @@
     [:created_at {:optional true} [:maybe ms/TemporalInstant]]
     [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
 
-(mr/def ::native-query-snippet.changes
-  "The columns to change, the same for every NativeQuerySnippet updated, its template tags as given."
-  [:merge
-   ::native-query-snippet.create
-   [:map {:closed true}
-    [:name       {:optional true} :string]
-    [:content    {:optional true} [:maybe :string]]
-    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
-
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}

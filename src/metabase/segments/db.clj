@@ -40,7 +40,7 @@
   []
   (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn segments-by-id
+(mu/defn segments-by-ids
   "A map of id to Segment for the Segments with `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn identity :model/Segment :id [:in ids]))

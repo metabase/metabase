@@ -200,7 +200,7 @@
 (defn- update-segment-batch!
   "Checks and writes the Segments of `batch`, up to one partition of the call, and returns what the event needs."
   [batch]
-  (let [stored (segments.db/segments-by-id (mapv :id batch))
+  (let [stored (segments.db/segments-by-ids (mapv :id batch))
         rows   (filterv #(contains? stored (:id %)) batch)]
     (check-segment-updates stored rows)
     (write-segment-updates! stored rows)))
@@ -214,12 +214,12 @@
                                                 (into [] (mapcat :rows) batches)
                                                 (assoc opts :objects (into {} (map :objects) batches))))))
 
-(mu/defn update-segments! :- [:sequential ::segments.schema/segment.update-row]
+(mu/defn update-segments! :- [:sequential ::segments.schema/segment.update]
   "Apply `updates`, each the `:id` of a Segment with the columns to give it, in one transaction, publishing their update
   event with the `:writer` and `:context` of `opts`. Returns `updates`."
-  ([updates :- [:sequential ::segments.schema/segment.update-row]]
+  ([updates :- [:sequential ::segments.schema/segment.update]]
    (update-segments! updates nil))
-  ([updates :- [:sequential ::segments.schema/segment.update-row]
+  ([updates :- [:sequential ::segments.schema/segment.update]
     opts    :- ::write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv update-segment-batch! (partition-all app-db/update-partition-size updates))]
@@ -235,7 +235,7 @@
       (delete-segment-tests-for-segments! ids)
       (when (seq batches)
         (events/publish-event! :event/segment-delete
-                               (events/delete-event (into [] (mapcat #(vals (segments.db/segments-by-id (vec %)))) batches))))
+                               (events/delete-event (into [] (mapcat #(vals (segments.db/segments-by-ids (vec %)))) batches))))
       (run! #(segments.db/delete-segments! (vec %)) batches)))
   nil)
 

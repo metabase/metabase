@@ -1,7 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
-   [medley.core :as m]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.serialization.core :as serialization]
@@ -30,24 +30,24 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-dashboard-card-series! :- [:sequential :map]
-  "Insert the DashboardCardSeries `rows` and return the inserted instances."
+  "Insert the DashboardCardSeries `rows` in one transaction and return the inserted instances."
   [rows :- [:sequential ::dashboards.schema/dashboard-card-series.create]]
-  (dashboards.db/insert-dashcard-series! rows))
+  (t2/with-transaction [_conn]
+    (into [] (mapcat (comp dashboards.db/insert-dashcard-series! vec))
+          (partition-all app-db/create-partition-size rows))))
 
-(mu/defn update-dashboard-card-series! :- [:sequential :map]
-  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardCardSeries, and return the rows of the
-  series that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard-card-series.update]]
-  (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashcard-series-by-ids (mapv :id rows)) []))
-        rows   (filterv #(contains? stored (:id %)) rows)]
-    (dashboards.db/update-dashcard-series! rows)
-    rows))
+(mu/defn update-dashboard-card-series! :- :nil
+  "Apply the columns of each of `updates`, each holding the `:id` of its DashboardCardSeries, in one transaction."
+  [updates :- [:sequential ::dashboards.schema/dashboard-card-series.update]]
+  (t2/with-transaction [_conn]
+    (run! (comp dashboards.db/update-dashcard-series! vec) (partition-all app-db/update-partition-size updates)))
+  nil)
 
 (mu/defn delete-dashboard-card-series! :- :nil
-  "Delete the DashboardCardSeries with `series-ids`."
+  "Delete the DashboardCardSeries with `series-ids` in one transaction."
   [series-ids :- [:sequential ms/PositiveInt]]
-  (when (seq series-ids)
-    (dashboards.db/delete-dashcard-series! (vec series-ids)))
+  (t2/with-transaction [_conn]
+    (run! (comp dashboards.db/delete-dashcard-series! vec) (partition-all app-db/delete-partition-size series-ids)))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
@@ -61,7 +61,7 @@
    :copy      [:position]
    :parent    {:model :model/DashboardCard :key :dashboardcard_id :order :position}
    :insert!   create-dashboard-card-series!
-   :update!   update-dashboard-card-series!
+   :update!   #(do (update-dashboard-card-series! %) %)
    :delete!   delete-dashboard-card-series!
    :transform {:dashboardcard_id serialization/import-only-transform
                :card_id (serialization/fk-transform :model/Card)}})

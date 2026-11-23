@@ -62,13 +62,6 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
-(mr/def ::auth-identity.update-row
-  "What an update of an AuthIdentity takes: its `:id` and the columns to set."
-  [:merge
-   ::auth-identity.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
-
 (mr/def ::auth-identity.create
   "What [[metabase.auth-identity.models.auth-identity/create-auth-identity!]] takes: the columns of a new AuthIdentity
   a caller gives."
@@ -82,8 +75,9 @@
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::auth-identity.update
-  "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
+  "What an update of an AuthIdentity takes: its `:id` and every other column of `:auth_identity`, all optional."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:provider     {:optional true} [:maybe [:or :keyword :string]]]
    [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]

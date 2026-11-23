@@ -103,7 +103,7 @@
   [rows :- [:sequential ::comments.schema/comment.create]]
   (app-db/insert-returning-instances! :model/Comment rows))
 
-(mu/defn comments-by-id
+(mu/defn comments-by-ids
   "A map of id to Comment for the Comments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Comment :id [:in ids]))

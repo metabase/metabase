@@ -89,7 +89,7 @@
   "Apply `updates`, each the `:id` of an ExplorationQuery with the columns to give it, in one transaction, and return the
   number updated."
   [updates :- [:sequential [:and
-                            ::explorations.schema/exploration-query.update-row
+                            ::explorations.schema/exploration-query.update
                             ::explorations.schema/exploration-query.update.stamped-together]]]
   (t2/with-transaction [_conn]
     (transduce (map write-query-updates!) + 0 (partition-all app-db/update-partition-size updates))))

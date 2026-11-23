@@ -268,23 +268,14 @@
     (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (slug->collection (:slug %))))
           apps)))
 
-(defn- create-data-app-batch!
-  "Check and insert `apps`, one batch of a call, and return the inserted DataApps."
-  [apps]
-  (check-new-data-apps apps)
-  (data-apps.db/insert-data-apps! (create-resource-collections! apps)))
-
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert `apps` in one transaction, publishing their create event, and return the inserted DataApps. An app without a
   resource collection gets one of its own, named after its slug."
   [apps :- [:sequential ::data-apps.schema/data-app.create]]
-  (t2/with-transaction [_conn]
-    (let [created (into []
-                        (mapcat (comp create-data-app-batch! vec))
-                        (partition-all app-db/create-partition-size apps))]
-      (when (seq created)
-        (events/publish-event! :event/data-app-create (events/create-event created)))
-      created)))
+  (app-db/create-batched! :model/DataApp apps
+                          {:check-fn   check-new-data-apps
+                           :prepare-fn create-resource-collections!
+                           :publish-fn #(events/publish-event! :event/data-app-create (events/create-event %))}))
 
 (defn- without-held-bundles
   "The `updates` of an import without the bundle that the stored app of the row already holds."
@@ -306,50 +297,36 @@
     (check-shared-resource-collection (map :resource_collection_id first-collections))
     (check-resource-collections (into {} (map (juxt :resource_collection_id :id)) first-collections))))
 
-(defn- update-data-app-batch!
-  "Check and write `updates`, one batch of a call, and return the rows written with the DataApps by id as stored before
-  and after."
-  [updates opts]
-  (let [ids        (mapv :id updates)
-        id->stored (data-apps.db/data-apps-by-ids ids)
-        updates    (cond-> updates
-                     (= :import (:writer opts)) (without-held-bundles id->stored))]
-    (check-data-app-updates updates id->stored)
-    (data-apps.db/update-data-apps! updates)
-    {:updates     updates
-     :id->stored  id->stored
-     :id->updated (data-apps.db/data-apps-by-ids ids)}))
-
 (mu/defn update-data-apps! :- :nil
   "Apply `updates`, each the `:id` of a DataApp and the columns to change, in one transaction, publishing their update
   event. With `:writer :import` an app does not write a bundle that the stored app already holds."
-  ([updates :- [:sequential ::data-apps.schema/data-app.update-row]]
+  ([updates :- [:sequential ::data-apps.schema/data-app.update]]
    (update-data-apps! updates nil))
-  ([updates :- [:sequential ::data-apps.schema/data-app.update-row]
+  ([updates :- [:sequential ::data-apps.schema/data-app.update]
     opts    :- [:maybe [:map {:closed true} [:writer {:optional true} [:enum :import]]]]]
-   (t2/with-transaction [_conn]
-     (let [batches (mapv #(update-data-app-batch! (vec %) opts)
-                         (partition-all app-db/update-partition-size updates))]
-       (when (seq batches)
-         (events/publish-event! :event/data-app-update
-                                (events/update-event (into {} (map :id->stored) batches)
-                                                     (into [] (mapcat :updates) batches)
-                                                     {:objects (into {} (map :id->updated) batches)})))))
-   nil))
+   (app-db/update-batched! :model/DataApp updates
+                           {:check-fn   check-data-app-updates
+                            :prepare-fn (fn [updates id->stored]
+                                          (cond-> updates
+                                            (= :import (:writer opts)) (without-held-bundles id->stored)))
+                            :reread?    true
+                            :publish-fn (fn [updates id->stored id->updated]
+                                          (events/publish-event! :event/data-app-update
+                                                                 (events/update-event id->stored updates {:objects id->updated})))})))
+
+(defn- delete-resource-collections!
+  "Delete the resource collections of `apps`, with the grants on them; the hooks of a collection delete what it holds."
+  [apps]
+  (when-let [collection-ids (seq (keep :resource_collection_id apps))]
+    (collection/delete-collections! (vec collection-ids))))
 
 (mu/defn delete-data-apps! :- :nil
-  "Delete the DataApps with `ids` in one transaction, each after its resource collection with the grants on it,
-  publishing their delete event. The hooks of the collection delete what it holds."
+  "Delete the DataApps with `ids` in one transaction, each after its resource collection, publishing their delete
+  event."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/with-transaction [_conn]
-    (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))
-          apps    (into [] (mapcat (comp vals data-apps.db/data-apps-by-ids)) batches)]
-      (when (seq apps)
-        (when-let [collection-ids (seq (keep :resource_collection_id apps))]
-          (collection/delete-collections! (vec collection-ids)))
-        (events/publish-event! :event/data-app-delete (events/delete-event apps))
-        (run! data-apps.db/delete-data-apps! batches))))
-  nil)
+  (app-db/delete-batched! :model/DataApp ids
+                          {:cascade-fn delete-resource-collections!
+                           :publish-fn #(events/publish-event! :event/data-app-delete (events/delete-event %))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

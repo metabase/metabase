@@ -188,7 +188,7 @@
   - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one"
   [memberships]
   (when (seq memberships)
-    (let [members           (u/index-by :id (permissions.db/member-flags (into #{} (map :user_id) memberships)))
+    (let [members           (permissions.db/member-flags-by-user-ids (into #{} (map :user_id) memberships))
           group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))]
       (doseq [membership memberships
               :let       [member (get members (:user_id membership))]]
@@ -276,28 +276,37 @@
           :when (not (contains? existing [user-id group-id]))]
       {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})))
 
+(defn- create-membership-batch!
+  "Check and insert `memberships`, one batch of a call, and return the inserted PermissionsGroupMemberships."
+  [memberships]
+  (check-magic-group-members-unchanged (map :group_id memberships))
+  (check-can-add-to-data-analyst-group (map :group_id memberships))
+  (check-members memberships)
+  (permissions.db/insert-group-memberships! memberships))
+
+(defn- set-new-member-flags!
+  "Set the flags that the `created` memberships imply on their Users, publishing the events of the writes with `opts`."
+  [created opts]
+  (set-member-flags! (cond->> created
+                       (not *update-user-when-added-to-admin-group?*)
+                       (remove #(= (:id (perms-group/admin)) (:group_id %))))
+                     true
+                     opts))
+
 (mu/defn add-users-to-groups! :- :nil
-  "Create the memberships of the `pgms`, maps of a user, a group and `:is-group-manager?`, that do not exist yet,
-  publishing the events of the writes with `opts`."
+  "Create the memberships of the `pgms`, maps of a user, a group and `:is-group-manager?`, that do not exist yet, in
+  one transaction, publishing their create event with `opts`."
   ([pgms :- ::new-memberships]
    (add-users-to-groups! pgms nil))
   ([pgms :- ::new-memberships
     opts :- [:maybe ::write-opts]]
    (when (seq pgms)
-     (let [memberships (missing-memberships (requested-memberships pgms))]
-       (when (seq memberships)
-         (t2/with-transaction [_conn]
-           (check-magic-group-members-unchanged (map :group_id memberships))
-           (check-can-add-to-data-analyst-group (map :group_id memberships))
-           (check-members memberships)
-           (let [created (into [] (mapcat (comp permissions.db/insert-group-memberships! vec))
-                               (partition-all app-db/create-partition-size memberships))]
-             (events/publish-event! :event/group-membership-create (events/create-event created opts))
-             (set-member-flags! (cond->> created
-                                  (not *update-user-when-added-to-admin-group?*)
-                                  (remove #(= (:id (perms-group/admin)) (:group_id %))))
-                                true
-                                opts))))))
+     (t2/with-transaction [_conn]
+       (let [created (into [] (mapcat (comp create-membership-batch! vec))
+                           (partition-all app-db/create-partition-size (missing-memberships (requested-memberships pgms))))]
+         (when (seq created)
+           (events/publish-event! :event/group-membership-create (events/create-event created opts))
+           (set-new-member-flags! created opts)))))
    nil))
 
 (mu/defn remove-users-from-groups! :- :nil
@@ -315,46 +324,42 @@
    nil))
 
 (defn- check-membership-updates
-  "Throws a 400 unless every row of `updates`, whose stored memberships `stored` holds, satisfies these rules, with the
-  refusal of the first row that breaks one, in this order for each:
+  "Throws a 400 unless every row of `updates`, whose stored memberships `id->stored` holds, satisfies these rules, with
+  the refusal of the first row that breaks one, in this order for each:
 
   - a new group manager is neither a tenant user nor an admin
   - the hooks of the membership accept the row merged into its stored row (its user and group do not change)"
-  [stored updates]
-  (let [user-ids (into #{} (keep (fn [{id :id :as row}] (when (:is_group_manager row) (:user_id (stored id))))) updates)
-        members  (if (seq user-ids) (u/index-by :id (permissions.db/member-flags user-ids)) {})]
+  [updates id->stored]
+  (let [user-ids (into #{} (keep (fn [{id :id :as row}] (when (:is_group_manager row) (:user_id (id->stored id))))) updates)
+        members  (if (seq user-ids) (permissions.db/member-flags-by-user-ids user-ids) {})]
     (doseq [{id :id :as row} updates
             :let [changes (dissoc row :id)
-                  before  (stored id)]]
+                  before  (id->stored id)]]
       (when (:is_group_manager changes)
         (check-group-manager-member (merge before changes) (get members (:user_id before))))
       (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))))
 
-(defn- write-membership-updates!
-  "Write `updates` over their stored memberships, a statement per row."
-  [updates]
-  (permissions.db/update-group-memberships! updates))
-
 (defn- update-membership-batch!
-  "Check and apply the `batch` of updates whose memberships exist, returning them with their stored memberships."
+  "Check and write the rows of `batch` whose memberships exist, one batch of a call, and return the rows written with
+  the memberships by id as stored before."
   [batch]
-  (let [stored  (u/index-by :id (permissions.db/group-memberships-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (check-membership-updates stored updates)
-    (write-membership-updates! updates)
-    {:stored stored :updates updates}))
+  (let [id->stored (permissions.db/group-memberships-by-ids (mapv :id batch))
+        updates    (filterv (comp id->stored :id) batch)]
+    (check-membership-updates updates id->stored)
+    (permissions.db/update-group-memberships! updates)
+    {:updates updates :id->stored id->stored}))
 
-(mu/defn update-permissions-group-memberships! :- [:sequential ::permissions.schema/permissions-group-membership.update]
-  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroupMemberships in one transaction and return
-  the rows that exist, publishing their update event; making a tenant user or an admin a group manager is a 400."
+(mu/defn update-permissions-group-memberships! :- :nil
+  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroupMemberships in one transaction, publishing
+  their update event; making a tenant user or an admin a group manager is a 400."
   [rows :- [:sequential ::permissions.schema/permissions-group-membership.update]]
   (t2/with-transaction [_conn]
-    (let [written (mapv update-membership-batch! (partition-all app-db/update-partition-size rows))
-          stored  (into {} (map :stored) written)
-          updates (into [] (mapcat :updates) written)]
+    (let [batches (mapv (comp update-membership-batch! vec) (partition-all app-db/update-partition-size rows))
+          updates (into [] (mapcat :updates) batches)]
       (when (seq updates)
-        (events/publish-event! :event/group-membership-update (events/update-event stored updates)))
-      updates)))
+        (events/publish-event! :event/group-membership-update
+                               (events/update-event (into {} (map :id->stored) batches) updates)))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -40,6 +40,11 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
+(mu/defn databases-by-ids :- [:map-of ::lib.schema.id/database :map]
+  "The Databases with `database-ids`, by id."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (into {} (t2/select-fn->fn :id identity :model/Database :id [:in database-ids])))
+
 (mu/defn database-by-name
   "The Database named `database-name`, or nil."
   [database-name :- :string]
@@ -59,7 +64,7 @@
 (mu/defn update-databases!
   "Apply `rows`, each the id of a Database and the columns to change, with one plain update for the rows that get the
   same changes."
-  [rows :- [:sequential ::warehouses.schema/database.update]]
+  [rows :- [:sequential :map]]
   (mdb/update-grouped! :model/Database rows))
 
 (mu/defn delete-databases!

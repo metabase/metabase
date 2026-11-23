@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -117,13 +116,13 @@
 
 (mu/defn insert-table-indexes!
   "Insert the TableIndex `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} ::indexes.schema/table-index.update]]
+  [rows :- [:sequential {:min 1} :map]]
   (t2/insert-returning-instances! :model/TableIndex rows))
 
 (mu/defn update-table-indexes!
   "Apply `rows`, each the id of a TableIndex and the columns to change, with one plain update for the rows that get the
   same changes."
-  [rows :- [:sequential ::indexes.schema/table-index]]
+  [rows :- [:sequential :map]]
   (mdb/update-grouped! :model/TableIndex rows))
 
 (mu/defn mark-table-index-failed!

@@ -281,14 +281,14 @@
   snippets after the write."
   [stored rows]
   (native-query-snippets.db/update-snippets! rows)
-  (let [updated (native-query-snippets.db/snippets-by-id (mapv :id rows))]
+  (let [updated (native-query-snippets.db/snippets-by-ids (mapv :id rows))]
     {:stored stored :rows (derive-archived-directly rows updated) :updated updated}))
 
 (defn- update-snippet-batch!
   "Checks and writes the snippets of `batch`, up to one partition of the call, and returns what the event needs. With
   `:writer :import` each is renamed with ` (copy)` suffixes until no other snippet, or earlier row, holds its name."
   [batch opts]
-  (let [stored (native-query-snippets.db/snippets-by-id (mapv :id batch))
+  (let [stored (native-query-snippets.db/snippets-by-ids (mapv :id batch))
         rows   (cond-> (filterv #(contains? stored (:id %)) batch)
                  (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names stored))
         rows   (assoc-snippet-template-tags rows stored)]
@@ -324,7 +324,7 @@
     (let [batches (partition-all app-db/delete-partition-size ids)]
       (when (seq batches)
         (events/publish-event! :event/snippet-delete
-                               (events/delete-event (into [] (mapcat #(vals (native-query-snippets.db/snippets-by-id (vec %)))) batches))))
+                               (events/delete-event (into [] (mapcat #(vals (native-query-snippets.db/snippets-by-ids (vec %)))) batches))))
       (run! #(native-query-snippets.db/delete-snippets! (vec %)) batches)))
   nil)
 

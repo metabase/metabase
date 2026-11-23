@@ -98,27 +98,32 @@
   [rows]
   (collection/check-collections-for-model! :model/Timeline rows))
 
+(defn- create-timeline-batch!
+  "Check and insert `rows`, one batch of a call, and return the new Timelines."
+  [rows]
+  (check-timelines (map #(update % :archived boolean) rows))
+  (timeline.db/insert-timelines! rows))
+
 (mu/defn create-timelines! :- [:sequential (ms/InstanceOf :model/Timeline)]
   "Insert the Timeline `rows` and return the inserted instances, in one transaction, publishing their create event. A
   Timeline in a Collection that cannot hold it, or in an archived Collection unless it is archived, throws."
   [rows :- [:sequential ::timeline.schema/timeline.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (check-timelines (map #(update % :archived boolean) rows))
-      (let [timelines (timeline.db/insert-timelines! rows)]
-        (events/publish-event! :event/timeline-create (events/create-event timelines))
-        timelines))))
+  (t2/with-transaction [_conn]
+    (let [created (into [] (mapcat (comp create-timeline-batch! vec))
+                        (partition-all app-db/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/timeline-create (events/create-event created)))
+      created)))
 
 (defn- carry-to-events!
-  "Set the archived flag of the TimelineEvents of the Timelines that `rows`, updates with their `stored` Timelines,
+  "Set the archived flag of the TimelineEvents of the Timelines that `rows`, updates of the Timelines `id->stored`,
   archive or restore on their own, one write for each direction."
-  [rows stored]
+  [rows id->stored]
   (let [changing (filter (fn [{:keys [id archived]}]
-                           (and (some? archived) (not= (boolean archived) (boolean (:archived (get stored id))))))
+                           (and (some? archived) (not= (boolean archived) (boolean (:archived (get id->stored id))))))
                          rows)
         direct?  (fn [{:keys [id archived archived_directly]}]
-                   (if archived archived_directly (:archived_directly (get stored id))))]
+                   (if archived archived_directly (:archived_directly (get id->stored id))))]
     (doseq [[archive? group] (group-by (comp boolean :archived) changing)
             :let             [ids (into [] (comp (filter direct?) (map :id)) group)]
             :when            (seq ids)]
@@ -126,11 +131,6 @@
        (mapv (fn [event-id] {:id event-id :archived archive?})
              (mapv :id (timeline.db/events-of-timelines-by-archived ids (not archive?))))
        {:context {:archived-with [:model/Timeline (first ids)]}}))))
-
-(defn- update-timeline-groups!
-  "Writes `rows`, each the `:id` of a Timeline with its changes, with one statement for each distinct set of changes."
-  [rows]
-  (timeline.db/update-timelines! rows))
 
 (defn- derive-archived-directly
   "`rows`, with the `archived_directly` that the write gave each of those that change `archived`, read from `updated`, the
@@ -142,42 +142,28 @@
         rows))
 
 (defn- check-timeline-updates
-  "Throw a 400 unless every one of `rows`, updates of the `stored` Timelines that move, satisfies these rules:
+  "Throw a 400 unless every one of `rows`, updates of the Timelines `id->stored` that move, satisfies these rules:
 
   - its Collection is in a namespace that holds Timelines
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Timeline is"
-  [stored rows]
+  [id->stored rows]
   (check-timelines (for [row rows
                          :when (contains? row :collection_id)]
-                     (update (merge (get stored (:id row)) row) :archived boolean))))
-
-(defn- write-timeline-updates!
-  "Writes `rows`, updates of the `stored` Timelines, carries their archive to their events, and returns the stored
-  Timelines, the changes of each row and the Timelines after the write, for the update event."
-  [stored rows]
-  (update-timeline-groups! rows)
-  (let [updated (timeline.db/timelines-by-id (mapv :id rows))
-        rows    (derive-archived-directly rows updated)]
-    (carry-to-events! rows stored)
-    {:stored stored :rows rows :updated updated}))
+                     (update (merge (get id->stored (:id row)) row) :archived boolean))))
 
 (defn- update-timeline-batch!
-  "Checks and writes the Timelines of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch]
-  (let [stored (timeline.db/timelines-by-id (mapv :id batch))
-        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) batch)]
-    (check-timeline-updates stored rows)
-    (write-timeline-updates! stored rows)))
-
-(defn- publish-timeline-updates!
-  "Publishes the update event of the Timelines that `batches`, what [[update-timeline-batch!]] returned, wrote."
-  [batches opts]
-  (when (some (comp seq :rows) batches)
-    (events/publish-event! :event/timeline-update
-                           (events/update-event (into {} (map :stored) batches)
-                                                (into [] (mapcat :rows) batches)
-                                                (assoc opts :objects (into {} (map :updated) batches))))))
+  "Check and write `updates`, one batch of a call, and return the rows written, the Timelines by id as stored before
+  and as they are after."
+  [updates]
+  (let [id->stored (timeline.db/timelines-by-ids (mapv :id updates))
+        updates    (filterv #(and (contains? id->stored (:id %)) (seq (dissoc % :id))) updates)
+        _          (check-timeline-updates id->stored updates)
+        _          (timeline.db/update-timelines! updates)
+        id->updated (timeline.db/timelines-by-ids (mapv :id updates))
+        updates    (derive-archived-directly updates id->updated)]
+    (carry-to-events! updates id->stored)
+    {:updates updates :id->stored id->stored :id->updated id->updated}))
 
 (mu/defn update-timelines! :- :nil
   "Applies `updates`, each the `:id` of a Timeline with the changes it gets, in one transaction, publishing their update
@@ -187,8 +173,12 @@
   ([updates :- [:sequential ::timeline.schema/timeline.update]
     opts    :- ::timeline.schema/write-opts]
    (t2/with-transaction [_conn]
-     (let [batches (mapv update-timeline-batch! (partition-all app-db/update-partition-size updates))]
-       (publish-timeline-updates! batches opts)))
+     (let [batches (mapv #(update-timeline-batch! (vec %)) (partition-all app-db/update-partition-size updates))]
+       (when (some (comp seq :updates) batches)
+         (events/publish-event! :event/timeline-update
+                                (events/update-event (into {} (map :id->stored) batches)
+                                                     (into [] (mapcat :updates) batches)
+                                                     (assoc opts :objects (into {} (map :id->updated) batches)))))))
    nil))
 
 (mu/defn delete-timelines! :- :nil
@@ -196,11 +186,11 @@
   first statement."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size ids)]
-      (when (seq batches)
-        (events/publish-event! :event/timeline-delete
-                               (events/delete-event (into [] (mapcat #(vals (timeline.db/timelines-by-id (vec %)))) batches))))
-      (run! #(timeline.db/delete-timelines! (vec %)) batches)))
+    (let [batches   (mapv vec (partition-all app-db/delete-partition-size (distinct ids)))
+          timelines (into [] (mapcat (comp vals timeline.db/timelines-by-ids)) batches)]
+      (when (seq timelines)
+        (events/publish-event! :event/timeline-delete (events/delete-event timelines)))
+      (run! timeline.db/delete-timelines! batches)))
   nil)
 
 (defmethod collection/archive-in-collections! :model/Timeline

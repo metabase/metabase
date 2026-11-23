@@ -88,10 +88,10 @@
   [rows :- [:sequential ::tenant.insert]]
   (app-db/insert-returning-instances! :model/Tenant rows))
 
-(mu/defn tenants-by-ids
-  "The Tenants with `tenant-ids`."
+(mu/defn tenants-by-ids :- [:map-of ms/PositiveInt ::tenants.schema/tenant]
+  "The map from id to Tenant of the Tenants with `tenant-ids`."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
+  (t2/select-pk->fn identity :model/Tenant :id [:in [:auto/param (vec tenant-ids)]]))
 
 (mu/defn update-tenants!
   "Apply each of `rows`, the `:id` of a Tenant and the columns to set, one statement per distinct change, in the order
@@ -110,10 +110,10 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn active-tenants
-  "Every active Tenant."
+(mu/defn active-tenants-by-ids :- [:map-of ms/PositiveInt ::tenants.schema/tenant]
+  "The map from id to Tenant of every active Tenant."
   []
-  (t2/select :model/Tenant :is_active true))
+  (t2/select-pk->fn identity :model/Tenant :is_active true))
 
 (mu/defn deactivate-tenants!
   "Deactivate the Tenants with `tenant-ids`, returning the number updated."

@@ -151,10 +151,10 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-by-id
-  "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
+(mu/defn fields-by-ids :- [:map-of ::lib.schema.id/field :map]
+  "The Fields with `field-ids`, by id."
+  [field-ids :- [:sequential [:maybe ::lib.schema.id/field]]]
+  (into {} (t2/select-fn->fn :id identity :model/Field :id [:in field-ids])))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
@@ -264,7 +264,7 @@
 
 (mu/defn update-fields!
   "Apply `rows`, each the id of a Field and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/Field rows))
 
 (mu/defn delete-fields!
@@ -479,7 +479,7 @@
 
 (mu/defn update-field-user-settings-rows!
   "Apply `rows`, each the id of a FieldUserSettings and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/FieldUserSettings rows))
 
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
@@ -520,7 +520,7 @@
 
 (mu/defn update-table-user-settings-rows!
   "Apply `rows`, each the id of a TableUserSettings and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/TableUserSettings rows))
 
 (mu/defn delete-table-user-settings-by-ids!
@@ -644,7 +644,7 @@
 
 (mu/defn update-dimensions!
   "Apply `rows`, each the id of a Dimension and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/Dimension rows))
 
 (mu/defn delete-dimensions!
@@ -677,7 +677,7 @@
 
 (mu/defn update-field-values!
   "Apply `rows`, each the id of a FieldValues and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/field-values.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/FieldValues rows))
 
 (mu/defn full-field-values
@@ -777,10 +777,10 @@
                       :id [:in table-ids])
     {}))
 
-(mu/defn tables-by-ids
-  "The Tables with `table-ids`."
+(mu/defn tables-by-ids :- [:map-of ::lib.schema.id/table :map]
+  "The Tables with `table-ids`, by id."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (into {} (t2/select-fn->fn :id identity :model/Table :id [:in table-ids])))
 
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
@@ -813,7 +813,7 @@
 
 (mu/defn update-tables!
   "Apply `rows`, each the id of a Table and the columns to change, one update per distinct change."
-  [rows :- [:sequential ::warehouse-schema.schema/table.update]]
+  [rows :- [:sequential :map]]
   (app-db/update-grouped! :model/Table rows))
 
 (mu/defn tables

@@ -37,8 +37,9 @@
   ms/NonBlankString)
 
 (mr/def ::segment.update
-  "What an update of a Segment takes: the columns to change, every column of `:segment` but its id."
+  "What an update of a segment takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id ::lib.schema.id/segment]
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
    [:name                    {:optional true} [:maybe ::segment.name]]
@@ -52,18 +53,11 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
-(mr/def ::segment.update-row
-  "What an update of a Segment takes per row: the `:id` of the Segment and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ::lib.schema.id/segment]]
-   ::segment.update])
-
 (mr/def ::segment
   "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
   hydrate onto it."
   [:merge
-   ::segment.update-row
+   ::segment.update
    [:map {:closed true}
     [:id                      ms/PositiveInt]
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]

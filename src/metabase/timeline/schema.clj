@@ -45,15 +45,6 @@
     [:created_at {:optional true} [:maybe ms/TemporalInstant]]
     [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
 
-(mr/def ::timeline.changes
-  "The columns to change, the same for every Timeline updated."
-  [:merge
-   ::timeline.create
-   [:map {:closed true}
-    [:name       {:optional true} ::name]
-    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
-
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
   [:merge
@@ -81,17 +72,6 @@
    ::timeline-event.create
    [:map {:closed true}
     [:id           ms/PositiveInt]
-    [:timeline_id  {:optional true} ms/PositiveInt]
-    [:name         {:optional true} ::name]
-    [:timestamp    {:optional true} ms/TemporalInstant]
-    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]]])
-
-(mr/def ::timeline-event.changes
-  "The columns to change, the same for every TimelineEvent updated."
-  [:merge
-   ::timeline-event.create
-   [:map {:closed true}
     [:timeline_id  {:optional true} ms/PositiveInt]
     [:name         {:optional true} ::name]
     [:timestamp    {:optional true} ms/TemporalInstant]

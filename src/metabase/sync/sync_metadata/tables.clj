@@ -428,8 +428,9 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(count (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}]
-                                                {:tables [table]}))]
+                  (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}]
+                                        {:tables [table]})
+                  [1]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

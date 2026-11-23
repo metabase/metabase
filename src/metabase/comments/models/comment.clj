@@ -256,7 +256,7 @@
 (defn- update-comment-batch!
   "Writes the Comments of `batch`, up to one partition of the call, and returns what the event needs."
   [batch]
-  (let [stored (comments.db/comments-by-id (mapv :id batch))
+  (let [stored (comments.db/comments-by-ids (mapv :id batch))
         rows   (filterv #(contains? stored (:id %)) batch)]
     (write-comment-updates! rows)
     {:stored stored :rows rows}))
@@ -264,7 +264,7 @@
 (mu/defn update-comments! :- :nil
   "Apply `updates`, each the `:id` of a Comment with the columns to give it, in one transaction, publishing one update
   event for all of them."
-  [updates :- [:sequential ::comments.schema/comment.update-row]]
+  [updates :- [:sequential ::comments.schema/comment.update]]
   (t2/with-transaction [_conn]
     (let [batches (mapv update-comment-batch! (partition-all app-db/update-partition-size updates))]
       (when (some (comp seq :rows) batches)
@@ -276,11 +276,11 @@
 (defn- soft-delete-comment-batch!
   "Marks the Comments of `batch` deleted, and returns what the event needs."
   [batch]
-  (let [stored (comments.db/comments-by-id (vec batch))]
+  (let [stored (comments.db/comments-by-ids (vec batch))]
     (when (seq stored)
       (comments.db/soft-delete-comments! (vec (keys stored))))
     {:stored  stored
-     :objects (comments.db/comments-by-id (vec (keys stored)))}))
+     :objects (comments.db/comments-by-ids (vec (keys stored)))}))
 
 (mu/defn soft-delete-comments! :- :nil
   "Mark the Comments with `ids` deleted now in one transaction, publishing their update event."

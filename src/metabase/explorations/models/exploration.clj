@@ -223,9 +223,9 @@
 (mu/defn update-explorations! :- :nil
   "Apply `updates`, each the `:id` of an Exploration with the columns to give it, in one transaction, publishing their
   update event with the `:context` of `opts`."
-  ([updates :- [:sequential ::explorations.schema/exploration.update-row]]
+  ([updates :- [:sequential ::explorations.schema/exploration.update]]
    (update-explorations! updates nil))
-  ([updates :- [:sequential ::explorations.schema/exploration.update-row]
+  ([updates :- [:sequential ::explorations.schema/exploration.update]
     opts    :- ::write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv #(update-exploration-batch! % opts) (partition-all app-db/update-partition-size updates))]

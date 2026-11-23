@@ -428,13 +428,19 @@
         (when (get group-id->tenant? group_id)
           (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
 
-(mu/defn create-permissions!
-  "Insert the Permissions `rows`. A row for the Admin group, or one granting a tenant group what tenant groups cannot
-  hold, is a 400."
-  [rows :- [:sequential ::permissions.schema/permissions.create]]
+(defn- create-permissions-batch!
+  "Check and insert `rows`, one batch of a call, returning the number inserted."
+  [rows]
   (check-tenant-group-grants rows)
   (run! assert-not-admin-group rows)
   (permissions.db/insert-permissions! rows))
+
+(mu/defn create-permissions! :- ms/IntGreaterThanOrEqualToZero
+  "Insert the Permissions `rows` in one transaction, returning the number inserted. A row for the Admin group, or one
+  granting a tenant group what tenant groups cannot hold, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions.create]]
+  (t2/with-transaction [_conn]
+    (transduce (map (comp create-permissions-batch! vec)) + 0 (partition-all app-db/create-partition-size rows))))
 
 (defn- check-permissions-deletable
   "Throws a 400 unless every one of the Permissions `rows` satisfies these rules:
@@ -463,11 +469,13 @@
   permissions.db/database-permission-ids)
 
 (mu/defn delete-permissions-for-objects! :- [:maybe :int]
-  "Delete every Permissions row for `objects`, in one raw statement, returning the number deleted. Unlike
-  [[delete-permissions!]] it deletes the Admin group's rows too: a Collection that moves into the tenant-specific
-  namespace keeps no Permissions rows at all."
+  "Delete every Permissions row for `objects`, in one raw statement per `app-db/delete-partition-size` objects,
+  returning the number deleted; unlike [[delete-permissions!]] it deletes the Admin group's rows too, since a
+  Collection that moves into the tenant-specific namespace keeps no Permissions rows at all."
   [objects :- [:sequential :string]]
-  (permissions.db/delete-permissions-with-objects! objects))
+  (t2/with-transaction [_conn]
+    (transduce (map (comp permissions.db/delete-permissions-with-objects! vec)) + 0
+               (partition-all app-db/delete-partition-size objects))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

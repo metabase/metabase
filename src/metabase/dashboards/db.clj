@@ -115,6 +115,13 @@
    changes       :- (mut/dissoc ::dashboards.schema/dashboard.update :id)]
   (t2/update! :model/Dashboard :id [:in dashboard-ids] changes))
 
+(mu/defn dashboards-by-ids
+  "The Dashboards with `dashboard-ids`, by id."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select-pk->fn identity :model/Dashboard :id [:in dashboard-ids])
+    {}))
+
 (defn archived-directly-clause
   "The HoneySQL expression that sets `archived_directly` of a Dashboard when an update that makes `changes` sets
   `archived`: false when it restores, else false when the Collection the Dashboard is in after the update, the one
@@ -311,6 +318,11 @@
   "The DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select :model/DashboardCard :id [:in dashcard-ids]))
+
+(mu/defn id->dashcard
+  "The DashboardCards with `dashcard-ids`, by id."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/select-pk->fn identity :model/DashboardCard :id [:in dashcard-ids]))
 
 (mu/defn dashcards-in-tabs
   "The DashboardCards of the Dashboard with `dashboard-id` on the DashboardTabs with `tab-ids`."

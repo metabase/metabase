@@ -357,10 +357,9 @@
                              [{:id member :is_group_manager true}
                               {:id admin :is_group_manager true}])))
       (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id member))))
-    (testing "the rows that exist are returned"
-      (is (= [{:id member :is_group_manager true}]
-             (perms-group-membership/update-permissions-group-memberships!
-              [{:id member :is_group_manager true} {:id Integer/MAX_VALUE :is_group_manager true}])))
+    (testing "a row whose membership does not exist is skipped and the others are written"
+      (is (nil? (perms-group-membership/update-permissions-group-memberships!
+                 [{:id member :is_group_manager true} {:id Integer/MAX_VALUE :is_group_manager true}])))
       (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :id member))))))
 
 (deftest memberships-of-more-users-than-one-batch-are-written-completely-test

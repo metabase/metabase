@@ -178,7 +178,7 @@
                    :field_id                warehouse-schema.serialization/dimension-field-id-transform}
    :storage-paths warehouse-schema.serialization/dimension-storage-paths
    :insert!       create-dimensions!
-   :update!       update-dimensions!
+   :update!       #(do (update-dimensions! %) %)
    :delete!       delete-dimensions!
    :rows-by-refs  serialization/dimension-rows-by-refs})
 

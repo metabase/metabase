@@ -1996,18 +1996,18 @@
   #{:display :visualization_settings :dataset_query :collection_id :type :result_metadata :enable_embedding :public_uuid})
 
 (defn- assoc-dashboard-collections
-  "`updates`, with the Collection of the Dashboard that each moves its Card into, which `before`, the Cards by id, do not
+  "`updates`, with the Collection of the Dashboard that each moves its Card into, which `id->stored`, the Cards by id, do not
   have it in."
-  [updates before]
+  [updates id->stored]
   (let [dashboards (queries.db/dashboards-for-placement
                     (into #{}
                           (keep #(when-let [dashboard-id (:dashboard_id %)]
-                                   (when (not= dashboard-id (:dashboard_id (get before (:id %))))
+                                   (when (not= dashboard-id (:dashboard_id (get id->stored (:id %))))
                                      dashboard-id)))
                           updates))]
     (mapv (fn [{:keys [id dashboard_id] :as update}]
             (cond-> update
-              (and dashboard_id (not= dashboard_id (:dashboard_id (get before id))))
+              (and dashboard_id (not= dashboard_id (:dashboard_id (get id->stored id))))
               (assoc :collection_id (:collection_id (get dashboards dashboard_id)))))
           updates)))
 
@@ -2021,31 +2021,31 @@
     (check-no-save-cycle {:id id :dataset_query dataset_query})))
 
 (defn- derive-update-columns
-  "`updates`, with the columns that its query, its metadata and the schema of its stored Card give each, `before` being
+  "`updates`, with the columns that its query, its metadata and the schema of its stored Card give each, `id->stored` being
   the Cards by id."
-  [updates before]
-  (-> (mapv #(assoc-inferred-result-metadata % (get before (:id %)))
+  [updates id->stored]
+  (-> (mapv #(assoc-inferred-result-metadata % (get id->stored (:id %)))
             (assoc-source-card-tables updates))
-      (add-schema-governed-columns before)))
+      (add-schema-governed-columns id->stored)))
 
 (defn- update-entries
-  "The entries of `updates`, each with its `:update`, its Card `:before` and the `:changes` it makes, `before` being the
+  "The entries of `updates`, each with its `:update`, its Card `:before` and the `:changes` it makes, `id->stored` being the
   Cards by id."
-  [updates before]
+  [updates id->stored]
   (add-archived-directly
    (mapv (fn [{:keys [id] :as update}]
-           (let [card (get before id)]
+           (let [card (get id->stored id)]
              {:update  update
               :before  card
               :changes (changing-values card update)}))
          updates)))
 
 (defn- card-entries
-  "The entries of `updates` that name a Card of `before`, the Cards by id, after the checks of their queries."
-  [updates before]
-  (let [updates (assoc-dashboard-collections (filterv #(contains? before (:id %)) updates) before)]
+  "The entries of `updates` that name a Card of `id->stored`, the Cards by id, after the checks of their queries."
+  [updates id->stored]
+  (let [updates (assoc-dashboard-collections (filterv #(contains? id->stored (:id %)) updates) id->stored)]
     (check-update-queries updates)
-    (update-entries (derive-update-columns updates before) before)))
+    (update-entries (derive-update-columns updates id->stored) id->stored)))
 
 (defn- load-update-placement
   "What the placement checks of `entries` read, nil when none of them changes where its Card is."
@@ -2092,7 +2092,7 @@
   (when (some (fn [{:keys [changes]}]
                 (some #(contains? changes %) derived-from-columns))
               entries)
-    (u/index-by :id (queries.db/cards (mapv (comp :id :before) entries)))))
+    (queries.db/cards-by-ids (mapv (comp :id :before) entries))))
 
 (defn- keep-dependents-in-step!
   "Updates what depends on the Cards of `entries`, which `after` holds as they are after their writes: their Actions and
@@ -2131,21 +2131,6 @@
                     [id (t2/instance :model/Card (merge before changes))]))))
         changed))
 
-(defn- publish-card-updates!
-  "Publishes the update event of the Cards that `batches`, what [[update-card-batch!]] returned, wrote."
-  [batches opts]
-  (let [changed (into [] (mapcat (fn [{:keys [entries]}] (filterv (comp seq :changes) entries))) batches)]
-    (when (seq changed)
-      (events/publish-event!
-       :event/card-update
-       (events/update-event
-        (into {} (map :before) batches)
-        (mapv (fn [{:keys [before changes]}] (assoc changes :id (:id before))) changed)
-        (assoc opts :objects (into {}
-                                   (mapcat (fn [{:keys [entries after]}]
-                                             (updated-card-objects (filterv (comp seq :changes) entries) after)))
-                                   batches)))))))
-
 (defn- cascade-card-changes!
   "Updates the Cards that use the Cards of `entries` and the parameter mappings of their DashboardCards, as far as a
   writer that follows changes does, a failure of the parameters being logged."
@@ -2157,12 +2142,12 @@
       (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e)))))
 
 (defn- import-updates
-  "`updates`, the rows of an import, each with only the columns that change the Card of `before`, the Cards by id, as
+  "`updates`, the rows of an import, each with only the columns that change the Card of `id->stored`, the Cards by id, as
   the import writes them, and without those that change nothing."
-  [before updates]
+  [id->stored updates]
   (into []
         (keep (fn [{:keys [id] :as row}]
-                (when-let [card (get before id)]
+                (when-let [card (get id->stored id)]
                   (let [changes (dissoc (queries.serialization/updated-card-row row card) :id)]
                     (when (seq changes)
                       (assoc changes :id id))))))
@@ -2170,8 +2155,8 @@
 
 (defn- write-card-updates!
   "Writes `entries`, the updates of one batch with the Cards they change, after what a Card that `opts` says changes needs,
-  and returns the Cards before and after the writes."
-  [before entries opts]
+  and returns the Cards by id as they are after the writes, for the update event."
+  [entries opts]
   (let [writer     (:writer opts)
         following? (not (contains? #{:import :cascade :sync} writer))
         actor      @api/*current-user*
@@ -2181,16 +2166,22 @@
       (keep-dependents-in-step! entries after stopping writer actor)
       (when following?
         (cascade-card-changes! entries))
-      {:before before :entries entries :after after})))
+      (updated-card-objects (filterv (comp seq :changes) entries) after))))
 
 (defn- update-card-batch!
-  "Checks and writes the Cards of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch opts]
-  (let [before    (u/index-by :id (queries.db/cards (into #{} (map :id) batch)))
-        entries   (card-entries (cond->> batch (= :import (:writer opts)) (import-updates before)) before)
-        placement (load-update-placement entries)]
-    (check-card-updates entries placement)
-    (write-card-updates! before entries opts)))
+  "Check and write `updates`, one batch of a call, and return the rows written with the Cards by id as stored before and
+  as they are after."
+  [updates opts]
+  (let [id->stored  (queries.db/cards-by-ids (mapv :id updates))
+        entries     (card-entries (cond->> updates (= :import (:writer opts)) (import-updates id->stored)) id->stored)
+        placement   (load-update-placement entries)
+        _           (check-card-updates entries placement)
+        id->updated (write-card-updates! entries opts)]
+    {:updates     (into []
+                        (keep (fn [{:keys [before changes]}] (when (seq changes) (assoc changes :id (:id before)))))
+                        entries)
+     :id->stored  id->stored
+     :id->updated id->updated}))
 
 (defn- save-pending-metadata!
   "Saves, once their futures are ready, the result metadata of the Cards by id of `futures` that was not ready in time."
@@ -2220,36 +2211,39 @@
                                (assoc-updated-result-metadata updates)
                                [updates {}])]
        (t2/with-transaction [_conn]
-         (let [batches (mapv #(update-card-batch! % opts) (partition-all mdb/update-partition-size updates))]
-           (publish-card-updates! batches opts)))
+         (let [batches (mapv #(update-card-batch! (vec %) opts) (partition-all mdb/update-partition-size updates))]
+           (when (seq (mapcat :updates batches))
+             (events/publish-event! :event/card-update
+                                    (events/update-event (into {} (map :id->stored) batches)
+                                                         (into [] (mapcat :updates) batches)
+                                                         (assoc opts :objects (into {} (map :id->updated) batches)))))))
        (save-pending-metadata! futures)
        nil))))
 
 (defn- delete-card-batch!
-  "Deletes the Cards with the ids of `batch`, after the rows that depend on them."
-  [batch]
-  (let [card-ids (vec batch)]
-    (delete-card-tests-for-cards! card-ids)
-    (actions.models/delete-actions! (actions.models/action-ids-of-models card-ids))
-    (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
-    (moderation-review/delete-moderation-reviews! (moderation-review/moderation-review-ids-of-cards card-ids))
-    (revision/delete-revisions-for-entities! "Card" card-ids)
-    (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" card-ids))
-    (delete-notifications-of-cards! card-ids)
-    (queries.db/delete-cards! card-ids)))
+  "Deletes the Cards with `card-ids`, one batch of a call, after the rows that depend on them."
+  [card-ids]
+  (delete-card-tests-for-cards! card-ids)
+  (actions.models/delete-actions! (actions.models/action-ids-of-models card-ids))
+  (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
+  (moderation-review/delete-moderation-reviews! (moderation-review/moderation-review-ids-of-cards card-ids))
+  (revision/delete-revisions-for-entities! "Card" card-ids)
+  (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" card-ids))
+  (delete-notifications-of-cards! card-ids)
+  (queries.db/delete-cards! card-ids))
 
 (mu/defn delete-cards! :- :nil
-  "Deletes the Cards with `card-ids` after the rows that depend on them, one statement for each kind of row, so the
-  statements do not grow with their number."
+  "Deletes the Cards with `card-ids` after the rows that depend on them, in one transaction, publishing their delete
+  event right before the first statement."
   ([card-ids :- [:sequential ::lib.schema.id/card]]
    (delete-cards! card-ids nil))
   ([card-ids :- [:sequential ::lib.schema.id/card]
     opts     :- WriteOpts]
    (t2/with-transaction [_conn]
-     (let [batches (partition-all mdb/delete-partition-size (distinct card-ids))]
-       (when (seq batches)
-         (events/publish-event! :event/card-delete
-                                (events/delete-event (into [] (mapcat #(queries.db/cards (vec %))) batches) opts)))
+     (let [batches (mapv vec (partition-all mdb/delete-partition-size (distinct card-ids)))
+           cards   (into [] (mapcat (comp vals queries.db/cards-by-ids)) batches)]
+       (when (seq cards)
+         (events/publish-event! :event/card-delete (events/delete-event cards opts)))
        (run! delete-card-batch! batches)))
    nil))
 

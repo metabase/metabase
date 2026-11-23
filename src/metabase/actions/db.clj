@@ -197,7 +197,7 @@
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/delete! :model/ImplicitAction :action_id [:in action-ids]))
 
-(mu/defn actions-by-id
+(mu/defn actions-by-ids
   "A map of id to Action for the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select-pk->fn identity :model/Action :id [:in action-ids]))

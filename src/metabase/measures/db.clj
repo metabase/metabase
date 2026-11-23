@@ -40,7 +40,7 @@
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn measures-by-id
+(mu/defn measures-by-ids
   "A map of id to Measure for the Measures with `ids`."
   [ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select-pk->fn identity :model/Measure :id [:in ids]))

@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
@@ -97,26 +98,31 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-dashboard-tabs! :- [:sequential :map]
-  "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows."
+  "Insert the DashboardTab `rows` in one transaction and return the inserted instances, in the order of the rows."
   [rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
-  (dashboards.db/insert-dashboard-tabs! rows))
+  (t2/with-transaction [_conn]
+    (into [] (mapcat (comp dashboards.db/insert-dashboard-tabs! vec))
+          (partition-all app-db/create-partition-size rows))))
 
-(mu/defn update-dashboard-tabs! :- [:sequential :map]
-  "Apply the columns of each of `rows`, each holding the `:id` of its DashboardTab, and return the rows of the tabs
-  that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard-tab.update]]
-  (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashboard-tabs-by-ids (mapv :id rows)) []))
-        rows   (filterv #(contains? stored (:id %)) rows)]
-    (dashboards.db/update-dashboard-tabs! rows)
-    rows))
+(mu/defn update-dashboard-tabs! :- :nil
+  "Apply the columns of each of `updates`, each holding the `:id` of its DashboardTab, in one transaction."
+  [updates :- [:sequential ::dashboards.schema/dashboard-tab.update]]
+  (t2/with-transaction [_conn]
+    (run! (comp dashboards.db/update-dashboard-tabs! vec) (partition-all app-db/update-partition-size updates)))
+  nil)
+
+(defn- delete-dashboard-tab-batch!
+  "Delete the DashboardTabs with `ids`, one batch of a call, logging to the change log the PulseCards that the database
+  deletes with their DashboardCards."
+  [ids]
+  (change-log/log-changes! :model/PulseCard :delete (dashboards.db/pulse-cards-in-tabs ids))
+  (dashboards.db/delete-dashboard-tabs! ids))
 
 (mu/defn delete-dashboard-tabs! :- :nil
-  "Delete the DashboardTabs with `ids`, logging to the change log the PulseCards that the database deletes with their
-  DashboardCards."
+  "Delete the DashboardTabs with `ids` in one transaction."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (change-log/log-changes! :model/PulseCard :delete (dashboards.db/pulse-cards-in-tabs (vec ids)))
-    (dashboards.db/delete-dashboard-tabs! (vec ids)))
+  (t2/with-transaction [_conn]
+    (run! (comp delete-dashboard-tab-batch! vec) (partition-all app-db/delete-partition-size ids)))
   nil)
 
 (mr/def ::tab-replacement
@@ -181,7 +187,7 @@
    :copy      [:entity_id :name :position]
    :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
    :insert!   create-dashboard-tabs!
-   :update!   update-dashboard-tabs!
+   :update!   #(do (update-dashboard-tabs! %) %)
    :delete!   delete-dashboard-tabs!
    :transform {:dashboard_id serialization/import-only-transform}})
 

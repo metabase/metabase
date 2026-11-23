@@ -678,58 +678,54 @@
                       :present [:collection_id :collection_position :archived]
                       :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
 
-(defn- column-requests
-  "A map from id to the changes of the columns of each of `rows`, the id of a Pulse and its changes, that changes a Pulse
-  of `stored`, a map from id to the Pulse as read."
-  [rows stored]
+(defn- id->changes-of
+  "A map from id to the changes of the columns of each of `updates`, the id of a Pulse and its changes, that changes a
+  Pulse of `id->stored`."
+  [updates id->stored]
   (into {}
-        (keep (fn [row]
-                (let [changes (column-changes (dissoc row :id))]
-                  (when (and (stored (:id row)) (seq changes))
-                    [(:id row) changes]))))
-        rows))
+        (keep (fn [update]
+                (let [changes (column-changes (dissoc update :id))]
+                  (when (and (id->stored (:id update)) (seq changes))
+                    [(:id update) changes]))))
+        updates))
 
 (defn- enable-pulse-channels!
-  "Enable or disable the PulseChannels of the Pulses of `stored` whose `:archived` the changes in `requested`, a map from
-  id to its changes, flip."
-  [stored requested]
-  (doseq [[archived ids] (group-by #(:archived (requested %))
+  "Enable or disable the PulseChannels of the Pulses of `id->stored` whose `:archived` the changes in `id->changes` flip."
+  [id->stored id->changes]
+  (doseq [[archived ids] (group-by #(:archived (id->changes %))
                                    (filter (fn [id]
-                                             (let [changes (requested id)]
+                                             (let [changes (id->changes id)]
                                                (and (contains? changes :archived)
-                                                    (not= (:archived (stored id)) (:archived changes)))))
-                                           (keys requested)))]
+                                                    (not= (:archived (id->stored id)) (:archived changes)))))
+                                           (keys id->changes)))]
     (pulse-channel/set-pulse-channels-enabled! (vec ids) (not archived))))
 
-(defn- write-column-changes!
-  "Apply `requested`, a map from the id of a Pulse of `stored` to its changes, and enable or disable the PulseChannels of
-  the Pulses whose `:archived` it flips."
-  [stored requested]
-  (pulse.db/update-pulses! (mapv (fn [[id changes]] (assoc changes :id id)) requested))
-  (enable-pulse-channels! stored requested))
+(defn- write-pulse-updates!
+  "Apply `id->changes` to the Pulses of `id->stored` and enable or disable the PulseChannels of those whose `:archived`
+  it flips."
+  [id->stored id->changes]
+  (pulse.db/update-pulses! (mapv (fn [[id changes]] (assoc changes :id id)) id->changes))
+  (enable-pulse-channels! id->stored id->changes))
 
-(defn- change-pulses!
-  "Apply the changes of the columns in `rows`, the id of a Pulse and its changes, to the Pulses that exist, enable or
-  disable their PulseChannels when `:archived` changes, and return the Pulses as read as `:stored` and the changes as
-  written as `:requested`, each a map from id. It publishes nothing, so that a caller that changes the parts of a Pulse
-  publishes after them, as the last step. A change of `:archived` also sets `archived_directly`, by the before-update
-  hook, and a change of `:collection_id` checks, before the statement, that the new Collection can hold the Pulses it
-  moves."
-  [rows]
-  (let [stored    (u/index-by :id (pulse.db/pulses-with-ids (mapv :id rows)))
-        requested (column-requests rows stored)
-        stored    (select-keys stored (keys requested))]
-    (when (seq requested)
-      (check-moved-collections (vals stored) #(requested (:id %)))
-      (write-column-changes! stored requested))
-    {:stored stored :requested requested}))
+(defn- update-pulse-batch!
+  "Check and write the column changes of `updates`, one batch of a call, each the id of a Pulse and its changes, and
+  return the Pulses by id as stored before and the changes of each by id. A change of `:archived` also sets
+  `archived_directly`, by the before-update hook, and a change of `:collection_id` checks that the new Collection can
+  hold the Pulse."
+  [updates]
+  (let [id->stored  (pulse.db/pulses-by-ids (mapv :id updates))
+        id->changes (id->changes-of updates id->stored)
+        id->stored  (select-keys id->stored (keys id->changes))]
+    (check-moved-collections (vals id->stored) #(id->changes (:id %)))
+    (write-pulse-updates! id->stored id->changes)
+    {:id->stored id->stored :id->changes id->changes}))
 
 (defn- change-event
-  "The update event of the Pulses of `stored`, a map from id, that `requested`, a map from id to its changes, changes."
-  [stored requested opts]
-  (events/update-event stored
-                       (mapv (fn [[id changes]] (assoc changes :id id)) requested)
-                       (assoc opts :objects (u/index-by :id (pulse.db/pulses-with-ids (vec (keys requested)))))))
+  "The update event of the Pulses of `id->stored` that `id->changes` changes."
+  [id->stored id->changes opts]
+  (events/update-event id->stored
+                       (mapv (fn [[id changes]] (assoc changes :id id)) id->changes)
+                       (assoc opts :objects (pulse.db/pulses-by-ids (vec (keys id->changes))))))
 
 (declare update-parts!)
 
@@ -766,22 +762,18 @@
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
 
 (mu/defn update-pulses! :- :nil
-  "Apply the changes in each of `rows`, the id of a Pulse that exists and its columns only, in one transaction, in
-  batches, publishing one update event with `opts`; a change of `:archived` also sets `archived_directly` and enables or
-  disables the PulseChannels, and a change of `:collection_id` checks that the new Collection can hold the Pulses."
-  ([rows :- [:sequential PulseUpdate]]
-   (update-pulses! rows nil))
-  ([rows :- [:sequential PulseUpdate]
-    opts :- ::write-opts]
+  "Apply `updates`, each the id of a Pulse that exists and its columns only, in one transaction, publishing their update
+  event with `opts`. A change of `:archived` also sets `archived_directly` and enables or disables the PulseChannels, and
+  a change of `:collection_id` checks that the new Collection can hold the Pulses."
+  ([updates :- [:sequential PulseUpdate]]
+   (update-pulses! updates nil))
+  ([updates :- [:sequential PulseUpdate]
+    opts    :- ::write-opts]
    (t2/with-transaction [_conn]
-     (let [stored    (u/index-by :id (pulse.db/pulses-with-ids (mapv :id rows)))
-           requested (column-requests rows stored)
-           stored    (select-keys stored (keys requested))]
-       (check-moved-collections (vals stored) #(requested (:id %)))
-       (doseq [ids (partition-all mdb/update-partition-size (keys requested))]
-         (write-column-changes! (select-keys stored ids) (select-keys requested ids)))
-       (when (seq requested)
-         (let [event (change-event stored requested opts)]
+     (let [batches     (mapv #(update-pulse-batch! (vec %)) (partition-all mdb/update-partition-size updates))
+           id->changes (into {} (map :id->changes) batches)]
+       (when (seq id->changes)
+         (let [event (change-event (into {} (map :id->stored) batches) id->changes opts)]
            (when (seq (:changes event))
              (events/publish-event! :event/pulse-update event))))))
    nil))
@@ -797,12 +789,12 @@
     opts     :- ::write-opts]
    (t2/with-transaction [_conn]
      (when (seq (pulse.db/pulses-with-ids [pulse-id]))
-       (let [{:keys [stored requested]} (change-pulses! [(assoc (column-changes changes) :id pulse-id)])
-             event    (when (seq requested) (change-event stored requested opts))
+       (let [{:keys [id->stored id->changes]} (update-pulse-batch! [(assoc changes :id pulse-id)])
+             event    (when (seq id->changes) (change-event id->stored id->changes opts))
              changed  (seq (:changes event))
              parts    (update-parts! [(assoc changes :id pulse-id)])
              touch    (when (and (not changed) (contains? parts pulse-id))
-                        (events/touch-event (pulse.db/pulses-by-ids [pulse-id]) opts))]
+                        (events/touch-event (vec (vals (pulse.db/pulses-by-ids [pulse-id]))) opts))]
          (when-let [published (or (when changed event) touch)]
            (events/publish-event! :event/pulse-update published)))))
    nil))
@@ -834,7 +826,7 @@
   none of their columns, so that the records of each Pulse are made once."
   [pulse-ids]
   (when-let [ids (not-empty (vec (distinct (keep identity pulse-ids))))]
-    (events/publish-event! :event/pulse-update (events/touch-event (pulse.db/pulses-by-ids ids)))))
+    (events/publish-event! :event/pulse-update (events/touch-event (vec (vals (pulse.db/pulses-by-ids ids)))))))
 
 (mu/defn append-pulse-cards! :- :nil
   "Append the PulseCards `new-pulse-cards` to their Pulses, publishing, last, the update event of each Pulse that gains
@@ -873,18 +865,18 @@
   (pulse-channel/delete-pulse-channels! (mapv :id (pulse.db/pulse-channels-for-pulses pulse-ids))))
 
 (mu/defn delete-pulses! :- :nil
-  "Delete the Pulses with `pulse-ids` along with their PulseChannels and the SendPulse triggers of those, in batches in
-  one transaction, publishing one delete event for all right before the first Pulse statement."
-  ([pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-   (delete-pulses! pulse-ids nil))
-  ([pulse-ids :- [:sequential ::lib.schema.id/pulse]
-    opts      :- ::write-opts]
+  "Delete the Pulses with `ids` along with their PulseChannels and the SendPulse triggers of those, in one transaction,
+  publishing their delete event right before the first Pulse statement."
+  ([ids :- [:sequential ::lib.schema.id/pulse]]
+   (delete-pulses! ids nil))
+  ([ids  :- [:sequential ::lib.schema.id/pulse]
+    opts :- ::write-opts]
    (t2/with-transaction [_conn]
-     (let [batches (mapv vec (partition-all mdb/delete-partition-size pulse-ids))]
+     (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))
+           pulses  (into [] (mapcat (comp vals pulse.db/pulses-by-ids)) batches)]
        (run! delete-pulse-channels-of! batches)
-       (when (seq batches)
-         (events/publish-event! :event/pulse-delete
-                                (events/delete-event (into [] (mapcat pulse.db/pulses-with-ids) batches) opts)))
+       (when (seq pulses)
+         (events/publish-event! :event/pulse-delete (events/delete-event pulses opts)))
        (run! pulse.db/delete-pulses! batches)))
    nil))
 
@@ -1046,32 +1038,27 @@
       (check-collection parents pulse)
       (pulse-channel/check-new-pulse-channels! (map #(channel-row 0 %) (:channels row))))))
 
-(defn- create-batch!
-  "Insert the Pulses of `rows` with their PulseCards and PulseChannels and return the inserted Pulses."
+(defn- create-pulse-batch!
+  "Check and insert `rows`, one batch of a call, with their PulseCards and PulseChannels, and return the inserted Pulses."
   [rows]
+  (check-pulse-creates rows)
   (let [pulses (pulse.db/insert-pulses! (mapv #(dissoc % :cards :channels) rows))]
     (pulse-card/create-pulse-cards! (vec (mapcat (fn [row pulse] (card-rows (:id pulse) (:cards row))) rows pulses)))
     (pulse-channel/create-pulse-channels! (vec (mapcat (fn [row pulse] (map #(channel-row (:id pulse) %) (:channels row))) rows pulses)))
     pulses))
-
-(defn- check-and-create-batch!
-  "Check, then insert, the Pulses of `rows`, and return the inserted Pulses."
-  [rows]
-  (check-pulse-creates rows)
-  (create-batch! rows))
 
 (mu/defn create-pulses! :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Insert the Pulses of `rows` with their PulseCards, PulseChannels and PulseChannelRecipients in batches in one
   transaction, publishing one create event for all, and return them with the standard hydrations, in order."
   [rows :- [:sequential PulseCreate]]
   (let [ids (t2/with-transaction [_conn]
-              (let [pulses (into [] (mapcat (comp check-and-create-batch! vec)) (partition-all mdb/create-partition-size rows))]
+              (let [pulses (into [] (mapcat (comp create-pulse-batch! vec)) (partition-all mdb/create-partition-size rows))]
                 (when (seq pulses)
                   (events/publish-event! :event/pulse-create (events/create-event pulses)))
                 (mapv :id pulses)))]
     (if (seq ids)
-      (let [pulses (u/index-by :id (pulse.db/pulses-by-ids ids))]
-        (mapv notification->pulse (hydrate-notifications (mapv pulses ids))))
+      (let [id->pulse (pulse.db/pulses-by-ids ids)]
+        (mapv notification->pulse (hydrate-notifications (mapv id->pulse ids))))
       [])))
 
 (defn- update-parts!

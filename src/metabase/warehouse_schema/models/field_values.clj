@@ -923,6 +923,6 @@
    :defaults      {:has_more_values false}
    :storage-paths warehouse-schema.serialization/field-values-storage-paths
    :insert!       create-field-values!
-   :update!       update-field-values!
+   :update!       #(do (update-field-values! %) %)
    :delete!       delete-field-values!
    :rows-by-refs  serialization/field-values-rows-by-refs})

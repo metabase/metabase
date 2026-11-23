@@ -52,7 +52,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Timeline :id id))
 
-(mu/defn timelines-by-id
+(mu/defn timelines-by-ids
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
@@ -159,7 +159,7 @@
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
-(mu/defn timeline-events-by-id
+(mu/defn timeline-events-by-ids
   "A map of id to TimelineEvent for the TimelineEvents with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids]))

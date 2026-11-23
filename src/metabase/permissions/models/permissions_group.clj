@@ -248,9 +248,11 @@
                (for [val (vals mappings)]
                  (remove group-ids val)))))))
 
-(defn- insert-permissions-groups!
-  "Insert the PermissionsGroup `rows`, each with the default permissions on every Database, and return them in order."
+(defn- create-permissions-group-batch!
+  "Check and insert `rows`, one batch of a call, each with the default permissions on every Database, and return the
+  inserted PermissionsGroups."
   [rows]
+  (check-names-not-already-taken (map :name rows))
   (u/prog1 (permissions.db/insert-permissions-groups! rows)
     (data-perms/with-global-permissions-lock
       (data-perms/set-default-groups-permissions! <> (permissions.db/non-destination-database-ids)))))
@@ -259,20 +261,19 @@
   "Insert the PermissionsGroup `rows`, each with the default permissions on every Database, in one transaction and
   return them in order, publishing their create event; the name of an existing group is a 400."
   [rows :- [:sequential ::permissions.schema/permissions-group.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (check-names-not-already-taken (map :name rows))
-      (let [created (into [] (mapcat (comp insert-permissions-groups! vec))
-                          (partition-all mdb/create-partition-size rows))]
-        (events/publish-event! :event/group-create (events/create-event created))
-        created))))
+  (t2/with-transaction [_conn]
+    (let [created (into [] (mapcat (comp create-permissions-group-batch! vec))
+                        (partition-all mdb/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/group-create (events/create-event created)))
+      created)))
 
 (defn- rename-order
-  "The rows of `updates`, whose stored PermissionsGroups `stored` holds, in an order in which each rename comes after the rename
-  that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a cycle."
-  [stored updates]
-  (let [stored-name #(u/lower-case-en (:name (stored (:id %))))
+  "The rows of `updates`, whose stored PermissionsGroups `id->stored` holds, in an order in which each rename comes after
+  the rename that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a
+  cycle."
+  [updates id->stored]
+  (let [stored-name #(u/lower-case-en (:name (id->stored (:id %))))
         new-name    #(some-> (:name %) u/lower-case-en)]
     (loop [pending (vec updates), ordered []]
       (if (empty? pending)
@@ -284,7 +285,7 @@
             (recur (filterv (complement ready?) pending) (into ordered ready))))))))
 
 (defn- check-group-updates
-  "Throws a 400 unless every row of `updates`, whose stored PermissionsGroups `stored` holds, satisfies these rules,
+  "Throws a 400 unless every row of `updates`, whose stored PermissionsGroups `id->stored` holds, satisfies these rules,
   with the refusal of the first row that breaks one, in this order for each:
 
   - a rename does not take the name of an earlier rename of the batch, compared lower-cased
@@ -292,8 +293,8 @@
     a name another row of the batch renames away is free
   - the hooks of the group accept the row merged into its stored row (a magic group keeps its name)
   - the renames of the batch do not take each other's names in a cycle"
-  [stored updates]
-  (let [renames (filterv #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))) updates)
+  [updates id->stored]
+  (let [renames (filterv #(and (contains? % :name) (not= (:name %) (:name (id->stored (:id %))))) updates)
         taken   (if (seq renames)
                   (permissions.db/lower-names-taken-outside (mapv (comp u/lower-case-en :name) renames) (mapv :id renames))
                   #{})
@@ -302,40 +303,34 @@
               (let [lower-name (some-> (:name row) u/lower-case-en)]
                 (when (and (renamed id) (or (taken lower-name) (earlier-names lower-name)))
                   (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))
-                (t2.before-update/before-update :model/PermissionsGroup (merge (stored id) (dissoc row :id)))
+                (t2.before-update/before-update :model/PermissionsGroup (merge (id->stored id) (dissoc row :id)))
                 (cond-> earlier-names (renamed id) (conj lower-name))))
             #{}
             updates)
-    (when (nil? (rename-order stored updates))
+    (when (nil? (rename-order updates id->stored))
       (throw (ex-info (tru "A group with that name already exists.") {:status-code 400})))))
 
-(defn- write-group-updates!
-  "Write `updates` over the `stored` PermissionsGroups, a statement per row, each rename after the one that frees its
-  name."
-  [stored updates]
-  (permissions.db/update-permissions-groups! (rename-order stored updates)))
-
-(defn- update-group-batch!
-  "Check and apply the `batch` of updates whose PermissionsGroups exist, returning them with their stored groups."
+(defn- update-permissions-group-batch!
+  "Check and write the rows of `batch` whose PermissionsGroups exist, one batch of a call, each rename after the one
+  that frees its name, and return the rows written with the groups by id as stored before."
   [batch]
-  (let [stored  (u/index-by :id (permissions.db/permissions-groups-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (check-group-updates stored updates)
-    (write-group-updates! stored updates)
-    {:stored stored :updates updates}))
+  (let [id->stored (permissions.db/permissions-groups-by-ids (mapv :id batch))
+        updates    (filterv (comp id->stored :id) batch)]
+    (check-group-updates updates id->stored)
+    (permissions.db/update-permissions-groups! (rename-order updates id->stored))
+    {:updates updates :id->stored id->stored}))
 
-(mu/defn update-permissions-groups! :- [:sequential ::permissions.schema/permissions-group.update]
-  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups in one transaction and return the rows
-  that exist, publishing their update event; renaming a magic group, or to the name of an existing group or of another
-  row, is a 400."
+(mu/defn update-permissions-groups! :- :nil
+  "Apply the `rows`, each an `:id` and its changes, to their PermissionsGroups in one transaction, publishing their
+  update event; renaming a magic group, or to the name of an existing group or of another row, is a 400."
   [rows :- [:sequential ::permissions.schema/permissions-group.update]]
   (t2/with-transaction [_conn]
-    (let [written (mapv update-group-batch! (partition-all mdb/update-partition-size rows))
-          stored  (into {} (map :stored) written)
-          updates (into [] (mapcat :updates) written)]
+    (let [batches (mapv (comp update-permissions-group-batch! vec) (partition-all mdb/update-partition-size rows))
+          updates (into [] (mapcat :updates) batches)]
       (when (seq updates)
-        (events/publish-event! :event/group-update (events/update-event stored updates)))
-      updates)))
+        (events/publish-event! :event/group-update
+                               (events/update-event (into {} (map :id->stored) batches) updates)))))
+  nil)
 
 (defn- check-groups-deletable
   "Throws a 400 unless every one of the `groups` satisfies these rules:
@@ -348,16 +343,14 @@
   "Delete the PermissionsGroups with `ids` in one transaction and drop them from the LDAP group mappings, publishing
   their delete event; deleting a magic group is a 400."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/with-transaction [_conn]
-      (let [batches (mapv vec (partition-all mdb/delete-partition-size ids))
-            by-id   (u/index-by :id (into [] (mapcat permissions.db/permissions-groups-by-ids) batches))
-            groups  (into [] (comp (keep by-id) (distinct)) ids)]
-        (when (seq groups)
-          (check-groups-deletable groups)
-          (remove-from-ldap-group-mappings! (map :id groups))
-          (events/publish-event! :event/group-delete (events/delete-event groups))
-          (run! permissions.db/delete-permissions-groups! batches)))))
+  (t2/with-transaction [_conn]
+    (let [batches (mapv vec (partition-all mdb/delete-partition-size (distinct ids)))
+          groups  (into [] (mapcat (comp vals permissions.db/permissions-groups-by-ids)) batches)]
+      (when (seq groups)
+        (check-groups-deletable groups)
+        (remove-from-ldap-group-mappings! (map :id groups))
+        (events/publish-event! :event/group-delete (events/delete-event groups))
+        (run! permissions.db/delete-permissions-groups! batches))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

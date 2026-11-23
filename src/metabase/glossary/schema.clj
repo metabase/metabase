@@ -31,19 +31,13 @@
   [:merge
    ::glossary.create
    [:map {:closed true}
+    [:id ms/PositiveInt]
     [:term       {:optional true} ::glossary.term]
     [:definition {:optional true} ::glossary.definition]
     [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
     [:entity_id  {:optional true} [:maybe ms/NonBlankString]]
     [:created_at {:optional true} [:maybe ms/TemporalInstant]]
     [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
-
-(mr/def ::glossary.update-row
-  "What an update of the row names: its `:id` and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::glossary.update])
 
 (mr/def ::external-glossary
   "A Glossary as serialization writes it, with portable references in place of ids."

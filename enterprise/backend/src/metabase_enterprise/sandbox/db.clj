@@ -96,14 +96,14 @@
   [rows :- [:sequential ::sandbox.schema/sandbox.update]]
   (mdb/update-grouped! :model/Sandbox rows))
 
-(mu/defn sandboxes-by-ids
-  "The Sandboxes with `sandbox-ids`."
-  [sandbox-ids :- [:set {:min 1} ::lib.schema.id/sandbox]]
-  (t2/select :model/Sandbox :id [:in sandbox-ids]))
+(mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
+  "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
+  [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
+  (t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param (vec (distinct sandbox-ids))]]))
 
 (mu/defn delete-sandboxes!
   "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
-  [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
+  [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
   (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
 
 (mu/defn impersonations-for-groups

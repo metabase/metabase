@@ -31,12 +31,25 @@
     (table/update-tables! [{:id (u/the-id table) :initial_sync_status "complete"}]
                           (stored-option :model/Table :tables table))))
 
+(defn- update-fields-counted!
+  "Apply the Field update `rows` with `opts` and return their number."
+  [rows opts]
+  (field/update-fields! (vec rows) opts)
+  (count rows))
+
+(defn- update-tables-counted!
+  "Apply the Table update `rows` with `opts` and return their number."
+  [rows opts]
+  (table/update-tables! (vec rows) opts)
+  (count rows))
+
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already set,
   returning the number of Tables updated."
   [database]
-  (count (table/update-tables! (for [id (distinct (sync.db/sync-table-ids (u/the-id database)))]
-                                 {:id id :initial_sync_status "complete"}))))
+  (update-tables-counted! (for [id (distinct (sync.db/sync-table-ids (u/the-id database)))]
+                            {:id id :initial_sync_status "complete"})
+                          nil))
 
 (defn- settings-in-batches
   "What `read-settings`, a read of the settings of the rows with some ids, returns for all of `ids`, read in batches of
@@ -71,8 +84,8 @@
   [field   :- [:or ::lib.schema.id/field (ms/InstanceOf :model/Field)]
    changes :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (let [id (u/the-id field)]
-    (count (field/update-fields! (field-rows-unless-user-set {id (sync.db/field-user-settings id)} {id changes})
-                                 (stored-option :model/Field :fields field)))))
+    (update-fields-counted! (field-rows-unless-user-set {id (sync.db/field-user-settings id)} {id changes})
+                            (stored-option :model/Field :fields field))))
 
 (mu/defn update-fields-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each of `pairs`, a Field instance sync holds and its changes, the changes to columns no user set, in one
@@ -80,15 +93,15 @@
   Fields updated."
   [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Field) (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
   (let [settings (u/index-by :field_id (settings-in-batches sync.db/field-user-settings-for-fields (map (comp :id first) pairs)))]
-    (count (field/update-fields! (field-rows-unless-user-set settings (map (fn [[field changes]] [(:id field) changes]) pairs))
-                                 {:fields (mapv first pairs)}))))
+    (update-fields-counted! (field-rows-unless-user-set settings (map (fn [[field changes]] [(:id field) changes]) pairs))
+                            {:fields (mapv first pairs)})))
 
 (mu/defn update-fields-by-id-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each Field of `id->changes` its changes to columns no user set, in one update: the settings of the Fields
   are read once and their rows once per batch of the update. Returns the number of Fields updated."
   [id->changes :- [:map-of ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
   (let [settings (u/index-by :field_id (settings-in-batches sync.db/field-user-settings-for-fields (keys id->changes)))]
-    (count (field/update-fields! (field-rows-unless-user-set settings id->changes)))))
+    (update-fields-counted! (field-rows-unless-user-set settings id->changes) nil)))
 
 (mu/defn update-tables-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each of `pairs`, a Table instance sync holds and its changes, the changes to columns no user set, in one
@@ -96,13 +109,13 @@
   Tables updated."
   [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Table) (mut/dissoc ::warehouse-schema.schema/table.update :id)]]]
   (let [settings (u/index-by :table_id (settings-in-batches sync.db/table-user-settings-for-tables (map (comp :id first) pairs)))]
-    (count (table/update-tables! (table-rows-unless-user-set settings (map (fn [[table changes]] [(:id table) changes]) pairs))
-                                 {:tables (mapv first pairs)}))))
+    (update-tables-counted! (table-rows-unless-user-set settings (map (fn [[table changes]] [(:id table) changes]) pairs))
+                            {:tables (mapv first pairs)})))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
   [table   :- [:or ::lib.schema.id/table (ms/InstanceOf :model/Table)]
    changes :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
   (let [id (u/the-id table)]
-    (count (table/update-tables! (table-rows-unless-user-set {id (sync.db/table-user-settings id)} {id changes})
-                                 (stored-option :model/Table :tables table)))))
+    (update-tables-counted! (table-rows-unless-user-set {id (sync.db/table-user-settings id)} {id changes})
+                            (stored-option :model/Table :tables table))))

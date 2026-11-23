@@ -43,7 +43,7 @@
   [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
   (app-db/insert-returning-instances! :model/NativeQuerySnippet rows))
 
-(mu/defn snippets-by-id
+(mu/defn snippets-by-ids
   "A map of id to NativeQuerySnippet for the snippets with `ids`."
   [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
   (t2/select-pk->fn identity :model/NativeQuerySnippet :id [:in ids]))

@@ -81,7 +81,7 @@
   (run! #(when % (api/check-500 (contains? % :timeline_id) "No :timeline_id is set for a TimelineEvent.")) events)
   (let [ids (into [] (comp (remove nil?) (keep :timeline_id) (distinct)) events)]
     (if (seq ids)
-      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-id ids)) k))
+      (into {} (map (juxt :id check)) (t2/hydrate (vals (timeline.db/timelines-by-ids ids)) k))
       {})))
 
 (methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :can_read]
@@ -119,7 +119,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(timeline.db/timelines-by-id (map :timeline_id events))
+   #(timeline.db/timelines-by-ids (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events
@@ -161,35 +161,20 @@
   "Insert the TimelineEvent `rows` and return the inserted instances, an event without an icon getting the icon of its
   Timeline, in one transaction, publishing their create event."
   [rows :- [:sequential ::timeline.schema/timeline-event.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [timeline-events (timeline.db/insert-timeline-events! rows)]
-        (events/publish-event! :event/timeline-event-create (events/create-event timeline-events))
-        timeline-events))))
-
-(defn- write-timeline-event-updates!
-  "Writes `rows`, updates of TimelineEvents, with one statement for each distinct set of changes."
-  [rows]
-  (timeline.db/update-timeline-events! rows))
+  (t2/with-transaction [_conn]
+    (let [created (into [] (mapcat (comp timeline.db/insert-timeline-events! vec))
+                        (partition-all app-db/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/timeline-event-create (events/create-event created)))
+      created)))
 
 (defn- update-timeline-event-batch!
-  "Writes the TimelineEvents of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch]
-  (let [stored (timeline.db/timeline-events-by-id (mapv :id batch))
-        rows   (filterv #(and (contains? stored (:id %)) (seq (dissoc % :id))) batch)]
-    (write-timeline-event-updates! rows)
-    {:stored stored :rows rows}))
-
-(defn- publish-timeline-event-updates!
-  "Publishes the update event of the TimelineEvents that `batches`, what [[update-timeline-event-batch!]] returned,
-  wrote."
-  [batches opts]
-  (when (some (comp seq :rows) batches)
-    (events/publish-event! :event/timeline-event-update
-                           (events/update-event (into {} (map :stored) batches)
-                                                (into [] (mapcat :rows) batches)
-                                                opts))))
+  "Write `updates`, one batch of a call, and return the rows written and the TimelineEvents by id as stored before."
+  [updates]
+  (let [id->stored (timeline.db/timeline-events-by-ids (mapv :id updates))
+        updates    (filterv #(and (contains? id->stored (:id %)) (seq (dissoc % :id))) updates)]
+    (timeline.db/update-timeline-events! updates)
+    {:updates updates :id->stored id->stored}))
 
 (mu/defn update-timeline-events! :- :nil
   "Applies `updates`, each the `:id` of a TimelineEvent with the changes it gets, in one transaction, publishing their
@@ -199,8 +184,12 @@
   ([updates :- [:sequential ::timeline.schema/timeline-event.update]
     opts    :- ::timeline.schema/write-opts]
    (t2/with-transaction [_conn]
-     (let [batches (mapv update-timeline-event-batch! (partition-all app-db/update-partition-size updates))]
-       (publish-timeline-event-updates! batches opts)))
+     (let [batches (mapv #(update-timeline-event-batch! (vec %)) (partition-all app-db/update-partition-size updates))]
+       (when (some (comp seq :updates) batches)
+         (events/publish-event! :event/timeline-event-update
+                                (events/update-event (into {} (map :id->stored) batches)
+                                                     (into [] (mapcat :updates) batches)
+                                                     opts)))))
    nil))
 
 (mu/defn delete-timeline-events! :- :nil
@@ -208,11 +197,11 @@
   statement."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size ids)]
-      (when (seq batches)
-        (events/publish-event! :event/timeline-event-delete
-                               (events/delete-event (into [] (mapcat #(vals (timeline.db/timeline-events-by-id (vec %)))) batches))))
-      (run! #(timeline.db/delete-timeline-events! (vec %)) batches)))
+    (let [batches (mapv vec (partition-all app-db/delete-partition-size (distinct ids)))
+          deleted (into [] (mapcat (comp vals timeline.db/timeline-events-by-ids)) batches)]
+      (when (seq deleted)
+        (events/publish-event! :event/timeline-event-delete (events/delete-event deleted)))
+      (run! timeline.db/delete-timeline-events! batches)))
   nil)
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------

@@ -281,21 +281,6 @@
       (into action-write-entries)
       (into action-detail-entries)))
 
-(mr/def ::action.changes
-  "The columns of an Action itself to change, the same for every Action updated."
-  (-> [:map {:closed true}
-       [:name {:optional true} :string]
-       [:type {:optional true} ::type]]
-      (into action-write-entries)))
-
-(mr/def ::action.changes-with-details
-  "The columns to change of one Action, those of the Action and those of its QueryAction or ImplicitAction."
-  (-> [:map {:closed true}
-       [:name {:optional true} :string]
-       [:type {:optional true} ::type]]
-      (into action-write-entries)
-      (into action-detail-entries)))
-
 (mr/def ::query-action.create
   "What a caller gives to create a QueryAction."
   [:map {:closed true}

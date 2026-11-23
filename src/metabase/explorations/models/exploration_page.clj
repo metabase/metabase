@@ -43,7 +43,7 @@
 
 (mu/defn update-pages! :- :nil
   "Apply `updates`, each the `:id` of an ExplorationPage with the columns to give it, in one transaction."
-  [updates :- [:sequential ::explorations.schema/exploration-page.update-row]]
+  [updates :- [:sequential ::explorations.schema/exploration-page.update]]
   (t2/with-transaction [_conn]
     (run! write-page-updates! (partition-all app-db/update-partition-size updates)))
   nil)

@@ -121,10 +121,10 @@
                                                 (into [] (mapcat :rows) batches)
                                                 {:objects (into {} (map :objects) batches)}))))
 
-(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]
+(mu/defn update-custom-viz-plugins! :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]
   "Apply `updates`, each the `:id` of a CustomVizPlugin with the columns to give it, in one transaction, publishing their
   update event. Returns `updates`."
-  [updates :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update-row]]
+  [updates :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]]
   (t2/with-transaction [_conn]
     (publish-custom-viz-plugin-updates!
      (mapv update-custom-viz-plugin-batch! (partition-all app-db/update-partition-size updates))))

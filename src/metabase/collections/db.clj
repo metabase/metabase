@@ -108,12 +108,12 @@
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
-(mu/defn collections-by-id
+(mu/defn collections-by-ids
   "A map of ID to ::collections.schema/collection for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(mu/defn collection-columns-by-id
+(mu/defn collection-columns-by-ids
   "A map of ID to the `columns` of the Collections with `collection-ids`."
   [columns        :- [:sequential :keyword]
    collection-ids :- [:sequential ::lib.schema.id/collection]]

@@ -448,16 +448,32 @@
                 (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
                      max-users)))))))
 
-(defn- check-emails-unique
-  "Throws a 400 unless `rows` satisfy these rules:
+(defn- check-emails-free
+  "Throws a 400 unless each email that `rows` give, ignoring case, satisfies these rules:
 
-  - no two rows give the same email, ignoring case"
+  - no other row of `rows` gives it
+  - no stored User other than the row's own has it"
   [rows]
-  (let [emails (into [] (keep #(some-> (:email %) u/lower-case-en)) rows)]
-    (when (not= (count emails) (count (set emails)))
-      (throw (ex-info (tru "Email address already in use.")
-                      {:status-code 400
-                       :errors      {:email (tru "Email address already in use.")}})))))
+  (when-let [emails (not-empty (into [] (keep #(some-> (:email %) u/lower-case-en)) rows))]
+    (let [email->id (users.db/user-ids-by-emails emails)
+          taken?    (fn [{:keys [id email]}]
+                      (when-let [owner-id (some-> email u/lower-case-en email->id)]
+                        (not= owner-id id)))]
+      (when (or (not= (count emails) (count (set emails))) (some taken? rows))
+        (throw (ex-info (tru "Email address already in use.")
+                        {:status-code 400
+                         :errors      {:email (tru "Email address already in use.")}}))))))
+
+(defn- check-new-users
+  "Throws unless the new User `rows` of one batch satisfy these rules, against the Users stored by earlier batches:
+
+  - an SSO user needs the initial setup to be complete, see [[check-sso-setup]]
+  - the plan's limit leaves room for every personal user, see [[check-user-limit]]
+  - each email is free, see [[check-emails-free]]"
+  [rows]
+  (check-sso-setup rows)
+  (check-user-limit rows)
+  (check-emails-free rows))
 
 (defn- default-group-ids
   "The ids of the groups a new `user` joins: All Users, or All tenant users for a tenant user, and Administrators for a
@@ -476,21 +492,24 @@
                                                          group-id (default-group-ids user)]
                                                      {:user (:id user) :group group-id}))))))
 
+(defn- create-user-batch!
+  "Check and insert the User `rows`, one batch of a call, and return the inserted Users."
+  [rows]
+  (check-new-users rows)
+  (users.db/insert-users! rows))
+
 (mu/defn create-users! :- [:sequential ::users.schema/user]
   "Insert the User `rows` in one transaction and return them in order, each in its default groups, publishing their
-  create event; an SSO user before the initial setup, a personal user over the plan's limit or two rows with one email
-  throw."
+  create event; an SSO user before the initial setup, a personal user over the plan's limit or an email in use throw."
   [rows :- [:sequential ::users.schema/user.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (check-sso-setup rows)
-      (check-user-limit rows)
-      (check-emails-unique rows)
-      (let [users (into [] (mapcat (comp users.db/insert-users! vec)) (partition-all app-db/create-partition-size rows))]
-        (events/publish-event! :event/user-create (events/create-event users))
-        (add-to-default-groups! users)
-        users))))
+  (t2/with-transaction [_conn]
+    (let [created (into []
+                        (mapcat (comp create-user-batch! vec))
+                        (partition-all app-db/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/user-create (events/create-event created))
+        (add-to-default-groups! created))
+      created)))
 
 (defn- user-after
   "The row of the stored `user` as the hooks of the model leave it after an update of `changes`, which they run here
@@ -578,40 +597,36 @@
     (users.db/group-member-ids (:id (perms/admin-group)) user-ids)
     #{}))
 
-(defn- check-ids-distinct
-  "Throws a 400 unless `updates` satisfy these rules:
-
-  - no two rows have the same id"
-  [updates]
-  (when (not= (count updates) (count (into #{} (map :id) updates)))
-    (throw (ex-info (tru "A User can be updated only once in a call.") {:status-code 400}))))
-
 (defn- check-admins-remain
-  "Throws a 400 unless `updates`, over every row of the call together and with `admin-ids` the Administrators members
-  among their Users, satisfy these rules:
+  "Throws a 400 unless `updates`, every row of the call together and before anything is written, with `admin-ids` the
+  Administrators members among their Users, satisfy these rules:
 
   - an active superuser member of Administrators remains besides the members whose rows deactivate or demote them"
   [updates admin-ids]
   (when-let [losing-admin-ids (not-empty (filterv admin-ids (ids-of-rows demotes-or-deactivates? updates)))]
     (perms-group-membership/throw-if-last-admins! losing-admin-ids)))
 
-(defn- write-user-batch!
-  "Write the `batch` of updates over the Users it names and return their stored rows and the rows of Users that exist."
-  [batch]
-  (let [stored  (u/index-by :id (users.db/users-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (users.db/update-users! updates)
-    {:stored  stored
-     :updates updates}))
+(defn- check-user-updates
+  "Throws a 400 unless the `updates` of one batch satisfy these rules, against the Users stored by earlier batches:
 
-(defn- publish-user-updates!
-  "Publish one update event with `opts` for every row of `written`, the results of the batches."
-  [written opts]
-  (let [stored  (into {} (map :stored) written)
-        updates (into [] (mapcat :updates) written)]
-    (when (seq updates)
-      (events/publish-event! :event/user-update
-                             (events/update-event stored updates (assoc opts :objects (users-after stored updates)))))))
+  - no two rows have the same id
+  - each email is free, see [[check-emails-free]]"
+  [updates]
+  (when (not= (count updates) (count (into #{} (map :id) updates)))
+    (throw (ex-info (tru "A User can be updated only once in a call.") {:status-code 400})))
+  (check-emails-free updates))
+
+(defn- update-user-batch!
+  "Check and write `updates`, one batch of a call, and return the rows of existing Users with the Users by id as stored
+  before and after."
+  [updates]
+  (let [id->stored (users.db/users-by-ids (mapv :id updates))
+        updates    (filterv (comp id->stored :id) updates)]
+    (check-user-updates updates)
+    (users.db/update-users! updates)
+    {:updates     updates
+     :id->stored  id->stored
+     :id->updated (users-after id->stored updates)}))
 
 (defn- cascade-user-updates!
   "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one write per kind
@@ -632,13 +647,16 @@
     opts    :- [:maybe ::write-opts]]
    (t2/with-transaction [_conn]
      (let [admin-ids (admin-member-ids updates)]
-       (check-ids-distinct updates)
-       (check-emails-unique updates)
        (check-admins-remain updates admin-ids)
-       (let [written (mapv write-user-batch! (partition-all app-db/update-partition-size updates))]
-         (publish-user-updates! written opts)
-         (cascade-user-updates! (into [] (mapcat :updates) written) admin-ids opts)
-         (transduce (map (comp count :updates)) + 0 written))))))
+       (let [batches (mapv (comp update-user-batch! vec) (partition-all app-db/update-partition-size updates))
+             updated (into [] (mapcat :updates) batches)]
+         (when (seq updated)
+           (events/publish-event! :event/user-update
+                                  (events/update-event (into {} (map :id->stored) batches)
+                                                       updated
+                                                       (assoc opts :objects (into {} (map :id->updated) batches)))))
+         (cascade-user-updates! updated admin-ids opts)
+         (count updated))))))
 
 (defn- publish-own-write!
   "Publish the update event of the write of `columns` to the User with `user-id`, a column the product sets that only
@@ -684,7 +702,7 @@
 
 (defmethod perms-group-membership/set-member-flags-of! :model/User
   [_model flag-changes opts]
-  (let [stored (u/index-by :id (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes)))]
+  (let [stored (users.db/users-by-ids (into [] (comp (mapcat first) (distinct)) flag-changes))]
     (reduce #(set-member-flag! %1 %2 opts) stored flag-changes)
     nil))
 

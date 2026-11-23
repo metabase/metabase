@@ -321,8 +321,9 @@
                                  (add-updated {} [stored] (constantly changes))
                                  (add-created {} [inserted]))
                                (delete-empty! [id]))]
-          (u/prog1 (count (table/update-tables! [(assoc settings :id id)]))
-            (publish-writes! writes)))))))
+          (table/update-tables! [(assoc settings :id id)])
+          (publish-writes! writes)
+          1)))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
@@ -347,8 +348,9 @@
                                                [stored (with-set-flags settings settings settings)])
                                              tables)
                            (delete-empty! table-ids))]
-          (u/prog1 (count (table/update-tables! (for [id (vec table-ids)] (assoc settings :id id))))
-            (publish-writes! writes)))))))
+          (table/update-tables! (for [id table-ids] (assoc settings :id id)))
+          (publish-writes! writes)
+          (count table-ids))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -447,7 +449,7 @@
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :insert!             create-table-user-settings!
-   :update!             update-table-user-settings!
+   :update!             #(do (update-table-user-settings! %) %)
    :delete!             delete-table-user-settings!
    :after-load          after-load
    :rows-by-refs        serialization/table-user-settings-rows-by-refs})

@@ -141,20 +141,11 @@
         (events/publish-event! :event/tenant-create (events/create-event created))
         created))))
 
-(defn- check-new-names-distinct
-  "Throws a 400 unless the rows of `updates` satisfy these rules:
-
-  - no two rows set the same name, ignoring case"
-  [updates]
-  (let [new-names (into [] (comp (keep :name) (map u/lower-case-en)) updates)]
-    (when (not= (count new-names) (count (distinct new-names)))
-      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
-
 (defn- rename-order
-  "The rows of `updates`, whose stored Tenants `stored` holds, in an order in which each rename comes after the rename
-  that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a cycle."
-  [stored updates]
-  (let [stored-name #(u/lower-case-en (:name (stored (:id %))))
+  "The rows of `updates`, whose stored Tenants `id->stored` holds, in an order in which each rename comes after the
+  rename that frees its name, comparing names lower-cased, or nil when the renames take each other's names in a cycle."
+  [updates id->stored]
+  (let [stored-name #(u/lower-case-en (:name (id->stored (:id %))))
         new-name    #(some-> (:name %) u/lower-case-en)]
     (loop [pending (vec updates), ordered []]
       (if (empty? pending)
@@ -165,50 +156,48 @@
           (when (seq ready)
             (recur (filterv (complement ready?) pending) (into ordered ready))))))))
 
-(defn- check-renames-free
-  "Throws a 400 unless every row of `updates`, whose stored Tenants `stored` holds by id, satisfies these rules:
+(defn- check-tenant-updates
+  "Throws a 400 unless the rows of `updates`, whose stored Tenants `id->stored` holds, satisfy these rules:
 
+  - no two rows set the same name, ignoring case
   - a rename does not take the name of another Tenant as it stands after the renames of the batch, so a name another
     row of the batch renames away is free
   - the renames of the batch do not take each other's names in a cycle"
-  [stored updates]
-  (when-let [renames (not-empty (filterv #(and (contains? % :name) (not= (:name %) (:name (stored (:id %))))) updates))]
-    (when (or (tenants.db/tenant-named-outside? (mapv :name renames) (mapv :id renames))
-              (nil? (rename-order stored updates)))
+  [updates id->stored]
+  (let [new-names (into [] (comp (keep :name) (map u/lower-case-en)) updates)
+        renames   (filterv #(and (contains? % :name) (not= (:name %) (:name (id->stored (:id %))))) updates)]
+    (when (or (not= (count new-names) (count (distinct new-names)))
+              (and (seq renames)
+                   (or (tenants.db/tenant-named-outside? (mapv :name renames) (mapv :id renames))
+                       (nil? (rename-order updates id->stored)))))
       (throw (ex-info (tru "This name is already taken.") {:status-code 400})))))
 
-(defn- write-tenant-updates!
-  "Write `updates` over the `stored` Tenants, a statement per row, and return each row with its stored
-  Tenant."
-  [stored updates]
-  (tenants.db/update-tenants! (rename-order stored updates))
-  (mapv (fn [row] [(stored (:id row)) row]) updates))
-
 (defn- update-tenant-batch!
-  "Check and apply the `batch` of updates whose Tenants exist, returning what [[write-tenant-updates!]] returns."
+  "Check and write the rows of `batch` whose Tenants exist, one batch of a call, each rename after the one that frees
+  its name, and return the rows written with the Tenants by id as stored before."
   [batch]
-  (let [stored  (u/index-by :id (tenants.db/tenants-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (check-renames-free stored updates)
-    (write-tenant-updates! stored updates)))
+  (let [id->stored (tenants.db/tenants-by-ids (mapv :id batch))
+        updates    (filterv (comp id->stored :id) batch)]
+    (check-tenant-updates updates id->stored)
+    (tenants.db/update-tenants! (rename-order updates id->stored))
+    {:updates updates :id->stored id->stored}))
+
+(defn- flipped-tenant-ids
+  "The ids of the Tenants of `updates`, whose stored Tenants `id->stored` holds, that the rows set active to `active`
+  over a stored flag that is not."
+  [updates id->stored active]
+  (not-empty (into [] (comp (filter #(and (= active (:is_active %)) (not= active (:is_active (id->stored (:id %))))))
+                            (map :id))
+                   updates)))
 
 (defn- cascade-activation!
-  "Deactivate the active Users of the Tenants whose row of `written`, pairs of a stored Tenant and its update row, sets
-  `is_active` false over a stored true, and reactivate the Users deactivated with those that it sets true over a stored
-  false, in one write."
-  [written]
-  (let [flipped     (fn [active]
-                      (not-empty (into [] (comp (filter (fn [[stored row]]
-                                                          (and (= active (:is_active row))
-                                                               (not= active (:is_active stored)))))
-                                                (map (comp :id first)))
-                                       written)))
-        activated   (flipped true)
-        deactivated (flipped false)
-        user-rows   (concat (for [id (some-> activated user/deactivated-with-tenant-user-ids)]
-                              {:id id :is_active true :deactivated_with_tenant nil})
-                            (for [id (some-> deactivated user/active-user-ids-of-tenant)]
-                              {:id id :is_active false :deactivated_with_tenant true}))]
+  "Deactivate the active Users of the Tenants that `updates` deactivate, and reactivate the Users deactivated with those
+  that it activates, in one write; `id->stored` holds the Tenants as stored before."
+  [updates id->stored]
+  (let [user-rows (concat (for [id (some-> (flipped-tenant-ids updates id->stored true) user/deactivated-with-tenant-user-ids)]
+                            {:id id :is_active true :deactivated_with_tenant nil})
+                          (for [id (some-> (flipped-tenant-ids updates id->stored false) user/active-user-ids-of-tenant)]
+                            {:id id :is_active false :deactivated_with_tenant true}))]
     (when (seq user-rows)
       (user/update-users! (vec user-rows)))))
 
@@ -218,13 +207,12 @@
   activating it reactivates the Users deactivated with it."
   [updates :- [:sequential ::tenants.schema/tenant.update]]
   (t2/with-transaction [_conn]
-    (check-new-names-distinct updates)
-    (let [written (into [] (mapcat update-tenant-batch!) (partition-all app-db/update-partition-size updates))]
-      (when (seq written)
-        (events/publish-event! :event/tenant-update
-                               (events/update-event (into {} (map (fn [[stored _]] [(:id stored) stored])) written)
-                                                    (mapv second written)))
-        (cascade-activation! written))))
+    (let [batches    (mapv (comp update-tenant-batch! vec) (partition-all app-db/update-partition-size updates))
+          updates    (into [] (mapcat :updates) batches)
+          id->stored (into {} (map :id->stored) batches)]
+      (when (seq updates)
+        (events/publish-event! :event/tenant-update (events/update-event id->stored updates))
+        (cascade-activation! updates id->stored))))
   nil)
 
 (defenterprise deactivate-tenants!
@@ -233,12 +221,10 @@
   :feature :none
   []
   (t2/with-transaction [_conn]
-    (let [tenants (tenants.db/active-tenants)]
-      (when (seq tenants)
-        (tenants.db/deactivate-tenants! (mapv :id tenants)))
+    (let [id->tenant (tenants.db/active-tenants-by-ids)]
+      (run! (comp tenants.db/deactivate-tenants! vec) (partition-all app-db/update-partition-size (keys id->tenant)))
       (events/publish-event! :event/tenant-update
-                             (events/update-event (u/index-by :id tenants)
-                                                  (mapv #(hash-map :id (:id %) :is_active false) tenants)))
+                             (events/update-event id->tenant (mapv #(hash-map :id % :is_active false) (keys id->tenant))))
       (user/update-users! (for [id (user/active-tenant-user-ids)]
                             {:id id :is_active false :deactivated_with_tenant true})))))
 

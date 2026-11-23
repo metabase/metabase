@@ -31,7 +31,7 @@
 
 (mu/defn update-oauth-clients! :- :nil
   "Apply `updates`, each the primary key of an OAuthClient and the columns to set, in one transaction."
-  [updates :- [:sequential ::oauth-server.schema/oauth-client.update-row]]
+  [updates :- [:sequential ::oauth-server.schema/oauth-client.update]]
   (when (seq updates)
     (t2/with-transaction [_conn]
       (run! (comp oauth-server.db/update-oauth-clients! vec) (partition-all app-db/update-partition-size updates))))

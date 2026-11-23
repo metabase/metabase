@@ -26,13 +26,14 @@
 (mr/def ::custom-viz-plugin
   "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
   [:merge
-   ::custom-viz-plugin.update-row
+   ::custom-viz-plugin.update
    [:map {:closed true}
     [:id               ms/PositiveInt]]])
 
 (mr/def ::custom-viz-plugin.update
-  "What an update of a CustomVizPlugin takes: the columns to change, every column of `:custom_viz_plugin` but its id."
+  "What an update of a custom viz plugin takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id ms/PositiveInt]
    [:identifier       {:optional true} ::custom-viz-plugin.identifier]
    [:display_name     {:optional true} [:maybe :string]]
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
@@ -46,13 +47,6 @@
    [:manifest         {:optional true} [:maybe ::custom-viz-plugin.manifest]]
    [:metabase_version {:optional true} [:maybe :string]]
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
-
-(mr/def ::custom-viz-plugin.update-row
-  "What an update of a CustomVizPlugin takes per row: its `:id` and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::custom-viz-plugin.update])
 
 (mr/def ::custom-viz-plugin.create
   "What creating a CustomVizPlugin takes: its identifier and the columns its bundle or dev server gives it."

@@ -194,7 +194,7 @@
 (defn- update-measure-batch!
   "Checks and writes the Measures of `batch`, up to one partition of the call, and returns what the event needs."
   [batch]
-  (let [stored (measures.db/measures-by-id (mapv :id batch))
+  (let [stored (measures.db/measures-by-ids (mapv :id batch))
         rows   (filterv #(contains? stored (:id %)) batch)]
     (check-measure-updates stored rows)
     (write-measure-updates! stored rows)))
@@ -208,12 +208,12 @@
                                                 (into [] (mapcat :rows) batches)
                                                 (assoc opts :objects (into {} (map :objects) batches))))))
 
-(mu/defn update-measures! :- [:sequential ::measures.schema/measure.update-row]
+(mu/defn update-measures! :- [:sequential ::measures.schema/measure.update]
   "Apply `updates`, each the `:id` of a Measure with the columns to give it, in one transaction, publishing their update
   event with the `:writer` and `:context` of `opts`. Returns `updates`."
-  ([updates :- [:sequential ::measures.schema/measure.update-row]]
+  ([updates :- [:sequential ::measures.schema/measure.update]]
    (update-measures! updates nil))
-  ([updates :- [:sequential ::measures.schema/measure.update-row]
+  ([updates :- [:sequential ::measures.schema/measure.update]
     opts    :- ::write-opts]
    (t2/with-transaction [_conn]
      (let [batches (mapv update-measure-batch! (partition-all app-db/update-partition-size updates))]
@@ -239,7 +239,7 @@
     (let [batches (partition-all app-db/delete-partition-size ids)]
       (when (seq batches)
         (events/publish-event! :event/measure-delete
-                               (events/delete-event (into [] (mapcat #(vals (measures.db/measures-by-id (vec %)))) batches))))
+                               (events/delete-event (into [] (mapcat #(vals (measures.db/measures-by-ids (vec %)))) batches))))
       (run! #(measures.db/delete-measures! (vec %)) batches)))
   nil)
 

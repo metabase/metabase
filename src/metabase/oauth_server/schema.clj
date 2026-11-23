@@ -79,16 +79,10 @@
    [:map {:closed true}
     [:id                             ms/PositiveInt]]])
 
-(mr/def ::oauth-client.update-row
-  "What an update of an OAuthClient takes: its `:id` and the columns to set."
-  [:merge
-   ::oauth-client.update
-   [:map {:closed true}
-    [:id ms/PositiveInt]]])
-
 (mr/def ::oauth-client.update
-  "What an update (or insert) of a OAuthClient accepts: every column of `:oauth_client` except `id`, all optional."
+  "What an update of an OAuthClient takes: its `:id` and every other column of `:oauth_client`, all optional."
   [:map {:closed true}
+   [:id                             ms/PositiveInt]
    [:client_id                      {:optional true} [:maybe :string]]
    [:client_secret_hash             {:optional true} [:maybe :string]]
    [:redirect_uris                  {:optional true} [:maybe [:sequential :string]]]

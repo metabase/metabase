@@ -10,6 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -172,10 +173,17 @@
   [rows :- [:sequential ::users.schema/user.create]]
   (app-db/insert-returning-instances! :model/User rows))
 
-(mu/defn users-by-ids
-  "The Users with `user-ids`, with every column of `:core_user`."
+(mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
+  "A map from id to the User, with every column of `:core_user`, for each of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (by-id-partitions #(t2/select [:model/User :*] :id [:in (vec %)]) user-ids))
+  (into {} (map (juxt :id identity)) (by-id-partitions #(t2/select [:model/User :*] :id [:in (vec %)]) user-ids)))
+
+(mu/defn user-ids-by-emails :- [:map-of :string ::lib.schema.id/user]
+  "A map from the lower-cased email to the id of each User whose lower-cased email is one of `lower-case-emails`."
+  [lower-case-emails :- [:sequential :string]]
+  (into {}
+        (map (juxt (comp u/lower-case-en :email) :id))
+        (by-id-partitions #(t2/select [:model/User :id :email] :%lower.email [:in (vec %)]) lower-case-emails)))
 
 (defn deactivated-at-clause
   "The `deactivated_at` a User gets when its `is_active` becomes `active?`: NULL on activation, else the stored stamp or
@@ -186,7 +194,7 @@
 
 (mu/defn update-users! :- :nil
   "Apply `updates`, each the id of a User and its columns to set, with one update for each distinct change."
-  [updates :- [:sequential ::users.schema/user.update-row]]
+  [updates :- [:sequential :map]]
   (app-db/update-grouped! :model/User updates)
   nil)
 

@@ -570,10 +570,10 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
-(mu/defn permissions-groups-by-ids :- [:sequential ::permissions.schema/permissions-group]
-  "The PermissionsGroups with `ids`, in any order."
+(mu/defn permissions-groups-by-ids :- [:map-of ms/PositiveInt ::permissions.schema/permissions-group]
+  "The map from id to PermissionsGroup of the groups with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
+  (t2/select-pk->fn identity :model/PermissionsGroup :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn insert-permissions-groups! :- [:sequential ::permissions.schema/permissions-group]
   "Insert the PermissionsGroup `rows` and return the inserted instances in their order."
@@ -740,10 +740,10 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
 
-(mu/defn group-memberships-by-ids :- [:sequential ::permissions.schema/permissions-group-membership]
-  "The PermissionsGroupMemberships with `ids`, in any order."
+(mu/defn group-memberships-by-ids :- [:map-of ms/PositiveInt ::permissions.schema/permissions-group-membership]
+  "The map from id to PermissionsGroupMembership of the memberships with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/PermissionsGroupMembership :id [:in [:auto/param (vec (distinct ids))]]))
+  (t2/select-pk->fn identity :model/PermissionsGroupMembership :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn memberships-for-users-in-groups
   "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroups with `group-ids`."
@@ -804,10 +804,10 @@
   [rows :- [:sequential ::permissions.schema/application-permissions-revision.create]]
   (mdb/insert-returning-instances! :model/ApplicationPermissionsRevision rows))
 
-(mu/defn collection-permission-graph-revisions-by-ids
-  "The CollectionPermissionGraphRevisions with `ids`, in any order."
+(mu/defn collection-permission-graph-revisions-by-ids :- [:map-of ms/PositiveInt :map]
+  "The map from id to CollectionPermissionGraphRevision of the revisions with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
+  (t2/select-pk->fn identity :model/CollectionPermissionGraphRevision :id [:in [:auto/param (vec (distinct ids))]]))
 
 (mu/defn update-collection-permission-graph-revisions!
   "Apply each of `rows`, the `:id` of a CollectionPermissionGraphRevision and the columns to set, one statement per
@@ -1201,14 +1201,14 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_data_analyst :model/User :id user-id))
 
-(mu/defn member-flags :- [:sequential [:map {:closed true}
-                                       [:id           ::lib.schema.id/user]
-                                       [:tenant_id    [:maybe ms/PositiveInt]]
-                                       [:is_superuser :boolean]]]
-  "The id, tenant id and superuser flag of the Users with `user-ids`."
+(mu/defn member-flags-by-user-ids :- [:map-of ::lib.schema.id/user [:map {:closed true}
+                                                                    [:id           ::lib.schema.id/user]
+                                                                    [:tenant_id    [:maybe ms/PositiveInt]]
+                                                                    [:is_superuser :boolean]]]
+  "The map from id to the id, tenant id and superuser flag of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (into []
-        (mapcat #(t2/select [:model/User :id :tenant_id :is_superuser] :id [:in (vec %)]))
+  (into {}
+        (mapcat #(t2/select-pk->fn identity [:model/User :id :tenant_id :is_superuser] :id [:in (vec %)]))
         (partition-all mdb/delete-partition-size user-ids)))
 
 (mu/defn earliest-user-join-date

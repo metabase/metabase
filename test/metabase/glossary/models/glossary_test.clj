@@ -54,9 +54,9 @@
 
 (deftest glossary-schema-test
   (testing "the Glossary schema refuses a blank or missing term or definition"
-    (is (not (mr/validate ::glossary.schema/glossary.update {:term " "})))
-    (is (not (mr/validate ::glossary.schema/glossary.update {:definition nil})))
-    (is (mr/validate ::glossary.schema/glossary.update {:term "Kept" :definition "Kept definition"}))))
+    (is (not (mr/validate ::glossary.schema/glossary.update {:id 1 :term " "})))
+    (is (not (mr/validate ::glossary.schema/glossary.update {:id 1 :definition nil})))
+    (is (mr/validate ::glossary.schema/glossary.update {:id 1 :term "Kept" :definition "Kept definition"}))))
 
 (deftest write-permission-test
   (mt/with-temp [:model/Glossary entry {:term "Checked" :definition "Permission checked"}]

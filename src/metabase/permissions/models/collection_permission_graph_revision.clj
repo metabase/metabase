@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -55,32 +54,27 @@
             (partition-all app-db/create-partition-size rows)))))
 
 (defn- check-revision-updates
-  "Throws unless every row of `updates`, whose stored revisions `stored` holds, satisfies these rules:
+  "Throws unless every row of `updates`, whose stored revisions `id->stored` holds, satisfies these rules:
 
   - the hooks of the revision accept the row merged into its stored row"
-  [stored updates]
+  [updates id->stored]
   (doseq [{id :id :as row} updates]
-    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge (stored id) (dissoc row :id)))))
-
-(defn- write-revision-updates!
-  "Write `updates` over their stored revisions, a statement per row."
-  [updates]
-  (permissions.db/update-collection-permission-graph-revisions! updates))
+    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge (id->stored id) (dissoc row :id)))))
 
 (defn- update-revision-batch!
-  "Check and apply the `batch` of updates whose revisions exist."
+  "Check and write the rows of `batch` whose revisions exist, one batch of a call."
   [batch]
-  (let [stored  (u/index-by :id (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id batch)))
-        updates (filterv (comp stored :id) batch)]
-    (check-revision-updates stored updates)
-    (write-revision-updates! updates)))
+  (let [id->stored (permissions.db/collection-permission-graph-revisions-by-ids (mapv :id batch))
+        updates    (filterv (comp id->stored :id) batch)]
+    (check-revision-updates updates id->stored)
+    (permissions.db/update-collection-permission-graph-revisions! updates)))
 
 (mu/defn update-collection-permission-graph-revisions! :- :nil
   "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions in one transaction."
   [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
   (when (seq rows)
     (t2/with-transaction [_conn]
-      (run! update-revision-batch! (partition-all app-db/update-partition-size rows))))
+      (run! (comp update-revision-batch! vec) (partition-all app-db/update-partition-size rows))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

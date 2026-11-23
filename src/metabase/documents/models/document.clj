@@ -1,6 +1,5 @@
 (ns metabase.documents.models.document
   (:require
-   [medley.core :as m]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -410,17 +409,22 @@
            [:writer  {:optional true} [:enum :import :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
+(defn- create-document-batch!
+  "Check and insert `rows`, one batch of a call, and return the new Documents."
+  [rows]
+  (check-documents (map #(update % :archived boolean) rows))
+  (documents.db/insert-documents! rows))
+
 (mu/defn create-documents! :- [:sequential (ms/InstanceOf :model/Document)]
-  "Insert the Document `rows` and return the inserted instances in the order of the rows, publishing their create event.
-  Each Collection must be able to hold a Document."
+  "Insert the Document `rows` and return the inserted instances in the order of the rows, in one transaction, publishing
+  their create event. Each Collection must be able to hold a Document."
   [rows :- [:sequential ::documents.schema/document.create]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (check-documents (map #(update % :archived boolean) rows))
-      (let [documents (documents.db/insert-documents! rows)]
-        (events/publish-event! :event/document-create (events/create-event documents))
-        documents))))
+  (t2/with-transaction [_conn]
+    (let [created (into [] (mapcat (comp create-document-batch! vec))
+                        (partition-all app-db/create-partition-size rows))]
+      (when (seq created)
+        (events/publish-event! :event/document-create (events/create-event created)))
+      created)))
 
 (defn- changed?
   "Whether `row`, the columns to write, changes the column `k` of `stored`."
@@ -465,69 +469,66 @@
         rows))
 
 (defn- moved-documents
-  "The rows of `rows`, updates of the `stored` Documents, that change `:collection_id`, each with the `archived` state the
+  "The rows of `updates`, which change `:collection_id` of the Documents `id->stored`, each with the `archived` state the
   Document is about to have."
-  [stored rows]
-  (for [row   (filterv #(changed? (get stored (:id %)) % :collection_id) rows)]
-    (assoc row :archived (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))))))
+  [updates id->stored]
+  (for [row   (filterv #(changed? (get id->stored (:id %)) % :collection_id) updates)]
+    (assoc row :archived (boolean (if (contains? row :archived) (:archived row) (:archived (get id->stored (:id row))))))))
 
 (defn- check-document-updates
-  "Throw a 400 unless every one of `rows`, updates of the `stored` Documents that move, satisfies these rules:
+  "Throw a 400 unless every one of `updates` that moves a Document of `id->stored` satisfies these rules:
 
   - its Collection is in a namespace that holds Documents
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Document is"
-  [stored rows]
-  (check-documents (moved-documents stored rows)))
+  [updates id->stored]
+  (check-documents (moved-documents updates id->stored)))
 
 (defn- write-document-updates!
-  "Writes `rows`, updates of the `stored` Documents: moves their cards, writes the columns and archives or restores their
-  cards, and returns what the event needs, the changes of each row and the Documents after the write."
-  [stored rows opts]
-  (move-cards-of-moved! (moved-documents stored rows))
-  (documents.db/update-documents! rows)
-  (set-cards-archived-of! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
-  (let [updated (m/index-by :id (documents.db/documents (mapv :id rows)))]
-    {:stored stored :rows (derive-archived-directly rows updated)}))
+  "Writes `updates` of the Documents `id->stored`: moves their cards, writes the columns and archives or restores their
+  cards, and returns the Documents by id as they are after the write."
+  [updates id->stored opts]
+  (move-cards-of-moved! (moved-documents updates id->stored))
+  (documents.db/update-documents! updates)
+  (set-cards-archived-of! (filterv #(changed? (get id->stored (:id %)) % :archived) updates) (:context opts))
+  (documents.db/documents-by-ids (mapv :id updates)))
 
 (defn- update-document-batch!
-  "Checks and writes the Documents of `batch`, up to one partition of the call, and returns what the event needs."
-  [batch opts]
-  (let [stored (m/index-by :id (documents.db/documents (mapv :id batch)))
-        rows   (filterv #(contains? stored (:id %)) batch)]
-    (check-document-updates stored rows)
-    (write-document-updates! stored rows opts)))
-
-(defn- publish-document-updates!
-  "Publishes the update event of the Documents that `batches`, what [[update-document-batch!]] returned, wrote."
-  [batches opts]
-  (when (some (comp seq :rows) batches)
-    (events/publish-event! :event/document-update
-                           (events/update-event (into {} (map :stored) batches)
-                                                (into [] (mapcat :rows) batches)
-                                                opts))))
+  "Check and write `updates`, one batch of a call, and return the rows written, with the `archived_directly` the write
+  gave them, and the Documents by id as stored before."
+  [updates opts]
+  (let [id->stored  (documents.db/documents-by-ids (mapv :id updates))
+        updates     (filterv #(contains? id->stored (:id %)) updates)
+        _           (check-document-updates updates id->stored)
+        id->updated (write-document-updates! updates id->stored opts)]
+    {:updates    (derive-archived-directly updates id->updated)
+     :id->stored id->stored}))
 
 (mu/defn update-documents! :- :nil
   "Apply `updates`, each the `:id` of a Document with the columns to give it, in one transaction, publishing their update
   event with the `:context` of `opts`."
-  ([updates :- [:sequential ::documents.schema/document.import-row]]
+  ([updates :- [:sequential ::documents.schema/document.update]]
    (update-documents! updates nil))
-  ([updates :- [:sequential ::documents.schema/document.import-row]
+  ([updates :- [:sequential ::documents.schema/document.update]
     opts    :- ::write-opts]
    (t2/with-transaction [_conn]
-     (let [batches (mapv #(update-document-batch! % opts) (partition-all app-db/update-partition-size updates))]
-       (publish-document-updates! batches opts)))
+     (let [batches (mapv #(update-document-batch! (vec %) opts) (partition-all app-db/update-partition-size updates))]
+       (when (some (comp seq :updates) batches)
+         (events/publish-event! :event/document-update
+                                (events/update-event (into {} (map :id->stored) batches)
+                                                     (into [] (mapcat :updates) batches)
+                                                     opts)))))
    nil))
 
 (mu/defn delete-documents! :- :nil
   "Delete the Documents with `ids` in one transaction, publishing their delete event right before the first statement."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (let [batches (partition-all app-db/delete-partition-size ids)]
-      (when (seq batches)
-        (events/publish-event! :event/document-delete
-                               (events/delete-event (into [] (mapcat #(documents.db/documents (vec %))) batches))))
-      (run! #(documents.db/delete-documents! (vec %)) batches)))
+    (let [batches   (mapv vec (partition-all app-db/delete-partition-size (distinct ids)))
+          documents (into [] (mapcat (comp vals documents.db/documents-by-ids)) batches)]
+      (when (seq documents)
+        (events/publish-event! :event/document-delete (events/delete-event documents)))
+      (run! documents.db/delete-documents! batches)))
   nil)
 
 (def CardCreateSchema

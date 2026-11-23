@@ -31,7 +31,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Glossary :id id))
 
-(mu/defn glossaries-by-id
+(mu/defn glossaries-by-ids
   "A map of id to Glossary for the Glossary entries with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Glossary :id [:in ids]))

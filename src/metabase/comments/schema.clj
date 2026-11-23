@@ -82,6 +82,7 @@
   [:merge
    ::comment.create
    [:map {:closed true}
+    [:id ms/PositiveInt]
     [:target_type  {:optional true} [:maybe [:or :keyword :string]]]
     [:target_id    {:optional true} [:maybe ms/PositiveInt]]
     [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
@@ -91,13 +92,6 @@
     [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
     [:deleted_at   {:optional true} [:maybe ms/TemporalInstant]]
     [:content_html {:optional true} [:maybe :string]]]])
-
-(mr/def ::comment.update-row
-  "What an update of the row names: its `:id` and the columns to change."
-  [:merge
-   [:map {:closed true}
-    [:id ms/PositiveInt]]
-   ::comment.update])
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."

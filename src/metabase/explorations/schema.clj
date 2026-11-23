@@ -32,15 +32,11 @@
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::exploration.update
-  "The columns to change of Explorations."
-  ::exploration.create)
-
-(mr/def ::exploration.update-row
-  "What an update of the row names: its `:id` and the columns to change."
+  "What an update of Explorations takes: the `:id` of each and the columns to change."
   [:merge
    [:map {:closed true}
     [:id ms/PositiveInt]]
-   ::exploration.update])
+   ::exploration.create])
 
 (mr/def ::exploration.revision
   "An Exploration as a Revision stores it: its tracked columns."
@@ -124,15 +120,11 @@
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::exploration-page.update
-  "The columns to change of ExplorationPages."
-  ::exploration-page.create)
-
-(mr/def ::exploration-page.update-row
-  "What an update of the row names: its `:id` and the columns to change."
+  "What an update of ExplorationPages takes: the `:id` of each and the columns to change."
   [:merge
    [:map {:closed true}
     [:id ms/PositiveInt]]
-   ::exploration-page.update])
+   ::exploration-page.create])
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -191,15 +183,11 @@
    [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
 
 (mr/def ::exploration-query.update
-  "The columns to change of ExplorationQueries."
-  ::exploration-query.create)
-
-(mr/def ::exploration-query.update-row
-  "What an update of the row names: its `:id` and the columns to change."
+  "What an update of ExplorationQueries takes: the `:id` of each and the columns to change."
   [:merge
    [:map {:closed true}
     [:id ms/PositiveInt]]
-   ::exploration-query.update])
+   ::exploration-query.create])
 
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
@@ -328,15 +316,11 @@
    [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
 (mr/def ::exploration-thread.update
-  "The columns to change of ExplorationThreads."
-  ::exploration-thread.create)
-
-(mr/def ::exploration-thread.update-row
-  "What an update of the row names: its `:id` and the columns to change."
+  "What an update of ExplorationThreads takes: the `:id` of each and the columns to change."
   [:merge
    [:map {:closed true}
     [:id ms/PositiveInt]]
-   ::exploration-thread.update])
+   ::exploration-thread.create])
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."

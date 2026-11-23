@@ -57,7 +57,7 @@
 (mu/defn update-auth-identities!
   "Apply each of `rows`, the `:id` of a AuthIdentity and the columns to set, one statement per distinct change, but a
   statement of its own for each row that sets `:credentials`."
-  [rows :- [:sequential ::auth-identity.schema/auth-identity.update-row]]
+  [rows :- [:sequential ::auth-identity.schema/auth-identity.update]]
   (let [{credential-rows true other-rows false} (group-by #(contains? % :credentials) rows)]
     (doseq [{:keys [id] :as row} credential-rows]
       (t2/update! :model/AuthIdentity :id [:auto/param id] (dissoc row :id)))
