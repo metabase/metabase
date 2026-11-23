@@ -130,6 +130,7 @@ const elements = [
     pattern: "enterprise/frontend/src/custom-viz/**",
   }),
   createElement({ type: "shared", name: "data-grid" }),
+  createElement({ type: "shared", name: "filter-bar", enforcePublicApi: true }),
   createElement({ type: "shared", name: "databases" }),
   createElement({
     type: "shared",
@@ -520,6 +521,12 @@ const baseRules = [
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
+  },
+  {
+    from: ["shared/filter-bar"],
+    disallow: ["lib/mlv2", "basic/mlv1"],
+    message:
+      "The filter bar is generic: it reaches queries and metrics only through its adapter",
   },
   {
     from: ["feature/*"],
