@@ -128,7 +128,9 @@ export const MetabotChat = ({
             <Text
               className={Styles.headerTitle}
               c={metabot.title ? "text-primary" : "text-secondary"}
-              fw={metabot.title ? "bold" : "normal"}
+              // PROTOTYPE: the "Modern nav" conversation page (nav-aligned
+              // header) sets its title in the regular weight.
+              fw={metabot.title && !isHeaderNavAligned ? "bold" : "normal"}
               truncate
               title={title}
               data-testid="metabot-conversation-title"

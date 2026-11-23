@@ -89,11 +89,9 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
+            {/* PROTOTYPE: no model icon before the heading. */}
             <Title order={1} c="text-primary" id={titleId}>
-              <Group gap="sm">
-                <Icon size={24} c="icon-brand" name="model" />
-                {t`Models`}
-              </Group>
+              {t`Models`}
             </Title>
             <Group gap="xxs">
               {canCreateNewModel && (

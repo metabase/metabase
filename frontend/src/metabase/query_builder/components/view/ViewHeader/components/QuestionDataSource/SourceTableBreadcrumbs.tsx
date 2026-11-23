@@ -72,6 +72,13 @@ export function SourceTableBreadcrumbs({
               ? "grid_2x2_check"
               : "repository"
           }
+          iconClassName={
+            !isSubhead &&
+            navVariant === "modern-nav-c" &&
+            collection.type === "library-data"
+              ? S.WideIconGap
+              : undefined
+          }
         >
           {/* PROTOTYPE: the Library's sections use the nav's names. */}
           {getPickerCollectionName(collection)}

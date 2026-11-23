@@ -95,11 +95,9 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
+            {/* PROTOTYPE: no metric icon before the heading. */}
             <Title order={1} c="text-primary" id={titleId}>
-              <Group gap="sm">
-                <Icon size={24} c="icon-brand" name="metric" />
-                {t`Metrics`}
-              </Group>
+              {t`Metrics`}
             </Title>
             <Group gap="xxs">
               {canCreateMetric && (

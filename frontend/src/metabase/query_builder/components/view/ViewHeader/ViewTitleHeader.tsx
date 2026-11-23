@@ -5,7 +5,10 @@ import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
-import { useNavToggleAlignedPadding } from "metabase/nav/prototype/use-nav-toggle-inset";
+import {
+  useNavToggleAlignedPadding,
+  useNavToggleInset,
+} from "metabase/nav/prototype/use-nav-toggle-inset";
 import {
   isModernNav,
   useNavVariant,
@@ -166,7 +169,20 @@ export function ViewTitleHeader({
     { selector: '[data-testid="qb-back-button"] svg', kind: "icon" },
     { selector: '[data-testid="saved-question-header-title"]', kind: "text" },
   ]);
-  const alignedInset = isSaved ? navToggleAlignedPadding : undefined;
+  // On unsaved questions the header carries the open-sidebar button itself,
+  // with one spacing step ("md", 12px) of padding before it — a touch more
+  // than the 8px that would center its icon between the edge and the crumbs.
+  // With the nav open, "Modern nav - C" pulls the source crumbs in two steps
+  // from the usual 32px ("xxl" → "lg", 16px).
+  const isNavToggleAligned = useNavToggleInset() != null;
+  const isVariantCWithNavOpen = variant === "modern-nav-c" && isNavBarOpen;
+  const alignedInset = isSaved
+    ? navToggleAlignedPadding
+    : isNavToggleAligned
+      ? "md"
+      : isVariantCWithNavOpen
+        ? "lg"
+        : undefined;
 
   return (
     <>

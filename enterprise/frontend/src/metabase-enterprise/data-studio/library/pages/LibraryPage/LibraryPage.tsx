@@ -124,10 +124,21 @@ function LibraryPageContent({ section }: { section?: LibraryPageSection }) {
   );
   useErrorHandling(tablesError || metricsError);
 
-  const tree = useMemo(
-    () => (isSearchActive ? searchTree : [...tablesTree, ...metricsTree]),
-    [isSearchActive, searchTree, tablesTree, metricsTree],
-  );
+  // PROTOTYPE: a single section's page (Metrics or Published datasets) lists
+  // the section's contents directly, without its own collection as the one
+  // row they all sit under; the combined Library page keeps both rows.
+  const tree = useMemo(() => {
+    if (isSearchActive) {
+      return searchTree;
+    }
+    if (section === "metrics") {
+      return metricsTree.flatMap((root) => root.children ?? []);
+    }
+    if (section === "data") {
+      return tablesTree.flatMap((root) => root.children ?? []);
+    }
+    return [...tablesTree, ...metricsTree];
+  }, [isSearchActive, searchTree, tablesTree, metricsTree, section]);
   const defaultExpandedIds = useMemo(
     () =>
       [
