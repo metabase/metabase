@@ -494,22 +494,21 @@ def _join_step_source(node, cte_names, dialect):
 _COMMA_AS_CROSS_DIALECTS = {"bigquery", "clickhouse", "databricks", "hive", "spark", "spark2", "sqlite"}
 
 
-def _join_step_strategy(join, dialect):
-    """The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
-
-    Raises `_JoinStepsUnsupported` for a comma join.
-    """
-    args = _set_args(join)
+def _comma_join(join, dialect):
+    """Whether `join` is, or in this dialect may be, a comma join."""
     side = (join.side or "").upper()
     kind = (join.kind or "").upper()
     method = (join.method or "").upper()
-    # `FROM a, b` has its condition, if any, in the WHERE clause, which the step queries leave out, so they would count
-    # the whole cross product.
-    if (not side and not kind and not method and not args & {"on", "using"}) or (
+    return (not side and not kind and not method and not _set_args(join) & {"on", "using"}) or (
         kind == "CROSS" and dialect in _COMMA_AS_CROSS_DIALECTS
-    ):
-        raise _JoinStepsUnsupported("comma-join")
-    if kind == "CROSS":
+    )
+
+
+def _join_step_strategy(join, dialect):
+    """The join's strategy: `inner`, `left`, `right`, `full` or `cross`."""
+    side = (join.side or "").upper()
+    kind = (join.kind or "").upper()
+    if kind == "CROSS" or _comma_join(join, dialect):
         return "cross"
     # A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
     if kind in ("SEMI", "ANTI"):
@@ -581,6 +580,37 @@ def _source_name(node, dialect):
     alias = node.args.get("alias")
     identifier = alias.this if alias is not None and alias.this is not None else node.this
     return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
+
+
+def _in_subquery(column, conjunct):
+    """Whether `column` is in a subquery of `conjunct`."""
+    node = column
+    while node is not conjunct:
+        node = node.parent
+        if isinstance(node, exp.Select):
+            return True
+    return False
+
+
+def _where_may_join(where, names, comma_names, dialect):
+    """Whether a conjunct of `where` may be the condition of a comma join to a source in `comma_names`.
+
+    The step queries leave WHERE out, so they would count the whole cross product of such a join.
+    A conjunct may be one when it compares such a source with another, or has several columns of unknown source.
+    Inside a subquery, only a column qualified with a source of the query (`names`) refers to the outer row.
+    """
+    for conjunct in _conjuncts(where.this):
+        columns = []
+        for column in conjunct.find_all(exp.Column):
+            table = column.args.get("table")
+            plain = isinstance(table, exp.Identifier) and column.args.get("db") is None
+            name = _effective_name(table, dialect) if plain else None
+            if name in names or not _in_subquery(column, conjunct):
+                columns.append(name)
+        sources = set(columns)
+        if len(columns) > 1 and (None in sources or (len(sources) > 1 and sources & comma_names)):
+            return True
+    return False
 
 
 def _on_counts_matches(from_, joins, strategy, dialect):
@@ -665,7 +695,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
                         "sql": "SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = b.a_id THEN 1 END) AS m FROM a
                                 LEFT JOIN b ON a.id = b.a_id"}]}'
 
-        join_steps("SELECT * FROM a, b")
+        join_steps("SELECT * FROM a, b WHERE a.id = b.id")
         => '{"status": "unsupported", "reason": "comma-join"}'
     """
     try:
@@ -704,6 +734,13 @@ def join_steps(sql: str, dialect: str = None) -> str:
         cte_names = {
             _effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else []) if cte.alias
         }
+        where = stmt.args.get("where")
+        comma_joins = [join for join in joins if _comma_join(join, dialect)]
+        if comma_joins and where is not None:
+            names = {_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]} - {None}
+            comma_names = {_source_name(join.this, dialect) for join in comma_joins} - {None}
+            if _where_may_join(where, names, comma_names, dialect):
+                raise _JoinStepsUnsupported("comma-join")
         from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):

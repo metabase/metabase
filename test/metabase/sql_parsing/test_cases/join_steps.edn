@@ -179,9 +179,126 @@
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE a.id = b.id",
    :expected {:status "unsupported", :reason "comma-join"}}
-  {:name "a comma join after a JOIN is refused too",
+  {:name "a comma join after a JOIN counts the cross product when WHERE cannot join it",
    :dialect "postgres",
-   :sql "SELECT * FROM a JOIN b ON a.id = b.id, c",
+   :sql "SELECT * FROM a JOIN b ON a.id = b.id, c WHERE a.x = b.x",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}
+     {:source "table",
+      :table [nil nil "c"],
+      :alias "c",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id, c"}]}}
+  {:name "a comma join with no WHERE counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join with filters on one source each counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.x > 1 AND b.y < 2",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join with unqualified filters counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE x > 1 AND y < 2",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join comparing columns of one source counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.x = a.y",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join with an uncorrelated subquery counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.id IN (SELECT id FROM t)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name "a comma join with no WHERE counts where commas parse as CROSS",
+   :dialect "bigquery",
+   :sql "SELECT * FROM a, b",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "an explicit CROSS JOIN with no WHERE counts where commas parse as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a CROSS JOIN b",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
+  {:name "a comma join comparing unqualified columns is refused: they may be its condition",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE x = y",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a comma join with a subquery correlated to both sources is refused",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE EXISTS (SELECT 1 FROM t WHERE t.id = b.id AND t.x = a.x)",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a comma join with a condition under OR is refused",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.id = b.id OR a.x = 1",
    :expected {:status "unsupported", :reason "comma-join"}}
   {:name "a set operation is refused",
    :dialect "postgres",

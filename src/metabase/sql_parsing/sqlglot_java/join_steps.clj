@@ -86,27 +86,31 @@
 (defn- upper-arg [join k]
   (u/upper-case-en (ast/text join k)))
 
-(defn- step-strategy
-  "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
-  Throws a `comma-join` refusal for a comma join.
-  Port of `_join_step_strategy`."
+(defn- comma-join?
+  "Whether `join` is, or in this dialect may be, a comma join.
+  Port of `_comma_join`."
   [join dialect]
   (let [args   (set-args join)
         side   (upper-arg join "side")
         kind   (upper-arg join "kind")
         method (upper-arg join "method")]
-    ;; `FROM a, b` has its condition, if any, in the WHERE clause, which the step queries leave out, so they would
-    ;; count the whole cross product.
-    (when (or (and (= "" side kind method)
-                   (not-any? args ["on" "using"]))
-              (and (= "CROSS" kind)
-                   (contains? comma-as-cross-dialects dialect)))
-      (throw (unsupported "comma-join")))
+    (or (and (= "" side kind method)
+             (not-any? args ["on" "using"]))
+        (and (= "CROSS" kind)
+             (contains? comma-as-cross-dialects dialect)))))
+
+(defn- step-strategy
+  "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
+  Port of `_join_step_strategy`."
+  [join dialect]
+  (let [side (upper-arg join "side")
+        kind (upper-arg join "kind")]
     (cond
-      (= kind "CROSS")           "cross"
+      (or (= kind "CROSS")
+          (comma-join? join dialect)) "cross"
       ;; A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
-      (#{"SEMI" "ANTI"} kind)    "inner"
-      :else                      (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
+      (#{"SEMI" "ANTI"} kind)         "inner"
+      :else                           (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
 (defn- with-clause [^Expr select with-node]
   (cond-> select
@@ -176,6 +180,42 @@
                        (ast/this node))]
     (when (instance? Expressions$Identifier identifier)
       (effective-name identifier dialect))))
+
+(defn- in-subquery?
+  "Whether `column` is in a subquery of `conjunct`.
+  Port of `_in_subquery`."
+  [column conjunct]
+  (loop [node column]
+    (cond
+      (identical? node conjunct)                       false
+      (instance? Expressions$Select (ast/parent node)) true
+      :else                                            (recur (ast/parent node)))))
+
+(defn- where-may-join?
+  "Whether a conjunct of `where` may be the condition of a comma join to a source in `comma-names`.
+  The step queries leave WHERE out, so they would count the whole cross product of such a join.
+  A conjunct may be one when it compares such a source with another, or has several columns of unknown source.
+  Inside a subquery, only a column qualified with a source of the query (`names`) refers to the outer row.
+  Port of `_where_may_join`."
+  [where names comma-names dialect]
+  (boolean
+   (some (fn [conjunct]
+           (let [columns (into []
+                               (keep (fn [column]
+                                       (let [table (ast/arg column "table")
+                                             name  (when (and (instance? Expressions$Identifier table)
+                                                              (nil? (ast/arg column "db")))
+                                                     (effective-name table dialect))]
+                                         (when (or (contains? names name)
+                                                   (not (in-subquery? column conjunct)))
+                                           [name]))))
+                               (ast/find-all conjunct Expressions$Column))
+                 sources (into #{} (map first) columns)]
+             (and (> (count columns) 1)
+                  (or (contains? sources nil)
+                      (and (> (count sources) 1)
+                           (some comma-names sources))))))
+         (conjuncts (ast/this where)))))
 
 (defn- operand-column
   "The source an operand of a join comparison names, `::literal` for a literal, or nil for anything else."
@@ -311,7 +351,17 @@
           cte-names    (into #{}
                              (keep #(when (seq (ast/node-alias %))
                                       (effective-name (ast/this (ast/arg % "alias")) dialect)))
-                             (some-> with-node ast/expressions))]
+                             (some-> with-node ast/expressions))
+          where        (ast/arg stmt "where")
+          commas       (filterv #(comma-join? % dialect) joins)
+          source-names (fn [nodes] (into #{} (keep #(source-name % dialect)) nodes))
+          _            (when (and (seq commas)
+                                  where
+                                  (where-may-join? where
+                                                   (source-names (cons (ast/this from-node) (map ast/this joins)))
+                                                   (source-names (map ast/this commas))
+                                                   dialect))
+                         (throw (unsupported "comma-join")))]
       {:status   "ok"
        :from     (step-source (ast/this from-node) cte-names dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
