@@ -41,7 +41,7 @@ import { registerDashboardVisualizations } from "metabase/dashboard/visualizatio
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { GOAL_LINE_DASH, TREND_LINE_WIDTH } from "metabase/viz-core";
+import { GOAL_LINE_DASH, TREND_LINE_DASH } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -1306,7 +1306,7 @@ async function showChartTooltip(
 
 function getTrendLines(container: HTMLElement) {
   return container.querySelectorAll(
-    `path[stroke-width='${TREND_LINE_WIDTH}'][stroke-linejoin='bevel']`,
+    `path[stroke-dasharray='${TREND_LINE_DASH.join(",")}']`,
   );
 }
 
@@ -2673,11 +2673,12 @@ describe("DashboardApp > visualizer", () => {
       const displayTypes = within(seriesSettings).getByTestId(
         "chart-settings-widget-display",
       );
+      // On 65, the display types are icon buttons, and the selected one is filled
       expect(
-        within(displayTypes).getByRole("radio", { name: /line/i }),
-      ).toBeChecked();
+        within(displayTypes).getByRole("button", { name: "line icon" }),
+      ).toHaveAttribute("data-variant", "filled");
       await userEvent.click(
-        within(displayTypes).getByRole("radio", { name: /bar/i }),
+        within(displayTypes).getByRole("button", { name: "bar icon" }),
       );
       await userEvent.click(
         within(
@@ -3058,9 +3059,8 @@ describe("DashboardApp > visualizer", () => {
         secondDimension: "Category",
         display: "bar",
         xAxisLabels: ["Doohickey", "Widget"],
-        // a chart below the fullscreen size uses compact tick labels
         chartSize: { width: 800, height: 400 },
-        yAxisLabels: ["6.0k", "3.0k"],
+        yAxisLabels: ["6,000", "1,000"],
         dimensionWellItems: ["Product → Category", "Category"],
       },
     ])(
