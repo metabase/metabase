@@ -48,9 +48,10 @@
 (def ^:private max-field-ids-for-table-id-lookup
   1000)
 
-(def ^:private get-field-query-entries
-  "The entries of the query params of `GET /api/field/:id`, which `GET /api/field/by-name` takes too."
-  [[:include_editable_data_model {:default false} ms/BooleanValue]])
+(def ^:private GetFieldQuery
+  "The query params of `GET /api/field/:id`, which `GET /api/field/by-name` takes too."
+  [:map {:closed true}
+   [:include_editable_data_model {:default false} ms/BooleanValue]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -61,15 +62,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/by-name"
-  "Get the Field named by `db`, its Database's name, `schema`, its Table's schema, left out for none, `table`, its
-  Table's name, and `field`, its name, repeated for a nested Field to name each of its ancestors, root first; as
-  `GET /api/field/:id` does, taking its query params too. These are the names serialization and remote sync name a
-  Field by, and a Database name names the oldest Database with that name."
+  "Get the Field named by `db`, its Database's name, `schema`, its Table's schema, left out or empty for none,
+  `table`, its Table's name, and `field`, its name, repeated for a nested Field to name each of its ancestors, root
+  first; as `GET /api/field/:id` does, taking its query params too. These are the names serialization and remote sync
+  name a Field by, and a Database name names the oldest Database with that name."
   {:scope api-scope/data-app}
   [_route-params
    {include-editable-data-model? :include_editable_data_model
-    :as                          query-params} :- (into [:map {:closed true}]
-                                                        (concat natural-keys/field-entries get-field-query-entries))]
+    :as                          query-params} :- (into GetFieldQuery natural-keys/field-entries)]
   (schema.field/get-field (natural-keys/field-id query-params)
                           {:include-editable-data-model? include-editable-data-model?}))
 
@@ -86,7 +86,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {include-editable-data-model? :include_editable_data_model} :- (into [:map {:closed true}] get-field-query-entries)]
+   {include-editable-data-model? :include_editable_data_model} :- GetFieldQuery]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
@@ -199,7 +199,7 @@
   "Update the Field named by `db`, `schema`, `table` and `field`, as `PUT /api/field/:id` does. See
   `GET /api/field/by-name`."
   [_route-params
-   query-params :- ::natural-keys/field-query
+   query-params :- natural-keys/FieldQuery
    body :- UpdateFieldBody]
   (update-field! (natural-keys/field-id query-params) body))
 

@@ -1549,3 +1549,12 @@
         (is (= "Not found." (apply mt/user-http-request :rasta :put 404 "table/by-name" {:description "No"} params)))))
     (testing "a Table the user can read but not edit is a 403, as by id"
       (apply mt/user-http-request :rasta :put 403 "table/by-name" {:description "No"} params))))
+
+(deftest table-by-name-empty-schema-test
+  (testing "a missing or empty schema param names the Table with no schema or an empty one, which are never both there"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "by-name empty schema" :engine :h2 :details {}}
+                   :model/Table    {empty-id :id} {:db_id db-id :schema "" :name "T"}]
+      (is (=? {:id empty-id}
+              (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name empty schema" :schema "" :table "T")))
+      (is (=? {:id empty-id}
+              (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name empty schema" :table "T"))))))

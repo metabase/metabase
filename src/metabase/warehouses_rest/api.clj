@@ -337,15 +337,15 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? (t2/hydrate db :can_write))           (assoc :can-manage true)))
 
-(def ^:private get-database-query-entries
-  "The entries of the query params of `GET /api/database/:id`, which `GET /api/database/by-name` takes too."
-  [[:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
+;; Plain `def`s rather than `mr/def`s for the schemas below: a registered query schema documents no params in the
+;; OpenAPI spec, and a registered body schema becomes a named component of it.
+
+(def ^:private GetDatabaseQuery
+  "The query params of `GET /api/database/:id`, which `GET /api/database/by-name` takes too."
+  [:map {:closed true}
+   [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
    [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
    [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]])
-
-(mr/def ::get-database-query
-  "The query params of `GET /api/database/:id`."
-  (into [:map {:closed true}] get-database-query-entries))
 
 (defn- fetch-database
   "The Database with `id`, presented as `GET /api/database/:id` returns it."
@@ -367,8 +367,12 @@
     (api/check-404 (when (some-> id warehouses-rest.db/database (t2/hydrate :can_read) mi/can-read?) id))))
 
 (def ^:private by-name-entry
-  "The query param naming a Database by its name."
+  "The entry of the query param naming a Database by its name."
   [:db ms/NonBlankString])
+
+(def ^:private ByNameQuery
+  "The query params naming a Database, and nothing else."
+  [:map {:closed true} by-name-entry])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -380,8 +384,8 @@
   Database with that name, as in serialization and remote sync."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [db] :as query-params} :- (into [:map {:closed true} by-name-entry] get-database-query-entries)]
-  (fetch-database (database-id-by-name db) (dissoc query-params :db)))
+   {:keys [db] :as query-params} :- (conj GetDatabaseQuery by-name-entry)]
+  (fetch-database (database-id-by-name db) query-params))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -410,7 +414,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   query-params :- ::get-database-query]
+   query-params :- GetDatabaseQuery]
   (fetch-database id query-params))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -915,7 +919,7 @@
     :article+noun     ["an" "admin"]
     :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
 
-(mr/def ::update-database-body
+(def ^:private UpdateDatabaseBody
   "The body of `PUT /api/database/:id` and `PUT /api/database/by-name`."
   [:map {:closed true}
    [:name               {:optional true} [:maybe ms/NonBlankString]]
@@ -936,7 +940,7 @@
    [:is_stub            {:optional true} [:maybe :boolean]]])
 
 (defn- update-database!
-  "Update the Database with `id` from `body`, a `::update-database-body`, returning what `PUT /api/database/:id`
+  "Update the Database with `id` from `body`, an `UpdateDatabaseBody`, returning what `PUT /api/database/:id`
   returns."
   [id {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
               points_of_interest schedules auto_run_queries refingerprint cache_ttl settings]
@@ -1071,7 +1075,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::update-database-body]
+   body :- UpdateDatabaseBody]
   (update-database! id body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1082,8 +1086,8 @@
   "Update the Database named `db`, as `PUT /api/database/:id` does. A name names the oldest Database with that name, as
   in serialization and remote sync."
   [_route-params
-   {:keys [db]} :- [:map {:closed true} by-name-entry]
-   body :- ::update-database-body]
+   {:keys [db]} :- ByNameQuery
+   body :- UpdateDatabaseBody]
   (update-database! (database-id-by-name db) body))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
@@ -1247,10 +1251,10 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
-(def ^:private schema-tables-query-entries
-  "The entries of the query params of `GET /api/database/:id/schema/`, which `GET /api/database/by-name/schema` takes
-  too."
-  [[:schema                      {:optional true} [:maybe :string]]
+(def ^:private SchemaTablesQuery
+  "The query params of `GET /api/database/:id/schema/`, which `GET /api/database/by-name/schema` takes too."
+  [:map {:closed true}
+   [:schema                      {:optional true} [:maybe :string]]
    [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
    [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
    [:can-query                   {:optional true} [:maybe :boolean]]
@@ -1325,7 +1329,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   query-params :- (into [:map {:closed true}] schema-tables-query-entries)]
+   query-params :- SchemaTablesQuery]
   (schema-tables id query-params))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -1342,8 +1346,8 @@
   Database with that name, as in serialization and remote sync."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [db] :as query-params} :- (into [:map {:closed true} by-name-entry] schema-tables-query-entries)]
-  (schema-tables (database-id-by-name db) (dissoc query-params :db)))
+   {:keys [db] :as query-params} :- (conj SchemaTablesQuery by-name-entry)]
+  (schema-tables (database-id-by-name db) query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

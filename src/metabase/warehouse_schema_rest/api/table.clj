@@ -127,9 +127,10 @@
                      (map schema.table/present-table))
             (cond-> tables can-query (t2/hydrate :can_query))))))
 
-(def ^:private get-table-query-entries
-  "The entries of the query params of `GET /api/table/:id`, which `GET /api/table/by-name` takes too."
-  [[:include_editable_data_model {:optional true} [:maybe :boolean]]])
+(def ^:private GetTableQuery
+  "The query params of `GET /api/table/:id`, which `GET /api/table/by-name` takes too."
+  [:map {:closed true}
+   [:include_editable_data_model {:optional true} [:maybe :boolean]]])
 
 (defn- fetch-table
   "The Table with `id`, as `GET /api/table/:id` returns it."
@@ -149,13 +150,13 @@
   ;; partial schema only
   :- [:map {:closed false}
       [:data_authority ::data-authority-read]]
-  "Get the Table named by `db`, its Database's name, `schema`, its schema, left out for none, and `table`, its name, as
-  `GET /api/table/:id` does, taking its query params too. These are the names serialization and remote sync name a
-  Table by, and a Database name names the oldest Database with that name."
+  "Get the Table named by `db`, its Database's name, `schema`, its schema, left out or empty for none, and `table`, its
+  name, as `GET /api/table/:id` does, taking its query params too. These are the names serialization and remote sync
+  name a Table by, and a Database name names the oldest Database with that name."
   {:scope api-scope/data-app}
   [_route-params
-   query-params :- (into [:map {:closed true}] (concat natural-keys/table-entries get-table-query-entries))]
-  (fetch-table (natural-keys/table-id query-params) (apply dissoc query-params natural-keys/natural-key-params)))
+   query-params :- (into GetTableQuery natural-keys/table-entries)]
+  (fetch-table (natural-keys/table-id query-params) query-params))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -168,7 +169,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   query-params :- (into [:map {:closed true}] get-table-query-entries)]
+   query-params :- GetTableQuery]
   (fetch-table id query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -294,7 +295,7 @@
 (api.macros/defendpoint :put "/by-name"
   "Update the Table named by `db`, `schema` and `table`, as `PUT /api/table/:id` does. See `GET /api/table/by-name`."
   [_route-params
-   query-params :- ::natural-keys/table-query
+   query-params :- natural-keys/TableQuery
    body :- TableUpdateBodySingle]
   (first (update-tables! [(natural-keys/table-id query-params)] body)))
 

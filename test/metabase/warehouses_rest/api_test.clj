@@ -7,6 +7,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -3466,3 +3468,38 @@
         (is (= "Not found." (mt/user-http-request :rasta :get 404 "database/by-name/schema" :db db-name :schema schema)))))
     (testing "a Database the user can read but not edit is a 403, as by id"
       (mt/user-http-request :rasta :put 403 "database/by-name" {:description "No"} :db db-name))))
+
+(defn- query-param-names
+  "The names of the query params that the OpenAPI spec of the routes of `nmspace` documents for `method` `path`."
+  [nmspace path method]
+  (into #{}
+        (comp (filter (comp #{:query} :in)) (map :name))
+        (-> (open-api/open-api-spec (api.macros/ns-handler nmspace) "")
+            (get-in [:paths path method :parameters]))))
+
+(deftest ^:parallel by-name-routes-document-their-query-params-test
+  (testing "the OpenAPI spec documents the query params of the by-name routes and of the /:id routes they share them with"
+    (are [nmspace path method params] (= params (query-param-names nmspace path method))
+      'metabase.warehouses-rest.api "/{id}" :get
+      #{"include" "include_editable_data_model" "exclude_uneditable_details"}
+
+      'metabase.warehouses-rest.api "/by-name" :get
+      #{"db" "include" "include_editable_data_model" "exclude_uneditable_details"}
+
+      'metabase.warehouses-rest.api "/by-name" :put
+      #{"db"}
+
+      'metabase.warehouses-rest.api "/by-name/schema" :get
+      #{"db" "schema" "include_hidden" "include_editable_data_model" "can-query" "include_measures"}
+
+      'metabase.warehouse-schema-rest.api.table "/by-name" :get
+      #{"db" "schema" "table" "include_editable_data_model"}
+
+      'metabase.warehouse-schema-rest.api.table "/by-name" :put
+      #{"db" "schema" "table"}
+
+      'metabase.warehouse-schema-rest.api.field "/by-name" :get
+      #{"db" "schema" "table" "field" "include_editable_data_model"}
+
+      'metabase.warehouse-schema-rest.api.field "/by-name" :put
+      #{"db" "schema" "table" "field"})))
