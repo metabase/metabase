@@ -4,7 +4,6 @@ import { msgid, ngettext, t } from "ttag";
 import {
   Box,
   Card,
-  Code,
   Ellipsified,
   Flex,
   Group,
@@ -16,18 +15,15 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
+import { describeDataCheck } from "../../describe";
 import type { DataCheckRun } from "../../types";
 import {
   DATA_CHECK_DISPLAY_STATUSES,
   type DataCheckDisplayStatus,
   getDataCheckDisplayStatus,
   getDataCheckStatusPresentation,
-  getDataCheckTitle,
 } from "../../utils";
-import {
-  DataCheckResultCard,
-  formatDataCheckSummary,
-} from "../DataCheckResultCard";
+import { DataCheckResultCard } from "../DataCheckResultCard";
 import { DataCheckStatus } from "../DataCheckStatus";
 
 type StatusFilter = DataCheckDisplayStatus | "all";
@@ -130,19 +126,13 @@ function DataCheckListRow({
         <Stack gap={2} flex="1 1 0" miw={0}>
           <Group gap="sm" wrap="nowrap">
             <Ellipsified fw="bold">
-              {getDataCheckTitle(definition, result)}
+              {definition.name ?? describeDataCheck(definition)}
             </Ellipsified>
-            {result.severity === "warn" && (
-              <Text c="text-secondary" fz="sm" flex="none">
-                {t`warns only`}
-              </Text>
-            )}
           </Group>
           <Ellipsified c="text-secondary" fz="sm">
-            {formatDataCheckSummary(result)}
+            {result.message}
           </Ellipsified>
         </Stack>
-        <Code flex="none">{result.check}</Code>
       </Group>
     </UnstyledButton>
   );
@@ -190,7 +180,7 @@ function matchesStatus(run: DataCheckRun, filter: StatusFilter) {
 
 function matchesSearch(run: DataCheckRun, query: string) {
   const text = [
-    getDataCheckTitle(run.definition, run.result),
+    run.definition.name ?? describeDataCheck(run.definition),
     run.result.check,
     run.result.message,
   ]

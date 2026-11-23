@@ -1,10 +1,15 @@
 import { t } from "ttag";
 
-import { Card, Code, SimpleGrid, Stack, Text } from "metabase/ui";
+import { Box, Card, Group, SimpleGrid, Stack, Text } from "metabase/ui";
 
-import type { DataCheckDefinition, DataCheckResult } from "../../types";
+import type {
+  DataCheckDefinition,
+  DataCheckResult,
+  DataCheckRow,
+} from "../../types";
 import {
   formatDataCheckNumber,
+  formatDataCheckValue,
   getDataCheckDisplayStatus,
   getDataCheckStatusPresentation,
   isDataCheckRecord,
@@ -19,7 +24,9 @@ const MISMATCH_COLUMNS = ["value", "other_value"] as const;
 export function TableComparisonView(props: DataCheckViewProps) {
   const { definition, result } = props;
   const sides = getComparisonSides(definition, result);
-  const hasRows = (result["failing-rows"] ?? []).length > 0;
+  const rows = result["failing-rows"] ?? [];
+  const hasRows = rows.length > 0;
+  const oneSided = getOneSidedValues(definition, rows);
   if (sides == null && !hasRows) {
     return <GenericResultView {...props} />;
   }
@@ -44,13 +51,77 @@ export function TableComparisonView(props: DataCheckViewProps) {
           <ComparisonSide {...sides.other} />
         </SimpleGrid>
       )}
-      <FailingRowsView
-        {...props}
-        columnLabels={getComparisonColumnLabels(definition)}
-        extraHighlightedColumns={MISMATCH_COLUMNS}
-      />
+      {oneSided != null ? (
+        <OneSidedValues groups={oneSided} />
+      ) : (
+        <FailingRowsView
+          {...props}
+          columnLabels={getComparisonColumnLabels(definition)}
+          extraHighlightedColumns={MISMATCH_COLUMNS}
+        />
+      )}
     </Stack>
   );
+}
+
+type OneSidedGroup = {
+  label: string;
+  values: string[];
+};
+
+function OneSidedValues({ groups }: { groups: OneSidedGroup[] }) {
+  return (
+    <Stack gap="sm">
+      {groups.map(({ label, values }) => (
+        <Stack key={label} gap="xs">
+          <Text c="text-secondary">{label}</Text>
+          <Group gap="sm">
+            {values.map((value) => (
+              <Box
+                key={value}
+                px="sm"
+                py={2}
+                bdrs="sm"
+                ff="monospace"
+                fz="sm"
+                bd="1px dashed var(--mb-color-feedback-negative)"
+              >
+                {value}
+              </Box>
+            ))}
+          </Group>
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
+
+function getOneSidedValues(
+  definition: DataCheckDefinition,
+  rows: readonly DataCheckRow[],
+): OneSidedGroup[] | null {
+  const isOneSided =
+    rows.length > 0 &&
+    rows.every(
+      (row) => typeof row.side === "string" && Object.keys(row).length === 2,
+    );
+  if (!isOneSided) {
+    return null;
+  }
+  const other = getStringParam(definition, "other") ?? t`the other table`;
+  const { table } = definition;
+  const groups = new Map<string, string[]>();
+  for (const row of rows) {
+    const label =
+      row.side === "only_in_other"
+        ? t`In ${other} but not in ${table}`
+        : t`In ${table} but not in ${other}`;
+    groups.set(label, [
+      ...(groups.get(label) ?? []),
+      formatDataCheckValue(row.value),
+    ]);
+  }
+  return [...groups].map(([label, values]) => ({ label, values }));
 }
 
 type ComparisonSideProps = {
@@ -76,7 +147,11 @@ function ComparisonSide({
         <Text fz="xl" fw="bold">
           {formatDataCheckNumber(value)}
         </Text>
-        {filter != null && <Code>{filter}</Code>}
+        {filter != null && (
+          <Text c="text-secondary" fz="sm">
+            {t`where ${filter}`}
+          </Text>
+        )}
       </Stack>
     </Card>
   );

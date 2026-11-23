@@ -86,13 +86,6 @@ export function getDataCheckErrorReasonLabel(reason: string | undefined) {
   }
 }
 
-export function getDataCheckTitle(
-  definition: Pick<DataCheckDefinition, "name">,
-  result: Pick<DataCheckResult, "display">,
-) {
-  return definition.name ?? result.display;
-}
-
 const NUMBER_FORMAT = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });

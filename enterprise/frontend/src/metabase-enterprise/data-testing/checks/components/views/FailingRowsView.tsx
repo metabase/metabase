@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
 
@@ -28,11 +28,9 @@ export function FailingRowsView({
 
   return (
     <Stack gap="sm">
-      <Text c="text-secondary">
-        {total != null && total > shown
-          ? t`Showing ${shown} of ${total} rows`
-          : ngettext(msgid`${shown} row`, `${shown} rows`, shown)}
-      </Text>
+      {total != null && total > shown && (
+        <Text c="text-secondary">{t`Showing ${shown} of ${total} rows`}</Text>
+      )}
       <DataCheckRowsTable
         rows={rows}
         ariaLabel={t`Failing rows of ${result.display}`}

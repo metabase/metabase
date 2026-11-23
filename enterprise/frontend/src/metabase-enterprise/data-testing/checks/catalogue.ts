@@ -151,7 +151,7 @@ export const DATA_CHECK_CATALOGUE: readonly DataCheckCatalogueEntry[] = [
     view: "band",
     summary: "The share of NULL values is at or below a threshold.",
     params: [column(), param("max", "fraction", true)],
-    band: { format: "percent", maxParam: "max", unit: "NULL" },
+    band: { format: "percent", maxParam: "max", unit: "missing" },
   },
   {
     name: "not_empty_string",

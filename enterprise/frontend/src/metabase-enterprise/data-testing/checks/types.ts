@@ -56,6 +56,7 @@ export type DataCheckFixture = {
   examples: DataCheckExample[];
   extras: DataCheckRun[];
   ordersSuite: DataCheckRun[];
+  ordersSuitePassing: DataCheckRun[];
 };
 
 export type DataCheckParamType =

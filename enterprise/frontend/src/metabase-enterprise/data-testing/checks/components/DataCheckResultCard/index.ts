@@ -1,4 +1,1 @@
-export {
-  DataCheckResultCard,
-  formatDataCheckSummary,
-} from "./DataCheckResultCard";
+export { DataCheckResultCard } from "./DataCheckResultCard";
