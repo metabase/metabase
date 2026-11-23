@@ -34,14 +34,6 @@ export function realSystemTime(): number {
 const TEST_HEAP_LIMIT_MB = Number(process.env.NT_TEST_HEAP_MB ?? 800);
 const HEAP_CHECK_INTERVAL_MS = 250;
 
-// jsdom fires animation frames every 16 ms of real time, and Redux Toolkit
-// holds some store notifications until the next frame. A spec that acts right
-// after a request settles passes under jest only because a cold file takes
-// several frames to do anything. Files here run about three times faster, so
-// frames do too.
-const JSDOM_FRAME_INTERVAL_MS = 1000 / 60;
-const FRAME_INTERVAL_MS = Number(process.env.NT_FRAME_MS ?? 1);
-
 // jest drops a file's pending timers with its environment. One shared realm
 // keeps them, so a 60 second cache timer of one file would fire during a
 // later one, and the event loop would wait for it. Timers created while a
@@ -63,9 +55,7 @@ const trackedSetInterval = (
   delay?: number,
   ...args: unknown[]
 ): TimerHandle => {
-  const interval =
-    delay === JSDOM_FRAME_INTERVAL_MS ? FRAME_INTERVAL_MS : delay;
-  const handle = realSetInterval(callback, interval, ...args);
+  const handle = realSetInterval(callback, delay, ...args);
   pendingTimers.add(handle);
   return handle;
 };

@@ -218,4 +218,3 @@ on the runner.
 | `NT_SEMI_SPACE_MB` | 64                   | Size of the young generation of a worker's heap.                                            |
 | `NT_NODE_EXTRA`    | not set              | Extra Node options for each worker, such as `--inspect-brk`.                                |
 | `NT_FILE_LOG`      | not set              | Prints a line for each spec file with its worker, time, memory and garbage collection time. |
-| `NT_FRAME_MS`      | 1                    | Interval of the animation frame clock, in milliseconds.                                     |
