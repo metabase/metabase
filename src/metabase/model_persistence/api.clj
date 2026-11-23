@@ -49,15 +49,14 @@
   []
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (vec (model-persistence.db/persisted-database-ids))
-        writable-db-ids (when (seq db-ids)
+        writable-db-ids (if (seq db-ids)
                           (->> (model-persistence.db/databases db-ids)
                                mi/writable
-                               (mapv :id)))
+                               (mapv :id))
+                          [])
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
-     :total  (if (seq writable-db-ids)
-               (model-persistence.db/persisted-model-count-for-databases writable-db-ids)
-               0)
+     :total  (model-persistence.db/persisted-model-count-for-databases writable-db-ids)
      :limit  (request/limit)
      :offset (request/offset)}))
 

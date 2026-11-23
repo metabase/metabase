@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [malli.util :as mut]
@@ -98,10 +99,13 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))
 
-(mu/defn transform-last-checkpoint-value
-  "The last checkpoint value of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
+(mu/defn transform-last-checkpoint-values :- [:map-of ::lib.schema.id/transform :any]
+  "The last checkpoint value of each of the Transforms with `transform-ids`, by id."
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  (if (empty? transform-ids)
+    {}
+    (t2/select-pk->fn :last_checkpoint_value [:model/Transform :id :last_checkpoint_value]
+                      :id [:in [:auto/param transform-ids]])))
 
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` and return the new instances."
@@ -504,7 +508,7 @@
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
   [parent-column :- [:enum :job_run_id :dag_run_id]
    parent-run-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true))
+  (vec (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true)))
 
 (mu/defn lock-active-runs
   "The active TransformRuns among `run-ids`, locked for update."
@@ -594,23 +598,24 @@
                :is_active nil
                :message   "Canceled by user but could not guarantee run stopped."}))
 
-(mu/defn mark-run-canceling!
-  "Set the status of the TransformRun with `run-id` to canceling."
-  [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformRun :id run-id {:status "canceling"}))
+(mu/defn mark-runs-canceling!
+  "Set the status of the TransformRuns with `run-ids` to canceling."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/TransformRun :id [:in run-ids] {:status "canceling"}))
 
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
-(mu/defn insert-cancelation-for-active-run!
-  "Record a cancelation request for the TransformRun with `run-id` if it is active and none exists yet."
-  [run-id :- ms/PositiveInt]
-  (t2/query-one [(str "INSERT INTO transform_run_cancelation (run_id) "
-                      "SELECT transform_run.id "
-                      "FROM transform_run "
-                      "WHERE transform_run.id = ? "
-                      "AND transform_run.is_active "
-                      "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
-                 run-id run-id]))
+(mu/defn insert-cancelations-for-active-runs!
+  "Record a cancelation request for each of the TransformRuns with `run-ids` that is active and has none yet."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/query-one (into [(str "INSERT INTO transform_run_cancelation (run_id) "
+                            "SELECT transform_run.id "
+                            "FROM transform_run "
+                            "WHERE transform_run.id IN (" (str/join ", " (repeat (count run-ids) "?")) ") "
+                            "AND transform_run.is_active "
+                            "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation "
+                            "WHERE transform_run_cancelation.run_id = transform_run.id)")]
+                      run-ids)))
 
 (mu/defn cancelations-reducible
   "Reducible TransformRunCancelations."

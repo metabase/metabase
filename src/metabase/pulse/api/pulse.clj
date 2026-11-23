@@ -73,14 +73,15 @@
         pulses  (t2/hydrate pulses :can_write)
         queries (pulse.db/card-queries (into #{}
                                              (comp (mapcat :cards) (remove :dataset_query) (map :id))
-                                             pulses))]
+                                             pulses))
+        card-query   (fn [card] (or (:dataset_query card) (get queries (:id card))))
+        card-queries (into [] (comp (mapcat :cards) (map card-query) (distinct)) pulses)
+        query->level (zipmap card-queries (perms/download-perms-levels card-queries api/*current-user-id*))]
     (mapv
      (fn [pulse]
        (update pulse :cards
                (fn [cards]
-                 (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (get queries (:id card)))
-                                                                     api/*current-user-id*)
+                 (mapv (fn [card] (assoc card :download_perms (case (query->level (card-query card))
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
                                                                 :one-million-rows :full

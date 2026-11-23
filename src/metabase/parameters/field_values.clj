@@ -40,6 +40,25 @@
         (update-vals (field-values/batched-get-latest-full-field-values field-ids)
                      #(select-keys % [:field_id :human_readable_values :values]))))))
 
+(defn- database-hash-input
+  "The part of the [[hash-input-for-field-values]] of a Field of the Database with `database-id` that depends only on
+  the Database: its impersonation and routing context for the current user."
+  [database-id]
+  (merge (field-values/hash-input-for-impersonation database-id)
+         (field-values/hash-input-for-database-routing database-id)))
+
+(defn- hash-input-in-database
+  "The [[hash-input-for-field-values]] of `field`, `database-input` being the [[database-hash-input]] of its Database."
+  [field database-input constraints extra]
+  (let [hash-input (merge
+                    {:field-id (u/the-id field)}
+                    (field-values/hash-input-for-sandbox field)
+                    database-input
+                    (field-values/hash-input-for-linked-filters field constraints)
+                    (when (seq extra) {:extra extra}))]
+    (when (every? some? (vals hash-input))
+      hash-input)))
+
 (defn hash-input-for-field-values
   "Generate a hash input map for a given field, used to determine cache keys for FieldValues.
 
@@ -60,22 +79,33 @@
   be keyed, because its premium feature is unavailable or it can't be resolved. No cached FieldValues may be served to
   or created for such a user."
   [field & [constraints extra]]
-  (let [hash-input (merge
-                    {:field-id (u/the-id field)}
-                    (field-values/hash-input-for-sandbox field)
-                    (field-values/hash-input-for-impersonation field)
-                    (field-values/hash-input-for-linked-filters field constraints)
-                    (field-values/hash-input-for-database-routing field)
-                    (when (seq extra) {:extra extra}))]
-    (when (every? some? (vals hash-input))
-      hash-input)))
+  (hash-input-in-database field
+                          (database-hash-input (field/field-id->database-id (u/the-id field)))
+                          constraints
+                          extra))
 
 (defn- hash-inputs-by-table
-  "Returns a function from each of `fields` to its [[hash-input-for-field-values]], computed once per table.
-  The hash inputs of one table's fields differ only in `:field-id`."
+  "Returns a function from each of `fields` to its [[hash-input-for-field-values]], computed once per table, the
+  Database parts once per Database. A Field's Database comes from its hydrated `:table`, else from one query for all
+  the tables. The hash inputs of one table's fields differ only in `:field-id`."
   [fields]
   {:pre [(every? :table_id fields)]}
-  (let [table-id->hash-input (update-vals (group-by :table_id fields) (comp hash-input-for-field-values first))]
+  (let [table-id->fields      (group-by :table_id fields)
+        hydrated              (into {} (keep (fn [{:keys [table_id table]}]
+                                               (when-let [db-id (:db_id table)] [table_id db-id])))
+                                    fields)
+        missing               (into #{} (remove hydrated) (keys table-id->fields))
+        table-id->database-id (merge hydrated (parameters.db/table-database-ids missing))
+        database-id->input    (into {} (map (juxt identity database-hash-input))
+                                    (set (vals table-id->database-id)))
+        table-id->hash-input  (into {}
+                                    (map (fn [[table-id table-fields]]
+                                           [table-id (hash-input-in-database
+                                                      (first table-fields)
+                                                      (database-id->input (table-id->database-id table-id))
+                                                      nil
+                                                      nil)]))
+                                    table-id->fields)]
     (fn [{:keys [id table_id]}]
       (some-> (table-id->hash-input table_id) (assoc :field-id id)))))
 
@@ -195,10 +225,11 @@
                     (for [field fields
                           :when (and (= (hash-input field) {:field-id (:id field)})
                                      (field-values/field-should-have-field-values? field))]
-                      (:id field)))]
+                      (:id field)))
+        last-used  (field-values/fields-last-used-at (vec (vals cached)))]
     (into {} (for [{:keys [id] :as field} fields
                    :let [fv (get cached id)]]
-               [id (or (when (and fv (not (field-values/inactive? fv))) fv)
+               [id (or (when (and fv (not (field-values/inactive? fv (get last-used id)))) fv)
                        (get-or-create-field-values-with-hash-input! field nil (hash-input field))
                        {})]))))
 

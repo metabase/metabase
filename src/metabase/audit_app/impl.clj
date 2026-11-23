@@ -2,7 +2,6 @@
   "Namespace for anything related to the Audit subsystem (aka Metabase Analytics) which needs to be accessible in the
   OSS product. EE-only code is located in `metabase-enterprise.audit-app.audit`."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit.settings]))
 
@@ -22,38 +21,43 @@
   "Default custom reports entity id."
   "okNLSZKdSxaoG58JSQY54")
 
-(def ^{:arglists '([checksum model entity-id])
-       :private  true} memoized-select-audit-entity*
-  (mdb/memoize-for-application-db
-   (fn [checksum model entity-id]
-     (when checksum
-       (case model
-         :model/Collection (audit-app.db/collection-with-entity-id entity-id)
-         :model/Dashboard  (audit-app.db/dashboard-with-entity-id entity-id))))))
+(defn- audit-content-loaded?
+  "Whether audit content was ever loaded, which the `last-analytics-checksum` setting records."
+  []
+  (some? (audit.settings/last-analytics-checksum)))
 
-(defn memoized-select-audit-entity
-  "Returns the object from entity id and model. Memoizes from entity id.
-  Should only be used for audit/pre-loaded objects."
+(defn audit-entity
+  "The `:model/Collection` or `:model/Dashboard` of the audit content with `entity-id`, read in one query, or nil while
+  no audit content was loaded."
   [model entity-id]
-  (memoized-select-audit-entity* (audit.settings/last-analytics-checksum) model entity-id))
+  (when (audit-content-loaded?)
+    (case model
+      :model/Collection (audit-app.db/collection-with-entity-id entity-id)
+      :model/Dashboard  (audit-app.db/dashboard-with-entity-id entity-id))))
 
 (defn default-custom-reports-collection
-  "Default custom reports collection."
+  "Default custom reports collection, read in one query."
   []
-  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
+  (audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defn default-audit-collection
-  "Default audit collection (instance analytics) collection."
+  "Default audit collection (instance analytics) collection, read in one query."
   []
-  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
+  (audit-entity :model/Collection default-audit-collection-entity-id))
+
+(defn audit-collection-ids
+  "The ids of the default audit Collection and of the custom reports Collection, read in one query, under
+  `:audit-collection-id` and `:custom-reports-collection-id`, each nil while that Collection is missing or no audit
+  content was loaded."
+  []
+  (let [entity-id->id (if (audit-content-loaded?)
+                        (audit-app.db/collection-ids-by-entity-id [default-audit-collection-entity-id
+                                                                   default-custom-reports-entity-id])
+                        {})]
+    {:audit-collection-id          (entity-id->id default-audit-collection-entity-id)
+     :custom-reports-collection-id (entity-id->id default-custom-reports-entity-id)}))
 
 (defn is-collection-id-audit?
-  "Check if an id is one of the audit collection ids."
-  [id]
-  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
-
-(defn is-parent-collection-audit?
-  "Check if an instance's parent collection is the audit collection."
-  [instance]
-  (let [parent-id (:collection_id instance)]
-    (and (some? parent-id) (is-collection-id-audit? parent-id))))
+  "Check if an id is one of `audit-collection-ids`, the value of [[audit-collection-ids]]."
+  [audit-collection-ids id]
+  (contains? (set [(:audit-collection-id audit-collection-ids) (:custom-reports-collection-id audit-collection-ids)]) id))

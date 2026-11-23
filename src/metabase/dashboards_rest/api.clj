@@ -33,6 +33,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -300,17 +301,17 @@
   [dashboard]
   (update dashboard :dashcards
           (fn [dashcards]
-            (let [id->query (->> dashcards
-                                 (into [] (comp (keep :card) (remove :dataset_query) (keep :id) (distinct)))
-                                 dashboards-rest.db/card-queries)]
+            (let [id->query    (->> dashcards
+                                    (into [] (comp (keep :card) (remove :dataset_query) (keep :id) (distinct)))
+                                    dashboards-rest.db/card-queries)
+                  card-query   (fn [card] (or (:dataset_query card) (get id->query (:id card))))
+                  queries      (into [] (comp (keep :card) (map card-query) (filter seq) (distinct)) dashcards)
+                  query->level (zipmap queries (perms/download-perms-levels queries api/*current-user-id*))]
               (vec (for [dashcard dashcards]
                      (update dashcard :card
                              (fn [card]
                                (when card
-                                 (let [dataset-query (or (:dataset_query card)
-                                                         (get id->query (:id card)))
-                                       download-level (when (seq dataset-query)
-                                                        (perms/download-perms-level dataset-query api/*current-user-id*))]
+                                 (let [download-level (query->level (card-query card))]
                                    (assoc card :download_perms (case download-level
                                                                  :no :none
                                                                  :ten-thousand-rows :limited
@@ -676,12 +677,18 @@
    [:tabs               {:optional true} [:maybe [:sequential UpdatedDashboardTab]]]])
 
 (defn- check-create-transient-dashboard-cards
-  "Checks the current user can create the new Cards of `dashboard` in the Collection `parent-collection-id`."
+  "Checks the current user can create the new Cards of `dashboard` in the Collection `parent-collection-id`, asking
+  once for all of them and one by one only to throw the error of the one that cannot."
   [dashboard parent-collection-id]
-  (doseq [{:keys [card series]} (:dashcards dashboard)
-          new-card              (cons card series)
-          :when                 (and (map? new-card) (not (pos-int? (:id new-card))) (seq (:dataset_query new-card)))]
-    (api/create-check :model/Card (assoc new-card :collection_id parent-collection-id))))
+  (let [new-cards (into []
+                        (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                              (filter #(and (map? %) (not (pos-int? (:id %))) (seq (:dataset_query %))))
+                              (map #(assoc % :collection_id parent-collection-id)))
+                        (:dashcards dashboard))]
+    (when-not (queries.card/can-create-all? (mapv #(vector % nil) new-cards))
+      (doseq [new-card new-cards]
+        (api/create-check :model/Card new-card))
+      (api/check-403 false))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

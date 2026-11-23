@@ -426,19 +426,11 @@
   [field]
   (str/join \. (qualified-name-components field)))
 
-(def ^{:arglists '([field-id])} field-id->table-id
-  "Return the ID of the Table this Field belongs to."
-  (mdb/memoize-for-application-db
-   (fn [field-id]
-     {:pre [(integer? field-id)]}
-     (warehouse-schema.db/field-table-id field-id))))
-
 (defn field-id->database-id
-  "Return the ID of the Database this Field belongs to."
+  "Return the ID of the Database this Field belongs to, read in one query."
   [field-id]
   {:pre [(integer? field-id)]}
-  (let [table-id (field-id->table-id field-id)]
-    (database/table-id->database-id table-id)))
+  (get (warehouse-schema.db/field-database-ids #{field-id}) field-id))
 
 (defn table
   "Return the `Table` associated with this `Field`."

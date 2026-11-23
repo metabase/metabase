@@ -31,14 +31,22 @@
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
     (interestingness/dimension-interestingness field)))
 
+(defn- save-scores!
+  "Write the scores of `pairs`, each a Field and its update row, in one update."
+  [pairs]
+  (field/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
+
 (mu/defn- score-and-save! :- [:sequential i/FieldInstance]
-  "Score `fields` and write their scores in one update, returning the Fields whose scoring threw."
-  [fields :- [:sequential i/FieldInstance]]
+  "Score `fields` and write their scores in one update, or Table by Table when that fails, `name-table` naming a Table by
+  its id in the log, returning the Fields whose scoring or saving failed."
+  [name-table :- ifn?
+   fields     :- [:sequential i/FieldInstance]]
   (let [scored (mapv (juxt identity score) fields)
-        rows   (into [] (keep (fn [[field s]] (when-not (instance? Exception s) {:id (:id field) :dimension_interestingness s}))) scored)]
-    (when (seq rows)
-      (field/update-fields! rows {:fields (vec fields)}))
-    (into [] (keep (fn [[field s]] (when (instance? Exception s) field))) scored)))
+        pairs  (into [] (keep (fn [[field s]] (when-not (instance? Exception s) [field {:id (:id field) :dimension_interestingness s}]))) scored)
+        failed (if (seq pairs)
+                 (table-chunks/save-by-table! "the interestingness scores" name-table (comp :table_id first) save-scores! pairs)
+                 #{})]
+    (into [] (keep (fn [[field s]] (when (or (instance? Exception s) (contains? failed (:table_id field))) field))) scored)))
 
 (mu/defn- score-fields-of-tables! :- [:map {:closed true} [:fields-scored :int] [:fields-failed :int]]
   "Score interestingness for the Fields of `tables` with fresh fingerprints that haven't completed analysis yet, reading
@@ -49,7 +57,7 @@
            stats    {:fields-scored 0 :fields-failed 0}]
       (if-let [fields (not-empty (analyze/incomplete-analysis-fields table-ids i/*latest-fingerprint-version*
                                                                      after-id table-chunks/fields-per-read))]
-        (let [failed (score-and-save! fields)]
+        (let [failed (score-and-save! (table-chunks/table-name tables) fields)]
           (log/debugf "Scored interestingness for %d fields" (count fields))
           (recur (:id (last fields))
                  (-> stats
@@ -90,7 +98,7 @@
    stats     :- ::leftover-stats]
   (let [skipped @failed-leftover-field-ids
         fields  (into [] (remove #(contains? skipped (u/the-id %))) (sync.db/fields-for-interestingness-scoring field-ids))
-        failed  (score-and-save! fields)]
+        failed  (score-and-save! #(sync-util/table-name-for-logging :id %) fields)]
     (swap! failed-leftover-field-ids into (map u/the-id) failed)
     (-> stats
         (update :fields-scored + (- (count fields) (count failed)))

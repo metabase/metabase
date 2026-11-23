@@ -51,12 +51,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
-(mu/defn dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id  :- ::lib.schema.id/dashcard
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
-
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."
   [email :- :string]

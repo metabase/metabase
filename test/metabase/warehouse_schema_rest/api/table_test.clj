@@ -15,6 +15,7 @@
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -26,6 +27,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors)))
@@ -1301,6 +1303,31 @@
   "The ids of the Tables of the Database with `db-id` that `GET /api/table` lists with query `params`."
   [db-id & params]
   (into #{} (map :id) (apply listed-tables db-id params)))
+
+(deftest present-tables-reads-collections-together-test
+  (mt/with-temp [:model/Collection {readable-id :id}   {}
+                 :model/Collection {unreadable-id :id} {}]
+    (perms/grant-collection-read-permissions! (perms-group/all-users) readable-id)
+    (mt/with-test-user :rasta
+      (let [collections! (fn [n]
+                           (vec (t2/insert-returning-instances! :model/Collection (repeat n {:name "published into"}))))
+            tables       (fn [collections]
+                           (mapv (fn [collection] {:id (:id collection) :schema nil :db {} :collection collection}) collections))
+            statements   (fn [collections]
+                           (let [tables (tables collections)]
+                             (t2/with-call-count [call-count] (schema.table/present-tables tables) (call-count))))
+            small        (collections! 3)
+            large        (collections! 10)]
+        (doseq [collection (concat small large)]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection)))
+        (statements small)
+        (is (= (statements small) (statements (concat small large))))
+        (testing "a Collection the user cannot read is removed and one they can read is kept"
+          (let [[readable unreadable] (schema.table/present-tables
+                                       (tables [(t2/select-one :model/Collection :id readable-id)
+                                                (t2/select-one :model/Collection :id unreadable-id)]))]
+            (is (= readable-id (-> readable :collection :id)))
+            (is (nil? (:collection unreadable)))))))))
 
 (deftest published-only-skips-unpublished-settings-test
   (testing "GET /api/table?published-only=true skips Table with unpublished settings"

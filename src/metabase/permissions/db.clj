@@ -516,6 +516,15 @@
   [objects :- [:sequential :string]]
   (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
 
+(mu/defn held-permission-pairs
+  "The `[group-id object]` pairs of the Permissions rows of the groups with `group-ids` for one of `objects`."
+  [group-ids :- [:sequential ms/PositiveInt]
+   objects   :- [:sequential :string]]
+  (into #{}
+        (map (juxt :group_id :object))
+        (t2/select [:model/Permissions :group_id :object]
+                   {:where [:and [:in :group_id group-ids] [:in :object objects]]})))
+
 (mu/defn related-permissions-where
   "The HoneySQL `where` clause matching the Permissions rows held by the group with `group-id` that are ancestors or
   descendants of `path` (also checking each of `also-under-paths`, e.g. a v2-equivalent path)."

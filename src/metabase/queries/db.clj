@@ -100,6 +100,17 @@
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
 
+(mu/defn card-ids-with-raw-dimensions :- [:set ::lib.schema.id/card]
+  "The ids of those of the Cards with `card-ids` whose raw `:dimensions` are set."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (into #{} (map :id) (t2/query {:select [:id]
+                                   :from   [:report_card]
+                                   :where  [:and
+                                            [:in :id [:auto/param card-ids]]
+                                            [:not= :dimensions nil]]}))
+    #{}))
+
 (mu/defn card-database-and-table-ids
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
   [card-id :- ::lib.schema.id/card]

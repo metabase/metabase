@@ -403,7 +403,7 @@
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (hydrate-root-collections nil)
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db :transform :owner)
+    :table (t2/hydrate entities :fields [:db :json_access] :transform :owner)
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (hydrate-root-collections :transforms))
@@ -414,11 +414,11 @@
     :document (-> entities
                   (t2/hydrate :creator [:collection :is_personal])
                   (hydrate-root-collections nil))
-    :sandbox (t2/hydrate entities [:table :db :fields])
+    :sandbox (t2/hydrate entities [:table [:db :json_access] :fields])
     :snippet (-> entities
                  (t2/hydrate :creator :collection)
                  (hydrate-root-collections :snippets))
-    (:segment :measure) (t2/hydrate entities :creator [:table :db])
+    (:segment :measure) (t2/hydrate entities :creator [:table [:db :json_access]])
     :action (->> (t2/hydrate entities :creator [:collection :is_personal])
                  (map #(collection.root/hydrate-root-collection
                         %

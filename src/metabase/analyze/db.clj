@@ -168,3 +168,30 @@
   [table-ids :- ::table-ids
    limit     :- ms/PositiveInt]
   (first-fields-by-table (normal-fields-clause table-ids) limit))
+
+;;; ---------------------------------------------- Data sensitivity ----------------------------------------------
+
+(mu/defn data-sensitivity-fields :- [:sequential (ms/InstanceOf :model/Field)]
+  "Up to `limit` active, non-retired Fields of the Tables with `table-ids` the data-sensitivity classifier still has to
+  scan, unlabeled or, when `rescan-public?`, labeled `PUBLIC`, without a label a user set, lowest id first, after
+  `after-id`."
+  [table-ids      :- ::table-ids
+   rescan-public? :- :boolean
+   after-id       :- [:int {:min 0}]
+   limit          :- ms/PositiveInt]
+  (t2/select :model/Field
+             {:where    [:and
+                         [:in :table_id [:auto/param table-ids]]
+                         [:= :active true]
+                         [:not= :visibility_type "retired"]
+                         (if rescan-public?
+                           [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
+                           [:= :data_sensitivity nil])
+                         [:not [:exists ^:allow-subquery {:select [1]
+                                                          :from   [[(t2/table-name :model/FieldUserSettings) :s]]
+                                                          :where  [:and
+                                                                   [:= :s.field_id :metabase_field.id]
+                                                                   [:not= :s.data_sensitivity nil]]}]]
+                         [:> :id [:auto/param after-id]]]
+              :order-by [[:id :asc]]
+              :limit    limit}))

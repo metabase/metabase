@@ -1,6 +1,7 @@
 (ns metabase.notification.events.notification-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
    [metabase.events.schema :as events.schema]
    [metabase.events.test-util :as events.tu]
@@ -160,3 +161,30 @@
                     large (create! 40)]
                 (is (= (:count small) (:count large)))
                 (is (= [10 40] [(:audits small) (:audits large)]))))))))))
+
+(deftest create-notifications-audit-row-failure-test
+  (testing "when the audit row of one of 3 created notifications cannot be built, the other 2 still get theirs"
+    (mt/with-model-cleanup [:model/Notification :model/NotificationCard :model/AuditLog]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (mt/with-test-user :crowberto
+            (let [audit-row (mt/original-fn #'audit-log/audit-row)
+                  built     (atom 0)
+                  rows      (vec (for [_ (range 3)]
+                                   {:payload_type  :notification/card
+                                    :active        true
+                                    :payload       {:card_id card-id}
+                                    :subscriptions [{:type          :notification-subscription/cron
+                                                     :cron_schedule "0 0 0 * * ?"}]
+                                    :handlers      [{:channel_type :channel/email
+                                                     :recipients   [{:type    :notification-recipient/user
+                                                                     :user_id (mt/user->id :rasta)}]}]}))
+                  created   (mt/with-dynamic-fn-redefs [audit-log/audit-row (fn [topic params]
+                                                                              (when (and (= "notification-create" (name topic))
+                                                                                         (= 2 (swap! built inc)))
+                                                                                (throw (ex-info "cannot build row" {})))
+                                                                              (audit-row topic params))]
+                              (models.notification/create-notifications! rows))]
+              (is (= 3 (count created)))
+              (is (= 2 (t2/count :model/AuditLog :topic "notification-create" :model "Notification"
+                                 :model_id [:in (map :id created)]))))))))))

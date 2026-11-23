@@ -364,6 +364,79 @@
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
             (is (= nil (get-test-db)))))))))
 
+(defn- data-model-graph
+  "A permissions graph giving all users data model access to the Tables of `db-id->table-id->access`, `{db-id {table-id
+  :all or :none}}`."
+  [db-id->table-id->access]
+  (update-vals db-id->table-id->access
+               (fn [table-id->access]
+                 {:view-data      :unrestricted
+                  :create-queries :query-builder-and-native
+                  :data-model     {:schemas {"PUBLIC" table-id->access}}})))
+
+(defn- temp-database-tables!
+  "Creates a Database with `n` Tables in the `PUBLIC` schema and returns `[db-id table-ids]`."
+  [n]
+  (let [{db-id :id} (first (t2/insert-returning-instances! :model/Database {:name    (str "data model db " (random-uuid))
+                                                                            :engine  :h2
+                                                                            :details {:db "mem:data-model"}}))
+        table-ids   (vec (t2/insert-returning-pks! :model/Table
+                                                   (for [i (range n)]
+                                                     {:db_id db-id :name (str "T" i) :schema "PUBLIC" :active true})))]
+    [db-id table-ids]))
+
+(deftest data-model-filters-show-editable-tables-and-databases-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-model-cleanup [:model/Table :model/Database]
+      (let [[db-1 tables-1] (temp-database-tables! 5)
+            [db-2 tables-2] (temp-database-tables! 3)
+            editable        (set (take 2 tables-1))]
+        (mt/with-all-users-data-perms-graph! (data-model-graph {db-1 (zipmap tables-1 (map #(if (editable %) :all :none) tables-1))
+                                                                db-2 (zipmap tables-2 (repeat :none))})
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "tables"
+              (is (= editable
+                     (into #{} (map :id)
+                           (advanced-permissions.common/filter-tables-by-data-model-perms
+                            (t2/select :model/Table :id [:in (concat tables-1 tables-2)]))))))
+            (testing "databases with their tables"
+              (let [dbs (advanced-permissions.common/filter-databases-by-data-model-perms
+                         (t2/hydrate (t2/select :model/Database :id [:in [db-1 db-2]]) :tables))]
+                (is (= [db-1] (mapv :id dbs)))
+                (is (= editable (into #{} (map :id) (:tables (first dbs)))))))))))))
+
+(deftest data-model-endpoints-statements-do-not-grow-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-model-cleanup [:model/Table :model/Database]
+      (let [statements (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))]
+        (testing "schema endpoint"
+          (let [[db-id tables] (temp-database-tables! 2)
+                add-tables!    (fn [n]
+                                 (let [new-ids (t2/insert-returning-pks! :model/Table
+                                                                         (for [i (range n)]
+                                                                           {:db_id db-id :name (str "A" (random-uuid) i) :schema "PUBLIC" :active true}))]
+                                   (into tables new-ids)))
+                url            (str "database/" db-id "/schema/PUBLIC?include_editable_data_model=true")
+                request        #(mt/user-http-request :rasta :get 200 url)
+                small-ids      (add-tables! 3)
+                small          (mt/with-all-users-data-perms-graph! (data-model-graph {db-id (zipmap small-ids (repeat :all))})
+                                 (request)
+                                 (statements request))
+                large-ids      (into small-ids (add-tables! 12))
+                large          (mt/with-all-users-data-perms-graph! (data-model-graph {db-id (zipmap large-ids (repeat :all))})
+                                 (statements request))]
+            (is (= small large))))
+        (testing "database list with tables"
+          (let [make-dbs! (fn [n] (into {} (for [_ (range n)] (let [[db-id tables] (temp-database-tables! 3)] [db-id (zipmap tables (repeat :all))]))))
+                request   #(mt/user-http-request :rasta :get 200 "database?include_editable_data_model=true&include=tables")
+                small-dbs (make-dbs! 2)]
+            (mt/with-all-users-data-perms-graph! (data-model-graph small-dbs)
+              (request)
+              (let [small (statements request)
+                    large-dbs (make-dbs! 8)]
+                (mt/with-all-users-data-perms-graph! (data-model-graph (merge small-dbs large-dbs))
+                  (is (= small (statements request))))))))))))
+
 (deftest fetch-database-test
   (testing "GET /api/database/:id?include_editable_data_model=true"
     (testing "A non-admin without data model perms for a DB cannot fetch the DB when include_editable_data_model=true"

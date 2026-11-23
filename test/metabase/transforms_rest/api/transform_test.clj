@@ -2433,7 +2433,7 @@
 
 (deftest list-transforms-statement-count-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
-    (mt/with-temporary-setting-values [transforms-enabled true]
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-model-cleanup [:model/Transform]
         (with-transforms-api-users! [user]
           (with-transform-db-perms!
@@ -2443,9 +2443,28 @@
                                 #(mt/user-http-request user :get 200 "transform")))]
               (is (= few many)))))))))
 
+(deftest list-transforms-different-queries-statement-count-test
+  (testing "GET /api/transform runs as many statements for 3 transforms of different SQL as for 9"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-model-cleanup [:model/Transform]
+          (with-transforms-api-users! [user]
+            (with-transform-db-perms!
+              (let [[few many] (transforms.tu/statements-at-two-sizes
+                                (fn [n]
+                                  (mt/with-current-user (mt/user->id :crowberto)
+                                    (transform.model/create-transforms!
+                                     (vec (transforms.tu/count-test-transform-rows
+                                           n (lib/native-query (mt/metadata-provider) "SELECT 1 AS num")
+                                           (fn [i] {:source {:type  :query
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      (str "SELECT " i " AS num"))}})))))
+                                  #(mt/user-http-request user :get 200 "transform")))]
+                (is (= few many))))))))))
+
 (deftest list-transforms-source-readable-matches-single-answer-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
-    (mt/with-temporary-setting-values [transforms-enabled true]
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-model-cleanup [:model/Transform]
         (with-transforms-api-users! [user]
           (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2}]
@@ -2471,7 +2490,7 @@
 (mt/when-ee-evailable
  (deftest dag-transforms-statement-count-test
    (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
-     (mt/with-temporary-setting-values [transforms-enabled true]
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
        (mt/with-model-cleanup [:model/Transform]
          (with-transforms-api-users! [user]
            (with-transform-db-perms!

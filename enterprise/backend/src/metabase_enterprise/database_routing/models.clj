@@ -12,11 +12,9 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]))
@@ -45,11 +43,11 @@
    {:default nil}))
 
 (defenterprise hash-input-for-database-routing
-  "Enterprise version. Returns a hash input that will be used for fields subject to database routing.
-  The destination is nil while the `:database-routing` feature is unavailable."
+  "Enterprise version. Returns a hash input that will be used for fields of the Database with `db-id` subject to
+  database routing. The destination is nil while the `:database-routing` feature is unavailable."
   :feature :none
-  [field]
-  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id driver.u/lib-database router-db->destination-db-id)]
+  [db-id]
+  (when-let [destination-db-id (some-> db-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
 (defenterprise-schema db-routing-enabled? :- :boolean

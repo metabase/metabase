@@ -113,7 +113,7 @@
 
 (deftest list-tags-statement-count-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
-    (mt/with-temporary-setting-values [transforms-enabled true]
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-model-cleanup [:model/Transform :model/TransformTag]
         (with-transforms-api-users! [user]
           (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes

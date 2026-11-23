@@ -94,12 +94,12 @@
                  `documents` can't call the consumer directly — the module graph runs one way
                  (`explorations -> documents`) — so the consumer registers a callback here."}
   doc-content-visibility-fn
-  (atom (fn [_doc] true)))
+  (atom (fn [_documents] (fn [_document] true))))
 
 (defn register-doc-content-visibility-fn!
   "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes a document and returns whether the current user may see its
-  rendered content."
+  consuming module's init. `f` takes the documents a caller is about to ask about and returns a predicate that takes
+  one of them and says whether the current user may see its rendered content, reading for all of them at once."
   [f]
   (reset! doc-content-visibility-fn f))
 
@@ -131,10 +131,10 @@
   `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
-(defn content-visible?
-  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
+(defn- content-visible-by?
+  "Run `visible?`, the registered content-visibility predicate, for `document`, guarding against re-entry and reusing
   a verdict already reached under [[with-content-gate-cache]]."
-  [document]
+  [visible? document]
   (let [id      (:id document)
         ;; Keyed by viewer as well as document: a verdict is only ever valid for the user it was
         ;; computed for, so a cache that outlives or crosses a user binding misses rather than
@@ -144,7 +144,7 @@
                   (if (contains? *content-gate-pending* id)
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
-                      (boolean (@doc-content-visibility-fn document)))))]
+                      (boolean (visible? document)))))]
     (if (and id *content-gate-cache*)
       (if-some [cached (get @*content-gate-cache* k)]
         cached
@@ -153,18 +153,27 @@
           verdict))
       (adjudge))))
 
+(defn content-visible?
+  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
+  a verdict already reached under [[with-content-gate-cache]]."
+  [document]
+  (content-visible-by? (@doc-content-visibility-fn [document]) document))
+
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
 (defn- content-visible-fn
   "A predicate like [[content-visible?]] that reads the Exploration ids of `documents` lacking one in a single query."
   [documents]
-  (let [ids (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
-        id->exploration-id (documents.db/exploration-ids-by-document-id ids)]
+  (let [ids                (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+        id->exploration-id (documents.db/exploration-ids-by-document-id ids)
+        assoc-exploration   (fn [document]
+                              (cond-> document
+                                (contains? id->exploration-id (:id document))
+                                (assoc :exploration_id (get id->exploration-id (:id document)))))
+        visible?           (@doc-content-visibility-fn (mapv assoc-exploration documents))]
     (fn [document]
-      (content-visible? (cond-> document
-                          (contains? id->exploration-id (:id document))
-                          (assoc :exploration_id (get id->exploration-id (:id document))))))))
+      (content-visible-by? visible? (assoc-exploration document)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
   "Whether the current user reads each of `documents`, as the content of its Collection."
@@ -534,15 +543,16 @@
   [card creator]
   (queries.card/new-card-row (assoc card :type :question :dashboard_id nil) (:id creator)))
 
-(defn clone-card!
-  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
+(defn clone-cards!
+  "Saves a copy of each of `source-cards`, existing cards the user can already read, e.g. when copying a document, in
+  one call, and returns the new cards in order.
 
   Checks nothing about the user: the caller has run [[check-clone-cards]], which checks create access to the target
   collection but, unlike the checks of new cards, not the authoring checks (run permission on the query, parameter
   source-card and parameter field permissions), since the query and parameters come from an existing card the caller
   passed a read check on rather than from the request (UXW-5037)."
-  [source-card creator]
-  (first (create-card-rows! [(new-document-card-row source-card creator)])))
+  [source-cards creator]
+  (create-card-rows! (mapv #(new-document-card-row % creator) source-cards)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]

@@ -172,6 +172,22 @@
   [exploration-id :- ms/PositiveInt]
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
+(mu/defn thread-ids-by-exploration-id
+  "A map of each of `exploration-ids` that has threads to the set of the ids of its ExplorationThreads."
+  [exploration-ids :- [:set ms/PositiveInt]]
+  (if (seq exploration-ids)
+    (reduce (fn [m {:keys [id exploration_id]}] (update m exploration_id (fnil conj #{}) id))
+            {}
+            (t2/select [:model/ExplorationThread :id :exploration_id] :exploration_id [:in [:auto/param exploration-ids]]))
+    {}))
+
+(mu/defn exploration-ids-by-document-id
+  "A map of the id of each Document with `document-ids` to its Exploration id, nil for one outside an Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (if (seq document-ids)
+    (into {} (map (juxt :id :exploration_id)) (t2/select [:model/Document :id :exploration_id] :id [:in [:auto/param document-ids]]))
+    {}))
+
 (mu/defn lens-stamped-threads
   "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
@@ -358,6 +374,13 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery :id query-id))
 
+(mu/defn queries-by-id :- [:map-of ms/PositiveInt :any]
+  "The ExplorationQueries with `query-ids`, by id."
+  [query-ids :- [:sequential ms/PositiveInt]]
+  (if (seq query-ids)
+    (t2/select-pk->fn identity :model/ExplorationQuery :id [:in [:auto/param query-ids]])
+    {}))
+
 (mu/defn query-thread-id-row
   "The `:exploration_thread_id` row of the ExplorationQuery with `query-id`, or nil."
   [query-id :- ms/PositiveInt]
@@ -502,6 +525,14 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQueryResult :exploration_query_id query-id))
 
+(mu/defn query-results-by-query-id :- [:map-of ms/PositiveInt :any]
+  "The ExplorationQueryResults of the ExplorationQueries with `query-ids`, by query id."
+  [query-ids :- [:sequential ms/PositiveInt]]
+  (if (seq query-ids)
+    (t2/select-fn->fn :exploration_query_id identity :model/ExplorationQueryResult
+                      :exploration_query_id [:in [:auto/param query-ids]])
+    {}))
+
 (mu/defn query-result-stored-result-id
   "The stored result ID of the ExplorationQueryResult of the ExplorationQuery with `query-id`."
   [query-id :- ms/PositiveInt]
@@ -539,6 +570,13 @@
   "The StoredResult with `stored-result-id`, or nil."
   [stored-result-id :- ms/PositiveInt]
   (t2/select-one :model/StoredResult :id stored-result-id))
+
+(mu/defn stored-results-by-id :- [:map-of ms/PositiveInt :any]
+  "The StoredResults with `stored-result-ids`, by id."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (if (seq stored-result-ids)
+    (t2/select-pk->fn identity :model/StoredResult :id [:in [:auto/param stored-result-ids]])
+    {}))
 
 (mu/defn orphaned-stored-result-ids
   "Up to `limit` `:id` rows of the StoredResults created before `created-before` that no ExplorationQueryResult or

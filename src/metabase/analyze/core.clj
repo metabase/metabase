@@ -31,6 +31,7 @@
   infer-entity-type-by-name
   infer-semantic-type-by-name]
  [metabase.analyze.db
+  data-sensitivity-fields
   fields-to-fingerprint
   fingerprint-field-counts
   incomplete-analysis-fields

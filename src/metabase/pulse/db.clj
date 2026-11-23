@@ -33,20 +33,12 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn card-query
-  "The query of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
-  ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
-  ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
-  (t2/select-one-fn :dataset_query
-                    [:model/Card :id :dataset_query :card_schema :type :entity_id
-                     :result_metadata :dimensions :dimension_mappings]
-                    :id [:auto/param card-id]))
-
 (mu/defn card-queries
   "The queries of the Cards with `card-ids`, by Card id."
   [card-ids :- [:set ::lib.schema.id/card]]
+  ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
+  ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
+  ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
   (if (seq card-ids)
     (t2/select-pk->fn :dataset_query
                       [:model/Card :id :dataset_query :card_schema :type :entity_id
@@ -531,35 +523,17 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
 
-(defn user-name-and-email
-  "The first name, last name, and email of the User with `user-id`, or nil."
-  [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
-
-(defn users-names-and-emails
-  "The first names, last names, and emails of the Users with `user-ids`."
-  [user-ids]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
-
-(defn pulse-channel-kinds-for-pulse
-  "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id]
-  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
+(mu/defn users-names-and-emails-by-id
+  "The first name, last name, and email of the Users with `user-ids`, by User id."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (if (seq user-ids)
+    (t2/select-pk->fn #(dissoc % :id) [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+    {}))
 
 (defn pulses-with-ids
   "The Pulses whose ids are in `pulse-ids`, archived or not."
   [pulse-ids]
   (t2/select :model/Pulse :id [:in pulse-ids]))
-
-(defn enabled-pulse-channels
-  "The id, channel type, details, and channel id of the enabled PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id]
-  (t2/select [:model/PulseChannel :id :channel_type :details :channel_id] :pulse_id [:= pulse-id] :enabled true))
-
-(defn pulse-channel-recipient-rows
-  "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
-  [channel-id]
-  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id channel-id))
 
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."

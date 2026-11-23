@@ -21,7 +21,7 @@
 
 (defn- result->delta [result]
   (cond
-    (instance? Exception result)        {:errors 1}
+    (instance? Throwable result)        {:errors 1}
     (= ::field-values/fv-created result) {:created 1}
     (= ::field-values/fv-updated result) {:updated 1}
     (= ::field-values/fv-deleted result) {:deleted 1}))
@@ -111,19 +111,19 @@
    :queries       (+ (:queries a 0) (:queries b 0))
    :failed-fields (into #{} cat [(:failed-fields a) (:failed-fields b)])})
 
-(defn- sync-fields-for-table!
-  "Fetch distinct values for `fields` from `table` and persist them via
-  `field-values/persist-field-values!`.
+(defn- table-field-values-changes
+  "Fetch distinct values for `fields` from `table` and return `{:queries n :changes pairs}`: the number of warehouse
+  queries and, for each of `fields`, a pair of the Field and what [[field-values/field-values-change]] returns for it,
+  or the Throwable fetching or comparing its values threw.
 
   Dispatch: SQL drivers that meet `can-batch-distinct?` use the UNION ALL batch path for fields
   without a `:parent_id`. Nested-JSON child fields (`:parent_id` set) and the entire field set
   for non-batchable tables go through the portable per-field MBQL path — that path goes through
   the QP, which builds correct column references for nested-JSON fields (`run-distinct-batch`'s
-  hand-rolled HoneySQL CAST does not).
-
-  Returns a counts map of outcomes."
+  hand-rolled HoneySQL CAST does not)."
   [database table fields fvs-map]
-  (when (seq fields)
+  (if (empty? fields)
+    {:queries 0 :changes []}
     (let [{nested true plain false}    (group-by #(boolean (:parent_id %)) fields)
           batch?                       (can-batch-distinct? database table)
           batch-fields                 (when batch? plain)
@@ -132,20 +132,49 @@
           (merge-fetch-results
            (when (seq batch-fields)     (fetch-distinct-for-table table batch-fields))
            (when (seq per-field-fields) (fetch-distinct-per-field per-field-fields)))]
-      (reduce (fn [counts field]
-                (let [field-id (u/the-id field)
-                      delta    (if (contains? failed-fields field-id)
-                                 {:errors 1}
-                                 (let [raw-values (get-in results [field-id :values] [])
-                                       result     (sync-util/with-error-handling
-                                                   (format "Error updating field values for %s"
-                                                           (sync-util/name-for-logging field))
-                                                    (field-values/persist-field-values!
-                                                     field (get fvs-map field-id) raw-values))]
-                                   (result->delta result)))]
-                  (merge-with + counts delta {:probed 1})))
-              (merge-with + empty-counts {:queries queries})
-              fields))))
+      {:queries queries
+       :changes (mapv (fn [field]
+                        (let [field-id (u/the-id field)]
+                          [field (if (contains? failed-fields field-id)
+                                   (ex-info "Error fetching field values" {:field-id field-id})
+                                   (sync-util/with-error-handling
+                                    (format "Error updating field values for %s" (sync-util/name-for-logging field))
+                                     (field-values/field-values-change
+                                      field (get fvs-map field-id) (get-in results [field-id :values] []))))]))
+                      fields)})))
+
+(defn- save-changes!
+  "Write the changes of `pairs`, each a Field and its change or a Throwable, at once, or Field by Field when that
+  fails, and return the counts of their outcomes."
+  [pairs]
+  (let [ok      (into [] (remove (comp #(instance? Throwable %) second)) pairs)
+        saved?  (and (next ok)
+                     (not (instance? Throwable (sync-util/with-error-handling "Error updating field values"
+                                                 (field-values/save-field-values-changes! (mapv second ok))))))
+        outcome (fn [[field change]]
+                  (cond
+                    (instance? Throwable change) change
+                    saved?                       (:result change)
+                    :else                        (sync-util/with-error-handling
+                                                  (format "Error updating field values for %s"
+                                                          (sync-util/name-for-logging field))
+                                                   (field-values/save-field-values-changes! [change])
+                                                   (:result change))))]
+    (transduce (map (comp result->delta outcome))
+               (partial merge-with +)
+               (assoc empty-counts :probed (count pairs))
+               pairs)))
+
+(defn- sync-fields-of-tables!
+  "Fetch distinct values for the Fields of each of `tables`, by `table-id->fields`, each Table's Database by
+  `table-database`, and write their FieldValues at once, returning the counts of outcomes."
+  [tables table-database table-id->fields fvs-map]
+  (let [fetched (mapv (fn [table]
+                        (database-routing/with-anonymous-router-access
+                          (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map)))
+                      tables)]
+    (assoc (save-changes! (into [] (mapcat :changes) fetched))
+           :queries (transduce (map :queries) + 0 fetched))))
 
 (defn sync-fields-grouped-by-table!
   "Sync FieldValues for `fields`, grouping by `:table_id`. Filters to FV-eligible fields via
@@ -158,13 +187,10 @@
     (when (seq eligible)
       (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id eligible))
             by-table (group-by :table_id eligible)
+            tables   (into [] (mapcat #(sync.db/tables-by-schema-and-name (vec %)))
+                           (partition-all table-chunks/tables-per-chunk (keys by-table)))
             database (memoize driver.u/lib-database)]
-        (transduce (map (fn [[table-id table-fields]]
-                          (let [table (sync.db/table table-id)]
-                            (sync-fields-for-table! (database (:db_id table)) table table-fields fvs-map))))
-                   (completing (partial merge-with +))
-                   empty-counts
-                   by-table)))))
+        (sync-fields-of-tables! tables (comp database :db_id) by-table fvs-map)))))
 
 (defn- clear-field-values!
   "Delete the FieldValues of `fields`, which should no longer have any, returning the counts of the Fields that had
@@ -184,14 +210,15 @@
         (assoc empty-counts (if (instance? Exception result) :errors :deleted) (count field-id->ids))))))
 
 (defn- syncable?
-  "Whether the FieldValues `fv` of `field` are there and in use, so sync should update them."
-  [field fv]
+  "Whether the FieldValues `fv` of `field` are there and in use, by `field-id->last-used-at` from
+  [[field-values/fields-last-used-at]], so sync should update them."
+  [field-id->last-used-at field fv]
   (cond
     (not fv)
     (do (log/tracef "%s does not have FieldValues. Skipping..." (sync-util/name-for-logging field))
         false)
 
-    (field-values/inactive? fv)
+    (field-values/inactive? fv (field-id->last-used-at (:field_id fv)))
     (do (log/infof "%s has not been used since %s. Skipping..."
                    (sync-util/name-for-logging field)
                    (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at fv))))
@@ -220,13 +247,9 @@
                                     (mapcat val table-id->fields))
         clear-counts      (clear-field-values! to-clear)
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
-        table-id->to-sync (group-by :table_id (filter #(syncable? % (get fvs-map (u/the-id %))) to-sync))]
-    (reduce (fn [counts table]
-              (let [sync-counts (database-routing/with-anonymous-router-access
-                                  (sync-fields-for-table! database table (table-id->to-sync (:id table)) fvs-map))]
-                (merge-with + counts (or sync-counts empty-counts))))
-            clear-counts
-            tables)))
+        last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
+        table-id->to-sync (group-by :table_id (filter #(syncable? last-used-at % (get fvs-map (u/the-id %))) to-sync))]
+    (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.

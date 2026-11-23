@@ -25,10 +25,12 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn database-settings-by-name
-  "The `:settings` of a Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-fn :settings :model/Database :name database-name))
+(mu/defn database-settings-by-name :- [:map-of :string :any]
+  "The `:settings` of the Databases named one of `database-names`, by name; no other column is read."
+  [database-names :- [:sequential :string]]
+  (if (empty? database-names)
+    {}
+    (t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param (vec database-names)]])))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -107,8 +109,3 @@
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))

@@ -103,16 +103,8 @@
   "Save `updates`, pairs of a Field of one of `tables` and the values classification sets on it, in one update, or Table
   by Table when that fails."
   [tables updates]
-  (let [id->table   (into {} (map (juxt :id identity)) tables)
-        by-table    (group-by (comp :table_id first) updates)
-        save-table! (fn [[table-id table-updates]]
-                      (sync-util/with-error-handling (format "Error saving the classification of the Fields of %s"
-                                                             (sync-util/name-for-logging (id->table table-id)))
-                        (sync.updates/update-fields-unless-user-set! table-updates)))]
-    (when (or (nil? (next by-table))
-              (instance? Exception (sync-util/with-error-handling "Error saving the classification of Fields"
-                                     (sync.updates/update-fields-unless-user-set! updates))))
-      (run! save-table! by-table))))
+  (table-chunks/save-by-table! "the classification of the Fields" (table-chunks/table-name tables) (comp :table_id first)
+                               sync.updates/update-fields-unless-user-set! updates))
 
 (mu/defn- classify-fields-of-tables! :- [:map {:closed true} [:fields-classified :int] [:fields-failed :int]]
   "Run various classifiers on the Fields of `tables` that have not been previously analyzed, reading and saving them a
@@ -166,7 +158,8 @@
   (let [outcomes (mapv (juxt identity table-classification) tables)
         updates  (filterv (comp map? second) outcomes)]
     (when (seq updates)
-      (sync.updates/update-tables-unless-user-set! updates))
+      (table-chunks/save-by-table! "the classification" (table-chunks/table-name tables) (comp :id first)
+                                   sync.updates/update-tables-unless-user-set! updates))
     (count (filter second outcomes))))
 
 (def ^:private LogProgressFn

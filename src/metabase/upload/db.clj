@@ -62,14 +62,6 @@
              :type     :model
              :archived false))
 
-(mu/defn card-query-and-metadata
-  "The query-relevant columns of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `upload` (via
-  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
-  ;; dependency-free namespace that exists for exactly this.
-  (t2/select-one (queries.card-schema/selection) :id card-id))
-
 (mu/defn unarchived-card-ids-for-table
   "The ids of the unarchived Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]

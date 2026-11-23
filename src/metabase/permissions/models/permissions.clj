@@ -412,15 +412,6 @@
   (check-tenant-group-collection-grant (perms-group/is-tenant-group? group-or-id) nil :write)
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
-(mu/defn grant-collection-read-permissions!
-  "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
-  (check-is-modifiable-collection collection-or-id)
-  (check-tenant-group-collection-grant (perms-group/is-tenant-group? group-or-id)
-                                       (collection-or-id->collection collection-or-id)
-                                       :read)
-  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
-
 (defn- collection-access-path
   "The permissions path that grants `access`, `:write` or `:read`, on `collection-or-id`."
   [collection-or-id access]
@@ -446,6 +437,33 @@
         (check-modifiable resolved #(contains? personal (:id %))))
       (when (#{:read :write} access)
         (check-tenant-group-collection-grant (get tenant? group-id) resolved access)))))
+
+(mu/defn grant-collection-read-permissions-to-groups!
+  "Grant read access, as [[grant-collection-read-permissions!]] does, for each `[group-id collection-or-id]` of `grants`:
+  every pair is checked before anything is written, then the rows that the groups do not hold yet are inserted at once."
+  [grants :- [:sequential [:tuple ms/PositiveInt permissions.path/CollectionOrID]]]
+  (when (seq grants)
+    (check-collection-access-changes (map (fn [[group-id collection-or-id]] [group-id collection-or-id :read]) grants))
+    (let [wanted (distinct (for [[group-id collection-or-id] grants
+                                 :let [path (permissions.path/collection-read-path collection-or-id)]
+                                 object (distinct (conj (perms.u/->v2-path path) path))]
+                             [group-id object]))
+          held   (permissions.db/held-permission-pairs (into [] (comp (map first) (distinct)) wanted)
+                                                       (into [] (comp (map second) (distinct)) wanted))]
+      (when-let [missing (seq (remove held wanted))]
+        (try
+          (create-permissions! (for [[group-id object] missing]
+                                 {:group_id group-id :object object}))
+          (catch Throwable e
+            (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
+            (when config/is-test?
+              (throw e)))))))
+  nil)
+
+(mu/defn grant-collection-read-permissions!
+  "Grant read access to a Collection, which means a user can view all Cards in the Collection."
+  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
+  (grant-collection-read-permissions-to-groups! [[(u/the-id group-or-id) collection-or-id]]))
 
 (defn- revoke-collection-accesses!
   "Deletes the Permissions rows related to the read-write path of each of `changes`, as [[revoke-collection-permissions!]]

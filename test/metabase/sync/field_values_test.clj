@@ -363,7 +363,7 @@
 
 ;;; ---------------------------------- nested-JSON fields dispatch ----------------------------------
 
-(deftest ^:synchronized sync-fields-for-table!-routes-parent-id-fields-to-per-field-test
+(deftest ^:synchronized table-field-values-changes-routes-parent-id-fields-to-per-field-test
   (testing "Fields with :parent_id (nested-JSON unfolded) go through the per-field path even when
             the table is otherwise batch-able. Batching builds a CAST(name AS …) that doesn't
             qualify the column with its parent, so the SQL would target the wrong column AND the
@@ -396,7 +396,7 @@
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries (count fields)
                                        :failed-fields #{}})]
-          (#'sync.field-values/sync-fields-for-table! (driver.u/lib-database db-id) table [nested-a nested-b plain-c] {})
+          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [nested-a nested-b plain-c] {})
           (testing "Plain field goes to batch path"
             (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))
           (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"
@@ -517,3 +517,96 @@
           (is (= [(u/the-id listed)]
                  (t2/select-fn-vec :field_id :model/FieldValues
                                    :field_id [:in (map u/the-id [listed plain-1 plain-2])]))))))))
+
+(defn- add-full-field-values!
+  "Give every Field of `database` full FieldValues `values` last used at `last-used-at`."
+  [database values last-used-at]
+  (t2/insert! :model/FieldValues (for [field-id (t2/select-pks-vec :model/Field
+                                                                   :table_id [:in (t2/select-pks-vec :model/Table :db_id (:id database))])]
+                                   {:field_id field-id :type :full :values values :has_more_values false
+                                    :last_used_at last-used-at})))
+
+(defn- add-unused-field-values!
+  "Give every Field of `database` full FieldValues last used past the cutoff of active FieldValues."
+  [database]
+  (add-full-field-values! database ["a" "b"] (t/minus (t/offset-date-time) (t/days 30))))
+
+(defn- add-other-field-values!
+  "Give every Field of `database` full FieldValues in use whose values differ from those the warehouse gives."
+  [database]
+  (add-full-field-values! database ["x"] (t/offset-date-time)))
+
+(deftest update-field-values-unused-or-changed-statement-count-test
+  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (doseq [[what prepare!] [["FieldValues are not used recently" add-unused-field-values!]
+                             ["FieldValues change" add-other-field-values!]]]
+      (testing (str "field values sync issues as many statements for 16 Tables as for 4 when " what)
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field prepare! update-field-values!)]
+          (is (= small large))))
+      (testing (str "field values sync issues as many statements for 20 Fields per Table as for 5 when " what)
+        (let [[small large] (analyze.tu/statement-counts-by-fields list-or-plain-field prepare! update-field-values!)]
+          (is (= small large)))))))
+
+(defn- update-field-values-on-demand!
+  "Update on demand the FieldValues of every Field of `database`."
+  [database]
+  (sync.field-values/update-field-values-for-on-demand-dbs!
+   (t2/select-pks-vec :model/Field :table_id [:in (t2/select-pks-vec :model/Table :db_id (:id database))])))
+
+(defn- on-demand
+  "Make `database` update its FieldValues on demand, after `prepare!`."
+  [prepare!]
+  (fn [database]
+    (t2/update! :model/Database :id (:id database) {:is_on_demand true})
+    (prepare! database)))
+
+(deftest update-field-values-for-on-demand-dbs-statement-count-test
+  (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+    (doseq [[what prepare!] [["Fields have no FieldValues" (constantly nil)]
+                             ["FieldValues change" add-other-field-values!]]]
+      (testing (str "on-demand field values update issues as many statements for 16 Tables as for 4 when " what)
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field (on-demand prepare!)
+                                                                   update-field-values-on-demand!)]
+          (is (= small large))))
+      (testing (str "on-demand field values update issues as many statements for 20 Fields per Table as for 5 when " what)
+        (let [[small large] (analyze.tu/statement-counts-by-fields list-or-plain-field (on-demand prepare!)
+                                                                   update-field-values-on-demand!)]
+          (is (= small large)))))))
+
+(deftest update-field-values-for-on-demand-dbs-writes-every-field-test
+  (testing "on-demand field values update creates missing FieldValues and updates changed ones of every Table"
+    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+      (mt/with-temp [:model/Database db      {:engine :h2 :is_on_demand true}
+                     :model/Table    table-1 {:db_id (u/the-id db) :active true}
+                     :model/Table    table-2 {:db_id (u/the-id db) :active true}
+                     :model/Field    missing {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values :auto-list}
+                     :model/Field    changed {:table_id (u/the-id table-2) :base_type :type/Text :has_field_values :auto-list}
+                     :model/FieldValues _    {:field_id (u/the-id changed) :type :full :values ["x"]}]
+        (is (=? {:created 1 :updated 1 :errors 0}
+                (sync.field-values/update-field-values-for-on-demand-dbs! [(u/the-id missing) (u/the-id changed)])))
+        (is (= {(u/the-id missing) ["a" "b"] (u/the-id changed) ["a" "b"]}
+               (t2/select-fn->fn :field_id :values :model/FieldValues
+                                 :field_id [:in [(u/the-id missing) (u/the-id changed)]] :type :full)))))))
+
+(deftest update-field-values-saves-other-fields-when-one-write-fails-test
+  (testing "field values sync saves the FieldValues of other Fields when writing those of one Field throws"
+    (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch distinct-values-a-and-b]
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    table-1 {:db_id (u/the-id db) :active true}
+                     :model/Table    table-2 {:db_id (u/the-id db) :active true}
+                     :model/Field    broken  {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values :auto-list}
+                     :model/Field    other-1 {:table_id (u/the-id table-1) :base_type :type/Text :has_field_values :auto-list}
+                     :model/Field    other-2 {:table_id (u/the-id table-2) :base_type :type/Text :has_field_values :auto-list}]
+        (add-other-field-values! db)
+        (let [save!     (mt/original-fn #'field-values/save-field-values-changes!)
+              broken-id (t2/select-one-pk :model/FieldValues :field_id (u/the-id broken))]
+          (mt/with-dynamic-fn-redefs [field-values/save-field-values-changes!
+                                      (fn [changes]
+                                        (when (some #(= broken-id (get-in % [:update :id])) changes)
+                                          (throw (ex-info "write failed" {})))
+                                        (save! changes))]
+            (is (=? {:updated 2 :errors 1}
+                    (:updated (update-field-values! (driver.u/lib-database (u/the-id db))))))))
+        (is (= {(u/the-id broken) ["x"] (u/the-id other-1) ["a" "b"] (u/the-id other-2) ["a" "b"]}
+               (t2/select-fn->fn :field_id :values :model/FieldValues
+                                 :field_id [:in (map u/the-id [broken other-1 other-2])] :type :full)))))))

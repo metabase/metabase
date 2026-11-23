@@ -25,6 +25,20 @@
       (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
 
+(defn present-tables
+  "Given tables, shape each for the API like [[present-table]], reading the readability of all their Collections at
+  once."
+  [tables]
+  (let [readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (into [] (comp (keep :collection) (distinct)) tables) :can_read))]
+    (mapv (fn [table]
+            (-> table
+                (update :db dissoc :router_database_id)
+                (m/update-existing :collection #(when (contains? readable-ids (:id %)) %))
+                (update :schema str)))
+          tables)))
+
 (defn- format-fields-for-response [resp]
   (update resp :fields
           (fn [fields]

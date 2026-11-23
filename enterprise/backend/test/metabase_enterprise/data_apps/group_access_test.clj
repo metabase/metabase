@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.group-access-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
@@ -7,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.data-apps.core :as data-apps]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -199,12 +201,11 @@
                  :model/DataApp app {:resource_collection_id app-coll-id}
                  :model/PermissionsGroup group {}
                  :model/PermissionsGroup failing-group {}]
-    (let [grant! (mt/original-fn #'perms/grant-collection-read-permissions!)]
-      (mt/with-dynamic-fn-redefs [perms/grant-collection-read-permissions!
-                                  (fn [group-id collection]
-                                    (when (= group-id (:id failing-group))
-                                      (throw (ex-info "Failed after granting collection access" {})))
-                                    (grant! group-id collection))]
+    (let [update! (mt/original-fn #'perms/grant-collection-read-permissions-to-groups!)]
+      (mt/with-dynamic-fn-redefs [perms/grant-collection-read-permissions-to-groups!
+                                  (fn [changes]
+                                    (update! changes)
+                                    (throw (ex-info "Failed after granting collection access" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed after granting collection access"
                               (group-access/add-groups! app [(:id group) (:id failing-group)]))))
       (is (empty? (access-group-ids app))))))
@@ -422,3 +423,90 @@
       (perms-group-membership/add-users-to-groups! [{:user (:id tenant-user) :group (:id tenant-group)}])
       (mt/with-current-user (:id tenant-user)
         (is (mi/can-read? (t2/hydrate tenant-app :can_read)))))))
+
+(defn- add-groups-statement-count!
+  "POST `n` new groups to a new app and return the statements that took and the ids of the groups."
+  [n]
+  (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
+                 :model/DataApp app {:resource_collection_id app-coll-id}]
+    (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                              (for [i (range n)] {:name (str "Group " i " of " n)}))]
+      (try
+        (let [stmts (events.tu/real-statement-count!
+                     #(mt/user-http-request :crowberto :post 200 (data-apps.tu/app-url app "groups") {:group_ids group-ids}))]
+          {:count stmts
+           :granted (= (set group-ids) (access-group-ids app))})
+        (finally
+          (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))
+
+(deftest add-groups-statement-count-test
+  (testing "POST /api/ee/apps/:slug/groups runs as many statements for 10 groups as for 40, and grants each of them"
+    (mt/with-premium-features #{:data-apps}
+      (add-groups-statement-count! 2)
+      (let [small (add-groups-statement-count! 10)
+            large (add-groups-statement-count! 40)]
+        (is (= (:count small) (:count large)))
+        (is (:granted small))
+        (is (:granted large))))))
+
+(deftest add-groups-grants-the-rows-of-each-group-test
+  (testing "adding a mix of internal and tenant groups stores what granting read to each group stores"
+    (mt/with-premium-features #{:data-apps :tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
+                       :model/DataApp app {:resource_collection_id app-coll-id}
+                       :model/Collection {control-coll-id :id} {:namespace :data-apps}
+                       :model/DataApp _ {:resource_collection_id control-coll-id}
+                       :model/PermissionsGroup {finches :id} {}
+                       :model/PermissionsGroup {owls :id} {}
+                       :model/PermissionsGroup {tenant :id} {:is_tenant_group true}]
+          (group-access/add-groups! app [finches owls tenant])
+          (doseq [group-id [finches owls tenant]]
+            (perms/grant-collection-read-permissions! group-id control-coll-id))
+          (doseq [group-id [finches owls tenant]]
+            (is (= (t2/select-fn-set :object :model/Permissions :group_id group-id :object [:like (str "%/collection/" control-coll-id "/%")])
+                   (into #{} (map #(str/replace % (str "/collection/" app-coll-id "/") (str "/collection/" control-coll-id "/")))
+                         (t2/select-fn-set :object :model/Permissions :group_id group-id :object [:like (str "%/collection/" app-coll-id "/%")])))))
+          (is (= #{finches owls tenant} (access-group-ids app))))))))
+
+(deftest add-groups-refuses-whole-batch-test
+  (testing "a batch with one group that cannot be assigned grants nothing to the others"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
+                     :model/DataApp app {:resource_collection_id app-coll-id}
+                     :model/PermissionsGroup {finches :id} {}
+                     :model/PermissionsGroup {owls :id} {}
+                     :model/PermissionsGroup {tenant :id} {:is_tenant_group true}]
+        (doseq [[status group-ids] [[400 [finches owls (:id (perms/admin-group))]]
+                                    [402 [finches owls tenant]]]]
+          (mt/user-http-request :crowberto :post status (data-apps.tu/app-url app "groups") {:group_ids group-ids})
+          (is (empty? (t2/select :model/Permissions :group_id [:in [finches owls tenant]])))
+          (is (empty? (access-group-ids app))))
+        (mt/user-http-request :rasta :post 403 (data-apps.tu/app-url app "groups") {:group_ids [finches owls]})
+        (is (empty? (t2/select :model/Permissions :group_id [:in [finches owls]])))))))
+
+(deftest grant-read-to-groups-keeps-existing-rows-test
+  (testing "granting read to a batch of groups leaves every row a group holds and adds what single grants add"
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/Collection {control-id :id} {:namespace :data-apps}
+                   :model/PermissionsGroup {fresh :id} {}
+                   :model/PermissionsGroup {has-read :id} {}
+                   :model/PermissionsGroup {has-write :id} {}
+                   :model/PermissionsGroup {has-ancestor :id} {}
+                   :model/PermissionsGroup {control :id} {}]
+      (perms/grant-collection-read-permissions! has-read coll-id)
+      (perms/grant-collection-readwrite-permissions! has-write coll-id)
+      (perms/grant-permissions! has-ancestor "/")
+      (perms/grant-collection-read-permissions! control control-id)
+      (let [groups       [fresh has-read has-write has-ancestor]
+            objects-of   (fn [group-id] (t2/select-fn-set :object :model/Permissions :group_id group-id))
+            before       (zipmap groups (map objects-of groups))
+            control-rows (into #{} (map #(str/replace % (str "/" control-id "/") (str "/" coll-id "/"))) (objects-of control))]
+        (perms/grant-collection-read-permissions-to-groups! (mapv #(vector % coll-id) groups))
+        (doseq [group-id groups]
+          (is (= (into (set (get before group-id)) control-rows) (set (objects-of group-id)))))
+        (testing "a refused pair writes nothing for the others"
+          (mt/with-temp [:model/PermissionsGroup {other :id} {}]
+            (is (thrown? Exception (perms/grant-collection-read-permissions-to-groups!
+                                    [[other coll-id] [(:id (perms/admin-group)) coll-id]])))
+            (is (empty? (objects-of other)))))))))

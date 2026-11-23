@@ -143,13 +143,11 @@
         (mapv (comp by-pk pk-of) rows))
       (vec (sort-by pk-of instances)))))
 
-(mu/defn update-row!
-  "Update the `model` row whose primary key `pk` is `id` with `changes`, running the model's hooks."
-  [model   :- :keyword
-   pk      :- :keyword
-   id      :- [:or :int :string]
-   changes :- ::row]
-  (t2/update! model pk [:auto/param id] changes))
+(mu/defn update-rows!
+  "Update `rows` of `model`, each its primary key and the columns to change, with one update per distinct change, running the model's hooks."
+  [model :- :keyword
+   rows  :- [:sequential ::row]]
+  (app-db/update-grouped! model rows))
 
 (mu/defn delete-rows!
   "Delete the `model` rows whose primary key `pk` is one of `ids`, running the model's hooks."

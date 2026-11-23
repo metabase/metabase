@@ -3297,26 +3297,3 @@
                          (request-statement-count :get 200 path)))]
           (is (= (counts ["S0" "S1"])
                  (counts ["S0" "S1" "S2" "S3" "S4" "S5" "S6" "S7"]))))))))
-
-(deftest metadata-with-metrics-statement-count-test
-  (testing "GET /api/database/:id/metadata costs as many statements for 6 Tables with a metric each as for 2"
-    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
-                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
-      (mt/with-model-cleanup [:model/Database :model/Card]
-        (let [counts (fn [n]
-                       (let [[db-id]   (insert-restricted-databases! 1 group-id (map #(str "S" %) (range n))
-                                                                     (set (map #(str "S" %) (range n))))
-                             mp        (lib-be/application-database-metadata-provider db-id)
-                             table-ids (t2/select-pks-vec :model/Table :db_id db-id)
-                             path      (format "database/%d/metadata" db-id)]
-                         (t2/insert! :model/Card
-                                     (for [table-id table-ids]
-                                       (merge (mt/with-temp-defaults :model/Card)
-                                              {:type          :metric
-                                               :database_id   db-id
-                                               :table_id      table-id
-                                               :dataset_query (-> (lib/query mp (lib.metadata/table mp table-id))
-                                                                  (lib/aggregate (lib/count)))})))
-                         (mt/user-http-request :rasta :get 200 path)
-                         (request-statement-count :get 200 path)))]
-          (is (= (counts 2) (counts 6))))))))

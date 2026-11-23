@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -156,3 +157,58 @@
               large (reap! 40)]
           (is (= (:count small) (:count large)))
           (is (= [10 40] [(:audits small) (:audits large)])))))))
+
+(defn- timeout-audit-model-ids!
+  "Reap three stale runs while `wrap` wraps the audit log functions, and return the run ids, the second one apart, with the
+  ids of the runs that got an audit row and the statuses of the runs."
+  [wrap]
+  (let [transform-ids (t2/insert-returning-pks! :model/Transform
+                                                (for [_ (range 3)] (mt/with-temp-defaults :model/Transform)))
+        run-ids       (t2/insert-returning-pks!
+                       :model/TransformRun
+                       (for [transform-id transform-ids]
+                         {:transform_id   transform-id
+                          :status         :started
+                          :is_active      true
+                          :run_method     :manual
+                          :start_time     (minutes-ago 30)
+                          :last_heartbeat (minutes-ago 30)}))]
+    (try
+      (wrap (second run-ids) #(transform-run/timeout-old-runs! 5 :minute))
+      {:run-ids   run-ids
+       :audited   (t2/select-fn-set :model_id :model/AuditLog :topic "transform-run-timeout" :model "TransformRun"
+                                    :model_id [:in run-ids])
+       :statuses  (t2/select-fn-set :status :model/TransformRun :id [:in run-ids])}
+      (finally
+        (t2/delete! :model/AuditLog :topic "transform-run-timeout" :model_id [:in run-ids])
+        (t2/delete! :model/TransformRun :id [:in run-ids])
+        (t2/delete! :model/Transform :id [:in transform-ids])))))
+
+(deftest timeout-old-runs-audit-row-failure-test
+  (testing "when the audit row of one of 3 timed-out runs cannot be built, the other 2 still get theirs"
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (let [audit-row (mt/original-fn #'audit-log/audit-row)
+            {:keys [run-ids audited statuses]}
+            (timeout-audit-model-ids!
+             (fn [failing-run-id thunk]
+               (mt/with-dynamic-fn-redefs [audit-log/audit-row (fn [topic params]
+                                                                 (when (= failing-run-id (get-in params [:object :id]))
+                                                                   (throw (ex-info "cannot build row" {})))
+                                                                 (audit-row topic params))]
+                 (thunk))))]
+        (is (= #{:timeout} statuses))
+        (is (= (disj (set run-ids) (second run-ids)) audited))))))
+
+(deftest timeout-old-runs-audit-insert-failure-test
+  (testing "when the one insert of the audit rows of 3 timed-out runs fails, each row is inserted on its own"
+    (mt/with-premium-features #{:transforms-basic :audit-app}
+      (let [create! (mt/original-fn #'audit-log/create-audit-logs!)
+            {:keys [run-ids audited]}
+            (timeout-audit-model-ids!
+             (fn [_ thunk]
+               (mt/with-dynamic-fn-redefs [audit-log/create-audit-logs! (fn [rows]
+                                                                          (when (< 1 (count rows))
+                                                                            (throw (ex-info "cannot insert rows" {})))
+                                                                          (create! rows))]
+                 (thunk))))]
+        (is (= (set run-ids) audited))))))

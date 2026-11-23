@@ -2,7 +2,6 @@
   "`:metabase.api-keys.core/group-id` and `:metabase.api-keys.core/unhashed-key` have special meanings when passed to
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
-   [clojure.core.memoize :as memoize]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.error :as me]
@@ -177,18 +176,6 @@
   [api-key]
   (-> api-key
       add-masked-key))
-
-(def ^{:arglists '([user-id])} is-api-key-user?
-  "Cached function to determine whether the user with this ID is an API key user"
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb/unique-identifier) user-id])}
-   (fn is-api-key-user?*
-     [user-id]
-     (= :api-key (api-keys.db/user-type user-id)))
-   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
-   ;; large
-   :ttl/threshold (* 60 60 1000)))
 
 (mu/defn key-with-unique-prefix :- ::api-keys.schema/key.secret
   "Generate an unique API key with a unique prefix."

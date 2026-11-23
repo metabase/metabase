@@ -2,13 +2,11 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
-   [clojure.core.cache :as cache]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.db :as collections.db]
@@ -62,20 +60,30 @@
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
 
-(deftest with-temp-user-evicts-personal-collection-id-cache-test
-  (testing "a temporary User cannot leave its deleted Personal Collection id in the production cache"
-    (let [user-id       (atom nil)
-          collection-id (atom nil)]
-      (mt/with-temp [:model/User {id :id}]
-        (reset! user-id id)
-        (reset! collection-id (@#'collection/user->personal-collection-id id))
-        (is (t2/exists? :model/Collection :id @collection-id)))
-      (is (not (t2/exists? :model/Collection :id @collection-id))
-          "with-temp removed the Personal Collection")
-      (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
-                                meta :clojure.core.memoize/cache)
-                           [(mdb/unique-identifier) @user-id]))
-          "with-temp evicted the stale cache entry"))))
+(deftest personal-collection-id-follows-recreated-collection-test
+  (testing "hydrating `:personal_collection_id` right after a User's Personal Collection is deleted gives a new one"
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (mt/with-temp [:model/User user]
+        (let [old-id (:personal_collection_id (t2/hydrate user :personal_collection_id))]
+          (t2/delete! :model/Collection :id old-id)
+          (let [new-id (:personal_collection_id (t2/hydrate user :personal_collection_id))]
+            (is (not= old-id new-id))
+            (is (t2/exists? :model/Collection :id new-id :personal_owner_id (:id user)))))))))
+
+(deftest user->personal-collection-skips-api-key-users-test
+  (testing "API key users get no Personal Collection, whether given by id or by row, and others get theirs"
+    (mt/with-temp [:model/User {api-key-user-id :id :as api-key-user} {:type :api-key}
+                   :model/User {user-id :id}                          {}]
+      (is (nil? (collection/user->personal-collection api-key-user-id)))
+      (is (nil? (collection/user->personal-collection api-key-user)))
+      (is (= user-id (:personal_owner_id (collection/user->personal-collection user-id))))))
+  (testing "the `:type` of a given row decides without the query an id needs"
+    (mt/with-temp [:model/User {user-id :id :as user} {}]
+      (let [counted #(t2/with-call-count [call-count]
+                       (is (some? (collection/user->personal-collection %)))
+                       (call-count))]
+        (counted user-id)
+        (is (< (counted (assoc user :type :personal)) (counted user-id)))))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
@@ -946,7 +954,7 @@
          (collection/collection-ids-for-archiving collection/root-collection))))
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (mt/with-temp [:model/Collection cr-collection {}]
-      (mt/with-dynamic-fn-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:custom-reports-collection-id (:id cr-collection)})]
         (is (thrown-with-msg?
              Exception
              #"You cannot operate on the Custom Reports Collection."
@@ -1870,8 +1878,8 @@
                    :model/Collection cr-collection    {}
                    :model/Card       cr-card          {:collection_id (:id cr-collection)}
                    :model/Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (mt/with-dynamic-fn-redefs [audit/default-audit-collection          (constantly audit-collection)
-                                  audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:audit-collection-id          (:id audit-collection)
+                                                                          :custom-reports-collection-id (:id cr-collection)})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? (t2/hydrate audit-collection :can_write)))
@@ -2320,3 +2328,74 @@
         (with-redefs [app-db.query/delete-partition-size 2]
           (collection/create-personal-collections! ids))
         (is (= (set ids) (t2/select-fn-set :personal_owner_id :model/Collection :personal_owner_id [:in ids])))))))
+
+(defn- do-with-audit-collection!
+  "Calls `f` with the Collection with `entity-id`, the stored one or a temporary one, while audit content counts as
+  loaded."
+  [entity-id f]
+  (mt/with-temporary-setting-values [last-analytics-checksum 1]
+    (if-let [stored (t2/select-one :model/Collection :entity_id entity-id)]
+      (f stored)
+      (mt/with-temp [:model/Collection collection {:entity_id entity-id :name "Audit Collection" :location "/"}]
+        (f collection)))))
+
+(deftest custom-reports-collection-rule-after-edit-test
+  (testing "archiving the Custom Reports Collection is refused, also after its description changes"
+    (do-with-audit-collection!
+     @#'audit/default-custom-reports-entity-id
+     (fn [{collection-id :id}]
+       (is (thrown-with-msg? Exception #"You cannot operate on the Custom Reports Collection."
+                             (collection/collection-ids-for-archiving (t2/select-one :model/Collection :id collection-id))))
+       (mt/with-temp-vals-in-db :model/Collection collection-id {:description "Edited description"}
+         (is (thrown-with-msg? Exception #"You cannot operate on the Custom Reports Collection."
+                               (collection/collection-ids-for-archiving
+                                (t2/select-one :model/Collection :id collection-id)))))))))
+
+(deftest audit-collection-access-test
+  (do-with-audit-collection!
+   audit/default-audit-collection-entity-id
+   (fn [{collection-id :id}]
+     (let [audit-collection #(t2/select-one :model/Collection :id collection-id)]
+       (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                      :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+         (mt/with-non-admin-groups-no-collection-perms (audit-collection)
+           (perms/grant-collection-read-permissions! group-id collection-id)
+           (mt/with-additional-premium-features #{:audit-app}
+             (testing "with the audit app a user with read permission reads the audit Collection"
+               (mt/with-test-user :rasta
+                 (is (true? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+             (testing "with the audit app a user without read permission does not read the audit Collection"
+               (mt/with-test-user :lucky
+                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+             (testing "an admin does not write the audit Collection"
+               (mt/with-test-user :crowberto
+                 (is (false? (mi/can-write? (t2/hydrate (audit-collection) :can_write)))))))
+           (mt/with-premium-features #{}
+             (testing "without the audit app neither an admin nor a user with read permission reads it"
+               (mt/with-test-user :crowberto
+                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))
+               (mt/with-test-user :rasta
+                 (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))))))))))
+
+(defn- collection-permissions-call-count!
+  "The number of statements hydrating the permissions of `n` fresh Collections issues for rasta while the audit app is
+  off."
+  [n]
+  (mt/with-model-cleanup [:model/Collection]
+    (let [ids         (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                    {:name (str "Fresh " i) :location "/"}))
+          collections (t2/select :model/Collection :id [:in ids])]
+      (mt/with-premium-features #{}
+        (mt/with-test-user :rasta
+          (t2/with-call-count [call-count]
+            (is (= n (count (doall (t2/hydrate collections :can_read :can_write)))))
+            (call-count)))))))
+
+(deftest collection-permissions-call-count-test
+  (testing "hydrating the permissions of more fresh Collections issues no more statements"
+    (do-with-audit-collection!
+     audit/default-audit-collection-entity-id
+     (fn [_]
+       (collection-permissions-call-count! 1)
+       (is (= (collection-permissions-call-count! 2)
+              (collection-permissions-call-count! 6)))))))

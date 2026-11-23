@@ -194,7 +194,6 @@
                                                 include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
-      include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? (t2/hydrate % :can_query)))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
@@ -202,6 +201,7 @@
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) (t2/hydrate % :can_write)))
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %))
+      include-schemas?             add-schemas
       true                         database/add-json-access)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

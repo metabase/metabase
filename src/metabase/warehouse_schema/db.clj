@@ -161,11 +161,6 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
-(mu/defn field-table-id
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
-
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
@@ -592,6 +587,13 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                     {:where [:= :field_id field-id]}))
+
+(mu/defn field-values-last-used-at-by-field :- [:map-of ::lib.schema.id/field :any]
+  "The latest `last_used_at` of any FieldValues of each of the Fields with `field-ids` that has any, by Field id."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select-fn->fn :field_id :max-last-used-at [:model/FieldValues :field_id [[:max :last_used_at] :max-last-used-at]]
+                    {:where    [:in :field_id [:auto/param field-ids]]
+                     :group-by [:field_id]}))
 
 (mu/defn full-field-values-by-field
   "The `columns` of the full FieldValues of the Fields with `field-ids`."

@@ -167,10 +167,10 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (u/index-by :id (queries/cards-queries-info card-ids)))
 
-(mu/defn cards-result-metadata
-  "The query-related columns of the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (queries/cards-queries-info card-ids))
+(mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card :any]
+  "The result metadata of each Card with an id among `card-ids`, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :result_metadata :model/Card :id [:in [:auto/param (vec (distinct card-ids))]]))
 
 (mu/defn card-result-metadata
   "The result metadata of the Card with `card-id`."

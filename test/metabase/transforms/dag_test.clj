@@ -1,11 +1,13 @@
 (ns metabase.transforms.dag-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.dag :as dag]
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -159,3 +161,48 @@
         (finally
           (t2/delete! :model/TransformRun :dag_run_id run-id)
           (t2/delete! :model/TransformDagRun :id run-id))))))
+
+(defn- cancel-statement-count!
+  "Cancel a DAG run that has `n` active member runs, and return the statements that took and the member run ids."
+  [n]
+  (mt/with-temp [:model/Transform {seed :id} {:name "seed"}]
+    (let [transform-ids (t2/insert-returning-pks! :model/Transform
+                                                  (for [i (range n)]
+                                                    (assoc (mt/with-temp-defaults :model/Transform)
+                                                           :name (str "member " i " of " n))))
+          {run-id :id}  (dag-run/start-dag-run! seed :upstream nil n)]
+      (try
+        (let [member-ids (mapv #(:id (transform-run/start-run! % {:dag_run_id run-id :run_method :manual})) transform-ids)
+              stmts      (events.tu/real-statement-count!
+                          #(coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id))]
+          {:count stmts :member-ids member-ids})
+        (finally
+          (t2/delete! :model/TransformRun :dag_run_id run-id)
+          (t2/delete! :model/TransformDagRun :id run-id)
+          (t2/delete! :model/Transform :id [:in transform-ids]))))))
+
+(deftest cancel-statement-count-test
+  (testing "cancel! runs as many statements for 10 active member runs as for 40, and requests cancelation of each"
+    (cancel-statement-count! 2)
+    (let [small (cancel-statement-count! 10)
+          large (cancel-statement-count! 40)]
+      (is (= (:count small) (:count large))))))
+
+(deftest cancel-marks-each-active-member-test
+  (testing "cancel! records a cancelation and the canceling status for every active member run"
+    (mt/with-temp [:model/Transform {seed :id} {:name "seed"}
+                   :model/Transform {tid-a :id} {:name "member-a"}
+                   :model/Transform {tid-b :id} {:name "member-b"}]
+      (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil 2)]
+        (try
+          (let [{run-a :id} (transform-run/start-run! tid-a {:dag_run_id run-id :run_method :manual})
+                {run-b :id} (transform-run/start-run! tid-b {:dag_run_id run-id :run_method :manual})]
+            (is (true? (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id)))
+            (is (= #{run-a run-b} (t2/select-fn-set :run_id :model/TransformRunCancelation :run_id [:in [run-a run-b]])))
+            (is (= #{:canceling} (t2/select-fn-set :status :model/TransformRun :id [:in [run-a run-b]])))
+            (testing "a second request adds no second cancelation row"
+              (transform-run-cancelation/mark-cancel-started-runs! [run-a run-b])
+              (is (= 2 (t2/count :model/TransformRunCancelation :run_id [:in [run-a run-b]])))))
+          (finally
+            (t2/delete! :model/TransformRun :dag_run_id run-id)
+            (t2/delete! :model/TransformDagRun :id run-id)))))))

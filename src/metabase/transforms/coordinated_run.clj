@@ -89,9 +89,9 @@
    run-id    :- ms/PositiveInt]
   (boolean
    (when (pos? (cancel-started-run! model run-id))
-     (doseq [member-run-id (transforms.db/active-run-ids-of-parent member-fk run-id)]
-       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
-       (canceling/chan-signal-cancel! member-run-id))
+     (let [member-run-ids (transforms.db/active-run-ids-of-parent member-fk run-id)]
+       (transform-run-cancelation/mark-cancel-started-runs! member-run-ids)
+       (run! canceling/chan-signal-cancel! member-run-ids))
      true)))
 
 (mu/defn heartbeat-runs! :- [:maybe [:sequential :int]]

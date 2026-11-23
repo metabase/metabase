@@ -83,6 +83,13 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param (vec table-ids)]])
+    {}))
+
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]

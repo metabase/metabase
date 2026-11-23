@@ -3083,6 +3083,50 @@
                   (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
                     (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))))
 
+(deftest graph-transform-permission-filtering-test
+  (testing "the graph endpoints show a transform only to users who can read it"
+    (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [table [:orders :products]]
+            (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/create-queries :query-builder))
+          (let [mp    (mt/metadata-provider)
+                query (lib/join (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                 [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                         (lib.metadata/field mp (mt/id :products :id)))]))]
+            (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform - permissionfiltertest"
+                                                                :source {:type :query :query query}
+                                                                :target {:type   "table"
+                                                                         :schema "PUBLIC"
+                                                                         :name   "permission_filter_transform_table"}}]
+              (deps.test/synchronously-run-dependency-job!)
+              (letfn [(dependent-transform? [user]
+                        (contains? (set (map (juxt :type :id)
+                                             (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                                   :id (mt/id :products)
+                                                                   :type "table"
+                                                                   :dependent-types "transform")))
+                                   ["transform" transform-id]))
+                      (transform-graph [user status]
+                        (mt/user-http-request user :get status "ee/dependencies/graph"
+                                              :id transform-id
+                                              :type "transform"))]
+                (mt/with-data-analyst-role! (mt/user->id :lucky)
+                  (testing "a superuser sees the transform"
+                    (is (dependent-transform? :crowberto))
+                    (is (map? (transform-graph :crowberto 200))))
+                  (testing "a data analyst who may query every source table sees the transform"
+                    (is (dependent-transform? :lucky))
+                    (is (map? (transform-graph :lucky 200))))
+                  (testing "a user who is no data analyst does not see the transform"
+                    (is (not (dependent-transform? :rasta)))
+                    (is (= "You don't have permissions to do that." (transform-graph :rasta 403))))
+                  (testing "a data analyst who may not query one source table cannot open the transform's graph"
+                    (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
+                    (is (= "You don't have permissions to do that." (transform-graph :lucky 403)))))))))))))
+
 (defn- delete-venue-query []
   (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
 

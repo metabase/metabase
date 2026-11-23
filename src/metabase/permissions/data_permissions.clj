@@ -1300,6 +1300,12 @@
   [_query _user-id]
   :full)
 
+(defenterprise download-perms-levels
+  "The download permission that the given user has for each of `queries`, in order. OSS returns :full for each."
+  metabase-enterprise.advanced-permissions.models.permissions.data-permissions
+  [queries _user-id]
+  (mapv (constantly :full) queries))
+
 (mu/defn user-has-transforms-permission-for-database? :- :boolean
   "Whether the user of `user-info` has the transforms permission on the Database with `database-id`, which no one has
   on the audit Database."

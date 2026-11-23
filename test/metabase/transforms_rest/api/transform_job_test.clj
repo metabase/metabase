@@ -624,7 +624,7 @@
 (mt/when-ee-evailable
  (deftest job-transforms-statement-count-test
    (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
-     (mt/with-temporary-setting-values [transforms-enabled true]
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
        (mt/with-model-cleanup [:model/Transform :model/TransformJob]
          (with-transforms-api-users! [user]
            (mt/with-temp [:model/TransformTag {tag-id :id} {:name "job transforms count tag"}

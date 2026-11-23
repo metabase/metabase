@@ -140,6 +140,18 @@
   [metric]
   (some? (:dimensions (queries.db/raw-card-dimensions (:id metric)))))
 
+(defmethod metrics/initialized-dimension-ids :metadata/metric
+  [_metadata-type metrics]
+  (queries.db/card-ids-with-raw-dimensions (into [] (keep :id) metrics)))
+
+(defmethod metrics/save-all-dimensions! :metadata/metric
+  [_metadata-type changes]
+  (update-cards! (into []
+                       (keep (fn [[metric dimensions dimension-mappings]]
+                               (when-let [metric-id (:id metric)]
+                                 {:id metric-id :dimensions dimensions :dimension_mappings dimension-mappings})))
+                       changes)))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :public_uuid            (mi/transform-encrypted-text "report_card.public_uuid")
@@ -2583,9 +2595,10 @@
 
 (defn place-updated-dashboard-question!
   "Puts the Card `before` on the Dashboard that `updates`, the columns of an update and its `:dashboard_tab_id`, move
-  it to, as [[place-updated-dashboard-questions!]] does for one Card."
+  it to, as [[place-updated-dashboard-questions!]] does for one Card, and returns `updates`."
   [before updates delete-old-dashcards?]
-  (place-updated-dashboard-questions! [[before updates]] delete-old-dashcards?))
+  (place-updated-dashboard-questions! [[before updates]] delete-old-dashcards?)
+  updates)
 
 (defn card-changes
   "The changes for [[update-cards!]] that the request `changes` make: the columns of `changes` that an update writes,

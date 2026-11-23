@@ -577,13 +577,19 @@
        databases
        (json-access databases)))
 
+(methodical/defmethod t2/batched-hydrate [:model/Database :json_access]
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, as
+  [[add-json-access]] does."
+  [_model _k databases]
+  (add-json-access databases))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
-  Also remove settings that the User doesn't have read perms for. Reads what [[add-json-access]] stored on `db`, and
-  otherwise answers for `db` alone."
+  Also remove settings that the User doesn't have read perms for. Reads what [[add-json-access]] or the `:json_access`
+  hydration stored on `db`, and otherwise answers for `db` alone."
   [db json-generator]
   (letfn [(redact-sensitive-fields [details]
             (reduce
@@ -625,13 +631,6 @@
                      (when (not= <> settings)
                        (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
      json-generator)))
-
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (warehouses.db/table-database-id table-id))))
 
 ;;; ------------------------------------------------- Health checks --------------------------------------------------
 

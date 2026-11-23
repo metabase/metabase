@@ -19,12 +19,9 @@
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
-   [metabase.audit-app.impl :as audit-app.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as schema.field]
-   [metabase.warehouses.models.database :as database])
+   [metabase.util.log :as log])
   (:import
    (clojure.core.memoize PluggableMemoization)))
 
@@ -33,10 +30,7 @@
 (def ^:private monitored-cache-vars
   "The vars holding the memoization caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed
   function (see the namespace docstring)."
-  [#'schema.field/field-id->table-id
-   #'database/table-id->database-id
-   #'audit-app.impl/memoized-select-audit-entity*
-   #'driver.u/memoized-supports?*
+  [#'driver.u/memoized-supports?*
    #'driver.u/memoized-features*
    #'mi/cached-encrypted-json-out
    #'serialization.dump/serialization-sorted-map])

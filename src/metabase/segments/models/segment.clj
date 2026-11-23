@@ -258,14 +258,14 @@
             :created-at false
             :updated-at true
             ;; A segment on a Library table inherits the table's library ranking boost and curated status.
-            :root-collection-type {:fn collection/table-root-collection-type}}
+            :root-collection-type {:batch-fn collection/table-root-collection-types}}
     :search-terms [:name :description]
     :render-terms {:table-id                  :table_id
                    :table_description         :table.description
                    :table_name                :table.name
                    :table_display_name        :table.display_name
                    :table_schema              :table.schema
-                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                   ;; The parent table's collection, for [[collection/table-root-collection-types]].
                    ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
                    :table-collection-id       :table_settings.collection_id
                    :table-is-published        :table_settings.is_published

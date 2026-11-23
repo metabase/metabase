@@ -1,6 +1,7 @@
 (ns metabase.pulse.broken-subscriptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.util :as perms-util]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -248,3 +249,79 @@
                 (mt/with-current-user (mt/user->id :rasta)
                   (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
                     (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone"}})))))))))
+
+(defn- insert-broken-subscriptions!
+  "Insert `n` subscriptions of the Dashboard `dashboard-id` created by `creator-id`, each with the filter `gone`, an email
+  channel for the Users `user-ids` and a Slack channel, and return their ids."
+  [n creator-id dashboard-id user-ids]
+  (let [pulse-ids   (t2/insert-returning-pks! :model/Pulse
+                                              (for [_ (range n)]
+                                                (merge (mt/with-temp-defaults :model/Pulse)
+                                                       {:creator_id   creator-id
+                                                        :dashboard_id dashboard-id
+                                                        :parameters   [{:id "gone", :name "Gone", :value ["x"]}]})))
+        channel-ids (t2/insert-returning-pks! :model/PulseChannel
+                                              (for [pulse-id pulse-ids]
+                                                (merge (mt/with-temp-defaults :model/PulseChannel)
+                                                       {:pulse_id     pulse-id
+                                                        :channel_type :email
+                                                        :details      {:emails ["outside@example.com"]}
+                                                        :enabled      true})))]
+    (t2/insert! :model/PulseChannel
+                (for [pulse-id pulse-ids]
+                  (merge (mt/with-temp-defaults :model/PulseChannel)
+                         {:pulse_id     pulse-id
+                          :channel_type :slack
+                          :details      {:channel "#sales"}
+                          :enabled      true})))
+    (t2/insert! :model/PulseChannelRecipient
+                (for [channel-id channel-ids
+                      user-id    user-ids]
+                  {:pulse_channel_id channel-id :user_id user-id}))
+    pulse-ids))
+
+(deftest handle-broken-subscriptions-statement-count-test
+  (testing "handling broken subscriptions runs as many statements for 10 subscriptions as for 40, and reports each of them"
+    (mt/with-fake-inbox
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
+          (let [rasta-id  (mt/user->id :rasta)
+                user-ids  [rasta-id (mt/user->id :crowberto)]
+                handle!   (fn []
+                            (mt/with-current-user rasta-id
+                              (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone", :name "Gone"}})))
+                count-of  (fn [n]
+                            (let [ids      (insert-broken-subscriptions! n rasta-id dash-id user-ids)
+                                  archived (atom nil)
+                                  stmts    (events.tu/real-statement-count! #(reset! archived (handle!)))]
+                              {:ids ids, :archived @archived, :count stmts}))
+                _         (count-of 2)
+                small     (count-of 10)
+                large     (count-of 40)]
+            (is (= (:count small) (:count large)))
+            (doseq [{:keys [ids archived]} [small large]]
+              (is (= (set ids) (set (map :id archived))))
+              (is (every? (fn [{:keys [readable? channels recipient-count creator-name]}]
+                            (and readable?
+                                 (= [:email :slack] channels)
+                                 (= 4 recipient-count)
+                                 (= "Rasta Toucan" creator-name)))
+                          archived))
+              (is (= (set ids) (t2/select-pks-set :model/Pulse :id [:in ids] :archived true))))))))))
+
+(deftest handle-broken-subscriptions-unreadable-test
+  (testing "a subscription the user cannot read is archived and reported without creator, channels and recipients, among readable ones"
+    (mt/with-fake-inbox
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
+          (let [readable   (insert-broken-subscriptions! 3 (mt/user->id :rasta) dash-id [(mt/user->id :rasta)])
+                unreadable (insert-broken-subscriptions! 1 (mt/user->id :crowberto) dash-id [(mt/user->id :crowberto)])
+                archived   (mt/with-current-user (mt/user->id :rasta)
+                             (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone", :name "Gone"}}))
+                by-id      (into {} (map (juxt :id identity)) archived)]
+            (doseq [id readable]
+              (is (=? {:readable? true :creator-name "Rasta Toucan" :channels [:email :slack] :recipient-count 3}
+                      (by-id id))))
+            (doseq [id unreadable]
+              (is (= {:id id :parameters [{:id "gone"}] :already-broken? false :readable? false}
+                     (by-id id))))))))))

@@ -21,6 +21,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -3672,12 +3673,12 @@
                                                                    (merge (mt/with-temp-defaults :model/Card)
                                                                           {:name (str "moving " i) :collection_id from-id}))))
                                       (range n))]
-                        (t2/with-call-count [call-count]
-                          (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
-                          (call-count))))]
+                        (events.tu/real-statement-count!
+                         #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))
+              measure (fn [n] (min (move! n) (move! n)))]
           (move! 2)
-          (let [few  (move! 10)
-                many (move! 40)]
+          (let [few  (measure 10)
+                many (measure 40)]
             (is (= few many))))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
@@ -4430,6 +4431,53 @@
         (let [response (mt/user-http-request :rasta :get 200
                                              (format "card/%d" (:id field-filter-card)))]
           (is (every? empty? (vals (:param_fields response)))))))))
+
+(defn- field-filters-card
+  "Card attributes for a native Card with one field filter parameter on each Field of `field-ids`."
+  [field-ids]
+  (let [mp    (mt/metadata-provider)
+        names (mapv #(str "tag" %) (range (count field-ids)))]
+    {:dataset_query (-> (lib/native-query mp (str "SELECT 1 WHERE " (str/join " AND " (map #(str "{{" % "}}") names))))
+                        (lib/with-template-tags (into {}
+                                                      (map (fn [tag-name field-id]
+                                                             [tag-name {:id           tag-name
+                                                                        :name         tag-name
+                                                                        :display-name tag-name
+                                                                        :type         :dimension
+                                                                        :field-id     field-id
+                                                                        :widget-type  :string/=}])
+                                                           names field-ids))))
+     :parameters    (mapv (fn [tag-name]
+                            {:id     tag-name
+                             :type   :string/=
+                             :target [:dimension [:template-tag tag-name]]
+                             :name   tag-name
+                             :slug   tag-name})
+                          names)}))
+
+(deftest param-fields-keep-only-viewable-tables-test
+  (testing "param_fields keep the Fields of Tables the user may view and drop those of the others, from one read"
+    (mt/with-temp [:model/Card {card-id :id} (field-filters-card [(mt/id :venues :name) (mt/id :categories :name)])]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+        (is (= {:tag0 [(mt/id :venues :name)]
+                :tag1 []}
+               (update-vals (:param_fields (mt/user-http-request :rasta :get 200 (format "card/%d" card-id)))
+                            #(mapv :id %))))))))
+
+(deftest param-fields-statement-count-test
+  (testing "GET /api/card/:id reads the view permissions of the Tables of param_fields in as many statements for 2 Tables as for 6"
+    (let [field-ids [(mt/id :venues :name) (mt/id :categories :name) (mt/id :users :name)
+                     (mt/id :people :name) (mt/id :products :title) (mt/id :orders :total)]
+          counted   (fn [n]
+                      (mt/with-temp [:model/Card {card-id :id} (field-filters-card (take n field-ids))]
+                        (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))
+                        (t2/with-call-count [call-count]
+                          (is (= n (count (:param_fields (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))))))
+                          (call-count))))]
+      (is (= (counted 2) (counted 6))))))
 
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]

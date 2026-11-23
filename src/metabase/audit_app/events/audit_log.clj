@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -18,6 +19,29 @@
   [topic params]
   (when-let [row (audit-log/audit-row topic params)]
     (audit-log/create-audit-logs! [row])))
+
+(defn- record-each!
+  "Record the audit row that `build-row` makes of each of `items`, in one insert.
+  An item whose row cannot be built is skipped, and when the insert fails each row is inserted on its own."
+  [build-row items]
+  (let [rows (into []
+                   (keep (fn [item]
+                           (try
+                             (build-row item)
+                             (catch Exception e
+                               (log/warnf "Failed to build an audit row for event item %s: %s" (:id item) (ex-message e))
+                               nil))))
+                   items)]
+    (when (seq rows)
+      (try
+        (audit-log/create-audit-logs! rows)
+        (catch Exception e
+          (log/warnf "Failed to insert %d audit rows in one statement, inserting them one by one: %s" (count rows) (ex-message e))
+          (doseq [row rows]
+            (try
+              (audit-log/create-audit-logs! [row])
+              (catch Exception e
+                (log/warnf "Failed to insert an audit row: %s" (ex-message e))))))))))
 
 (defn- row-of
   "The row that the lifecycle `event` is about."
@@ -336,19 +360,17 @@
 (events/derive! :event/notification-create ::notification-create-event)
 
 (methodical/defmethod events/publish-event! ::notification-create-event
-  "Record one row for each Notification that `:objects` (or `:object`) holds, in one insert."
+  "Record one row for each Notification that `:objects` (or `:object`) holds, in one insert, as [[record-each!]] does."
   [topic {:keys [object objects user-id]}]
   (when (premium-features/log-enabled?)
-    (audit-log/create-audit-logs!
-     (into []
-           (keep (fn [notification]
-                   (audit-log/audit-row topic
-                                        {:details  (notification-details notification)
-                                         :object   notification
-                                         :model    :model/Notification
-                                         :model-id (:id notification)
-                                         :user-id  user-id})))
-           (or objects [object])))))
+    (record-each! (fn [notification]
+                    (audit-log/audit-row topic
+                                         {:details  (notification-details notification)
+                                          :object   notification
+                                          :model    :model/Notification
+                                          :model-id (:id notification)
+                                          :user-id  user-id}))
+                  (or objects [object]))))
 
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
@@ -524,17 +546,15 @@
 (events/derive! :event/transform-run-timeout ::transform-run-timeout-event)
 
 (methodical/defmethod events/publish-event! ::transform-run-timeout-event
-  "Record one row for each run that `:objects` (or `:object`) holds, in one insert."
+  "Record one row for each run that `:objects` (or `:object`) holds, in one insert, as [[record-each!]] does."
   [topic {:keys [object objects user-id]}]
   (when (premium-features/log-enabled?)
-    (audit-log/create-audit-logs!
-     (into []
-           (keep (fn [run]
-                   (audit-log/audit-row topic
-                                        {:details (manual-details topic run)
-                                         :object  run
-                                         :user-id (or user-id (:user_id run))})))
-           (or objects [object])))))
+    (record-each! (fn [run]
+                    (audit-log/audit-row topic
+                                         {:details (manual-details topic run)
+                                          :object  run
+                                          :user-id (or user-id (:user_id run))}))
+                  (or objects [object]))))
 
 (events/derive! ::card-test-event ::event)
 (events/derive! :event/card-test-run-start ::card-test-event)

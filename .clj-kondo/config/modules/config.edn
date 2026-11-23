@@ -402,10 +402,7 @@
   audit-app
   {:team "UX West"
    :module-exports #{audit-app.view-log}
-   :api  #{metabase.audit-app.core
-           metabase.audit-app.impl
-           metabase.audit-app.init
-           metabase.audit-app.spec}
+   :api  #{metabase.audit-app.core metabase.audit-app.init metabase.audit-app.spec}
    :uses #{api
            app-db
            audit-app.view-log
@@ -691,7 +688,6 @@
            metabase.collections.models.collection.root
            metabase.collections.schema}
    :uses #{api
-           api-keys
            api.eid-translation
            app-db
            audit-app
@@ -3090,7 +3086,7 @@
            sync
            util
            util.config}
-   :model-imports #{:model/Field :model/Table}}
+   :model-imports #{:model/Field :model/FieldUserSettings :model/Table}}
 
   system
   {:team "UX West"
@@ -4222,7 +4218,6 @@
            sync
            util
            warehouses
-           warehouses.schema
            workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
@@ -4370,12 +4365,9 @@
    :api  #{metabase-enterprise.memoize-monitor.init}
    :uses #{analytics
            analytics.interface
-           audit-app
            driver
            models
            util
-           warehouses
-           warehouses.schema
            enterprise/serialization}}
 
   enterprise/metabot
@@ -4504,7 +4496,6 @@
            query-permissions
            query-processor
            util
-           warehouses
            enterprise/permissions.impersonation}
    :model-imports #{:model/ApplicationPermissionsRevision
                     :model/ConnectionImpersonation
@@ -4546,7 +4537,6 @@
            task
            util
            util.config
-           warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
    :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
@@ -4581,7 +4571,6 @@
            users.schema
            users.tenants
            util
-           warehouses
            warehouses.schema
            enterprise/api}
    :model-exports #{:model/Sandbox}

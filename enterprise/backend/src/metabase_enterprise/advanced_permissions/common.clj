@@ -6,8 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.warehouses.models.database :as database]))
+   [metabase.util :as u]))
 
 (defenterprise current-user-can-write-field?
   "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
@@ -17,9 +16,7 @@
   (let [table (or (:table instance)
                   (advanced-permissions.db/table (:table_id instance)))]
     (and (collection/remote-sync-writable-table? table)
-         (let [db-id (or (:db_id table)
-                         (database/table-id->database-id (:table_id instance)))]
-           (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) db-id})))))
+         (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) (:db_id table)}))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
@@ -92,10 +89,12 @@
   [tables]
   (if api/*is-superuser?*
     tables
-    (filter
-     (fn [{table-id :id db-id :db_id}]
-       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {table-id db-id}))
-     tables)))
+    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                   :perms/manage-table-metadata
+                                                   (into {} (map (juxt :id :db_id)) tables))]
+      (filter (fn [{table-id :id}]
+                (perms/at-least-as-permissive? :perms/manage-table-metadata (get values table-id) :yes))
+              tables))))
 
 (defenterprise filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
@@ -118,16 +117,16 @@
   [dbs]
   (if api/*is-superuser?*
     dbs
-    (reduce
-     (fn [result {db-id :id tables :tables :as db}]
-       (if (= (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata [db-id]) db-id)
-              :yes)
-         (if tables
-           (conj result (update db :tables filter-tables-by-data-model-perms))
-           (conj result db))
-         result))
-     []
-     dbs)))
+    (let [values       (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                          :perms/manage-table-metadata
+                                                                          (mapv :id dbs))
+          kept         (filterv #(= :yes (get values (:id %))) dbs)
+          editable-ids (into #{} (map :id) (filter-tables-by-data-model-perms (into [] (mapcat :tables) kept)))]
+      (mapv (fn [{tables :tables :as db}]
+              (if tables
+                (assoc db :tables (filter (comp editable-ids :id) tables))
+                db))
+            kept))))
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases."

@@ -295,7 +295,7 @@
    :can_write   transform-deletable?
    :can_execute transform-writable?})
 
-(mu/defn assoc-permissions :- [:sequential [:maybe ::instance]]
+(mu/defn assoc-permissions :- [:sequential [:maybe :map]]
   "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_execute`) to each of `transforms`, all
   answered from the source models of `models-cache`, as [[transforms.u/prefetch-source-models]] loads them, and the
   permissions on their Databases, read once."
@@ -311,7 +311,7 @@
             (vec transforms)
             ks)))
 
-(mu/defn- hydrate-permissions :- [:sequential [:maybe ::instance]]
+(mu/defn- hydrate-permissions :- [:sequential [:maybe :map]]
   "`transforms` with the permissions `ks` attached, the source models loaded once."
   [transforms :- [:sequential [:maybe ::instance]]
    ks         :- [:sequential [:enum :can_read :can_write :can_execute]]]
@@ -354,18 +354,22 @@
   [_model _k transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids (into #{} (map :id) transforms)
-          last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
+    (let [transform-ids  (into #{} (map :id) transforms)
+          last-runs      (m/index-by :transform_id (transform-run/latest-runs transform-ids))
+          checkpointed?  (fn [{transform-id :id}]
+                           (let [{:keys [status checkpoint_hi_value]} (get last-runs transform-id)]
+                             (and (= status :succeeded) checkpoint_hi_value)))
+          id->checkpoint (transforms.db/transform-last-checkpoint-values
+                          (into [] (comp (filter checkpointed?) (remove :last_checkpoint_value) (map :id)) transforms))]
       (for [{transform-id :id :as transform} transforms]
-        (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
+        (let [{:keys [checkpoint_hi_value] :as last-run} (get last-runs transform-id)
               transform (assoc transform :last_run (dissoc last-run :last_heartbeat))]
-          (if (and (= status :succeeded) checkpoint_hi_value)
+          (if (checkpointed? transform)
             ;; ensure consistency of last_checkpoint_value with last_run
             (if (:last_checkpoint_value transform)
               (assoc transform :last_checkpoint_value checkpoint_hi_value)
               ;; latest transform value wins, could be reset
-              (assoc transform :last_checkpoint_value
-                     (transforms.db/transform-last-checkpoint-value transform-id)))
+              (assoc transform :last_checkpoint_value (id->checkpoint transform-id)))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -440,7 +444,7 @@
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
                     (m/index-by :id (-> (transforms.db/tables table-ids)
-                                        (t2/hydrate :db :fields))))]
+                                        (t2/hydrate [:db :json_access] :fields))))]
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))

@@ -229,8 +229,48 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
-(defn- save-card!
+(defn- new-card?
+  "Whether `card` is a Card to create: it has a query and is not one of `id->existing-card`."
   [id->existing-card card]
+  (and (-> card :dataset_query not-empty)
+       (not (and (integer? (:id card)) (get id->existing-card (:id card))))))
+
+(defn- assign-slots
+  "`dashcards` with a `::slot`, its position among the new Cards in order, on each Card and series Card to create."
+  [id->existing-card dashcards]
+  (let [n    (volatile! -1)
+        slot (fn [card] (if (new-card? id->existing-card card) (assoc card ::slot (vswap! n inc)) card))]
+    (mapv (fn [dashcard]
+            (-> dashcard
+                (update :card #(some-> % slot))
+                (update :series #(some->> % (mapv slot)))))
+          dashcards)))
+
+(defn- new-card-row
+  "The row to create the Card `card` from."
+  [card]
+  (query-perms/check-run-permissions-for-query (:dataset_query card))
+  (->> (-> card
+           (update :result_metadata #(or % (-> card
+                                               :dataset_query
+                                               legacy-result-metadata-for-query)))
+           (dissoc :id ::slot
+                   :public_uuid :made_public_by_id
+                   :enable_embedding :embedding_params)
+           (assoc :creator_id api/*current-user-id*))
+       (lib/normalize ::queries.schema/card.create)))
+
+(defn- create-new-cards!
+  "Creates the new Cards of `dashcards`, each of which has its `::slot`, in one call and returns them in slot order."
+  [dashcards]
+  (let [rows (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                            (filter ::slot)
+                            (map new-card-row))
+                   dashcards)]
+    (if (seq rows) (queries.card/create-cards! rows) [])))
+
+(defn- save-card!
+  [id->existing-card created-cards card]
   (cond
     ;; If this is a pre-existing card, just return it
     (and (integer? (:id card)) (get id->existing-card (:id card)))
@@ -239,20 +279,8 @@
       card)
 
     ;; Don't save text cards
-    (-> card :dataset_query not-empty)
-    (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
-          card (first
-                (queries.card/create-cards!
-                 [(->> (-> card
-                           (update :result_metadata #(or % (-> card
-                                                               :dataset_query
-                                                               legacy-result-metadata-for-query)))
-                           (dissoc :id
-                                   :public_uuid :made_public_by_id
-                                   :enable_embedding :embedding_params)
-                           (assoc :creator_id api/*current-user-id*))
-                       (lib/normalize ::queries.schema/card.create))]))]
-      card)))
+    (::slot card)
+    (nth created-cards (::slot card))))
 
 (defn- check-dashcard-parameter-mapping-permissions
   [dashcards]
@@ -300,9 +328,11 @@
                                            (distinct))
                                   dashcards)
           id->existing-card (m/index-by :id (t2/hydrate (dashboards.db/cards-by-ids existing-card-ids) :can_read))
+          dashcards        (assign-slots id->existing-card dashcards)
+          created-cards    (create-new-cards! dashcards)
           dashcards-to-add (for [dashcard dashcards]
-                             (let [card     (some->> dashcard :card (save-card! id->existing-card))
-                                   series   (some->> dashcard :series (mapv #(save-card! id->existing-card %)))
+                             (let [card     (some->> dashcard :card (save-card! id->existing-card created-cards))
+                                   series   (some->> dashcard :series (mapv #(save-card! id->existing-card created-cards %)))
                                    dashcard (-> dashcard
                                                 (dissoc :card :id :creator_id)
                                                 (update :parameter_mappings

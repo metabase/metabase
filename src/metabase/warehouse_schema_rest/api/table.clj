@@ -123,9 +123,9 @@
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
         (mi/readable tables))
-      (into [] (comp (if can-query (filter mi/can-query?) identity)
-                     (map schema.table/present-table))
-            (cond-> tables can-query (t2/hydrate :can_query)))
+      (cond->> (cond-> tables can-query (t2/hydrate :can_query))
+        can-query (filter mi/can-query?))
+      (schema.table/present-tables tables)
       (mapv (fn [table db] (assoc table :db db)) tables (database/add-json-access (map :db tables))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

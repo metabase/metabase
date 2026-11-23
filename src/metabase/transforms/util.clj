@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -91,6 +92,36 @@
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))
 
+(def ^:private raw-value-template-tag-types
+  "The template tag types that stand for a value and refer to no Card, snippet or Field."
+  #{:number :text :date :boolean})
+
+(defn- shares-database-permission-answer?
+  "Whether the source `query` is a native query whose template tags all stand for plain values, so that
+  [[native-source-query-permissions-ok?]] gives the same answer for it as for any other such query on its database."
+  [query]
+  (try
+    (and (lib/native-only-query? query)
+         (every? #(contains? raw-value-template-tag-types (keyword (:type %)))
+                 (vals (lib/template-tags query))))
+    (catch Exception _
+      false)))
+
+(mu/defn- native-source-query-permissions-ok? :- :boolean
+  "Whether the current user passes the query processor's permission check for the native source `query` as it is,
+  without preprocessing it. For a query that [[shares-database-permission-answer?]], preprocessing adds nothing that the
+  check looks at."
+  [query :- :metabase.lib.schema/query]
+  (when-not api/*current-user-id*
+    (throw (ex-info "A transform needs to be run with a bound user"
+                    {})))
+  (try
+    (qp.setup/with-qp-setup [query query]
+      (qp.perms/check-query-permissions* query)
+      true)
+    (catch Exception _
+      false)))
+
 (defn- source-query-key
   "What identifies the source `query` of a transform for its permission answer: the query without its metadata, printed."
   [query]
@@ -154,11 +185,20 @@
   [transforms :- [:sequential [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]]
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
-    {:source-query-permissions (into {}
-                                     (keep (fn [transform]
-                                             (when-let [query (get-in transform [:source :query])]
-                                               [(source-query-key query) (delay (source-query-permissions-ok? query))])))
-                                     transforms)
+    {:source-query-permissions (let [queries (into [] (keep #(get-in % [:source :query])) transforms)
+                                     shared  (into {}
+                                                   (map (fn [[database-id [query]]]
+                                                          [database-id (delay (native-source-query-permissions-ok? query))]))
+                                                   (group-by :database (filter shares-database-permission-answer? queries)))]
+                                 (into {}
+                                       (map (fn [query]
+                                              (let [answer (when (shares-database-permission-answer? query)
+                                                             (get shared (:database query)))]
+                                                [(source-query-key query)
+                                                 (if answer
+                                                   (delay (or @answer (source-query-permissions-ok? query)))
+                                                   (delay (source-query-permissions-ok? query)))])))
+                                       queries))
      :model/Database (when (seq db-ids)
                        (u/index-by :id (t2/hydrate (transforms.db/databases db-ids) :can_query)))
      :model/Table    (when (seq table-ids)

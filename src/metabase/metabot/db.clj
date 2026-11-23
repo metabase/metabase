@@ -1094,6 +1094,18 @@
                  :most_recent true
                  {:order-by [[:id :desc]]}))
 
+(mu/defn latest-review-status-rows :- [:sequential :map]
+  "The `:moderated_item_id`, `:status` and `:id` rows of the most recent moderation reviews of the items with
+  `item-ids` of `item-type`."
+  [item-ids :- [:sequential ms/PositiveInt]
+   item-type :- :string]
+  (if (seq item-ids)
+    (t2/select [:model/ModerationReview :id :moderated_item_id :status]
+               :moderated_item_id [:in [:auto/param item-ids]]
+               :moderated_item_type [:auto/param item-type]
+               :most_recent true)
+    []))
+
 (mu/defn glossary-count
   "The number of Glossary entries."
   []

@@ -84,7 +84,7 @@
                      :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
-                                                                          (fn [table-id] (swap! checks inc) (f table-id)))]
+                                                                          (fn [database-id table-id] (swap! checks inc) (f database-id table-id)))]
             (sandboxes/update-sandboxes! [{:id sandbox-id :attribute_remappings {"cat" "CATEGORY_ID"}}])
             (is (= 0 @checks))
             (sandboxes/update-sandboxes! [{:id sandbox-id :card_id card-id}])
@@ -1007,3 +1007,32 @@
                                                                                  (take n table-ids))))))]
               (run 2)
               (is (= (run 4) (run 16))))))))))
+
+(deftest create-sandboxes-with-cards-statement-count-test
+  (testing "sandboxes with Cards on fresh Tables are checked against the Database of each Table in as many statements for 2 rows as for 6"
+    (mt/with-premium-features #{:sandboxes}
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (mt/with-temp [:model/Database {db-id :id}   {}
+                       :model/Card     {card-id :id} {:dataset_query   query
+                                                      :result_metadata (qp.preprocess/query->expected-cols query)}]
+          (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup :model/Table]
+            (let [checked (atom #{})
+                  run     (fn [n]
+                            (let [table-ids (vec (t2/insert-returning-pks! :model/Table
+                                                                           (for [i (range n)]
+                                                                             (merge (mt/with-temp-defaults :model/Table)
+                                                                                    {:db_id db-id :schema "PUBLIC" :name (format "S%d_%d" n i)}))))
+                                  group-ids (vec (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                           (for [i (range n)] {:name (format "sandbox card count %d %d" n i)})))]
+                              (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (fn [database-id _table-id]
+                                                                                              (swap! checked conj database-id)
+                                                                                              {})]
+                                (t2/with-call-count [call-count]
+                                  (sandboxes/create-sandboxes! (mapv (fn [group-id table-id]
+                                                                       {:group_id group-id :table_id table-id :card_id card-id})
+                                                                     group-ids table-ids))
+                                  (call-count)))))]
+              (run 1)
+              (is (= (run 2) (run 6)))
+              (is (= #{db-id} @checked)))))))))

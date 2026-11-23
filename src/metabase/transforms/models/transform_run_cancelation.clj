@@ -22,18 +22,26 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(mu/defn mark-cancel-started-runs! :- :nil
+  "Mark each started run of `run-ids` for cancelation."
+  [run-ids :- [:sequential ms/PositiveInt]]
+  (when (seq run-ids)
+    (try
+      (transforms.db/insert-cancelations-for-active-runs! run-ids)
+      (transforms.db/mark-runs-canceling! run-ids)
+      (doseq [run-id run-ids]
+        (log/infof "Cancelation requested for transform run %s" run-id)
+        (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"}))
+      (catch Throwable t
+        (doseq [_ run-ids]
+          (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"}))
+        (throw t))))
+  nil)
+
 (mu/defn mark-cancel-started-run! :- :nil
   "Mark a started run for cancelation."
   [run-id :- ms/PositiveInt]
-  (try
-    (transforms.db/insert-cancelation-for-active-run! run-id)
-    (transforms.db/mark-run-canceling! run-id)
-    (log/infof "Cancelation requested for transform run %s" run-id)
-    (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})
-    nil
-    (catch Throwable t
-      (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"})
-      (throw t))))
+  (mark-cancel-started-runs! [run-id]))
 
 (mu/defn delete-cancelation!
   "Delete a cancelation once it has been handled."

@@ -185,3 +185,38 @@
              (into {}
                    (map (fn [[id signals]] [id (:is_published signals)]))
                    (#'metabot.curation/table-curation-signals [published unpublished no-settings])))))))
+
+(defn- card-in-child-of-root!
+  "Create a root Collection, a Collection in it and a Card in that one, returning `[root-id card-id]`."
+  [root-attrs]
+  (let [mp            (mt/metadata-provider)
+        [{root :id}]  (collection/create-collections! [(merge {:name (mt/random-name)} root-attrs)])
+        [{child :id}] (collection/create-collections! [{:name (mt/random-name) :location (format "/%d/" root)}])
+        [{card :id}]  (card/create-cards! [{:name                   "curationfixture nested"
+                                            :collection_id          child
+                                            :creator_id             (mt/user->id :rasta)
+                                            :database_id            (mt/id)
+                                            :display                :table
+                                            :visualization_settings {}
+                                            :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}])]
+    [root card]))
+
+(deftest curated-ids-nested-cards-statement-count-test
+  (testing "Cards in Collections under fresh roots read the types of the roots in as many statements for 2 roots as for 6"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [counted (fn [n]
+                      (let [items (vec (for [_ (range n)]
+                                         ["card" (second (card-in-child-of-root! {}))]))]
+                        (t2/with-call-count [call-count]
+                          (is (= #{} (metabot.curation/curated-ids items)))
+                          (call-count))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))
+
+(deftest curated-ids-follow-root-type-change-test
+  (testing "a Card under a root Collection is curated right after the root becomes a Library"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [[root card] (card-in-child-of-root! {})]
+        (is (= #{} (metabot.curation/curated-ids [["card" card]])))
+        (t2/update! :model/Collection :id root {:type "library-metrics"})
+        (is (= #{["card" card]} (metabot.curation/curated-ids [["card" card]])))))))

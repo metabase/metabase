@@ -103,7 +103,7 @@
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
-    (can-read? search-ctx instance)))
+    (mi/can-read? instance)))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -522,6 +522,16 @@
   (let [phase (if (:archived? search-ctx) :archived :read)]
     (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx phase [(normalize-result result)])))))
 
+(defn- hydrate-json-access
+  "Hydrates what the JSON encoding of the Database results of `results` reads, once for all of them."
+  [results]
+  (let [results  (vec results)
+        indexes  (into [] (keep-indexed (fn [i result] (when (t2/instance-of? :model/Database result) i))) results)
+        hydrated (when (seq indexes) (t2/hydrate (mapv results indexes) :json_access))]
+    (reduce (fn [acc [i row]] (assoc acc i row))
+            results
+            (map vector indexes hydrated))))
+
 (defn- add-can-write
   "Leaves `:can_write` on the results that carry it in the response, and takes the hydrated checks off the others."
   [search-ctx row]
@@ -584,6 +594,7 @@
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (hydrate-checks search-ctx :page)
+                            true (hydrate-json-access)
                             true (map (partial add-can-write search-ctx))
                             true (map serialize)
                             ;; Realize within the enclosing tracing span so hydration and

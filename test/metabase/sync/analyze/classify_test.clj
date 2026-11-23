@@ -8,6 +8,7 @@
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -346,3 +347,20 @@
     (testing "when nothing needs classifying"
       (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field classify-tables-for-db! classify-tables-for-db!)]
         (is (= small large))))))
+
+(deftest classify-tables-saves-other-tables-when-one-write-fails-test
+  (testing "classifying Tables saves the classification of other Tables when saving that of one Table throws"
+    (mt/with-temp [:model/Database db     {}
+                   :model/Table    table  {:db_id (u/the-id db) :name "orders" :entity_type nil}
+                   :model/Table    broken {:db_id (u/the-id db) :name "people" :entity_type nil}
+                   :model/Table    other  {:db_id (u/the-id db) :name "products" :entity_type nil}]
+      (let [update! (mt/original-fn #'sync.updates/update-tables-unless-user-set!)]
+        (mt/with-dynamic-fn-redefs [sync.updates/update-tables-unless-user-set!
+                                    (fn [pairs]
+                                      (when (some #(= (u/the-id broken) (:id (first %))) pairs)
+                                        (throw (ex-info "write failed" {})))
+                                      (update! pairs))]
+          (classify-tables-for-db! (driver.u/lib-database (u/the-id db)))))
+      (is (= {(u/the-id table) true (u/the-id broken) false (u/the-id other) true}
+             (update-vals (t2/select-pk->fn :entity_type :model/Table :id [:in (map u/the-id [table broken other])])
+                          some?))))))

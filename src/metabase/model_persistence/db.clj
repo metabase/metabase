@@ -16,36 +16,39 @@
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
   table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
   unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
-  refresh first, paginated from `offset` by `limit`."
+  refresh first, paginated from `offset` by `limit`.
+  A nil `db-ids` leaves the listing unnarrowed by Database, and an empty `db-ids` lists nothing."
   [persisted-info-id :- [:maybe ms/PositiveInt]
    db-ids            :- [:maybe [:sequential ::lib.schema.id/database]]
    card-id           :- [:maybe ::lib.schema.id/card]
    limit             :- [:maybe ms/PositiveInt]
    offset            :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/PersistedInfo
-             (cond-> {:select    [:p.id :p.database_id :p.definition
-                                  :p.active :p.state :p.error
-                                  :p.refresh_begin :p.refresh_end
-                                  :p.table_name :p.creator_id
-                                  :p.card_id [:c.name :card_name]
-                                  [:c.archived :card_archived]
-                                  [:c.type :card_type]
-                                  [:db.name :database_name]
-                                  [:col.id :collection_id] [:col.name :collection_name]
-                                  [:col.authority_level :collection_authority_level]]
-                      :from      [[:persisted_info :p]]
-                      :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
-                                  [:report_card :c]        [:= :c.id :p.card_id]
-                                  [:collection :col]       [:= :c.collection_id :col.id]]
-                      :where     [:and
-                                  [:= :c.type "model"]
-                                  [:= :c.archived false]]
-                      :order-by  [[:p.refresh_begin :desc]]}
-               persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
-               (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
-               card-id           (sql.helpers/where [:= :p.card_id card-id])
-               limit             (sql.helpers/limit limit)
-               offset            (sql.helpers/offset offset))))
+  (if (and (some? db-ids) (empty? db-ids))
+    []
+    (t2/select :model/PersistedInfo
+               (cond-> {:select    [:p.id :p.database_id :p.definition
+                                    :p.active :p.state :p.error
+                                    :p.refresh_begin :p.refresh_end
+                                    :p.table_name :p.creator_id
+                                    :p.card_id [:c.name :card_name]
+                                    [:c.archived :card_archived]
+                                    [:c.type :card_type]
+                                    [:db.name :database_name]
+                                    [:col.id :collection_id] [:col.name :collection_name]
+                                    [:col.authority_level :collection_authority_level]]
+                        :from      [[:persisted_info :p]]
+                        :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
+                                    [:report_card :c]        [:= :c.id :p.card_id]
+                                    [:collection :col]       [:= :c.collection_id :col.id]]
+                        :where     [:and
+                                    [:= :c.type "model"]
+                                    [:= :c.archived false]]
+                        :order-by  [[:p.refresh_begin :desc]]}
+                 persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
+                 (some? db-ids)    (sql.helpers/where [:in :p.database_id db-ids])
+                 card-id           (sql.helpers/where [:= :p.card_id card-id])
+                 limit             (sql.helpers/limit limit)
+                 offset            (sql.helpers/offset offset)))))
 
 (mu/defn deletable-prunable-persisted-infos
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
@@ -129,12 +132,14 @@
 (mu/defn persisted-model-count-for-databases
   "The number of PersistedInfos of unarchived model Cards of the Databases with `database-ids`."
   [database-ids :- [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]
-  (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
-                                  :join [[:report_card :c] [:= :c.id :p.card_id]]
-                                  :where [:and
-                                          [:in :p.database_id database-ids]
-                                          [:= :c.type "model"]
-                                          [:not :c.archived]]}))
+  (if (empty? database-ids)
+    0
+    (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
+                                    :join [[:report_card :c] [:= :c.id :p.card_id]]
+                                    :where [:and
+                                            [:in :p.database_id database-ids]
+                                            [:= :c.type "model"]
+                                            [:not :c.archived]]})))
 
 (mu/defn insert-persisted-info!
   "Insert the PersistedInfo `row` and return the inserted instance."

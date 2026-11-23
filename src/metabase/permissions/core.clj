@@ -57,6 +57,7 @@
   data-app-collection?
   database-permissions-for-user
   download-perms-level
+  download-perms-levels
   every-table-in-database-permissions-for-user
   every-table-in-schema-permission-for-user
   group-table-permissions
@@ -100,10 +101,12 @@
   current-user-has-application-permissions?
   grant-application-permissions!
   grant-collection-read-permissions!
+  grant-collection-read-permissions-to-groups!
   grant-collection-readwrite-permissions!
   grant-permissions!
   revoke-application-permissions!
-  revoke-collection-permissions!]
+  revoke-collection-permissions!
+  update-collection-accesses!]
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups

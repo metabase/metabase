@@ -58,11 +58,6 @@
                       :api_key [:= :api_key.user_id :pgm.user_id]]
              :where  [:in :api_key.id api-key-ids]}))
 
-(mu/defn user-type
-  "The `:type` of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User :id user-id))
-
 (mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
   "The map from id to `:type` of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]

@@ -7,7 +7,7 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
-   [metabase.queries.core :as queries]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -221,11 +221,12 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
-(mu/defn card-dimensions
-  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
-  or nil."
-  [card-id :- ::lib.schema.id/card]
-  (queries/card-query-info card-id))
+(mu/defn cards-dimensions
+  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select (queries.card-schema/selection) :id [:in [:auto/param card-ids]])
+    []))
 
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."

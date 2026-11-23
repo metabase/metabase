@@ -4,19 +4,27 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.generate.schema :as generate.schema]
+   [metabase-enterprise.data-apps.generate.schema.source :as schemas.source]
+   [metabase-enterprise.data-apps.generate.schema.table :as schemas.table]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
@@ -370,6 +378,59 @@
           (is (not (str/includes? contents "export const users = {")))
           (is (not (str/includes? contents "export const venues = {"))))))))
 
+(deftest generate-schema-of-tables-read-together-test
+  (testing "the schema file of several tables is the one built from the schema of each table read alone"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :checkins)}
+                     :model/Measure _ {:table_id (mt/id :checkins)}]
+        (let [table-ids #{(mt/id :venues) (mt/id :checkins) (mt/id :users)}
+              file      (fn [tables-fn]
+                          (let [source (reify schemas.source/SchemaSource
+                                         (library-scope [_] {:data-collection-ids #{} :metric-collection-ids #{}})
+                                         (metrics [_ _ _] [])
+                                         (tables [_ ids] (tables-fn (schemas.table/select-tables ids)))
+                                         (library-tables [_ _ _] (map (fn [id] {:id id}) table-ids)))]
+                            (mt/with-current-user (mt/user->id :crowberto)
+                              (-> (generate.schema/fetch-items source {})
+                                  (generate.schema/create-schema {:generated-at "2026-01-01T00:00:00Z"
+                                                                  :instance-url "http://localhost:3000"})
+                                  generate.schema/render-typescript))))
+              together  (file schemas.table/table-schemas)]
+          (is (str/includes? together "export const checkins = {"))
+          (is (str/includes? together "Mock Measure"))
+          (is (= (file (fn [tables] (mapcat #(schemas.table/table-schemas [%]) tables)))
+                 together)))))))
+
+(deftest generate-schema-table-ids-statement-count-test
+  (testing "generating the schema of many tables takes as many statements as of few"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/Field :model/Table :model/Database]
+        (let [db-id    (t2/insert-returning-pk! :model/Database {:name    "data app schema tables"
+                                                                 :engine  :h2
+                                                                 :details {:db "mem:data-app-schema-tables"}})
+              tables!  (fn [n]
+                         (vec (for [i (range n)]
+                                (let [table-id (t2/insert-returning-pk! :model/Table {:db_id  db-id
+                                                                                      :name   (str "T" n "_" i)
+                                                                                      :schema "PUBLIC"
+                                                                                      :active true})]
+                                  (t2/insert! :model/Field (for [k (range 3)]
+                                                             {:table_id      table-id
+                                                              :name          (str "F" k)
+                                                              :position      k
+                                                              :base_type     (if (zero? k) :type/Integer :type/Text)
+                                                              :database_type (if (zero? k) "INTEGER" "VARCHAR")}))
+                                  table-id))))
+              generate (fn [table-ids]
+                         (data-apps.tu/with-published-tables! table-ids
+                           (t2/with-call-count [call-count]
+                             (let [[{:keys [contents]}] (apply mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                               (mapcat (fn [id] [:table-ids id]) table-ids))]
+                               (is (every? #(str/includes? contents (str "id: " %)) table-ids)))
+                             (call-count))))]
+          (generate (tables! 1))
+          (is (= (generate (tables! 2)) (generate (tables! 6)))))))))
+
 (deftest generate-schema-metric-ids-test
   (mt/with-premium-features #{:data-apps}
     (data-apps.tu/do-with-sources!
@@ -401,6 +462,45 @@
                (is (not (schema-metric contents venues-metric-id)))
                (is (not (schema-metric contents outside-metric-id)))
                (is (str/includes? contents "export const checkins = {"))))))))))
+
+(deftest generate-schema-metric-ids-statement-count-test
+  (testing "generating schema of many new metrics saves their dimensions with one write and reads them in as many statements as of few"
+    (mt/with-premium-features #{:data-apps}
+      (data-apps.tu/do-with-library!
+       (fn [{:keys [metrics-id]}]
+         (mt/with-model-cleanup [:model/Card]
+           (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/enrich-columns-with-has-field-values identity]
+             (let [mp       (mt/metadata-provider)
+                   query    (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/count))
+                   metrics! (fn [n]
+                              (vec (t2/insert-returning-pks! :model/Card
+                                                             (for [i (range n)]
+                                                               (assoc (mt/with-temp-defaults :model/Card)
+                                                                      :name          (str "Venue count " n " " i)
+                                                                      :type          :metric
+                                                                      :collection_id metrics-id
+                                                                      :database_id   (mt/id)
+                                                                      :dataset_query query)))))
+                   generate (fn [metric-ids]
+                              (let [[{:keys [contents]}] (apply mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                                (mapcat (fn [id] [:metric-ids id]) metric-ids))]
+                                (is (every? #(str/includes? contents (str "id: " % ",")) metric-ids))))
+                   saved?   (fn [metric-ids]
+                              (every? (comp some? :dimensions)
+                                      (t2/query {:select [:dimensions]
+                                                 :from   [:report_card]
+                                                 :where  [:in :id metric-ids]})))]
+               (generate (metrics! 1))
+               (let [small (metrics! 2)
+                     large (metrics! 6)]
+                 (testing "the consumers of the dimension writes run once"
+                   (is (= (events.tu/delivery-statement-count! #(generate small))
+                          (events.tu/delivery-statement-count! #(generate large))))
+                   (is (saved? small))
+                   (is (saved? large)))
+                 (testing "metrics with saved dimensions"
+                   (is (= (t2/with-call-count [call-count] (generate small) (call-count))
+                          (t2/with-call-count [call-count] (generate large) (call-count))))))))))))))
 
 (deftest generate-queries-test
   (mt/with-premium-features #{:data-apps}

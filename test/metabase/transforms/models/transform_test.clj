@@ -722,3 +722,29 @@
                       (statements-outside-query-analysis! #(transform/update-transforms! (mapv (fn [row-id] (assoc {:source {:type :query :query (query limit)}} :id row-id)) ids)))))]
       (counted 1 2)
       (is (= (counted 2 3) (counted 6 4))))))
+
+(deftest last-run-hydration-statement-count-does-not-grow-with-transforms-test
+  (testing "hydrating `:last_run` reads the stored checkpoints of many succeeded transforms in as many statements as of few"
+    (mt/with-model-cleanup [:model/TransformRun :model/Transform]
+      (let [transforms (fn [n]
+                         (vec (for [i (range n)]
+                                (let [transform (t2/insert-returning-instance!
+                                                 :model/Transform
+                                                 (assoc (mt/with-temp-defaults :model/Transform)
+                                                        :name                  (str "checkpoint " n " " i)
+                                                        :last_checkpoint_value (str "stored " i)))]
+                                  (t2/insert! :model/TransformRun {:transform_id        (:id transform)
+                                                                   :transform_name      (:name transform)
+                                                                   :transform_entity_id (:entity_id transform)
+                                                                   :status              "succeeded"
+                                                                   :is_active           nil
+                                                                   :run_method          "manual"
+                                                                   :checkpoint_hi_value (str i)})
+                                  (assoc transform :last_checkpoint_value nil)))))
+            hydrate    (fn [ts]
+                         (t2/with-call-count [call-count]
+                           (is (= (map #(str "stored " %) (range (count ts)))
+                                  (map :last_checkpoint_value (t2/hydrate ts :last_run))))
+                           (call-count)))]
+        (hydrate (transforms 1))
+        (is (= (hydrate (transforms 2)) (hydrate (transforms 6))))))))

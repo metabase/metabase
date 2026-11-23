@@ -1204,7 +1204,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection collection {}
                      :model/Card       card       {:collection_id (:id collection)}]
-        (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
+        (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:audit-collection-id (:id collection)})]
           (mt/with-test-user :rasta
             (is (false? (mi/can-read? (t2/hydrate card :can_read))))
             (is (false? (mi/can-write? (t2/hydrate card :can_write)))))

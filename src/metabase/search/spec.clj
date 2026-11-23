@@ -56,12 +56,20 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
+    [:fields {:optional true} [:vector :keyword]]]
+   [:map
+    [:batch-fn fn?]
     [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
-  "Attributes populate by clojure functions"
+  "Attributes populated by clojure functions, one record (`:fn`) or a batch of records (`:batch-fn`) at a time."
   [attr-def]
-  (and (map? attr-def) (:fn attr-def)))
+  (and (map? attr-def) (or (:fn attr-def) (:batch-fn attr-def))))
+
+(defn batch-function-attr?
+  "Attributes populated by a clojure function of a batch of records."
+  [attr-def]
+  (and (map? attr-def) (:batch-fn attr-def)))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -389,6 +397,8 @@
   - `:column_name` - Use specified database column
   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
     return value is written to the column named after the attr key (snake_case).
+  - `{:batch-fn function :fields [:field1 :field2]}` - Execute a clojure function at index time on a batch of records,
+    once per batch; it returns one value per record, in order, each written as an `:fn` value is.
 
   A function in a specification must be a named `defn`, not an anonymous fn, since [[index-version-hash]] identifies it
   by name."

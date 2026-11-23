@@ -28,18 +28,22 @@
   For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
-  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [db :- :metabase.warehouses.schema/database]
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms.
+  `db-id->create-queries` holds the current user's `:perms/create-queries` value on every Table of each Database."
+  [db-id->create-queries :- [:map-of :int :keyword]
+   db                    :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))
-           (= :query-builder-and-native
-              (get (perms/every-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/create-queries [(u/the-id db)]) (u/the-id db))))
+           (= :query-builder-and-native (get db-id->create-queries (u/the-id db))))
     :write
     :none))
 
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (into [] (map #(assoc % :native_permissions (get-native-perms-info %))) (mi/readable (queries.db/databases ids)))))
+    (let [databases             (t2/hydrate (mi/readable (queries.db/databases ids)) :json_access)
+          db-id->create-queries (perms/every-table-in-database-permissions-for-user
+                                 (perms/user-info api/*current-user-id*) :perms/create-queries (mapv u/the-id databases))]
+      (mapv #(assoc % :native_permissions (get-native-perms-info db-id->create-queries %)) databases))))
 
 (defn- field-id->table-id
   [field-ids]

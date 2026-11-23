@@ -100,10 +100,10 @@
   [collection-id]
   (t2/select-one [:model/Collection :location :id :type :namespace :is_remote_synced] :id collection-id))
 
-(mu/defn root-collection-type-by-id
-  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
+(mu/defn root-collection-types-by-ids :- [:map-of ::lib.schema.id/collection [:maybe :string]]
+  "The type of each of the top-level Collections among those with `collection-ids`, by id."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (t2/select-pk->fn :type :model/Collection :id [:in [:auto/param (vec collection-ids)]] :location "/"))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 

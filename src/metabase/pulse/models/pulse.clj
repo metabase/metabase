@@ -244,12 +244,12 @@
        (recipient-additions-permitted? pulse changes)))
 
 (defn- can-read-attachments?
-  "Return true if the card has attachments and those can be read. If it has no attachments, return true"
-  [card]
-  (if (or (:include_csv card) (:include_xls card))
-    (let [level (perms/download-perms-level (or (:dataset_query card) (pulse.db/card-query (:id card))) api/*current-user-id*)]
-      (and level (not= level  :no)))
-    true))
+  "Whether the current user can download the results of each of `cards` that has attachments, asked once for all."
+  [cards]
+  (let [attached  (filterv #(or (:include_csv %) (:include_xls %)) cards)
+        id->query (pulse.db/card-queries (into #{} (comp (remove :dataset_query) (map :id)) attached))
+        queries   (mapv #(or (:dataset_query %) (get id->query (:id %))) attached)]
+    (every? #(and % (not= % :no)) (perms/download-perms-levels queries api/*current-user-id*))))
 
 (defmethod mi/can-create? :model/Pulse
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
@@ -259,7 +259,7 @@
          readable (t2/hydrate (pulse.db/cards card-ids) :can_read)]
      (and (= (count readable) (count card-ids))
           (every? mi/can-read? readable)
-          (every? can-read-attachments? cards)))
+          (can-read-attachments? cards)))
    ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
    (cond
      (some? collection-id) (some-> (pulse.db/collection collection-id) (t2/hydrate :can_write) mi/can-write?)

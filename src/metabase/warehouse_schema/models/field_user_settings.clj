@@ -193,6 +193,77 @@
           (user-settings-writes/publish-writes! writes writes-spec)
           1)))))
 
+(defn- remove-remappings-ended-by-all!
+  "[[remove-remappings-ended-by!]] for each `[field settings]` of `field+settings`, with one read and one statement per
+  kind for all of them, returning `writes` with the writes of the settings."
+  [writes field+settings]
+  (let [semantic       (filterv (fn [[_field settings]] (contains? settings :semantic_type)) field+settings)
+        fk-ended       (into [] (keep (fn [[{:keys [id semantic_type]} settings]]
+                                        (when (and (fk-semantic-type? semantic_type)
+                                                   (not (fk-semantic-type? (:semantic_type settings))))
+                                          id)))
+                             semantic)
+        internal-ended (into #{} (keep (fn [[{:keys [id base_type]} settings]]
+                                         (when-not (internal-remapping-allowed? base_type (:semantic_type settings))
+                                           id)))
+                             semantic)
+        stored         (when (seq fk-ended)
+                         (filterv #(some? (:fk_target_field_id %))
+                                  (warehouse-schema.db/field-user-settings-for-fields fk-ended)))
+        dimension-ids  (when-let [field-ids (not-empty (into internal-ended fk-ended))]
+                         (into []
+                               (comp (filter (fn [{:keys [field_id type]}]
+                                               (case (keyword type)
+                                                 :external (contains? (set fk-ended) field_id)
+                                                 :internal (contains? internal-ended field_id)
+                                                 false)))
+                                     (map :id))
+                               (warehouse-schema.db/dimensions-for-fields field-ids)))]
+    (when (seq stored)
+      (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id stored) fk-target-unset))
+    (when (seq dimension-ids)
+      (dimension/delete-dimensions! dimension-ids))
+    (cond-> writes
+      (seq stored)   (user-settings-writes/add-updated writes-spec stored (constantly fk-target-unset))
+      (seq fk-ended) (user-settings-writes/delete-empty! writes-spec fk-ended))))
+
+(mu/defn upsert-field-user-settings-for-fields! :- [:maybe :int]
+  "[[upsert-field-user-settings!]] for each `[field settings]` of `field+settings`, whose Fields are distinct, with one
+  read and one statement per kind for the settings, one update of the Fields per distinct change, and one event of
+  each kind; returns the number of Fields written."
+  [field+settings :- [:sequential [:tuple
+                                   ::warehouse-schema.schema/field
+                                   (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
+  (let [field+settings (into []
+                             (keep (fn [[field settings]]
+                                     (when-let [settings (not-empty (u/select-keys-when
+                                                                     settings :present user-settings/user-settable-field-columns))]
+                                       [field settings])))
+                             field+settings)]
+    (when (seq field+settings)
+      (t2/with-transaction [_conn]
+        (let [ids          (mapv (comp :id first) field+settings)
+              id->settings (into {} (map (fn [[field settings]] [(:id field) settings])) field+settings)
+              changes-of   (fn [field-id] (let [settings (id->settings field-id)] (with-set-flags settings settings)))
+              writes       (remove-remappings-ended-by-all! {} field+settings)
+              existing     (u/index-by :field_id (warehouse-schema.db/field-user-settings-for-fields ids))
+              stored       (into [] (keep existing) ids)
+              missing      (into [] (remove existing) ids)
+              writes       (cond-> writes
+                             (seq missing)
+                             (user-settings-writes/add-created
+                              (warehouse-schema.db/insert-field-user-settings-returning-instances!
+                               (mapv #(assoc (id->settings %) :field_id %) missing))))]
+          (when (seq stored)
+            (warehouse-schema.db/update-field-user-settings-rows!
+             (mapv #(assoc (changes-of (:field_id %)) :id (:id %)) stored)))
+          (let [writes (-> writes
+                           (user-settings-writes/add-updated writes-spec stored (comp changes-of :field_id))
+                           (user-settings-writes/delete-empty! writes-spec ids))]
+            (field/update-fields! (mapv (fn [[field settings]] (assoc settings :id (:id field))) field+settings))
+            (user-settings-writes/publish-writes! writes writes-spec)
+            (count field+settings)))))))
+
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
