@@ -27,21 +27,32 @@ export type GoalSourceErrorType =
   | "too-many-sources";
 
 /**
- * Where a chart gets its goal source results from. Signed-in users send the
- * sources. Anonymous routes take the chart identity, and the backend reads the
- * sources from the saved chart.
+ * Where a chart gets its goal source results from
  */
 export type GoalSourcesScope =
-  | { type: "signed-in"; dashboard_id?: DashboardId }
-  | { type: "public-card"; uuid: string }
+  | {
+      type: "signed-in";
+      dashboard_id?: DashboardId;
+    }
+  | {
+      type: "public-card";
+      uuid: string;
+    }
   | {
       type: "public-dashcard";
       uuid: string;
       dashcardId: DashCardId;
       cardId: CardId;
     }
-  | { type: "public-document-card"; uuid: string; cardId: CardId }
-  | { type: "embed-card"; token: string }
+  | {
+      type: "public-document-card";
+      uuid: string;
+      cardId: CardId;
+    }
+  | {
+      type: "embed-card";
+      token: string;
+    }
   | {
       type: "embed-dashcard";
       token: string;
