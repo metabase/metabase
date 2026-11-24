@@ -88,12 +88,14 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
@@ -2799,33 +2801,53 @@
   [a-query]
   (lib.core/ensure-filter-stage a-query))
 
+(defn- mbql->js [x]
+  (cond
+    (map? x)
+    (-> (reduce-kv (fn [m k v]
+                     (assoc m (mbql->js k) (mbql->js v)))
+                   {}
+                   x)
+        clj->js)
+
+    (sequential? x)
+    (-> (mapv mbql->js x)
+        clj->js)
+
+    (qualified-keyword? x)
+    (str (namespace x) "/" (name x))
+
+    (simple-keyword? x)
+    (name x)
+
+    :else
+    (clj->js x)))
+
 (defn ^:export to-js-query
   "Serialize a query to a plain JS object."
   [cljs-query]
-  (letfn [(->js [x]
-            (cond
-              (map? x)
-              (-> (reduce-kv (fn [m k v]
-                               (assoc m (->js k) (->js v)))
-                             {}
-                             x)
-                  clj->js)
+  (-> cljs-query
+      lib.core/prepare-for-serialization
+      mbql->js))
 
-              (sequential? x)
-              (-> (mapv ->js x)
-                  clj->js)
+(defn ^:export to-js-filter-clause
+  "Serialize a filter clause to a plain JS value."
+  [a-filter-clause]
+  (->> a-filter-clause
+       (lib.core/prepare-for-serialization ::lib.schema.expression/boolean)
+       mbql->js))
 
-              (qualified-keyword? x)
-              (str (namespace x) "/" (name x))
-
-              (simple-keyword? x)
-              (name x)
-
-              :else
-              (clj->js x)))]
-    (-> cljs-query
-        lib.core/prepare-for-serialization
-        ->js)))
+(defn ^:export from-js-filter-clause
+  "Deserialize a filter clause from a plain JS value. Returns nil when the value isn't a filter clause."
+  [js-filter-clause]
+  (let [a-filter-clause (try
+                          (lib.normalize/normalize ::lib.schema.expression/boolean (js->clj js-filter-clause))
+                          (catch :default _
+                            nil))]
+    ;; The schema also accepts literals, which aren't filter clauses.
+    (when (and (lib.util/clause? a-filter-clause)
+               (mr/validate ::lib.schema.expression/boolean a-filter-clause))
+      a-filter-clause)))
 
 ;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
 ;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will

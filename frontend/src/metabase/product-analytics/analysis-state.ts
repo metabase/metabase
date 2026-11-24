@@ -9,6 +9,7 @@ import type {
 
 import type { AnalysisSettingsByKind } from "./analyses/types";
 import { parseDateRange } from "./date-range";
+import { readEventDefinition } from "./event-definition";
 
 type AnalysisStateOptions<K extends ProductAnalyticsKind> = {
   kind: K;
@@ -68,6 +69,7 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
     "columns.person": Lib.columnUniqueKey(personColumn),
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
     granularity: settings.granularity,
-    "habit.values": "count",
+    "habit.active": readEventDefinition(settings["habit.active"]),
+    "habit.values": settings["habit.values"],
   };
 }

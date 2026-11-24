@@ -1,4 +1,5 @@
 import { color } from "metabase/ui/colors";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
 
 const SERIES_COLOR_NAME = "accent0";
@@ -33,4 +34,13 @@ export const getAxisTitleSettings = ({
 > => ({
   "graph.x_axis.title_text": x,
   "graph.y_axis.title_text": y,
+});
+
+/** Shows a column of shares from 0 to 1 as percents. */
+export const getPercentColumnSettings = (
+  column: string,
+): Pick<VisualizationSettings, "column_settings"> => ({
+  column_settings: {
+    [getColumnKey({ name: column })]: { number_style: "percent" },
+  },
 });

@@ -88,15 +88,18 @@
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
   (-> (match/replace stage
-        [:segment _opts (id :guard pos-int?)]
-        (let [legacy-segment (get id->legacy-segment id)
-              filter-clauses (legacy-macro-filters legacy-segment)]
+        [:segment opts (id :guard pos-int?)]
+        (let [legacy-segment  (get id->legacy-segment id)
+              filter-clauses  (legacy-macro-filters legacy-segment)
+              expression-name (:lib/expression-name opts)]
           (log/debugf "Expanding legacy Segment macro for Segment %d (%d filter clauses)" id (count filter-clauses))
           ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
           ;; we've expanded all of the :segment refs.
-          (if (> (count filter-clauses) 1)
-            (apply lib.filter/and filter-clauses)
-            (first filter-clauses))))
+          (cond-> (if (> (count filter-clauses) 1)
+                    (apply lib.filter/and filter-clauses)
+                    (first filter-clauses))
+            ;; A segment can be a whole expression, whose name is on the segment ref.
+            expression-name (lib/update-options assoc :lib/expression-name expression-name))))
       lib.filter/flatten-compound-filters-in-stage
       lib.filter/remove-duplicate-filters-in-stage))
 

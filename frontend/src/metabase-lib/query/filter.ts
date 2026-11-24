@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import type { CardId } from "metabase-types/api";
+import type { CardId, JsFilterClause } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isSegmentMetadata } from "./metadata";
@@ -48,6 +48,15 @@ export function filter(
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
+}
+
+export function toJsFilterClause(filterClause: FilterClause): JsFilterClause {
+  return ML.to_js_filter_clause(filterClause);
+}
+
+/** `null` when the value isn't a filter clause. */
+export function fromJsFilterClause(value: unknown): FilterClause | null {
+  return ML.from_js_filter_clause(value);
 }
 
 export function filterArgsDisplayName(

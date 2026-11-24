@@ -5,6 +5,10 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID, createOrdersTable } from "metabase-types/api/mocks/presets";
 
 import { getTableQuery } from "../base-query";
+import {
+  getQueryEventDefinition,
+  toJsEventDefinition,
+} from "../event-definition";
 
 import { computeAnalysisSettings } from "./config";
 import type { AnalysisContext } from "./types";
@@ -34,11 +38,17 @@ const FILTERED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
   ],
 });
 
+const EVENT = toJsEventDefinition(
+  getQueryEventDefinition(FILTERED_QUERY, "Big orders"),
+);
+
 const HABIT_DEFAULTS = {
   base_query: Lib.toJsQuery(TABLE_QUERY),
   date_range: "past90days",
   counting: "person",
   granularity: "day",
+  "habit.active": null,
+  "habit.values": "count",
 };
 
 describe("computeAnalysisSettings", () => {
@@ -55,12 +65,16 @@ describe("computeAnalysisSettings", () => {
         date_range: "2026-01-01~2026-03-31",
         counting: "person",
         granularity: "week",
+        "habit.active": EVENT,
+        "habit.values": "percent",
       }),
     ).toEqual({
       base_query: Lib.toJsQuery(FILTERED_QUERY),
       date_range: "2026-01-01~2026-03-31",
       counting: "person",
       granularity: "week",
+      "habit.active": EVENT,
+      "habit.values": "percent",
     });
   });
 
@@ -141,6 +155,12 @@ describe("computeAnalysisSettings", () => {
       "a base query with more than one stage",
       { base_query: Lib.toJsQuery(Lib.appendStage(FILTERED_QUERY)) },
     ],
+    [
+      "an active event without conditions",
+      { "habit.active": { ...EVENT, conditions: [] } },
+    ],
+    ["an active event that isn't an object", { "habit.active": "signup" }],
+    ["values Habit doesn't offer", { "habit.values": "ratio" }],
   ])("falls back to the default for %s", (_description, stored) => {
     expect(computeAnalysisSettings("habit", CONTEXT, stored)).toEqual(
       HABIT_DEFAULTS,
