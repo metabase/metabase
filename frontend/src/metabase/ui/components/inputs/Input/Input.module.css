@@ -91,10 +91,10 @@
 }
 
 /*
- * A field that only shows a value to copy (copy fields, one-time keys): gray,
- * no border, and focus doesn't make it look editable. It's a variant rather
- * than a `[readonly]` rule because a non-searchable Select also renders a
- * read-only input.
+ * A field that only shows a value to copy (copy fields, one-time keys): gray
+ * with no border at rest, and it stays gray when focused so it doesn't look
+ * editable. It's a variant rather than a `[readonly]` rule because a
+ * non-searchable Select also renders a read-only input.
  */
 .wrapper .input[data-variant="read-only"] {
   &,
@@ -102,10 +102,9 @@
     background-color: var(--mb-color-background_surface-disabled);
   }
 
-  &:not([data-error]),
-  &:not([data-error]):focus-within {
+  /* the normal focus ring stays: the field is still focusable (WCAG 2.4.7) */
+  &:not([data-error], :focus-within) {
     --input-border-color: transparent;
-    --input-ring: 0 0 0 0 transparent;
   }
 }
 
